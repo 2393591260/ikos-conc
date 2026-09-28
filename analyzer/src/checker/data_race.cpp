@@ -45,6 +45,7 @@
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 #include <ikos/analyzer/support/cast.hpp>
 #include <ikos/analyzer/util/log.hpp>
+#include <ikos/analyzer/util/source_location.hpp>
 
 #include <ikos/core/domain/concurrent_global_env.hpp>
 
@@ -982,6 +983,14 @@ DataRaceChecker::~DataRaceChecker() {
     }
     side.put("joined_threads", joined_list);
     side.put("unique_thread", rec.is_unique_thread);
+    // Source location of THIS access (for the SV-COMP violation witness:
+    // the two target waypoints must carry physical file:line:column of the
+    // two conflicting accesses). Omitted when the statement has no frontend.
+    if (auto loc = source_location(rec.stmt)) {
+      side.put("line", static_cast< int >(loc.line()));
+      side.put("column", static_cast< int >(loc.column()));
+      side.put("file", loc.path().filename().string());
+    }
     side.put("points_to", pts);
     return side;
   };
@@ -999,6 +1008,25 @@ DataRaceChecker::~DataRaceChecker() {
                                                  : all_pairs[k]
                                                        .first_conflict_loc;
     groups[key].push_back(k);
+  }
+
+  // pthread_create call sites, for the violation witness's thread
+  // registration (function_enter waypoints). Emitted once and reused in
+  // every group's info so downstream parsers can read it from any report.
+  JsonList thread_creations;
+  for (const ThreadCreation& tc : this->_thread_creations) {
+    JsonDict d;
+    if (auto loc = source_location(tc.stmt)) {
+      d.put("line", static_cast< int >(loc.line()));
+      d.put("column", static_cast< int >(loc.column()));
+      d.put("file", loc.path().filename().string());
+    }
+    d.put("thread_function", tc.child);
+    ar::Code* code = tc.stmt->parent()->code();
+    if (code != nullptr && code->is_function_body()) {
+      d.put("creator", code->function()->name());
+    }
+    thread_creations.add(d);
   }
 
   // Emit one aggregated report per group.
@@ -1059,6 +1087,7 @@ DataRaceChecker::~DataRaceChecker() {
         {"num_pairs", static_cast< int >(pair_indices.size())},
         {"unique_lockset_intersection", "empty"},
     };
+    info.put("thread_creations", thread_creations);
 
     if (group_is_unknown) {
       info.put("verdict", std::string("unknown"));
@@ -1383,9 +1412,28 @@ void DataRaceChecker::build_thread_creators() {
           continue;
         }
         this->_thread_creators[tfc->function()->name()].insert(creator);
+        this->_thread_creations.push_back(
+            ThreadCreation{stmt, tfc->function()->name()});
       }
     }
   }
+
+  // Deterministic source order: the k-th creation (by line/column) assigns
+  // witness thread_id k, matching the SV-COMP thread-registration semantics.
+  std::sort(this->_thread_creations.begin(), this->_thread_creations.end(),
+            [](const ThreadCreation& a, const ThreadCreation& b) {
+              SourceLocation la = source_location(a.stmt);
+              SourceLocation lb = source_location(b.stmt);
+              if (la && lb) {
+                if (la.line() != lb.line()) {
+                  return la.line() < lb.line();
+                }
+                if (la.column() != lb.column()) {
+                  return la.column() < lb.column();
+                }
+              }
+              return a.child < b.child;
+            });
 
   // Transitive closure: if A creates B and B creates C, then A transitively
   // creates C — A's pre-create writes happen-before C's writes

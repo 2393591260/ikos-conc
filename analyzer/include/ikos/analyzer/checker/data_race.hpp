@@ -324,6 +324,19 @@ private:
 
   bool _creators_built = false;
 
+  /// \brief A pthread_create call site, for the SV-COMP violation witness's
+  /// thread-registration (function_enter) waypoints: the call statement plus
+  /// the thread entry function it creates.
+  struct ThreadCreation {
+    ar::Statement* stmt;
+    std::string child;
+  };
+
+  /// \brief All pthread_create call sites, ordered by source location. Filled
+  /// by build_thread_creators(); consumed by the destructor to emit
+  /// `thread_creations` in the race report JSON.
+  std::vector< ThreadCreation > _thread_creations;
+
   /// \brief One-time static scan of all pthread_create call sites,
   /// filling _thread_creators. Only direct callees with a constant
   /// thread-function argument are recorded (indirect creation simply
