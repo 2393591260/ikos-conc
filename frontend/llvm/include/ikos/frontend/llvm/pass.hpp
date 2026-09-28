@@ -70,6 +70,12 @@ llvm::FunctionPass* create_remove_printf_calls_pass();
 /// \brief Remove blocks that are not reachable, including dead cycles
 llvm::FunctionPass* create_remove_unreachable_blocks_pass();
 
+/// \brief Dead-code elimination that preserves loads (race accesses)
+llvm::FunctionPass* create_preserve_loads_dce_pass();
+
+/// \brief Freeze uninitialized integer allocas into a single nondet value
+llvm::FunctionPass* create_freeze_uninit_pass();
+
 /// \brief Initialize all passes linked into the ikos-pp library
 void initialize_ikos_passes(llvm::PassRegistry&);
 
@@ -96,5 +102,11 @@ void initializeRemovePrintfCallsPassPass(llvm::PassRegistry&);
 
 /// \brief Initialize the RemoveUnreachableBlocksPass
 void initializeRemoveUnreachableBlocksPassPass(llvm::PassRegistry&);
+
+/// \brief Initialize the PreserveLoadsDCEPass
+void initializePreserveLoadsDCEPassPass(llvm::PassRegistry&);
+
+/// \brief Initialize the FreezeUninitPass
+void initializeFreezeUninitPassPass(llvm::PassRegistry&);
 
 } // end namespace llvm

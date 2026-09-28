@@ -124,7 +124,8 @@ ar::GlobalVariable* BundleImporter::translate_global_variable(
                                  ar_type,
                                  name,
                                  /*is_definition = */ !gv->isDeclaration(),
-                                 gv->getAlignment());
+                                 gv->getAlignment(),
+                                 /*is_thread_local = */ gv->isThreadLocal());
   ar_gv->set_frontend(gv);
   this->_globals.try_emplace(gv, ar_gv);
   return ar_gv;
@@ -216,6 +217,15 @@ ar::Function* BundleImporter::translate_function_di(llvm::Function* fun,
                                                     llvm::DISubprogram* dbg) {
   ikos_assert_msg(dbg != nullptr, "no debug info");
   ikos_assert_msg(!fun->isIntrinsic(), "unexpected intrinsic with debug info");
+
+  // For declarations, also consult LibraryFunctionImporter so that well-known
+  // library functions (e.g., pthread_*, malloc) are mapped to ar::Intrinsic
+  // even when DWARF debug info is available.
+  if (fun->isDeclaration()) {
+    if (ar::Function* lib_fun = _ctx.lib_fun_imp->function(fun->getName())) {
+      return lib_fun;
+    }
+  }
 
   // Use debug information to build the exact type
   llvm::DISubroutineType* di_type = dbg->getType();

@@ -263,6 +263,15 @@ private:
       ar::BasicBlock* bb,
       ConstantExpressionList& exprs);
 
+  /// \brief Translate a llvm::BinaryOperator constant expression into an
+  /// ar::BinaryOperation. Required to lower clang-14's `container_of` /
+  /// `offsetof` constant folding artifacts (Sub of PtrToInt of GEP of null).
+  std::unique_ptr< ar::BinaryOperation > translate_constant_binary(
+      ar::InternalVariable* result,
+      llvm::BinaryOperator* inst,
+      ar::BasicBlock* bb,
+      ConstantExpressionList& exprs);
+
 public:
   /// \brief Translate an integer llvm::Constant into an ar::Value and cast it
   /// to the given ar::IntegerType

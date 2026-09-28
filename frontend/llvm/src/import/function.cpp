@@ -369,6 +369,10 @@ void FunctionImporter::translate_instruction(
     this->translate_landingpad(bb_translation, landingpad);
   } else if (auto resume = llvm::dyn_cast< llvm::ResumeInst >(inst)) {
     this->translate_resume(bb_translation, resume);
+  } else if (auto rmw = llvm::dyn_cast< llvm::AtomicRMWInst >(inst)) {
+    this->translate_atomic_rmw(bb_translation, rmw);
+  } else if (auto cx = llvm::dyn_cast< llvm::AtomicCmpXchgInst >(inst)) {
+    this->translate_cmpxchg(bb_translation, cx);
   } else if (llvm::isa< llvm::SelectInst >(inst)) {
     // The preprocessor should use the -lower-select pass
     throw ImportError("llvm select instructions are not supported");
@@ -419,6 +423,49 @@ void FunctionImporter::translate_alloca(BasicBlockTranslation* bb_translation,
   bb_translation->add_statement(std::move(stmt));
 }
 
+/// \brief Map an LLVM atomic ordering to an ar atomic ordering.
+static ar::AtomicOrdering translate_atomic_ordering(llvm::AtomicOrdering ord) {
+  switch (ord) {
+    case llvm::AtomicOrdering::Unordered:
+      return ar::AtomicOrdering::Unordered;
+    case llvm::AtomicOrdering::Monotonic:
+      return ar::AtomicOrdering::Monotonic;
+    case llvm::AtomicOrdering::Acquire:
+      return ar::AtomicOrdering::Acquire;
+    case llvm::AtomicOrdering::Release:
+      return ar::AtomicOrdering::Release;
+    case llvm::AtomicOrdering::AcquireRelease:
+      return ar::AtomicOrdering::AcqRel;
+    case llvm::AtomicOrdering::SequentiallyConsistent:
+      return ar::AtomicOrdering::SeqCst;
+    default:
+      return ar::AtomicOrdering::NotAtomic;
+  }
+}
+
+/// \brief Map an LLVM atomicrmw binop to an ar binary operator (integer RMWs).
+static ar::BinaryOperation::Operator convert_rmw_bin_op(
+    llvm::AtomicRMWInst::BinOp op, ar::Signedness sign) {
+  const bool u = (sign == ar::Unsigned);
+  switch (op) {
+    case llvm::AtomicRMWInst::BinOp::Add:
+      return u ? ar::BinaryOperation::UAdd : ar::BinaryOperation::SAdd;
+    case llvm::AtomicRMWInst::BinOp::Sub:
+      return u ? ar::BinaryOperation::USub : ar::BinaryOperation::SSub;
+    case llvm::AtomicRMWInst::BinOp::And:
+      return u ? ar::BinaryOperation::UAnd : ar::BinaryOperation::SAnd;
+    case llvm::AtomicRMWInst::BinOp::Or:
+      return u ? ar::BinaryOperation::UOr : ar::BinaryOperation::SOr;
+    case llvm::AtomicRMWInst::BinOp::Xor:
+      return u ? ar::BinaryOperation::UXor : ar::BinaryOperation::SXor;
+    default:
+      std::ostringstream buf;
+      buf << "unsupported llvm atomicrmw binop: "
+          << llvm::AtomicRMWInst::getOperationName(op).str();
+      throw ImportError(buf.str());
+  }
+}
+
 void FunctionImporter::translate_store(BasicBlockTranslation* bb_translation,
                                        llvm::StoreInst* store) {
   // Translate pointer
@@ -435,7 +482,10 @@ void FunctionImporter::translate_store(BasicBlockTranslation* bb_translation,
   auto stmt = ar::Store::create(pointer,
                                 value,
                                 store->getAlign().value(),
-                                store->isVolatile());
+                                store->isVolatile(),
+                                store->isAtomic()
+                                    ? translate_atomic_ordering(store->getOrdering())
+                                    : ar::AtomicOrdering::NotAtomic);
   stmt->set_frontend< llvm::Value >(store);
   bb_translation->add_statement(std::move(stmt));
 }
@@ -457,9 +507,140 @@ void FunctionImporter::translate_load(BasicBlockTranslation* bb_translation,
       ar::Load::create(var,
                        pointer,
                        load->getAlign().value(),
-                       load->isVolatile());
+                       load->isVolatile(),
+                       load->isAtomic()
+                           ? translate_atomic_ordering(load->getOrdering())
+                           : ar::AtomicOrdering::NotAtomic);
   stmt->set_frontend< llvm::Value >(load);
   bb_translation->add_statement(std::move(stmt));
+}
+
+/// \brief Translate an LLVM atomicrmw instruction as
+/// `%old = load atomic ptr; %new = old OP val; store atomic ptr, %new`.
+/// Both the load and the store carry the atomic ordering so the data-race
+/// checker exempts the pair (C11: an atomic RMW never races).
+void FunctionImporter::translate_atomic_rmw(BasicBlockTranslation* bb_translation,
+                                            llvm::AtomicRMWInst* rmw) {
+  ar::AtomicOrdering ord = translate_atomic_ordering(rmw->getOrdering());
+  uint64_t align = rmw->getAlign().value();
+
+  ar::Type* val_type = this->infer_type(rmw);
+  ar::Signedness sign = ar::Signed;
+  if (auto* it = ar::dyn_cast< ar::IntegerType >(val_type)) {
+    sign = it->sign();
+  }
+  ar::PointerType* ptr_type = ar::PointerType::get(this->_context, val_type);
+  ar::Value* pointer =
+      this->translate_value(bb_translation, rmw->getPointerOperand(), ptr_type);
+  ar::Value* val =
+      this->translate_value(bb_translation, rmw->getValOperand(), val_type);
+
+  // %old = load atomic ptr
+  ar::InternalVariable* old_var =
+      ar::InternalVariable::create(this->_body, val_type);
+  auto load = ar::Load::create(old_var, pointer, align, /*volatile=*/false, ord);
+  load->set_frontend< llvm::Value >(rmw);
+  bb_translation->add_statement(std::move(load));
+
+  if (rmw->getOperation() == llvm::AtomicRMWInst::BinOp::Xchg) {
+    // exchange: store the value; the result (old) is already in old_var.
+    auto store =
+        ar::Store::create(pointer, val, align, /*volatile=*/false, ord);
+    store->set_frontend< llvm::Value >(rmw);
+    bb_translation->add_statement(std::move(store));
+    this->mark_variable_mapping(rmw, old_var);
+    return;
+  }
+
+  // %new = old OP val
+  ar::InternalVariable* new_var =
+      ar::InternalVariable::create(this->_body, val_type);
+  auto binop = ar::BinaryOperation::create(
+      convert_rmw_bin_op(rmw->getOperation(), sign),
+      new_var,
+      old_var,
+      val);
+  binop->set_frontend< llvm::Value >(rmw);
+  bb_translation->add_statement(std::move(binop));
+
+  // store atomic ptr, %new
+  auto store =
+      ar::Store::create(pointer, new_var, align, /*volatile=*/false, ord);
+  store->set_frontend< llvm::Value >(rmw);
+  bb_translation->add_statement(std::move(store));
+  this->mark_variable_mapping(rmw, old_var);
+}
+
+/// \brief Translate an LLVM cmpxchg instruction. Value model is an
+/// over-approximation (always store the new value) — sound for race
+/// detection, which only needs the atomic load/store and the success flag.
+void FunctionImporter::translate_cmpxchg(BasicBlockTranslation* bb_translation,
+                                         llvm::AtomicCmpXchgInst* cx) {
+  ar::AtomicOrdering ord = translate_atomic_ordering(cx->getSuccessOrdering());
+  uint64_t align = cx->getAlign().value();
+
+  ar::Type* struct_type = this->infer_type(cx); // {value, i1}
+  auto* llvm_struct =
+      llvm::dyn_cast< llvm::StructType >(cx->getType());
+  ikos_assert_msg(llvm_struct, "cmpxchg result is not a struct");
+
+  ar::Type* val_type = this->_ctx.type_imp->translate_type(
+      cx->getPointerOperand()->getType()->getPointerElementType(), ar::Signed);
+  ar::PointerType* ptr_type = ar::PointerType::get(this->_context, val_type);
+  ar::Value* pointer =
+      this->translate_value(bb_translation, cx->getPointerOperand(), ptr_type);
+  ar::Value* cmp =
+      this->translate_value(bb_translation, cx->getCompareOperand(), val_type);
+  ar::Value* newv =
+      this->translate_value(bb_translation, cx->getNewValOperand(), val_type);
+
+  // %old = load atomic ptr
+  ar::InternalVariable* old_var =
+      ar::InternalVariable::create(this->_body, val_type);
+  auto load = ar::Load::create(old_var, pointer, align, /*volatile=*/false, ord);
+  load->set_frontend< llvm::Value >(cx);
+  bb_translation->add_statement(std::move(load));
+
+  // %ok = (old == cmp)
+  ar::InternalVariable* ok_var = ar::InternalVariable::create(
+      this->_body, ar::IntegerType::get(this->_context, 1, ar::Signed));
+  auto cmp_stmt = ar::Comparison::create(ar::Comparison::SIEQ, old_var, cmp);
+  cmp_stmt->set_frontend< llvm::Value >(cx);
+  bb_translation->add_comparison(ok_var, std::move(cmp_stmt));
+
+  // store atomic ptr, newv (over-approx: always attempt the store)
+  auto store =
+      ar::Store::create(pointer, newv, align, /*volatile=*/false, ord);
+  store->set_frontend< llvm::Value >(cx);
+  bb_translation->add_statement(std::move(store));
+
+  // Reconstruct the {old, ok} result via InsertElement so that the
+  // subsequent extractvalue instructions resolve to old / ok.
+  ar::IntegerType* size_type = ar::IntegerType::size_type(this->_bundle);
+  auto field_offset = [&](unsigned idx) -> ar::IntegerConstant* {
+    ar::ZNumber off(this->_llvm_data_layout.getStructLayout(llvm_struct)
+                        ->getElementOffset(idx));
+    return ar::IntegerConstant::get(this->_context,
+                                    size_type,
+                                    ar::MachineInt(off,
+                                                   size_type->bit_width(),
+                                                   size_type->sign()));
+  };
+
+  ar::Value* undef = ar::UndefinedConstant::get(this->_context, struct_type);
+  ar::InternalVariable* res0 =
+      ar::InternalVariable::create(this->_body, struct_type);
+  auto ins0 = ar::InsertElement::create(res0, undef, field_offset(0), old_var);
+  ins0->set_frontend< llvm::Value >(cx);
+  bb_translation->add_statement(std::move(ins0));
+
+  ar::InternalVariable* res1 =
+      ar::InternalVariable::create(this->_body, struct_type);
+  auto ins1 = ar::InsertElement::create(res1, res0, field_offset(1), ok_var);
+  ins1->set_frontend< llvm::Value >(cx);
+  bb_translation->add_statement(std::move(ins1));
+
+  this->mark_variable_mapping(cx, res1);
 }
 
 /// \brief Eliminate any intermediate alias by returning the aliasee
@@ -2036,6 +2217,10 @@ FunctionImporter::TypeHint FunctionImporter::infer_type_hint_use(
   } else if (llvm::isa< llvm::Instruction >(user) &&
              llvm::cast< llvm::Instruction >(user)->getOpcode() ==
                  llvm::Instruction::FNeg) {
+    return {}; // no hint
+  } else if (llvm::isa< llvm::AtomicRMWInst >(user)) {
+    return {}; // no hint
+  } else if (llvm::isa< llvm::AtomicCmpXchgInst >(user)) {
     return {}; // no hint
   } else if (llvm::isa< llvm::SelectInst >(user)) {
     // The preprocessor should use the -lower-select pass

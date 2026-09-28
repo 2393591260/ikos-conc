@@ -1711,8 +1711,24 @@ bool TypeMatcher::match_extern_function_param_type(llvm::Type* llvm_type,
         llvm::cast< llvm::PointerType >(llvm_type)->getPointerElementType();
     auto ar_pointee_type = ar::cast< ar::PointerType >(ar_type)->pointee();
 
-    return (llvm_pointee_type->isStructTy() && ar_pointee_type->is_opaque()) ||
-           this->match_type(llvm_pointee_type, ar_pointee_type);
+    // Existing relaxation: `{}*` ↔ `opaque*`
+    if (llvm_pointee_type->isStructTy() && ar_pointee_type->is_opaque()) {
+      return true;
+    }
+
+    // New relaxation: any LLVM pointer matches an AR pointer whose pointee
+    // is a generic placeholder (void, opaque, or i8). This covers extern
+    // library functions (pthread_*, etc.) whose AR signature uses a generic
+    // void pointer but whose LLVM declaration refers to a specific struct
+    // (e.g., %union.pthread_mutex_t*). For abstract interpretation, the
+    // exact pointee type does not affect the analyzer.
+    if (ar_pointee_type->is_void() || ar_pointee_type->is_opaque() ||
+        (ar_pointee_type->is_integer() &&
+         ar::cast< ar::IntegerType >(ar_pointee_type)->bit_width() == 8)) {
+      return true;
+    }
+
+    return this->match_type(llvm_pointee_type, ar_pointee_type);
   } else {
     return this->match_type(llvm_type, ar_type);
   }

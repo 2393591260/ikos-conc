@@ -130,6 +130,13 @@ static llvm::cl::opt< OptLevelType > OptLevel(
         clEnumValN(Custom, "custom", "Use a custom set of llvm passes")),
     llvm::cl::init(Basic));
 
+static llvm::cl::opt< bool > FreezeUninit(
+    "freeze-undef",
+    llvm::cl::desc("Freeze uninitialized integer allocas into a nondet value "
+                   "(race-detection soundness: undef would be modeled as a "
+                   "dead path, hiding races)."),
+    llvm::cl::init(false));
+
 /// \brief Set of custom passes
 ///
 /// Automatically populated with the registered Passes by the PassNameParser
@@ -245,7 +252,8 @@ int main(int argc, char** argv) {
     pass_manager.add(llvm::createLowerSwitchPass());
 
     // Lower down atomic instructions (opt -loweratomic)
-    pass_manager.add(llvm::createLowerAtomicPass());
+    // LowerAtomic removed: the importer now handles atomicrmw/cmpxchg/atomic
+    // load/store directly and carries the atomic ordering on ar::Load/Store.
 
     // Lower constant expressions to instructions (ikos-pp -lower-cst-expr)
     pass_manager.add(ikos_pp::create_lower_cst_expr_pass());
@@ -256,6 +264,14 @@ int main(int argc, char** argv) {
     // Ensure one single exit point per function (opt -mergereturn)
     pass_manager.add(llvm::createUnifyFunctionExitNodesPass());
   } else if (OptLevel == Basic) {
+    // Freeze uninitialized allocas into a nondet value BEFORE mem2reg, so the
+    // write-before-read load is not folded to `undef` (which the analyzer would
+    // treat as a dead path — hiding races) and the "same cell" correlation is
+    // preserved (two loads read one nondet value).
+    if (FreezeUninit) {
+      pass_manager.add(ikos_pp::create_freeze_uninit_pass());
+    }
+
     // SSA (opt -mem2reg)
     pass_manager.add(llvm::createPromoteMemoryToRegisterPass());
 
@@ -264,7 +280,7 @@ int main(int argc, char** argv) {
     pass_manager.add(llvm::createGlobalDCEPass());
 
     // Dead code elimination (opt -dce)
-    pass_manager.add(llvm::createDeadCodeEliminationPass());
+    pass_manager.add(ikos_pp::create_preserve_loads_dce_pass());
 
     // Remove switch constructions (opt -lowerswitch)
     pass_manager.add(llvm::createLowerSwitchPass());
@@ -273,13 +289,14 @@ int main(int argc, char** argv) {
     pass_manager.add(ikos_pp::create_remove_unreachable_blocks_pass());
 
     // Lower down atomic instructions (opt -loweratomic)
-    pass_manager.add(llvm::createLowerAtomicPass());
+    // LowerAtomic removed: the importer now handles atomicrmw/cmpxchg/atomic
+    // load/store directly and carries the atomic ordering on ar::Load/Store.
 
     // Lower constant expressions to instructions (ikos-pp -lower-cst-expr)
     pass_manager.add(ikos_pp::create_lower_cst_expr_pass());
 
     // Dead code elimination (opt -dce)
-    pass_manager.add(llvm::createDeadCodeEliminationPass());
+    pass_manager.add(ikos_pp::create_preserve_loads_dce_pass());
 
     // Lower down select instructions (ikos-pp -lower-select)
     pass_manager.add(ikos_pp::create_lower_select_pass());
@@ -349,7 +366,7 @@ int main(int argc, char** argv) {
     pass_manager.add(llvm::createSCCPPass());
 
     // Dead code elimination (opt -dce)
-    pass_manager.add(llvm::createDeadCodeEliminationPass());
+    pass_manager.add(ikos_pp::create_preserve_loads_dce_pass());
 
     // Lower invoke's (opt -lowerinvoke)
     pass_manager.add(llvm::createLowerInvokePass());
@@ -372,7 +389,7 @@ int main(int argc, char** argv) {
     pass_manager.add(ikos_pp::create_remove_unreachable_blocks_pass());
 
     // Dead code elimination (opt -dce)
-    pass_manager.add(llvm::createDeadCodeEliminationPass());
+    pass_manager.add(ikos_pp::create_preserve_loads_dce_pass());
 
     // Canonical form for loops (opt -loop-simplify)
     pass_manager.add(llvm::createLoopSimplifyPass());
@@ -399,7 +416,7 @@ int main(int argc, char** argv) {
     pass_manager.add(llvm::createGlobalDCEPass());
 
     // Dead code elimination (opt -dce)
-    pass_manager.add(llvm::createDeadCodeEliminationPass());
+    pass_manager.add(ikos_pp::create_preserve_loads_dce_pass());
 
     // Remove unreachable blocks also dead cycles
     pass_manager.add(ikos_pp::create_remove_unreachable_blocks_pass());
@@ -408,13 +425,14 @@ int main(int argc, char** argv) {
     pass_manager.add(llvm::createLowerSwitchPass());
 
     // Lower down atomic instructions (opt -loweratomic)
-    pass_manager.add(llvm::createLowerAtomicPass());
+    // LowerAtomic removed: the importer now handles atomicrmw/cmpxchg/atomic
+    // load/store directly and carries the atomic ordering on ar::Load/Store.
 
     // Lower constant expressions to instructions (ikos-pp -lower-cst-expr)
     pass_manager.add(ikos_pp::create_lower_cst_expr_pass());
 
     // Dead code elimination (opt -dce)
-    pass_manager.add(llvm::createDeadCodeEliminationPass());
+    pass_manager.add(ikos_pp::create_preserve_loads_dce_pass());
 
     // After lowering constant expressions we remove all
     // side-effect-free printf-like functions. This can trigger the
@@ -422,7 +440,7 @@ int main(int argc, char** argv) {
     pass_manager.add(ikos_pp::create_remove_printf_calls_pass());
 
     // Dead code elimination (opt -dce)
-    pass_manager.add(llvm::createDeadCodeEliminationPass());
+    pass_manager.add(ikos_pp::create_preserve_loads_dce_pass());
 
     // Global dead code elimination (opt -globaldce)
     pass_manager.add(llvm::createGlobalDCEPass());

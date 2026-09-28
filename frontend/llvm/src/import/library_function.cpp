@@ -65,6 +65,14 @@ ar::Function* LibraryFunctionImporter::function(llvm::StringRef name) {
       return this->_bundle->intrinsic_function(ar::Intrinsic::IkosNonDet,
                                                ar::IntegerType::ui32(
                                                    this->_context));
+    } else if (name == "__ikos_nondet_int64") {
+      return this->_bundle->intrinsic_function(ar::Intrinsic::IkosNonDet,
+                                               ar::IntegerType::si64(
+                                                   this->_context));
+    } else if (name == "__ikos_nondet_uint64") {
+      return this->_bundle->intrinsic_function(ar::Intrinsic::IkosNonDet,
+                                               ar::IntegerType::ui64(
+                                                   this->_context));
     } else if (name == "__ikos_check_mem_access") {
       return this->_bundle->intrinsic_function(
           ar::Intrinsic::IkosCheckMemAccess);
@@ -249,6 +257,35 @@ ar::Function* LibraryFunctionImporter::function(llvm::StringRef name) {
       return this->_bundle->intrinsic_function(ar::Intrinsic::LibcppEndCatch);
     }
   }
+
+  // pthread functions
+  // pthread_create is intentionally NOT mapped to an ar::Intrinsic here.
+  // We keep it as a name-only extern so that NumericalExecutionEngine::
+  // exec_extern_call() can probe it and (a) register the new thread function
+  // via ConcurrentGlobalEnv, (b) record the pthread_t* -> thread_func
+  // binding, and (c) skip the conservative exec_unknown_extern_call() that
+  // would otherwise top-out the global invariants and suppress thread-body
+  // exploration.
+  if (name == "pthread_join") {
+    return this->_bundle->intrinsic_function(ar::Intrinsic::PthreadJoin);
+  } else if (name == "pthread_mutex_lock" ||
+             // pthread_spin_lock is soundly modelled as a plain mutex: it
+             // provides mutual exclusion just like a mutex, only with busy
+             // waiting. Mapping it to PthreadMutexLock lets the lockset
+             // domain recognise it as protecting accesses.
+             name == "pthread_spin_lock") {
+    return this->_bundle->intrinsic_function(ar::Intrinsic::PthreadMutexLock);
+  } else if (name == "pthread_mutex_unlock" ||
+             name == "pthread_spin_unlock") {
+    return this->_bundle->intrinsic_function(ar::Intrinsic::PthreadMutexUnlock);
+  }
+  // pthread_mutex_trylock / pthread_mutex_timedlock / pthread_spin_trylock
+  // are deliberately NOT mapped to PthreadMutexLock: they can FAIL (EBUSY /
+  // ETIMEDOUT) and do NOT must-hold the lock. They stay name-only externs so
+  // NumericalExecutionEngine::exec_extern_call() can route them to the
+  // CONDITIONAL-lock operator keyed by the result variable
+  // (04-mutex_35-trylock_rc.c FN: the EBUSY branch's unlocked write was
+  // wrongly protected by the unconditional PthreadMutexLock mapping).
 
   // not a known library function
   return nullptr;

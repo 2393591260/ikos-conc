@@ -1,0 +1,444 @@
+% !TEX program = xelatex
+% IKOS 并发分析代码 架构文档
+% 编译: xelatex concurrency-architecture.tex
+\documentclass[11pt]{ctexart}
+
+\usepackage{geometry}
+\geometry{a4paper, margin=2.4cm}
+
+\usepackage{amsmath, amssymb}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, shapes.geometric, calc}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+
+\newcommand{\code}[1]{\texttt{#1}}
+
+\title{\bfseries IKOS 并发分析代码 架构文档}
+\author{并发分析引擎梳理}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+本文档系统梳理 IKOS 静态分析器中\emph{并发数据竞争检测}子系统的代码结构、运行原理与已知边界。
+当前干扰模型已收敛为\textbf{区间(interval)+ Sentinel Peeking}单后端(关系型 DBM 后端已移除)。
+文档面向两个目的:(1) 展示功能与原理;(2) 为后续优化与在现有基础上继续开发提供精确的
+\textbf{文件:行号}锚点与\emph{病理→优化种子}清单。
+\end{abstract}
+
+\tableofcontents
+
+\section{总体架构:五层分层}
+\label{sec:layers}
+
+并发代码不是平的,自上而下切为五层。每层对应一组源文件,层间只有向下的调用依赖。
+
+\begin{center}
+\begin{tikzpicture}[
+    every node/.style={draw, rounded corners, align=flush center, font=\small, inner sep=4pt, minimum height=2.2em},
+    lay/.style={fill=blue!6},
+    arrow/.style={-{Stealth[length=2.2mm]}, thick, shorten >=2pt, shorten <=2pt},
+  ]
+  % L0..L4 分层
+  \node[lay] (L0) {L0 驱动/决策\\{\scriptsize \code{ikos\_analyzer.cpp} + \code{concurrency\_scanner.hpp}}\\{\scriptsize 三态 --concurrency · -a race · 零配置探测 · engine 分派}};
+  \node[lay, below=6mm of L0] (L1) {L1 分析驱动\\{\scriptsize \code{thread\_modular.cpp}}\\{\scriptsize worklist fixpoint · 线程发现 · 全局迭代 · flush 边界}};
+  \node[lay, below=6mm of L1] (L2) {L2 抽象语义\\{\scriptsize \code{numerical.hpp} + \code{pointer.hpp} + \code{lockset\_domain.hpp} + \code{concurrent\_global\_env.hpp}}\\{\scriptsize exec(Store/Load) · must-lockset · 全局黑板(interval)}};
+  \node[lay, below=6mm of L2] (L3) {L3 检查\\{\scriptsize \code{data\_race.cpp}}\\{\scriptsize 离线 pairwise · 10 闸门 · HB · region · self\_locked}};
+  \node[lay, below=6mm of L3] (L4) {L4 支撑\\{\scriptsize \code{memory\_location.hpp} + \code{symbolic\_index.hpp}}\\{\scriptsize MemoryLocation 层次 + SymbolicIndex + 辅助函数}};
+  \draw[arrow] (L0) -- (L1);
+  \draw[arrow] (L1) -- (L2);
+  \draw[arrow] (L2) -- (L3);
+  \draw[arrow] (L3) -- (L4);
+\end{tikzpicture}
+\end{center}
+
+\subsection*{层锚点}
+\begin{itemize}[leftmargin=2em]
+  \item L0 engine 分派: \code{ThreadModularAnalysis} / \code{sequential::Analysis}
+        → \code{ikos\_analyzer.cpp:1317 / 1321};零配置探测 \code{requires\_concurrency} → \code{:1279}。
+  \item L1 \code{run()} → \code{thread\_modular.cpp:80};全局迭代 \code{while(true)} → \code{:239}。
+  \item L2 \code{exec(Load)} → \code{numerical.hpp:1815};\code{exec(Store)} → \code{:2126}。
+  \item L3 \code{\textasciitilde DataRaceChecker} → \code{data\_race.cpp:291}。
+  \item L4 \code{MemoryLocation} 层次 → \code{memory\_location.hpp:80};\code{SymbolicIndex} → \code{symbolic\_index.hpp}。
+\end{itemize}
+
+\section{数据流:写路径与读路径}
+\label{sec:dataflow}
+
+干扰模型是\textbf{单向 interval 流}:写侧把值压入私有写队列,flush 进分区/黑板;读侧按
+四级优先级吸收。全程无 DBM/关系分支。
+
+\subsection{写路径(Store → 黑板)}
+
+\begin{center}
+\begin{tikzpicture}[
+    block/.style={draw, rounded corners, align=flush center, font=\small, inner sep=4pt, minimum height=2.6em},
+    arrow/.style={-{Stealth[length=2mm]}, thick, shorten >=2pt, shorten <=2pt},
+  ]
+  \node[block] (S) {exec(Store) 写全局};
+  \node[block, below left=8mm and 6mm of S] (SF) {record\_privatized\_write\\{\scriptsize (kNoLockPartitionAddr, addr, val)}};
+  \node[block, below right=8mm and 6mm of S] (PBR) {record\_privatized\_write\\{\scriptsize (lock\_addr, addr, val)}};
+  \node[block, below=7mm of SF] (PW0) {\code{\_privatized\_writes[0]}\\{\scriptsize sentinel 分区\}};
+  \node[block, below=7mm of PBR] (PWL) {\code{\_privatized\_writes[lock]}};
+  \node[block, below=7mm of PW0] (FU) {flush\_unlocked\_partition()\\{\scriptsize 迭代边界 drain}};
+  \node[block, below=7mm of PWL] (FP) {flush\_privatized(lock)\\{\scriptsize unlock 时 drain}};
+  \node[block, below=7mm of FU] (GB) {\code{\_global\_board[addr]}\\{\scriptsize 扁平黑板}};
+  \node[block, below=7mm of FP] (LP) {\code{\_lock\_partition[lock].intervals[addr]}\\{\scriptsize 区间}};
+  \draw[arrow] (S) -- node[font=\scriptsize, above, sloped]{无锁} (SF);
+  \draw[arrow] (S) -- node[font=\scriptsize, above, sloped]{持锁} (PBR);
+  \draw[arrow] (SF) -- (PW0);
+  \draw[arrow] (PBR) -- (PWL);
+  \draw[arrow] (PW0) -- (FU);
+  \draw[arrow] (PWL) -- (FP);
+  \draw[arrow] (FU) -- (GB);
+  \draw[arrow] (FP) -- (LP);
+  \draw[arrow, dashed] (GB.south) to[out=-90, in=-90] node[font=\scriptsize, below]{读侧 §\ref{sec:dataflow}} ($(LP.south east)+(0,-4mm)$);
+\end{tikzpicture}
+\end{center}
+
+\textbf{锚点}:Strict Flush(无锁) → \code{numerical.hpp:2257};PBR(有锁) → \code{:2280};
+\code{record\_privatized\_write}(仅 \code{\{addr, val\}} 二元) → \code{concurrent\_global\_env.hpp:771};
+\code{flush\_privatized} → \code{:840};\code{flush\_unlocked\_partition} → \code{:920}。
+
+\subsection{读路径(Load ← 黑板)}
+
+\begin{center}
+\begin{tikzpicture}[
+    block/.style={draw, rounded corners, align=flush center, font=\small, inner sep=4pt, minimum height=2.6em},
+    arrow/.style={-{Stealth[length=2mm]}, thick, shorten >=2pt, shorten <=2pt},
+  ]
+  \node[block] (L) {exec(Load) 读全局};
+  \node[block, below=6mm of L] (RGL) {read\_global\_with\_lockset(addr, held)};
+  \node[block, below left=8mm and 4mm of RGL] (A) {(a) deferral 队列\\{\scriptsize \code{\_privatized\_writes[lk]}}};
+  \node[block, below=8mm of RGL] (B) {(b) 聚合分区\\{\scriptsize \code{intervals[addr]}}};
+  \node[block, below right=8mm and 4mm of RGL] (C) {(c) 扁平黑板\\{\scriptsize \code{\_global\_board[addr]}}};
+  \node[block, below right=6mm and 16mm of B] (D) {(d) Sentinel Peeking\\{\scriptsize \code{\_privatized\_writes[0]}}};
+  \node[block, below=7mm of B] (INJ) {interference $\neq \bot$ ?};
+  \node[block, below left=9mm and 4mm of INJ] (ABS) {注入本地 did\_inject\\{\scriptsize 吸收并发值}};
+  \node[block, below right=9mm and 4mm of INJ] (SKIP) {无并发写,本地只读};
+  \draw[arrow] (L) -- (RGL);
+  \draw[arrow] (RGL) -- (A); \draw[arrow] (RGL) -- (B); \draw[arrow] (RGL) -- (C);
+  \draw[arrow] (B) -- (D);
+  \draw[arrow] (A) -- (INJ); \draw[arrow] (B) -- (INJ); \draw[arrow] (C) -- (INJ); \draw[arrow] (D) -- (INJ);
+  \draw[arrow] (INJ) -- node[font=\scriptsize, above, sloped]{是} (ABS);
+  \draw[arrow] (INJ) -- node[font=\scriptsize, above, sloped]{否} (SKIP);
+\end{tikzpicture}
+\end{center}
+
+\textbf{锚点}:\code{read\_global\_with\_lockset} 定义 → \code{concurrent\_global\_env.hpp:518};
+(a) deferral 队列 → \code{:550};(b) 分区 → \code{:576};(d) Sentinel Peeking → \code{:607};(c) 黑板 → \code{:626};
+注入点 → \code{numerical.hpp:1933}。
+
+\section{核心算法伪代码}
+\label{sec:algorithms}
+
+\subsection{Thread-Modular worklist fixpoint}
+
+\begin{algorithm}[htbp]
+\caption{Thread-Modular 全局不动点迭代}
+\begin{algorithmic}[1]
+\Function{Run}{}
+  \State 静态初始化全局变量 \Comment{Phase 1}
+  \State 运行全局构造函数 \Comment{Phase 2}
+  \State $\mathit{worklist} \gets \{\text{main}\} \cup \text{线程入口}$
+  \While{true}
+    \ForAll{$f \in \mathit{worklist}$}
+      \State 分析 $f(\mathit{entry\_inv})$
+    \EndFor
+    \State \Call{flush\_unlocked\_partition}{} \Comment{迭代边界 drain sentinel}
+    \If{not \Call{is\_dirty}{}} \State\Return{} \EndIf
+    \State 重建 worklist(去重)
+  \EndWhile
+  \State 运行 post-loop checks \Comment{Phase 4}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{写路径(PBR / Strict Flush)}
+
+\begin{algorithm}[htbp]
+\caption{exec(Store) 的干扰发布}
+\begin{algorithmic}[1]
+\ForAll{$\mathit{loc} \in \Call{points\_to}{ptr}$ 且为 Global}
+  \State $\mathit{val} \gets$ RHS 的区间
+  \If{持锁}
+    \ForAll{$\mathit{lock} \in \mathit{held\_mutexes}$}
+      \State \Call{record\_privatized\_write}{$\mathit{lock}, \mathit{addr}, \mathit{val}$} \Comment{PBR deferral}
+    \EndFor
+  \Else
+    \State \Call{record\_privatized\_write}{kNoLockPartitionAddr, $\mathit{addr}, \mathit{val}$} \Comment{Strict Flush}
+  \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{读路径(interference 注入)}
+
+\begin{algorithm}[htbp]
+\caption{exec(Load) 的锁感知吸收}
+\begin{algorithmic}[1]
+\State $\mathit{interf} \gets \Call{read\_global\_with\_lockset}{\mathit{addr}, \mathit{held}}$
+\If{$\mathit{interf} \neq \bot$}
+  \State $\mathit{did\_inject} \gets true$
+  \State 吸收 $\mathit{interf}$ 到本地 lhs
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{DataRaceChecker:十道闸门}
+
+\begin{algorithm}[htbp]
+\caption{离线 pairwise race 判定(闸门顺序即短路顺序)}
+\begin{algorithmic}[1]
+\ForAll{配对 $(a,b)$,$i<j$}
+  \If{$a.\mathit{stmt} = b.\mathit{stmt}$ 且同唯一线程} \State\Continue{} \EndIf \Comment{$\stackrel{1}{门}$}
+  \If{双读} \State\Continue{} \EndIf \Comment{$\stackrel{2}{门}$}
+  \If{同线程且 unique} \State\Continue{} \EndIf \Comment{$\stackrel{3}{门}$ HB}
+  \If{$a.\mathit{joined} \ni b.\mathit{thr}$ 或 $b.\mathit{joined} \ni a.\mathit{thr}$} \State\Continue{} \EndIf \Comment{$\stackrel{4}{门}$ HB join}
+  \If{creator 创建边} \State\Continue{} \EndIf \Comment{$\stackrel{5}{门}$ HB creator}
+  \If{$a.\mathit{pts} \wedge b.\mathit{pts} = \emptyset$} \State\Continue{} \EndIf \Comment{$\stackrel{6}{门}$}
+  \If{private-init 发布} \State\Continue{} \EndIf \Comment{$\stackrel{7}{门}$ HB}
+  \If{\Call{self\_locked}{a} 且 \Call{self\_locked}{b}} \State\Continue{} \EndIf \Comment{$\stackrel{8}{门}$}
+  \If{offset 不相交(非 top)} \State\Continue{} \EndIf \Comment{$\stackrel{9}{门}$}
+  \If{共享锁(互斥/读写锁交叉)} \State\Continue{} \EndIf \Comment{$\stackrel{10}{门}$}
+  \State 报 race
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{self\_locked / region\_collect(第 8 门的子逻辑)}
+
+\begin{algorithm}[htbp]
+\caption{self\_locked 与 region 提取}
+\begin{algorithmic}[1]
+\Function{self\_locked}{$\mathit{rec}$}
+  \If{not $\mathit{rec}.\mathit{has\_region}$ 且 $\mathit{rec}.\mathit{base}=0$} \State\Return{} false \EndIf \Comment{快速短路}
+  \ForAll{$\mathit{key} \in \mathit{rec}.\mathit{locks}$}
+    \If{\Call{lock\_symbolic\_index}{$\mathit{key}, \mathit{base}, \mathit{sym}$}}
+      \If{$\mathit{rec}.\mathit{has\_region}$ 且 $\mathit{sym} = \mathit{rec}.\mathit{region}$} \State\Return{} true \EndIf
+    \ElsIf{$\mathit{rec}.\mathit{base}\neq0$ 且 $(\mathit{key}\gg32)=\mathit{rec}.\mathit{base}$ 且 $\Call{lock\_instance}{\mathit{key}}=\mathit{rec}.\mathit{instance}$}
+      \State\Return{} true
+    \EndIf
+  \EndFor
+  \State\Return{} false
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\section{判定流程图(第 8/9 门展开)}
+\label{sec:decision}
+
+\begin{center}
+\begin{tikzpicture}[
+    gate/.style={draw, diamond, aspect=2, align=flush center, font=\scriptsize, inner sep=1.5pt, minimum height=2.2em},
+    res/.style={draw, rounded corners, align=flush center, font=\scriptsize, inner sep=3pt},
+    arrow/.style={-{Stealth[length=1.8mm]}, thick, shorten >=2pt, shorten <=2pt},
+  ]
+  \node[res] (P) {配对 $(a,b)$};
+  \node[gate, below=5mm of P] (G1) {1 同语句·同唯一线程?};
+  \node[gate, below=4mm of G1] (G2) {2 双读?};
+  \node[gate, below=4mm of G2] (G3) {3 同线程 unique?};
+  \node[gate, below=4mm of G3] (G4) {4 join 双向?};
+  \node[gate, below=4mm of G4] (G5) {5 creator 创建边?};
+  \node[gate, below=4mm of G5] (G6) {6 pts 相交空?};
+  \node[gate, below=4mm of G6] (G7) {7 private-init 发布?};
+  \node[gate, below=4mm of G7] (G8) {8 self\_locked 双方自洽?};
+  \node[gate, below=4mm of G8] (G9) {9 offset 不相交?};
+  \node[gate, below=4mm of G9] (G10) {10 共享锁?};
+  \node[res, right=38mm of G5] (SAFE) {无 race};
+  \node[res, below=5mm of G10] (RACE) {报 race};
+  \draw[arrow] (P) -- (G1);
+  \foreach \g/\n in {G1/G2, G2/G3, G3/G4, G4/G5, G5/G6, G6/G7, G7/G8, G8/G9, G9/G10} {
+    \draw[arrow] (\g) -- node[font=\scriptsize, right, near start]{否} (\n);
+  }
+  \foreach \g in {G1,G2,G3,G4,G5,G6,G7,G8,G9,G10} {
+    \draw[arrow] (\g) -| node[font=\scriptsize, above, near start]{是} (SAFE);
+  }
+  \draw[arrow] (G10) -- node[font=\scriptsize, right]{否} (RACE);
+\end{tikzpicture}
+\end{center}
+
+\textbf{第 8 门展开(symbolic vs flat 匹配)}:
+
+\begin{center}
+\begin{tikzpicture}[
+    gate/.style={draw, diamond, aspect=2.2, align=flush center, font=\scriptsize, inner sep=1.5pt, minimum height=2.2em},
+    res/.style={draw, rounded corners, align=flush center, font=\scriptsize, inner sep=3pt},
+    arrow/.style={-{Stealth[length=1.8mm]}, thick, shorten >=2pt, shorten <=2pt},
+  ]
+  \node[res] (SL) {self\_locked(rec)};
+  \node[gate, below=5mm of SL] (F) {has\_region 或 base$\neq$0?};
+  \node[res, right=30mm of F] (FF) {false};
+  \node[gate, below=4mm of F] (SYM) {lock\_symbolic\_index?};
+  \node[gate, below left=7mm and 8mm of SYM] (SR) {符号锁:region 匹配?};
+  \node[gate, below right=7mm and 8mm of SYM] (FR) {平坦锁:base+instance 匹配?};
+  \node[res, below left=5mm of SR] (T1) {true};
+  \node[res, below right=5mm of FR] (T2) {true};
+  \draw[arrow] (SL) -- (F);
+  \draw[arrow] (F) -- node[font=\scriptsize, above]{皆无} (FF);
+  \draw[arrow] (F) -- node[font=\scriptsize, right]{有} (SYM);
+  \draw[arrow] (SYM) -- node[font=\scriptsize, left]{是} (SR);
+  \draw[arrow] (SYM) -- node[font=\scriptsize, right]{否} (FR);
+  \draw[arrow] (SR) -- node[font=\scriptsize, left]{是} (T1);
+  \draw[arrow] (FR) -- node[font=\scriptsize, right]{是} (T2);
+  \draw[arrow] (SR.south) -- ++(0,-2mm) node[font=\scriptsize, below]{否 → 下把锁};
+  \draw[arrow] (FR.south) -- ++(0,-2mm) node[font=\scriptsize, below]{否 → 下把锁};
+\end{tikzpicture}
+\end{center}
+
+\section{理论格与状态机}
+\label{sec:lattice}
+
+\subsection{Must-Lockset 反向子集格}
+
+\begin{center}
+\begin{tikzpicture}[
+    v/.style={draw, rounded corners, align=flush center, font=\small, inner sep=3pt, minimum width=2em},
+    arrow/.style={-{Stealth[length=1.8mm]}, thick, shorten >=2pt, shorten <=2pt},
+  ]
+  \node[v] (TOP) {$\top = \emptyset$\\ (空集/未知)};
+  \node[node, below left=8mm and 10mm of TOP] (L1) {$\{L_1\}$};
+  \node[node, below right=8mm and 10mm of TOP] (L2) {$\{L_2\}$};
+  \node[node, below=8mm of TOP, xshift=-25mm] (L12) {$\{L_1,L_2\}$};
+  \node[node, below=10mm of L12] (BOT) {$\bot$ 不可达};
+  \draw[arrow] (TOP) -- (L1);
+  \draw[arrow] (TOP) -- (L2);
+  \draw[arrow] (L1) -- (L12);
+  \draw[arrow] (L2) -- (L12);
+  \draw[arrow] (L12) -- (BOT);
+  \node[right=18mm of TOP, font=\small, align=left] (NOTE) {
+    \textbf{铁律}: $\mathbf{meet}(\top, x) = x$\\
+    \code{meet} = $\cup$ (union),\quad \code{join} = $\cap$\\
+    偏序: 锁越多越精确(越靠下);
+  };
+  \draw[arrow, dashed] (TOP.east) -- (NOTE.west);
+\end{tikzpicture}
+\end{center}
+
+\textbf{锚点}:\code{lockset\_domain.hpp:92}(\code{LockSet})、\code{:127-151}(join=$\cap$)、\code{:153-172}(meet=$\cup$)。
+
+\subsection{锁生命周期状态机}
+
+\begin{center}
+\begin{tikzpicture}[
+    state/.style={draw, rounded corners, align=flush center, font=\small, inner sep=4pt, minimum width=2.4em},
+    arrow/.style={-{Stealth[length=1.8mm]}, thick, shorten >=2pt, shorten <=2pt},
+  ]
+  \node[state] (FREE) {free};
+  \node[state, below=8mm of FREE] (LOCKED) {locked};
+  \node[state, right=22mm of FREE] (UNK) {unknown($\top$)};
+  \draw[arrow, bend left=14] (FREE) to node[font=\scriptsize, left]{lock 成功} (LOCKED);
+  \draw[arrow, bend left=14] (LOCKED) to node[font=\scriptsize, left]{unlock} (FREE);
+  \draw[arrow] (FREE) -- node[font=\scriptsize, above]{间接/多靶} (UNK);
+  \draw[arrow] (LOCKED) -- node[font=\scriptsize, below right]{trylock 失败合流} (UNK);
+\end{tikzpicture}
+\end{center}
+
+\subsection{Privatized Write 生命周期}
+
+\begin{center}
+\begin{tikzpicture}[
+    state/.style={draw, rounded corners, align=flush center, font=\small, inner sep=4pt, minimum width=2.6em},
+    arrow/.style={-{Stealth[length=1.8mm]}, thick, shorten >=2pt, shorten <=2pt},
+  ]
+  \node[state] (ACC) {accumulate\\{\scriptsize record\_privatized\_write}};
+  \node[state, below left=10mm and 14mm of ACC] (F) {flush\\{\scriptsize unlock}};
+  \node[state, below right=10mm and 14mm of ACC] (SF) {sentinel flush\\{\scriptsize 迭代边界}};
+  \node[state, below=8mm of F] (LP) {intervals[addr]};
+  \node[state, below=8mm of SF] (GB) {\_global\_board[addr]};
+  \node[state, below=8mm of LP] (R) {读侧吸收};
+  \draw[arrow] (ACC) -- node[font=\scriptsize, left]{持锁} (F);
+  \draw[arrow] (ACC) -- node[font=\scriptsize, right]{无锁} (SF);
+  \draw[arrow] (F) -- (LP);
+  \draw[arrow] (SF) -- (GB);
+  \draw[arrow] (LP) -- (R);
+  \draw[arrow] (GB) -- (R);
+\end{tikzpicture}
+\end{center}
+
+\section{数据结构}
+\label{sec:struct}
+
+\subsection{MemoryLocation 继承层次}
+
+\begin{center}
+\begin{tikzpicture}[
+    cls/.style={draw, rounded corners, align=flush left, font=\small, inner sep=4pt},
+    arrow/.style={-{Stealth[length=1.8mm]}, thick, shorten >=2pt, shorten <=2pt},
+  ]
+  \node[cls] (ML) {MemoryLocation\\{\scriptsize \code{\_kind}, \code{\_stable\_id} (ASLR 稳定键)}\\{\scriptsize \code{stable\_id()}}};
+  \node[cls, below left=8mm and 30mm of ML] (LOC) {LocalMemoryLocation};
+  \node[cls, below=8mm of ML] (GLOB) {GlobalMemoryLocation};
+  \node[cls, right=0mm of GLOB] (FUN) {FunctionMemoryLocation};
+  \node[cls, right=0mm of FUN] (AGG) {AggregateMemoryLocation};
+  \node[cls, right=0mm of AGG] (ZERO) {AbsoluteZeroMemoryLocation};
+  \node[cls, right=0mm of ZERO] (ARGV) {ArgvMemoryLocation};
+  \node[cls, right=0mm of ARGV] (ERR) {LibcErrnoMemoryLocation};
+  \node[cls, below right=8mm and 30mm of ML] (DYN) {DynAllocMemoryLocation\\{\scriptsize \code{\_call}, \code{\_context}}\\{\scriptsize 按 (call,context) 折叠}};
+  \draw[arrow] (ML) -- (LOC);
+  \draw[arrow] (ML) -- (GLOB);
+  \draw[arrow] (ML) -- (FUN);
+  \draw[arrow] (ML) -- (AGG);
+  \draw[arrow] (ML) -- (ZERO);
+  \draw[arrow] (ML) -- (ARGV);
+  \draw[arrow] (ML) -- (ERR);
+  \draw[arrow] (ML) -- (DYN);
+\end{tikzpicture}
+\end{center}
+
+\subsection{ConcurrentGlobalEnv 黑板结构}
+
+\begin{center}
+\begin{tikzpicture}[
+    box/.style={draw, rounded corners, align=flush left, font=\scriptsize, inner sep=4pt, minimum width=48mm},
+  ]
+  \node[box, fill=blue!5] (CGE) {ConcurrentGlobalEnv(\textbf{删 DBM 后})\\{\scriptsize $\bullet$ \code{\_global\_board}: 扁平黑板(未锁干扰)\\{\scriptsize $\bullet$ \code{\_privatized\_writes}: PBR deferral 队列}\scriptsize $\bullet$ \code{\_lock\_partition}.\code{intervals}: 持锁分区(仅区间)}\scriptsize $\bullet$ \code{\_heap\_pointer\_board}: 堆字段指针}\scriptsize $\bullet$ \code{\_lock\_symbolic\_index} / \code{\_lock\_instance}: 符号/字段锁 side table}\scriptsize $\bullet$ \code{\_discovered\_thread\_functions} + \code{\_spawn\_args}: 线程发现}\scriptsize $\bullet$ \code{\_glob\_flown}: FS+FI 全局流标记}\scriptsize $\bullet$ \code{\_escaped}: 逃逸}\scriptsize $\bullet$ \code{\_pending\_cond\_locks}: 条件锁}\scriptsize $\bullet$ \code{\_is\_dirty} / \code{\_global\_iteration}: 收敛\\};
+\end{tikzpicture}
+\end{center}
+
+\section{病理与优化种子}
+\label{sec:pathology}
+
+这是对接"读代码提速"最重要的一节。前几轮攻坚的结论固化为三条待办:
+
+\begin{center}
+\begin{tabular}{@{}p{3.2cm}p{4.2cm}p{4.0cm}p{3.6cm}@{}}
+\toprule
+\textbf{病理} & \textbf{死因根} & \textbf{探针铁证} & \textbf{优化方向(种子)} \\
+\midrule
+Class A FP(11/13/17/19) &
+\code{get\_dyn\_alloc(call,ctx)} 折叠循环 malloc &
+dumprace 同一 \code{dyn\_alloc:new:X:Y} &
+调用点敏感 DynAlloc 键(方向已论证,未落地) \\
+\addlinespace
+Class B FP(21/22/24) &
+结构体字段 offset 变量偏移 widen 成 $\top$ &
+offset 探针 \code{a=T b=T} &
+数据侧符号下标 / offset 收窄 \\
+\addlinespace
+container\_of offset 丢失 &
+\code{scalar\_pointer\_to\_int} 只 forget 不回填 &
+def 链 \code{PS UN} offset=[0,0] &
+checker 层 container\_of 语法回推 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{已解决并归档}:关系型 DBM 后端零收益(已整体删除)、\code{pointershift\_base} 重复实现(已统一到
+\code{symbolic\_index.hpp})。
+
+\section*{结语}
+
+本文档将并发分析代码的\textbf{结构}(§\ref{sec:layers})、\textbf{数据流}(§\ref{sec:dataflow})、
+\textbf{算法}(§\ref{sec:algorithms})、\textbf{判定流}(§\ref{sec:decision})、
+\textbf{格理论}(§\ref{sec:lattice})、\textbf{数据结构}(§\ref{sec:struct})与
+\textbf{已知边界}(\ref{sec:pathology})串成一份可维护的架构地图。所有断言都锚定到
+\code{文件:行号},后续优化与开发可直接从对应节点起步。
+
+\end{document}

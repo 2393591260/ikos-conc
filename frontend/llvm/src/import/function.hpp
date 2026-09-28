@@ -293,6 +293,14 @@ private:
   void translate_load(BasicBlockTranslation* bb_translation,
                       llvm::LoadInst* load);
 
+  /// \brief Translate a llvm::AtomicRMWInst (split into atomic Load + Op + Store)
+  void translate_atomic_rmw(BasicBlockTranslation* bb_translation,
+                            llvm::AtomicRMWInst* rmw);
+
+  /// \brief Translate a llvm::AtomicCmpXchgInst (atomic Load + Store + success flag)
+  void translate_cmpxchg(BasicBlockTranslation* bb_translation,
+                         llvm::AtomicCmpXchgInst* cx);
+
   /// \brief Translate a llvm::CallInst
   void translate_call(BasicBlockTranslation* bb_translation,
                       llvm::CallInst* call);

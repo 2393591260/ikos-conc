@@ -168,6 +168,8 @@ add_library(ikos-pp-lib
   src/pass/name_values.cpp
   src/pass/remove_printf_calls.cpp
   src/pass/remove_unreachable_blocks.cpp
+  src/pass/preserve_loads_dce.cpp
+  src/pass/freeze_uninit.cpp
 )
 if (IKOS_LINK_LLVM_DYLIB)
   set(IKOS_PP_LIB_LLVM_LIBS "LLVM")

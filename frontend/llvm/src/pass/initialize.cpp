@@ -50,4 +50,6 @@ void ikos::frontend::pass::initialize_ikos_passes(llvm::PassRegistry& PR) {
   llvm::initializeNameValuesPassPass(PR);
   llvm::initializeRemovePrintfCallsPassPass(PR);
   llvm::initializeRemoveUnreachableBlocksPassPass(PR);
+  llvm::initializePreserveLoadsDCEPassPass(PR);
+  llvm::initializeFreezeUninitPassPass(PR);
 }
