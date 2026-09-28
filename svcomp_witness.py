@@ -66,13 +66,38 @@ def first_race(data):
     return None
 
 
-def loc(obj):
+def closing_paren_column(source, line, start_col):
+    """Column of the ')' that closes the call starting at (line, start_col).
+
+    The witness `function_enter` waypoint must point at the closing paren of
+    the thread-creating call, not its start; IKOS reports the call's start.
+    """
+    try:
+        with open(source, encoding="utf-8", errors="replace") as f:
+            text = f.readlines()[line - 1]
+    except (OSError, IndexError):
+        return start_col
+    depth = 0
+    for i in range(start_col - 1, len(text)):
+        if text[i] == "(":
+            depth += 1
+        elif text[i] == ")":
+            depth -= 1
+            if depth == 0:
+                return i + 1  # 1-indexed column
+    return start_col
+
+
+def loc(obj, source, kind="target"):
     """Build a witness location dict from an access/creation JSON object."""
     out = {"file_name": obj.get("file", "unknown.c")}
     if "line" in obj:
         out["line"] = obj["line"]
     if "column" in obj:
-        out["column"] = obj["column"]
+        col = obj["column"]
+        if kind == "function_enter":
+            col = closing_paren_column(source, obj["line"], col)
+        out["column"] = col
     return out
 
 
@@ -95,7 +120,7 @@ def build_witness(source, info):
             "type": "function_enter",
             "action": "follow",
             "thread_id": creator_id.get(tc.get("creator", "main"), 0),
-            "location": loc(tc),
+            "location": loc(tc, source, "function_enter"),
         }}]
         content.append({"segment": seg})
 
@@ -104,12 +129,12 @@ def build_witness(source, info):
         "type": "target",
         "action": "follow",
         "thread_id": tid.get(info["access_a"].get("thread_id"), 0),
-        "location": loc(info["access_a"]),
+        "location": loc(info["access_a"], source),
     }}, {"waypoint": {
         "type": "target",
         "action": "follow",
         "thread_id": tid.get(info["access_b"].get("thread_id"), 0),
-        "location": loc(info["access_b"]),
+        "location": loc(info["access_b"], source),
     }}]
     content.append({"segment": final})
 
