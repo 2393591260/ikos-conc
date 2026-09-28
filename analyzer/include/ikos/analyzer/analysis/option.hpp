@@ -350,6 +350,16 @@ public:
   /// \brief Option to display the checks
   DisplayOption display_checks;
 
+  /// \brief Whether the user requested the concurrency (thread-modular)
+  /// analysis. When true the driver in `value::interprocedural::sequential`
+  /// delegates to `value::ThreadModularAnalysis`.
+  bool enable_thread_modular;
+
+  /// \brief Whether to emit the per-iteration concurrency invariants and
+  /// the contents of the `ConcurrentGlobalEnv` blackboard at the end of the
+  /// analysis. Useful for debugging and for the plugin's observability hook.
+  bool emit_concurrency_invariants;
+
   /// \brief Hardware addresses
   HardwareAddresses hardware_addresses;
 

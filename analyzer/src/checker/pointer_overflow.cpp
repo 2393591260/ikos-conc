@@ -78,7 +78,7 @@ void PointerOverflowChecker::check(ar::Statement* stmt,
 PointerOverflowChecker::CheckResult PointerOverflowChecker::
     check_pointer_overflow(ar::PointerShift* stmt,
                            const value::AbstractDomain& inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg =
             this->display_pointer_overflow_check(Result::Unreachable, stmt)) {
@@ -91,7 +91,7 @@ PointerOverflowChecker::CheckResult PointerOverflowChecker::
 
   if (base.is_undefined() ||
       (base.is_pointer_var() &&
-       inv.normal().uninit_is_uninitialized(base.var()))) {
+       inv.first().normal().uninit_is_uninitialized(base.var()))) {
     if (auto msg = this->display_pointer_overflow_check(Result::Error, stmt)) {
       *msg << ": undefined base operand\n";
     }
@@ -106,7 +106,7 @@ PointerOverflowChecker::CheckResult PointerOverflowChecker::
     base_interval = ZInterval(0);
   } else if (isa< ar::InternalVariable >(stmt->pointer())) {
     base_interval =
-        inv.normal().pointer_offset_to_interval(base.var()).to_z_interval();
+        inv.first().normal().pointer_offset_to_interval(base.var()).to_z_interval();
   } else {
     log::error("unexpected operand to ptrshift");
     return {CheckKind::UnexpectedOperand, Result::Error, {stmt->pointer()}};
@@ -128,7 +128,7 @@ PointerOverflowChecker::CheckResult PointerOverflowChecker::
 
     if (offset.is_undefined() ||
         (offset.is_machine_int_var() &&
-         inv.normal().uninit_is_uninitialized(offset.var()))) {
+         inv.first().normal().uninit_is_uninitialized(offset.var()))) {
       if (auto msg =
               this->display_pointer_overflow_check(Result::Error, stmt)) {
         *msg << ": undefined operand\n";
@@ -138,7 +138,7 @@ PointerOverflowChecker::CheckResult PointerOverflowChecker::
       offset_interval = ZInterval(offset.machine_int().to_z_number());
     } else if (offset.is_machine_int_var()) {
       offset_interval =
-          inv.normal().int_to_interval(offset.var()).to_z_interval();
+          inv.first().normal().int_to_interval(offset.var()).to_z_interval();
     } else {
       log::error("unexpected operand to ptrshift");
       return {CheckKind::UnexpectedOperand, Result::Error, {term.second}};

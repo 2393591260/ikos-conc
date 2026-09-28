@@ -93,7 +93,7 @@ void MemoryWatchChecker::check_store(ar::Store* store,
 void MemoryWatchChecker::check_call(ar::CallBase* call,
                                     const value::AbstractDomain& inv,
                                     CallContext* call_context) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     return;
   }
@@ -102,13 +102,13 @@ void MemoryWatchChecker::check_call(ar::CallBase* call,
 
   if (called.is_undefined() ||
       (called.is_pointer_var() &&
-       inv.normal().uninit_is_uninitialized(called.var()))) {
+       inv.first().normal().uninit_is_uninitialized(called.var()))) {
     // Undefined call pointer operand
     return;
   }
 
   if (called.is_null() ||
-      (called.is_pointer_var() && inv.normal().nullity_is_null(called.var()))) {
+      (called.is_pointer_var() && inv.first().normal().nullity_is_null(called.var()))) {
     // Null call pointer operand
     return;
   }
@@ -130,7 +130,7 @@ void MemoryWatchChecker::check_call(ar::CallBase* call,
     return;
   } else if (isa< ar::InternalVariable >(call->called())) {
     // Indirect call through a function pointer
-    callees = inv.normal().pointer_to_points_to(called.var());
+    callees = inv.first().normal().pointer_to_points_to(called.var());
   } else {
     log::error("unexpected call pointer operand");
     return;
@@ -176,14 +176,14 @@ void MemoryWatchChecker::check_recursive_call(
     ar::CallBase* call,
     ar::Function* /*fun*/,
     const value::AbstractDomain& inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     return;
   }
 
   // Watched addresses
   PointsToSet watch_addrs =
-      inv.normal().pointer_to_points_to(this->_watch_mem_ptr);
+      inv.first().normal().pointer_to_points_to(this->_watch_mem_ptr);
 
   if (watch_addrs.is_empty() || watch_addrs.is_top()) {
     // Not watching anything, __ikos_watch_mem was not called
@@ -364,6 +364,15 @@ void MemoryWatchChecker::check_intrinsic_call(
     case ar::Intrinsic::LibcppBeginCatch:
     case ar::Intrinsic::LibcppEndCatch: {
     } break;
+    // Pthread intrinsics: the engine already handles the abstract
+    // semantics (lock/unlock, join, etc.); the memory-watch checker
+    // observes user-level memory writes, so these are no-ops instead of
+    // falling through to `ikos_unreachable`.
+    case ar::Intrinsic::PthreadCreate:
+    case ar::Intrinsic::PthreadJoin:
+    case ar::Intrinsic::PthreadMutexLock:
+    case ar::Intrinsic::PthreadMutexUnlock: {
+    } break;
     default: {
       ikos_unreachable("unreachable");
     }
@@ -386,14 +395,14 @@ void MemoryWatchChecker::check_unknown_call(ar::CallBase* call,
                                             bool ignore_unknown_write,
                                             bool may_write_globals,
                                             bool /*may_throw_exc*/) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     return;
   }
 
   // Watched addresses
   PointsToSet watch_addrs =
-      inv.normal().pointer_to_points_to(this->_watch_mem_ptr);
+      inv.first().normal().pointer_to_points_to(this->_watch_mem_ptr);
 
   if (watch_addrs.is_empty() || watch_addrs.is_top()) {
     // Not watching anything, __ikos_watch_mem was not called
@@ -426,13 +435,13 @@ void MemoryWatchChecker::check_unknown_call(ar::CallBase* call,
 
     this->init_global_ptr(inv, arg);
 
-    if (inv.normal().nullity_is_null(ptr)) {
+    if (inv.first().normal().nullity_is_null(ptr)) {
       // Null pointer parameter
       continue;
     }
 
     // Points-to set of the pointer
-    PointsToSet addrs = inv.normal().pointer_to_points_to(ptr);
+    PointsToSet addrs = inv.first().normal().pointer_to_points_to(ptr);
 
     if (addrs.is_empty()) {
       // Pointer is invalid
@@ -463,14 +472,14 @@ void MemoryWatchChecker::check_mem_write(ar::Statement* stmt,
                                          ar::Value* pointer,
                                          ar::Value* access_size,
                                          value::AbstractDomain inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     return;
   }
 
   // Watched addresses
   PointsToSet watch_addrs =
-      inv.normal().pointer_to_points_to(this->_watch_mem_ptr);
+      inv.first().normal().pointer_to_points_to(this->_watch_mem_ptr);
 
   if (watch_addrs.is_empty() || watch_addrs.is_top()) {
     // Not watching anything, __ikos_watch_mem was not called
@@ -481,20 +490,20 @@ void MemoryWatchChecker::check_mem_write(ar::Statement* stmt,
   const ScalarLit& size = this->_lit_factory.get_scalar(access_size);
 
   if (ptr.is_undefined() || (ptr.is_pointer_var() &&
-                             inv.normal().uninit_is_uninitialized(ptr.var()))) {
+                             inv.first().normal().uninit_is_uninitialized(ptr.var()))) {
     // Undefined pointer operand
     return;
   }
 
   if (size.is_undefined() ||
       (size.is_machine_int_var() &&
-       inv.normal().uninit_is_uninitialized(size.var()))) {
+       inv.first().normal().uninit_is_uninitialized(size.var()))) {
     // Undefined pointer operand
     return;
   }
 
   if (ptr.is_null() ||
-      (ptr.is_pointer_var() && inv.normal().nullity_is_null(ptr.var()))) {
+      (ptr.is_pointer_var() && inv.first().normal().nullity_is_null(ptr.var()))) {
     // Null pointer operand
     return;
   }
@@ -513,7 +522,7 @@ void MemoryWatchChecker::check_mem_write(ar::Statement* stmt,
   this->init_global_ptr(inv, pointer);
 
   // Points-to set of the pointer
-  PointsToSet addrs = inv.normal().pointer_to_points_to(ptr.var());
+  PointsToSet addrs = inv.first().normal().pointer_to_points_to(ptr.var());
 
   if (addrs.is_empty()) {
     // Pointer is invalid
@@ -528,7 +537,7 @@ void MemoryWatchChecker::check_mem_write(ar::Statement* stmt,
 
   // Variable representing the pointer offset
   Variable* offset = ptr.var()->offset_var();
-  inv.normal().pointer_offset_to_int(offset, ptr.var());
+  inv.first().normal().pointer_offset_to_int(offset, ptr.var());
 
   // Add a shadow variable `offset_plus_size = offset + access_size`
   Variable* offset_plus_size =
@@ -537,12 +546,12 @@ void MemoryWatchChecker::check_mem_write(ar::Statement* stmt,
 
   if (access_size->type() == this->_size_type) {
     if (size.is_machine_int_var()) {
-      inv.normal().int_apply(IntBinaryOperator::Add,
+      inv.first().normal().int_apply(IntBinaryOperator::Add,
                              offset_plus_size,
                              offset,
                              size.var());
     } else if (size.is_machine_int()) {
-      inv.normal().int_apply(IntBinaryOperator::Add,
+      inv.first().normal().int_apply(IntBinaryOperator::Add,
                              offset_plus_size,
                              offset,
                              size.machine_int());
@@ -552,15 +561,15 @@ void MemoryWatchChecker::check_mem_write(ar::Statement* stmt,
   } else {
     // This happens in LibcFgets for instance
     if (size.is_machine_int_var()) {
-      inv.normal().int_apply(IntUnaryOperator::Cast,
+      inv.first().normal().int_apply(IntUnaryOperator::Cast,
                              offset_plus_size,
                              size.var());
-      inv.normal().int_apply(IntBinaryOperator::Add,
+      inv.first().normal().int_apply(IntBinaryOperator::Add,
                              offset_plus_size,
                              offset_plus_size,
                              offset);
     } else if (size.is_machine_int()) {
-      inv.normal()
+      inv.first().normal()
           .int_apply(IntBinaryOperator::Add,
                      offset_plus_size,
                      offset,
@@ -573,13 +582,13 @@ void MemoryWatchChecker::check_mem_write(ar::Statement* stmt,
 
   // Variable representing the watched pointer offset
   Variable* watch_offset = this->_watch_mem_ptr->offset_var();
-  inv.normal().pointer_offset_to_int(watch_offset, this->_watch_mem_ptr);
+  inv.first().normal().pointer_offset_to_int(watch_offset, this->_watch_mem_ptr);
 
   // Add a shadow variable `watch_offset_plus_size = watch_offset + watch_size`
   Variable* watch_offset_plus_size =
       _ctx.var_factory->get_named_shadow(this->_size_type,
                                          "shadow.watch_offset_plus_size");
-  inv.normal().int_apply(IntBinaryOperator::Add,
+  inv.first().normal().int_apply(IntBinaryOperator::Add,
                          watch_offset_plus_size,
                          watch_offset,
                          this->_watch_mem_size);
@@ -593,13 +602,13 @@ void MemoryWatchChecker::check_mem_write(ar::Statement* stmt,
   // x is in [offset, offset + size - 1]
   // x is in [watch_offset, watch_offset + watch_size - 1]
   value::AbstractDomain tmp1 = inv;
-  tmp1.normal().int_add(IntPredicate::GE, x, offset);
-  tmp1.normal().int_add(IntPredicate::LT, x, offset_plus_size);
-  tmp1.normal().int_add(IntPredicate::GE, x, watch_offset);
-  tmp1.normal().int_add(IntPredicate::LT, x, watch_offset_plus_size);
-  tmp1.normal().normalize();
+  tmp1.first().normal().int_add(IntPredicate::GE, x, offset);
+  tmp1.first().normal().int_add(IntPredicate::LT, x, offset_plus_size);
+  tmp1.first().normal().int_add(IntPredicate::GE, x, watch_offset);
+  tmp1.first().normal().int_add(IntPredicate::LT, x, watch_offset_plus_size);
+  tmp1.first().normal().normalize();
 
-  if (tmp1.is_normal_flow_bottom()) {
+  if (tmp1.first().is_normal_flow_bottom()) {
     // Overlap not possible
     return;
   }
@@ -608,18 +617,18 @@ void MemoryWatchChecker::check_mem_write(ar::Statement* stmt,
 
   // Check if all offset + size - 1 >= watch_offset
   value::AbstractDomain tmp2 = inv;
-  tmp2.normal().int_add(IntPredicate::LE, offset_plus_size, watch_offset);
-  tmp2.normal().normalize();
+  tmp2.first().normal().int_add(IntPredicate::LE, offset_plus_size, watch_offset);
+  tmp2.first().normal().normalize();
 
   // Check if all offset < watch_offset + watch_size
   value::AbstractDomain tmp3 = inv;
-  tmp3.normal().int_add(IntPredicate::GE, offset, watch_offset_plus_size);
-  tmp3.normal().normalize();
+  tmp3.first().normal().int_add(IntPredicate::GE, offset, watch_offset_plus_size);
+  tmp3.first().normal().normalize();
 
   LogMessage msg = log::msg();
   this->display_stmt_location(msg, stmt);
 
-  if (tmp2.is_normal_flow_bottom() && tmp3.is_normal_flow_bottom()) {
+  if (tmp2.first().is_normal_flow_bottom() && tmp3.first().is_normal_flow_bottom()) {
     // Always overlaps
     msg << "memory write at a watched memory location\n";
   } else {
@@ -631,14 +640,14 @@ void MemoryWatchChecker::check_mem_write(ar::Statement* stmt,
 void MemoryWatchChecker::check_mem_write(ar::Statement* stmt,
                                          ar::Value* pointer,
                                          value::AbstractDomain inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     return;
   }
 
   // Watched addresses
   PointsToSet watch_addrs =
-      inv.normal().pointer_to_points_to(this->_watch_mem_ptr);
+      inv.first().normal().pointer_to_points_to(this->_watch_mem_ptr);
 
   if (watch_addrs.is_empty() || watch_addrs.is_top()) {
     // Not watching anything, __ikos_watch_mem was not called
@@ -648,13 +657,13 @@ void MemoryWatchChecker::check_mem_write(ar::Statement* stmt,
   const ScalarLit& ptr = this->_lit_factory.get_scalar(pointer);
 
   if (ptr.is_undefined() || (ptr.is_pointer_var() &&
-                             inv.normal().uninit_is_uninitialized(ptr.var()))) {
+                             inv.first().normal().uninit_is_uninitialized(ptr.var()))) {
     // Undefined pointer operand
     return;
   }
 
   if (ptr.is_null() ||
-      (ptr.is_pointer_var() && inv.normal().nullity_is_null(ptr.var()))) {
+      (ptr.is_pointer_var() && inv.first().normal().nullity_is_null(ptr.var()))) {
     // Null pointer operand
     return;
   }
@@ -669,7 +678,7 @@ void MemoryWatchChecker::check_mem_write(ar::Statement* stmt,
   this->init_global_ptr(inv, pointer);
 
   // Points-to set of the pointer
-  PointsToSet addrs = inv.normal().pointer_to_points_to(ptr.var());
+  PointsToSet addrs = inv.first().normal().pointer_to_points_to(ptr.var());
 
   if (addrs.is_empty()) {
     // Pointer is invalid
@@ -692,12 +701,12 @@ void MemoryWatchChecker::init_global_ptr(value::AbstractDomain& inv,
   if (auto gv = dyn_cast< ar::GlobalVariable >(value)) {
     Variable* ptr = _ctx.var_factory->get_global(gv);
     MemoryLocation* addr = _ctx.mem_factory->get_global(gv);
-    inv.normal().pointer_assign(ptr, addr, core::Nullity::non_null());
+    inv.first().normal().pointer_assign(ptr, addr, core::Nullity::non_null());
   } else if (auto cst = dyn_cast< ar::FunctionPointerConstant >(value)) {
     auto fun = cst->function();
     Variable* ptr = _ctx.var_factory->get_function_ptr(fun);
     MemoryLocation* addr = _ctx.mem_factory->get_function(fun);
-    inv.normal().pointer_assign(ptr, addr, core::Nullity::non_null());
+    inv.first().normal().pointer_assign(ptr, addr, core::Nullity::non_null());
   }
 }
 

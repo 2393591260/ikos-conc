@@ -231,7 +231,7 @@ void DebugChecker::exec_print_values(ar::IntrinsicCall* call,
   }
   msg << "):\n";
 
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     msg << "\tStatement is unreachable\n";
   } else if (call->num_arguments() <= 1) {
     msg << "\tMissing arguments\n";
@@ -242,17 +242,17 @@ void DebugChecker::exec_print_values(ar::IntrinsicCall* call,
       const ScalarLit& v = this->_lit_factory.get_scalar(*it);
 
       if (v.is_machine_int_var()) {
-        print_interval(msg, repr, inv.normal().int_to_interval(v.var()));
+        print_interval(msg, repr, inv.first().normal().int_to_interval(v.var()));
       } else if (v.is_floating_point_var()) {
         // ignored for now
       } else if (v.is_pointer_var()) {
-        print_points_to(msg, repr, inv.normal().pointer_to_points_to(v.var()));
+        print_points_to(msg, repr, inv.first().normal().pointer_to_points_to(v.var()));
 
         print_interval(msg,
                        "offset of " + repr,
-                       inv.normal().pointer_offset_to_interval(v.var()));
+                       inv.first().normal().pointer_offset_to_interval(v.var()));
 
-        print_nullity(msg, repr, inv.normal().nullity_to_nullity(v.var()));
+        print_nullity(msg, repr, inv.first().normal().nullity_to_nullity(v.var()));
       } else {
         msg << "\tArgument " << repr << " is not a variable\n";
         continue;
@@ -260,7 +260,7 @@ void DebugChecker::exec_print_values(ar::IntrinsicCall* call,
 
       print_uninitialized(msg,
                           repr,
-                          inv.normal().uninit_to_uninitialized(v.var()));
+                          inv.first().normal().uninit_to_uninitialized(v.var()));
     }
   }
 }

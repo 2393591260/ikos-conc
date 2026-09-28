@@ -167,15 +167,35 @@ def generate_statement_result(checks, keep_oks=True, keep_checkers=True):
 class Summary:
     ''' Represents a summary '''
 
-    def __init__(self, ok, error, warning, unreachable):
+    def __init__(self, ok, error, warning, unreachable, unknown=0):
         self.ok = ok
         self.error = error
         self.warning = warning
         self.unreachable = unreachable
+        self.unknown = unknown
 
     @property
     def total(self):
-        return self.ok + self.error + self.warning + self.unreachable
+        return (self.ok + self.error + self.warning + self.unreachable +
+                self.unknown)
+
+
+def _is_unknown_check(check):
+    ''' Return True iff `check` is a data-race "unknown" check.
+
+    The DataRaceChecker marks a model-boundary pair (points-to ⊤, cannot
+    distinguish the memory object) with `Result.WARNING` and writes
+    `verdict == "unknown"` into the check's info JSON. Other checkers'
+    WARNINGs ("potentially unsafe") do NOT carry that marker, so this is the
+    precise discriminator. Unknown is NEVER Safe/True.
+    '''
+    if not check.info:
+        return False
+    try:
+        info = json.loads(check.info)
+    except (ValueError, TypeError):
+        return False
+    return info.get('verdict') == 'unknown'
 
 
 def generate_summary(db):
@@ -183,7 +203,7 @@ def generate_summary(db):
     Return the analysis summary: number of errors, warnings, ok and
     unreachable per checked statements.
     '''
-    summary = Summary(ok=0, error=0, warning=0, unreachable=0)
+    summary = Summary(ok=0, error=0, warning=0, unreachable=0, unknown=0)
 
     c = db.con.cursor()
     order_by = 'statement_id, call_context_id'
@@ -225,7 +245,11 @@ def generate_summary(db):
                 summary.ok += 1
 
             summary.error += len(statement_errors)
-            summary.warning += len(statement_warnings)
+            for w in statement_warnings:
+                if _is_unknown_check(w):
+                    summary.unknown += 1
+                else:
+                    summary.warning += 1
 
     c.close()
     return summary
@@ -256,15 +280,22 @@ def print_summary(db, full=True):
                bold_yellow(summary.warning)
                if summary.warning
                else '0')
+        printf('Total number of unknown checks        : %s\n',
+               bold_yellow(summary.unknown)
+               if summary.unknown
+               else '0')
         printf('\n')
 
-    if summary.error == 0 and summary.warning == 0:
-        printf(bold_green('The program is SAFE') + '\n')
+    if summary.error != 0:
+        printf(bold_red('The program is definitely UNSAFE') + '\n')
+    elif summary.unknown != 0:
+        # Model-boundary: the checker could not distinguish the memory object
+        # (points-to ⊤). Map to SV-COMP UNKNOWN, NEVER to SAFE.
+        printf(bold_yellow('The program is UNKNOWN') + '\n')
+    elif summary.warning != 0:
+        printf(bold_yellow('The program is potentially UNSAFE') + '\n')
     else:
-        if summary.error != 0:
-            printf(bold_red('The program is definitely UNSAFE') + '\n')
-        else:
-            printf(bold_yellow('The program is potentially UNSAFE') + '\n')
+        printf(bold_green('The program is SAFE') + '\n')
 
 
 ######################
@@ -1889,6 +1920,12 @@ def generate_recursive_function_call_message(report, verbosity):
     return s
 
 
+def generate_data_race_message(report, verbosity):
+    assert report.status in (Result.WARNING, Result.ERROR)
+    return ('potential data race: conflicting memory access without a '
+            'common lock')
+
+
 def generate_call_inline_asm_message(report, verbosity):
     assert report.status == Result.OK
     return 'safe call to inline assembly code'
@@ -2075,6 +2112,7 @@ GENERATE_MESSAGE_MAP = {
         generate_unknown_function_call_message,
     CheckKind.FUNCTION_CALL: generate_function_call_message,
     CheckKind.FREE: generate_double_free_message,
+    CheckKind.DATA_RACE: generate_data_race_message,
 }
 
 

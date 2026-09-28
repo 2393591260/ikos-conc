@@ -43,7 +43,9 @@
 
 #pragma once
 
+#include <ikos/core/domain/domain_product.hpp>
 #include <ikos/core/domain/exception/exception.hpp>
+#include <ikos/core/domain/lockset/lockset_domain.hpp>
 #include <ikos/core/domain/memory/polymorphic_domain.hpp>
 
 #include <ikos/analyzer/analysis/context.hpp>
@@ -58,8 +60,22 @@ namespace value {
 using MemoryAbstractDomain =
     core::memory::PolymorphicDomain< Variable*, MemoryLocation* >;
 
-/// \brief Abstract domain for the value analysis
-using AbstractDomain = core::exception::ExceptionDomain< MemoryAbstractDomain >;
+/// \brief Lockset abstract domain (concurrency bookkeeping: held locks,
+/// spawned/joined threads, cond-var digests)
+using LocksetAbstractDomain = core::lockset::LocksetDomain;
+
+/// \brief Data abstract domain for the value analysis (memory + exceptions),
+/// WITHOUT the lockset — the lockset lives in the product's second component.
+using DataAbstractDomain =
+    core::exception::ExceptionDomain< MemoryAbstractDomain >;
+
+/// \brief Abstract domain for the value analysis.
+///
+/// Orthogonal product of the data state (`.first()`) and the concurrency
+/// lockset state (`.second()`). Ordinary program data accesses go through
+/// `.first()`, lockset operations through `.second()`.
+using AbstractDomain =
+    core::DomainProduct2< DataAbstractDomain, LocksetAbstractDomain >;
 
 /// \brief Create the bottom abstract value
 AbstractDomain make_bottom_abstract_value(Context& ctx);

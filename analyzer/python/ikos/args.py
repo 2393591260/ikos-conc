@@ -178,6 +178,7 @@ analyses = (
     ('dfa', 'Double Free Analysis'),
     ('dbg', 'Debugger'),
     ('watch', 'Memory Watcher'),
+    ('race', 'Data Race Analysis'),
 )
 
 default_analyses = (
@@ -260,6 +261,15 @@ proceduralities = (
 )
 
 default_procedurality = 'inter'
+
+concurrency_modes = (
+    ('auto', 'Auto-detect pthread API and warn if the sequential engine '
+             'is used'),
+    ('on', 'Force the thread-modular (concurrency) engine'),
+    ('off', 'Force the sequential engine (skip auto-detection)'),
+)
+
+default_concurrency = 'auto'
 
 widening_strategies = (
     ('widen', 'Widening operator'),

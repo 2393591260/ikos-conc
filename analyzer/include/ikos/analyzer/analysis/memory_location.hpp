@@ -45,7 +45,9 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include <boost/thread/shared_mutex.hpp>
@@ -87,12 +89,22 @@ public:
     AbsoluteZeroMemoryKind,
     ArgvMemoryKind,
     LibcErrnoMemoryKind,
+    LibcStateMemoryKind,
     DynAllocMemoryKind,
   };
 
 protected:
   /// \brief Kind of the memory location
   MemoryLocationKind _kind;
+
+  /// \brief Stable logical id, assigned at construction time from a global
+  /// monotonic counter.
+  ///
+  /// This is the ORDERING and HASHING key for MemoryLocation* everywhere
+  /// (IndexableTraits, std::hash, ...). It deliberately REPLACES the raw
+  /// pointer address, whose value varies under ASLR and made the analysis
+  /// non-deterministic across runs (region files flapping SAFE↔RACE).
+  std::uint64_t _stable_id;
 
 protected:
   /// \brief Protected constructor
@@ -116,6 +128,9 @@ public:
 
   /// \brief Return the kind of the object
   MemoryLocationKind kind() const { return this->_kind; }
+
+  /// \brief Return the stable logical id (ASLR-independent ordering key)
+  std::uint64_t stable_id() const { return this->_stable_id; }
 
   /// \brief Dump the memory location, for debugging purpose
   virtual void dump(std::ostream&) const = 0;
@@ -262,6 +277,26 @@ public:
 
 }; // end class LibcErrnoMemoryLocation
 
+/// \brief Hidden shared state of non-thread-safe libc functions (rand/strtok/
+/// strerror/localtime/...). These functions read-modify-write a process-wide
+/// internal buffer WITHOUT any lock, so two concurrent calls race on it. This
+/// synthetic location gives the data-race checker a single shared anchor to
+/// pair such calls against (mirrors Goblint's `ThreadUnsafe` library attr).
+class LibcStateMemoryLocation final : public MemoryLocation {
+public:
+  /// \brief Default constructor
+  LibcStateMemoryLocation();
+
+  /// \brief Dump the memory location, for debugging purpose
+  void dump(std::ostream&) const override;
+
+  /// \brief Method for type support (isa, cast, dyn_cast)
+  static bool classof(const MemoryLocation* ml) {
+    return ml->kind() == LibcStateMemoryKind;
+  }
+
+}; // end class LibcStateMemoryLocation
+
 /// \brief Dynamic alloc memory location
 class DynAllocMemoryLocation final : public MemoryLocation {
 private:
@@ -321,6 +356,14 @@ private:
 
   std::unique_ptr< LibcErrnoMemoryLocation > _libc_errno;
 
+  std::unique_ptr< LibcStateMemoryLocation > _libc_state;
+
+  /// \brief Guards the lazy creation of `_libc_state`. The location is only
+  /// materialized on first use (a ThreadUnsafe libc call is analyzed), so a
+  /// program that never calls rand/strtok/... consumes no extra stable-id and
+  /// keeps the rest of the location numbering unchanged.
+  std::once_flag _libc_state_once;
+
   boost::shared_mutex _dyn_alloc_mutex;
 
   llvm::DenseMap< std::pair< ar::CallBase*, CallContext* >,
@@ -371,6 +414,10 @@ public:
   /// \brief Get or create a LibcErrnoMemoryLocation
   LibcErrnoMemoryLocation* get_libc_errno();
 
+  /// \brief Get or create a LibcStateMemoryLocation (hidden shared state of
+  /// non-thread-safe libc functions)
+  LibcStateMemoryLocation* get_libc_state();
+
   /// \brief Get or create a DynAllocMemoryLocation
   DynAllocMemoryLocation* get_dyn_alloc(ar::CallBase* call,
                                         CallContext* context);
@@ -385,12 +432,14 @@ namespace core {
 
 /// \brief Implement IndexableTraits for MemoryLocation*
 ///
-/// The index of MemoryLocation* is the address of the pointer
+/// The index of MemoryLocation* is its STABLE LOGICAL ID (assigned at
+/// construction), NOT the raw pointer address. The pointer address varies
+/// under ASLR and previously made every pointer-keyed ordering (patricia
+/// tree sets, lock-address keys) non-deterministic across runs.
 template <>
 struct IndexableTraits< analyzer::MemoryLocation* > {
   static Index index(const analyzer::MemoryLocation* m) {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    return reinterpret_cast< Index >(m);
+    return m->stable_id();
   }
 };
 
@@ -404,3 +453,27 @@ struct DumpableTraits< analyzer::MemoryLocation* > {
 
 } // end namespace core
 } // end namespace ikos
+
+namespace std {
+
+/// \brief Hash for MemoryLocation* based on its stable logical id.
+///
+/// Replaces the default pointer-address hash so that std::unordered_map /
+/// std::unordered_set keyed by MemoryLocation* iterate in a deterministic,
+/// ASLR-independent order.
+template <>
+struct hash< ikos::analyzer::MemoryLocation* > {
+  std::size_t operator()(const ikos::analyzer::MemoryLocation* m) const noexcept {
+    return static_cast< std::size_t >(m->stable_id());
+  }
+};
+
+/// \brief Hash for const MemoryLocation* (same stable id).
+template <>
+struct hash< const ikos::analyzer::MemoryLocation* > {
+  std::size_t operator()(const ikos::analyzer::MemoryLocation* m) const noexcept {
+    return static_cast< std::size_t >(m->stable_id());
+  }
+};
+
+} // end namespace std

@@ -79,7 +79,7 @@ void AssertProverChecker::check(ar::Statement* stmt,
 
 AssertProverChecker::CheckResult AssertProverChecker::check_assert(
     ar::IntrinsicCall* call, const value::AbstractDomain& inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg = this->display_assert_check(Result::Unreachable, call)) {
       *msg << "\n";
@@ -91,7 +91,7 @@ AssertProverChecker::CheckResult AssertProverChecker::check_assert(
 
   if (cond.is_undefined() ||
       (cond.is_machine_int_var() &&
-       inv.normal().uninit_is_uninitialized(cond.var()))) {
+       inv.first().normal().uninit_is_uninitialized(cond.var()))) {
     // Undefined operand
     if (auto msg = this->display_assert_check(Result::Error, call)) {
       *msg << ": undefined operand\n";
@@ -103,7 +103,7 @@ AssertProverChecker::CheckResult AssertProverChecker::check_assert(
   if (cond.is_machine_int()) {
     flag = IntInterval(cond.machine_int());
   } else if (cond.is_machine_int_var()) {
-    flag = inv.normal().int_to_interval(cond.var());
+    flag = inv.first().normal().int_to_interval(cond.var());
   } else {
     log::error("unexpected argument to __ikos_assert()");
     return {CheckKind::UnexpectedOperand, Result::Error};

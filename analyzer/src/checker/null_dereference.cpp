@@ -98,7 +98,7 @@ void NullDereferenceChecker::check(ar::Statement* stmt,
 
 std::vector< NullDereferenceChecker::CheckResult > NullDereferenceChecker::
     check_call(ar::CallBase* call, const value::AbstractDomain& inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg = this->display_null_check(Result::Unreachable, call)) {
       *msg << "\n";
@@ -112,7 +112,7 @@ std::vector< NullDereferenceChecker::CheckResult > NullDereferenceChecker::
 
   if (called.is_undefined() ||
       (called.is_pointer_var() &&
-       inv.normal().uninit_is_uninitialized(called.var()))) {
+       inv.first().normal().uninit_is_uninitialized(called.var()))) {
     // Undefined call pointer operand
     if (auto msg =
             this->display_null_check(Result::Error, call, call->called())) {
@@ -125,7 +125,7 @@ std::vector< NullDereferenceChecker::CheckResult > NullDereferenceChecker::
   // Check null pointer dereference
 
   if (called.is_null() ||
-      (called.is_pointer_var() && inv.normal().nullity_is_null(called.var()))) {
+      (called.is_pointer_var() && inv.first().normal().nullity_is_null(called.var()))) {
     // Null call pointer operand
     if (auto msg =
             this->display_null_check(Result::Error, call, call->called())) {
@@ -152,7 +152,7 @@ std::vector< NullDereferenceChecker::CheckResult > NullDereferenceChecker::
     callees = {_ctx.mem_factory->get_local(lv)};
   } else if (isa< ar::InternalVariable >(call->called())) {
     // Indirect call through a function pointer
-    callees = inv.normal().pointer_to_points_to(called.var());
+    callees = inv.first().normal().pointer_to_points_to(called.var());
   } else {
     log::error("unexpected call pointer operand");
     return {{CheckKind::UnexpectedOperand, Result::Error, {call->called()}}};
@@ -421,7 +421,15 @@ std::vector< NullDereferenceChecker::CheckResult > NullDereferenceChecker::
     case ar::Intrinsic::LibcppFreeException:
     case ar::Intrinsic::LibcppThrow:
     case ar::Intrinsic::LibcppBeginCatch:
-    case ar::Intrinsic::LibcppEndCatch: {
+    case ar::Intrinsic::LibcppEndCatch:
+    // Pthread intrinsics: engine handles lock/unlock/join semantics;
+    // no null-pointer dereference is meaningful here. Returning an
+    // empty result instead of falling through to `ikos_unreachable`
+    // keeps the checker well-defined under the default analyses.
+    case ar::Intrinsic::PthreadCreate:
+    case ar::Intrinsic::PthreadJoin:
+    case ar::Intrinsic::PthreadMutexLock:
+    case ar::Intrinsic::PthreadMutexUnlock: {
       return {};
     }
     default: {
@@ -432,7 +440,7 @@ std::vector< NullDereferenceChecker::CheckResult > NullDereferenceChecker::
 
 NullDereferenceChecker::CheckResult NullDereferenceChecker::check_null(
     ar::Statement* stmt, ar::Value* operand, const value::AbstractDomain& inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg =
             this->display_null_check(Result::Unreachable, stmt, operand)) {
@@ -444,7 +452,7 @@ NullDereferenceChecker::CheckResult NullDereferenceChecker::check_null(
   const ScalarLit& ptr = this->_lit_factory.get_scalar(operand);
 
   if (ptr.is_undefined() || (ptr.is_pointer_var() &&
-                             inv.normal().uninit_is_uninitialized(ptr.var()))) {
+                             inv.first().normal().uninit_is_uninitialized(ptr.var()))) {
     // Undefined operand
     if (auto msg = this->display_null_check(Result::Error, stmt, operand)) {
       *msg << ": undefined operand\n";
@@ -491,7 +499,7 @@ NullDereferenceChecker::CheckResult NullDereferenceChecker::check_null(
     return {CheckKind::NullPointerDereference, Result::Ok, {operand}};
   }
 
-  core::Nullity nullity = inv.normal().nullity_to_nullity(ptr.var());
+  core::Nullity nullity = inv.first().normal().nullity_to_nullity(ptr.var());
   if (nullity.is_null()) {
     // Pointer is definitely null
     if (auto msg = this->display_null_check(Result::Error, stmt, operand)) {

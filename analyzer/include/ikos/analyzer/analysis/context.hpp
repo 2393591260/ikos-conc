@@ -48,6 +48,7 @@
 #include <ikos/ar/semantic/bundle.hpp>
 
 #include <ikos/analyzer/analysis/option.hpp>
+#include <ikos/core/domain/concurrent_global_env.hpp>
 
 namespace ikos {
 namespace analyzer {
@@ -72,7 +73,18 @@ public:
   ar::Bundle* bundle;
 
   /// \brief Analysis options
-  const AnalysisOptions opts;
+  ///
+  /// NOT declared `const` on purpose. The option set is finalised at the
+  /// driver entry point (`ikos_analyzer.cpp` near the
+  /// `thread_modular_requested` reconciliation block) where derived
+  /// requirements (e.g. "race analysis implies the thread-modular
+  /// plugin") may upgrade individual flags. Treating opts as immutable
+  /// would force every such reconciliation into `const_cast` scattered
+  /// across the codebase, which defeats single-source-of-truth for the
+  /// plugin lifecycle. All field accesses are still done through the
+  /// `_ctx.opts.<field>` read-only pattern in the value-engine code
+  /// (no field is ever assigned outside of `ikos_analyzer.cpp`).
+  AnalysisOptions opts;
 
   /// \brief Working directory
   boost::filesystem::path wd;
@@ -103,6 +115,13 @@ public:
 
   /// \brief Pointer analysis, or null
   PointerAnalysis* pointer;
+
+  /// \brief Concurrent global environment (thread interference blackboard).
+  ///
+  /// Owned per-analysis by the Context (not a process singleton): one
+  /// environment per analysis run, shared by the thread-modular driver,
+  /// the transfer engine, and the data-race checker.
+  core::ConcurrentGlobalEnv concurrent_env;
 
 public:
   /// \brief Constructor

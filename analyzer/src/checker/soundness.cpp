@@ -98,7 +98,7 @@ std::vector< SoundnessChecker::CheckResult > SoundnessChecker::check_call(
     ar::CallBase* call,
     const value::AbstractDomain& inv,
     CallContext* call_context) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg = this->display_soundness_check(Result::Unreachable, call)) {
       *msg << "\n";
@@ -112,7 +112,7 @@ std::vector< SoundnessChecker::CheckResult > SoundnessChecker::check_call(
 
   if (called.is_undefined() ||
       (called.is_pointer_var() &&
-       inv.normal().uninit_is_uninitialized(called.var()))) {
+       inv.first().normal().uninit_is_uninitialized(called.var()))) {
     // Undefined call pointer operand
     if (auto msg = this->display_soundness_check(Result::Error, call)) {
       *msg << ": undefined call pointer operand\n";
@@ -126,7 +126,7 @@ std::vector< SoundnessChecker::CheckResult > SoundnessChecker::check_call(
   // Check null pointer dereference
 
   if (called.is_null() ||
-      (called.is_pointer_var() && inv.normal().nullity_is_null(called.var()))) {
+      (called.is_pointer_var() && inv.first().normal().nullity_is_null(called.var()))) {
     // Null call pointer operand
     if (auto msg = this->display_soundness_check(Result::Error, call)) {
       *msg << ": null call pointer operand\n";
@@ -154,7 +154,7 @@ std::vector< SoundnessChecker::CheckResult > SoundnessChecker::check_call(
     callees = {_ctx.mem_factory->get_local(lv)};
   } else if (isa< ar::InternalVariable >(call->called())) {
     // Indirect call through a function pointer
-    callees = inv.normal().pointer_to_points_to(called.var());
+    callees = inv.first().normal().pointer_to_points_to(called.var());
   } else {
     log::error("unexpected call pointer operand");
     return {
@@ -221,7 +221,7 @@ std::vector< SoundnessChecker::CheckResult > SoundnessChecker::check_call(
 
 SoundnessChecker::CheckResult SoundnessChecker::check_recursive_call(
     ar::CallBase* call, ar::Function* fun, const value::AbstractDomain& inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg = this->display_soundness_check(Result::Unreachable, call)) {
       *msg << "\n";
@@ -489,6 +489,16 @@ std::vector< SoundnessChecker::CheckResult > SoundnessChecker::
     case ar::Intrinsic::LibcppEndCatch: {
       return {};
     }
+    // Pthread intrinsics: the engine already handles the abstract
+    // semantics (lock/unlock, join, etc.); from the soundness perspective
+    // there is nothing extra to check, so we return an empty result
+    // instead of falling through to `ikos_unreachable`.
+    case ar::Intrinsic::PthreadCreate:
+    case ar::Intrinsic::PthreadJoin:
+    case ar::Intrinsic::PthreadMutexLock:
+    case ar::Intrinsic::PthreadMutexUnlock: {
+      return {};
+    }
     default: {
       ikos_unreachable("unreachable");
     }
@@ -497,7 +507,7 @@ std::vector< SoundnessChecker::CheckResult > SoundnessChecker::
 
 SoundnessChecker::CheckResult SoundnessChecker::check_unknown_extern_call(
     ar::CallBase* call, ar::Function* fun, const value::AbstractDomain& inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg = this->display_soundness_check(Result::Unreachable, call)) {
       *msg << "\n";
@@ -519,7 +529,7 @@ boost::optional< SoundnessChecker::CheckResult > SoundnessChecker::
                     ar::Value* pointer,
                     CheckKind access_kind,
                     const value::AbstractDomain& inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg = this->display_soundness_check(Result::Unreachable, stmt)) {
       *msg << "\n";
@@ -531,7 +541,7 @@ boost::optional< SoundnessChecker::CheckResult > SoundnessChecker::
 
   // Check uninitialized
   if (ptr.is_undefined() || (ptr.is_pointer_var() &&
-                             inv.normal().uninit_is_uninitialized(ptr.var()))) {
+                             inv.first().normal().uninit_is_uninitialized(ptr.var()))) {
     // Undefined pointer operand
     if (auto msg = this->display_soundness_check(Result::Error, stmt)) {
       *msg << ": undefined pointer operand\n";
@@ -541,7 +551,7 @@ boost::optional< SoundnessChecker::CheckResult > SoundnessChecker::
 
   // Check null pointer dereference
   if (ptr.is_null() ||
-      (ptr.is_pointer_var() && inv.normal().nullity_is_null(ptr.var()))) {
+      (ptr.is_pointer_var() && inv.first().normal().nullity_is_null(ptr.var()))) {
     // Null pointer operand
     if (auto msg = this->display_soundness_check(Result::Error, stmt)) {
       *msg << ": null pointer dereference\n";
@@ -562,7 +572,7 @@ boost::optional< SoundnessChecker::CheckResult > SoundnessChecker::
   }
 
   // Points-to set of the pointer
-  PointsToSet addrs = inv.normal().pointer_to_points_to(ptr.var());
+  PointsToSet addrs = inv.first().normal().pointer_to_points_to(ptr.var());
 
   if (addrs.is_empty()) {
     // Pointer is invalid
@@ -589,7 +599,7 @@ std::vector< SoundnessChecker::CheckResult > SoundnessChecker::
                               ar::Function* fun,
                               const std::vector< ar::Value* >& pointers,
                               const value::AbstractDomain& inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg = this->display_soundness_check(Result::Unreachable, call)) {
       *msg << "\n";
@@ -608,7 +618,7 @@ std::vector< SoundnessChecker::CheckResult > SoundnessChecker::
     // Check uninitialized argument
     if (ptr.is_undefined() ||
         (ptr.is_pointer_var() &&
-         inv.normal().uninit_is_uninitialized(ptr.var()))) {
+         inv.first().normal().uninit_is_uninitialized(ptr.var()))) {
       // Undefined pointer argument
       if (auto msg = this->display_soundness_check(Result::Error, call)) {
         *msg << ": undefined pointer argument\n";
@@ -618,7 +628,7 @@ std::vector< SoundnessChecker::CheckResult > SoundnessChecker::
 
     // Check null pointer argument
     if (ptr.is_null() ||
-        (ptr.is_pointer_var() && inv.normal().nullity_is_null(ptr.var()))) {
+        (ptr.is_pointer_var() && inv.first().normal().nullity_is_null(ptr.var()))) {
       // This is sound
       continue;
     }
@@ -637,7 +647,7 @@ std::vector< SoundnessChecker::CheckResult > SoundnessChecker::
     }
 
     // Points-to set of the pointer
-    PointsToSet addrs = inv.normal().pointer_to_points_to(ptr.var());
+    PointsToSet addrs = inv.first().normal().pointer_to_points_to(ptr.var());
 
     if (addrs.is_empty()) {
       // Pointer is invalid
@@ -668,7 +678,7 @@ std::vector< SoundnessChecker::CheckResult > SoundnessChecker::
 
 boost::optional< SoundnessChecker::CheckResult > SoundnessChecker::check_free(
     ar::CallBase* call, ar::Value* pointer, const value::AbstractDomain& inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg = this->display_soundness_check(Result::Unreachable, call)) {
       *msg << "\n";
@@ -680,7 +690,7 @@ boost::optional< SoundnessChecker::CheckResult > SoundnessChecker::check_free(
 
   // Check uninitialized
   if (ptr.is_undefined() || (ptr.is_pointer_var() &&
-                             inv.normal().uninit_is_uninitialized(ptr.var()))) {
+                             inv.first().normal().uninit_is_uninitialized(ptr.var()))) {
     // Undefined pointer operand
     if (auto msg = this->display_soundness_check(Result::Error, call)) {
       *msg << ": undefined pointer operand\n";
@@ -690,7 +700,7 @@ boost::optional< SoundnessChecker::CheckResult > SoundnessChecker::check_free(
 
   // Check null pointer dereference
   if (ptr.is_null() ||
-      (ptr.is_pointer_var() && inv.normal().nullity_is_null(ptr.var()))) {
+      (ptr.is_pointer_var() && inv.first().normal().nullity_is_null(ptr.var()))) {
     // Null pointer argument, safe
     if (auto msg = this->display_soundness_check(Result::Ok, call)) {
       *msg << ": safe call to free with NULL value\n";
@@ -711,7 +721,7 @@ boost::optional< SoundnessChecker::CheckResult > SoundnessChecker::check_free(
   }
 
   // Points-to set of the pointer
-  PointsToSet addrs = inv.normal().pointer_to_points_to(ptr.var());
+  PointsToSet addrs = inv.first().normal().pointer_to_points_to(ptr.var());
 
   if (addrs.is_top()) {
     // Ignored memory deallocation because points-to set is top

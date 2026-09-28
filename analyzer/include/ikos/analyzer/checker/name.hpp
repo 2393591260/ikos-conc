@@ -67,6 +67,7 @@ enum class CheckerName {
   DoubleFree,
   Debug,
   MemoryWatch,
+  DataRace,
 };
 
 /// \brief Return the long name of the given checker
@@ -106,6 +107,8 @@ inline const char* checker_long_name(CheckerName checker) {
       return "Debugger";
     case CheckerName::MemoryWatch:
       return "Memory Watcher";
+    case CheckerName::DataRace:
+      return "Data Race Analysis";
     default: {
       ikos_unreachable("unreachable");
     }
@@ -149,6 +152,8 @@ inline const char* checker_short_name(CheckerName checker) {
       return "dbg";
     case CheckerName::MemoryWatch:
       return "watch";
+    case CheckerName::DataRace:
+      return "race";
     default: {
       ikos_unreachable("unreachable");
     }

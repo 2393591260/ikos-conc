@@ -42,6 +42,7 @@
  ******************************************************************************/
 
 #include <ikos/core/domain/lifetime/separate_domain.hpp>
+#include <ikos/core/domain/lockset/lockset_domain.hpp>
 #include <ikos/core/domain/memory/partitioning.hpp>
 #include <ikos/core/domain/memory/value.hpp>
 #include <ikos/core/domain/nullity/separate_domain.hpp>
@@ -63,6 +64,9 @@ using UninitializedAbstractDomain =
 
 /// \brief Nullity abstract domain
 using NullityAbstractDomain = core::nullity::SeparateDomain< Variable* >;
+
+/// \brief Lockset abstract domain
+using LocksetAbstractDomain = core::lockset::LocksetDomain;
 
 /// \brief Scalar abstract domain
 using ScalarAbstractDomain =
@@ -124,21 +128,19 @@ MemoryAbstractDomain make_top_memory_abstract_value(Context& ctx) {
 } // end anonymous namespace
 
 AbstractDomain make_bottom_abstract_value(Context& ctx) {
-  return AbstractDomain(/* normal = */
-                        make_bottom_memory_abstract_value(ctx),
-                        /* caught_exceptions = */
-                        make_bottom_memory_abstract_value(ctx),
-                        /* propagated_exceptions = */
-                        make_bottom_memory_abstract_value(ctx));
+  return AbstractDomain(
+      /* first = */ DataAbstractDomain(make_bottom_memory_abstract_value(ctx),
+                                       make_bottom_memory_abstract_value(ctx),
+                                       make_bottom_memory_abstract_value(ctx)),
+      /* second = */ LocksetAbstractDomain::bottom());
 }
 
 AbstractDomain make_initial_abstract_value(Context& ctx) {
-  return AbstractDomain(/* normal = */
-                        make_top_memory_abstract_value(ctx),
-                        /* caught_exceptions = */
-                        make_bottom_memory_abstract_value(ctx),
-                        /* propagated_exceptions = */
-                        make_bottom_memory_abstract_value(ctx));
+  return AbstractDomain(
+      /* first = */ DataAbstractDomain(make_top_memory_abstract_value(ctx),
+                                       make_bottom_memory_abstract_value(ctx),
+                                       make_bottom_memory_abstract_value(ctx)),
+      /* second = */ LocksetAbstractDomain::top());
 }
 
 } // end namespace value

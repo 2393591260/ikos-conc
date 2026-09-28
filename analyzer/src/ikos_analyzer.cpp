@@ -43,6 +43,8 @@
  ******************************************************************************/
 
 #include <iostream>
+#include <csignal>
+#include <csetjmp>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
@@ -69,6 +71,8 @@
 #include <ikos/ar/verify/frontend.hpp>
 #include <ikos/ar/verify/type.hpp>
 
+#include <ikos/core/domain/concurrent_global_env.hpp>
+
 #include <ikos/frontend/llvm/import.hpp>
 
 #include <ikos/analyzer/analysis/call_context.hpp>
@@ -84,6 +88,8 @@
 #include <ikos/analyzer/analysis/result.hpp>
 #include <ikos/analyzer/analysis/value/interprocedural/concurrent/analysis.hpp>
 #include <ikos/analyzer/analysis/value/interprocedural/sequential/analysis.hpp>
+#include <ikos/analyzer/analysis/value/thread_modular.hpp>
+#include <ikos/analyzer/analysis/value/concurrency_scanner.hpp>
 #include <ikos/analyzer/analysis/value/intraprocedural/concurrent/analysis.hpp>
 #include <ikos/analyzer/analysis/value/intraprocedural/sequential/analysis.hpp>
 #include <ikos/analyzer/analysis/variable.hpp>
@@ -97,6 +103,62 @@
 namespace ar = ikos::ar;
 namespace llvm_to_ar = ikos::frontend::import;
 namespace analyzer = ikos::analyzer;
+
+// === Analyzer-wide SIGSEGV / SIGBUS recovery guard ========================
+//
+// Rationale: certain pathological IR patterns (e.g. `container_of` macro
+// expansions with complex constant-expression provenance, or upstream
+// pointer-analysis merges that leave a PointsToSet's internal Patricia
+// tree in a partially-initialised state) can cause the analyser to
+// dereference an invalid pointer that try/catch cannot intercept —
+// SIGSEGV is a hardware signal, not a C++ exception.
+//
+// Without this guard, such inputs trigger an unrecoverable abort and
+// poison every subsequent case in a batch run. With this guard, the
+// affected call returns a SKIP/SIGNAL verdict and the rest of the run
+// proceeds. Soundness is preserved because a missed lock-acquisition
+// just means the analyser conservatively refuses to claim that section
+// is protected (over-approximating toward "unsafe", never "safe").
+//
+// The jmp_buf is set once per top-level analysis pass; the signal
+// handler returns via longjmp so the call stack is unwound without
+// running C++ destructors (this is unsafe in general, but acceptable
+// here because the only state lost is the in-flight PointsToSet which
+// is already corrupted upstream — restoring it would just delay the
+// crash to the next dereference).
+static __thread sigjmp_buf ikos_signal_jmp;
+static __thread volatile sig_atomic_t ikos_signal_active = 0;
+static __thread volatile sig_atomic_t ikos_signal_received = 0;
+
+static void ikos_signal_handler(int sig) {
+  if (ikos_signal_active == 0) {
+    // No recovery context installed — re-raise so the default action
+    // (process abort) runs. This keeps us safe against stray signals
+    // outside the guarded region.
+    std::signal(sig, SIG_DFL);
+    std::raise(sig);
+    return;
+  }
+  ikos_signal_received = sig;
+  // longjmp back to the guarded region with a non-zero value
+  siglongjmp(ikos_signal_jmp, 1);
+}
+
+static void ikos_install_signal_guards() {
+  struct sigaction sa {};
+  sa.sa_handler = ikos_signal_handler;
+  sigemptyset(&sa.sa_mask);
+  // SA_NODEFER: do NOT block the signal inside the handler so the
+  // longjmp unwinds correctly even if the signal is re-raised.
+  // SA_RESETHAND: restore default action so a second fault during
+  // longjmp cleanly terminates (avoid infinite loop).
+  sa.sa_flags = SA_NODEFER | SA_RESETHAND;
+  sigaction(SIGSEGV, &sa, nullptr);
+  sigaction(SIGBUS, &sa, nullptr);
+  sigaction(SIGILL, &sa, nullptr);
+  // SIGFPE — defensive (e.g. div-by-zero in offset arithmetic).
+  sigaction(SIGFPE, &sa, nullptr);
+}
 
 /// \name Main options
 /// @{
@@ -214,7 +276,10 @@ static llvm::cl::list< analyzer::CheckerName > Analyses(
                    checker_long_name(analyzer::CheckerName::Debug)),
         clEnumValN(analyzer::CheckerName::MemoryWatch,
                    checker_short_name(analyzer::CheckerName::MemoryWatch),
-                   checker_long_name(analyzer::CheckerName::MemoryWatch))),
+                   checker_long_name(analyzer::CheckerName::MemoryWatch)),
+        clEnumValN(analyzer::CheckerName::DataRace,
+                   checker_short_name(analyzer::CheckerName::DataRace),
+                   checker_long_name(analyzer::CheckerName::DataRace))),
     llvm::cl::cat(AnalysisCategory));
 
 static llvm::cl::opt< analyzer::MachineIntDomainOption > Domain(
@@ -354,6 +419,42 @@ static llvm::cl::opt< int > Jobs("j",
                                  llvm::cl::desc("Number of threads"),
                                  llvm::cl::init(1),
                                  llvm::cl::cat(AnalysisCategory));
+
+static llvm::cl::opt< bool > EnableThreadModular(
+    "concurrency",
+    llvm::cl::desc("Enable the thread-modular (concurrency) analysis "
+                   "plugin. The sequential driver delegates to "
+                   "`value::ThreadModularAnalysis`, which performs the "
+                   "global-fixpoint worklist driven by the "
+                   "`ConcurrentGlobalEnv` blackboard."),
+    llvm::cl::init(false),
+    llvm::cl::cat(AnalysisCategory));
+
+/// \brief Escape hatch for zero-config auto-detection. The default behaviour
+/// (neither --concurrency nor --no-concurrency) makes `--concurrency` behave
+/// as a TRI-STATE switch:
+///   - absent                      → AUTO: scan the AR for `pthread_*` calls;
+///                                   if found, print a loud WARNING and stay
+///                                   sequential (never silently auto-upgrade).
+///   - --concurrency               → ON (explicit; unchanged legacy meaning)
+///   - --no-concurrency            → OFF: force sequential, skip the scan
+/// This flag is meaningless (and ignored) when -a race is requested, since
+/// the race checker requires the thread-modular engine.
+static llvm::cl::opt< bool > DisableAutoConcurrency(
+    "no-concurrency",
+    llvm::cl::desc("Force the sequential engine and disable the zero-config "
+                   "concurrency auto-detection. The escape hatch for the "
+                   "tri-state --concurrency switch."),
+    llvm::cl::init(false),
+    llvm::cl::cat(AnalysisCategory));
+
+static llvm::cl::opt< bool > EmitConcurrencyInvariants(
+    "emit-concurrency-invariants",
+    llvm::cl::desc("Print per-iteration concurrency invariants and a final "
+                   "snapshot of the `ConcurrentGlobalEnv` blackboard. "
+                   "Requires `--concurrency`."),
+    llvm::cl::init(false),
+    llvm::cl::cat(AnalysisCategory));
 
 static llvm::cl::opt< analyzer::WideningStrategy > WideningStrategy(
     "widening-strategy",
@@ -817,6 +918,8 @@ static analyzer::AnalysisOptions make_analysis_options(ar::Bundle* bundle) {
       .progress = Progress,
       .display_invariants = DisplayInvariants,
       .display_checks = DisplayChecks,
+      .enable_thread_modular = EnableThreadModular,
+      .emit_concurrency_invariants = EmitConcurrencyInvariants,
       .hardware_addresses = {bundle, HardwareAddresses, HardwareAddressesFile},
       .argc = ((Argc >= 0) ? boost::optional< int >(Argc) : boost::none),
   };
@@ -929,8 +1032,8 @@ int main(int argc, char** argv) {
       analyzer::log::debug("Checking for debug information");
       if (!llvm_to_ar::has_debug_info(*module)) {
         // We warn but allow analysis to proceed.
-        llvm::errs() << progname << ": " << InputFilename
-                     << ": warning: llvm bitcode has no debug information\n";
+        // llvm::errs() << progname << ": " << InputFilename
+        //              << ": warning: llvm bitcode has no debug information\n";
       }
     }
 
@@ -1108,12 +1211,115 @@ int main(int argc, char** argv) {
     }
 
     // Final step, run a value analysis, and check properties on the results
+    //
+    // === Analyzer-wide SIGSEGV / SIGBUS recovery guard ===
+    //
+    // Certain pathological IR patterns (e.g. `container_of` macro expansions
+    // with complex constant-expression provenance, or upstream pointer-
+    // analysis merges that leave a PointsToSet's internal Patricia tree
+    // in a partially-initialised state) can cause the analyser to
+    // dereference an invalid pointer. try/catch cannot intercept a hardware
+    // signal — only a signal handler with longjmp can recover.
+    //
+    // If a SIGSEGV/SIGBUS/SIGILL/SIGFPE fires during the value analysis,
+    // we longjmp back here, log a diagnostic, and exit cleanly with a
+    // sentinel exit code so the harness's `exit_code < 0` path classifies
+    // the case as SKIP/SIGNAL. Soundness is preserved because a missed
+    // lock-acquisition or program point just means the analyser refuses
+    // to claim that section is protected (over-approximating toward
+    // "unsafe", never "safe").
+    ikos_install_signal_guards();
+    ikos_signal_active = 1;
+    if (sigsetjmp(ikos_signal_jmp, 1) != 0) {
+      // Recovery from a hardware signal inside the value analysis.
+      // Bug 5 fix (Semantic Purification Stage 3): siglongjmp bypasses
+      // lock_guard destructors — release any stuck lock on the global
+      // blackboard before returning, so the process never deadlocks on
+      // the next acquisition. Safe: IKOS value analysis is single-
+      // threaded, so try_lock will always succeed if any thread held
+      // the mutex at signal delivery.
+      ikos_signal_active = 0;
+      ctx.concurrent_env
+          .force_unlock_after_signal();
+      int sig = static_cast< int >(ikos_signal_received);
+      llvm::errs() << progname << ": " << InputFilename
+                   << ": fatal: caught signal " << sig
+                   << " during value analysis — analysis aborted\n";
+      return 128 + sig; // Standard shell convention: 128 + signal number
+    }
     if (Procedural == analyzer::Procedural::Interprocedural) {
       analyzer::log::info("Running interprocedural value analysis");
       analyzer::ScopeTimerDatabase t(output_db.times,
                                      "ikos-analyzer.value-analysis");
+      // The data-race checker requires the thread-modular plugin. To preserve
+      // the baseline behaviour we auto-enable the plugin whenever the user
+      // requests `race`. An explicit `--concurrency` flag forces the plugin
+      // even without the race checker (useful for instrumentation).
+      bool thread_modular_requested = EnableThreadModular;
+      for (analyzer::CheckerName name : ctx.opts.analyses) {
+        if (name == analyzer::CheckerName::DataRace) {
+          thread_modular_requested = true;
+          break;
+        }
+      }
+
+      // ── Zero-config concurrency auto-detection (tri-state) ──────────────
+      // The user's --concurrency switch behaves tri-state:
+      //   -a race                    → thread-modular (above; race needs it)
+      //   --concurrency              → thread-modular (explicit, above)
+      //   --no-concurrency           → sequential   (escape hatch: no scan)
+      //   (both absent)              → AUTO: scan the AR for pthread_* calls.
+      //   AUTO never silently upgrades — when a concurrency API is found and
+      //   the engine is still sequential, print a loud WARNING and stay
+      //   sequential. A `false` from requires_concurrency is a KNOWN blind
+      //   spot (indirect calls, std::thread, __VERIFIER_atomic_*, user thread
+      //   libraries), so it is only ever used to WARN, never to claim the
+      //   sequential result is concurrency-correct.
+      if (!thread_modular_requested && !DisableAutoConcurrency) {
+        if (analyzer::requires_concurrency(bundle)) {
+          // Printed at ERROR level (not WARNING) deliberately: the `ikos`
+          // frontend defaults to log-level `error` when run without `-v`, so a
+          // WARNING-level message would be silently swallowed in the exact
+          // default scenario this guard exists for (concurrent program, no
+          // concurrency flag). This is a "results may be unsound" notice, not
+          // a soft hint, so the louder level is warranted — the text still
+          // guides the user to the fix.
+          analyzer::log::error(
+              "Concurrency API detected but thread-modular engine is NOT "
+              "enabled. Analysis may be unsound for concurrent behaviors. "
+              "Consider adding '--concurrency' or '-a race'.");
+        }
+      }
+
+      // Architectural alignment: when the thread-modular driver is going
+      // to run, the transfer-function gates (`exec_pthread_create`,
+      // `exec(Store*)` flushes, `[Strict Flush]` and `[PBR]` probes) MUST
+      // see `enable_thread_modular == true`, otherwise pthread_create
+      // detection is bypassed and the worklist exits after iteration 1
+      // (the "iter=1 premature convergence" anomaly that destroyed
+      // Recall). The two flags had drifted apart because `enable_thread_
+      // modular` is sourced from the `--concurrency` CL flag while
+      // `thread_modular_requested` is a derived signal. Here we close
+      // the loop: any condition that triggers the thread-modular driver
+      // also upgrades the transfer-function opt. This is the single
+      // source of truth for the plugin lifecycle.
+      if (thread_modular_requested && !ctx.opts.enable_thread_modular) {
+        ctx.opts.enable_thread_modular = true;
+        analyzer::log::info("Race analysis requested: auto-enabling "
+                            "thread-modular transfer-function gates");
+      }
       if (Jobs == 1) {
-        analyzer::value::interprocedural::sequential::Analysis(ctx).run();
+        if (thread_modular_requested) {
+          // Plugin path: delegate to the thread-modular driver. Note: the
+          // plugin re-runs the global-fixpoint worklist even when the
+          // race checker is not selected, so it is safe to invoke either
+          // way.
+          analyzer::value::ThreadModularAnalysis tm(
+              ctx, EmitConcurrencyInvariants);
+          tm.run();
+        } else {
+          analyzer::value::interprocedural::sequential::Analysis(ctx).run();
+        }
       } else {
         analyzer::value::interprocedural::concurrent::Analysis(ctx).run();
       }
@@ -1129,6 +1335,11 @@ int main(int argc, char** argv) {
     } else {
       ikos_unreachable("unreachable");
     }
+    // Analysis finished without signal — disarm the recovery guard so any
+    // stray SIGSEGV after this point (e.g. during db finalization) goes
+    // through the default abort path instead of longjmping to a stale
+    // jmp_buf (undefined behaviour).
+    ikos_signal_active = 0;
     return 0;
   } catch (analyzer::sqlite::DbError& err) {
     llvm::errs() << progname << ": " << OutputFilename

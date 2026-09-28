@@ -128,7 +128,7 @@ PointerAlignmentChecker::CheckResult PointerAlignmentChecker::check_alignment(
     ar::Value* operand,
     uint64_t alignment_req,
     const value::AbstractDomain& inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg =
             this->display_alignment_check(Result::Unreachable, stmt, operand)) {
@@ -140,7 +140,7 @@ PointerAlignmentChecker::CheckResult PointerAlignmentChecker::check_alignment(
   const ScalarLit& ptr = this->_lit_factory.get_scalar(operand);
 
   if (ptr.is_undefined() || (ptr.is_pointer_var() &&
-                             inv.normal().uninit_is_uninitialized(ptr.var()))) {
+                             inv.first().normal().uninit_is_uninitialized(ptr.var()))) {
     // Undefined operand
     if (auto msg =
             this->display_alignment_check(Result::Error, stmt, operand)) {
@@ -150,7 +150,7 @@ PointerAlignmentChecker::CheckResult PointerAlignmentChecker::check_alignment(
   }
 
   if (ptr.is_null() ||
-      (ptr.is_pointer_var() && inv.normal().nullity_is_null(ptr.var()))) {
+      (ptr.is_pointer_var() && inv.first().normal().nullity_is_null(ptr.var()))) {
     // Null operand
     if (auto msg =
             this->display_alignment_check(Result::Error, stmt, operand)) {
@@ -176,7 +176,7 @@ PointerAlignmentChecker::CheckResult PointerAlignmentChecker::check_alignment(
   Variable* ptr_var = ptr.var();
 
   // Points-to set of the pointer
-  PointsToSet addrs = inv.normal().pointer_to_points_to(ptr_var);
+  PointsToSet addrs = inv.first().normal().pointer_to_points_to(ptr_var);
 
   if (auto gv = dyn_cast< ar::GlobalVariable >(operand)) {
     addrs = PointsToSet{_ctx.mem_factory->get_global(gv)};
@@ -201,7 +201,7 @@ PointerAlignmentChecker::CheckResult PointerAlignmentChecker::check_alignment(
   }
 
   Congruence alignment_req_c = to_congruence(alignment_req, 0);
-  Congruence offset_c = inv.normal().pointer_offset_to_congruence(ptr_var);
+  Congruence offset_c = inv.first().normal().pointer_offset_to_congruence(ptr_var);
 
   if (isa< ar::GlobalVariable >(operand)) {
     offset_c = to_congruence(0, 0);

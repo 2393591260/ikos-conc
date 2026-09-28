@@ -121,6 +121,11 @@ void AnalysisOptions::save(SettingsTable& table) {
   table.insert("hardware-addresses",
                hardware_addresses_str(this->hardware_addresses));
 
+  table.insert("enable-thread-modular", this->enable_thread_modular);
+
+  table.insert("emit-concurrency-invariants",
+               this->emit_concurrency_invariants);
+
   if (this->argc) {
     table.insert("argc", std::to_string(*this->argc));
   }

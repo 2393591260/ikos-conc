@@ -210,6 +210,7 @@ add_executable(ikos-analyzer
   src/analysis/value/interprocedural/sequential/function_fixpoint.cpp
   src/analysis/value/interprocedural/sequential/global_init_fixpoint.cpp
   src/analysis/value/interprocedural/sequential/progress.cpp
+  src/analysis/value/thread_modular.cpp
   src/analysis/value/intraprocedural/concurrent/analysis.cpp
   src/analysis/value/intraprocedural/concurrent/function_fixpoint.cpp
   src/analysis/value/intraprocedural/sequential/analysis.cpp
@@ -245,6 +246,7 @@ add_executable(ikos-analyzer
   src/checker/debug.cpp
   src/checker/division_by_zero.cpp
   src/checker/double_free.cpp
+  src/checker/data_race.cpp
   src/checker/function_call.cpp
   src/checker/int_overflow_base.cpp
   src/checker/memory_watch.cpp

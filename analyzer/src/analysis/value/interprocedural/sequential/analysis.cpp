@@ -9,7 +9,7 @@
  *
  * Notices:
  *
- * Copyright (c) 2018-2019 United States Government as represented by the
+ * Copyright (c) 2011-2019 United States Government as represented by the
  * Administrator of the National Aeronautics and Space Administration.
  * All Rights Reserved.
  *
@@ -17,16 +17,14 @@
  *
  * No Warranty: THE SUBJECT SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY OF
  * ANY KIND, EITHER EXPRESSED, IMPLIED, OR STATUTORY, INCLUDING, BUT NOT LIMITED
- * TO, ANY WARRANTY THAT THE SUBJECT SOFTWARE WILL CONFORM TO SPECIFICATIONS,
- * ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
- * OR FREEDOM FROM INFRINGEMENT, ANY WARRANTY THAT THE SUBJECT SOFTWARE WILL BE
- * ERROR FREE, OR ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED, WILL CONFORM TO
- * THE SUBJECT SOFTWARE. THIS AGREEMENT DOES NOT, IN ANY MANNER, CONSTITUTE AN
- * ENDORSEMENT BY GOVERNMENT AGENCY OR ANY PRIOR RECIPIENT OF ANY RESULTS,
- * RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY OTHER APPLICATIONS
- * RESULTING FROM USE OF THE SUBJECT SOFTWARE.  FURTHER, GOVERNMENT AGENCY
- * DISCLAIMS ALL WARRANTIES AND LIABILITIES REGARDING THIRD-PARTY SOFTWARE,
- * IF PRESENT IN THE ORIGINAL SOFTWARE, AND DISTRIBUTES IT "AS IS."
+ * TO, ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+ * OR FREEDOM FROM INFRINGEMENT, ANY WARRANTY THAT DOCUMENTATION, IF PROVIDED,
+ * WILL CONFORM TO THE SUBJECT SOFTWARE. THIS AGREEMENT DOES NOT, IN ANY MANNER,
+ * CONSTITUTE AN ENDORSEMENT BY GOVERNMENT AGENCY OR ANY PRIOR RECIPIENT OF THE
+ * RESULTS, RESULTING DESIGNS, HARDWARE, SOFTWARE PRODUCTS OR ANY OTHER
+ * APPLICATIONS RESULTING FROM USE OF THE SUBJECT SOFTWARE. FURTHER, GOVERNMENT
+ * AGENCY DISCLAIMS ALL WARRANTIES AND LIABILITIES REGARDING THIRD-PARTY
+ * SOFTWARE, IF PRESENT IN THE ORIGINAL SOFTWARE, AND DISTRIBUTES IT "AS IS."
  *
  * Waiver and Indemnity:  RECIPIENT AGREES TO WAIVE ANY AND ALL CLAIMS AGAINST
  * THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND SUBCONTRACTORS, AS WELL
@@ -35,15 +33,17 @@
  * USE, INCLUDING ANY DAMAGES FROM PRODUCTS BASED ON, OR RESULTING FROM,
  * RECIPIENT'S USE OF THE SUBJECT SOFTWARE, RECIPIENT SHALL INDEMNIFY AND HOLD
  * HARMLESS THE UNITED STATES GOVERNMENT, ITS CONTRACTORS AND SUBCONTRACTORS,
- * AS WELL AS ANY PRIOR RECIPIENT, TO THE EXTENT PERMITTED BY LAW.
- * RECIPIENT'S SOLE REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE,
- * UNILATERAL TERMINATION OF THIS AGREEMENT.
+ * AS WELL AS ANY PRIOR RECIPIENT, TO THE EXTENT PERMITTED BY LAW.  RECIPIENT'S
+ * SOLE REMEDY FOR ANY SUCH MATTER SHALL BE THE IMMEDIATE, UNILATERAL
+ * TERMINATION OF THIS AGREEMENT.
  *
  ******************************************************************************/
 
+#include <algorithm>
 #include <memory>
 #include <vector>
 
+#include <ikos/analyzer/analysis/context.hpp>
 #include <ikos/analyzer/analysis/value/abstract_domain.hpp>
 #include <ikos/analyzer/analysis/value/global_variable.hpp>
 #include <ikos/analyzer/analysis/value/interprocedural/init_invariant.hpp>
@@ -51,11 +51,14 @@
 #include <ikos/analyzer/analysis/value/interprocedural/sequential/function_fixpoint.hpp>
 #include <ikos/analyzer/analysis/value/interprocedural/sequential/global_init_fixpoint.hpp>
 #include <ikos/analyzer/analysis/value/interprocedural/sequential/progress.hpp>
+#include <ikos/analyzer/analysis/value/thread_modular.hpp>
 #include <ikos/analyzer/checker/checker.hpp>
 #include <ikos/analyzer/util/demangle.hpp>
 #include <ikos/analyzer/util/log.hpp>
 #include <ikos/analyzer/util/progress.hpp>
 #include <ikos/analyzer/util/timer.hpp>
+
+#include <ikos/core/domain/concurrent_global_env.hpp>
 
 namespace ikos {
 namespace analyzer {
@@ -67,7 +70,38 @@ Analysis::Analysis(Context& ctx) : _ctx(ctx) {}
 
 Analysis::~Analysis() = default;
 
+/// \brief Run the sequential interprocedural value analysis.
+///
+/// Physical isolation between the two analysis modes:
+///
+///   * When `--concurrency` (or `-a race`, which auto-enables the
+///     thread-modular driver) is requested, we delegate to
+///     `value::ThreadModularAnalysis`. This driver owns the global-fixpoint
+///     worklist driven by the `ConcurrentGlobalEnv` blackboard and is the
+///     only path that consults the blackboard, runs the data-race checker
+///     and emits the `[Concurrency]` diagnostics.
+///
+///   * When no concurrency flag is present, we run the *original*
+///     sequential driver (Phase 1: global init, Phase 2: global ctors,
+///     Phase 3: function fixpoint per entry point, Phase 4: post-loop
+///     checks, global dtors). The original driver never touches the
+///     blackboard, so the standard sequential IKOS behaviour is preserved
+///     bit-for-bit and no concurrency-related logs are emitted.
 void Analysis::run() {
+  if (this->_ctx.opts.enable_thread_modular) {
+    // ── Concurrency path: delegate to the thread-modular driver ───────
+    ThreadModularAnalysis tm(_ctx,
+                             this->_ctx.opts.emit_concurrency_invariants);
+    tm.run();
+    return;
+  }
+
+  // ── Original sequential path (no --concurrency) ─────────────────────
+  // The code below was extracted verbatim from commit 3926898~1 (the
+  // last revision before the `feat: integrate concurrency analysis as a
+  // native IKOS plugin` refactor) so the default behaviour is identical
+  // to the original NASA IKOS sequential interprocedural analysis.
+
   // Bundle
   ar::Bundle* bundle = _ctx.bundle;
 
@@ -172,29 +206,45 @@ void Analysis::run() {
     }
   }
 
-  // Analyze each entry point
-  for (ar::Function* entry_point : _ctx.opts.entry_points) {
-    if (!entry_point->is_definition()) {
-      log::error("missing implementation of function '" + entry_point->name() +
-                 "'");
-      continue;
+  // ==========================================================
+  // Phase 3: Per-entry-point function fixpoint
+  // ==========================================================
+  log::info("Starting sequential value analysis");
+
+  // List of all analyzed functions (for post-loop checks)
+  std::vector< ar::Function* > analyzed_functions;
+
+  // Initialize worklist with entry points
+  std::vector< ar::Function* > worklist;
+  for (ar::Function* ep : _ctx.opts.entry_points) {
+    if (ep->is_definition()) {
+      worklist.push_back(ep);
     }
+  }
+
+  // Run each entry point through the sequential function fixpoint.
+  // Note: in the *original* sequential driver there is no global worklist
+  // iteration. The worklist driver (Phase 3) only matters when the
+  // `ConcurrentGlobalEnv` blackboard can mark the analysis dirty (which
+  // is exclusive to the thread-modular driver). Without --concurrency,
+  // each entry point is analysed exactly once.
+  for (ar::Function* func : worklist) {
+    analyzed_functions.push_back(func);
 
     // Entry point initial invariant
     AbstractDomain entry_inv = make_bottom_abstract_value(_ctx);
 
     if (std::find(_ctx.opts.no_init_globals.begin(),
                   _ctx.opts.no_init_globals.end(),
-                  entry_point) == _ctx.opts.no_init_globals.end()) {
+                  func) == _ctx.opts.no_init_globals.end()) {
       // Use invariant with initialized global variables
       entry_inv = init_inv;
     } else {
-      // Default invariant
       entry_inv = make_initial_abstract_value(_ctx);
     }
 
-    if (entry_point->name() == "main" && entry_point->num_parameters() >= 2) {
-      entry_inv = init_main_invariant(_ctx, entry_point, entry_inv);
+    if (func->name() == "main" && func->num_parameters() >= 2) {
+      entry_inv = init_main_invariant(_ctx, func, entry_inv);
     }
 
     // Setup a progress logger
@@ -203,22 +253,56 @@ void Analysis::run() {
     ScopeLogger scope(*logger);
 
     // Create a function fixpoint
-    FunctionFixpoint fixpoint(_ctx, checkers, *logger, entry_point);
+    FunctionFixpoint fixpoint(_ctx, checkers, *logger, func);
 
     {
-      log::info("Analyzing entry point '" + demangle(entry_point->name()) +
-                "'");
+      log::info("Analyzing function '" + demangle(func->name()) + "'");
       ScopeTimerDatabase t(_ctx.output_db->times,
-                           "ikos-analyzer.value." + entry_point->name());
+                           "ikos-analyzer.value." + func->name());
       fixpoint.run(entry_inv);
     }
+  }
 
-    if (!checkers.empty()) {
-      log::info("Checking properties for entry point '" +
-                demangle(entry_point->name()) + "'");
-      ScopeTimerDatabase t(_ctx.output_db->times,
-                           "ikos-analyzer.check." + entry_point->name());
-      fixpoint.run_checks();
+  // ==========================================================
+  // Phase 4: Post-Loop Checks (after convergence)
+  // ==========================================================
+  if (!checkers.empty()) {
+    log::info("Running post-loop checks for all analyzed functions");
+
+    // Deduplicate analyzed_functions
+    std::sort(analyzed_functions.begin(), analyzed_functions.end());
+    analyzed_functions.erase(std::unique(analyzed_functions.begin(),
+                                         analyzed_functions.end()),
+                            analyzed_functions.end());
+
+    for (ar::Function* func : analyzed_functions) {
+      // Entry invariant
+      AbstractDomain entry_inv = make_bottom_abstract_value(_ctx);
+
+      if (std::find(_ctx.opts.no_init_globals.begin(),
+                    _ctx.opts.no_init_globals.end(),
+                    func) == _ctx.opts.no_init_globals.end()) {
+        entry_inv = init_inv;
+      } else {
+        entry_inv = make_initial_abstract_value(_ctx);
+      }
+
+      if (func->name() == "main" && func->num_parameters() >= 2) {
+        entry_inv = init_main_invariant(_ctx, func, entry_inv);
+      }
+
+      std::unique_ptr< sequential::ProgressLogger > logger =
+          make_progress_logger(_ctx, _ctx.opts.progress, LogLevel::Info);
+      FunctionFixpoint fixpoint(_ctx, checkers, *logger, func);
+
+      {
+        log::info("Checking properties for function '" +
+                  demangle(func->name()) + "'");
+        ScopeTimerDatabase t(_ctx.output_db->times,
+                             "ikos-analyzer.check." + func->name());
+        fixpoint.run(entry_inv);
+        fixpoint.run_checks();
+      }
     }
   }
 

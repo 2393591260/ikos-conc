@@ -167,6 +167,14 @@ def parse_arguments(argv):
                                          args.default_procedurality),
                           choices=args.choices(args.proceduralities),
                           default=args.default_procedurality)
+    analysis.add_argument('--concurrency',
+                          dest='concurrency',
+                          metavar='',
+                          help=args.help('Concurrency engine mode:',
+                                         args.concurrency_modes,
+                                         args.default_concurrency),
+                          choices=args.choices(args.concurrency_modes),
+                          default=args.default_concurrency)
     analysis.add_argument('-j', '--jobs',
                           dest='jobs',
                           metavar='',
@@ -665,6 +673,10 @@ def clang_ikos_flags():
         # see https://bugs.llvm.org/show_bug.cgi?id=35950#c10
         '-Xclang',
         '-disable-O0-optnone',
+        # emit bodies of C99 `inline` (external-linkage) functions; at -O0
+        # clang otherwise DROPS their definitions, so any access nested in
+        # an inline helper is lost to the analysis (39_rand_lock_p0_vs-b.c).
+        '-fgnu89-inline',
     ]
 
 
@@ -716,7 +728,8 @@ def clang(
     subprocess.check_call(cmd)
 
 
-def ikos_pp(pp_path, bc_path, entry_points, opt_level, inline_all, verify):
+def ikos_pp(pp_path, bc_path, entry_points, opt_level, inline_all, verify,
+            freeze_undef=False):
     if opt_level == 'aggressive':
         log.warning('Using aggressive optimizations is not recommended')
         log.warning('The translation from LLVM bitcode to AR might fail')
@@ -727,6 +740,11 @@ def ikos_pp(pp_path, bc_path, entry_points, opt_level, inline_all, verify):
 
     if inline_all:
         cmd.append('-inline-all')
+
+    # Race detection needs uninitialized reads modeled as a nondet value, not
+    # `undef` (which the analyzer would treat as a dead path — hiding races).
+    if freeze_undef:
+        cmd.append('-freeze-undef')
 
     if not verify:
         cmd.append('-no-verify')
@@ -774,6 +792,14 @@ def ikos_analyzer(db_path, pp_path, opt):
             '-widening-strategy=%s' % opt.widening_strategy,
             '-widening-delay=%d' % opt.widening_delay,
             '-widening-period=%d' % opt.widening_period]
+
+    # concurrency engine mode: map the tri-state switch to the backend flags.
+    # 'auto' (default) passes nothing so the backend's zero-config scan runs;
+    # 'on' forces the thread-modular engine; 'off' is the escape hatch.
+    if opt.concurrency == 'on':
+        cmd.append('--concurrency')
+    elif opt.concurrency == 'off':
+        cmd.append('--no-concurrency')
 
     if opt.narrowing_strategy == 'auto':
         if opt.domain in domains_without_narrowing:
@@ -1005,7 +1031,8 @@ def main(argv):
         with stats.timer('ikos-pp'):
             ikos_pp(pp_path, input_path,
                     opt.entry_points, opt.opt_level,
-                    opt.inline_all, not opt.no_bc_verify)
+                    opt.inline_all, not opt.no_bc_verify,
+                    'race' in opt.analyses)
     except subprocess.CalledProcessError as e:
         printf('%s: error while preprocessing llvm bitcode, abort.\n',
                progname, file=sys.stderr)

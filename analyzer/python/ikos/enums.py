@@ -115,6 +115,7 @@ class CheckKind:
     FUNCTION_CALL = auto()
     _END_FUNCTION_CALL = auto()
     FREE = auto()
+    DATA_RACE = auto()
 
     SHORT_NAME_LIST = [
         'unreachable',
@@ -157,6 +158,7 @@ class CheckKind:
         'function-call',
         'end-function-call',
         'free',
+        'data-race',
     ]
 
     @classmethod
@@ -204,6 +206,7 @@ class CheckKind:
         'function call',
         'end function call',
         'free',
+        'data race',
     ]
 
     @classmethod
@@ -229,6 +232,7 @@ class CheckerName:
     DOUBLE_FREE = auto()
     DEBUG = auto()
     MEMORY_WATCH = auto()
+    DATA_RACE = auto()
 
     SHORT_NAME_LIST = [
         'boa',
@@ -248,6 +252,7 @@ class CheckerName:
         'dfa',
         'dbg',
         'watch',
+        'race',
     ]
     SHORT_NAME_MAP = {v: k for k, v in enumerate(SHORT_NAME_LIST)}
 

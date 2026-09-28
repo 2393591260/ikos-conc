@@ -43,6 +43,9 @@
  *
  ******************************************************************************/
 
+#include <atomic>
+#include <cstdint>
+
 #include <boost/thread/locks.hpp>
 
 #include <ikos/analyzer/analysis/memory_location.hpp>
@@ -51,9 +54,26 @@
 namespace ikos {
 namespace analyzer {
 
+namespace {
+
+/// \brief Global monotonic counter for MemoryLocation stable ids.
+///
+/// Function-local static guarantees thread-safe initialization; the counter
+/// itself is atomic so concurrent MemoryFactory accesses (see the shared
+/// mutexes on the factory maps) never collide. Ids are therefore unique and,
+/// crucially, INDEPENDENT of the object's heap address (ASLR-stable).
+std::atomic< std::uint64_t >& stable_id_counter() {
+  static std::atomic< std::uint64_t > counter{0};
+  return counter;
+}
+
+} // end anonymous namespace
+
 // MemoryLocation
 
-MemoryLocation::MemoryLocation(MemoryLocationKind kind) : _kind(kind) {}
+MemoryLocation::MemoryLocation(MemoryLocationKind kind)
+    : _kind(kind),
+      _stable_id(stable_id_counter().fetch_add(1, std::memory_order_relaxed)) {}
 
 MemoryLocation::~MemoryLocation() = default;
 
@@ -131,6 +151,15 @@ LibcErrnoMemoryLocation::LibcErrnoMemoryLocation()
 
 void LibcErrnoMemoryLocation::dump(std::ostream& o) const {
   o << "libc.errno";
+}
+
+// LibcStateMemoryLocation
+
+LibcStateMemoryLocation::LibcStateMemoryLocation()
+    : MemoryLocation(LibcStateMemoryKind) {}
+
+void LibcStateMemoryLocation::dump(std::ostream& o) const {
+  o << "libc.state";
 }
 
 // DynAllocMemoryLocation
@@ -262,6 +291,13 @@ LibcErrnoMemoryLocation* MemoryFactory::get_libc_errno() {
   return this->_libc_errno.get();
 }
 
+LibcStateMemoryLocation* MemoryFactory::get_libc_state() {
+  std::call_once(this->_libc_state_once, [this]() {
+    this->_libc_state = std::make_unique< LibcStateMemoryLocation >();
+  });
+  return this->_libc_state.get();
+}
+
 DynAllocMemoryLocation* MemoryFactory::get_dyn_alloc(ar::CallBase* call,
                                                      CallContext* context) {
   {
@@ -274,11 +310,9 @@ DynAllocMemoryLocation* MemoryFactory::get_dyn_alloc(ar::CallBase* call,
 
   auto ml = std::make_unique< DynAllocMemoryLocation >(call, context);
 
-  {
-    boost::unique_lock< boost::shared_mutex > lock(this->_dyn_alloc_mutex);
-    auto res = this->_dyn_alloc_map.try_emplace({call, context}, std::move(ml));
-    return res.first->second.get();
-  }
+  boost::unique_lock< boost::shared_mutex > lock(this->_dyn_alloc_mutex);
+  auto res = this->_dyn_alloc_map.try_emplace({call, context}, std::move(ml));
+  return res.first->second.get();
 }
 
 } // end namespace analyzer

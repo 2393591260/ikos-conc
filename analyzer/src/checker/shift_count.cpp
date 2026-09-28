@@ -85,7 +85,7 @@ void ShiftCountChecker::check(ar::Statement* stmt,
 
 ShiftCountChecker::CheckResult ShiftCountChecker::check_shift_count(
     ar::BinaryOperation* stmt, const value::AbstractDomain& inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg = this->display_shift_count_check(Result::Unreachable, stmt)) {
       *msg << "\n";
@@ -98,7 +98,7 @@ ShiftCountChecker::CheckResult ShiftCountChecker::check_shift_count(
   auto shift_count_interval = IntInterval::bottom(1, Signed);
   if (shift_count.is_undefined() ||
       (shift_count.is_machine_int_var() &&
-       inv.normal().uninit_is_uninitialized(shift_count.var()))) {
+       inv.first().normal().uninit_is_uninitialized(shift_count.var()))) {
     if (auto msg = this->display_shift_count_check(Result::Error, stmt)) {
       *msg << ": undefined shift count\n";
     }
@@ -106,7 +106,7 @@ ShiftCountChecker::CheckResult ShiftCountChecker::check_shift_count(
   } else if (shift_count.is_machine_int()) {
     shift_count_interval = IntInterval(shift_count.machine_int());
   } else if (shift_count.is_machine_int_var()) {
-    shift_count_interval = inv.normal().int_to_interval(shift_count.var());
+    shift_count_interval = inv.first().normal().int_to_interval(shift_count.var());
   } else {
     log::error("unexpected shit count operand");
     return {CheckKind::UnexpectedOperand, Result::Error, {}};

@@ -162,6 +162,10 @@ enum class CheckKind {
   /// \brief Check for a memory deallocation (e.g, free)
   Free,
 
+  /// \brief Check for a data race on a memory access (unsynchronized
+  /// concurrent read/write across threads)
+  DataRace,
+
 };
 
 } // end namespace analyzer

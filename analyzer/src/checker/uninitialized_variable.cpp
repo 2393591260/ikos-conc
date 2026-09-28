@@ -61,7 +61,7 @@ const char* UninitializedVariableChecker::description() const {
 void UninitializedVariableChecker::check(ar::Statement* stmt,
                                          const value::AbstractDomain& inv,
                                          CallContext* call_context) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement is unreachable
     // No checks
     return;
@@ -152,7 +152,7 @@ boost::optional< Result > UninitializedVariableChecker::check_initialized(
     return Result::Ok;
   } else if (auto iv = dyn_cast< ar::InternalVariable >(operand)) {
     Variable* var = _ctx.var_factory->get_internal(iv);
-    core::Uninitialized uninit = inv.normal().uninit_to_uninitialized(var);
+    core::Uninitialized uninit = inv.first().normal().uninit_to_uninitialized(var);
 
     if (uninit.is_uninitialized()) {
       return Result::Error;

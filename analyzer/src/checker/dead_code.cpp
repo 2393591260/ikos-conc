@@ -75,7 +75,7 @@ void DeadCodeChecker::check(ar::Statement* stmt,
   }
 
   Result result =
-      inv.is_normal_flow_bottom() ? Result::Unreachable : Result::Ok;
+      inv.first().is_normal_flow_bottom() ? Result::Unreachable : Result::Ok;
   this->display_dead_code_check(result, stmt);
   this->display_invariant(result, stmt, inv);
   this->_checks.insert(CheckKind::Unreachable,

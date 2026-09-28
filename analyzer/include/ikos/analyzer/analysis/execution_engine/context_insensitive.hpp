@@ -102,7 +102,7 @@ public:
     this->exec(cast< ar::CallBase >(s));
 
     // Exceptions aren't caught, propagate them
-    this->_engine.inv().merge_caught_in_propagated_exceptions();
+    NumericalExecutionEngineT::data_of(this->_engine.inv()).merge_caught_in_propagated_exceptions();
   }
 
   /// \brief Execute an Invoke statement

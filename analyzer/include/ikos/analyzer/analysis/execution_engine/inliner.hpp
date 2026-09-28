@@ -56,6 +56,7 @@
 #include <ikos/analyzer/analysis/execution_engine/fixpoint_cache.hpp>
 #include <ikos/analyzer/analysis/execution_engine/numerical.hpp>
 #include <ikos/analyzer/analysis/pointer/value.hpp>
+#include <ikos/core/domain/concurrent_global_env.hpp>
 #include <ikos/analyzer/util/demangle.hpp>
 #include <ikos/analyzer/util/log.hpp>
 
@@ -130,7 +131,7 @@ public:
     this->exec(cast< ar::CallBase >(s));
 
     // Exceptions aren't caught, propagate them
-    this->inv().merge_caught_in_propagated_exceptions();
+    NumericalExecutionEngineT::data_of(this->inv()).merge_caught_in_propagated_exceptions();
   }
 
   /// \brief Execute an Invoke statement
@@ -149,9 +150,9 @@ private:
 
   /// \brief Execute any call statement
   void exec(ar::CallBase* call) {
-    this->inv().normal().normalize();
+    NumericalExecutionEngineT::data_of(this->inv()).normal().normalize();
 
-    if (this->inv().is_normal_flow_bottom()) {
+    if (NumericalExecutionEngineT::data_of(this->inv()).is_normal_flow_bottom()) {
       return;
     }
 
@@ -163,11 +164,11 @@ private:
 
     if (isa< ar::UndefinedConstant >(called)) {
       // Call on undefined pointer: error
-      this->inv().set_normal_flow_to_bottom();
+      NumericalExecutionEngineT::data_of(this->inv()).set_normal_flow_to_bottom();
       return;
     } else if (isa< ar::NullConstant >(called)) {
       // Call on null pointer: error
-      this->inv().set_normal_flow_to_bottom();
+      NumericalExecutionEngineT::data_of(this->inv()).set_normal_flow_to_bottom();
       return;
     } else if (auto cst = dyn_cast< ar::FunctionPointerConstant >(called)) {
       callees = {_ctx.mem_factory->get_function(cst->function())};
@@ -177,38 +178,64 @@ private:
       return;
     } else if (isa< ar::GlobalVariable >(called)) {
       // Call to global variable: error
-      this->inv().set_normal_flow_to_bottom();
+      NumericalExecutionEngineT::data_of(this->inv()).set_normal_flow_to_bottom();
       return;
     } else if (isa< ar::LocalVariable >(called)) {
       // Call to local variable: error
-      this->inv().set_normal_flow_to_bottom();
+      NumericalExecutionEngineT::data_of(this->inv()).set_normal_flow_to_bottom();
       return;
     } else if (auto ptr = dyn_cast< ar::InternalVariable >(called)) {
       // Indirect call through a function pointer
       Variable* ptr_var = _ctx.var_factory->get_internal(ptr);
 
       // Assert `ptr != null`
-      this->inv().normal().nullity_assert_non_null(ptr_var);
+      NumericalExecutionEngineT::data_of(this->inv()).normal().nullity_assert_non_null(ptr_var);
 
       // Reduction between value and pointer analysis
       const PointerInfo* pointer_info = this->_engine.pointer_info();
       if (pointer_info != nullptr) {
         PointsToSet points_to = pointer_info->get(ptr_var).points_to();
-
         // Pointer analysis and value analysis can be inconsistent
         if (!points_to.is_bottom() && !points_to.is_top()) {
-          this->inv().normal().pointer_refine(ptr_var, points_to);
+          NumericalExecutionEngineT::data_of(this->inv()).normal().pointer_refine(ptr_var, points_to);
         }
       }
 
-      this->inv().normal().normalize();
+      NumericalExecutionEngineT::data_of(this->inv()).normal().normalize();
 
-      if (this->inv().is_normal_flow_bottom()) {
+      if (NumericalExecutionEngineT::data_of(this->inv()).is_normal_flow_bottom()) {
         return;
       }
 
       // Get the callees
-      callees = this->inv().normal().pointer_to_points_to(ptr_var);
+      callees = NumericalExecutionEngineT::data_of(this->inv()).normal().pointer_to_points_to(ptr_var);
+
+      // FS+FI hybrid: the flow-sensitive set reflects ONLY the current
+      // thread's invariant. At a THREAD ENTRY the indirect target may
+      // have been stored by ANOTHER thread before spawn
+      // (04-mutex_27-base_rc.c: main's `f = bad` never flows into
+      // t_fun's invariant, and the FPA refine above is a meet that
+      // cannot re-add it). Join the bundle-level FPA set ONLY for
+      // pointers LOADED FROM GLOBAL memory at a thread entry;
+      // argument-passed pointers keep their flow-sensitive precision.
+      // NOTE: the engine's own pointer_info is NULL on the
+      // thread-modular path (pointer.cpp only wires it into the
+      // pointer-analysis pass's own engines). The bundle-level FPA
+      // result lives on the Context — use that.
+      const PointerInfo* pointer_info_fsfi =
+          this->_ctx.function_pointer
+              ? &this->_ctx.function_pointer->results()
+              : this->_engine.pointer_info();
+      if (pointer_info_fsfi != nullptr &&
+          _ctx.concurrent_env.is_thread_entry(
+              this->_caller.function()) &&
+          _ctx.concurrent_env.is_glob_flown(
+              ptr_var)) {
+        PointsToSet fpa = pointer_info_fsfi->get(ptr_var).points_to();
+        if (!fpa.is_bottom() && !fpa.is_top()) {
+          callees.join_with(fpa);
+        }
+      }
     } else {
       ikos_unreachable("unexpected called operand");
     }
@@ -219,7 +246,7 @@ private:
     ikos_assert(!callees.is_bottom());
     if (callees.is_empty()) {
       // Invalid pointer dereference
-      this->inv().set_normal_flow_to_bottom();
+      NumericalExecutionEngineT::data_of(this->inv()).set_normal_flow_to_bottom();
       return;
     } else if (callees.is_top()) {
       // No points-to information
@@ -235,7 +262,8 @@ private:
 
     // By default, propagate the exception states
     AbstractDomain post = this->inv();
-    post.set_normal_flow_to_bottom();
+    post.first().set_normal_flow_to_bottom();
+    post.second().set_to_bottom();
 
     // For each callee
     for (MemoryLocation* mem : callees) {
@@ -259,9 +287,9 @@ private:
         // ASSUMPTION: if this is a call to an extern non-intrinsic function,
         // treat it as a function call that has no side effects.
         NumericalExecutionEngineT engine = this->_engine.fork();
-        engine.inv().ignore_exceptions();
+        NumericalExecutionEngineT::data_of(engine.inv()).ignore_exceptions();
         engine.exec_extern_call(call, callee);
-        engine.inv().merge_propagated_in_caught_exceptions();
+        NumericalExecutionEngineT::data_of(engine.inv()).merge_propagated_in_caught_exceptions();
         post.join_with(std::move(engine.inv()));
         continue;
       }
@@ -281,7 +309,7 @@ private:
       NumericalExecutionEngineT engine = this->_engine.fork();
 
       // Do not propagate exceptions from the caller to the callee
-      engine.inv().ignore_exceptions();
+      NumericalExecutionEngineT::data_of(engine.inv()).ignore_exceptions();
 
       // Assign parameters
       engine.match_down(call, callee);
@@ -333,9 +361,9 @@ private:
       }
 
       // Merge exceptions in caught_exceptions, in case it's an invoke
-      engine.inv().merge_propagated_in_caught_exceptions();
+      NumericalExecutionEngineT::data_of(engine.inv()).merge_propagated_in_caught_exceptions();
 
-      if (engine.inv().is_normal_flow_bottom()) {
+      if (NumericalExecutionEngineT::data_of(engine.inv()).is_normal_flow_bottom()) {
         // Collect the exception states
         post.join_with(std::move(engine.inv()));
         continue;

@@ -812,6 +812,16 @@ private:
         } break;
         case ar::Intrinsic::LibcppEndCatch:
           break; // do nothing
+        case ar::Intrinsic::PthreadCreate:
+        case ar::Intrinsic::PthreadJoin:
+        case ar::Intrinsic::PthreadMutexLock:
+        case ar::Intrinsic::PthreadMutexUnlock:
+          // Thread-modular inputs carry the pthread intrinsics written
+          // by ikos-pp; the FPA (originally run only on plain
+          // Intraprocedural inputs) treats them as opaque pointer
+          // consumers: no function-pointer information flows through
+          // the mutex runtime itself.
+          break; // do nothing
         default: {
           ikos_unreachable("unreachable");
         } break;

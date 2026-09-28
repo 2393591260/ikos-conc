@@ -69,14 +69,14 @@ AbstractDomain init_main_invariant(Context& ctx,
   auto argc_type = cast< ar::IntegerType >(main->param(0)->type());
   if (ctx.opts.argc) {
     // Add `argc = ctx.opts.argc`
-    inv.normal().int_assign(argc.var(),
+    inv.first().normal().int_assign(argc.var(),
                             MachineInt(*ctx.opts.argc,
                                        argc_type->bit_width(),
                                        argc_type->sign()));
   } else {
     // Add `argc >= 0`
-    inv.normal().int_assign_nondet(argc.var());
-    inv.normal().int_add(core::machine_int::Predicate::GE,
+    inv.first().normal().int_assign_nondet(argc.var());
+    inv.first().normal().int_add(core::machine_int::Predicate::GE,
                          argc.var(),
                          MachineInt::zero(argc_type->bit_width(),
                                           argc_type->sign()));
@@ -84,7 +84,7 @@ AbstractDomain init_main_invariant(Context& ctx,
 
   // Set argv
   ArgvMemoryLocation* argv_mem_loc = ctx.mem_factory->get_argv();
-  inv.normal().pointer_assign(argv.var(),
+  inv.first().normal().pointer_assign(argv.var(),
                               argv_mem_loc,
                               core::Nullity::non_null());
 
@@ -95,7 +95,7 @@ AbstractDomain init_main_invariant(Context& ctx,
     uint64_t argv_size =
         pointer_size * (static_cast< uint64_t >(*ctx.opts.argc) + 1U);
     Variable* alloc_size_var = ctx.var_factory->get_alloc_size(argv_mem_loc);
-    inv.normal().int_assign(alloc_size_var,
+    inv.first().normal().int_assign(alloc_size_var,
                             MachineInt(argv_size,
                                        dl.pointers.bit_width,
                                        Unsigned));

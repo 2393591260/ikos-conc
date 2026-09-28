@@ -83,7 +83,7 @@ void DivisionByZeroChecker::check(ar::Statement* stmt,
 
 DivisionByZeroChecker::CheckResult DivisionByZeroChecker::check_division(
     ar::BinaryOperation* stmt, const value::AbstractDomain& inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg = this->display_division_check(Result::Unreachable, stmt)) {
       *msg << "\n";
@@ -94,7 +94,7 @@ DivisionByZeroChecker::CheckResult DivisionByZeroChecker::check_division(
   const ScalarLit& lit = this->_lit_factory.get_scalar(stmt->right());
 
   if (lit.is_undefined() || (lit.is_machine_int_var() &&
-                             inv.normal().uninit_is_uninitialized(lit.var()))) {
+                             inv.first().normal().uninit_is_uninitialized(lit.var()))) {
     // Undefined operand
     if (auto msg = this->display_division_check(Result::Error, stmt)) {
       *msg << ": undefined operand\n";
@@ -106,7 +106,7 @@ DivisionByZeroChecker::CheckResult DivisionByZeroChecker::check_division(
   if (lit.is_machine_int()) {
     divisor = IntInterval(lit.machine_int());
   } else if (lit.is_machine_int_var()) {
-    divisor = inv.normal().int_to_interval(lit.var());
+    divisor = inv.first().normal().int_to_interval(lit.var());
   } else {
     log::error("unexpected operand to binary operation");
     return {CheckKind::UnexpectedOperand, Result::Error, {}};

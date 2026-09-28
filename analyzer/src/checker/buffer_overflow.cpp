@@ -119,7 +119,7 @@ void BufferOverflowChecker::check(ar::Statement* stmt,
 
 std::vector< BufferOverflowChecker::CheckResult > BufferOverflowChecker::
     check_call(ar::CallBase* call, const value::AbstractDomain& inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg = this->display_mem_access_check(Result::Unreachable, call)) {
       *msg << "\n";
@@ -133,7 +133,7 @@ std::vector< BufferOverflowChecker::CheckResult > BufferOverflowChecker::
 
   if (called.is_undefined() ||
       (called.is_pointer_var() &&
-       inv.normal().uninit_is_uninitialized(called.var()))) {
+       inv.first().normal().uninit_is_uninitialized(called.var()))) {
     // Undefined call pointer operand
     if (auto msg = this->display_mem_access_check(Result::Error, call)) {
       *msg << ": undefined call pointer operand\n";
@@ -147,7 +147,7 @@ std::vector< BufferOverflowChecker::CheckResult > BufferOverflowChecker::
   // Check null pointer dereference
 
   if (called.is_null() ||
-      (called.is_pointer_var() && inv.normal().nullity_is_null(called.var()))) {
+      (called.is_pointer_var() && inv.first().normal().nullity_is_null(called.var()))) {
     // Null call pointer operand
     if (auto msg = this->display_mem_access_check(Result::Error, call)) {
       *msg << ": null call pointer operand\n";
@@ -175,7 +175,7 @@ std::vector< BufferOverflowChecker::CheckResult > BufferOverflowChecker::
     callees = {_ctx.mem_factory->get_local(lv)};
   } else if (isa< ar::InternalVariable >(call->called())) {
     // Indirect call through a function pointer
-    callees = inv.normal().pointer_to_points_to(called.var());
+    callees = inv.first().normal().pointer_to_points_to(called.var());
   } else {
     log::error("unexpected call pointer operand");
     return {
@@ -746,7 +746,15 @@ std::vector< BufferOverflowChecker::CheckResult > BufferOverflowChecker::
     case ar::Intrinsic::LibcppFreeException:
     case ar::Intrinsic::LibcppThrow:
     case ar::Intrinsic::LibcppBeginCatch:
-    case ar::Intrinsic::LibcppEndCatch: {
+    case ar::Intrinsic::LibcppEndCatch:
+    // Pthread intrinsics: the engine already handles the abstract
+    // semantics (lock/unlock, join, etc.); from the buffer-overflow
+    // perspective there is no memory access to check, so we return an
+    // empty result instead of falling through to `ikos_unreachable`.
+    case ar::Intrinsic::PthreadCreate:
+    case ar::Intrinsic::PthreadJoin:
+    case ar::Intrinsic::PthreadMutexLock:
+    case ar::Intrinsic::PthreadMutexUnlock: {
       return {};
     }
     default: {
@@ -761,7 +769,7 @@ BufferOverflowChecker::CheckResult BufferOverflowChecker::check_mem_access(
     ar::Value* access_size,
     Result if_null,
     value::AbstractDomain inv) {
-  if (inv.is_normal_flow_bottom()) {
+  if (inv.first().is_normal_flow_bottom()) {
     // Statement unreachable
     if (auto msg = this->display_mem_access_check(Result::Unreachable,
                                                   stmt,
@@ -778,7 +786,7 @@ BufferOverflowChecker::CheckResult BufferOverflowChecker::check_mem_access(
   // Check uninitialized
 
   if (ptr.is_undefined() || (ptr.is_pointer_var() &&
-                             inv.normal().uninit_is_uninitialized(ptr.var()))) {
+                             inv.first().normal().uninit_is_uninitialized(ptr.var()))) {
     // Undefined pointer operand
     if (auto msg = this->display_mem_access_check(Result::Error,
                                                   stmt,
@@ -791,7 +799,7 @@ BufferOverflowChecker::CheckResult BufferOverflowChecker::check_mem_access(
 
   if (size.is_undefined() ||
       (size.is_machine_int_var() &&
-       inv.normal().uninit_is_uninitialized(size.var()))) {
+       inv.first().normal().uninit_is_uninitialized(size.var()))) {
     // Undefined size operand
     if (auto msg = this->display_mem_access_check(Result::Error,
                                                   stmt,
@@ -805,7 +813,7 @@ BufferOverflowChecker::CheckResult BufferOverflowChecker::check_mem_access(
   // Check null pointer dereference
 
   if (ptr.is_null() ||
-      (ptr.is_pointer_var() && inv.normal().nullity_is_null(ptr.var()))) {
+      (ptr.is_pointer_var() && inv.first().normal().nullity_is_null(ptr.var()))) {
     // Null pointer operand
     if (auto msg = this->display_mem_access_check(if_null,
                                                   stmt,
@@ -830,7 +838,7 @@ BufferOverflowChecker::CheckResult BufferOverflowChecker::check_mem_access(
   this->init_global_ptr(inv, pointer);
 
   // Points-to set of the pointer
-  PointsToSet addrs = inv.normal().pointer_to_points_to(ptr.var());
+  PointsToSet addrs = inv.first().normal().pointer_to_points_to(ptr.var());
 
   if (addrs.is_empty()) {
     // Pointer is invalid
@@ -855,12 +863,12 @@ BufferOverflowChecker::CheckResult BufferOverflowChecker::check_mem_access(
   JsonDict info;
   JsonList points_to_info;
 
-  IntInterval offset_intv = inv.normal().pointer_offset_to_interval(ptr.var());
+  IntInterval offset_intv = inv.first().normal().pointer_offset_to_interval(ptr.var());
   info.put("offset", to_json(offset_intv));
 
   auto size_intv = IntInterval::bottom(1, Signed);
   if (size.is_machine_int_var()) {
-    size_intv = inv.normal().int_to_interval(size.var());
+    size_intv = inv.first().normal().int_to_interval(size.var());
   } else if (size.is_machine_int()) {
     size_intv = IntInterval(size.machine_int());
   } else {
@@ -870,7 +878,7 @@ BufferOverflowChecker::CheckResult BufferOverflowChecker::check_mem_access(
 
   // Variable representing the pointer offset
   Variable* offset_var = ptr.var()->offset_var();
-  inv.normal().pointer_offset_to_int(offset_var, ptr.var());
+  inv.first().normal().pointer_offset_to_int(offset_var, ptr.var());
 
   // Add a shadow variable `offset_plus_size = offset + access_size`
   Variable* offset_plus_size =
@@ -879,12 +887,12 @@ BufferOverflowChecker::CheckResult BufferOverflowChecker::check_mem_access(
 
   if (access_size->type() == this->_size_type) {
     if (size.is_machine_int_var()) {
-      inv.normal().int_apply(IntBinaryOperator::Add,
+      inv.first().normal().int_apply(IntBinaryOperator::Add,
                              offset_plus_size,
                              offset_var,
                              size.var());
     } else if (size.is_machine_int()) {
-      inv.normal().int_apply(IntBinaryOperator::Add,
+      inv.first().normal().int_apply(IntBinaryOperator::Add,
                              offset_plus_size,
                              offset_var,
                              size.machine_int());
@@ -894,15 +902,15 @@ BufferOverflowChecker::CheckResult BufferOverflowChecker::check_mem_access(
   } else {
     // This happens in LibcFgets for instance
     if (size.is_machine_int_var()) {
-      inv.normal().int_apply(IntUnaryOperator::Cast,
+      inv.first().normal().int_apply(IntUnaryOperator::Cast,
                              offset_plus_size,
                              size.var());
-      inv.normal().int_apply(IntBinaryOperator::Add,
+      inv.first().normal().int_apply(IntBinaryOperator::Add,
                              offset_plus_size,
                              offset_plus_size,
                              offset_var);
     } else if (size.is_machine_int()) {
-      inv.normal()
+      inv.first().normal()
           .int_apply(IntBinaryOperator::Add,
                      offset_plus_size,
                      offset_var,
@@ -913,7 +921,7 @@ BufferOverflowChecker::CheckResult BufferOverflowChecker::check_mem_access(
     }
   }
 
-  inv.normal().normalize();
+  inv.first().normal().normalize();
 
   if (auto element_size =
           this->is_array_access(stmt, inv, offset_intv, addrs)) {
@@ -1003,7 +1011,7 @@ BufferOverflowChecker::MemoryLocationCheckResult BufferOverflowChecker::
     // Dynamic allocated memory location
     // Check for use after free
 
-    auto lifetime = inv.normal().lifetime_to_lifetime(addr);
+    auto lifetime = inv.first().normal().lifetime_to_lifetime(addr);
 
     if (lifetime.is_deallocated()) {
       // Use after free
@@ -1034,7 +1042,7 @@ BufferOverflowChecker::MemoryLocationCheckResult BufferOverflowChecker::
     // Stack memory location
     // Check for dangling stack pointer
 
-    auto lifetime = inv.normal().lifetime_to_lifetime(addr);
+    auto lifetime = inv.first().normal().lifetime_to_lifetime(addr);
 
     if (lifetime.is_deallocated()) {
       // Access to a dangling stack pointer
@@ -1065,7 +1073,7 @@ BufferOverflowChecker::MemoryLocationCheckResult BufferOverflowChecker::
     // Checks: hardware addresses
 
     // Compute the writable interval for offset o ([o, o + access_size])
-    auto offset_plus_size_intv = inv.normal().int_to_interval(offset_plus_size);
+    auto offset_plus_size_intv = inv.first().normal().int_to_interval(offset_plus_size);
     auto one = IntInterval(MachineInt(1, offset_intv.bit_width(), Unsigned));
     auto last_byte_offset_intv = sub_no_wrap(offset_plus_size_intv, one);
     auto writable_interval = last_byte_offset_intv.join(offset_intv);
@@ -1122,7 +1130,7 @@ BufferOverflowChecker::MemoryLocationCheckResult BufferOverflowChecker::
   }
 
   // add `size` (min, max) to block_info
-  IntInterval size_intv = inv.normal().int_to_interval(size_var);
+  IntInterval size_intv = inv.first().normal().int_to_interval(size_var);
   block_info.put("size", to_json(size_intv));
 
   // add `offset + access_size - size` (min, max) to block_info
@@ -1131,19 +1139,19 @@ BufferOverflowChecker::MemoryLocationCheckResult BufferOverflowChecker::
   auto expr = IntLinearExpression(zero);
   expr.add(one, offset_plus_size);
   expr.add(-one, size_var);
-  IntInterval diff_intv = inv.normal().int_to_interval(expr);
+  IntInterval diff_intv = inv.first().normal().int_to_interval(expr);
   block_info.put("diff", to_json(diff_intv));
 
   // Checks: `offset > mem_size || offset + access_size > mem_size`
   value::AbstractDomain tmp1 = inv;
-  tmp1.normal().int_add(IntPredicate::GT, offset_var, size_var);
-  tmp1.normal().normalize();
+  tmp1.first().normal().int_add(IntPredicate::GT, offset_var, size_var);
+  tmp1.first().normal().normalize();
 
   value::AbstractDomain tmp2 = inv;
-  tmp2.normal().int_add(IntPredicate::GT, offset_plus_size, size_var);
-  tmp2.normal().normalize();
+  tmp2.first().normal().int_add(IntPredicate::GT, offset_plus_size, size_var);
+  tmp2.first().normal().normalize();
 
-  bool is_bottom = tmp1.is_normal_flow_bottom() && tmp2.is_normal_flow_bottom();
+  bool is_bottom = tmp1.first().is_normal_flow_bottom() && tmp2.first().is_normal_flow_bottom();
 
   if (is_bottom) {
     // offset_var <= size_var and offset_plus_size <= size_var, so we're
@@ -1164,10 +1172,10 @@ BufferOverflowChecker::MemoryLocationCheckResult BufferOverflowChecker::
 
   // Check: `offset <= mem_size && offset + access_size <= mem_size`
   value::AbstractDomain tmp3 = inv;
-  tmp3.normal().int_add(IntPredicate::LE, offset_var, size_var);
-  tmp3.normal().int_add(IntPredicate::LE, offset_plus_size, size_var);
-  tmp3.normal().normalize();
-  is_bottom = tmp3.is_normal_flow_bottom();
+  tmp3.first().normal().int_add(IntPredicate::LE, offset_var, size_var);
+  tmp3.first().normal().int_add(IntPredicate::LE, offset_plus_size, size_var);
+  tmp3.first().normal().normalize();
+  is_bottom = tmp3.first().is_normal_flow_bottom();
 
   if (is_bottom) {
     if (auto msg = this->display_mem_access_check(Result::Error,
@@ -1298,14 +1306,14 @@ void BufferOverflowChecker::init_global_ptr(value::AbstractDomain& inv,
   if (auto gv = dyn_cast< ar::GlobalVariable >(value)) {
     Variable* ptr = _ctx.var_factory->get_global(gv);
     MemoryLocation* addr = _ctx.mem_factory->get_global(gv);
-    inv.normal().pointer_assign(ptr, addr, core::Nullity::non_null());
-    inv.normal().normalize();
+    inv.first().normal().pointer_assign(ptr, addr, core::Nullity::non_null());
+    inv.first().normal().normalize();
   } else if (auto cst = dyn_cast< ar::FunctionPointerConstant >(value)) {
     auto fun = cst->function();
     Variable* ptr = _ctx.var_factory->get_function_ptr(fun);
     MemoryLocation* addr = _ctx.mem_factory->get_function(fun);
-    inv.normal().pointer_assign(ptr, addr, core::Nullity::non_null());
-    inv.normal().normalize();
+    inv.first().normal().pointer_assign(ptr, addr, core::Nullity::non_null());
+    inv.first().normal().normalize();
   }
 }
 
@@ -1318,16 +1326,16 @@ void BufferOverflowChecker::init_global_alloc_size(
                         gv->global_var()->type()->pointee()),
                     this->_data_layout.pointers.bit_width,
                     Unsigned);
-    inv.normal().int_assign(size_var, size);
-    inv.normal().normalize();
+    inv.first().normal().int_assign(size_var, size);
+    inv.first().normal().normalize();
   } else if (isa< FunctionMemoryLocation >(addr)) {
     MachineInt size(0, this->_data_layout.pointers.bit_width, Unsigned);
-    inv.normal().int_assign(size_var, size);
-    inv.normal().normalize();
+    inv.first().normal().int_assign(size_var, size);
+    inv.first().normal().normalize();
   } else if (isa< LibcErrnoMemoryLocation >(addr)) {
     MachineInt size(4, this->_data_layout.pointers.bit_width, Unsigned);
-    inv.normal().int_assign(size_var, size);
-    inv.normal().normalize();
+    inv.first().normal().int_assign(size_var, size);
+    inv.first().normal().normalize();
   }
 }
 
@@ -1377,7 +1385,7 @@ boost::optional< MachineInt > BufferOverflowChecker::is_array_access(
                  cast< ar::ArrayType >(type)->element_type() == access_type;
         } else if (auto dyn_alloc = dyn_cast< DynAllocMemoryLocation >(addr)) {
           AllocSizeVariable* size_var = _ctx.var_factory->get_alloc_size(addr);
-          IntInterval size_intv = inv.normal().int_to_interval(size_var);
+          IntInterval size_intv = inv.first().normal().int_to_interval(size_var);
 
           // At least >= 2 elements
           if (size_intv.ub() <= element_size) {
