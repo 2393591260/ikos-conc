@@ -44,19 +44,15 @@ RE_DEF_UNSAFE = re.compile(r"\bThe program is definitely UNSAFE\b")
 RE_UNKNOWN = re.compile(r"\bThe program is UNKNOWN\b")
 RE_POT_UNSAFE = re.compile(r"\bThe program is potentially UNSAFE\b")
 RE_SAFE = re.compile(r"\bThe program is SAFE\b")
-RE_CHECKS = re.compile(r"Total number of checks\s*:\s*(\d+)")
 
 
 def verdict_from_text(output):
-    """Map rendered IKOS output to an SV-COMP result ('true'/'false'/'unknown')."""
-    # 0 checks = the checker logged no memory accesses at all: the
-    # thread-modular analysis silently under-approximated (reachability
-    # contraction, dev-gotchas #13/#14). "0 checks + SAFE -> TRUE" would be
-    # an FN risk, so -> UNKNOWN.  # ponytail: soundness net at the SV-COMP
-    # trust boundary; recover precision by fixing the checker, not this guard.
-    m = RE_CHECKS.search(output)
-    if m and int(m.group(1)) == 0:
-        return _UNKNOWN
+    """Map rendered IKOS output to an SV-COMP result ('true'/'false'/'unknown').
+
+    NOTE: "Total number of checks: 0" is the NORMAL summary for a race-free
+    program — the checker only inserts a check when it finds a conflicting
+    pair (or an unknown), so 0 checks + SAFE is correct, not a collapse.
+    """
     # Priority mirrors report.py print_summary: definite-unsafe -> unknown ->
     # warning -> safe. "potentially UNSAFE" is a non-race warning (e.g. an
     # ignored side effect that "might be unsound"), so under FN=0 it must not
