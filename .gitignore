@@ -38,3 +38,9 @@ __pycache__
 # IKOS
 *.ar
 *.db
+verification_result.csv
+.cache/
+
+# Local tooling and external benchmark copies
+.claude.md
+clean-sv-benchmarks/

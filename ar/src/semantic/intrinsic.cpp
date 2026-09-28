@@ -515,6 +515,27 @@ FunctionType* Intrinsic::type(Bundle* bundle, ID id, Type* template_ty) {
     case LibcppEndCatch: {
       ret_ty = void_ty; // ret
     } break;
+    // <pthread.h>
+    case PthreadCreate: {
+      ret_ty = si32_ty;              // ret
+      params.push_back(void_ptr_ty); // thread
+      params.push_back(void_ptr_ty); // attr
+      params.push_back(void_ptr_ty); // start_routine
+      params.push_back(void_ptr_ty); // arg
+    } break;
+    case PthreadJoin: {
+      ret_ty = si32_ty;              // ret
+      params.push_back(void_ptr_ty); // thread handle
+      params.push_back(void_ptr_ty); // retval
+    } break;
+    case PthreadMutexLock: {
+      ret_ty = si32_ty;              // ret
+      params.push_back(void_ptr_ty); // mutex
+    } break;
+    case PthreadMutexUnlock: {
+      ret_ty = si32_ty;              // ret
+      params.push_back(void_ptr_ty); // mutex
+    } break;
     default: {
       ikos_unreachable("unreachable");
     }
@@ -782,6 +803,14 @@ std::string Intrinsic::short_name(ID id, Type* template_ty) {
       return "libcpp.begincatch";
     case LibcppEndCatch:
       return "libcpp.endcatch";
+    case PthreadCreate:
+      return "pthread.create";
+    case PthreadJoin:
+      return "pthread.join";
+    case PthreadMutexLock:
+      return "pthread.mutex.lock";
+    case PthreadMutexUnlock:
+      return "pthread.mutex.unlock";
     default:
       ikos_unreachable("unreachable");
   }

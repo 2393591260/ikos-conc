@@ -297,11 +297,13 @@ GlobalVariable::GlobalVariable(Bundle* bundle,
                                PointerType* type,
                                std::string name,
                                bool is_definition,
-                               uint64_t alignment)
+                               uint64_t alignment,
+                               bool is_thread_local)
     : Variable(GlobalVariableKind, type),
       _parent(bundle),
       _initializer(nullptr),
-      _alignment(alignment) {
+      _alignment(alignment),
+      _is_thread_local(is_thread_local) {
   ikos_assert_msg(bundle, "bundle is null");
   ikos_assert_msg(!name.empty(), "global variable name is empty");
 
@@ -320,12 +322,14 @@ GlobalVariable* GlobalVariable::create(Bundle* bundle,
                                        PointerType* type,
                                        std::string name,
                                        bool is_definition,
-                                       uint64_t alignment) {
+                                       uint64_t alignment,
+                                       bool is_thread_local) {
   GlobalVariable* gv = new GlobalVariable(bundle,
                                           type,
                                           std::move(name),
                                           is_definition,
-                                          alignment);
+                                          alignment,
+                                          is_thread_local);
   bundle->add_global_variable(std::unique_ptr< GlobalVariable >(gv));
   return gv;
 }

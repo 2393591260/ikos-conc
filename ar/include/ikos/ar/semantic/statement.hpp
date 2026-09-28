@@ -836,6 +836,17 @@ public:
 
 }; // end class PointerShift
 
+/// \brief Memory ordering of an atomic access (mirrors LLVM `AtomicOrdering`).
+enum class AtomicOrdering : unsigned {
+  NotAtomic = 0, ///< not an atomic access
+  Unordered,     ///< unordered
+  Monotonic,     ///< relaxed
+  Acquire,       ///< acquire
+  Release,       ///< release
+  AcqRel,        ///< acquire + release (RMW only)
+  SeqCst,        ///< sequentially consistent
+};
+
 /// \brief Load statement
 class Load final : public Statement {
 private:
@@ -845,19 +856,25 @@ private:
   // Load from a volatile memory location
   bool _is_volatile;
 
+  // Atomic ordering of the access (NotAtomic = plain load)
+  AtomicOrdering _ordering;
+
 private:
   /// \brief Private constructor
   Load(InternalVariable* result,
        Value* operand,
        uint64_t alignment,
-       bool is_volatile);
+       bool is_volatile,
+       AtomicOrdering ordering = AtomicOrdering::NotAtomic);
 
 public:
   /// \brief Static constructor
   static std::unique_ptr< Load > create(InternalVariable* result,
                                         Value* operand,
                                         uint64_t alignment,
-                                        bool is_volatile);
+                                        bool is_volatile,
+                                        AtomicOrdering ordering =
+                                            AtomicOrdering::NotAtomic);
 
   /// \brief Get the result variable
   InternalVariable* result() const {
@@ -875,6 +892,12 @@ public:
 
   /// \brief Return true if this is a load from a volatile memory location
   bool is_volatile() const { return this->_is_volatile; }
+
+  /// \brief Return true if this is an atomic load (C11 / LLVM atomic)
+  bool is_atomic() const { return this->_ordering != AtomicOrdering::NotAtomic; }
+
+  /// \brief Return the atomic memory ordering (NotAtomic if not atomic)
+  AtomicOrdering ordering() const { return this->_ordering; }
 
   /// \brief Dump the statement for debugging purpose
   void dump(std::ostream&) const override;
@@ -896,16 +919,25 @@ private:
   // Load from a volatile memory location
   bool _is_volatile;
 
+  // Atomic ordering of the access (NotAtomic = plain store)
+  AtomicOrdering _ordering;
+
 private:
   /// \brief Private constructor
-  Store(Value* pointer, Value* value, uint64_t alignment, bool is_volatile);
+  Store(Value* pointer,
+        Value* value,
+        uint64_t alignment,
+        bool is_volatile,
+        AtomicOrdering ordering = AtomicOrdering::NotAtomic);
 
 public:
   /// \brief Static constructor
   static std::unique_ptr< Store > create(Value* pointer,
                                          Value* value,
                                          uint64_t alignment,
-                                         bool is_volatile);
+                                         bool is_volatile,
+                                         AtomicOrdering ordering =
+                                             AtomicOrdering::NotAtomic);
 
   /// \brief Get the pointer operand
   Value* pointer() const { return this->_operands[0]; }
@@ -921,6 +953,12 @@ public:
 
   /// \brief Return true if this is a store to a volatile memory location
   bool is_volatile() const { return this->_is_volatile; }
+
+  /// \brief Return true if this is an atomic store (C11 / LLVM atomic)
+  bool is_atomic() const { return this->_ordering != AtomicOrdering::NotAtomic; }
+
+  /// \brief Return the atomic memory ordering (NotAtomic if not atomic)
+  AtomicOrdering ordering() const { return this->_ordering; }
 
   /// \brief Dump the statement for debugging purpose
   void dump(std::ostream&) const override;

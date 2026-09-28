@@ -443,6 +443,10 @@ public:
     this->_uninitialized.assert_initialized(x);
   }
 
+  void uninit_assign_maybe(VariableRef x) override {
+    this->_uninitialized.assign_maybe(x);
+  }
+
   bool uninit_is_initialized(VariableRef x) const override {
     return this->_uninitialized.is_initialized(x);
   }

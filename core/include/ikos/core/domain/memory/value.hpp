@@ -52,6 +52,8 @@
 #pragma once
 
 #include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <ikos/core/domain/lifetime/abstract_domain.hpp>
 #include <ikos/core/domain/memory/abstract_domain.hpp>
@@ -578,6 +580,10 @@ public:
 
   void uninit_assert_initialized(VariableRef x) override {
     this->_scalar.uninit_assert_initialized(x);
+  }
+
+  void uninit_assign_maybe(VariableRef x) override {
+    this->_scalar.uninit_assign_maybe(x);
   }
 
   bool uninit_is_initialized(VariableRef x) const override {
@@ -1822,7 +1828,7 @@ public:
 
     if (value.is_machine_int()) {
       value_intv = IntInterval(value.machine_int());
-    } else if (size.is_machine_int_var()) {
+    } else if (value.is_machine_int_var()) {
       value_intv = this->_scalar.int_to_interval(value.var());
     } else {
       ikos_unreachable("unexpected literal for value");

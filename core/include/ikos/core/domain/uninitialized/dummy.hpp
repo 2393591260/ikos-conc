@@ -127,6 +127,8 @@ public:
 
   void assert_initialized(VariableRef) override {}
 
+  void assign_maybe(VariableRef) override {}
+
   bool is_initialized(VariableRef) const override { return this->_is_bottom; }
 
   bool is_uninitialized(VariableRef) const override { return this->_is_bottom; }

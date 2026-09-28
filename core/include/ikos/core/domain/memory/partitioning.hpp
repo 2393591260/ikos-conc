@@ -690,6 +690,12 @@ public:
     }
   }
 
+  void uninit_assign_maybe(VariableRef x) override {
+    for (Partition& partition : this->_partitions) {
+      partition.memory.uninit_assign_maybe(x);
+    }
+  }
+
   bool uninit_is_initialized(VariableRef x) const override {
     return std::all_of(this->_partitions.begin(),
                        this->_partitions.end(),

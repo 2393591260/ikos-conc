@@ -660,13 +660,18 @@ private:
   // Alignment of the global variable, in bytes (0 if unspecified)
   uint64_t _alignment;
 
+  // True iff this global has thread-local storage (`__thread` / `_Thread_local`,
+  // LLVM `thread_local`). Each thread has its own copy, so accesses never race.
+  bool _is_thread_local;
+
 private:
   /// \brief Private constructor
   GlobalVariable(Bundle* bundle,
                  PointerType* type,
                  std::string name,
                  bool is_definition,
-                 uint64_t alignment);
+                 uint64_t alignment,
+                 bool is_thread_local);
 
 public:
   /// \brief Static constructor
@@ -676,11 +681,13 @@ public:
   /// \param name Name of the global variable
   /// \param is_definition True if it is a definition, false otherwise
   /// \param alignment Explicit alignment in bytes, or 0 if unspecified
+  /// \param is_thread_local True iff the global has thread-local storage
   static GlobalVariable* create(Bundle* bundle,
                                 PointerType* type,
                                 std::string name,
                                 bool is_definition,
-                                uint64_t alignment);
+                                uint64_t alignment,
+                                bool is_thread_local = false);
 
   /// \brief Get the parent context
   Context& context() const { return this->bundle()->context(); }
@@ -716,6 +723,11 @@ public:
 
   /// \brief Return true if the global variable has a specified alignment
   bool has_alignment() const { return this->alignment() > 0; }
+
+  /// \brief Return true iff this global has thread-local storage (`__thread` /
+  /// `_Thread_local`). Thread-local globals are thread-private by C semantics,
+  /// so accesses to them can never race across threads.
+  bool is_thread_local() const { return this->_is_thread_local; }
 
   /// \brief Dump the value for debugging purpose
   void dump(std::ostream&) const override;

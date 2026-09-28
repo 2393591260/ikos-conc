@@ -126,6 +126,9 @@ public:
   /// \brief Add the constraint `x == initialized`
   virtual void uninit_assert_initialized(VariableRef x) = 0;
 
+  /// \brief Assign `x = maybe` (relax to ⊤ for cross-thread visibility)
+  virtual void uninit_assign_maybe(VariableRef x) = 0;
+
   /// \brief Return true if `x` is initialized, otherwise false
   virtual bool uninit_is_initialized(VariableRef x) const = 0;
 

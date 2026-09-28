@@ -155,6 +155,8 @@ public:
 
   void uninit_assert_initialized(VariableRef) override {}
 
+  void uninit_assign_maybe(VariableRef) override {}
+
   bool uninit_is_initialized(VariableRef) const override {
     return this->_is_bottom;
   }

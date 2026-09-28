@@ -152,6 +152,10 @@ public:
     this->_inv.refine(x, Uninitialized::initialized());
   }
 
+  void assign_maybe(VariableRef x) override {
+    this->_inv.set(x, Uninitialized::top());
+  }
+
   bool is_initialized(VariableRef x) const override {
     Uninitialized value = this->_inv.get(x);
     return value.is_bottom() || value.is_initialized();

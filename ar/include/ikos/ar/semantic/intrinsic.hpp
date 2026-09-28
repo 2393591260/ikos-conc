@@ -162,6 +162,12 @@ public:
     LibcppBeginCatch,
     LibcppEndCatch,
     _EndLibcppIntrinsic,
+    _BeginPthreadIntrinsic,
+    PthreadCreate,
+    PthreadJoin,
+    PthreadMutexLock,
+    PthreadMutexUnlock,
+    _EndPthreadIntrinsic,
   };
 
   /// \brief Prefix for names of intrinsic functions, ie. "ar."

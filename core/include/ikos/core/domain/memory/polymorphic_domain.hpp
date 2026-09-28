@@ -48,6 +48,8 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <ikos/core/domain/memory/abstract_domain.hpp>
 #include <ikos/core/support/assert.hpp>
@@ -211,6 +213,9 @@ private:
 
     /// \brief Add the constraint `x == initialized`
     virtual void uninit_assert_initialized(VariableRef x) = 0;
+
+    /// \brief Assign `x = maybe` (relax to ⊤ for cross-thread visibility)
+    virtual void uninit_assign_maybe(VariableRef x) = 0;
 
     /// \brief Return true if `x` is initialized, otherwise false
     virtual bool uninit_is_initialized(VariableRef x) const = 0;
@@ -576,8 +581,6 @@ private:
     virtual void scalar_forget(VariableRef x) = 0;
 
     /// @}
-    /// \name Memory abstract domain methods
-    /// @{
 
     /// \brief Perform the memory write `*p = v`
     ///
@@ -935,6 +938,10 @@ private:
 
     void uninit_assert_initialized(VariableRef x) override {
       this->_inv.uninit_assert_initialized(x);
+    }
+
+    void uninit_assign_maybe(VariableRef x) override {
+      this->_inv.uninit_assign_maybe(x);
     }
 
     bool uninit_is_initialized(VariableRef x) const override {
@@ -1336,8 +1343,6 @@ private:
     void scalar_forget(VariableRef x) override { this->_inv.scalar_forget(x); }
 
     /// @}
-    /// \name Memory abstract domain methods
-    /// @{
 
     void mem_write(VariableRef p,
                    const LiteralT& v,
@@ -1605,6 +1610,10 @@ public:
 
   void uninit_assert_initialized(VariableRef x) override {
     this->_ptr->uninit_assert_initialized(x);
+  }
+
+  void uninit_assign_maybe(VariableRef x) override {
+    this->_ptr->uninit_assign_maybe(x);
   }
 
   bool uninit_is_initialized(VariableRef x) const override {
@@ -1992,8 +2001,6 @@ public:
   void scalar_forget(VariableRef x) override { this->_ptr->scalar_forget(x); }
 
   /// @}
-  /// \name Memory abstract domain methods
-  /// @{
 
   void mem_write(VariableRef p,
                  const LiteralT& v,

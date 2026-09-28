@@ -43,6 +43,9 @@
 
 #pragma once
 
+#include <unordered_map>
+#include <unordered_set>
+
 #include <boost/optional.hpp>
 
 #include <ikos/core/domain/scalar/abstract_domain.hpp>

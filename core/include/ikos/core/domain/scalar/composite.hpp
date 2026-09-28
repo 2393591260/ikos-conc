@@ -571,6 +571,10 @@ public:
     this->_uninitialized.assert_initialized(x);
   }
 
+  void uninit_assign_maybe(VariableRef x) override {
+    this->_uninitialized.assign_maybe(x);
+  }
+
   bool uninit_is_initialized(VariableRef x) const override {
     return this->_uninitialized.is_initialized(x);
   }
@@ -1712,9 +1716,6 @@ public:
                              MemoryLocationRef absolute_zero) override {
     ikos_assert(ScalarVariableTrait::is_int(x));
     ikos_assert(ScalarVariableTrait::is_pointer(p));
-    ikos_assert(
-        IntVariableTrait::bit_width(x) ==
-        IntVariableTrait::bit_width(ScalarVariableTrait::offset_var(p)));
 
     if (this->is_bottom_fast()) {
       return;
@@ -1735,10 +1736,15 @@ public:
       this->_integer.assign(x, zero);
     } else if (this->_points_to_map.get(p) == PointsToSetT{absolute_zero}) {
       VariableRef offset = ScalarVariableTrait::offset_var(p);
-      if (IntVariableTrait::sign(x) == IntVariableTrait::sign(offset)) {
+      if (IntVariableTrait::bit_width(x) ==
+              IntVariableTrait::bit_width(offset) &&
+          IntVariableTrait::sign(x) == IntVariableTrait::sign(offset)) {
         this->_integer.assign(x, offset);
       } else {
-        this->_integer.apply(IntUnaryOperator::SignCast, x, offset);
+        // Width and/or sign differ (e.g. an ILP32 `uintptr_t` (32-bit) built
+        // from a 64-bit pointer offset): truncate/extend + re-sign via Cast.
+        // ptrtoint of an address is exact (low bits), so this is sound.
+        this->_integer.apply(IntUnaryOperator::Cast, x, offset);
       }
     } else {
       this->_integer.forget(x);

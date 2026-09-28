@@ -74,6 +74,9 @@ public:
   /// \brief Add the constraint `x == initialized`
   virtual void assert_initialized(VariableRef x) = 0;
 
+  /// \brief Assign `x = maybe` (⊤: possibly initialized by another thread)
+  virtual void assign_maybe(VariableRef x) = 0;
+
   /// \brief Return true if `x` is initialized, otherwise false
   virtual bool is_initialized(VariableRef x) const = 0;
 

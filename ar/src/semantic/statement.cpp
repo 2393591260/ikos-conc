@@ -620,10 +620,12 @@ std::unique_ptr< Statement > PointerShift::clone() const {
 Load::Load(InternalVariable* result,
            Value* operand,
            uint64_t alignment,
-           bool is_volatile)
+           bool is_volatile,
+           AtomicOrdering ordering)
     : Statement(LoadKind, result, {operand}),
       _alignment(alignment),
-      _is_volatile(is_volatile) {
+      _is_volatile(is_volatile),
+      _ordering(ordering) {
   ikos_assert_msg(result, "result is null");
   ikos_assert_msg(operand, "operand is null");
 }
@@ -631,14 +633,18 @@ Load::Load(InternalVariable* result,
 std::unique_ptr< Load > Load::create(InternalVariable* result,
                                      Value* operand,
                                      uint64_t alignment,
-                                     bool is_volatile) {
+                                     bool is_volatile,
+                                     AtomicOrdering ordering) {
   return std::unique_ptr< Load >(
-      new Load(result, operand, alignment, is_volatile));
+      new Load(result, operand, alignment, is_volatile, ordering));
 }
 
 void Load::dump(std::ostream& o) const {
   this->result()->dump(o);
   o << " = load ";
+  if (this->is_atomic()) {
+    o << "atomic ";
+  }
   if (this->is_volatile()) {
     o << "volatile ";
   }
@@ -652,17 +658,23 @@ std::unique_ptr< Statement > Load::clone() const {
   std::unique_ptr< Statement > stmt(new Load(this->result(),
                                              this->operand(),
                                              this->alignment(),
-                                             this->is_volatile()));
+                                             this->is_volatile(),
+                                             this->ordering()));
   stmt->set_frontend(*this);
   return stmt;
 }
 
 // Store
 
-Store::Store(Value* pointer, Value* value, uint64_t alignment, bool is_volatile)
+Store::Store(Value* pointer,
+             Value* value,
+             uint64_t alignment,
+             bool is_volatile,
+             AtomicOrdering ordering)
     : Statement(StoreKind, nullptr, {pointer, value}),
       _alignment(alignment),
-      _is_volatile(is_volatile) {
+      _is_volatile(is_volatile),
+      _ordering(ordering) {
   ikos_assert_msg(pointer, "pointer is null");
   ikos_assert_msg(value, "value is null");
 }
@@ -670,13 +682,17 @@ Store::Store(Value* pointer, Value* value, uint64_t alignment, bool is_volatile)
 std::unique_ptr< Store > Store::create(Value* pointer,
                                        Value* value,
                                        uint64_t alignment,
-                                       bool is_volatile) {
+                                       bool is_volatile,
+                                       AtomicOrdering ordering) {
   return std::unique_ptr< Store >(
-      new Store(pointer, value, alignment, is_volatile));
+      new Store(pointer, value, alignment, is_volatile, ordering));
 }
 
 void Store::dump(std::ostream& o) const {
   o << "store ";
+  if (this->is_atomic()) {
+    o << "atomic ";
+  }
   if (this->is_volatile()) {
     o << "volatile ";
   }
@@ -692,7 +708,8 @@ std::unique_ptr< Statement > Store::clone() const {
   std::unique_ptr< Statement > stmt(new Store(this->pointer(),
                                               this->value(),
                                               this->alignment(),
-                                              this->is_volatile()));
+                                              this->is_volatile(),
+                                              this->ordering()));
   stmt->set_frontend(*this);
   return stmt;
 }

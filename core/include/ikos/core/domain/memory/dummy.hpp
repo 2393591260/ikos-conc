@@ -223,6 +223,10 @@ public:
     this->_scalar.uninit_assert_initialized(x);
   }
 
+  void uninit_assign_maybe(VariableRef x) override {
+    this->_scalar.uninit_assign_maybe(x);
+  }
+
   bool uninit_is_initialized(VariableRef x) const override {
     return this->_scalar.uninit_is_initialized(x);
   }

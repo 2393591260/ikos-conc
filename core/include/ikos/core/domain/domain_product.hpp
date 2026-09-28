@@ -63,6 +63,12 @@ public:
   static_assert(IsAbstractDomain< Domain2 >::value,
                 "Domain2 must implement AbstractDomain");
 
+  /// \brief Type of the first component
+  using FirstDomain = Domain1;
+
+  /// \brief Type of the second component
+  using SecondDomain = Domain2;
+
 private:
   Domain1 _first;
   Domain2 _second;
@@ -279,6 +285,27 @@ public:
       this->_first.narrow_with(other._first);
       this->_second.narrow_with(other._second);
     }
+  }
+
+  /// \brief Perform the widening of two abstract values with a threshold
+  ///
+  /// The first component (data) uses threshold widening; the second component
+  /// (lockset) has no numeric threshold and falls back to regular widening.
+  template < typename Threshold >
+  DomainProduct2 widening_threshold(const DomainProduct2& other,
+                                    const Threshold& threshold) const {
+    return DomainProduct2(this->_first.widening_threshold(other._first,
+                                                          threshold),
+                          this->_second.widening(other._second));
+  }
+
+  /// \brief Perform the narrowing of two abstract values with a threshold
+  template < typename Threshold >
+  DomainProduct2 narrowing_threshold(const DomainProduct2& other,
+                                     const Threshold& threshold) const {
+    return DomainProduct2(this->_first.narrowing_threshold(other._first,
+                                                           threshold),
+                          this->_second.narrowing(other._second));
   }
 
   DomainProduct2 join(const DomainProduct2& other) const override {
