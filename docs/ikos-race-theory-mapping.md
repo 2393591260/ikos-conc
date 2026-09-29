@@ -296,7 +296,7 @@
 | 维度 | 现状 |
 |---|---|
 | **Recall（漏报率）** | **全集 FN=0**（Recall=1.000）——红线达成 |
-| **Precision** | 全集 FP=237（Precision≈0.498）；clean-121 FP=0 |
+| **Precision** | 全集 FP=404（Precision≈0.368，正确 ILP32 arch）；clean-121 FP=0 |
 | **已建模同步** | mutex、rwlock、trylock（路径近似）、join/create HB、`__VERIFIER_atomic`（伪锁）、C11 `_Atomic`（access-level）、cond_wait/signal/broadcast（stub，无 HB 边） |
 | **未建模同步** | cond-var 的 signal→wait HB、barrier、TLS、无锁线性化、acquire/release 内存序 |
 
@@ -305,13 +305,16 @@
 | 缺口 | 类型 | 影响 | 论文 |
 |---|---|---|---|
 | #3 C11 内存序（acquire/release/relaxed） | 语义缺口 | ~95 文件的 FP+FN | Batty et al., *Mathematizing C++ Concurrency*, POPL'11 等 |
-| #5 条件变量/屏障 HB（signal→wait 边） | 语义缺口 | FP（barrier 等；**FN 已由 cond stub 堵住**，见 §2.1.14） | IEEE Std 1003.1（POSIX） |
+| #5 条件变量/屏障 HB（signal→wait 边） | **MAY，不可 sound 使用**（见下注） | FP（value-barrier/thread-join-counter 等 ~9 例；**FN 已由 cond stub 堵住**，见 §2.1.14） | IEEE Std 1003.1（POSIX） |
+| #5b 互斥传递 HB（无锁写 → lock(m) → 互斥 → unlock(m) → 无锁读） | 语义缺口（通用） | 是 #5 那 9 例 + join 类一部分的**真根因** | — |
 | #6 结构体字段锁准入 | 语义缺口 | FP（折叠类 11 例的死因） | Flanagan & Qadeer, SPIN'03 |
 | #7 TLS | 语义缺口 | FP | ISO/IEC 9899:2011（C11） |
 | #8 无锁线性化 | 语义缺口 | FP | Herlihy & Wing, TOPLAS'90 |
-| **精度上限** | 折叠（字段/数组）+ ⊤ points-to 保守配对 | 大量 FP（weaver +93 等） | — |
+| **精度上限** | 折叠（字段/数组）+ ⊤ points-to 保守配对（含 join 句柄 `tids[i]` 读 ⊤ →「全部实例 joined」判定失败） | 大量 FP（weaver +93、thread-join-*、per-thread-* 等） | — |
 
-> 注意：#3 里「C11 atomic 本身不竞争」已实现（去 FN），「混合 atomic/non-atomic」已标 UNKNOWN（去 FP、不吞真竞争），但「atomic 的 acquire/release 同步作用」未实现——这是 #3 剩余的核心。
+> 注意 1：#3 里「C11 atomic 本身不竞争」已实现（去 FN），「混合 atomic/non-atomic」已标 UNKNOWN（去 FP、不吞真竞争），但「atomic 的 acquire/release 同步作用」未实现——这是 #3 剩余的核心。
+>
+> 注意 2（2026-09 实测更正）：**#5 的 signal→wait 边不能 sound 地补**——`cond_wait` 会伪唤醒、`signal` 唤醒哪个 waiter 不确定，所以「A signal c → B wait c」是 MAY 边（`lockset_domain.hpp:166-168` 注释已明确「cannot soundly suppress a race」）。`value-barrier.i` 这类案例真正变安全靠的是 `while(!ready) cond_wait` + `ready_mutex` 的**互斥传递 HB**（#5b），与 cond 无关。同理 `thread-join-*` 的 join 规则没缺，是 `tids[i]` 数组单元读 ⊤ 导致「全 joined」判定失败（精度上限，非语义缺口）。
 
 ## 3.3 下一步路线
 

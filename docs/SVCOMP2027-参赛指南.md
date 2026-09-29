@@ -81,11 +81,13 @@
 
 - [ ] 错误答案罚分：本文按 **−16** 计算（rules.php 提交前确认 2027 是否调整）。
 - [ ] `required_ubuntu_packages` 清单：建议在 `ubuntu:24.04` 容器里跑一遍 `smoketest.sh` 验证（尤其 libppl/libboost/tbb 版本号）。
-- [ ] `data_model`：witness 目前默认 LP64；需从任务 `.yml` 读（ILP32 任务会不一致）——这条是 P2 尾项，进评测前要补。
+- [x] `data_model`：已从任务 `.yml` 读 ILP32/LP64，`-m 32/64` 透传 clang + witness `data_model` 字段对齐（`28286aa` + `8048181`）。
 
-### 当前基线（2026 冻结集全量，1029 任务）
+### 当前基线（2026 冻结集全量，1029 任务，**全部 ILP32**）
 
-TP=235 FP=173 TN=613 **FN=0** err=8；precision 57.6%。红线 FN=0 守住。已落地的 sound FP 修复（`data_race.cpp`）：
+TP=235 FP=404 TN=390 **FN=0** err=0；precision 36.8%。红线 FN=0 守住。已落地的 sound FP 修复（`data_race.cpp`）：
+
+> ⚠️ 基线更正（2026-09-29）：1029 个 no-data-race 任务**全是 ILP32**（无 LP64 任务）。此前 FP=173 是**默认 LP64（错误 arch）**测的。`-m64` 全量复跑 = FP=172（复现旧基线），`-m32`（正确 ILP32）全量 = FP=404 —— **arch 是主因**：ILP32 下 `long`/指针/size_t 变 4 字节，折叠 + ⊤ points-to 的保守配对被放大 2.3×。FP 优化必须对着 ILP32 基线重做。
 
 - `free()` 排除出 extern-call 写合成（`99b7c88`）——free 不通过指针写数据；
 - stdio 输出族（printf/fprintf/…）排除出写合成（`9d7edb6`）——其指针实参是流/格式串/要打印的值。
