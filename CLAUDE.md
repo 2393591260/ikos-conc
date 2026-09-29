@@ -38,6 +38,8 @@ cp build/analyzer/ikos-analyzer install/bin/ikos-analyzer
 ```bash
 install/bin/ikos --analyses=race --concurrency=auto <file.c>
 # RACE = grep "definitely UNSAFE|potential data race"；Safe = "The program is SAFE"
+python3 svcomp_race_test.py   # SV-COMP 2026 冻结集全量（默认 /home/ruan/sv-benchmarks-2026，~1029 任务）
+# 优化用滚动集：python3 svcomp_race_test.py /home/ruan/sv-benchmarks
 /tmp/ab_run.sh   # 全量 A/B（读 docs/ikos-race-testset.txt，输出 TP/FN/TN/FP）
 ```
 
