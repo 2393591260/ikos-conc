@@ -44,7 +44,7 @@ CONCURRENCY_DIRS = [
 
 
 def parse_task(yml: Path):
-    """Return (input_path, expected) for an ACTIVE no-data-race task, else None."""
+    """Return (input_path, expected, data_model) for an ACTIVE no-data-race task."""
     text = yml.read_text(errors="replace")
     # find the active (uncommented) no-data-race property block
     in_ndr = False
@@ -71,7 +71,12 @@ def parse_task(yml: Path):
     src = yml.parent / m.group(1)
     if not src.is_file():
         return None
-    return src, expected
+    # data model (ILP32/LP64), default LP64
+    data_model = "LP64"
+    dm = re.search(r"data_model:\s*(\w+)", text)
+    if dm:
+        data_model = dm.group(1)
+    return src, expected, data_model
 
 
 def classify(output: str, returncode: int, timed_out: bool) -> str:
@@ -93,15 +98,18 @@ def classify(output: str, returncode: int, timed_out: bool) -> str:
     return "Error (unrecognized)"
 
 
-def run_one(src: Path, ikos: Path, timeout_sec: int, out_db: Path, concurrency: str):
+def run_one(src: Path, ikos: Path, timeout_sec: int, out_db: Path, concurrency: str,
+            data_model: str):
     start = time.perf_counter()
     timed_out = False
     returncode = -1
     out = ""
+    machine = ["-m", "32" if data_model == "ILP32" else "64"]
     try:
         proc = subprocess.run(
-            [str(ikos), "--analyses=race", f"--concurrency={concurrency}",
-             "-o", str(out_db), str(src)],
+            [str(ikos), "--analyses=race", f"--concurrency={concurrency}"] +
+            machine +
+            ["-o", str(out_db), str(src)],
             capture_output=True, text=True, timeout=timeout_sec)
         returncode = proc.returncode
         out = proc.stdout + proc.stderr
@@ -141,54 +149,66 @@ def main(argv) -> int:
 
     results = []
     def work(t):
-        yml, src, expected = t
+        yml, src, expected, data_model = t
         # unique output.db per task avoids the cwd/output.db collision under
         # parallel runs
         out_db = Path(tempfile.gettempdir()) / f"ikos_{os.getpid()}_{hash(str(src)) & 0xffffffff}.db"
-        v, el = run_one(src, args.ikos, args.timeout, out_db, args.concurrency)
+        v, el = run_one(src, args.ikos, args.timeout, out_db, args.concurrency,
+                        data_model)
         try:
             out_db.unlink(missing_ok=True)
         except OSError:
             pass
-        return (str(src), expected, v, el)
+        return (str(src), expected, data_model, v, el)
 
     done = 0
     with ThreadPoolExecutor(max_workers=args.jobs) as ex:
         futs = {ex.submit(work, t): t for t in tasks}
         for fut in as_completed(futs):
-            path, expected, v, el = fut.result()
-            results.append((path, expected, v))
+            path, expected, data_model, v, el = fut.result()
+            results.append((path, expected, data_model, v))
             done += 1
             tag = "" if v == expected else "  <-- MISMATCH"
             print(f"RESULT {path} expected={expected} got={v}{tag}", file=sys.stderr)
 
-    # confusion matrix
-    tp = fp = tn = fn = err = unknown = 0
-    for path, expected, v in results:
-        if v.startswith("Error"):
-            err += 1
-        elif v == VERDICT_UNKNOWN:
-            if expected == VERDICT_UNKNOWN:
-                unknown += 1  # expected-unknown matched
-            else:
-                err += 1  # tool gave up on a definite-verdict task
-        elif expected == VERDICT_RACE and v == VERDICT_RACE:
-            tp += 1
-        elif expected == VERDICT_SAFE and v == VERDICT_RACE:
-            fp += 1
-        elif expected == VERDICT_SAFE and v == VERDICT_SAFE:
-            tn += 1
-        elif expected == VERDICT_RACE and v == VERDICT_SAFE:
-            fn += 1
-    scored = tp + fp + tn + fn
-    prec = tp / (tp + fp) if (tp + fp) else 0.0
-    rec = tp / (tp + fn) if (tp + fn) else 0.0
-    print(f"\n=== IKOS no-data-race ({scored + err + unknown} tasks) ===")
-    print(f"  TP={tp} FP={fp} TN={tn} FN={fn} err={err} unknown={unknown}")
-    print(f"  Precision={prec:.3f}  Recall={rec:.3f}")
+    # confusion matrix, split by data model (ILP32 vs LP64)
+    def confusion(rows):
+        tp = fp = tn = fn = err = unknown = 0
+        for path, expected, dm, v in rows:
+            if v.startswith("Error"):
+                err += 1
+            elif v == VERDICT_UNKNOWN:
+                if expected == VERDICT_UNKNOWN:
+                    unknown += 1
+                else:
+                    err += 1
+            elif expected == VERDICT_RACE and v == VERDICT_RACE:
+                tp += 1
+            elif expected == VERDICT_SAFE and v == VERDICT_RACE:
+                fp += 1
+            elif expected == VERDICT_SAFE and v == VERDICT_SAFE:
+                tn += 1
+            elif expected == VERDICT_RACE and v == VERDICT_SAFE:
+                fn += 1
+        scored = tp + fp + tn + fn
+        prec = tp / (tp + fp) if (tp + fp) else 0.0
+        rec = tp / (tp + fn) if (tp + fn) else 0.0
+        return dict(tp=tp, fp=fp, tn=tn, fn=fn, err=err, unknown=unknown,
+                    precision=prec, recall=rec)
+
+    total = confusion(results)
+    ilp32 = confusion([r for r in results if r[2] == "ILP32"])
+    lp64 = confusion([r for r in results if r[2] == "LP64"])
+    for label, m in [("TOTAL", total), ("ILP32 (32-bit)", ilp32),
+                     ("LP64 (64-bit)", lp64)]:
+        n = m["tp"] + m["fp"] + m["tn"] + m["fn"] + m["err"] + m["unknown"]
+        print(f"\n=== IKOS no-data-race [{label}] ({n} tasks) ===")
+        print(f"  TP={m['tp']} FP={m['fp']} TN={m['tn']} FN={m['fn']} "
+              f"err={m['err']} unknown={m['unknown']}")
+        print(f"  Precision={m['precision']:.3f}  Recall={m['recall']:.3f}")
 
     if args.only_fail:
-        for path, expected, v in results:
+        for path, expected, dm, v in results:
             if v != expected:
                 print(f"  {expected}->{v}  {path}")
     return 0

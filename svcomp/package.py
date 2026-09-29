@@ -64,6 +64,18 @@ Verdicts: `The program is SAFE` (no race), `The program is definitely UNSAFE`
 (race found), `The program is UNKNOWN` (model boundary). On a definite race,
 a format-2.2 violation witness is written to `witness.yml`.
 
+### Data model (32-bit / 64-bit)
+
+SV-COMP tasks specify an `ILP32` (32-bit) or `LP64` (64-bit) data model; the
+C type widths (`long`, pointers) differ between the two. Pass `-m 32` / `-m 64`
+to select it (default is 64-bit):
+
+    ./bin/ikos -m 32 --analyses=race --concurrency=auto <file.c>   # ILP32
+    ./bin/ikos -m 64 --analyses=race --concurrency=auto <file.c>   # LP64
+
+The SV-COMP entry point (`bin/svcomp_witness.py`) takes `--data-model ILP32|LP64`
+and forwards it, recording the matching `data_model` in `witness.yml`.
+
 ## SV-COMP integration
 
 BenchExec tool-info module: `benchexec/tools/ikos-conc.py` (tool id `ikos-conc`).
