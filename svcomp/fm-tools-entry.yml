@@ -41,6 +41,7 @@ versions:
     benchexec_toolinfo_options: []
     required_ubuntu_packages:
       - libgmp10
+      - libgmpxx4ldbl
       - libmpfr6
       - libppl14
       - libboost-filesystem1.83.0
@@ -49,6 +50,13 @@ versions:
       - libsqlite3-0
       - libtinfo6
       - libz1
+      - libicu74
+      - libxml2
+      - libffi8
+      - libedit2
+      - libbsd0
+      - liblzma5
+      - libmd0
       - python3
     base_container_images:
       - docker.io/ubuntu:24.04
