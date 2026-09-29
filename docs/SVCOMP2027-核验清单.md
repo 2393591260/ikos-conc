@@ -88,6 +88,6 @@
 |---|---|---|
 | G1 | 错误答案**罚分**（本文按 −16 算） | 影响 FP 的代价评估，rules.php 复核 |
 | G2 | `required_ubuntu_packages` 精确清单 | 在 `ubuntu:24.04` 容器跑 smoketest 验证 |
-| G3 | **data_model**（ILP32/LP64） | witness 的 `data_model` 字段须匹配任务，目前默认 LP64 |
-| G4 | witness validator（非 linter）实际验收 | 基础 linter 过了，但真实 validator 尚未跑（需 clang/pycparser 环境） |
+| G3 | **data_model**（ILP32/LP64） | ✅ 已修（`28286aa`）：tool-info 读 `task.options["data_model"]` → `-m 32/64`，witness 字段对齐；32 位头文件已列进 required_ubuntu_packages |
+| G4 | witness validator（非 linter）实际验收 | CPAchecker 4.2.2 尚不支持 2.2 格式（连官方示例都解析不了）→ 语义验证暂做不了，等官方新版 validator |
 | G5 | 工具须**公开可访问**（repo 需 public） | 规则原文「participating tools are required to be publicly available on the internet」——确认 `github.com/2393591260/ikos-conc` 已公开 |
