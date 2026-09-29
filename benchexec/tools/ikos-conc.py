@@ -89,32 +89,28 @@ class Tool(BaseTool2):
         except (OSError, subprocess.SubprocessError):
             return ""
 
-    def cmdline(self, tool, executable, options, sourcefiles, propertyfile=None,
-                rlimits=None):
+    def cmdline(self, executable, options, task, rlimits):
         # Run svcomp_witness.py, bundled next to the tool executable (in the
         # archive's bin/): it forwards IKOS's verdict line to stdout (for
         # determine_result) and writes witness.yml on a race. The SV-COMP
-        # --propertyfile is deliberately NOT forwarded (property is always
-        # no-data-race). Locate the wrapper relative to `executable`, not this
-        # module (which lives in the BenchExec repo, not the archive).
+        # --propertyfile (task.property_file) is deliberately NOT forwarded —
+        # the property is always no-data-race. Locate the wrapper relative to
+        # `executable`, not this module (which lives in the BenchExec repo).
         wrapper = Path(executable).parent / "svcomp_witness.py"
         return (
             [sys.executable, str(wrapper), "--ikos", executable]
             + options
-            + sourcefiles
+            + list(task.input_files_or_identifier)
         )
 
     def determine_result(self, run):
         if run.was_timeout:
             return _TIMEOUT
-        if run.exit_code != 0:
-            # IKOS exits 0 on every verdict; non-zero means compile/analyzer
-            # crash -> UNKNOWN under SV-COMP.
+        if run.exit_code.value != 0:
+            # IKOS exits 0 on every verdict; a non-zero exit (or a signal,
+            # exit_code.value is None) means compile/analyzer crash -> UNKNOWN.
             return _UNKNOWN
-        output = run.output
-        if isinstance(output, bytes):
-            output = output.decode("utf-8", "replace")
-        return verdict_from_text(output)
+        return verdict_from_text(run.output.text)
 
 
 # --- standalone P1 wrapper (python3 .../ikos-conc.py <file> [--property ...]) ---
