@@ -185,6 +185,10 @@ def package(install_dir, out, llvm_root, apron_dir):
         f.write(README)
     if not os.path.exists(os.path.join(install, "LICENSE.txt")):
         shutil.copy("LICENSE.txt", os.path.join(install, "LICENSE.txt"))
+    # Bundle the SV-COMP entry point (verdict forwarding + witness generation)
+    # next to the `ikos` executable: the BenchExec tool-info module locates it
+    # via Path(executable).parent / "svcomp_witness.py".
+    shutil.copy("svcomp_witness.py", os.path.join(install, "bin", "svcomp_witness.py"))
 
     # 7. zip (single top-level dir, executable bit preserved)
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:

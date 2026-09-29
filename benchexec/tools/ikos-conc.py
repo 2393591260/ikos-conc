@@ -76,16 +76,28 @@ class Tool(BaseTool2):
         return tool_locator.find_executable("ikos")
 
     def version(self, executable):
-        return self._version_from_tool(executable)
+        # `ikos --version` prints "ikos 3.5" then the NASA license. Parse the
+        # first line's last word so the reported version is "3.5", not the
+        # last line ("All Rights Reserved.") that BaseTool2._version_from_tool
+        # would return. Guard against a missing executable (offline test).
+        try:
+            out = subprocess.run(
+                [executable, "--version"], capture_output=True, text=True,
+                timeout=30).stdout
+            first = (out.strip().splitlines() or [""])[0].strip()
+            return first.split()[-1] if first else ""
+        except (OSError, subprocess.SubprocessError):
+            return ""
 
     def cmdline(self, tool, executable, options, sourcefiles, propertyfile=None,
                 rlimits=None):
-        # Run the SV-COMP wrapper: it forwards IKOS's verdict line to stdout
-        # (for determine_result) and writes witness.yml on a race. The SV-COMP
+        # Run svcomp_witness.py, bundled next to the tool executable (in the
+        # archive's bin/): it forwards IKOS's verdict line to stdout (for
+        # determine_result) and writes witness.yml on a race. The SV-COMP
         # --propertyfile is deliberately NOT forwarded (property is always
-        # no-data-race). # ponytail: wrapper path is repo-relative for now;
-        # P4 (archive) will bundle it next to the tool binary.
-        wrapper = Path(__file__).resolve().parent.parent.parent / "svcomp_witness.py"
+        # no-data-race). Locate the wrapper relative to `executable`, not this
+        # module (which lives in the BenchExec repo, not the archive).
+        wrapper = Path(executable).parent / "svcomp_witness.py"
         return (
             [sys.executable, str(wrapper), "--ikos", executable]
             + options

@@ -29,7 +29,6 @@ import tempfile
 import uuid
 from datetime import datetime, timezone
 
-import yaml
 
 FORMAT_VERSION = "2.2"
 SPECIFICATION = "G ! data-race"
@@ -178,7 +177,9 @@ def main():
     if info is not None:
         witness = build_witness(args.source, info, args.data_model)
         with open(args.out, "w", encoding="utf-8") as f:
-            yaml.safe_dump(witness, f, sort_keys=False, allow_unicode=True)
+            # JSON is a subset of YAML 1.2, so json.dump emits a valid
+            # witness.yml without requiring the PyYAML dependency.
+            json.dump(witness, f, indent=1)
 
     for p in (db, report, db + "-wal", db + "-shm"):
         try:
