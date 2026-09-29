@@ -80,12 +80,14 @@ class Tool(BaseTool2):
 
     def cmdline(self, tool, executable, options, sourcefiles, propertyfile=None,
                 rlimits=None):
+        # Run the SV-COMP wrapper: it forwards IKOS's verdict line to stdout
+        # (for determine_result) and writes witness.yml on a race. The SV-COMP
+        # --propertyfile is deliberately NOT forwarded (property is always
+        # no-data-race). # ponytail: wrapper path is repo-relative for now;
+        # P4 (archive) will bundle it next to the tool binary.
+        wrapper = Path(__file__).resolve().parent.parent.parent / "svcomp_witness.py"
         return (
-            [executable,
-             "--analyses=race",
-             "--concurrency=auto",
-             "--format=no",
-             "--display-times=no"]
+            [sys.executable, str(wrapper), "--ikos", executable]
             + options
             + sourcefiles
         )

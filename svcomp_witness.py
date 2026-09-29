@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Generate an SV-COMP no-data-race *violation witness* (format 2.2) from IKOS.
+"""SV-COMP entry point: run IKOS race analysis, print the verdict, and emit a
+no-data-race *violation witness* (format 2.2) `witness.yml` when a race is found.
 
-Runs IKOS's race analysis (--format json), takes the first reported conflicting
-pair, and emits `witness.yml` in the YAML exchange format described by
+Runs IKOS once with `--format json`, forwards IKOS's summary/verdict line to
+stdout (so a BenchExec tool-info module can parse it), and, on a definite race,
+writes `witness.yml` in the YAML exchange format described by
 https://gitlab.com/sosy-lab/benchmarking/sv-witnesses (user-guide/Witness-Format.md).
 
 The witness is a `violation_sequence` whose final segment is a multi-follow
@@ -11,10 +13,10 @@ threads are registered by `function_enter` waypoints on their `pthread_create`
 call sites (k-th registration assigns thread_id k; main is 0).
 
 Usage:
-    python3 svcomp_witness.py <file.c|.i> [--ikos /path/to/ikos] [--data-model LP64|ILP32]
+    python3 svcomp_witness.py <file.c|.i> [--ikos /path/to/ikos] [--data-model LP64|ILP32] [--out witness.yml]
 
-Exit code 0 and `witness.yml` is written iff IKOS reports a definite race;
-otherwise nothing is written.
+Exit code is 0 on a clean analysis (race or not); non-zero only when IKOS
+itself crashes, which a BenchExec tool-info maps to UNKNOWN.
 """
 
 import argparse
@@ -33,30 +35,8 @@ FORMAT_VERSION = "2.2"
 SPECIFICATION = "G ! data-race"
 
 
-def run_ikos(source, ikos):
-    db = tempfile.mktemp(suffix=".db")
-    report = tempfile.mktemp(suffix=".json")
-    try:
-        proc = subprocess.run(
-            [ikos, "--analyses=race", "--concurrency=auto",
-             "--format=json", "--report-file=" + report,
-             "-o", db, source],
-            capture_output=True, text=True)
-        if proc.returncode != 0:
-            return None, (proc.stdout + proc.stderr)
-        with open(report, encoding="utf-8") as f:
-            data = json.load(f)
-        return data, None
-    finally:
-        for p in (db, report, db + "-wal", db + "-shm"):
-            try:
-                os.remove(p)
-            except OSError:
-                pass
-
-
 def first_race(data):
-    """Return (info, statements) of the first definite race report, or None."""
+    """Return the info dict of the first definite race report, or None."""
     for rep in data.get("reports", []):
         info = rep.get("info", {})
         if info.get("verdict") == "unknown":
@@ -101,7 +81,7 @@ def loc(obj, source, kind="target"):
     return out
 
 
-def build_witness(source, info):
+def build_witness(source, info, data_model):
     thread_creations = info.get("thread_creations", [])
 
     # thread_id map: main -> 0, k-th pthread_create (in source order) -> k.
@@ -153,7 +133,7 @@ def build_witness(source, info):
                 "input_files": [file_name],
                 "input_file_hashes": {file_name: sha},
                 "specification": SPECIFICATION,
-                "data_model": args_data_model,
+                "data_model": data_model,
                 "language": "C",
             },
         },
@@ -168,24 +148,43 @@ def main():
     ap.add_argument("--data-model", default="LP64", choices=["LP64", "ILP32"])
     ap.add_argument("--out", default="witness.yml")
     args = ap.parse_args()
-    global args_data_model
-    args_data_model = args.data_model
 
-    data, err = run_ikos(args.source, args.ikos)
-    if data is None:
-        print("UNKNOWN" + ((": " + err.splitlines()[-1]) if err else ""),
-              file=sys.stderr)
-        return 1
+    db = tempfile.mktemp(suffix=".db")
+    report = tempfile.mktemp(suffix=".json")
+    try:
+        proc = subprocess.run(
+            [args.ikos, "--analyses=race", "--concurrency=auto",
+             "--format=json", "--report-file=" + report,
+             "-o", db, args.source],
+            capture_output=True, text=True)
+    except FileNotFoundError:
+        sys.stderr.write("error: ikos executable not found\n")
+        return 127
+
+    # Forward IKOS's output (carries the verdict line) for the tool-info
+    # determine_result parser.
+    sys.stdout.write(proc.stdout)
+    sys.stderr.write(proc.stderr)
+    if proc.returncode != 0:
+        return proc.returncode  # crash -> non-zero -> UNKNOWN
+
+    try:
+        with open(report, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return 0
 
     info = first_race(data)
-    if info is None:
-        print("no definite data race; no witness written", file=sys.stderr)
-        return 1
+    if info is not None:
+        witness = build_witness(args.source, info, args.data_model)
+        with open(args.out, "w", encoding="utf-8") as f:
+            yaml.safe_dump(witness, f, sort_keys=False, allow_unicode=True)
 
-    witness = build_witness(args.source, info)
-    with open(args.out, "w", encoding="utf-8") as f:
-        yaml.safe_dump(witness, f, sort_keys=False, allow_unicode=True)
-    print(f"witness written to {args.out}", file=sys.stderr)
+    for p in (db, report, db + "-wal", db + "-shm"):
+        try:
+            os.remove(p)
+        except OSError:
+            pass
     return 0
 
 
