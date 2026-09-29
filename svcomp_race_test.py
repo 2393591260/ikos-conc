@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Run IKOS race analysis over the official SV-COMP no-data-race benchmark set.
+"""Run IKOS race analysis over the SV-COMP no-data-race benchmark set.
 
 Walks the sv-benchmarks `c/` concurrency directories, picks every task whose
 `.yml` carries an ACTIVE `no-data-race.prp` property, runs IKOS on its
 `input_files`, and reports a confusion matrix (SAFE = no race, RACE = race).
+
+Defaults to the SV-COMP 2026 frozen set (/home/ruan/sv-benchmarks-2026,
+git worktree at tag `svcomp26-freeze`). The rolling sv-benchmarks `main`
+(/home/ruan/sv-benchmarks) is kept for later optimization sweeps.
 
 Unlike yaml_ab_test.py (curated clean-sv-benchmarks subset), this reads the
 official `format_version: '2.0'` task definitions and runs on the `.i`
@@ -109,8 +113,11 @@ def run_one(src: Path, ikos: Path, timeout_sec: int, out_db: Path, concurrency: 
 
 def main(argv) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("svbench", type=Path, help="sv-benchmarks checkout root")
-    ap.add_argument("--ikos", type=Path, default=Path("/home/ruan/ikos/install/bin/ikos"))
+    ap.add_argument("svbench", type=Path, nargs="?",
+                    default=Path("/home/ruan/sv-benchmarks-2026"),
+                    help="sv-benchmarks checkout root (default: 2026 freeze)")
+    ap.add_argument("--ikos", type=Path,
+                    default=Path("/home/ruan/ikos-conc/install/bin/ikos"))
     ap.add_argument("--timeout", type=int, default=30)
     ap.add_argument("--jobs", type=int, default=8)
     ap.add_argument("--concurrency", default="auto", choices=["auto", "on", "off"])
