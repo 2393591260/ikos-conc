@@ -64,7 +64,13 @@ if APPEND_GIT_VERSION:
 
 BUILD_MODE = '@CMAKE_BUILD_TYPE@'
 
-PREFIX = '@CMAKE_INSTALL_PREFIX@'
+# Relocatable install prefix: derive it from this file's location instead of
+# the CMake-time @CMAKE_INSTALL_PREFIX@, so the archive can be unpacked and
+# run from any path (SV-COMP self-contained requirement).
+# This file lives at <prefix>/libexec/lib/pythonX.Y/site-packages/ikos/settings/__init__.py
+PREFIX = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                 *([os.pardir] * 6)))
 
 SRC_ROOT = '@SRC_DIR@'
 
