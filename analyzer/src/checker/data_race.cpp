@@ -1729,7 +1729,17 @@ void DataRaceChecker::check_extern_call_effects(
       // (semaphore-posix.c). sem_getvalue's int* output is a thread-local
       // (filtered by touches_shared_memory), so excluding the whole family is
       // sound.
-      callee_nm.rfind("sem_", 0) == 0) {
+      callee_nm.rfind("sem_", 0) == 0 ||
+      // free() deallocates the pointed-to memory — it does NOT write through
+      // the pointer to the object's data (C11: free ends the object's
+      // lifetime, it performs no lvalue access; use-after-free is
+      // valid-memsafety's concern, not no-data-race). Synthesizing a Write
+      // here, on a pointer whose identity is often ⊤ (malloc'd with a nondet
+      // size, so resolve_points_to is ⊤), fabricates a "write to any cell"
+      // that pairs with EVERY concurrent access — value-barrier.c's
+      // `free(tids)` ⊤ Write pairing with `while(!ready)` on @ready is the
+      // FP. The raw C form is `free`; ikos-pp maps it to `ar.libc.free`.
+      callee_nm == "free" || callee_nm == "ar.libc.free") {
     return; // modeled sync primitive: args are lock/thread ids, not data
   }
 
