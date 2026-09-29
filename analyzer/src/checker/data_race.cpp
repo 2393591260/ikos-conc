@@ -59,6 +59,22 @@ namespace analyzer {
 
 namespace {
 
+/// \brief True iff the (possibly `ar.libc.`-prefixed) callee is a stdio OUTPUT
+/// function (printf/fprintf/sprintf/snprintf/puts/fputs/…). Their pointer
+/// arguments are the stream / format string / values-to-print, none of which
+/// the library writes through, so the extern-call Write synthesis must skip
+/// them (see check_extern_call_effects).
+bool is_stdio_output(const std::string& name) {
+  const std::string n =
+      (name.rfind("ar.libc.", 0) == 0) ? name.substr(8) : name;
+  static const std::unordered_set< std::string > kStdio = {
+      "printf",     "fprintf",   "sprintf", "snprintf", "vprintf",
+      "vfprintf",   "vsprintf",  "vsnprintf",
+      "puts",       "fputs",     "putchar", "fputc",    "perror",
+  };
+  return kStdio.count(n) != 0;
+}
+
 /// \brief Canonical branch guard of a statement directly guarded by an
 /// `if (guard)` branch: the base AR variable pointer (affine-peeled), or 0
 /// when the statement is not guarded this way. Mirrors the lock-side branch
@@ -1739,7 +1755,16 @@ void DataRaceChecker::check_extern_call_effects(
       // that pairs with EVERY concurrent access — value-barrier.c's
       // `free(tids)` ⊤ Write pairing with `while(!ready)` on @ready is the
       // FP. The raw C form is `free`; ikos-pp maps it to `ar.libc.free`.
-      callee_nm == "free" || callee_nm == "ar.libc.free") {
+      callee_nm == "free" || callee_nm == "ar.libc.free" ||
+      // stdio output family (printf/fprintf/sprintf/snprintf/puts/fputs/…):
+      // their pointer arguments are the output stream (FILE*), the read-only
+      // format string, or the VALUES being printed — none of which the library
+      // WRITES THROUGH (the rare `%n` writes an int*, not exercised here).
+      // Synthesizing a Write through them fabricates a ⊤ Write (e.g. the
+      // `strerror(status)` vararg is ⊤) that pairs with EVERY concurrent
+      // access — 04-mutex_36-trylock_nr.c's create-error `fprintf(stderr,…)`
+      // synthesizes a ⊤ Write racing counter_thread's counter/end_time reads.
+      is_stdio_output(callee_nm)) {
     return; // modeled sync primitive: args are lock/thread ids, not data
   }
 
