@@ -85,7 +85,12 @@
 
 ### 当前基线（2026 冻结集全量，1029 任务）
 
-TP=235 FP=175 TN=611 **FN=0** err=8；precision 57%。红线 FN=0 守住，FP 是后续优化主战场（weaver 66 个最多）。注册/提交不看成绩，见 §5。
+TP=235 FP=173 TN=613 **FN=0** err=8；precision 57.6%。红线 FN=0 守住。已落地的 sound FP 修复（`data_race.cpp`）：
+
+- `free()` 排除出 extern-call 写合成（`99b7c88`）——free 不通过指针写数据；
+- stdio 输出族（printf/fprintf/…）排除出写合成（`9d7edb6`）——其指针实参是流/格式串/要打印的值。
+
+剩余 FP 大头：weaver 的 ⊤ points-to（65）、无锁线性化（16）、per-thread 槽位（12）、互斥传递 HB、container_of 等关系型/精度问题，需单独立项（见 `docs/ikos-race-theory-mapping.md` §3.2）。注册/提交不看成绩，见 §5。
 
 ## 7. 相关仓库
 
