@@ -40,6 +40,9 @@ versions:
     doi: <doi>
     benchexec_toolinfo_options: []
     required_ubuntu_packages:
+      - libc6-dev
+      - libc6-dev-i386
+      - lib32gcc-13-dev
       - libgmp10
       - libgmpxx4ldbl
       - libmpfr6

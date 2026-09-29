@@ -150,10 +150,14 @@ def main():
 
     db = tempfile.mktemp(suffix=".db")
     report = tempfile.mktemp(suffix=".json")
+    # Pass the data model to clang (-m32 / -m64) so the .c/.i is compiled with
+    # the right type widths (long/pointer) — the no-data-race tasks are mostly
+    # ILP32. Defaults to LP64.
+    machine = ["-m", "32" if args.data_model == "ILP32" else "64"]
     try:
         proc = subprocess.run(
-            [args.ikos, "--analyses=race", "--concurrency=auto",
-             "--format=json", "--report-file=" + report,
+            [args.ikos, "--analyses=race", "--concurrency=auto"] + machine +
+            ["--format=json", "--report-file=" + report,
              "-o", db, args.source],
             capture_output=True, text=True)
     except FileNotFoundError:

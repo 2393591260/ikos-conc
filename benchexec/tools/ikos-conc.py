@@ -97,11 +97,13 @@ class Tool(BaseTool2):
         # the property is always no-data-race. Locate the wrapper relative to
         # `executable`, not this module (which lives in the BenchExec repo).
         wrapper = Path(executable).parent / "svcomp_witness.py"
-        return (
-            [sys.executable, str(wrapper), "--ikos", executable]
-            + options
-            + list(task.input_files_or_identifier)
-        )
+        cmd = [sys.executable, str(wrapper), "--ikos", executable]
+        # Forward the task's data model (ILP32/LP64) so the .c/.i is compiled
+        # with the right type widths and the witness's data_model field matches.
+        data_model = task.options.get("data_model")
+        if data_model in ("ILP32", "LP64"):
+            cmd += ["--data-model", data_model]
+        return cmd + options + list(task.input_files_or_identifier)
 
     def determine_result(self, run):
         if run.was_timeout:
