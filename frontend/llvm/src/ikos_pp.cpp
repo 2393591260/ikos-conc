@@ -317,7 +317,15 @@ int main(int argc, char** argv) {
     if (exclude_set.count("*") == 0) {
       pass_manager.add(
           llvm::createInternalizePass([=](const llvm::GlobalValue& gv) {
-            return exclude_set.find(gv.getName()) != exclude_set.end();
+            if (exclude_set.find(gv.getName()) != exclude_set.end()) {
+              return true;
+            }
+            if (auto* f = llvm::dyn_cast< llvm::Function >(&gv)) {
+              if (f->hasAddressTaken()) {
+                return true;
+              }
+            }
+            return false;
           }));
     }
 
@@ -373,17 +381,6 @@ int main(int argc, char** argv) {
 
     // Cleanup after lowering invoke's (opt -simplifycfg)
     pass_manager.add(llvm::createCFGSimplificationPass());
-
-    if (InlineAll) {
-      // Mark all functions always_inline (ikos-pp -mark-internal-inline)
-      pass_manager.add(ikos_pp::create_mark_internal_inline_pass());
-
-      // Inline always_inline functions (opt -always-inline)
-      pass_manager.add(llvm::createAlwaysInlinerLegacyPass());
-
-      // Kill unused internal global (opt -globaldce)
-      pass_manager.add(llvm::createGlobalDCEPass());
-    }
 
     // Remove unreachable blocks
     pass_manager.add(ikos_pp::create_remove_unreachable_blocks_pass());
@@ -465,6 +462,40 @@ int main(int argc, char** argv) {
                      << "\n";
       }
     }
+  }
+
+  // Inline-all (independent of opt level): internalize external (non-entry)
+  // functions, mark them always-inline, and inline — this gives a helper like
+  // weaver's create_fresh_int_array a DISTINCT malloc site per caller
+  // (otherwise A/F/B[i] alias one DynAlloc and false-race). Runs AFTER the
+  // opt-level passes (so basic's mem2reg already SSA'd the bodies) but BEFORE
+  // the output pass.
+  if (InlineAll) {
+    llvm::StringSet<> exclude_set;
+    if (EntryPoints.empty()) {
+      exclude_set.insert("main");
+    } else {
+      for (const auto& entry_point : EntryPoints) {
+        exclude_set.insert(entry_point);
+      }
+    }
+    if (exclude_set.count("*") == 0) {
+      pass_manager.add(
+          llvm::createInternalizePass([=](const llvm::GlobalValue& gv) {
+            if (exclude_set.find(gv.getName()) != exclude_set.end()) {
+              return true;
+            }
+            if (auto* f = llvm::dyn_cast< llvm::Function >(&gv)) {
+              if (f->hasAddressTaken()) {
+                return true;
+              }
+            }
+            return false;
+          }));
+    }
+    pass_manager.add(ikos_pp::create_mark_internal_inline_pass());
+    pass_manager.add(llvm::createAlwaysInlinerLegacyPass());
+    pass_manager.add(llvm::createGlobalDCEPass());
   }
 
   // Check that the module is well formed on completion of optimization
