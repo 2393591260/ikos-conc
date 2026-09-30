@@ -44,3 +44,7 @@ verification_result.csv
 # Local tooling and external benchmark copies
 .claude.md
 clean-sv-benchmarks/
+
+# CPAchecker run artifacts + packaged archive
+output/
+ikos-conc.zip
