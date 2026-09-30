@@ -85,9 +85,10 @@
 
 ### 当前基线（2026 冻结集全量，1029 任务，**全部 ILP32**）
 
-TP=235 FP=108 TN=686 **FN=0** err=0；precision 68.5%。红线 FN=0 守住。已落地的 sound FP 修复：
+TP=235 FP=100 TN=694 **FN=0** err=0；precision 70.1%。红线 FN=0 守住。已落地的 sound FP 修复：
 
 - **ILP32 bitcast-callee 修复（`ca1907f`，杠杆最大）**：32 位下 clang 给无原型函数 `__VERIFIER_atomic_begin/end` 的调用包 `bitcast`，`call->called()` 不再是 `FunctionPointerConstant`，原子伪锁识别失效 → 原子段全报 FP。把识别挪到 `exec_extern_call`（用已穿透 bitcast 的 `fun->name()`）。**FP 404→108**（TN 390→686），FN=0 不破。
+- **fresh 堆节点修复（`fc8339c`，C 桶）**：`malloc` 结果是线程私有（fresh）直到发布；lock集加 flow-sensitive 的 MUST `fresh` digest，存进全局/已发布堆字段/线程实参时移除。**FP 108→100**（TN 686→694），FN=0 不破（goblint region 域「fresh bullet」）。
 - `free()` 排除出 extern-call 写合成（`99b7c88`）——free 不通过指针写数据；
 - stdio 输出族（printf/fprintf/…）排除出写合成（`9d7edb6`）——其指针实参是流/格式串/要打印的值。
 
