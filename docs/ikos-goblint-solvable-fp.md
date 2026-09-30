@@ -6,7 +6,8 @@
 > 本表是**剩余 13 个**。
 > 再回收（本表更新后）：join 句柄 3 个（`build_thread_creators` 归因 helper 里的 create + 全局 pthread_t
 > 句柄写入 + `[0,S]` 区间 join），FP 98→95；join-then-create 4 个（pthread_create 处记录父线程 MUST joined
-> 摘要、子线程入口继承），FP 95→91。当前**剩余 8 个**。
+> 摘要、子线程入口继承），FP 95→91；stacksave/stackrestore 排除（VLA 清理的 ⊤ 栈指针写）3 个，FP 91→88。
+> 当前**剩余 6 个**。
 
 ## 按机制分 6 组
 
@@ -17,7 +18,7 @@
 | 3 | thread-id 域（线程 id 当数组下标） | 1 | pthread-race-challenges/per-thread-array-init | 大 |
 | 4 | 不相交分区 / 跨槽共享 | 1 | goblint-regression/28-race_reach_92-evilcollapse_racing | 大 |
 | 5 | 自旋锁 / __VERIFIER_atomic_acquire-release | 2 | pthread-ext/29_conditionals_vs、43_NetBSD_sysmon_power_sliced | ❌ 红线 |
-| 6 | 伪原子段并发（reorder_5） | ~~4~~ **1（已回收 3）** | pthread/reorder_5 | 待查 |
+| 6 | ~~伪原子段并发（reorder_5）~~ | ~~1~~ **0（已回收）** | ~~pthread/reorder_5~~ | ✅ |
 
 ## 说明
 

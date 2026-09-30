@@ -1882,6 +1882,14 @@ void DataRaceChecker::check_extern_call_effects(
       // `free(tids)` ⊤ Write pairing with `while(!ready)` on @ready is the
       // FP. The raw C form is `free`; ikos-pp maps it to `ar.libc.free`.
       callee_nm == "free" || callee_nm == "ar.libc.free" ||
+      // Stack save/restore intrinsics (llvm.stacksave/stackrestore, mapped to
+      // ar.stacksave/ar.stackrestore) for VLA cleanup: their operand is the
+      // saved STACK POINTER (⊤), which is not shared data. Synthesizing a Write
+      // through it fabricates a ⊤ Write at the function's exit that pairs with
+      // EVERY concurrent access (reorder_5.c: main's VLA cleanup "races"
+      // setThread/checkThread's atomic `a`/`b`).
+      callee_nm.find("stacksave") != std::string::npos ||
+      callee_nm.find("stackrestore") != std::string::npos ||
       // stdio output family (printf/fprintf/sprintf/snprintf/puts/fputs/…):
       // their pointer arguments are the output stream (FILE*), the read-only
       // format string, or the VALUES being printed — none of which the library

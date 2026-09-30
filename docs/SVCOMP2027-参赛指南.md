@@ -85,13 +85,14 @@
 
 ### 当前基线（2026 冻结集全量，1029 任务，**全部 ILP32**）
 
-TP=235 FP=91 TN=703 **FN=0** err=0；precision 72.1%。红线 FN=0 守住。已落地的 sound FP 修复：
+TP=235 FP=88 TN=706 **FN=0** err=0；precision 72.8%。红线 FN=0 守住。已落地的 sound FP 修复：
 
 - **ILP32 bitcast-callee 修复（`ca1907f`，杠杆最大）**：32 位下 clang 给无原型函数 `__VERIFIER_atomic_begin/end` 的调用包 `bitcast`，`call->called()` 不再是 `FunctionPointerConstant`，原子伪锁识别失效 → 原子段全报 FP。把识别挪到 `exec_extern_call`（用已穿透 bitcast 的 `fun->name()`）。**FP 404→108**（TN 390→686），FN=0 不破。
 - **fresh 堆节点修复（`fc8339c`，C 桶）**：`malloc` 结果是线程私有（fresh）直到发布；lock集加 flow-sensitive 的 MUST `fresh` digest，存进全局/已发布堆字段/线程实参时移除。**FP 108→100**（TN 686→694），FN=0 不破（goblint region 域「fresh bullet」）。
 - **变量下标堆指针黑板修复（`ab07166`，E 桶 weaver）**：`B[i]=p`（变量 i）之前被 heap-pointer 黑板的 singleton 守卫跳过、读侧落回 memory 域 ⊤ → `B[i][j]` 全别名。非 singleton offset 打包成哨兵 0xFFFFFFFF、去掉两侧守卫，变量下标指针 JOIN 进黑板、读侧恢复。**FP 100→98**（TN 694→696），FN=0 不破（JOIN 是过近似，只多 FP 不漏 FN）。
 - **join 句柄修复（D 桶，FP 98→95）**：helper（`module_init`）里的 pthread_create 之前被 `build_thread_creators` 跳过 → create-HB 失效；全局 `pthread_t` 句柄不写 site id（handle-init 只认局部）→ join 读 [0,0]；条件 create 使句柄区间 [0,S] 非 singleton → join 落空。修法 = helper 反向可达性归因（地址被取→⊤ 全入口）、全局句柄写 site id、`[0,S]` 区间 join ub。收 race-1_1/1_2/1_3-join 共 3 个，FN=0 不破。
 - **join-then-create 修复（FP 95→91）**：父线程 join T 后再 create U 时，T 已终止、T 的访问 HB U 的访问，但子线程入口 joined 摘要为空。修法 = pthread_create 处记录父线程的 MUST joined 摘要（按 child+create_site 覆盖、读侧跨 site 取交集），子线程入口继承。收 bigshot_s/bigshot_s2/singleton/singleton_with-uninit-problems 共 4 个，FN=0 不破。
+- **stacksave/stackrestore 排除（FP 91→88）**：`llvm.stacksave/stackrestore`（VLA 清理）的参数是保存的栈指针（⊤），之前被当 extern 写合成 ⊤ Write、在函数出口与所有并发访问配对（reorder_5.c 的 main VLA 清理「竞争」setThread/checkThread 的原子 a/b）。排除后收 3 个，FN=0 不破。
 - `free()` 排除出 extern-call 写合成（`99b7c88`）——free 不通过指针写数据；
 - stdio 输出族（printf/fprintf/…）排除出写合成（`9d7edb6`）——其指针实参是流/格式串/要打印的值。
 
