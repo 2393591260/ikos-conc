@@ -126,6 +126,8 @@ void AnalysisOptions::save(SettingsTable& table) {
   table.insert("emit-concurrency-invariants",
                this->emit_concurrency_invariants);
 
+  table.insert("demote-race-to-unknown", this->demote_race_to_unknown);
+
   if (this->argc) {
     table.insert("argc", std::to_string(*this->argc));
   }

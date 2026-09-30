@@ -456,6 +456,15 @@ static llvm::cl::opt< bool > EmitConcurrencyInvariants(
     llvm::cl::init(false),
     llvm::cl::cat(AnalysisCategory));
 
+static llvm::cl::opt< bool > DemoteRaceToUnknown(
+    "demote-race-to-unknown",
+    llvm::cl::desc("Report every data race as UNKNOWN (not 'definitely "
+                   "unsafe'). Sound for FN=0: UNKNOWN is never SAFE. For "
+                   "SV-COMP scoring, avoids the -16 FP penalty on races the "
+                   "abstract model cannot prove are real."),
+    llvm::cl::init(false),
+    llvm::cl::cat(AnalysisCategory));
+
 static llvm::cl::opt< analyzer::WideningStrategy > WideningStrategy(
     "widening-strategy",
     llvm::cl::desc("Strategy for increasing iterations"),
@@ -920,6 +929,7 @@ static analyzer::AnalysisOptions make_analysis_options(ar::Bundle* bundle) {
       .display_checks = DisplayChecks,
       .enable_thread_modular = EnableThreadModular,
       .emit_concurrency_invariants = EmitConcurrencyInvariants,
+      .demote_race_to_unknown = DemoteRaceToUnknown,
       .hardware_addresses = {bundle, HardwareAddresses, HardwareAddressesFile},
       .argc = ((Argc >= 0) ? boost::optional< int >(Argc) : boost::none),
   };

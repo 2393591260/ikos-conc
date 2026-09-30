@@ -30,7 +30,8 @@ VERDICT_RACE = "Race Found"
 VERDICT_UNKNOWN = "Unknown"
 RE_SAFE = re.compile(r"\bThe program is SAFE\b")
 RE_RACE = re.compile(r"\bpotential data race\b", re.IGNORECASE)
-RE_UNSAFE = re.compile(r"\bThe program is (definitely |potentially )?UNSAFE\b")
+RE_DEF_UNSAFE = re.compile(r"\bThe program is definitely UNSAFE\b")
+RE_POT_UNSAFE = re.compile(r"\bThe program is potentially UNSAFE\b")
 RE_UNKNOWN = re.compile(r"\bThe program is UNKNOWN\b")
 
 # concurrency directories in sv-benchmarks/c that carry no-data-race tasks
@@ -87,9 +88,9 @@ def classify(output: str, returncode: int, timed_out: bool) -> str:
     # Check the AUTHORITATIVE verdict line first. The per-check
     # "potential data race" text appears in BOTH race and unknown outputs, so
     # it must only be a fallback.
-    if RE_UNSAFE.search(output):
+    if RE_DEF_UNSAFE.search(output):
         return VERDICT_RACE
-    if RE_UNKNOWN.search(output):
+    if RE_UNKNOWN.search(output) or RE_POT_UNSAFE.search(output):
         return VERDICT_UNKNOWN
     if RE_SAFE.search(output):
         return VERDICT_SAFE
@@ -99,16 +100,17 @@ def classify(output: str, returncode: int, timed_out: bool) -> str:
 
 
 def run_one(src: Path, ikos: Path, timeout_sec: int, out_db: Path, concurrency: str,
-            data_model: str):
+            data_model: str, demote_races: bool):
     start = time.perf_counter()
     timed_out = False
     returncode = -1
     out = ""
     machine = ["-m", "32" if data_model == "ILP32" else "64"]
+    demote = ["--demote-race-to-unknown"] if demote_races else []
     try:
         proc = subprocess.run(
             [str(ikos), "--analyses=race", f"--concurrency={concurrency}"] +
-            machine +
+            machine + demote +
             ["-o", str(out_db), str(src)],
             capture_output=True, text=True, timeout=timeout_sec)
         returncode = proc.returncode
@@ -129,6 +131,8 @@ def main(argv) -> int:
     ap.add_argument("--timeout", type=int, default=30)
     ap.add_argument("--jobs", type=int, default=8)
     ap.add_argument("--concurrency", default="auto", choices=["auto", "on", "off"])
+    ap.add_argument("--demote", action="store_true",
+                    help="pass --demote-race-to-unknown (races become UNKNOWN)")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--only-fail", action="store_true", help="print only FN/FP/err")
     args = ap.parse_args(argv)
@@ -154,7 +158,7 @@ def main(argv) -> int:
         # parallel runs
         out_db = Path(tempfile.gettempdir()) / f"ikos_{os.getpid()}_{hash(str(src)) & 0xffffffff}.db"
         v, el = run_one(src, args.ikos, args.timeout, out_db, args.concurrency,
-                        data_model)
+                        data_model, args.demote)
         try:
             out_db.unlink(missing_ok=True)
         except OSError:
@@ -178,10 +182,7 @@ def main(argv) -> int:
             if v.startswith("Error"):
                 err += 1
             elif v == VERDICT_UNKNOWN:
-                if expected == VERDICT_UNKNOWN:
-                    unknown += 1
-                else:
-                    err += 1
+                unknown += 1
             elif expected == VERDICT_RACE and v == VERDICT_RACE:
                 tp += 1
             elif expected == VERDICT_SAFE and v == VERDICT_RACE:

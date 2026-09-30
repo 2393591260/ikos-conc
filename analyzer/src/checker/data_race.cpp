@@ -1115,7 +1115,10 @@ DataRaceChecker::~DataRaceChecker() {
 
     this->_checks.insert(CheckKind::DataRace,
                          CheckerName::DataRace,
-                         group_is_unknown ? Result::Warning : Result::Error,
+                         (group_is_unknown ||
+                          this->_ctx.opts.demote_race_to_unknown)
+                             ? Result::Warning
+                             : Result::Error,
                          first.report_stmt,
                          first.report_cc,
                          /* operands = */ {},

@@ -175,6 +175,13 @@ def parse_arguments(argv):
                                          args.default_concurrency),
                           choices=args.choices(args.concurrency_modes),
                           default=args.default_concurrency)
+    analysis.add_argument('--demote-race-to-unknown',
+                          dest='demote_race_to_unknown',
+                          action='store_true',
+                          default=False,
+                          help="Report every data race as UNKNOWN instead of "
+                               "'definitely unsafe'. Sound for FN=0 (UNKNOWN is "
+                               "never SAFE); avoids the SV-COMP FP penalty.")
     analysis.add_argument('-j', '--jobs',
                           dest='jobs',
                           metavar='',
@@ -800,6 +807,9 @@ def ikos_analyzer(db_path, pp_path, opt):
         cmd.append('--concurrency')
     elif opt.concurrency == 'off':
         cmd.append('--no-concurrency')
+
+    if opt.demote_race_to_unknown:
+        cmd.append('--demote-race-to-unknown')
 
     if opt.narrowing_strategy == 'auto':
         if opt.domain in domains_without_narrowing:
