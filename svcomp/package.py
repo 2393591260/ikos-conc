@@ -120,6 +120,8 @@ def patch_settings(py_path):
     import re
     with open(py_path) as f:
         src = f.read()
+    if "PREFIX = os.path.abspath(" in src:
+        return  # already relocatable (idempotent re-run / re-package)
     new_prefix = (
         "PREFIX = os.path.abspath(\n"
         "    os.path.join(os.path.dirname(os.path.abspath(__file__)),\n"
@@ -183,7 +185,9 @@ def package(install_dir, out, llvm_root, apron_dir):
     # 5. relocatable wrappers
     for name, script in SCRIPTS.items():
         with open(os.path.join(install, "bin", name), "w") as f:
-            f.write(WRAPPER.format(script=script))
+            # .replace, not .format: the shell `${VAR:+...}` expansions in
+            # WRAPPER contain braces that str.format would try to parse.
+            f.write(WRAPPER.replace("{script}", script))
         os.chmod(os.path.join(install, "bin", name), 0o755)
 
     # 6. smoketest + example + README + LICENSE
