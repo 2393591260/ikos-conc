@@ -82,15 +82,17 @@ inline std::uint64_t lock_key_instance(std::uint64_t key) {
 /// high 32 bits identify the DynAlloc allocation site, the low 32 bits the
 /// byte offset of the field WITHIN that allocation, so `N_A->next` and
 /// `N_B->next` (and `N_A->datum`) never collide (09-regions_03-list2_rc.c FN).
-/// A non-singleton offset packs as 0; callers guard on `singleton()` so an
-/// imprecise field access is skipped rather than conflated onto offset 0.
+/// A NON-SINGLETON (variable) offset packs as the sentinel 0xFFFFFFFF — a
+/// distinct "whole array / unknown field" slot so an imprecise element write
+/// (`B[i] = p`) is JOINED onto one summarised entry instead of being dropped
+/// (weaver loop-tiling: B[i][j] otherwise derefs to ⊤).
 inline std::uint64_t heap_pointer_key(std::uint64_t stable_id,
                                       const core::machine_int::Interval& off) {
-  std::uint64_t i = 0;
+  std::uint64_t i = 0xFFFFFFFFULL; // sentinel: variable / unknown field offset
   if (auto s = off.singleton()) {
     i = s->to_z_number().to< std::uint64_t >();
   }
-  return (stable_id << 32) | (i & 0xFFFFFFFFULL);
+  return (stable_id << 32) | i;
 }
 
 /// \brief Is a dynamic-allocation call site inside a CFG loop?
@@ -1347,9 +1349,9 @@ void on_load_pointer_restore(E& eng,
           continue;
         }
         auto src_ptr = eng.data().normal().pointer_to_pointer(ptr.var());
-        if (!src_ptr.offset().singleton()) {
-          continue;
-        }
+        // Variable element offset (`B[i]`) reads the sentinel "whole array"
+        // key (heap_pointer_key packs 0xFFFFFFFF), restoring the JOINed
+        // pointer instead of falling through to the memory domain's ⊤.
         std::uint64_t key = heap_pointer_key(
             static_cast< std::uint64_t >(
                 core::IndexableTraits< MemoryLocation* >::index(dal)),
@@ -1485,16 +1487,17 @@ void on_store_privatize(E& eng,
           if (rhs.is_pointer_var()) {
             auto store_ptr =
                 eng.data().normal().pointer_to_pointer(ptr.var());
-            if (store_ptr.offset().singleton()) {
-              auto rhs_ptr =
-                  eng.data().normal().pointer_to_pointer(rhs.var());
-              std::uint64_t key = heap_pointer_key(
-                  static_cast< std::uint64_t >(
-                      core::IndexableTraits< MemoryLocation* >::index(loc)),
-                  store_ptr.offset());
-              env.join_heap_pointer(key, rhs_ptr.points_to(),
-                                    rhs_ptr.offset());
-            }
+            auto rhs_ptr =
+                eng.data().normal().pointer_to_pointer(rhs.var());
+            // Variable element offset (`B[i] = p`) now lands on the sentinel
+            // "whole array" key (heap_pointer_key packs 0xFFFFFFFF), so the
+            // pointer is JOINed onto one summarised entry instead of dropped.
+            std::uint64_t key = heap_pointer_key(
+                static_cast< std::uint64_t >(
+                    core::IndexableTraits< MemoryLocation* >::index(loc)),
+                store_ptr.offset());
+            env.join_heap_pointer(key, rhs_ptr.points_to(),
+                                  rhs_ptr.offset());
             // Heap-node publication: if this heap node (the store destination)
             // is NOT fresh (i.e. it is already shared), then storing `rhs`
             // into its field publishes `rhs`'s targets too (`A->next = p` with
