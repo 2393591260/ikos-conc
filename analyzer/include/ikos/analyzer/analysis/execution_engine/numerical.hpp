@@ -2165,6 +2165,19 @@ public:
       exec_pthread_self(*this, call);
       return;
     }
+    // === Concurrency Probe: __VERIFIER_atomic_* / hardware-atomic ===
+    //
+    // Under ILP32, clang emits `call void bitcast (...)* @__VERIFIER_atomic_begin
+    // to void ()*()` for no-prototype externs, so `call->called()` is NOT a
+    // FunctionPointerConstant and exec_unknown_extern_call's name-based
+    // recognition (guarded by isa<FunctionPointerConstant>) misses it — the
+    // pseudo-lock is never added and every atomic section races (FP). Here
+    // `fun` is already resolved through the bitcast by the inliner's points-to,
+    // so recognize by `func_name` (same pattern as pthread_once/self above).
+    if (this->_ctx.opts.enable_thread_modular &&
+        exec_atomic_extern_call(*this, call, func_name)) {
+      return;
+    }
     // === End Concurrency Probe ===
 
     this->exec_unknown_extern_call(call);
