@@ -99,3 +99,29 @@ goblint 的 region 域是**两层**：
 2. **LOCAL 快照**（线程入口从 GLOBAL 取，flow-sensitive）：checker 在访问点用 LOCAL 快照判「此刻是否发布」。
 
 **这是中等偏上的特性（两层 + 可达性闭包 + flow-sensitivity），不是几行的 patch。** 原型已回退（未提交），结论固化于此。
+
+## 10. 最终设计（比两层更简单：LOCAL「fresh」MUST 集）
+
+深读 `thread_modular.cpp` 的 fixpoint 后，得到一个更简单且 sound 的方案，**不需要 GLOBAL published 集**：
+
+**核心**：把「发布」反转成「fresh」，且 fresh 是 **MUST 集**（join = 交集、⊤ = ∅，见 CLAUDE.md gotcha #3）。
+
+- 域里加一个 flow-sensitive 的 `_fresh_heap_nodes`（MUST 集）：`malloc` 的结果「确实还没发布」才在集里。
+- `malloc` → 结果加入 fresh。
+- store 指针进「共享位置」（全局 / 线程实参 / **非 fresh 堆节点的字段**）→ 从 fresh 移除。
+- checker：fresh（在集里）→ 线程私有 → 不竞争。
+
+**为什么这个 LOCAL 集 sound（解决了 §8 的 FN 反例）**：
+```c
+t1: p=malloc(→fresh); init(p)(fresh→不竞争); gp=p(存全局→移除p);
+    p->datum=1(p 非 fresh→共享→查)
+t2: q=gp(读全局，q 从没 malloc→不在 t2 的 fresh); q->datum=2(非 fresh→共享→查)
+```
+- t1 的 `p->datum=1` 和 t2 的 `q->datum=2` 都「非 fresh」→ 都当共享 → **竞争被检出**（不 FN）。
+- t1 的 `init(p)` 在 `gp=p` 之前，p 仍在 fresh → 线程私有 → 抑制（不 FP）。
+
+**关键**：fresh 是「本线程 malloc 后还没存进共享位置」——这是**线程局部、flow-sensitive 的 MUST 事实**，不是全局可达性，所以不需要 GLOBAL 集，也不会把 t2 的访问误判成 fresh（t2 从没 malloc 过 p，p 不在 t2 的 fresh 里）。
+
+**flow-sensitivity 的达成**：fresh 集在域里（flow-sensitive），thread 入口**不从黑板初始化**（初始 ⊤=∅），线程内 `malloc` 加、store 减。Phase 4 重跑 intra-procedural fixpoint 时，init(p) 处 fresh 集 = {p}、insert 处移除 p——flow-sensitivity 自然保留，不受单调黑板污染。
+
+**disjointness 分区（arraycollapse 的跨槽共享）是本方案不覆盖的独立难题**——list2_racefree 族只需 freshness。
