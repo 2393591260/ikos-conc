@@ -144,15 +144,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("source")
     ap.add_argument("--ikos", default="ikos")
-    ap.add_argument("--data-model", default="LP64", choices=["LP64", "ILP32"])
+    ap.add_argument("--data-model", default="ILP32", choices=["LP64", "ILP32"])
     ap.add_argument("--out", default="witness.yml")
     args = ap.parse_args()
 
     db = tempfile.mktemp(suffix=".db")
     report = tempfile.mktemp(suffix=".json")
     # Pass the data model to clang (-m32 / -m64) so the .c/.i is compiled with
-    # the right type widths (long/pointer) — the no-data-race tasks are mostly
-    # ILP32. Defaults to LP64.
+    # the right type widths (long/pointer). The SV-COMP no-data-race category is
+    # entirely ILP32, so default to ILP32 (never the host 64-bit target).
     machine = ["-m", "32" if args.data_model == "ILP32" else "64"]
     try:
         proc = subprocess.run(

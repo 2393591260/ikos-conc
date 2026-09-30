@@ -1,49 +1,48 @@
-# category-structure.yml MR — 声明 IKOS-ConC 参加 C.no-data-race
+# category-structure.yml MR — 声明 IKOS-ConC **opt-in** 只参加 C.no-data-race
 
 仓库：`gitlab.com/sosy-lab/sv-comp/bench-defs`
 文件：`benchmark-defs/category-structure.yml`
 
-## 改动（一行）
+> 已对着 bench-defs 最新 `main`（2026-09-30 拉取）核实：
+> 基准类别是 `C.Concurrency`（**没有** `C.ConcurrencySafety` 这个名字）。
+> 逐子类参与由**顶层 `opt_in:` / `opt_out:` 两张表**控制，keyed by 工具名。
+> `C.Concurrency.verifiers` 里的工具会**默认参加全部 4 个子类**（no-data-race /
+> no-overflow / unreach-call / valid-memsafety），所以只想参加 no-data-race 时
+> **不能进 verifiers 列表**，只能进 `opt_in`。
 
-在 `C.Concurrency:` 的 `verifiers:` 列表里加 `- ikos-conc`：
+## 改动（唯一一处）：在顶层 `opt_in:` 表按字母序插入
+
+参照同类的 no-data-race-only 工具（`cooperace` / `locksmith` / `racerf` /
+`sv-sanitizers`），它们都是**只进 `opt_in`、不进 verifiers**：
 
 ```yaml
-  C.Concurrency:
-    properties:
-      - unreach-call
-      - no-data-race
-      - no-overflow
-      - valid-memsafety
-    categories:
-      - C.no-data-race.Concurrency
-      - C.no-overflow.Concurrency
-      - C.unreach-call.Concurrency
-      - C.valid-memsafety.Concurrency
-    verifiers:
-      ...
-      - infer
-      - ikos-conc        # <-- 新增
-      - lazycseq
-      ...
+opt_in:
+  ...
+  hornix:
+    - C.unreach-call.Loops
+    - C.unreach-call.Recursive
+    - C.unreach-call.XCSP
+  ikos-conc:                                     # <-- 新增，字母序在 hornix 和 korn 之间
+    - C.no-data-race.Concurrency
+    - C.no-data-race.Huawei-Concurrency-Challenges
+  korn:
+    - C.unreach-call.Arrays
+    ...
 ```
 
-`C.Concurrency` 下的 `verifiers` 同时覆盖 `C.no-data-race.Concurrency`（我们主目标）以及 no-overflow / unreach-call / valid-memsafety 三个并发子类。
-
-## 若只想要 no-data-race（opt-out 其他子类）
-
-如果只想参加 `C.no-data-race`、不参加其他并发子类，需要在 MR 里同时把
-`ikos-conc` 从其他子类的 verifiers 里 opt-out。SV-COMP 2027 用 `benchmark-defs`
-里的 per-category `verifiers` 列表 + `opt_out` 机制控制（确切字段见 bench-defs
-的 `category-structure.yml` 顶部注释 / 组织者说明）。默认按「全并发子类都参加」
-提交即可，等组织者确认再按需 opt-out。
+**不要**把 `ikos-conc` 加进 `C.Concurrency.verifiers`（那会默认参加 no-overflow /
+unreach-call / valid-memsafety 三个子类）。
 
 ## MR 描述模板
 
 ```
-Title: Add ikos-conc as a verifier for C.no-data-race (SV-COMP 2027)
+Title: Add ikos-conc (opt-in) for C.no-data-race.Concurrency (SV-COMP 2027)
 
 Add IKOS-ConC, a sound thread-modular data-race detector built on NASA IKOS,
-to the C.Concurrency verifiers list (target category: C.no-data-race.Concurrency).
+to the top-level opt_in table for C.no-data-race.Concurrency and
+C.no-data-race.Huawei-Concurrency-Challenges. It is not added to the
+C.Concurrency.verifiers list, so it does not participate in the other
+concurrency subcategories.
 
 Tool info: https://github.com/2393591260/ikos-conc
 BenchExec tool-info module: benchexec/tools/ikos-conc
@@ -51,7 +50,6 @@ BenchExec tool-info module: benchexec/tools/ikos-conc
 
 ## 备注
 
-- 该 MR 只需在注册截止（2026-10-08）前提交；工具本体归档 + FM-Tools 条目
-  在工具提交截止（2026-10-20）前完成即可。
-- 精确的 opt-out/opt-in 语法以 bench-defs 仓库当前 `category-structure.yml`
-  为准，提交前对着最新 main 再核一遍。
+- 该 MR 只需在注册截止（2026-10-08）前提交。
+- `opt_in` 表的字母序位置、以及 `C.no-data-race.Huawei-Concurrency-Challenges`
+  这个名字，提交前对着 bench-defs 最新 `main` 再核一遍（本文件基于 2026-09-30 快照）。

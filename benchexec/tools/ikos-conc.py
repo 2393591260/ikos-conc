@@ -100,9 +100,11 @@ class Tool(BaseTool2):
         cmd = [sys.executable, str(wrapper), "--ikos", executable]
         # Forward the task's data model (ILP32/LP64) so the .c/.i is compiled
         # with the right type widths and the witness's data_model field matches.
-        data_model = task.options.get("data_model")
-        if data_model in ("ILP32", "LP64"):
-            cmd += ["--data-model", data_model]
+        # Always pass it explicitly: falling back to the wrapper's/host default
+        # would silently analyze the wrong (64-bit) model. The no-data-race
+        # category is entirely ILP32, so that is the fallback.
+        data_model = task.options.get("data_model") or "ILP32"
+        cmd += ["--data-model", data_model]
         return cmd + options + list(task.input_files_or_identifier)
 
     def determine_result(self, run):
