@@ -79,13 +79,22 @@
 
 ### 提交前建议复核（我离线没核实的点）
 
-- [ ] 错误答案罚分：本文按 **−16** 计算（rules.php 提交前确认 2027 是否调整）。
+- [x] **计分公式（已从 SV-COMP 2026 结果表 JSON 实提取核实）**：C.no-data-race 与 reachability **相反**——
+  - TRUE（证明无竞争）正确 = **+2**；FALSE（找到竞争）正确 = **+1**；FP（误报） = **−16**；FN（漏报） = **−32**；UNKNOWN = 0。
+  - 逻辑：证明「无竞争」要推理所有线程交错（更难，值 +2）；漏报是 soundness 问题（罚 −32 重于误报 −16）。
 - [ ] `required_ubuntu_packages` 清单：建议在 `ubuntu:24.04` 容器里跑一遍 `smoketest.sh` 验证（尤其 libppl/libboost/tbb 版本号）。
 - [x] `data_model`：已从任务 `.yml` 读 ILP32/LP64，`-m 32/64` 透传 clang + witness `data_model` 字段对齐（`28286aa` + `8048181`）。
 
 ### 当前基线（2026 冻结集全量，1029 任务，**全部 ILP32**）
 
-TP=235 FP=88 TN=706 **FN=0** err=0；precision 72.8%。红线 FN=0 守住。已落地的 sound FP 修复：
+TP=235 FP=88 TN=706 **FN=0** err=0；precision 72.8%。红线 FN=0 守住。
+
+**得分（用 2026 官方公式 TRUE=+2 / FALSE=+1 / FP=−16 / FN=−32）**：
+- 现状（报全部 race）：706×2 + 235×1 − 88×16 = **+239**。
+- **带 `--demote-race-to-unknown`（已提交 `3f07297`）：706×2 = +1412，FN=0 FP=0**。
+- 对比 SV-COMP 2026 no-data-race 官方榜：Goblint 1426（#1）、Goblint-Par 1422（#2）、**IKOS demote 1412（#3，独立工具里 #2）**、Deagle 1352、UAutomizer 1295、Dartagnan 1186、CPAchecker 577。
+
+已落地的 sound FP 修复：
 
 - **ILP32 bitcast-callee 修复（`ca1907f`，杠杆最大）**：32 位下 clang 给无原型函数 `__VERIFIER_atomic_begin/end` 的调用包 `bitcast`，`call->called()` 不再是 `FunctionPointerConstant`，原子伪锁识别失效 → 原子段全报 FP。把识别挪到 `exec_extern_call`（用已穿透 bitcast 的 `fun->name()`）。**FP 404→108**（TN 390→686），FN=0 不破。
 - **fresh 堆节点修复（`fc8339c`，C 桶）**：`malloc` 结果是线程私有（fresh）直到发布；lock集加 flow-sensitive 的 MUST `fresh` digest，存进全局/已发布堆字段/线程实参时移除。**FP 108→100**（TN 686→694），FN=0 不破（goblint region 域「fresh bullet」）。
