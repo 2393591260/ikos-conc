@@ -89,5 +89,5 @@
 | G1 | 错误答案**罚分**（本文按 −16 算） | 影响 FP 的代价评估，rules.php 复核 |
 | G2 | `required_ubuntu_packages` 精确清单 | 在 `ubuntu:24.04` 容器跑 smoketest 验证 |
 | G3 | **data_model**（ILP32/LP64） | ✅ 已修（`28286aa`）：tool-info 读 `task.options["data_model"]` → `-m 32/64`，witness 字段对齐；32 位头文件已列进 required_ubuntu_packages |
-| G4 | witness validator（非 linter）实际验收 | CPAchecker 4.2.2 尚不支持 2.2 格式（连官方示例都解析不了）→ 语义验证暂做不了，等官方新版 validator |
+| G4 | witness validator（非 linter）实际验收 | ✅ 阻塞解除：改用 **Dartagnan**（并发/数据竞争见证的专用 SMT 验收器，C.Concurrency 排名第 1）做 2.2 语义验收，CPAchecker 不用于并发类别（其 2.2 解析 NoSuchElementException 是自身问题，非阻塞）。状态：用 Dartagnan 本地实测（Zenodo DOI 10.5281/zenodo.17723884） |
 | G5 | 工具须**公开可访问**（repo 需 public） | 规则原文「participating tools are required to be publicly available on the internet」——确认 `github.com/2393591260/ikos-conc` 已公开 |
