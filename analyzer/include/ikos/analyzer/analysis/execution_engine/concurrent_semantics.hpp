@@ -957,6 +957,20 @@ void exec_pthread_join(E& eng, ar::CallBase* call) {
             (sid != 0 && env.site_func(sid) != nullptr)) {
           joined_sids.insert(sid);
         }
+      } else if (!iv.is_top() && !iv.is_bottom() &&
+                 iv.lb().to_z_number() == core::ZNumber(0)) {
+        // Conditional create → handle ∈ [0, S]: 0 is the "never created" arm
+        // (joining it is UB and may be ignored), S is the create that wrote
+        // this handle. S exists iff that create ran iff the handle is S, so
+        // joining S is sound — S is joined whenever it exists (race-1_1/1_2/
+        // 1_3-join.c: `pdev=5` after `join(t1)` must not race the child).
+        // ub must be a registered site; a never-written handle stays 0 (nothing
+        // to join), and a stale/unknown ub (site_func == nullptr) is ignored.
+        std::uint64_t ub =
+            iv.ub().to_z_number().template to< std::uint64_t >();
+        if (ub != 0 && env.site_func(ub) != nullptr) {
+          joined_sids.insert(ub);
+        }
       }
     } else if (scalar_lit.is_machine_int()) {
       std::uint64_t sid = scalar_lit.machine_int()
@@ -1727,37 +1741,50 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
         auto pts = eng.data().normal().pointer_to_points_to(scalar_lit.var());
         if (pts.is_set()) {
           for (MemoryLocation* loc : pts) {
+            Variable* var = nullptr;
+            ar::Type* pointee = nullptr;
             if (auto* lml = dyn_cast< LocalMemoryLocation >(loc)) {
-              // Only SCALAR handles — an ARRAY of pthread_t (`id[i]`)
-              // collapses to a variable-index deref whose points-to is TOP
-              // (skipped above) or resolves to a cell (aggregate), which
-              // `scalar_assign_nondet` must not touch.
-              Variable* var = eng.var_factory().get_local(lml->local_var());
-              if (!isa< CellVariable >(var)) {
-                // Store the thread-instance id as the pthread_t VALUE (a
-                // concrete i64) into the handle CELL, so a later pthread_join
-                // reads it back as a singleton (⇒ the exact instance). A
-                // CONCRETE value is what lets an unknown call (`foo(&t)`
-                // clobbers it to ⊤) be distinguished from a freshly-created
-                // handle (07-trivial-unknowntid FN). The handle is an
-                // address-taken local, so its value lives in the MEMORY cell,
-                // written via mem_write (the old scalar_assign_nondet only
-                // touched the ADDRESS var, not the content).
-                ar::Type* pointee = lml->local_var()->type()->pointee();
-                if (sid != 0 && pointee->is_integer()) {
-                  ar::IntegerType* ity = ar::cast< ar::IntegerType >(pointee);
-                  auto size = core::MachineInt(
-                      eng.data_layout().store_size_in_bytes(pointee),
-                      eng.data_layout().pointers.bit_width, core::Unsigned);
-                  eng.data().normal().mem_write(
-                      var,
-                      core::Literal< Variable*, MemoryLocation* >::machine_int(
-                          core::MachineInt(static_cast< std::uint64_t >(sid),
-                                           ity->bit_width(), ity->sign())),
-                      size);
-                } else {
-                  eng.data().normal().scalar_assign_nondet(var);
-                }
+              var = eng.var_factory().get_local(lml->local_var());
+              pointee = lml->local_var()->type()->pointee();
+            } else if (auto* gml = dyn_cast< GlobalMemoryLocation >(loc)) {
+              // GLOBAL pthread_t handle (race-1_1/1_2/1_3-join.c: `pthread_t
+              // t1;` at file scope) — same cell write as the local case, but
+              // on the global's memory cell.
+              var = eng.var_factory().get_global(gml->global_var());
+              pointee = gml->global_var()->type()->pointee();
+            } else {
+              continue;
+            }
+            if (isa< CellVariable >(var)) {
+              continue; // aggregate handle (id[i]): skip
+            }
+            // Only SCALAR handles — an ARRAY of pthread_t (`id[i]`) collapses
+            // to a variable-index deref whose points-to is TOP (skipped above)
+            // or resolves to a cell (aggregate), which `scalar_assign_nondet`
+            // must not touch.
+            {
+              // Store the thread-instance id as the pthread_t VALUE (a
+              // concrete i64) into the handle CELL, so a later pthread_join
+              // reads it back as a singleton (= the exact instance). A
+              // CONCRETE value is what lets an unknown call (`foo(&t)`
+              // clobbers it to TOP) be distinguished from a freshly-created
+              // handle (07-trivial-unknowntid FN). The handle is an
+              // address-taken local, so its value lives in the MEMORY cell,
+              // written via mem_write (the old scalar_assign_nondet only
+              // touched the ADDRESS var, not the content).
+              if (sid != 0 && pointee->is_integer()) {
+                ar::IntegerType* ity = ar::cast< ar::IntegerType >(pointee);
+                auto size = core::MachineInt(
+                    eng.data_layout().store_size_in_bytes(pointee),
+                    eng.data_layout().pointers.bit_width, core::Unsigned);
+                eng.data().normal().mem_write(
+                    var,
+                    core::Literal< Variable*, MemoryLocation* >::machine_int(
+                        core::MachineInt(static_cast< std::uint64_t >(sid),
+                                         ity->bit_width(), ity->sign())),
+                    size);
+              } else {
+                eng.data().normal().scalar_assign_nondet(var);
               }
             }
           }

@@ -1381,8 +1381,64 @@ void DataRaceChecker::build_thread_creators() {
   // FunctionPointerConstant named "pthread_create", thread function given
   // as a constant in argument slot 2. Creators are identified by entry
   // name — the same identity `current_thread_id` assigns to access
-  // records. Creation inside a non-entry helper is skipped (creator name
-  // would not match any record's tid): precision loss, never unsoundness.
+  // records. A create inside a non-entry helper is attributed to the entry
+  // functions that (transitively) call the helper, so a parent write before
+  // the call still happens-before the child (race-1_1/1_2/1_3-join.c: the
+  // create is in `module_init`, reached only from `main`).
+  //
+  // Set of all thread-entry names (potential creators): "main" plus every
+  // thread function discovered during analysis. A helper whose address is
+  // taken gets the WHOLE set as its creator set — a non-unique (TOP) set that
+  // disables the create-edge HB for that child, keeping the uniqueness claim
+  // sound when the helper may be reached through an indirect call we can't see.
+  std::unordered_set< std::string > all_entries;
+  all_entries.insert("main");
+  for (ar::Function* tf : this->_ctx.concurrent_env.get_all_thread_functions()) {
+    if (tf != nullptr) {
+      all_entries.insert(tf->name());
+    }
+  }
+
+  // Reverse DIRECT call graph (callee name -> direct callers) and the set of
+  // functions whose address is taken (a FunctionPointerConstant used anywhere
+  // other than as a direct-call target: stored, passed, or in a global
+  // initializer). A function-pointer constant as a call ARGUMENT (pthread
+  // create's start_routine) is an address-taken use, not a direct call.
+  std::unordered_map< std::string, std::unordered_set< std::string > > callers;
+  std::unordered_set< std::string > address_taken;
+  auto scan_operands = [&](ar::Code* body, const std::string& owner) {
+    for (auto bit = body->begin(), bend = body->end(); bit != bend; ++bit) {
+      ar::BasicBlock* bb = *bit;
+      for (auto sit = bb->begin(), send = bb->end(); sit != send; ++sit) {
+        ar::Statement* stmt = *sit;
+        if (auto* call = dyn_cast< ar::CallBase >(stmt)) {
+          if (auto* cst =
+                  dyn_cast< ar::FunctionPointerConstant >(call->called())) {
+            if (cst->function() != nullptr) {
+              callers[cst->function()->name()].insert(owner);
+            }
+          }
+          for (auto it = call->arg_begin(), et = call->arg_end(); it != et;
+               ++it) {
+            if (auto* fpc = dyn_cast< ar::FunctionPointerConstant >(*it)) {
+              if (fpc->function() != nullptr) {
+                address_taken.insert(fpc->function()->name());
+              }
+            }
+          }
+        } else {
+          for (auto it = stmt->op_begin(), et = stmt->op_end(); it != et;
+               ++it) {
+            if (auto* fpc = dyn_cast< ar::FunctionPointerConstant >(*it)) {
+              if (fpc->function() != nullptr) {
+                address_taken.insert(fpc->function()->name());
+              }
+            }
+          }
+        }
+      }
+    }
+  };
   for (auto fit = this->_ctx.bundle->function_begin(),
             fend = this->_ctx.bundle->function_end();
        fit != fend;
@@ -1391,16 +1447,44 @@ void DataRaceChecker::build_thread_creators() {
     if (!fun->is_definition()) {
       continue;
     }
-
-    std::string creator;
-    if (this->_ctx.concurrent_env.is_thread_entry(fun)) {
-      creator = fun->name();
-    } else if (fun->name() == "main") {
-      creator = "main";
-    } else {
+    if (ar::Code* body = fun->body_or_null()) {
+      scan_operands(body, fun->name());
+    }
+  }
+  // Global function-pointer initializers (e.g. `void (*fp)(void) = helper;`)
+  // mark the helper address-taken: it may be called from any thread entry.
+  for (auto git = this->_ctx.bundle->global_begin(),
+            gend = this->_ctx.bundle->global_end();
+       git != gend;
+       ++git) {
+    ar::Code* init = (*git)->initializer_or_null();
+    if (init == nullptr) {
       continue;
     }
+    for (auto bit = init->begin(), bend = init->end(); bit != bend; ++bit) {
+      ar::BasicBlock* bb = *bit;
+      for (auto sit = bb->begin(), send = bb->end(); sit != send; ++sit) {
+        ar::Statement* stmt = *sit;
+        for (auto it = stmt->op_begin(), et = stmt->op_end(); it != et; ++it) {
+          if (auto* fpc = dyn_cast< ar::FunctionPointerConstant >(*it)) {
+            if (fpc->function() != nullptr) {
+              address_taken.insert(fpc->function()->name());
+            }
+          }
+        }
+      }
+    }
+  }
 
+  // Attribute each pthread_create's child to its possible creators.
+  for (auto fit = this->_ctx.bundle->function_begin(),
+            fend = this->_ctx.bundle->function_end();
+       fit != fend;
+       ++fit) {
+    ar::Function* fun = *fit;
+    if (!fun->is_definition()) {
+      continue;
+    }
     ar::Code* body = fun->body_or_null();
     if (body == nullptr) {
       continue;
@@ -1427,9 +1511,41 @@ void DataRaceChecker::build_thread_creators() {
         if (tfc == nullptr || tfc->function() == nullptr) {
           continue;
         }
-        this->_thread_creators[tfc->function()->name()].insert(creator);
-        this->_thread_creations.push_back(
-            ThreadCreation{stmt, tfc->function()->name()});
+        const std::string child = tfc->function()->name();
+
+        if (fun->name() == "main") {
+          this->_thread_creators[child].insert("main");
+        } else if (this->_ctx.concurrent_env.is_thread_entry(fun)) {
+          this->_thread_creators[child].insert(fun->name());
+        } else if (address_taken.count(fun->name()) != 0) {
+          // Helper reachable through an unknown (indirect) call: any entry may
+          // be the creator -> non-unique (TOP) creator set.
+          for (const std::string& e : all_entries) {
+            this->_thread_creators[child].insert(e);
+          }
+        } else {
+          // Helper reachable only through direct calls: the creator set is the
+          // entries that transitively call it (reverse BFS over direct callers).
+          std::vector< std::string > work{fun->name()};
+          std::unordered_set< std::string > seen{fun->name()};
+          while (!work.empty()) {
+            std::string cur = work.back();
+            work.pop_back();
+            auto cit = callers.find(cur);
+            if (cit == callers.end()) {
+              continue;
+            }
+            for (const std::string& caller : cit->second) {
+              if (all_entries.count(caller) != 0) {
+                this->_thread_creators[child].insert(caller);
+              } else if (seen.insert(caller).second) {
+                work.push_back(caller);
+              }
+            }
+          }
+        }
+
+        this->_thread_creations.push_back(ThreadCreation{stmt, child});
       }
     }
   }
