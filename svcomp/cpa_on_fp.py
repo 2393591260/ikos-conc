@@ -30,7 +30,9 @@ def run_one(rel, timeout):
             capture_output=True, text=True, timeout=timeout)
         out = p.stdout + p.stderr
     except subprocess.TimeoutExpired as e:
-        out = (e.stdout or "") + (e.stderr or "")
+        # TimeoutExpired.stdout/stderr are bytes even with text=True.
+        out = ((e.stdout or b"").decode(errors="replace") +
+               (e.stderr or b"").decode(errors="replace"))
         timed_out = True
     m = RE_RESULT.search(out)
     verdict = "TIMEOUT" if timed_out else (m.group(1) if m else "ERROR")
@@ -43,13 +45,17 @@ def main():
     print(f"Running CPAchecker on {len(fps)} FP files (4 parallel, timeout 120s)...",
           file=sys.stderr)
     results = []
-    with ThreadPoolExecutor(max_workers=4) as ex:
-        futs = {ex.submit(run_one, rel, 120): rel for rel in fps}
-        for fut in as_completed(futs):
-            rel, verdict, el = fut.result()
-            results.append((rel, verdict, el))
-            print(f"[{len(results)}/{len(fps)}] {rel} -> CPA={verdict} "
-                  f"({el:.0f}s)", file=sys.stderr)
+    # incremental full-results file so an interrupted run keeps what it has
+    with open("/tmp/cpa_all_results.txt", "w") as inc:
+        with ThreadPoolExecutor(max_workers=4) as ex:
+            futs = {ex.submit(run_one, rel, 120): rel for rel in fps}
+            for fut in as_completed(futs):
+                rel, verdict, el = fut.result()
+                results.append((rel, verdict, el))
+                inc.write(f"{rel}\t{verdict}\t{el:.0f}\n")
+                inc.flush()
+                print(f"[{len(results)}/{len(fps)}] {rel} -> CPA={verdict} "
+                      f"({el:.0f}s)", file=sys.stderr)
     results.sort(key=lambda r: r[0])
     from collections import Counter
     c = Counter(v for _, v, _ in results)
