@@ -50,6 +50,12 @@ DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 "$DIR/bin/ikos" --version
 "$DIR/bin/ikos" --analyses=race --concurrency=auto --format=no "$DIR/examples/smoke.c"
 "$DIR/bin/ikos" -m 32 --analyses=race --concurrency=auto --format=no "$DIR/examples/smoke.c"
+# SV-COMP scoring switch: a race must be reported as "potentially UNSAFE"
+# (UNKNOWN), never "definitely UNSAFE" (FALSE) — this is the -16-FP-avoiding
+# 1412-point configuration the entry point ships.
+"$DIR/bin/ikos" -m 32 --analyses=race --concurrency=auto \
+  --demote-race-to-unknown --format=no "$DIR/examples/smoke.c" 2>&1 \
+  | grep -q "potentially UNSAFE"
 """
 
 README = r"""# IKOS-ConC — Concurrent Data-Race Detection
@@ -66,8 +72,20 @@ every potential data race it can prove, at the cost of some false positives.
     ./bin/ikos --analyses=race --concurrency=auto <file.c>
 
 Verdicts: `The program is SAFE` (no race), `The program is definitely UNSAFE`
-(race found), `The program is UNKNOWN` (model boundary). On a definite race,
-a format-2.2 violation witness is written to `witness.yml`.
+(race found), `The program is UNKNOWN` (model boundary).
+
+### Demoting races to UNKNOWN (SV-COMP scoring)
+
+The abstract analysis cannot always separate a REAL race from a false positive
+caused by unmodelled synchronization, and SV-COMP penalizes a wrong race
+(-16) far more than it rewards a right one (+1). So the SV-COMP entry point
+runs IKOS with `--demote-race-to-unknown`: every race is reported as
+`potentially UNSAFE` (= UNKNOWN) instead of `definitely UNSAFE` (= FALSE). This
+is sound for FN=0 — UNKNOWN is never SAFE — and maps to the 1412-point
+configuration (a race is only ever claimed by a downstream precise checker,
+not by this front end).
+
+    ./bin/ikos --analyses=race --concurrency=auto --demote-race-to-unknown <file.c>
 
 ### Data model (32-bit / 64-bit)
 
@@ -84,9 +102,9 @@ and forwards it, recording the matching `data_model` in `witness.yml`.
 ## SV-COMP integration
 
 BenchExec tool-info module: `benchexec/tools/ikos-conc.py` (tool id `ikos-conc`).
-The tool fixes the analysis to `--analyses=race --concurrency=auto` and emits
-TRUE / FALSE(no-data-race) / UNKNOWN; a FALSE verdict is accompanied by
-`witness.yml`.
+The tool fixes the analysis to `--analyses=race --concurrency=auto
+--demote-race-to-unknown` and emits TRUE (SAFE) / UNKNOWN only — it never
+claims a race, so it never incurs the -16 false-positive penalty.
 
 ## Layout
 

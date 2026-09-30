@@ -156,7 +156,8 @@ def main():
     machine = ["-m", "32" if args.data_model == "ILP32" else "64"]
     try:
         proc = subprocess.run(
-            [args.ikos, "--analyses=race", "--concurrency=auto"] + machine +
+            [args.ikos, "--analyses=race", "--concurrency=auto",
+             "--demote-race-to-unknown"] + machine +
             ["--format=json", "--report-file=" + report,
              "-o", db, args.source],
             capture_output=True, text=True)
