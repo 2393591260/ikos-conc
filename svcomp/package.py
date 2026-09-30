@@ -41,10 +41,15 @@ int main(void) {
 SMOKETEST = r"""#!/bin/sh
 # Smoke test: the analyzer must run on a built-in example and produce a
 # verdict. Exits 0 on success (the tool is functional), non-zero on failure.
+# Covers both data models: the SV-COMP no-data-race category is entirely
+# ILP32, so the -m32 run is the path the competition actually exercises (and
+# needs the 32-bit headers declared in required_ubuntu_packages:
+# libc6-dev-i386 + lib32gcc-13-dev).
 set -e
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 "$DIR/bin/ikos" --version
 "$DIR/bin/ikos" --analyses=race --concurrency=auto --format=no "$DIR/examples/smoke.c"
+"$DIR/bin/ikos" -m 32 --analyses=race --concurrency=auto --format=no "$DIR/examples/smoke.c"
 """
 
 README = r"""# IKOS-ConC — Concurrent Data-Race Detection
