@@ -3166,6 +3166,14 @@ private:
     } else {
       ikos_unreachable("unexpected size operand");
     }
+
+    // A fresh malloc result is thread-private until published (goblint "fresh
+    // bullet"): mark the new heap node fresh in the flow-sensitive lockset. A
+    // later store of its pointer into a shared location removes it.
+    if (this->_ctx.opts.enable_thread_modular) {
+      this->lockset().add_heap_node_fresh(
+          core::IndexableTraits< MemoryLocation* >::index(addr));
+    }
   }
 
   /// \brief Execute a call to libc malloc
@@ -3210,6 +3218,12 @@ private:
                           Nullity::top(),
                           Lifetime::allocated(),
                           MemoryInitialValue::Zero);
+
+    // Fresh heap node (goblint "fresh bullet"): thread-private until published.
+    if (this->_ctx.opts.enable_thread_modular) {
+      this->lockset().add_heap_node_fresh(
+          core::IndexableTraits< MemoryLocation* >::index(addr));
+    }
 
     if (!this->_opts.test(ExecutionEngine::UpdateAllocSizeVar)) {
       return;

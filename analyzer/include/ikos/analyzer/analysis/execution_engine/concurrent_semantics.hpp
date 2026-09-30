@@ -1444,6 +1444,24 @@ void on_load_glob_flown(E& eng, const ScalarLit& ptr, const ScalarLit& lhs) {
 /// No `lockset_unknown` inverted branches, no `!lockset_unknown` ternaries.
 /// The empty-vs-non-empty check on the snapshot IS the PBR gate.
 template < typename E >
+void unfresh_pointer_targets(E& eng, const ScalarLit& rhs) {
+  // Remove every heap node `rhs` may point to from the flow-sensitive "fresh"
+  // set: storing `rhs` into a shared location PUBLISHES its targets (goblint
+  // fresh-bullet materialization). Soundness: a published node is cross-thread
+  // reachable, so its accesses must race like any shared cell.
+  auto rhs_pts = eng.data().normal().pointer_to_points_to(rhs.var());
+  if (!rhs_pts.is_set()) {
+    return;
+  }
+  for (MemoryLocation* tgt : rhs_pts) {
+    if (isa< DynAllocMemoryLocation >(tgt)) {
+      eng.lockset().remove_heap_node_fresh(
+          core::IndexableTraits< MemoryLocation* >::index(tgt));
+    }
+  }
+}
+
+template < typename E >
 void on_store_privatize(E& eng,
                         const ScalarLit& ptr,
                         const Literal& val) {
@@ -1476,6 +1494,15 @@ void on_store_privatize(E& eng,
                   store_ptr.offset());
               env.join_heap_pointer(key, rhs_ptr.points_to(),
                                     rhs_ptr.offset());
+            }
+            // Heap-node publication: if this heap node (the store destination)
+            // is NOT fresh (i.e. it is already shared), then storing `rhs`
+            // into its field publishes `rhs`'s targets too (`A->next = p` with
+            // A shared ⟹ p shared). A store into a still-fresh node publishes
+            // nothing (both stay thread-private).
+            if (!eng.lockset().is_heap_node_fresh(
+                    core::IndexableTraits< MemoryLocation* >::index(loc))) {
+              unfresh_pointer_targets(eng, rhs);
             }
           }
         }
@@ -1515,6 +1542,8 @@ void on_store_privatize(E& eng,
           // inversion (09-regions_20-arrayloop2_rc.c FN).
           auto rhs_ptr = eng.data().normal().pointer_to_pointer(rhs.var());
           env.join_global_pointer(gv, rhs_ptr.points_to(), rhs_ptr.offset());
+          // A store into a GLOBAL publishes `rhs`'s heap nodes.
+          unfresh_pointer_targets(eng, rhs);
         }
       }
 
@@ -1749,6 +1778,10 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
             eng.data().normal().pointer_to_pointer(scalar_lit.var()).offset();
         eng.ctx().concurrent_env.record_spawn_arg(
             thread_func, pts, offset);
+        // Passing a pointer as the thread `arg` PUBLISHES its heap nodes: the
+        // child dereferences the same cell (`&is[i]` escapes to the thread),
+        // so they must leave the fresh set (per-thread-array-init-race FN).
+        unfresh_pointer_targets(eng, scalar_lit);
       }
     }
   }

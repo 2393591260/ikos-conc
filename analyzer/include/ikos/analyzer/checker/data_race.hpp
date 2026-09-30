@@ -277,7 +277,8 @@ private:
   /// dynamic-alloc memory location (i.e., a memory cell that could be shared
   /// across threads). Stack-local addresses are filtered out to avoid
   /// quadratic blow-up on large programs.
-  bool touches_shared_memory(const PointsToSet& pts) const;
+  bool touches_shared_memory(const PointsToSet& pts,
+                             const value::AbstractDomain& inv) const;
 
   /// \brief Soundness gate for flat-array region tainting: true iff no global
   /// pointer slot is ever assigned a LOADED pointer (a `slot[k] = slot[j]`

@@ -1512,7 +1512,8 @@ std::string DataRaceChecker::current_thread_id(ar::Statement* stmt,
   return {};
 }
 
-bool DataRaceChecker::touches_shared_memory(const PointsToSet& pts) const {
+bool DataRaceChecker::touches_shared_memory(const PointsToSet& pts,
+                                            const value::AbstractDomain& inv) const {
   // Race detection is only meaningful for cells that could be visible across
   // threads. Stack-local addresses are thread-private by construction, so
   // ignore them — this also keeps `_accesses` from blowing up on large
@@ -1543,7 +1544,16 @@ bool DataRaceChecker::touches_shared_memory(const PointsToSet& pts) const {
       return true;
     }
     if (isa< DynAllocMemoryLocation >(addr)) {
-      return true;
+      // A fresh (not-yet-published) heap node is thread-private: only the
+      // allocating thread holds its pointer, so its accesses cannot race
+      // across threads (goblint region-domain "fresh bullet" argument). A
+      // published node (its pointer was stored into a shared location) is
+      // shared and must race like any other cell.
+      if (inv.second().is_heap_node_fresh(
+              core::IndexableTraits< MemoryLocation* >::index(addr))) {
+        continue; // fresh heap node → thread-private → no race
+      }
+      return true; // published heap node → shared
     }
     // A stack local is normally thread-private, but passing `&i` as a
     // pthread_create arg ESCAPES it — the child dereferences the same cell
@@ -1792,7 +1802,7 @@ void DataRaceChecker::check_extern_call_effects(
     // recorded as a SINGLE ⊤ Write below, never iterated (a TopKind set has
     // no begin()).
     if (pts.is_bottom() ||
-        (pts.is_set() && !this->touches_shared_memory(pts))) {
+        (pts.is_set() && !this->touches_shared_memory(pts, inv))) {
       continue;
     }
     // Read-only memory exclusion (concrete sets only): string literals and
@@ -1936,7 +1946,7 @@ void DataRaceChecker::check_load(ar::Load* load,
                                  const value::AbstractDomain& inv,
                                  CallContext* call_context) {
   PointsToSet pts = this->resolve_points_to(load->operand(), inv);
-  if (!this->touches_shared_memory(pts)) {
+  if (!this->touches_shared_memory(pts, inv)) {
     return;
   }
   std::string tid = this->current_thread_id(load, call_context);
@@ -1993,7 +2003,7 @@ void DataRaceChecker::check_store(ar::Store* store,
                                   const value::AbstractDomain& inv,
                                   CallContext* call_context) {
   PointsToSet pts = this->resolve_points_to(store->pointer(), inv);
-  if (!this->touches_shared_memory(pts)) {
+  if (!this->touches_shared_memory(pts, inv)) {
     return;
   }
   std::string tid = this->current_thread_id(store, call_context);

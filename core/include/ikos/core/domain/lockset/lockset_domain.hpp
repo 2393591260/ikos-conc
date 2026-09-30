@@ -139,6 +139,16 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
   /// t2 — the name-level digest alone cannot tell t2 apart from t1).
   std::unordered_set< std::uint64_t > _spawned_instances;
 
+  /// \brief Heap nodes (DynAlloc stable ids) that are provably FRESH — a
+  /// malloc result whose pointer has NOT yet been stored into a cross-thread
+  /// reachable location. MUST digest (join = intersection, ⊤ = ∅): a node is
+  /// fresh only if fresh on every incoming edge. A fresh node is thread-private
+  /// (only the allocating thread holds its pointer), so its accesses cannot
+  /// race (goblint region-domain "fresh bullet" soundness argument). A node
+  /// leaves the set once this thread stores its pointer into a global / thread
+  /// arg / non-fresh heap field.
+  std::unordered_set< std::uint64_t > _fresh_heap_nodes;
+
   /// Spawned-threads digest TOP flag: "may have spawned ANY thread" (the
   /// universe, unrepresentable as a finite set). Set when an indirect
   /// pthread_create (non-constant thread function) is encountered, so the
@@ -565,6 +575,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     _joined_threads.clear();
     _spawned_threads.clear();
     _spawned_instances.clear();
+    _fresh_heap_nodes.clear();
     _signaled_conds.clear();
     _awaited_conds.clear();
     _cond_locks.clear();
@@ -580,6 +591,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     _joined_threads.clear();
     _spawned_threads.clear();
     _spawned_instances.clear();
+    _fresh_heap_nodes.clear();
     _signaled_conds.clear();
     _awaited_conds.clear();
     _cond_locks.clear();
@@ -614,6 +626,15 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     } else {
       _spawned_instances.insert(other._spawned_instances.begin(),
                                 other._spawned_instances.end());
+    }
+    // Fresh heap nodes: MUST, join = intersection (fresh on both edges).
+    for (auto it = _fresh_heap_nodes.begin();
+         it != _fresh_heap_nodes.end();) {
+      if (other._fresh_heap_nodes.count(*it) == 0) {
+        it = _fresh_heap_nodes.erase(it);
+      } else {
+        ++it;
+      }
     }
     // Cond-var digests are MAY: join = union (a signal/wait on either edge is
     // "possibly happened" after the merge).
@@ -670,6 +691,9 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
         }
       }
     }
+    // Fresh heap nodes: MUST, meet = union (refinement adds freshness).
+    _fresh_heap_nodes.insert(other._fresh_heap_nodes.begin(),
+                             other._fresh_heap_nodes.end());
     meet_spawned(_signaled_top,
                  _signaled_conds,
                  other._signaled_top,
@@ -712,6 +736,10 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
                        _spawned_instances,
                        other._spawned_top,
                        other._spawned_instances) &&
+           leq_digest(false,
+                      _fresh_heap_nodes,
+                      false,
+                      other._fresh_heap_nodes) &&
            spawned_leq(_signaled_top,
                        _signaled_conds,
                        other._signaled_top,
@@ -750,6 +778,10 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
                       _spawned_instances,
                       other._spawned_top,
                       other._spawned_instances) &&
+           eq_digest(false,
+                     _fresh_heap_nodes,
+                     false,
+                     other._fresh_heap_nodes) &&
            spawned_eq(_signaled_top,
                       _signaled_conds,
                       other._signaled_top,
@@ -1053,6 +1085,34 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
       return;
     }
     _spawned_instances.insert(sid);
+  }
+
+  /// \brief True iff heap node `idx` is provably FRESH (its pointer has not
+  /// been stored into a cross-thread reachable location). A fresh node is
+  /// thread-private, so its accesses cannot race (goblint region-domain "fresh
+  /// bullet" argument).
+  bool is_heap_node_fresh(std::uint64_t idx) const {
+    if (_is_bottom) {
+      return false;
+    }
+    return _fresh_heap_nodes.count(idx) != 0;
+  }
+
+  /// \brief Mark heap node `idx` as fresh (a malloc result, not yet published).
+  void add_heap_node_fresh(std::uint64_t idx) {
+    if (_is_bottom) {
+      return;
+    }
+    _fresh_heap_nodes.insert(idx);
+  }
+
+  /// \brief Mark heap node `idx` as published (its pointer was stored into a
+  /// shared location), removing it from the fresh set.
+  void remove_heap_node_fresh(std::uint64_t idx) {
+    if (_is_bottom) {
+      return;
+    }
+    _fresh_heap_nodes.erase(idx);
   }
 
   /// \brief Set the spawned digest to ⊤ ("may have spawned ANY thread"),
