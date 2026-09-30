@@ -69,3 +69,33 @@
 - **建议**：先做方案 A 的最小原型（只加 published 集 + Store 触发点），拿 list2_racefree + 全量 A/B 验 FN=0 与 FP 回收，再决定是否铺开。
 
 > 依赖的前置事实：goblint 机制已 100% 确认（见 `docs/ikos-5b-mutex-hb-landing.md` 同期的 region 域反编译 + trace 观测），本设计承接之。
+
+## 8. ⚠️ 修正（实现原型时发现的 soundness 反例）
+
+方案 A 的最小原型（published 集挂在线程局部的 lockset）实现到一半，推演出一个 **FN 反例**，证明**「published 必须是全局事实，不能是线程局部」**：
+
+```c
+struct s *gp;              // 全局
+t1: p = malloc; gp = p;    // t1 把 p 存进全局 → p 发布
+    p->datum = 1;          // 访问 p（已发布，应竞争）
+t2: q = gp;                // t2 从全局读到 p
+    q->datum = 2;          // 访问 p（已发布，应竞争）
+```
+
+t1 的 `p->datum=1` 与 t2 的 `q->datum=2` 访问**同一个 p、无锁 = 真竞争**。但线程局部的 published 集：
+- t1 的 lockset 有 p（t1 发布了它）；
+- **t2 的 lockset 是 ∅（t2 从没发布过 p）** → t2 的访问被误判「未发布 = 线程私有」→ 吞掉真竞争 = **FN**。
+
+**根因**：「p 是否发布」是**跨线程可达性**（全局事实），任何线程发布后，所有线程都能到达。线程局部的 published 集把「本线程是否发布」错当成了「全局是否发布」。
+
+## 9. 修正后的正确形态（goblint 的两层结构）
+
+goblint 的 region 域是**两层**：
+- **GLOBAL RegPart**（不相交分区，单调）：哪些 region 已被物化（发布）。
+- **LOCAL RegMap**（每线程、flow-sensitive）：线程入口从 GLOBAL 初始化，线程内流转。
+
+对应 IKOS 的正确落地需：
+1. **GLOBAL published 集**（`ConcurrentGlobalEnv` 黑板，单调）：`join_global_pointer` / `record_spawn_arg` / 堆字段发布都往里写。
+2. **LOCAL 快照**（线程入口从 GLOBAL 取，flow-sensitive）：checker 在访问点用 LOCAL 快照判「此刻是否发布」。
+
+**这是中等偏上的特性（两层 + 可达性闭包 + flow-sensitivity），不是几行的 patch。** 原型已回退（未提交），结论固化于此。
