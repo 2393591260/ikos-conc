@@ -119,6 +119,21 @@ void ThreadModularAnalysis::run() {
     entry_inv.first().normal().pointer_refine(a0.var(), pts, offset);
   };
 
+  // Join-then-create HB: inherit the parent's MUST joined digest at the create
+  // point. A parent that joined T before creating this thread means T has
+  // terminated, so this thread's accesses happen-after T's. Intersected over
+  // spawn sites by get_spawn_joined (bigshot_s/singleton_with-uninit: `v`).
+  auto bind_spawn_joined = [&](ar::Function* func, AbstractDomain& entry_inv) {
+    bool top = true;
+    std::unordered_set< std::uint64_t > set;
+    if (!_ctx.concurrent_env.get_spawn_joined(func, top, set) || top) {
+      return; // no resolved spawn, or ⊤ (nothing definitely joined before)
+    }
+    for (std::uint64_t sid : set) {
+      entry_inv.second().add_joined_thread(sid);
+    }
+  };
+
   // Thread-local semantics (Mukherjee SAS'17): materialize the cross-thread
   // integer interference ONCE at function entry, by joining the flat
   // `_global_board` into the thread's LOCAL invariant. This replaces the
@@ -342,6 +357,7 @@ void ThreadModularAnalysis::run() {
         entry_inv = interprocedural::init_main_invariant(_ctx, func, entry_inv);
       }
       bind_spawn_arg(func, entry_inv);
+      bind_spawn_joined(func, entry_inv);
       materialize_globals(entry_inv);
 
       std::unique_ptr< seq::ProgressLogger > logger =
@@ -467,6 +483,7 @@ void ThreadModularAnalysis::run() {
         entry_inv = interprocedural::init_main_invariant(_ctx, func, entry_inv);
       }
       bind_spawn_arg(func, entry_inv);
+      bind_spawn_joined(func, entry_inv);
       materialize_globals(entry_inv);
 
       std::unique_ptr< seq::ProgressLogger > logger =

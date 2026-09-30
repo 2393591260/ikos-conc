@@ -1722,6 +1722,13 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
   if (spawn_resolved) {
     sid = eng.ctx().concurrent_env.site_id(create_site);
     eng.lockset().add_spawned_instance(sid);
+    // Join-then-create HB: record the parent's MUST joined digest at this
+    // create point so the child's entry can inherit it. A parent join of T
+    // before this create means T terminated before the child — the child's
+    // accesses happen-after T's (bigshot_s: create t1, join t1, create t2).
+    auto joined = eng.lockset().get_joined_threads();
+    eng.ctx().concurrent_env.record_spawn_joined(
+        thread_func, create_site, /*parent_top=*/joined.empty(), joined);
   }
 
   // Handle initialization: pthread_create writes the thread-instance id into

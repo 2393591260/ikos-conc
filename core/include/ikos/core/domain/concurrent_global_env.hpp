@@ -295,6 +295,26 @@ private:
   };
   std::unordered_map< ar::Function*, SpawnArg > _spawn_args;
 
+  /// \brief MUST joined digest at a pthread_create point, keyed by the child
+  /// thread function AND the distinguishing create site.
+  ///
+  /// "join-then-create" HB: when the parent joins T and THEN creates U, T's
+  /// accesses happen-before U's (T terminated before U started). The child U's
+  /// entry `joined` digest must therefore inherit the threads the parent had
+  /// DEFINITELY joined at the create point (bigshot_s/singleton_with-uninit:
+  /// `create(t1); join(t1); create(t2);` — t2's `if(v)` must not race t1's
+  /// `v=malloc`). Per (function, site) the value is OVERWRITTEN (the parent's
+  /// fixpoint is monotone in the MUST lattice, so the last visit is the
+  /// converged value); `get_spawn_joined` intersects over sites (a thread is
+  /// "definitely joined before the child" only if joined at EVERY spawn site).
+  struct SpawnJoined {
+    bool top = true;                          // ⊤ = no definite join
+    std::unordered_set< std::uint64_t > set;  // site ids definitely joined
+  };
+  std::unordered_map< ar::Function*,
+                      std::unordered_map< ar::CallBase*, SpawnJoined > >
+      _spawn_joined;
+
   /// \brief Set of LOCATIONS whose address escaped into a thread `arg`.
   ///
   /// A stack local is normally thread-private, but passing `&i` as the
@@ -1301,6 +1321,7 @@ public:
     // fixpoint and destabilise convergence.
     _cond_waiters.clear();
     _cond_signal_epoch.clear();
+    _spawn_joined.clear();
   }
 
   /// \brief Is `fun` a thread entry function (a function that has been
@@ -1479,6 +1500,65 @@ public:
         _escaped_locs.insert(loc);
       }
     }
+  }
+
+  /// \brief Record the parent's MUST `joined` digest at a pthread_create point.
+  ///
+  /// Overwrite per (function, create site): the parent's fixpoint is monotone
+  /// in the MUST lattice (joined facts only grow), so the last visit at a site
+  /// is the converged value. Called on every visit; the map is cleared at each
+  /// global-iteration boundary (reset_spawn_counts) so a stale early value
+  /// never outlives the iteration.
+  void record_spawn_joined(
+      ar::Function* func,
+      ar::CallBase* create_site,
+      bool parent_top,
+      const std::unordered_set< std::uint64_t >& parent_set) {
+    if (func == nullptr || create_site == nullptr) {
+      return;
+    }
+    std::lock_guard< std::mutex > lock(_mutex);
+    _spawn_joined[func][create_site] = SpawnJoined{parent_top, parent_set};
+  }
+
+  /// \brief The child's inherited MUST `joined` digest: intersection over all
+  /// of its spawn sites (a thread is "definitely joined before the child" only
+  /// if the parent had joined it at EVERY site). Returns false when the
+  /// function was never spawned at a resolved site (child inherits nothing).
+  bool get_spawn_joined(ar::Function* func,
+                        bool& top,
+                        std::unordered_set< std::uint64_t >& set) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    auto it = _spawn_joined.find(func);
+    if (it == _spawn_joined.end()) {
+      return false;
+    }
+    bool first = true;
+    top = true;
+    set.clear();
+    for (const auto& kv : it->second) {
+      const SpawnJoined& sj = kv.second;
+      if (first) {
+        top = sj.top;
+        set = sj.set;
+        first = false;
+        continue;
+      }
+      // MUST join (intersection, ⊤ absorbing) over sites.
+      if (sj.top) {
+        top = true;
+        set.clear();
+      } else if (!top) {
+        for (auto jt = set.begin(); jt != set.end();) {
+          if (sj.set.count(*jt) == 0) {
+            jt = set.erase(jt);
+          } else {
+            ++jt;
+          }
+        }
+      }
+    }
+    return true;
   }
 
   /// \brief Was `loc`'s address captured into a pthread_create `arg`?
