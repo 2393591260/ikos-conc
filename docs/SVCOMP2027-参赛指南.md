@@ -85,14 +85,15 @@
 
 ### 当前基线（2026 冻结集全量，1029 任务，**全部 ILP32**）
 
-TP=235 FP=404 TN=390 **FN=0** err=0；precision 36.8%。红线 FN=0 守住。已落地的 sound FP 修复（`data_race.cpp`）：
+TP=235 FP=108 TN=686 **FN=0** err=0；precision 68.5%。红线 FN=0 守住。已落地的 sound FP 修复：
 
-> ⚠️ 基线更正（2026-09-29）：1029 个 no-data-race 任务**全是 ILP32**（无 LP64 任务）。此前 FP=173 是**默认 LP64（错误 arch）**测的。`-m64` 全量复跑 = FP=172（复现旧基线），`-m32`（正确 ILP32）全量 = FP=404 —— **arch 是主因**：ILP32 下 `long`/指针/size_t 变 4 字节，折叠 + ⊤ points-to 的保守配对被放大 2.3×。FP 优化必须对着 ILP32 基线重做。
-
+- **ILP32 bitcast-callee 修复（`ca1907f`，杠杆最大）**：32 位下 clang 给无原型函数 `__VERIFIER_atomic_begin/end` 的调用包 `bitcast`，`call->called()` 不再是 `FunctionPointerConstant`，原子伪锁识别失效 → 原子段全报 FP。把识别挪到 `exec_extern_call`（用已穿透 bitcast 的 `fun->name()`）。**FP 404→108**（TN 390→686），FN=0 不破。
 - `free()` 排除出 extern-call 写合成（`99b7c88`）——free 不通过指针写数据；
 - stdio 输出族（printf/fprintf/…）排除出写合成（`9d7edb6`）——其指针实参是流/格式串/要打印的值。
 
-剩余 FP 大头：weaver 的 ⊤ points-to（65）、无锁线性化（16）、per-thread 槽位（12）、互斥传递 HB、container_of 等关系型/精度问题，需单独立项（见 `docs/ikos-race-theory-mapping.md` §3.2）。注册/提交不看成绩，见 §5。
+> ⚠️ 基线更正（2026-09-29 → 2026-09-30）：1029 个 no-data-race 任务**全是 ILP32**（无 LP64 任务）。此前 FP=173 是**默认 LP64（错误 arch）**测的；`-m32`（正确 ILP32）一度 FP=404 —— 根因不是「数值域退化」，而是上面那条 bitcast 让 `__VERIFIER_atomic_*` 识别全线失效。修完后正确 ILP32 的 108 FP **比错误 LP64 的 172 FP 还低**。
+
+剩余 FP 大头（对着 ILP32 重测）：weaver 的 ⊤ points-to、无锁线性化、per-thread 槽位、互斥传递 HB、container_of 等，见 `docs/ikos-race-theory-mapping.md` §3.2。注册/提交不看成绩，见 §5。
 
 ## 7. 相关仓库
 

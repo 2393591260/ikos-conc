@@ -296,7 +296,7 @@
 | 维度 | 现状 |
 |---|---|
 | **Recall（漏报率）** | **全集 FN=0**（Recall=1.000）——红线达成 |
-| **Precision** | 全集 FP=404（Precision≈0.368，正确 ILP32 arch）；clean-121 FP=0 |
+| **Precision** | 全集 FP=108（Precision≈0.685，正确 ILP32 arch）；clean-121 FP=0 |
 | **已建模同步** | mutex、rwlock、trylock（路径近似）、join/create HB、`__VERIFIER_atomic`（伪锁）、C11 `_Atomic`（access-level）、cond_wait/signal/broadcast（stub，无 HB 边） |
 | **未建模同步** | cond-var 的 signal→wait HB、barrier、TLS、无锁线性化、acquire/release 内存序 |
 

@@ -6,12 +6,13 @@
 
 ## 阅读顺序（新人 / 新会话入门）
 
-0. **ikos-architecture-survey.md** —— 先看 IKOS 整体架构（原生版 vs 并发修改版的目录/模块/改动分类/风险）
-1. **concurrency-architecture.md** —— 再看并发子系统代码长什么样
-2. **ikos-race-theory-mapping.md** —— 再看理论依据与 soundness 前提
-3. **ikos-race-fp-classification.md** —— 当前 FP 状态与修复演进
-4. **fn-root-cause-analysis.md** —— 当前 FN 根因病理
-5. 其余按需查阅（验证报告 / 对比报告）
+0. **`../CLAUDE.md`** —— 仓库根自述：项目定位/红线（FN=0）/构建/跑测试/关键文件/核心 gotchas，先读这个
+1. **dev-gotchas.md** —— 完整 22 条踩坑清单（改代码前扫一遍，省得重踩）
+2. **ikos-architecture-survey.md** —— 先看 IKOS 整体架构（原生版 vs 并发修改版的目录/模块/改动分类/风险）
+3. **concurrency-architecture.md** —— 再看并发子系统代码长什么样
+4. **ikos-race-theory-mapping.md** —— 再看理论依据与 soundness 前提
+5. **fn-root-cause-analysis.md** —— FN 根因病理 / **ikos-race-fp-classification.md** —— FP 根因分类
+6. 其余按需查阅（MHP 设计 / condvar 设计 / 上游 diff）
 
 ---
 
@@ -33,8 +34,10 @@
 
 | 文件 | 作用 |
 |---|---|
-| [concurrency-architecture.md](concurrency-architecture.md)（+ `.tex` 源） | **并发子系统代码架构梳理**：目录结构、运行原理（thread-modular + 锁集 digest + ConcurrentGlobalEnv 黑板）、已知边界。`.tex` 是 LaTeX 源（用于出图/排版）。 |
+| [concurrency-architecture.md](concurrency-architecture.md) | **并发子系统代码架构梳理**：目录结构、运行原理（thread-modular + 锁集 digest + ConcurrentGlobalEnv 黑板）、已知边界。 |
+| [ikos-mhp-design.md](ikos-mhp-design.md) | **MHP（may-happen-in-parallel）对标 goblint 设计**：goblint `mHP.ml`/`threadIdDomain.ml` vs IKOS 现状的逐维度对比 + 实例级 MHP 方案（instance_sid / _site_ancestors / may_happen_in_parallel 四判定）。后续 MHP 专项依据。 |
 | [ikos-condvar-modeling-design.md](ikos-condvar-modeling-design.md) | **条件变量语义建模方案**（`pthread_cond_wait/signal/broadcast`）：wait-queue + signal epoch + MAY digest 的设计与 soundness 论证。 |
+| [dev-gotchas.md](dev-gotchas.md) | **完整 22 条踩坑清单**：改 build 须同步 install、锁集 MAY/MUST 极性、全局变量 type/points-to 陷阱、fixpoint dirty 收敛、extern-call 写合成双计等。 |
 
 ## 三、验证与基准
 
