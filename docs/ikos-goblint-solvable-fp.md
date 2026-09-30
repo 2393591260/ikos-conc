@@ -1,15 +1,15 @@
-# goblint 能解、IKOS 不能解的 FP（fresh-heap-node 修复后）
+# goblint 能解、IKOS 不能解的 FP（heap-board 修复后）
 
 > 交叉验证基准：goblint（svcomp 全配置）判 SAFE、IKOS（-m32）判 RACE 的任务。
-> 时间：2026-09-30。此时基线 FP=100、FN=0。
-> 上一轮 `fc8339c`（fresh 堆节点）已回收 20 个 goblint 解里 5 个 list/alloc 族，
-> 本表是**剩余 15 个**。
+> 时间：2026-09-30。此时基线 FP=98、FN=0。
+> 已回收：`fc8339c`（fresh 堆节点）5 个 list/alloc 族 + `ab07166`（变量下标堆指针黑板）2 个 weaver，
+> 本表是**剩余 13 个**。
 
 ## 按机制分 6 组
 
 | # | 机制 | 数量 | 文件 | IKOS 可追? |
 |---|---|---|---|---|
-| 1 | ⊤ points-to（全局指针+变量下标） | 5 | weaver/chl-poker-hand-subst、loop-tiling-eq、popl20-bad-commit-1/2、popl20-prod-cons-eq | 中 |
+| 1 | ⊤ points-to（全局指针+变量下标） | 3 | weaver/chl-poker-hand-subst、popl20-bad-commit-1/2 | 中 |
 | 2 | join 句柄 ⊤（tids[] 数组读 ⊤） | 2 | ldv-races/race-1_1-join、race-1_3-join | 中 |
 | 3 | thread-id 域（线程 id 当数组下标） | 1 | pthread-race-challenges/per-thread-array-init | 大 |
 | 4 | 不相交分区 / 跨槽共享 | 1 | goblint-regression/28-race_reach_92-evilcollapse_racing | 大 |
