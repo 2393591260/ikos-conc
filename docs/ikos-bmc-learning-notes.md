@@ -191,3 +191,56 @@ return (NOT DATARACEFREEDOM_var, hasRace);   // hasRace 可满足 ⟹ 有竞争
 1. 拿 `04-mutex_01-simple_rc.c` 手工推演「相邻 ⟺ 竞争」的双向等价（钉死 §3 的 ⚠️）。
 2. 定 IKOS 的 SMT 求解器绑定（Z3 还是 Yices 的 C++ API；IKOS 已经链 APRON，看能否复用或新增）。
 3. 定「只展开到竞争可达路径」的最小展开策略（复用 IKOS 的 AR + 线程结构）。
+
+---
+
+# 学习笔记（三）—— 手工推演 `04-mutex_01-simple_rc.c` 的编码
+
+## 1. 事件图（Dartagnan 的语义层）
+
+程序两条线程，锁不同（mutex1 vs mutex2），所以 `myglobal=myglobal+1` 竞争：
+
+```
+t_fun:  L1(lock mutex1) → R1(load myglobal) → W1(store myglobal) → U1(unlock mutex1) → return
+main:   L2(lock mutex2) → R2(load myglobal) → W2(store myglobal) → U2(unlock mutex2) → join(t_fun)
+```
+
+- **po**（程序序，must 边）：L1→R1→W1→U1；L2→R2→W2→U2→join。
+- **同步**（mutex）：L1 是 RMW、U1 是 store，同线程的 lock/unlock 是 po，**跨线程的 unlock→lock 才建 hb**（这里 t_fun 和 main 用不同锁，没有跨线程同步边）。
+- **join**：t_fun 的 return 与 main 的 join 之间有一条跨线程 hb 边（create/join）。
+
+## 2. 冲突对（race 候选）
+
+跨线程、同址 `myglobal`、至少一个写：
+- (W1, R2)、(W1, W2)、(R1, W2)、(W2, R1)、(W2, W1)、(R2, W1)。
+
+全部**没有 hb 路径**（不同锁、无同步），所以**全部是真竞争**。
+
+## 3. 编码如何判定（关键：`hb` 在编码里是「SC 全序」，不是「偏序 happens-before」）
+
+这是钉死「相邻 ⟺ 竞争」的核心：
+
+- `acyclic hb` 的编码 = **给所有事件一个拓扑序号（clock）**，且对每对事件强制「二选一」方向，等价于构造一个 **SC 线性化（全序）**。clock = 该事件在线性化里的位置。
+- 于是 `hb(m,w)` 这个布尔变量在 race 查询里，含义是「**m 在 w 之前（在线性化里）**」，不是「m happens-before w」。
+- **race 查询只看跨线程对**（`t1 != t2`），判定：
+
+```
+race(m,w) = 都执行 ∧ 同址 ∧ clock(w) == clock(m)+1   （“相邻”）
+```
+
+**为什么「跨线程相邻 ⟺ 竞争」**（这是双向等价的关键论证）：
+
+- **⇒**：若 m、w 跨线程且在 SC 线性化里相邻，则它们之间没有别的访问事件。跨线程的 happens-before 只能靠同步事件（unlock→lock / join）建立，而同步事件必然落在两者中间（把它俩隔开）。相邻 = 中间无同步事件 = 无 happens-before = 竞争。
+- **⇐**：若 m、w 跨线程且竞争（无 hb），则没有任何约束强迫中间有事件，求解器可以自由地把它们在线性化里排成相邻（clock(w)=clock(m)+1）。
+
+（同一线程内的 po 直接相邻不算，因为 race 查询只枚举跨线程对。）
+
+## 4. 对 04-mutex_01 的落地
+
+- (W1, R2)：跨线程、同址、不同锁无同步 → 可排成相邻 → race 查询 SAT → **有竞争**。✓
+- 对照一个**无竞争**例子（同锁）：W1 和 R2 用同一把锁时，lock/unlock 的同步边迫使「W1 → U1 →(同步)→ L2 → R2」成为一条 hb 链，U1/L2 落在中间 → W1、R2 **不可能相邻** → race 查询 UNSAT → 无竞争。✓
+
+## 5. 诚实标注：这个「相邻 ⟺ 竞争」还是我推演出来的，没经过代码逐行验证
+
+- 我读了 `PropertyEncoder.encodeDataRaces`（枚举跨线程冲突对 + `hb(m,w) && clock(w)==clock(m)+1`）和 `WmmEncoder` 的 clock 编码，但**「hb 变量 = SC 全序」这个关键假设，是从『acyclic hb 强制每对二选一』推出来的，没在代码里找到一句注释直接这么说**。
+- 正因如此，**第 4 节的同锁对照（无竞争 → 不可能相邻 → UNSAT）必须用一个最小原型实测**：拿同锁版和异锁版各跑一次，看 SAT/UNSAT 是否如预期。这一步是代码级验证「相邻 ⟺ 竞争」的唯一硬证据，也是你最初担心的「只看代码无法确认 soundness」的实证回答。
