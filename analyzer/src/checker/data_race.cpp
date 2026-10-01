@@ -1172,24 +1172,31 @@ DataRaceChecker::~DataRaceChecker() {
     if (!group_is_unknown && this->_ctx.opts.demote_race_to_unknown &&
         bmc_program_sound && getenv("IKOS_BMC_RECOVER")) {
       bool same_global = false;
-      // 别名门：offset 用抽象 singleton；⊤ 时退回结构常量偏移（struct 字段，如
-      // cache[5].refs 的抽象 offset 因 ⊤+field 坍缩成 ⊤，但结构偏移是常量）。
-      auto eff_off = [&](const AccessRecord& a, std::int64_t& off) -> bool {
-        auto itv = a.offset.singleton();
-        if (itv) {
-          off = itv->to_z_number().to< std::int64_t >();
+      // 别名门：offset 用「有效区间相交」判同址——非 ⊤ 用抽象区间（覆盖常量/变量
+      // 下标，如 data[4] vs data[i] i∈[0,9]），⊤ 退回结构常量偏移（struct 字段）。
+      // 抽象区间是 sound 过近似，相交 ⇒ 实际偏移可能相等 ⇒ 竞争可达。
+      auto eff_interval = [&](const AccessRecord& a, std::int64_t& lo,
+                              std::int64_t& hi) -> bool {
+        if (a.offset.is_bottom()) {
+          return false;
+        }
+        if (!a.offset.is_top()) {
+          lo = a.offset.lb().to_z_number().to< std::int64_t >();
+          hi = a.offset.ub().to_z_number().to< std::int64_t >();
           return true;
         }
         if (a.structural_type == nullptr) {
           return false;  // ⊤ 且无常量结构偏移（真变量下标）
         }
-        off = a.structural_offset;
+        lo = hi = a.structural_offset;
         return true;
       };
-      std::int64_t oa = 0, ob = 0;
-      bool off_match = eff_off(a0, oa) && eff_off(b0, ob) && oa == ob;
+      std::int64_t lo_a = 0, hi_a = 0, lo_b = 0, hi_b = 0;
+      bool off_overlap = eff_interval(a0, lo_a, hi_a) &&
+                         eff_interval(b0, lo_b, hi_b) && lo_a <= hi_b &&
+                         lo_b <= hi_a;
       if (a0.pts.is_set() && a0.pts.size() == 1 && b0.pts.is_set() &&
-          b0.pts.size() == 1 && off_match) {
+          b0.pts.size() == 1 && off_overlap) {
         MemoryLocation* ma = *a0.pts.begin();
         MemoryLocation* mb = *b0.pts.begin();
         // 别名门：两访问的 points-to 都是 singleton（精确到单一对象）且是同一个
