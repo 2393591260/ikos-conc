@@ -89,7 +89,8 @@ inline bool classify_event(ar::Statement* stmt, BmcEvent& ev) {
 }
 
 /// 路径敏感的 DFS：从 `bb` 出发，沿 CFG 后继枚举到 `target` 的所有路径。
-/// `current` 是当前路径上的事件前缀；到达 `target` 时把路径记入 `out`。
+/// `current` 是当前路径上的事件前缀；到达 `target` 时把路径记入 `out` 并停止
+/// （target 之后的语句/后继与本次访问的竞争判定无关）。
 /// `in_stack` 记录当前 DFS 栈上的基本块，用于检测回边（循环）并跳过——
 /// 第一版不展开循环（DAG only），后续用 bound 展开。
 void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
@@ -112,6 +113,8 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
     }
     if (s == target) {
       out.push_back(current);
+      in_stack.pop_back();
+      return;
     }
   }
   for (auto succ = bb->successor_begin(), succ_end = bb->successor_end();
@@ -122,18 +125,86 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
   in_stack.pop_back();
 }
 
+/// 收集 CFG 里所有回边（循环）头：DFS 中回边 succ（已在栈上）的 succ 即循环头。
+inline void collect_loop_headers(ar::BasicBlock* bb,
+                                 std::vector< ar::BasicBlock* >& in_stack,
+                                 std::vector< ar::BasicBlock* >& headers) {
+  for (ar::BasicBlock* on_stack : in_stack) {
+    if (on_stack == bb) {
+      return;
+    }
+  }
+  in_stack.push_back(bb);
+  for (auto succ = bb->successor_begin(), succ_end = bb->successor_end();
+       succ != succ_end; ++succ) {
+    bool on_stack = false;
+    for (ar::BasicBlock* os : in_stack) {
+      if (os == *succ) {
+        on_stack = true;
+        break;
+      }
+    }
+    if (on_stack) {
+      headers.push_back(*succ);
+    } else {
+      collect_loop_headers(*succ, in_stack, headers);
+    }
+  }
+  in_stack.pop_back();
+}
+
+/// tgt 是否从 src 沿 CFG 前向可达。
+inline bool cfg_reachable(ar::BasicBlock* src, ar::BasicBlock* tgt,
+                          std::vector< ar::BasicBlock* >& visited) {
+  if (src == tgt) {
+    return true;
+  }
+  for (ar::BasicBlock* v : visited) {
+    if (v == src) {
+      return false;
+    }
+  }
+  visited.push_back(src);
+  for (auto succ = src->successor_begin(), succ_end = src->successor_end();
+       succ != succ_end; ++succ) {
+    if (cfg_reachable(*succ, tgt, visited)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/// 展开结果：路径集合 + 是否不完整（target 在循环体内或循环之后）。
+struct UnrollResult {
+  std::vector< std::vector< BmcEvent > > paths;
+  bool incomplete = false;  // true = target 受某循环影响，循环内容未展开
+};
+
 /// 从函数入口到 `target` 的所有路径（事件序列）。
-inline std::vector< std::vector< BmcEvent > > unroll_to(
-    ar::Function* func, ar::Statement* target) {
-  std::vector< std::vector< BmcEvent > > out;
+inline UnrollResult unroll_to(ar::Function* func, ar::Statement* target) {
+  UnrollResult result;
   ar::Code* body = func->body_or_null();
   if (body == nullptr || !body->has_entry_block()) {
-    return out;
+    return result;
   }
   std::vector< BmcEvent > current;
   std::vector< ar::BasicBlock* > in_stack;
-  dfs_paths(body->entry_block(), target, current, out, in_stack);
-  return out;
+  dfs_paths(body->entry_block(), target, current, result.paths, in_stack);
+
+  // 精确能力边界：target 的块若从某回边（循环）头前向可达（=在循环体内或
+  // 循环之后），则展开路径不完整（循环体可能藏 join/create/mutex）→ UNKNOWN。
+  // 循环在 target 之后（不可达 target 块）或分叉支路上的循环不影响本访问。
+  std::vector< ar::BasicBlock* > headers;
+  std::vector< ar::BasicBlock* > in_stack2;
+  collect_loop_headers(body->entry_block(), in_stack2, headers);
+  for (ar::BasicBlock* h : headers) {
+    std::vector< ar::BasicBlock* > visited;
+    if (cfg_reachable(h, target->parent(), visited)) {
+      result.incomplete = true;
+      break;
+    }
+  }
+  return result;
 }
 
 }  // namespace bmc

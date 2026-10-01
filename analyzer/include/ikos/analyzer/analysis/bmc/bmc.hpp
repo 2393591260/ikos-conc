@@ -97,15 +97,21 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   if (has_unmodeled_sync(funcA) || has_unmodeled_sync(funcB)) {
     return false;
   }
-  std::vector< std::vector< BmcEvent > > pathsA = unroll_to(funcA, stmtA);
-  std::vector< std::vector< BmcEvent > > pathsB = unroll_to(funcB, stmtB);
+  UnrollResult rA = unroll_to(funcA, stmtA);
+  UnrollResult rB = unroll_to(funcB, stmtB);
+  // Soundness 门：展开遇到回边（循环）→ 路径不完整，循环里可能藏着
+  // join/create/mutex 等未展开的同步（如 pthread-numerical-integration 的
+  // join 循环），不能 sound 判 FALSE → 保守 UNKNOWN（能力边界，后续加 bound 展开）。
+  if (rA.incomplete || rB.incomplete) {
+    return false;
+  }
   // 存在任意一对路径（A 的某条、B 的某条）可竞争，即真竞争。
   // 跳过锁不平衡的路径（永久锁 time_var_mutex，不能 sound 判）。
-  for (const auto& pA : pathsA) {
+  for (const auto& pA : rA.paths) {
     if (has_unbalanced_lock(pA)) {
       continue;
     }
-    for (const auto& pB : pathsB) {
+    for (const auto& pB : rB.paths) {
       if (has_unbalanced_lock(pB)) {
         continue;
       }

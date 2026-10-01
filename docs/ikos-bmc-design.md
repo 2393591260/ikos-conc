@@ -83,6 +83,7 @@ BMC 需要两类事件，都从 AR 静态可得：
 - 只对 checker 报的那一对访问，做路径敏感有限展开（展开界 K）。
 - **别名**：只处理两访问都是**同一个 GlobalMemoryLocation**（全局变量地址唯一标识，不用 SMT 编码地址；堆/容器指针 → 保守 UNKNOWN）。
 - **同步**：mutex + **create/join**（create-HB、join-HB 都要建模——pthread-numerical-integration 靠 join 同步 `area`）。且要求**锁配对平衡**（time_var_mutex 那种「lock 不 unlock」→ 保守 UNKNOWN）。cond/sem/barrier/spin/原子 → 检测到就保守 UNKNOWN。
+- **循环（DAG-only 能力边界）**：展开器只做 DAG（直线+分支）；访问块的**前向路径上有回边（循环）**——即访问块从某循环头可达——就把路径标记为 `incomplete` → 保守 UNKNOWN（被跳过的循环体里可能藏 join/create/mutex，pthread-numerical-integration 的 join 循环正是如此）。循环在访问**之后**（不可达访问块）或分叉支路上、且不影响本访问的，不拦截。**这是「能力边界」，不是 bug**——后续加 bound 展开 + join-HB 建模可攻克，见 §9。
 - 编码：po + mutex 同步（互斥析取）+ create/join 边 + clock + 相邻查询（已实现 `encode.hpp`，create/join 边待加）。
 
 **第二期（加精确别名 + 更多同步）**
@@ -112,4 +113,16 @@ result：BMC 只「找回 TP」，从不「证明 SAFE」，且健全门保证�
 1. **精确别名**：IKOS 没有独立 alias 分析。正确做法是 Dartagnan 的 `sameAddress`——第一期用全局变量的语法同一性，第二期把地址编码成 SMT 值判相等。
 2. **路径敏感展开**：IKOS 无现成 unroller，已手写 `bmc/unroll.hpp`（DAG DFS + 回边检测）。
 3. **mutex 对象身份**：语法 arg0 指针同一性（`mutex_id`，已实现）；但需补「锁配对平衡」检测处理永久锁。
+
+## 9. 🚩 能力边界 = 潜在独特优势（重点标记，后续攻关）
+
+第一期 BMC 对「join-数组-循环」保守报 UNKNOWN（`pthread-numerical-integration` 是唯一剩 FP）。
+但这个用例**恰好暴露了 IKOS 相对现有工具的两个独特优势**，值得重点攻关：
+
+| 难点 | 现有工具现状（已实测） | IKOS 的优势 |
+|---|---|---|
+| **double 浮点运算** | **Dartagnan 直接 CRASH**（`UnsupportedOperationException: Unsupported type in double`）；goblint / UAutomizer / CPAchecker 都 UNKNOWN 或 error | IKOS 用 APRON（多面体/octagon）**天然支持 double**，数值域不缺 |
+| **join 句柄是数组 + 变量下标（循环）** | 现有工具要么不建模 join-HB、要么数组摘要不够 → 全 UNKNOWN，**没有工具能解** | IKOS 是**抽象解释**框架，天然适合上 **Cousot & Logozzo POPL'11 分区数组域（partitioned array summarization）**，正是「thread-id 槽位桶（~22 FP）+ join-数组句柄」这类「循环 + 数组 + 句柄」问题的正解 |
+
+结论：这不是「我能力不够所以放弃」，而是「**别人根本没资格碰这个题（double 就崩了），我有两条别人没有的路（double + 数组摘要域）**」。当前记为 UNKNOWN 是保守 gate 的副作用；一旦上数组摘要域，可同时攻下「thread-id 桶 ~22 FP」和这个 join-数组用例，是登顶 no-data-race 榜的关键杠杆。参见 memory `join-array-double-unique-advantage`。
 
