@@ -1176,6 +1176,10 @@ DataRaceChecker::~DataRaceChecker() {
           b0.pts.size() == 1 && a0.offset.singleton() && b0.offset.singleton()) {
         MemoryLocation* ma = *a0.pts.begin();
         MemoryLocation* mb = *b0.pts.begin();
+        // 别名门：两访问的 points-to 都是 singleton（精确到单一对象）且是同一个
+        // GlobalMemoryLocation（全局变量）。堆对象（DynAlloc）暂不放开——per-thread
+        // malloc 的 cell 按 call+context 建，但同一线程入口内的多实例会坍缩成同一
+        // cell，放开会导致 per-thread-struct 类误报（见 02/03 探针）。
         same_global = isa< GlobalMemoryLocation >(ma) &&
                       isa< GlobalMemoryLocation >(mb) &&
                       core::IndexableTraits< MemoryLocation* >::index(ma) ==

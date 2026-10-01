@@ -157,11 +157,11 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   if (rA.incomplete || rB.incomplete) {
     return false;
   }
-  // 锁门（sound）：跳过「一方访问时持有的锁，被另一方函数用到」的路径对——
+  // 锁门（sound）：只在「双方访问都在各自临界区内」且共享一把 held 锁时跳过——
   // 这种锁可能承载标志式 HB / 永久锁（time_var_mutex、privatized），互斥未完整
   // 建模，可能排序两个访问，保守 UNKNOWN。已配对（balanced）的共享锁由
-  // check_race 的互斥析取建模；完全不共享的锁（经典不同锁竞争）不约束对方，
-  // 照常判。
+  // check_race 的互斥析取建模；完全不共享的锁（经典不同锁竞争）不约束对方；
+  // 一方解锁访问（held 为空）时另一方的锁不保护它，照常判。
   std::set< std::uint64_t > funcLocksA = func_used_locks(funcA);
   std::set< std::uint64_t > funcLocksB = func_used_locks(funcB);
   for (const auto& pA : rA.paths) {
@@ -183,7 +183,10 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
           }
         }
       }
-      if (shared_held) {
+      // 只在「双方访问都在各自临界区内」且共享一把 held 锁时才 skip（标志式 HB /
+      // 永久锁）。一方解锁访问（held 为空）时，另一方的锁不保护它 → 照常判。
+      bool both_held = !heldA.empty() && !heldB.empty();
+      if (both_held && shared_held) {
         continue;
       }
       if (check_race(pA, pB)) {
