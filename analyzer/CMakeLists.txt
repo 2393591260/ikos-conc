@@ -108,6 +108,9 @@ if (APRON_FOUND)
   add_definitions("-DHAS_APRON")
 endif()
 
+# Z3 SMT solver (for the bounded model checking race checker)
+find_library(Z3_LIB z3 REQUIRED)
+
 find_package(PythonInterp REQUIRED)
 
 find_package(Core REQUIRED)
@@ -300,6 +303,7 @@ target_link_libraries(ikos-analyzer
   ${GMPXX_LIB}
   ${TBB_LIBRARIES}
   ${AR_LIB}
+  ${Z3_LIB}
 )
 if (APRON_FOUND)
   target_link_libraries(ikos-analyzer ${APRON_LIBRARIES})

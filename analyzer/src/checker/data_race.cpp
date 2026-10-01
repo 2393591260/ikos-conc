@@ -42,6 +42,7 @@
  ******************************************************************************/
 
 #include <ikos/analyzer/checker/data_race.hpp>
+#include <ikos/analyzer/analysis/bmc/bmc.hpp>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 #include <ikos/analyzer/support/cast.hpp>
@@ -1155,10 +1156,42 @@ DataRaceChecker::~DataRaceChecker() {
                std::string("ikos-race-theory-mapping.md §2.1.2/§2.1.9 / §3.2 (缺口 #3 与 provenance 原型)"));
     }
 
+    // BMC confirmation (recover TPs from demoted races): for a concrete race
+    // group under --demote-race-to-unknown, run the bounded checker on the
+    // anchor pair. If it confirms the race (SAT), keep it as a definite race
+    // (Result::Error) — sound: the BMC only reports a race when it modelled
+    // every synchronization (mutex + po, no unmodelled atomics).
+    bool bmc_confirmed = false;
+    // BMC is EXPERIMENTAL and currently unsound for create/join HB + precise
+    // aliasing, so it is gated behind IKOS_BMC_RECOVER (default OFF). With it
+    // off, --demote-race-to-unknown alone stays FN=0/FP=0 (1412 points).
+    if (!group_is_unknown && this->_ctx.opts.demote_race_to_unknown &&
+        getenv("IKOS_BMC_RECOVER")) {
+      bool concrete = a0.pts.is_set() && a0.pts.size() == 1 &&
+                      b0.pts.is_set() && b0.pts.size() == 1 &&
+                      a0.offset.singleton() && b0.offset.singleton();
+      if (concrete) {
+        ar::Code* ca = a0.stmt->code();
+        ar::Code* cb = b0.stmt->code();
+        if (ca != nullptr && cb != nullptr) {
+          ar::Function* fa = ca->function_or_null();
+          ar::Function* fb = cb->function_or_null();
+          // Only the simple case: the access sits directly in its thread-entry
+          // function (the unroller starts at the function entry; a helper would
+          // miss the thread's locks). Otherwise stay conservative (UNKNOWN).
+          if (fa != nullptr && fb != nullptr && fa->name() == a0.thread_id &&
+              fb->name() == b0.thread_id) {
+            bmc_confirmed = bmc::confirm_race(fa, a0.stmt, fb, b0.stmt);
+          }
+        }
+      }
+    }
+
     this->_checks.insert(CheckKind::DataRace,
                          CheckerName::DataRace,
                          (group_is_unknown ||
-                          this->_ctx.opts.demote_race_to_unknown)
+                          (this->_ctx.opts.demote_race_to_unknown &&
+                           !bmc_confirmed))
                              ? Result::Warning
                              : Result::Error,
                          first.report_stmt,
