@@ -1088,6 +1088,10 @@ DataRaceChecker::~DataRaceChecker() {
     thread_creations.add(d);
   }
 
+  // BMC soundness gate (computed once): the whole program must use only mutex
+  // sync — no cond/sem/barrier/spin/atomic — for the BMC to report FALSE.
+  bool bmc_program_sound = !bmc::has_unmodeled_sync(this->_ctx.bundle);
+
   // Emit one aggregated report per group.
   for (auto& kv : groups) {
     const std::vector< std::size_t >& pair_indices = kv.second;
@@ -1158,19 +1162,26 @@ DataRaceChecker::~DataRaceChecker() {
 
     // BMC confirmation (recover TPs from demoted races): for a concrete race
     // group under --demote-race-to-unknown, run the bounded checker on the
-    // anchor pair. If it confirms the race (SAT), keep it as a definite race
-    // (Result::Error) — sound: the BMC only reports a race when it modelled
-    // every synchronization (mutex + po, no unmodelled atomics).
+    // anchor pair. Sound gates: whole program uses only mutex sync (checked
+    // once above), the conflict is on the SAME global variable (singleton
+    // points-to + singleton offset + same GlobalMemoryLocation), and the
+    // thread paths have balanced locks (checked inside confirm_race).
     bool bmc_confirmed = false;
-    // BMC is EXPERIMENTAL and currently unsound for create/join HB + precise
-    // aliasing, so it is gated behind IKOS_BMC_RECOVER (default OFF). With it
-    // off, --demote-race-to-unknown alone stays FN=0/FP=0 (1412 points).
+    // BMC is EXPERIMENTAL and gated behind IKOS_BMC_RECOVER (default OFF). With
+    // it off, --demote-race-to-unknown alone stays FN=0/FP=0 (1412 points).
     if (!group_is_unknown && this->_ctx.opts.demote_race_to_unknown &&
-        getenv("IKOS_BMC_RECOVER")) {
-      bool concrete = a0.pts.is_set() && a0.pts.size() == 1 &&
-                      b0.pts.is_set() && b0.pts.size() == 1 &&
-                      a0.offset.singleton() && b0.offset.singleton();
-      if (concrete) {
+        bmc_program_sound && getenv("IKOS_BMC_RECOVER")) {
+      bool same_global = false;
+      if (a0.pts.is_set() && a0.pts.size() == 1 && b0.pts.is_set() &&
+          b0.pts.size() == 1 && a0.offset.singleton() && b0.offset.singleton()) {
+        MemoryLocation* ma = *a0.pts.begin();
+        MemoryLocation* mb = *b0.pts.begin();
+        same_global = isa< GlobalMemoryLocation >(ma) &&
+                      isa< GlobalMemoryLocation >(mb) &&
+                      core::IndexableTraits< MemoryLocation* >::index(ma) ==
+                          core::IndexableTraits< MemoryLocation* >::index(mb);
+      }
+      if (same_global) {
         ar::Code* ca = a0.stmt->code();
         ar::Code* cb = b0.stmt->code();
         if (ca != nullptr && cb != nullptr) {
