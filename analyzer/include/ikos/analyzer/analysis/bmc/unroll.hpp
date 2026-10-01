@@ -23,6 +23,10 @@ namespace bmc {
 /// 事件种类。
 enum class EvKind { Read, Write, Lock, Unlock };
 
+/// __VERIFIER_atomic_begin/end 的合成全局锁 id（与 abstract checker 的
+/// PSEUDO_ATOMIC_LOCK 同值）。伪原子段 = 一把所有线程共享的锁。
+constexpr std::uint64_t PSEUDO_ATOMIC_LOCK = 0xA7E0AD1CULL;
+
 /// 一个 BMC 事件（内存访问或锁同步）。
 struct BmcEvent {
   ar::Statement* stmt;      // 对应的 AR 语句
@@ -110,7 +114,29 @@ inline bool classify_mutex_call(ar::CallBase* call, EvKind& kind) {
     kind = EvKind::Unlock;
     return true;
   }
+  // __VERIFIER_atomic_begin/end = 伪原子段（PSEUDO_ATOMIC_LOCK），与 abstract
+  // checker 同语义（concurrent_semantics.hpp SectionBegin/End）。
+  if (nm.find("__VERIFIER_atomic_begin") != std::string::npos) {
+    kind = EvKind::Lock;
+    return true;
+  }
+  if (nm.find("__VERIFIER_atomic_end") != std::string::npos) {
+    kind = EvKind::Unlock;
+    return true;
+  }
   return false;
+}
+
+/// 判断一个 CallBase 是否是对 __VERIFIER_atomic_begin/end 的调用。
+inline bool is_verifier_atomic(ar::CallBase* call) {
+  ar::FunctionPointerConstant* cst =
+      core::dyn_cast< ar::FunctionPointerConstant >(call->called());
+  if (cst == nullptr || cst->function() == nullptr) {
+    return false;
+  }
+  const std::string& nm = cst->function()->name();
+  return nm.find("__VERIFIER_atomic_begin") != std::string::npos ||
+         nm.find("__VERIFIER_atomic_end") != std::string::npos;
 }
 
 /// 把一个语句分类成 BMC 事件（内存/锁/无关）。
@@ -126,7 +152,9 @@ inline bool classify_event(ar::Statement* stmt, BmcEvent& ev) {
   if (auto* call = core::dyn_cast< ar::CallBase >(stmt)) {
     EvKind kind;
     if (classify_mutex_call(call, kind)) {
-      ev = BmcEvent{stmt, kind, mutex_id(call)};
+      std::uint64_t mid =
+          is_verifier_atomic(call) ? PSEUDO_ATOMIC_LOCK : mutex_id(call);
+      ev = BmcEvent{stmt, kind, mid};
       return true;
     }
   }

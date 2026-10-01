@@ -17,13 +17,39 @@ namespace ikos {
 namespace analyzer {
 namespace bmc {
 
+/// BMC 没建模的单调用原子（SingleCall）：CAS/TAS/w/assert、__sync_*、__atomic_*、
+/// 以及用户自定义的 __VERIFIER_atomic_<suffix>。它们不是「begin/end 段」也不是
+/// 普通函数，锁无关语义 BMC 一期建不了模，必须报 UNKNOWN。与 abstract checker
+/// 的 classify_atomic_intrinsic 对齐：begin/end 是段标记（BMC 已建模为伪锁）、
+/// acquire/release 是手写 RACY 标志（非原子，不算同步）。
+inline bool is_unmodeled_atomic_call(const std::string& nm) {
+  if (nm.size() >= 7 && nm.compare(0, 7, "__sync_") == 0) {
+    return true;
+  }
+  if (nm.size() >= 9 && nm.compare(0, 9, "__atomic_") == 0) {
+    return true;
+  }
+  if (nm == "__VERIFIER_atomic_CAS" || nm == "__VERIFIER_atomic_TAS" ||
+      nm == "__VERIFIER_atomic_w" || nm == "__VERIFIER_atomic_assert") {
+    return true;
+  }
+  if (nm.size() > 18 && nm.compare(0, 18, "__VERIFIER_atomic_") == 0 &&
+      nm != "__VERIFIER_atomic_begin" && nm != "__VERIFIER_atomic_end" &&
+      nm != "__VERIFIER_atomic_acquire" &&
+      nm != "__VERIFIER_atomic_release") {
+    return true;
+  }
+  return false;
+}
+
 /// 检测一个函数里有没有 BMC 第一期没建模的同步：
 ///   - C11 原子（atomic_int 等，Load/Store 的 ordering != NotAtomic）
-///   - __VERIFIER_atomic_begin/end（伪原子段）
+///   - 单调用原子（__VERIFIER_atomic_CAS/TAS/w、__sync_*、__atomic_*）
 ///   - pthread_cond_*（条件变量 signal/wait 建 HB）
 ///   - sem_*（信号量 post/wait 建 HB）
 ///   - pthread_barrier_* / pthread_spin_*（屏障/自旋锁）
 /// 有则返回 true（调用方必须报 UNKNOWN，不能报 FALSE）。
+/// 注意：__VERIFIER_atomic_begin/end 已建模为伪锁（unroll.hpp），不算这里。
 inline bool has_unmodeled_sync(ar::Function* func) {
   ar::Code* body = func->body_or_null();
   if (body == nullptr) {
@@ -45,8 +71,10 @@ inline bool has_unmodeled_sync(ar::Function* func) {
             core::dyn_cast< ar::FunctionPointerConstant >(call->called());
         if (cst != nullptr && cst->function() != nullptr) {
           const std::string& nm = cst->function()->name();
-          if (nm.find("__VERIFIER_atomic") != std::string::npos ||
-              nm.find("pthread_cond") != std::string::npos ||
+          if (is_unmodeled_atomic_call(nm)) {
+            return true;
+          }
+          if (nm.find("pthread_cond") != std::string::npos ||
               nm.find("pthread_barrier") != std::string::npos ||
               nm.find("pthread_spin") != std::string::npos ||
               nm.rfind("sem_", 0) == 0) {
