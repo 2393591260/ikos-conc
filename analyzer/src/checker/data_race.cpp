@@ -42,6 +42,7 @@
  ******************************************************************************/
 
 #include <ikos/analyzer/checker/data_race.hpp>
+#include <ikos/analyzer/analysis/bmc/unroll.hpp>
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 #include <ikos/analyzer/support/cast.hpp>
 #include <ikos/analyzer/util/log.hpp>
@@ -444,6 +445,47 @@ inline bool region_of(ar::Value* v, Context& ctx, CallContext* cc,
 DataRaceChecker::DataRaceChecker(Context& ctx) : Checker(ctx) {}
 
 DataRaceChecker::~DataRaceChecker() {
+  // Temporary probe (env IKOS_BMC_DUMP): dump the BMC events (memory + mutex
+  // sync) for every function, verifying the event extraction on real code.
+  // Remove once the BMC module is wired in.
+  if (getenv("IKOS_BMC_DUMP")) {
+    for (auto fit = this->_ctx.bundle->function_begin(),
+              fend = this->_ctx.bundle->function_end();
+         fit != fend; ++fit) {
+      ar::Function* fun = *fit;
+      if (!fun->is_definition()) {
+        continue;
+      }
+      ar::Code* body = fun->body_or_null();
+      if (body == nullptr) {
+        continue;
+      }
+      std::cerr << "[BMC-DUMP] " << fun->name() << "\n";
+      for (auto bit = body->begin(), bend = body->end(); bit != bend; ++bit) {
+        for (auto sit = (*bit)->begin(), send = (*bit)->end(); sit != send;
+             ++sit) {
+          ar::Statement* s = *sit;
+          bmc::BmcEvent ev(nullptr, bmc::EvKind::Read);
+          if (!bmc::classify_event(s, ev)) {
+            continue;
+          }
+          const char* k = "?";
+          switch (ev.kind) {
+            case bmc::EvKind::Read: k = "READ"; break;
+            case bmc::EvKind::Write: k = "WRITE"; break;
+            case bmc::EvKind::Lock: k = "LOCK"; break;
+            case bmc::EvKind::Unlock: k = "UNLOCK"; break;
+          }
+          std::cerr << "    " << k;
+          if (auto loc = source_location(s)) {
+            std::cerr << " @" << loc.line();
+          }
+          std::cerr << "\n";
+        }
+      }
+    }
+  }
+
   // Cross-slot heap-node sharing (12-arraycollapse_rc: `list_add(p, slot[j])`
   // then `list_add(p, slot[k])` stores one node into TWO slots) makes the
   // per-slot region/lock summarization unsound: a single region would match
