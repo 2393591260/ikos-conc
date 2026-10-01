@@ -79,11 +79,11 @@ BMC 需要两类事件，都从 AR 静态可得：
 
 ## 6. 工程分期（修正后）
 
-**第一期（最小健全子集：只全局变量 + 只 mutex）**
+**第一期（最小健全子集：全局变量 + mutex + create/join）**
 - 只对 checker 报的那一对访问，做路径敏感有限展开（展开界 K）。
 - **别名**：只处理两访问都是**同一个 GlobalMemoryLocation**（全局变量地址唯一标识，不用 SMT 编码地址；堆/容器指针 → 保守 UNKNOWN）。
-- **同步**：只 mutex；且要求**锁配对平衡**（每条路径 lock/unlock 一一对应，检测到 time_var_mutex 那种「lock 不 unlock」→ 保守 UNKNOWN）。cond/sem/barrier/spin/原子 → 检测到就保守 UNKNOWN。
-- 编码：po + mutex 同步（互斥析取）+ clock + 相邻查询（已实现 `encode.hpp`）。
+- **同步**：mutex + **create/join**（create-HB、join-HB 都要建模——pthread-numerical-integration 靠 join 同步 `area`）。且要求**锁配对平衡**（time_var_mutex 那种「lock 不 unlock」→ 保守 UNKNOWN）。cond/sem/barrier/spin/原子 → 检测到就保守 UNKNOWN。
+- 编码：po + mutex 同步（互斥析取）+ create/join 边 + clock + 相邻查询（已实现 `encode.hpp`，create/join 边待加）。
 
 **第二期（加精确别名 + 更多同步）**
 - 地址 SMT 编码（`address(e)` + `equal`）→ 支持堆对象、容器指针、thread-id 槽位。
