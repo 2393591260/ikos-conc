@@ -92,7 +92,16 @@ TP=235 FP=88 TN=706 **FN=0** err=0；precision 72.8%。红线 FN=0 守住。
 **得分（用 2026 官方公式 TRUE=+2 / FALSE=+1 / FP=−16 / FN=−32）**：
 - 现状（报全部 race）：706×2 + 235×1 − 88×16 = **+239**。
 - **带 `--demote-race-to-unknown`（已提交 `3f07297`）：706×2 = +1412，FN=0 FP=0**。
-- 对比 SV-COMP 2026 no-data-race 官方榜：Goblint 1426（#1）、Goblint-Par 1422（#2）、**IKOS demote 1412（#3，独立工具里 #2）**、Deagle 1352、UAutomizer 1295、Dartagnan 1186、CPAchecker 577。
+- **BMC 找回 TP（`IKOS_BMC_RECOVER=1 --demote`，本会话落地）**：TP 60 / FP 0 / FN 0 → **706×2 + 60 = 1472**（已超 Goblint 1426）。6 个 sound 修复：mutex 身份（`ac747e0`）、`__VERIFIER_atomic` 伪锁（`2f46dbc`）、both-held 锁门（`018715b`）、mutex 数组偏移 + 良性循环（`790df08`）、cond_wait=unlock+lock（`4278e6b`）。
+- 对比 SV-COMP 2026 no-data-race 官方榜：Goblint 1426（#1）、Goblint-Par 1422（#2）、**IKOS demote 1412 / BMC 1472（#3，独立工具里 #2）**、Deagle 1352、UAutomizer 1295、Dartagnan 1186、CPAchecker 577。
+
+### 独特优势（已用 Dartagnan 逐文件 verdict 交叉验证）
+
+**① `__VERIFIER_atomic` 伪锁建模**：10 个文件 IKOS 报 FALSE（找到竞争 +1）、Dartagnan 报 UNKNOWN——`reorder_c11_bad-20/30/40/50`、`reorder_c11_good-30/40/50`、`06_ticket`、`07_rand`、`46_monabsex2_vs-b`。根因 = IKOS 把 `__VERIFIER_atomic_begin/end` 建模成伪锁（PSEUDO_ATOMIC_LOCK），Dartagnan 的 SC 模型处理不了这类竞争。
+
+**② double + 数组摘要域**（潜力，尚未落地）：`pthread-numerical-integration`（join-数组句柄 + double）Dartagnan 直接 CRASH（`Unsupported type in double`），goblint/CPAchecker 全 UNKNOWN；IKOS 用 APRON 天然支持 double、抽象解释框架适合分区数组域。详见 memory `join-array-double-unique-advantage`。
+
+> 参见 memory `ikos-unique-10-over-dartagnan`、`remaining-tp-two-abstract-domain-gaps`（剩余 99 可学 TP 全卡在「别名 thread-id + 值域可行性」，= 第二期地址 SMT + 值域大工程）。
 
 已落地的 sound FP 修复：
 
