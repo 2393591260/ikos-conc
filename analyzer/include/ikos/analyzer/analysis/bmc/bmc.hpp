@@ -45,11 +45,11 @@ inline bool is_unmodeled_atomic_call(const std::string& nm) {
 /// 检测一个函数里有没有 BMC 第一期没建模的同步：
 ///   - C11 原子（atomic_int 等，Load/Store 的 ordering != NotAtomic）
 ///   - 单调用原子（__VERIFIER_atomic_CAS/TAS/w、__sync_*、__atomic_*）
-///   - pthread_cond_*（条件变量 signal/wait 建 HB）
 ///   - sem_*（信号量 post/wait 建 HB）
 ///   - pthread_barrier_* / pthread_spin_*（屏障/自旋锁）
 /// 有则返回 true（调用方必须报 UNKNOWN，不能报 FALSE）。
-/// 注意：__VERIFIER_atomic_begin/end 已建模为伪锁（unroll.hpp），不算这里。
+/// 注意：__VERIFIER_atomic_begin/end 已建模为伪锁、pthread_cond_wait 已建模为
+/// unlock+lock（unroll.hpp），不算这里。
 inline bool has_unmodeled_sync(ar::Function* func) {
   ar::Code* body = func->body_or_null();
   if (body == nullptr) {
@@ -74,8 +74,7 @@ inline bool has_unmodeled_sync(ar::Function* func) {
           if (is_unmodeled_atomic_call(nm)) {
             return true;
           }
-          if (nm.find("pthread_cond") != std::string::npos ||
-              nm.find("pthread_barrier") != std::string::npos ||
+          if (nm.find("pthread_barrier") != std::string::npos ||
               nm.find("pthread_spin") != std::string::npos ||
               nm.rfind("sem_", 0) == 0) {
             return true;

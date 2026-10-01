@@ -60,11 +60,9 @@ inline ar::Statement* unique_def_bmc(ar::InternalVariable* iv) {
   return found;
 }
 
-inline std::uint64_t mutex_id(ar::CallBase* call) {
-  if (call->arg_begin() == call->arg_end()) {
-    return 0;
-  }
-  ar::Value* v = *call->arg_begin();
+/// 把锁/互斥量的指针 Value 解析到 (base global, const_off) 合成身份。变量偏移坍缩
+/// 到 base（保守）；碰撞只会多丢 TP、不 FP。
+inline std::uint64_t mutex_id_of_value(ar::Value* v) {
   std::int64_t const_off = 0;
   bool variable_off = false;
   std::uint64_t base = 0;
@@ -108,7 +106,7 @@ inline std::uint64_t mutex_id(ar::CallBase* call) {
     }
   }
   if (base == 0) {
-    return reinterpret_cast< std::uint64_t >(*call->arg_begin());
+    return reinterpret_cast< std::uint64_t >(v);
   }
   if (variable_off) {
     return base;  // 变量偏移：坍缩到 base
@@ -118,6 +116,39 @@ inline std::uint64_t mutex_id(ar::CallBase* call) {
   h ^= static_cast< std::uint64_t >(const_off) + 0x9e3779b97f4a7c15ULL +
        (h << 6) + (h >> 2);
   return h;
+}
+
+/// pthread_mutex_lock/unlock 的锁身份 = arg0。
+inline std::uint64_t mutex_id(ar::CallBase* call) {
+  if (call->arg_begin() == call->arg_end()) {
+    return 0;
+  }
+  return mutex_id_of_value(*call->arg_begin());
+}
+
+/// 是否 pthread_cond_wait（含 AR 内禀 ar.pthread.cond.wait）。
+inline bool is_cond_wait(ar::CallBase* call) {
+  ar::FunctionPointerConstant* cst =
+      core::dyn_cast< ar::FunctionPointerConstant >(call->called());
+  if (cst == nullptr || cst->function() == nullptr) {
+    return false;
+  }
+  const std::string& nm = cst->function()->name();
+  return nm.find("pthread_cond_wait") != std::string::npos ||
+         nm.find("pthread.cond.wait") != std::string::npos;
+}
+
+/// pthread_cond_wait(&cond, &mutex) 的 mutex 身份 = arg1（arg0 是 cond）。
+inline std::uint64_t cond_wait_mutex_id(ar::CallBase* call) {
+  auto arg = call->arg_begin();
+  if (arg == call->arg_end()) {
+    return 0;
+  }
+  ++arg;
+  if (arg == call->arg_end()) {
+    return 0;
+  }
+  return mutex_id_of_value(*arg);
 }
 
 /// 判断一个 CallBase 是否是对 pthread_mutex 的 lock/unlock，返回事件种类；
@@ -209,6 +240,17 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
 
   for (auto sit = bb->begin(), send = bb->end(); sit != send; ++sit) {
     ar::Statement* s = *sit;
+    // pthread_cond_wait(&cond, &mutex)：POSIX 原子 release mutex → 阻塞 →
+    // re-acquire。竞态判定等价于 unlock(mutex) 后 lock(mutex)（net 不变，但释放
+    // 期间别的线程能拿锁）。signal/broadcast 无 HB（数据由 mutex 保护，与
+    // SV-COMP 语义一致，见 condvar / 13-privatized_67）。
+    if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
+      if (is_cond_wait(call)) {
+        std::uint64_t m = cond_wait_mutex_id(call);
+        current.push_back(BmcEvent{s, EvKind::Unlock, m});
+        current.push_back(BmcEvent{s, EvKind::Lock, m});
+      }
+    }
     BmcEvent ev(nullptr, EvKind::Read);
     if (classify_event(s, ev)) {
       current.push_back(ev);
@@ -285,6 +327,9 @@ inline bool block_has_sync(ar::BasicBlock* bb) {
       EvKind kind;
       if (classify_mutex_call(call, kind)) {
         return true;  // mutex lock/unlock + __VERIFIER_atomic_begin/end
+      }
+      if (is_cond_wait(call)) {
+        return true;  // cond_wait 释放/重获 mutex（同步）
       }
       ar::FunctionPointerConstant* cst =
           core::dyn_cast< ar::FunctionPointerConstant >(call->called());
