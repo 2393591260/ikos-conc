@@ -65,9 +65,13 @@ inline std::uint64_t mutex_id(ar::CallBase* call) {
     return 0;
   }
   ar::Value* v = *call->arg_begin();
+  std::int64_t const_off = 0;
+  bool variable_off = false;
+  std::uint64_t base = 0;
   for (int depth = 0; depth < 16; ++depth) {
     if (auto* gv = core::dyn_cast< ar::GlobalVariable >(v)) {
-      return reinterpret_cast< std::uint64_t >(gv);
+      base = reinterpret_cast< std::uint64_t >(gv);
+      break;
     }
     auto* iv = core::dyn_cast< ar::InternalVariable >(v);
     if (iv == nullptr) {
@@ -75,6 +79,21 @@ inline std::uint64_t mutex_id(ar::CallBase* call) {
     }
     ar::Statement* def = unique_def_bmc(iv);
     if (auto* ps = core::dyn_cast_or_null< ar::PointerShift >(def)) {
+      // 累加常量字节偏移（`&m[3]` vs `&m[4]` 是不同锁）；变量下标（`m[i]`）
+      // → 身份不确定，坍缩到 base（保守，只丢 TP 不 FP）。
+      for (std::size_t i = 0; i < ps->num_terms(); ++i) {
+        auto term = ps->term(i);
+        auto* c = core::dyn_cast< ar::IntegerConstant >(term.second);
+        if (c == nullptr) {
+          variable_off = true;
+          break;
+        }
+        const_off += term.first.to_z_number().to< std::int64_t >() *
+                     c->value().to_z_number().to< std::int64_t >();
+      }
+      if (variable_off) {
+        break;
+      }
       v = ps->pointer();
     } else if (auto* un = core::dyn_cast_or_null< ar::UnaryOperation >(def)) {
       if (un->op() == ar::UnaryOperation::Bitcast ||
@@ -88,7 +107,17 @@ inline std::uint64_t mutex_id(ar::CallBase* call) {
       break;
     }
   }
-  return reinterpret_cast< std::uint64_t >(*call->arg_begin());
+  if (base == 0) {
+    return reinterpret_cast< std::uint64_t >(*call->arg_begin());
+  }
+  if (variable_off) {
+    return base;  // 变量偏移：坍缩到 base
+  }
+  // (base, const_off) 组合。碰撞只会让两把不同锁看起来同锁 → 多丢 TP、不 FP（sound）。
+  std::uint64_t h = base;
+  h ^= static_cast< std::uint64_t >(const_off) + 0x9e3779b97f4a7c15ULL +
+       (h << 6) + (h >> 2);
+  return h;
 }
 
 /// 判断一个 CallBase 是否是对 pthread_mutex 的 lock/unlock，返回事件种类；
@@ -247,6 +276,49 @@ inline bool cfg_reachable(ar::BasicBlock* src, ar::BasicBlock* tgt,
   return false;
 }
 
+/// 一个基本块是否含「能排序访问」的同步调用：mutex lock/unlock、create/join、
+/// __VERIFIER_atomic_begin/end。pthread_mutex_init 等非排序调用不算——它们不影响
+/// 竞态判定，只算「良性」循环体（如 05-lval_ls_01 的 init 循环）。
+inline bool block_has_sync(ar::BasicBlock* bb) {
+  for (auto sit = bb->begin(), send = bb->end(); sit != send; ++sit) {
+    if (auto* call = core::dyn_cast< ar::CallBase >(*sit)) {
+      EvKind kind;
+      if (classify_mutex_call(call, kind)) {
+        return true;  // mutex lock/unlock + __VERIFIER_atomic_begin/end
+      }
+      ar::FunctionPointerConstant* cst =
+          core::dyn_cast< ar::FunctionPointerConstant >(call->called());
+      if (cst != nullptr && cst->function() != nullptr) {
+        const std::string& nm = cst->function()->name();
+        if (nm.find("pthread_create") != std::string::npos ||
+            nm.find("pthread_join") != std::string::npos) {
+          return true;  // create/join（HB 建边，未展开则漏）
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/// header 所在循环体（与 header 同环的块 + header 本身）是否含同步调用。
+inline bool loop_has_sync(ar::Code* body, ar::BasicBlock* header) {
+  if (block_has_sync(header)) {
+    return true;
+  }
+  for (ar::BasicBlock* bb : *body) {
+    if (bb == header) {
+      continue;
+    }
+    std::vector< ar::BasicBlock* > fwd, back;
+    if (cfg_reachable(header, bb, fwd) && cfg_reachable(bb, header, back)) {
+      if (block_has_sync(bb)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 /// 展开结果：路径集合 + 是否不完整（target 在循环体内或循环之后）。
 struct UnrollResult {
   std::vector< std::vector< BmcEvent > > paths;
@@ -264,15 +336,22 @@ inline UnrollResult unroll_to(ar::Function* func, ar::Statement* target) {
   std::vector< ar::BasicBlock* > in_stack;
   dfs_paths(body->entry_block(), target, current, result.paths, in_stack);
 
-  // 精确能力边界：target 的块若从某回边（循环）头前向可达（=在循环体内或
-  // 循环之后），则展开路径不完整（循环体可能藏 join/create/mutex）→ UNKNOWN。
-  // 循环在 target 之后（不可达 target 块）或分叉支路上的循环不影响本访问。
+  // 精确能力边界：target 的块若从某回边（循环）头前向可达，则要看循环会不会
+  // 影响访问（incomplete → UNKNOWN）：
+  //   - 访问在循环体内（target 块能回到 header）：迭代 0 可达需 N≥1（界分析未做）
+  //     → 保守 incomplete。
+  //   - 访问在循环之后：只有循环体含同步（mutex/create/join）才可能排序访问 →
+  //     incomplete；良性循环体（init/算术，无同步）不影响竞态 → 照常判。
   std::vector< ar::BasicBlock* > headers;
   std::vector< ar::BasicBlock* > in_stack2;
   collect_loop_headers(body->entry_block(), in_stack2, headers);
   for (ar::BasicBlock* h : headers) {
     std::vector< ar::BasicBlock* > visited;
-    if (cfg_reachable(h, target->parent(), visited)) {
+    if (!cfg_reachable(h, target->parent(), visited)) {
+      continue;
+    }
+    std::vector< ar::BasicBlock* > back;
+    if (cfg_reachable(target->parent(), h, back) || loop_has_sync(body, h)) {
       result.incomplete = true;
       break;
     }
