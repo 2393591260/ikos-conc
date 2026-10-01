@@ -2,9 +2,11 @@
 """SV-COMP entry point: run IKOS race analysis, print the verdict, and emit a
 no-data-race *violation witness* (format 2.2) `witness.yml` when a race is found.
 
-Runs IKOS once with `--format json`, forwards IKOS's summary/verdict line to
-stdout (so a BenchExec tool-info module can parse it), and, on a definite race,
-writes `witness.yml` in the YAML exchange format described by
+Runs IKOS once with `--format json` + `--demote-race-to-unknown` + the BMC
+re-confirmation env gate (IKOS_BMC_RECOVER=1), forwards IKOS's summary/verdict
+line to stdout (so a BenchExec tool-info module can parse it), and, on a
+CONFIRMED race (Result::Error, "definitely UNSAFE"), writes `witness.yml` in
+the YAML exchange format described by
 https://gitlab.com/sosy-lab/benchmarking/sv-witnesses (user-guide/Witness-Format.md).
 
 The witness is a `violation_sequence` whose final segment is a multi-follow
@@ -35,11 +37,18 @@ SPECIFICATION = "G ! data-race"
 
 
 def first_race(data):
-    """Return the info dict of the first definite race report, or None."""
+    """Return the info dict of the first CONFIRMED race report, or None.
+
+    Only a check with `status == 2` (Result::Error = "definitely UNSAFE") is a
+    confirmed race. With `--demote-race-to-unknown`, every non-confirmed race
+    is demoted to Result::Warning (`status == 1`, potentially UNSAFE = UNKNOWN),
+    and the model-boundary groups carry `info.verdict == "unknown"` — neither
+    may produce a violation witness, which asserts a race actually occurs.
+    """
     for rep in data.get("reports", []):
+        if rep.get("status") != 2:  # Result::Error (see result.hpp enum order)
+            continue
         info = rep.get("info", {})
-        if info.get("verdict") == "unknown":
-            continue  # model boundary: cannot witness a definite race
         if "access_a" in info and "access_b" in info:
             return info
     return None
@@ -154,13 +163,20 @@ def main():
     # the right type widths (long/pointer). The SV-COMP no-data-race category is
     # entirely ILP32, so default to ILP32 (never the host 64-bit target).
     machine = ["-m", "32" if args.data_model == "ILP32" else "64"]
+    # Enable the bounded-model-checking race re-confirmation: the abstract
+    # checker demotes every race to UNKNOWN, then the BMC re-confirms the ones
+    # it can prove (so those become "definitely UNSAFE" = FALSE). This recovers
+    # ~64 TRUE positives at FP=0 / FN=0 (sound for the FALSE direction: it only
+    # claims a race when the HB/alias encoding proves one). Kept behind the env
+    # gate so the standalone demote-only run stays available.
+    env = dict(os.environ, IKOS_BMC_RECOVER="1")
     try:
         proc = subprocess.run(
             [args.ikos, "--analyses=race", "--concurrency=auto",
              "--demote-race-to-unknown"] + machine +
             ["--format=json", "--report-file=" + report,
              "-o", db, args.source],
-            capture_output=True, text=True)
+            capture_output=True, text=True, env=env)
     except FileNotFoundError:
         sys.stderr.write("error: ikos executable not found\n")
         return 127

@@ -7,9 +7,10 @@ Registers IKOS as an SV-COMP C.no-data-race tool:
     one-line summary verdict. The SV-COMP `--propertyfile` is deliberately
     NOT forwarded — the property is always no-data-race.
   - determine_result(): maps the rendered verdict line back to the SV-COMP
-    three-way result. Sound mapping under the FN=0 red line: only an
-    explicit `The program is SAFE` yields TRUE; a `potentially UNSAFE`
-    warning (possible unsoundness) and anything unparsed yield UNKNOWN.
+    three-way result. Sound mapping under the FN=0/FP=0 red line: an explicit
+    `The program is SAFE` yields TRUE; `definitely UNSAFE` (a race the bounded
+    checker proved) yields FALSE; `potentially UNSAFE` (= UNKNOWN) and anything
+    unparsed yield UNKNOWN.
 
 Runnable standalone for local P1 validation:
 

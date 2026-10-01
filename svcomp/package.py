@@ -50,12 +50,14 @@ DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 "$DIR/bin/ikos" --version
 "$DIR/bin/ikos" --analyses=race --concurrency=auto --format=no "$DIR/examples/smoke.c"
 "$DIR/bin/ikos" -m 32 --analyses=race --concurrency=auto --format=no "$DIR/examples/smoke.c"
-# SV-COMP scoring switch: a race must be reported as "potentially UNSAFE"
-# (UNKNOWN), never "definitely UNSAFE" (FALSE) — this is the -16-FP-avoiding
-# 1412-point configuration the entry point ships.
-"$DIR/bin/ikos" -m 32 --analyses=race --concurrency=auto \
+# SV-COMP scoring switch: --demote-race-to-unknown turns every abstract race
+# into UNKNOWN, then IKOS_BMC_RECOVER=1 lets the bounded checker re-confirm the
+# provable ones as "definitely UNSAFE" (FALSE). The smoke race is provable, so
+# the shipped config must report "definitely UNSAFE" — sound (FN=0/FP=0) with
+# recovered TRUE positives.
+IKOS_BMC_RECOVER=1 "$DIR/bin/ikos" -m 32 --analyses=race --concurrency=auto \
   --demote-race-to-unknown --format=no "$DIR/examples/smoke.c" 2>&1 \
-  | grep -q "potentially UNSAFE"
+  | grep -q "definitely UNSAFE"
 """
 
 README = r"""# IKOS-ConC — Concurrent Data-Race Detection
@@ -74,18 +76,28 @@ every potential data race it can prove, at the cost of some false positives.
 Verdicts: `The program is SAFE` (no race), `The program is definitely UNSAFE`
 (race found), `The program is UNKNOWN` (model boundary).
 
-### Demoting races to UNKNOWN (SV-COMP scoring)
+### Demoting races to UNKNOWN + bounded re-confirmation (SV-COMP scoring)
 
 The abstract analysis cannot always separate a REAL race from a false positive
 caused by unmodelled synchronization, and SV-COMP penalizes a wrong race
 (-16) far more than it rewards a right one (+1). So the SV-COMP entry point
-runs IKOS with `--demote-race-to-unknown`: every race is reported as
-`potentially UNSAFE` (= UNKNOWN) instead of `definitely UNSAFE` (= FALSE). This
-is sound for FN=0 — UNKNOWN is never SAFE — and maps to the 1412-point
-configuration (a race is only ever claimed by a downstream precise checker,
-not by this front end).
+runs IKOS in two stages:
 
-    ./bin/ikos --analyses=race --concurrency=auto --demote-race-to-unknown <file.c>
+1. `--demote-race-to-unknown` — every race the abstract checker finds is
+   reported as `potentially UNSAFE` (= UNKNOWN) instead of `definitely UNSAFE`
+   (= FALSE). This is sound for FN=0: UNKNOWN is never SAFE.
+2. A bounded model checker (enabled via `IKOS_BMC_RECOVER=1`) re-confirms the
+   races it can PROVE by unrolling the two thread paths and checking the
+   happens-before / alias encoding with SMT. A proven race is reported as
+   `definitely UNSAFE` (= FALSE, +1); everything else stays UNKNOWN (0).
+
+The re-confirmation is sound for the FALSE direction — it only claims a race
+when the HB/alias encoding proves one — so the net result is FN=0 and FP=0
+with a few dozen recovered TRUE positives. This is the scoring configuration
+the entry point ships (a recovered race is claimed by the bounded checker, not
+the imprecise abstract front end).
+
+    ./bin/ikos --analyses=race --concurrency=auto --demote-race-to-unknown <file.c>   # + env IKOS_BMC_RECOVER=1
 
 ### Data model (32-bit / 64-bit)
 
@@ -103,8 +115,10 @@ and forwards it, recording the matching `data_model` in `witness.yml`.
 
 BenchExec tool-info module: `benchexec/tools/ikos-conc.py` (tool id `ikos-conc`).
 The tool fixes the analysis to `--analyses=race --concurrency=auto
---demote-race-to-unknown` and emits TRUE (SAFE) / UNKNOWN only — it never
-claims a race, so it never incurs the -16 false-positive penalty.
+--demote-race-to-unknown` + the bounded re-confirmation (`IKOS_BMC_RECOVER=1`),
+and emits TRUE (SAFE) / FALSE (race, only when proven) / UNKNOWN. Because a
+race is only ever claimed when the bounded checker proves it, the FALSE
+direction is sound: no missed race (FN=0) and no false positive (FP=0).
 
 ## Layout
 

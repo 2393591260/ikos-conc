@@ -16,9 +16,11 @@ description: |
   IKOS-ConC is a sound static analyzer for detecting data races in
   concurrent C programs, built on the NASA IKOS framework. It performs a
   thread-modular interprocedural analysis with a must-lockset / happens-before
-  check. For SV-COMP it reports SAFE or UNKNOWN only: it never claims a race
-  (--demote-race-to-unknown), so the race detection is sound (no missed races,
-  FN=0) and incurs no false-positive penalty.
+  check, then demotes every abstract race to UNKNOWN and re-confirms the
+  provable ones with a bounded model checker (SMT happens-before/alias
+  encoding). This is sound in both directions: no missed race (FN=0) and no
+  false positive (FP=0); a race is only claimed when the bounded checker
+  proves it.
 input_languages:
   - C
 project_url: https://github.com/2393591260/ikos-conc

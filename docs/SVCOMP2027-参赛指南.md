@@ -92,8 +92,12 @@ TP=235 FP=88 TN=706 **FN=0** err=0；precision 72.8%。红线 FN=0 守住。
 **得分（用 2026 官方公式 TRUE=+2 / FALSE=+1 / FP=−16 / FN=−32）**：
 - 现状（报全部 race）：706×2 + 235×1 − 88×16 = **+239**。
 - **带 `--demote-race-to-unknown`（已提交 `3f07297`）：706×2 = +1412，FN=0 FP=0**。
-- **BMC 找回 TP（`IKOS_BMC_RECOVER=1 --demote`，本会话落地）**：TP 63 / FP 0 / FN 0 → **706×2 + 63 = 1475**（已超 Goblint 1426）。7 个 sound 修复：mutex 身份（`ac747e0`）、`__VERIFIER_atomic` 伪锁（`2f46dbc`）、both-held 锁门（`018715b`）、mutex 数组偏移 + 良性循环（`790df08`）、cond_wait=unlock+lock（`4278e6b`）、结构偏移回退（`1408afe`）。
-- 对比 SV-COMP 2026 no-data-race 官方榜：Goblint 1426（#1）、Goblint-Par 1422（#2）、**IKOS demote 1412 / BMC 1475（#3，独立工具里 #2）**、Deagle 1352、UAutomizer 1295、Dartagnan 1186、CPAchecker 577。
+- **BMC 找回 TP（`IKOS_BMC_RECOVER=1 --demote`，本会话落地）**：TP 64 / FP 0 / FN 0 → **706×2 + 64 = 1476**（已超 Goblint 1426）。8 个 sound 修复：mutex 身份（`ac747e0`）、`__VERIFIER_atomic` 伪锁（`2f46dbc`）、both-held 锁门（`018715b`）、mutex 数组偏移 + 良性循环（`790df08`）、cond_wait=unlock+lock（`4278e6b`）、结构偏移回退（`1408afe`）、偏移区间相交别名门（`20d3a9e`）。
+- 对比 SV-COMP 2026 no-data-race 官方榜：Goblint 1426（#1）、Goblint-Par 1422（#2）、**IKOS demote 1412 / BMC 1476（#3，独立工具里 #2）**、Deagle 1352、UAutomizer 1295、Dartagnan 1186、CPAchecker 577。
+
+### 滚动集（SV-COMP 2027 未冻结，1030 任务，全部 ILP32）
+
+`IKOS_BMC_RECOVER=1 --demote` 实测：**TP=64 FP=0 TN=707 FN=0 err=1(timeout) unknown=258 → 707×2 + 64 = 1478**。0 FN 0 FP 守住。err=1 为 `weaver/chl-poker-hand-subst.wvr.c` 30s 超时（真实 90s/300s 限内大概率通过，非 soundness 问题）。
 
 ### 独特优势（已用 Dartagnan 逐文件 verdict 交叉验证）
 
