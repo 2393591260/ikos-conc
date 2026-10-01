@@ -81,8 +81,8 @@ BMC 需要两类事件，都从 AR 静态可得：
 
 **第一期（最小健全子集：全局变量 + mutex + create/join）**
 - 只对 checker 报的那一对访问，做路径敏感有限展开（展开界 K）。
-- **别名**：只处理两访问都是**同一个 GlobalMemoryLocation**（全局变量地址唯一标识，不用 SMT 编码地址；堆/容器指针 → 保守 UNKNOWN）。
-- **同步**：mutex + **create/join**（create-HB、join-HB 都要建模——pthread-numerical-integration 靠 join 同步 `area`）。锁门（sound）：**跳过「一方访问时持有的锁，被另一方函数（任一分支）用到」的路径对**——这类锁可能承载标志式 HB / 永久锁（time_var_mutex 的 busy 标志、privatized 的 trace），互斥未完整建模；已配对（balanced）的共享锁由 check_race 的互斥析取建模；完全不共享的锁（经典「不同锁竞争」）不约束对方线程，照常判。cond/sem/barrier/spin/原子 → 检测到就保守 UNKNOWN。
+- **别名**：只处理两访问都是**同一个 GlobalMemoryLocation**（全局变量地址唯一标识，不用 SMT 编码地址；堆/容器指针 → 保守 UNKNOWN）。**堆（DynAlloc）暂不放开**——per-thread malloc 的 cell 按 call+context 建，但同一线程入口内的多实例坍缩成同一 cell（context 不敏感），放开导致 per-thread-struct/per-thread-index-inc 误报。放开堆需要先修 malloc 的 context 敏感性或上地址 SMT（第二期）。
+- **同步**：mutex + **`__VERIFIER_atomic_begin/end` 伪锁**（= Lock/Unlock PSEUDO_ATOMIC_LOCK，与 abstract checker 同语义；单调用原子 `__sync_*`/`__atomic_*`/`__VERIFIER_atomic_CAS|TAS|w|assert` 仍是 unmodeled → UNKNOWN，`acquire/release` 是手写 RACY 标志不算同步）+ **create/join**（create-HB、join-HB 待加——pthread-numerical-integration 靠 join 同步 `area`）。锁门（sound）：**只在「双方访问都在各自临界区内」且共享一把 held 锁时跳过**——这类锁可能承载标志式 HB / 永久锁（time_var_mutex 的 busy 标志、privatized 的 trace）；一方解锁访问时另一方的锁不保护它，照常判。cond/sem/barrier/spin/C11 原子 → 检测到就保守 UNKNOWN。
 - **循环（DAG-only 能力边界）**：展开器只做 DAG（直线+分支）；访问块的**前向路径上有回边（循环）**——即访问块从某循环头可达——就把路径标记为 `incomplete` → 保守 UNKNOWN（被跳过的循环体里可能藏 join/create/mutex，pthread-numerical-integration 的 join 循环正是如此）。循环在访问**之后**（不可达访问块）或分叉支路上、且不影响本访问的，不拦截。**这是「能力边界」，不是 bug**——后续加 bound 展开 + join-HB 建模可攻克，见 §9。
 - 编码：po + mutex 同步（互斥析取）+ create/join 边 + clock + 相邻查询（已实现 `encode.hpp`，create/join 边待加）。
 
