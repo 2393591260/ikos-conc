@@ -33,11 +33,56 @@ struct BmcEvent {
       : stmt(s), kind(k), mutex(m) {}
 };
 
-/// 锁的语法同一性：arg0 的 AR 值指针（同一对象 ⟹ 指针相等）。
-/// 第一版用语法近似；复杂别名后续上精确 may-alias。
+/// 锁的语法同一性：把 arg0 解析到其底层全局变量，用 GlobalVariable 指针做身份。
+/// 不能直接用 `*arg_begin()` 的裸指针——同一把锁在 lock / unlock 两个调用点
+/// 的 arg 可能是不同的 InternalVariable（各带一条 PointerShift/Bitcast 定义链），
+/// 裸指针会拆成两个假锁，破坏锁集平衡与共享锁判定。
+inline ar::Statement* unique_def_bmc(ar::InternalVariable* iv) {
+  ar::Code* code = iv->code();
+  if (code == nullptr) {
+    return nullptr;
+  }
+  ar::Statement* found = nullptr;
+  for (ar::BasicBlock* bb : *code) {
+    for (ar::Statement* s : *bb) {
+      if (s->result_or_null() == iv) {
+        if (found != nullptr) {
+          return nullptr;  // phi：多个 def，当作叶子
+        }
+        found = s;
+      }
+    }
+  }
+  return found;
+}
+
 inline std::uint64_t mutex_id(ar::CallBase* call) {
   if (call->arg_begin() == call->arg_end()) {
     return 0;
+  }
+  ar::Value* v = *call->arg_begin();
+  for (int depth = 0; depth < 16; ++depth) {
+    if (auto* gv = core::dyn_cast< ar::GlobalVariable >(v)) {
+      return reinterpret_cast< std::uint64_t >(gv);
+    }
+    auto* iv = core::dyn_cast< ar::InternalVariable >(v);
+    if (iv == nullptr) {
+      break;
+    }
+    ar::Statement* def = unique_def_bmc(iv);
+    if (auto* ps = core::dyn_cast_or_null< ar::PointerShift >(def)) {
+      v = ps->pointer();
+    } else if (auto* un = core::dyn_cast_or_null< ar::UnaryOperation >(def)) {
+      if (un->op() == ar::UnaryOperation::Bitcast ||
+          un->op() == ar::UnaryOperation::PtrToUI ||
+          un->op() == ar::UnaryOperation::UIToPtr) {
+        v = un->operand();
+      } else {
+        break;
+      }
+    } else {
+      break;
+    }
   }
   return reinterpret_cast< std::uint64_t >(*call->arg_begin());
 }

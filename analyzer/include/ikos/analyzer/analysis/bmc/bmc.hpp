@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -69,9 +70,8 @@ inline bool has_unmodeled_sync(ar::Bundle* bundle) {
   return false;
 }
 
-/// 检测一条展开路径上有没有「锁不平衡」（某把锁 lock 次数 > unlock 次数，即永久持有，
-/// 如 time_var_mutex 的 m_busy）。有则 BMC 不能 sound 地判竞争。
-inline bool has_unbalanced_lock(const std::vector< BmcEvent >& path) {
+/// 一条展开路径末尾仍持有的锁（lock 次数 > unlock 次数 = 访问时在临界区内）。
+inline std::set< std::uint64_t > held_locks(const std::vector< BmcEvent >& path) {
   std::map< std::uint64_t, int > balance;
   for (const BmcEvent& ev : path) {
     if (ev.kind == EvKind::Lock) {
@@ -80,12 +80,36 @@ inline bool has_unbalanced_lock(const std::vector< BmcEvent >& path) {
       --balance[ev.mutex];
     }
   }
+  std::set< std::uint64_t > held;
   for (const auto& kv : balance) {
-    if (kv.second != 0) {
-      return true;
+    if (kv.second > 0) {
+      held.insert(kv.first);
     }
   }
-  return false;
+  return held;
+}
+
+/// 整个函数里出现过的所有锁（任一分支上的 lock/unlock 都算）。
+/// 用「函数级」而非「路径级」：标志式 HB（time_var_mutex 的 busy 标志、
+/// privatized 的 trace）靠一把在两个线程里都出现的锁保护标志变量，这把锁
+/// 可能在另一条分支上才被当前线程使用，路径级 used 会漏掉它 → 误判竞争。
+inline std::set< std::uint64_t > func_used_locks(ar::Function* func) {
+  std::set< std::uint64_t > locks;
+  ar::Code* body = func->body_or_null();
+  if (body == nullptr) {
+    return locks;
+  }
+  for (auto bit = body->begin(), bend = body->end(); bit != bend; ++bit) {
+    for (auto sit = (*bit)->begin(), send = (*bit)->end(); sit != send; ++sit) {
+      if (auto* call = core::dyn_cast< ar::CallBase >(*sit)) {
+        EvKind kind;
+        if (classify_mutex_call(call, kind)) {
+          locks.insert(mutex_id(call));
+        }
+      }
+    }
+  }
+  return locks;
 }
 
 /// 确认两个访问（在各自线程入口函数里）是否真竞争。
@@ -105,14 +129,33 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   if (rA.incomplete || rB.incomplete) {
     return false;
   }
-  // 存在任意一对路径（A 的某条、B 的某条）可竞争，即真竞争。
-  // 跳过锁不平衡的路径（永久锁 time_var_mutex，不能 sound 判）。
+  // 锁门（sound）：跳过「一方访问时持有的锁，被另一方函数用到」的路径对——
+  // 这种锁可能承载标志式 HB / 永久锁（time_var_mutex、privatized），互斥未完整
+  // 建模，可能排序两个访问，保守 UNKNOWN。已配对（balanced）的共享锁由
+  // check_race 的互斥析取建模；完全不共享的锁（经典不同锁竞争）不约束对方，
+  // 照常判。
+  std::set< std::uint64_t > funcLocksA = func_used_locks(funcA);
+  std::set< std::uint64_t > funcLocksB = func_used_locks(funcB);
   for (const auto& pA : rA.paths) {
-    if (has_unbalanced_lock(pA)) {
-      continue;
-    }
+    std::set< std::uint64_t > heldA = held_locks(pA);
     for (const auto& pB : rB.paths) {
-      if (has_unbalanced_lock(pB)) {
+      std::set< std::uint64_t > heldB = held_locks(pB);
+      bool shared_held = false;
+      for (std::uint64_t m : heldA) {
+        if (funcLocksB.count(m)) {
+          shared_held = true;
+          break;
+        }
+      }
+      if (!shared_held) {
+        for (std::uint64_t m : heldB) {
+          if (funcLocksA.count(m)) {
+            shared_held = true;
+            break;
+          }
+        }
+      }
+      if (shared_held) {
         continue;
       }
       if (check_race(pA, pB)) {
