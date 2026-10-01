@@ -61,43 +61,55 @@ BMC 需要两类事件，都从 AR 静态可得：
 
 | checker 现成的 | BMC 用不用 | 为什么 |
 |---|---|---|
-| `resolve_points_to`（抽象 points-to） | ❌ 不用 | 它是过近似；BMC 要精确的 may-alias |
-| lockset（抽象锁集） | ❌ 不用 | 抽象锁集不精确；BMC 要在 SMT 里重算 mutex 同步 |
+| `resolve_points_to`（抽象 points-to） | ❌ 不用 | 它是过近似（per-thread malloc 的多个对象坍缩成同 cell）；BMC 要精确地址相等 |
+| lockset（抽象锁集） | ❌ 不用 | 抽象锁集不精确；BMC 要在 SMT 里重算同步 |
 | `current_thread_id` | ✅ 用 | 线程归属是静态事实 |
 | 竞争对的访问语句（`AccessRecord.stmt`） | ✅ 用 | 定位这两个 load/store 语句 |
-| 地址别名 | ✅ 但用**精确 may-alias** | 判断两个访问是否同址；IKOS 有 pointer 分析，看能否给精确 alias |
+| 地址 | ✅ **编码成 SMT 值 + 判相等** | Dartagnan `sameAddress = mustAlias ? true : equal(addr_a, addr_b)` |
 
-## 5. 工程分期（从最小到完整）
+## 5. soundness 的精确条件（2026-10 调研修正，取代之前的草率结论）
 
-**第一期（最小可跑，先找回 mutex 竞争的 TP）**
-- 只对 checker 报的那一对访问，做**路径敏感的有限展开**：从线程入口展开到这两个访问，展开界 K。
-- 编码：`exec(e)`（控制流）+ po + mutex 同步 + clock + 相邻查询。
-- 处理直线代码 + 简单分支；循环展开 K 次。
-- 地址别名：先假定「同一抽象 cell ⟹ 可能同址」（保守），后续用精确 alias。
+一个健全的 BMC 必须**同时**具备（对照 Dartagnan 源码 + 逐个 FP 文件核实）：
 
-**第二期（找回锁无关/原子 TP）**
-- 加 MAY 边：`rf`（读从哪个写）、`co`（写序）发自由布尔变量。
-- 加原子 acquire/release（若需要）。
+1. **精确别名 = 地址编码 + 相等判定**：把每次访问的**地址**编码成 SMT 值，`sameAddress = equal(addr_a, addr_b)`。**不能**复用抽象 points-to 的过近似。这是消除 per-thread malloc / container_of / thread-id 类 FP 的唯一办法。
+2. **完整 HB = 所有同步原语**：mutex（acquire/release **资源语义**，含「永久锁」time_var_mutex 那种 lock 后不 unlock）、cond（signal→wait）、sem（post→wait）、barrier、spin、create/join、原子 acquire/release，全部编码成 HB 边。
+3. race = sameAddress ∧ 一个写 ∧ 跨线程 ∧ 非原子 ∧ 相邻（已验证）。
+
+**第一版只做了「mutex 的 unlock→lock 边」**，缺 (1) 整个地址编码、(2) cond/sem/barrier/spin/永久锁 —— 这就是实测 21 个 FP 的来源（cond 变量 3 个、信号量 1 个、每线程 malloc 别名 8 个、container_of 2 个、永久锁 1 个、其余若干）。
+
+## 6. 工程分期（修正后）
+
+**第一期（最小健全子集：只全局变量 + 只 mutex）**
+- 只对 checker 报的那一对访问，做路径敏感有限展开（展开界 K）。
+- **别名**：只处理两访问都是**同一个 GlobalMemoryLocation**（全局变量地址唯一标识，不用 SMT 编码地址；堆/容器指针 → 保守 UNKNOWN）。
+- **同步**：只 mutex；且要求**锁配对平衡**（每条路径 lock/unlock 一一对应，检测到 time_var_mutex 那种「lock 不 unlock」→ 保守 UNKNOWN）。cond/sem/barrier/spin/原子 → 检测到就保守 UNKNOWN。
+- 编码：po + mutex 同步（互斥析取）+ clock + 相邻查询（已实现 `encode.hpp`）。
+
+**第二期（加精确别名 + 更多同步）**
+- 地址 SMT 编码（`address(e)` + `equal`）→ 支持堆对象、容器指针、thread-id 槽位。
+- cond（signal→wait）、sem（post→wait）、barrier 建模。
+- mutex 的完整资源语义（处理永久锁）。
 
 **第三期（工程化）**
-- 从「只判一对」扩展到「判所有 demote 对」（仍是 O(竞争对数)，远小于 Dartagnan 的 O(事件²)）。
+- 从「只判一对」扩展到「判所有 demote 对」。
 - 求解器缓存、增量求解。
 
-## 6. 集成点
+## 7. 集成点
 
-在 `DataRaceChecker` 的析构（pairwise 判定）里，`--demote-race-to-unknown` 把竞争对判成 UNKNOWN 之后，**对每个 UNKNOWN 对调用 BMC 模块**：
+在 `DataRaceChecker` 的析构里，`--demote-race-to-unknown` 把竞争对判成 UNKNOWN 之后，**对每个满足第一期健全门（全局变量 + 平衡 mutex + 无其它同步）的 UNKNOWN 对调用 BMC**：
 
 ```
-对每个 demote 成 UNKNOWN 的 (a, b)：
-  BMC.check_race(a.stmt, b.stmt, bound=K)   # 路径敏感展开到 a/b
-    SAT   → 把这对升级成「definite race」（报 FALSE，+1 分）
-    UNSAT → 保持 UNKNOWN（0 分）
+对每个 demote 成 UNKNOWN 的 (a, b)，先过健全门：
+  门 = 同 GlobalMemoryLocation ∧ 锁平衡 ∧ 无 cond/sem/barrier/spin/原子
+  过门 → BMC.check_race → SAT 报 FALSE（+1），UNSAT 保持 UNKNOWN
+  不过门 → 保持 UNKNOWN
 ```
 
-result：BMC 只「找回 TP」，从不「证明 SAFE」，所以 **FN=0 恒成立**（BMC 报 FALSE 时给出的是真竞争）。
+result：BMC 只「找回 TP」，从不「证明 SAFE」，且健全门保证报 FALSE 的必是真竞争 → **FN=0 且 FP=0**。
 
-## 7. 待摸清的点（动手前）
+## 8. 已摸清的点（原 §7 的解答）
 
-1. **精确 may-alias**：IKOS 的 pointer analysis 能不能给「两个 load/store 是否可能指向同一地址」的精确答案（用于 conflict 判定，替代抽象 points-to 的过近似）。
-2. **路径敏感的有限展开**：IKOS 现在是 path-insensitive（join）；BMC 需要 path-sensitive 展开到那两个访问。看能否复用 `ar::Code` 的 CFG + 一个轻量展开器，还是直接手写。
-3. **mutex 对象的身份**：pthread_mutex_lock(arg0) 的 arg0 指向哪个 mutex（用于 unlock→lock 的同步配对）。checker 里锁集以 mutex 地址为 key，可参考。
+1. **精确别名**：IKOS 没有独立 alias 分析。正确做法是 Dartagnan 的 `sameAddress`——第一期用全局变量的语法同一性，第二期把地址编码成 SMT 值判相等。
+2. **路径敏感展开**：IKOS 无现成 unroller，已手写 `bmc/unroll.hpp`（DAG DFS + 回边检测）。
+3. **mutex 对象身份**：语法 arg0 指针同一性（`mutex_id`，已实现）；但需补「锁配对平衡」检测处理永久锁。
+
