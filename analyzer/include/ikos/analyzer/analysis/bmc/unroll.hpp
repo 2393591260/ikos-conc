@@ -8,11 +8,13 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
 #include <ikos/ar/semantic/code.hpp>
 #include <ikos/ar/semantic/statement.hpp>
+#include <ikos/core/support/cast.hpp>
 
 namespace ikos {
 namespace analyzer {
@@ -23,17 +25,28 @@ enum class EvKind { Read, Write, Lock, Unlock };
 
 /// 一个 BMC 事件（内存访问或锁同步）。
 struct BmcEvent {
-  ar::Statement* stmt;  // 对应的 AR 语句
+  ar::Statement* stmt;      // 对应的 AR 语句
   EvKind kind;
+  std::uint64_t mutex = 0;  // Lock/Unlock 的锁对象语法同一性（arg0 指针）；内存事件为 0
 
-  BmcEvent(ar::Statement* s, EvKind k) : stmt(s), kind(k) {}
+  BmcEvent(ar::Statement* s, EvKind k, std::uint64_t m = 0)
+      : stmt(s), kind(k), mutex(m) {}
 };
+
+/// 锁的语法同一性：arg0 的 AR 值指针（同一对象 ⟹ 指针相等）。
+/// 第一版用语法近似；复杂别名后续上精确 may-alias。
+inline std::uint64_t mutex_id(ar::CallBase* call) {
+  if (call->arg_begin() == call->arg_end()) {
+    return 0;
+  }
+  return reinterpret_cast< std::uint64_t >(*call->arg_begin());
+}
 
 /// 判断一个 CallBase 是否是对 pthread_mutex 的 lock/unlock，返回事件种类；
 /// 非锁调用返回 false。
 inline bool classify_mutex_call(ar::CallBase* call, EvKind& kind) {
   ar::FunctionPointerConstant* cst =
-      dyn_cast< ar::FunctionPointerConstant >(call->called());
+      core::dyn_cast< ar::FunctionPointerConstant >(call->called());
   if (cst == nullptr || cst->function() == nullptr) {
     return false;
   }
@@ -57,18 +70,18 @@ inline bool classify_mutex_call(ar::CallBase* call, EvKind& kind) {
 
 /// 把一个语句分类成 BMC 事件（内存/锁/无关）。
 inline bool classify_event(ar::Statement* stmt, BmcEvent& ev) {
-  if (isa< ar::Load >(stmt)) {
+  if (core::isa< ar::Load >(stmt)) {
     ev = BmcEvent{stmt, EvKind::Read};
     return true;
   }
-  if (isa< ar::Store >(stmt)) {
+  if (core::isa< ar::Store >(stmt)) {
     ev = BmcEvent{stmt, EvKind::Write};
     return true;
   }
-  if (auto* call = dyn_cast< ar::CallBase >(stmt)) {
+  if (auto* call = core::dyn_cast< ar::CallBase >(stmt)) {
     EvKind kind;
     if (classify_mutex_call(call, kind)) {
-      ev = BmcEvent{stmt, kind};
+      ev = BmcEvent{stmt, kind, mutex_id(call)};
       return true;
     }
   }
