@@ -1,3 +1,9 @@
+# This file is part of BenchExec, a framework for reliable benchmarking:
+# https://github.com/sosy-lab/benchexec
+#
+# SPDX-FileCopyrightText: 2026 Ronghui Ruan
+#
+# SPDX-License-Identifier: Apache-2.0
 """BenchExec tool-info module for the IKOS concurrency (data-race) analysis.
 
 Registers IKOS as an SV-COMP C.no-data-race tool:
@@ -28,8 +34,10 @@ from pathlib import Path
 
 # --- BenchExec interface (guarded so the module also runs standalone) ---
 try:
-    from benchexec import result
     from benchexec.tools.template import BaseTool2
+
+    from benchexec import result
+
     _TRUE, _FALSE, _UNKNOWN, _TIMEOUT = (
         result.RESULT_TRUE_PROP,
         result.RESULT_FALSE_PROP,
@@ -37,6 +45,7 @@ try:
         result.RESULT_TIMEOUT,
     )
 except ImportError:  # pragma: no cover - standalone / offline test
+
     class BaseTool2:
         pass
 
@@ -85,8 +94,8 @@ class Tool(BaseTool2):
         # would return. Guard against a missing executable (offline test).
         try:
             out = subprocess.run(
-                [executable, "--version"], capture_output=True, text=True,
-                timeout=30).stdout
+                [executable, "--version"], capture_output=True, text=True, timeout=30
+            ).stdout
             first = (out.strip().splitlines() or [""])[0].strip()
             return first.split()[-1] if first else ""
         except (OSError, subprocess.SubprocessError):
@@ -126,7 +135,9 @@ if __name__ == "__main__":
 
     ap = argparse.ArgumentParser()
     ap.add_argument("source")
-    ap.add_argument("--property", default=None, help="ignored (property fixed to no-data-race)")
+    ap.add_argument(
+        "--property", default=None, help="ignored (property fixed to no-data-race)"
+    )
     ap.add_argument("--ikos", default=None)
     ap.add_argument("--data-model", default="ILP32", choices=["ILP32", "LP64"])
     ap.add_argument("--timeout", type=int, default=90)
@@ -137,11 +148,17 @@ if __name__ == "__main__":
     # re-confirmation + witness.yml) instead of ikos directly, and force ILP32
     # so the local test matches the competition (no-data-race is all ILP32).
     wrapper = Path(ikos).parent / "svcomp_witness.py"
-    cmd = [sys.executable, str(wrapper), "--ikos", ikos,
-           "--data-model", args.data_model, args.source]
+    cmd = [
+        sys.executable,
+        str(wrapper),
+        "--ikos",
+        ikos,
+        "--data-model",
+        args.data_model,
+        args.source,
+    ]
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True,
-                              timeout=args.timeout)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=args.timeout)
         out = proc.stdout + proc.stderr
         rc = proc.returncode
         timed_out = False
