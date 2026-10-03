@@ -34,9 +34,8 @@ from pathlib import Path
 
 # --- BenchExec interface (guarded so the module also runs standalone) ---
 try:
-    from benchexec.tools.template import BaseTool2
-
     from benchexec import result
+    from benchexec.tools.template import BaseTool2
 
     _TRUE, _FALSE, _UNKNOWN, _TIMEOUT = (
         result.RESULT_TRUE_PROP,
