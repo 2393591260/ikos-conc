@@ -3,12 +3,11 @@
 # Submit this file (as `ikos-conc.yml`) to
 #   https://gitlab.com/sosy-lab/benchmarking/fm-tools  under `data/`.
 #
-# Placeholders to fill before submitting:
-#   * <orcid> / <name> / <institution> / <country> / <url> — the jury member
-#     (in competition_participations[].jury_member) and participants.
-#   * <version> — keep "svcomp27" unless the org name changes.
+# Placeholder to fill before submitting:
 #   * <doi-ikos-paper> — the IKOS concept-paper DOI for literature[].
-# Zenodo DOI (versions[].doi) is filled: 10.5281/zenodo.23122650.
+# Already filled: Zenodo DOI 10.5281/zenodo.23122650; jury member / maintainer
+# Ronghui Ruan (National University of Defense Technology, China),
+# ORCID 0009-0007-5722-0468, URL https://orcid.org/0009-0007-5722-0468.
 
 id: ikos-conc
 name: IKOS-ConC
@@ -32,11 +31,11 @@ fmtools_entry_maintainers:
   - <gitlab-username>
 
 maintainers:
-  - orcid: <orcid>
-    name: <name>
-    institution: <institution>
-    country: <country>
-    url:
+  - orcid: 0009-0007-5722-0468
+    name: Ronghui Ruan
+    institution: National University of Defense Technology
+    country: China
+    url: https://orcid.org/0009-0007-5722-0468
 
 versions:
   - version: "svcomp27"
@@ -75,14 +74,14 @@ competition_participations:
     track: "Verification"
     tool_version: "svcomp27"
     jury_member:
-      orcid: <orcid>
-      name: <name>
-      institution: <institution>
-      country: <country>
-      url:
+      orcid: 0009-0007-5722-0468
+      name: Ronghui Ruan
+      institution: National University of Defense Technology
+      country: China
+      url: https://orcid.org/0009-0007-5722-0468
     participants:
-      - orcid: <orcid>
-        name: <name>
+      - orcid: 0009-0007-5722-0468
+        name: Ronghui Ruan
 
 techniques:
   - Abstract Interpretation
