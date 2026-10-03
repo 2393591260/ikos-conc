@@ -4,10 +4,11 @@
 #   https://gitlab.com/sosy-lab/benchmarking/fm-tools  under `data/`.
 #
 # Placeholder to fill before submitting:
-#   * <doi-ikos-paper> — the IKOS concept-paper DOI for literature[].
+#   * <gitlab-username> — fmtools_entry_maintainers (your GitLab handle).
 # Already filled: Zenodo DOI 10.5281/zenodo.23122650; jury member / maintainer
 # Ronghui Ruan (National University of Defense Technology, China),
-# ORCID 0009-0007-5722-0468, URL https://orcid.org/0009-0007-5722-0468.
+# ORCID 0009-0007-5722-0468, URL https://orcid.org/0009-0007-5722-0468;
+# literature = IKOS SEFM 2014 paper (DOI to verify before submitting).
 
 id: ikos-conc
 name: IKOS-ConC
@@ -94,6 +95,6 @@ frameworks_solvers:
   - Z3
 
 literature:
-  - doi: <doi-ikos-paper>   # 10.1007/978-3-319-10431-7_20 (SEFM 2014) — 提交前核实
+  - doi: 10.1007/978-3-319-10431-7_20   # 提交前务必核实（我离线无法访问 Crossref 确认）
     title: "IKOS: A Framework for Static Analysis Based on Abstract Interpretation"
     year: 2014
