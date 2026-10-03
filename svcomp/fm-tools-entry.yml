@@ -1,13 +1,3 @@
-# FM-Tools entry for IKOS-ConC (SV-COMP 2027).
-#
-# Submit this file (as `ikos-conc.yml`) to
-#   https://gitlab.com/sosy-lab/benchmarking/fm-tools  under `data/`.
-#
-# All fields filled. Zenodo DOI 10.5281/zenodo.23122650; jury member /
-# maintainer Ronghui Ruan (National University of Defense Technology, China),
-# ORCID 0009-0007-5722-0468; fmtools_entry_maintainers ruanronghui;
-# literature = IKOS SEFM 2014 paper (DOI verified).
-
 id: ikos-conc
 name: IKOS-ConC
 description: |

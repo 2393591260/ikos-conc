@@ -42,7 +42,7 @@ verification_result.csv
 .cache/
 
 # Local tooling and external benchmark copies
-.claude.md
+.claude/
 clean-sv-benchmarks/
 
 # CPAchecker run artifacts + packaged archive
