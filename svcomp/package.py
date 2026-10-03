@@ -244,13 +244,25 @@ def package(install_dir, out, llvm_root, apron_dir):
     shutil.copy("svcomp_witness.py", os.path.join(install, "bin", "svcomp_witness.py"))
 
     # 7. zip (single top-level dir, executable bit preserved)
+    # Exclude Python bytecode caches (__pycache__/*.pyc) and stray result
+    # databases (*.db) — the submission rules forbid "unnecessary data"
+    # (auxiliary folders like __pycache__); they are regenerable / scratch.
+    # Exclude the installed C++ source headers (include/ikos/{ar,core,frontend})
+    # — only include/ikos/analyzer/intrinsic.h is referenced at run time by the
+    # frontend's `-isystem` (analyzer.py), the rest is `make install` dev output.
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         for root, dirs, files in os.walk(install):
-            dirs.sort()
+            dirs[:] = sorted(d for d in dirs if d != "__pycache__" and d != ".git")
             files.sort()
             for name in files:
+                if name.endswith((".pyc", ".db")):
+                    continue
                 full = os.path.join(root, name)
-                arc = os.path.join("ikos-conc", os.path.relpath(full, install))
+                rel = os.path.relpath(full, install)
+                if rel.startswith(("include/ikos/ar/", "include/ikos/core/",
+                                   "include/ikos/frontend/")):
+                    continue
+                arc = os.path.join("ikos-conc", rel)
                 info = zipfile.ZipInfo.from_file(full, arc)
                 info.compress_type = zipfile.ZIP_DEFLATED
                 info.external_attr = (os.stat(full).st_mode & 0xFFFF) << 16
