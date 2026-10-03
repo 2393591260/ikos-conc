@@ -3,10 +3,10 @@
 # Submit this file (as `ikos-conc.yml`) to
 #   https://gitlab.com/sosy-lab/benchmarking/fm-tools  under `data/`.
 #
-# All submission fields filled except verifying the literature DOI (IKOS SEFM
-# 2014) before the MR. Zenodo DOI 10.5281/zenodo.23122650; jury member /
+# All fields filled. Zenodo DOI 10.5281/zenodo.23122650; jury member /
 # maintainer Ronghui Ruan (National University of Defense Technology, China),
-# ORCID 0009-0007-5722-0468; fmtools_entry_maintainers ruanronghui.
+# ORCID 0009-0007-5722-0468; fmtools_entry_maintainers ruanronghui;
+# literature = IKOS SEFM 2014 paper (DOI verified).
 
 id: ikos-conc
 name: IKOS-ConC
@@ -92,6 +92,6 @@ frameworks_solvers:
   - Z3
 
 literature:
-  - doi: 10.1007/978-3-319-10431-7_20   # 提交前务必核实（我离线无法访问 Crossref 确认）
+  - doi: 10.1007/978-3-319-10431-7_20
     title: "IKOS: A Framework for Static Analysis Based on Abstract Interpretation"
     year: 2014
