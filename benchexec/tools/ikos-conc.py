@@ -14,9 +14,11 @@ Registers IKOS as an SV-COMP C.no-data-race tool:
 
 Runnable standalone for local P1 validation:
 
-    python3 benchexec/tools/ikos-conc.py <file.c|.i> [--property p.prp]
+    python3 benchexec/tools/ikos-conc.py <file.c|.i> [--property p.prp] \
+        [--ikos /path/to/ikos] [--data-model ILP32|LP64]
 
-which runs IKOS once and prints TRUE / FALSE(no-data-race) / UNKNOWN.
+which runs the bundled svcomp_witness.py wrapper (demote + BMC re-confirmation,
+ILP32 by default) and prints TRUE / FALSE(no-data-race) / UNKNOWN.
 """
 
 import re
@@ -126,15 +128,20 @@ if __name__ == "__main__":
     ap.add_argument("source")
     ap.add_argument("--property", default=None, help="ignored (property fixed to no-data-race)")
     ap.add_argument("--ikos", default=None)
+    ap.add_argument("--data-model", default="ILP32", choices=["ILP32", "LP64"])
     ap.add_argument("--timeout", type=int, default=90)
     args = ap.parse_args()
 
     ikos = args.ikos or "ikos"
+    # Mirror cmdline(): run the bundled svcomp_witness.py wrapper (demote + BMC
+    # re-confirmation + witness.yml) instead of ikos directly, and force ILP32
+    # so the local test matches the competition (no-data-race is all ILP32).
+    wrapper = Path(ikos).parent / "svcomp_witness.py"
+    cmd = [sys.executable, str(wrapper), "--ikos", ikos,
+           "--data-model", args.data_model, args.source]
     try:
-        proc = subprocess.run(
-            [ikos, "--analyses=race", "--concurrency=auto",
-             "--format=no", "--display-times=no", args.source],
-            capture_output=True, text=True, timeout=args.timeout)
+        proc = subprocess.run(cmd, capture_output=True, text=True,
+                              timeout=args.timeout)
         out = proc.stdout + proc.stderr
         rc = proc.returncode
         timed_out = False
