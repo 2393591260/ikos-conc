@@ -6,11 +6,9 @@
 # Placeholders to fill before submitting:
 #   * <orcid> / <name> / <institution> / <country> / <url> — the jury member
 #     (in competition_participations[].jury_member) and participants.
-#   * <doi> — the Zenodo DOI, created when you upload ikos-conc.zip.
-#     (See https://sv-comp.sosy-lab.org/2027/submission.php for the exact
-#      DOI versioning; the final DOI is set at the tool-submission deadline.)
 #   * <version> — keep "svcomp27" unless the org name changes.
 #   * <doi-ikos-paper> — the IKOS concept-paper DOI for literature[].
+# Zenodo DOI (versions[].doi) is filled: 10.5281/zenodo.23122650.
 
 id: ikos-conc
 name: IKOS-ConC
@@ -42,7 +40,7 @@ maintainers:
 
 versions:
   - version: "svcomp27"
-    doi: <doi>
+    doi: 10.5281/zenodo.23122650
     benchexec_toolinfo_options: []
     required_ubuntu_packages:
       - libc6-dev
