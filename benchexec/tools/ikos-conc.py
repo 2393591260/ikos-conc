@@ -106,7 +106,7 @@ class Tool(BaseTool2):
         # Always pass it explicitly: falling back to the wrapper's/host default
         # would silently analyze the wrong (64-bit) model. The no-data-race
         # category is entirely ILP32, so that is the fallback.
-        data_model = task.options.get("data_model") or "ILP32"
+        data_model = (task.options or {}).get("data_model") or "ILP32"
         cmd += ["--data-model", data_model]
         return cmd + options + list(task.input_files_or_identifier)
 
