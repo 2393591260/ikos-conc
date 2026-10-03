@@ -191,6 +191,16 @@ def package(install_dir, out, llvm_root, apron_dir):
                 "libpolkaMPQ.so", "libap_ppl.so", "libap_pkgrid.so"]:
         shutil.copy(os.path.join(apron, lib), os.path.join(install, "lib", lib))
 
+    # 1b. bundle Z3 (the BMC's SMT solver). ikos-analyzer links libz3.so.4; it
+    # is a system lib (not statically linked), so ship the exact version the
+    # binary was built against — ubuntu:24.04's libz3-4 may differ. The wrapper
+    # already puts install/lib first on LD_LIBRARY_PATH.
+    for z3 in ["/lib/x86_64-linux-gnu/libz3.so.4",
+               "/usr/lib/x86_64-linux-gnu/libz3.so.4"]:
+        if os.path.isfile(z3):
+            shutil.copy(z3, os.path.join(install, "lib", "libz3.so.4"))
+            break
+
     # 2. bundle clang + opt + LLVM shared libs
     os.makedirs(os.path.join(install, "llvm", "bin"), exist_ok=True)
     os.makedirs(os.path.join(install, "llvm", "lib"), exist_ok=True)
