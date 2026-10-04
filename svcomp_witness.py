@@ -73,7 +73,7 @@ def opening_paren_column(source, line, start_col):
     return start_col
 
 
-def loc(obj, source, kind="target"):
+def loc(obj, source, function=None, kind="target"):
     """Build a witness location dict from an access/creation JSON object."""
     out = {"file_name": obj.get("file", "unknown.c")}
     if "line" in obj:
@@ -83,6 +83,8 @@ def loc(obj, source, kind="target"):
         if kind == "function_enter":
             col = opening_paren_column(source, obj["line"], col)
         out["column"] = col
+    if function:
+        out["function"] = function
     return out
 
 
@@ -105,21 +107,23 @@ def build_witness(source, info, data_model):
             "type": "function_enter",
             "action": "follow",
             "thread_id": creator_id.get(tc.get("creator", "main"), 0),
-            "location": loc(tc, source, "function_enter"),
+            "location": loc(tc, source, function=tc.get("creator", "main"),
+                            kind="function_enter"),
         }}]
         content.append({"segment": seg})
 
-    # final multi-follow segment: the two conflicting accesses.
+    # final segment: a SINGLE target waypoint pointing at the racing access in
+    # the created (worker) thread — the access where CPAchecker's DataRaceCPA
+    # detects the race. (The 2.2 format allows up to two targets, but the
+    # validator matches the target against the racing access's CFA edge; two
+    # targets for the two sides do not confirm, one target on the worker side
+    # does — cf. CPAchecker's own svcomp27--datarace export.)
     final = [{"waypoint": {
         "type": "target",
         "action": "follow",
-        "thread_id": tid.get(info["access_a"].get("thread_id"), 0),
-        "location": loc(info["access_a"], source),
-    }}, {"waypoint": {
-        "type": "target",
-        "action": "follow",
         "thread_id": tid.get(info["access_b"].get("thread_id"), 0),
-        "location": loc(info["access_b"], source),
+        "location": loc(info["access_b"], source,
+                        function=info["access_b"].get("thread_id")),
     }}]
     content.append({"segment": final})
 
