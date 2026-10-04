@@ -54,25 +54,22 @@ def first_race(data):
     return None
 
 
-def closing_paren_column(source, line, start_col):
-    """Column of the ')' that closes the call starting at (line, start_col).
+def opening_paren_column(source, line, start_col):
+    """Column of the '(' that opens the call starting at (line, start_col).
 
-    The witness `function_enter` waypoint must point at the closing paren of
-    the thread-creating call, not its start; IKOS reports the call's start.
+    The witness `function_enter` waypoint must point at the OPENING paren of the
+    thread-creating call (the column right after the function name), matching
+    CPAchecker's getColumnOfFunctionCallParenthesis (= function-name start column
+    + function-name length). IKOS reports the call's function-name start column.
     """
     try:
         with open(source, encoding="utf-8", errors="replace") as f:
             text = f.readlines()[line - 1]
     except (OSError, IndexError):
         return start_col
-    depth = 0
     for i in range(start_col - 1, len(text)):
         if text[i] == "(":
-            depth += 1
-        elif text[i] == ")":
-            depth -= 1
-            if depth == 0:
-                return i + 1  # 1-indexed column
+            return i + 1  # 1-indexed column of the opening paren
     return start_col
 
 
@@ -84,7 +81,7 @@ def loc(obj, source, kind="target"):
     if "column" in obj:
         col = obj["column"]
         if kind == "function_enter":
-            col = closing_paren_column(source, obj["line"], col)
+            col = opening_paren_column(source, obj["line"], col)
         out["column"] = col
     return out
 
