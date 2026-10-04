@@ -112,13 +112,18 @@ def build_witness(source, info, data_model):
         }}]
         content.append({"segment": seg})
 
-    # final segment: a SINGLE target waypoint pointing at the racing access in
-    # the created (worker) thread — the access where CPAchecker's DataRaceCPA
-    # detects the race. (The 2.2 format allows up to two targets, but the
-    # validator matches the target against the racing access's CFA edge; two
-    # targets for the two sides do not confirm, one target on the worker side
-    # does — cf. CPAchecker's own svcomp27--datarace export.)
+    # final multi-follow segment: the two conflicting accesses (both targets).
+    # This matches the official SV-Witnesses regression test
+    # (test/programs/witness-v2-validation/concurrency/concurrent-data-race.witness-2.2.yml),
+    # which uses two target waypoints (thread_id 1 and 2) in one multi-follow
+    # segment for the two racing accesses.
     final = [{"waypoint": {
+        "type": "target",
+        "action": "follow",
+        "thread_id": tid.get(info["access_a"].get("thread_id"), 0),
+        "location": loc(info["access_a"], source,
+                        function=info["access_a"].get("thread_id")),
+    }}, {"waypoint": {
         "type": "target",
         "action": "follow",
         "thread_id": tid.get(info["access_b"].get("thread_id"), 0),
