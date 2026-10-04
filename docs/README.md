@@ -35,6 +35,8 @@
 | 文件 | 作用 |
 |---|---|
 | [concurrency-architecture.md](concurrency-architecture.md) | **并发子系统代码架构梳理**：目录结构、运行原理（thread-modular + 锁集 digest + ConcurrentGlobalEnv 黑板）、已知边界。 |
+| [ikos-bmc-design.md](ikos-bmc-design.md) | **BMC 找回 TP 设计**：demote→UNKNOWN 后用 Z3 路径敏感展开重确认竞争（只报 FALSE、不报 TRUE 的 sound 架构）、8 个 sound 修复的演进、1476/1478 基线。 |
+| [ikos-bmc-learning-notes.md](ikos-bmc-learning-notes.md) | **BMC 学习笔记**：展开器/编码/HB 边的设计记录与踩坑。 |
 | [ikos-mhp-design.md](ikos-mhp-design.md) | **MHP（may-happen-in-parallel）对标 goblint 设计**：goblint `mHP.ml`/`threadIdDomain.ml` vs IKOS 现状的逐维度对比 + 实例级 MHP 方案（instance_sid / _site_ancestors / may_happen_in_parallel 四判定）。后续 MHP 专项依据。 |
 | [ikos-condvar-modeling-design.md](ikos-condvar-modeling-design.md) | **条件变量语义建模方案**（`pthread_cond_wait/signal/broadcast`）：wait-queue + signal epoch + MAY digest 的设计与 soundness 论证。 |
 | [dev-gotchas.md](dev-gotchas.md) | **完整 22 条踩坑清单**：改 build 须同步 install、锁集 MAY/MUST 极性、全局变量 type/points-to 陷阱、fixpoint dirty 收敛、extern-call 写合成双计等。 |
@@ -58,6 +60,17 @@
 | 文件 | 作用 |
 |---|---|
 | [fp-repros/](fp-repros/) | **FP 最小复现 `.c` 用例**（8 个）：`c1-lock-pointer-alias`、`c3-per-thread-slot`、`c5-c11-acqrel`、`c6-cas-spinlock`、`c7-struct-field-collapse`、`c8-container-of` 等。每个对应 FP 分类清单里的一个根因，用于改动后做最小回归验证。 |
+
+## 六、SV-COMP 2027 参赛（提交材料 + 规则翻译）
+
+| 文件 | 作用 |
+|---|---|
+| [SVCOMP2027-参赛指南.md](SVCOMP2027-参赛指南.md) | **参赛指南（事实已核查官方站点）**：关键日期、计分公式、4 部分提交物、待办、当前基线（demote 1412 / BMC 1476 / 滚动 1478）。**提交总入口，先读这个。** |
+| [SVCOMP2027-最终核验清单.md](SVCOMP2027-最终核验清单.md) | **最终核验清单（代码实查版）**：逐条对照代码实查的 A/B/C/D/E/F/G 状态 + 待办排序。提交前照这个打勾。 |
+| [SVCOMP2027-规则全文翻译与核验.md](SVCOMP2027-规则全文翻译与核验.md) | 规则页（rules.php）全文翻译 + 逐条讲解（见证格式/计分/环境/opt-out…）。 |
+| [SVCOMP2027-提交页翻译与核验.md](SVCOMP2027-提交页翻译与核验.md) | 提交页（submission.php）全文翻译 + 复核（归档 5 部分/FM-Tools/合格条件…）。 |
+| [SVCOMP2027-基准页翻译.md](SVCOMP2027-基准页翻译.md) | 基准页（benchmarks.php）翻译（2027 类别清单当时是占位符，以 11-03 冻结为准）。 |
+| [SVCOMP-FAQ中文翻译.md](SVCOMP-FAQ中文翻译.md) | 官方 FAQ 中文翻译（跨年通用；机制性回答仍适用，具体格式/链接以 2027 页为准）。 |
 
 ---
 

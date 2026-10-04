@@ -70,12 +70,15 @@
 - [x] **P3 BenchExec 模块**：`benchexec/tools/ikos-conc.py`（`executable/version/cmdline/determine_result`），tool id `ikos-conc`；`cmdline()` 跑 `svcomp_witness.py`，报 FALSE 自动写 witness。
 - [x] **P4 自包含归档**：`svcomp/package.py` 产出 `ikos-conc.zip`（120MB）：打包 APRON+LLVM-14、settings 可重定位、wrapper 用系统 python3、smoketest.sh exit 0。已解压到干净目录验证 `--version` + 竞态分析 + witness 全通。
 
-### 待你手动完成（依赖外部账号/信息，我无法代办）
+### 提交进度（2026-10-04 更新）
 
-- [ ] **上传 `ikos-conc.zip` 到 Zenodo → 拿 DOI**。
-- [ ] **填 `svcomp/fm-tools-entry.yml` 占位符**：`<doi>`、jury member 的 `orcid/name/institution/country`、`<gitlab-username>`。
-- [ ] **提交三个 MR**：fm-tools 的 `data/ikos-conc.yml`、bench-defs 的 `category-structure.yml`（见 `svcomp/category-structure-mr.md`）、BenchExec 的 `benchexec/tools/ikos-conc.py`。
-- [ ] **新 jury member 报备邮箱**给组织者（Dirk Beyer / Jan Strejček）。
+- [x] **Zenodo 上传 + DOI**：`10.5281/zenodo.23122650`。
+- [x] **`svcomp/fm-tools-entry.yml` 全部填齐**（DOI / jury member Ronghui Ruan / gitlab `ruanronghui`），本地过 CI 同款 `check-data.py`。
+- [x] **三个 MR/PR 已提交**：fm-tools（`data/ikos-conc.yml`）、bench-defs（`category-structure.yml` opt-in）、BenchExec（`benchexec/tools/ikos-conc.py`，ruff+SPDX+import 已修）。
+- [x] **jury member 邮箱已报备**（Dirk 回复 + 发 Zulip 邀请）。
+- [ ] **回 Dirk 附 GitLab 用户名 `ruanronghui` + 加入 Zulip**。
+- [ ] **CI runner 问题**：fork pipeline 报 "no matching runners"（fork 无共享 runner，属基础设施，非文件问题）；确认 upstream MR pipeline 或联系组织者。
+- [ ] **Debug → Release 重建**（10-20 前）：当前是 Debug 构建，评测会慢，weaver 900s 超时大半由此而来。
 
 ### 提交前建议复核（我离线没核实的点）
 
