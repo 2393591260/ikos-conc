@@ -54,22 +54,28 @@ def first_race(data):
     return None
 
 
-def opening_paren_column(source, line, start_col):
-    """Column of the '(' that opens the call starting at (line, start_col).
+def closing_paren_column(source, line, start_col):
+    """Column of the ')' that closes the call starting at (line, start_col).
 
-    The witness `function_enter` waypoint must point at the OPENING paren of the
-    thread-creating call (the column right after the function name), matching
-    CPAchecker's getColumnOfFunctionCallParenthesis (= function-name start column
-    + function-name length). IKOS reports the call's function-name start column.
+    The 2.2 guide defines a `function_enter` waypoint's location as the RIGHT
+    parenthesis of the call site (the ')' after the arguments), not the opening
+    '('. Match parentheses so nested argument expressions resolve to the
+    outermost closing ')' (the one that ends the call).
     """
     try:
         with open(source, encoding="utf-8", errors="replace") as f:
             text = f.readlines()[line - 1]
     except (OSError, IndexError):
         return start_col
+    depth = 0
     for i in range(start_col - 1, len(text)):
-        if text[i] == "(":
-            return i + 1  # 1-indexed column of the opening paren
+        c = text[i]
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                return i + 1  # 1-indexed column of the closing paren
     return start_col
 
 
@@ -81,7 +87,7 @@ def loc(obj, source, function=None, kind="target"):
     if "column" in obj:
         col = obj["column"]
         if kind == "function_enter":
-            col = opening_paren_column(source, obj["line"], col)
+            col = closing_paren_column(source, obj["line"], col)
         out["column"] = col
     if function:
         out["function"] = function
