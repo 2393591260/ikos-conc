@@ -6,6 +6,25 @@
 
 ---
 
+## 〇、当前状态（2026-10-05 更新，覆盖下文旧表格）
+
+**代码/得分**（本会话）：helper 内联 + cast 修复落地后，冻结集 **TP=85 / FP=0 / TN=709 / FN=0 / err=0 = 1503 分**（demote+BMC 基线 1476 → 1503，红线 FP=0/FN=0 全程守住；commit fa3c4aa / 319dac6 / 4daf3d0）。
+
+**外部提交状态**：
+
+| 提交物 | 状态 |
+|---|---|
+| Zenodo 归档 + DOI `10.5281/zenodo.23122650` | ✅ 已上传；**代码本次有更新，10-20 前需重传新版归档** |
+| fm-tools-entry.yml（B 节） | ✅ 字段已补齐（competition_participations / techniques / frameworks_solvers / literature / jury member / DOI） |
+| fm-tools MR | 🚧 已提交；之前 CI 卡「no matching runners」，字段补齐后待确认变绿 |
+| bench-defs category-structure MR（D 节） | 🚧 已提交，待合并 |
+| BenchExec tool-info PR（C 节） | 🚧 已提交，待合并 |
+| jury member 邮箱（E4） | ✅ 已发 + 已回复（GitLab 用户名 `ruanronghui` + 告知两个 MR 情况） |
+| Zulip | 🚧 Dirk 已发邀请，待加入 |
+| 见证 2.2 + CPAchecker 复核（G4） | ✅ FALSE 见证已被 CPAchecker 确认 |
+
+---
+
 ## 一、归档（Zenodo .zip）—— 代码 `svcomp/package.py`
 
 | # | 官方要求（提交页 §1） | 代码证据 | 状态 |
@@ -21,7 +40,7 @@
 | A9 | 任意路径可执行、不依赖工作目录 | `package.py::patch_settings`：`PREFIX = os.path.abspath(join(dirname(__file__), *([os.pardir]*6)))`；wrapper 用 `dirname "$0"` 定位 | ✅ |
 | A10 | 断网可跑 | 依赖全在归档内（APRON/LLVM/headers），wrapper 只调系统 `python3` | ✅ |
 
-**A8' 实查发现（需清理）**：`install/output.db` 是残留的数据库文件（跑 `-o output.db` 时留在 install 目录），`package.py` 的 `os.walk(install)` 会**把它打进 zip**，违反「不得包含不必要数据」。打包前需删除 `install/output.db`（及任何残留 db）。`package.py` 当前没有显式排除 .db/.git 的守卫。
+**A8' 已修复**：`package.py` 现已显式排除 `.db`/`__pycache__`/`.pyc`/源码头文件（打包段加排除守卫），`install/output.db` 不会进 zip。
 
 ---
 
@@ -30,20 +49,14 @@
 | # | 官方要求（提交页 §2 + FM-Tools 格式 2.0，据 goblint.yml 核实） | 代码证据 | 状态 |
 |---|---|---|---|
 | B1 | 唯一 `id`、`name` | `id: ikos-conc`、`name: IKOS-ConC` | ✅ |
-| B2 | `version` 字段填 **Zenodo DOI**（非版本号字符串） | `versions[].version: "svcomp27"`、`doi: <doi>`（占位，待 Zenodo 上传后回填） | 🚧 待 DOI |
-| B3 | **参赛声明（participation declaration）** | 实际格式为 `competition_participations[]`（含 `competition/track/tool_version/jury_member/participants/label`） | ❌ **缺失** |
-| B4/E4 | jury member（贡献开发者，名字在项目页/论文/修订记录；**新成员须报备邮箱**） | 当前只在 `maintainers[]` 放了 `<orcid>/<name>/<institution>/<country>` 占位；**正式位置是 `competition_participations[].jury_member`**（5 字段），当前缺失 | ❌ **缺失 + 位置错** |
+| B2 | `version` 字段填 **Zenodo DOI**（非版本号字符串） | `versions[].version: "svcomp27"`、`doi: 10.5281/zenodo.23122650` | ✅ 已回填 DOI |
+| B3 | **参赛声明（participation declaration）** | `competition_participations[]` 已填（`competition: "SV-COMP 2027"` / `track: no-data-race` / `tool_version: svcomp27` / `label`） | ✅ |
+| B4/E4 | jury member（贡献开发者；**新成员须报备邮箱**） | `competition_participations[].jury_member` 已填 Ronghui Ruan（ORCID 0009-0007-5722-0468 / NUDT / China）+ `participants[]` | ✅ |
 | B5 | 标签：元验证器标 `meta_tool`、用 LLM/AI 标 `ai` | 我们两者皆非，不加（当前 yml 无这两字段，正确） | ✅ |
 | B6 | 描述（原理 + 组件） | `description:` 已写 thread-modular + lockset/HB + BMC 重确认 | ✅ |
-| B7 | Ubuntu 标准包清单（`required_ubuntu_packages`） | 已列 21 个包（libgmp/libmpfr/libppl/libboost/libicu/python3 等），容器 `ubuntu:24.04` | 🚧 待容器实测（=G2） |
+| B7 | Ubuntu 标准包清单（`required_ubuntu_packages`） | 已列 21 个包 + `libz3-4`，容器 `ubuntu:24.04` | 🚧 待容器实测（=G2） |
 
-**B 节实查发现（关键）**：对照 goblint.yml 的 FM-Tools 格式 2.0，当前 `fm-tools-entry.yml` 还缺 4 个字段：
-1. **`competition_participations[]`** —— 这是「参赛声明 + jury member」的正式载体（`competition: "SV-COMP 2027"`、`track`、`tool_version`、`jury_member{orcid,name,institution,country,url}`、`participants[]`、`label`）。缺它会不过 FM-Tools schema/CI。
-2. **`techniques`** —— 如 `Abstract Interpretation` / `Concurrency Support`。
-3. **`frameworks_solvers`** —— 如 `Apron`（goblint 就标了 Apron）。
-4. **`literature`** —— 方法论文引用（DOI+title+year）。
-
-> 注：jury member 的 `maintainers[]` 与 `competition_participations[].jury_member` 是两个不同角色——前者是工具维护者，后者才是竞赛陪审团成员（合格性 E4 看后者）。
+**B 节已解决**：`fm-tools-entry.yml` 的 4 个缺口字段（`competition_participations[]` / `techniques`（Abstract Interpretation, Concurrency Support, Bounded Model Checking, Numeric Interval Analysis）/ `frameworks_solvers`（Apron, Z3）/ `literature`（IKOS SEFM 2014, DOI 10.1007/978-3-319-10431-7_20））均已补齐，jury member 也放到了正确位置 `competition_participations[].jury_member`。
 
 ---
 
@@ -71,7 +84,7 @@
 
 | # | 官方要求（提交页 §4，比规则页更准） | 代码证据 | 状态 |
 |---|---|---|---|
-| D1 | 声明参加哪些类别（benchmark definition 经 MR 进 bench-defs） | 文档写明在顶层 `opt_in:` 表插入 `ikos-conc` | 🚧 待提交 MR |
+| D1 | 声明参加哪些类别（benchmark definition 经 MR 进 bench-defs） | 顶层 `opt_in:` 表插入 `ikos-conc`，MR 已提交 | 🚧 待合并 |
 | D2 | opt-in / opt-out 语义正确 | 已核实：**opt-in**（只进 `opt_in`、不进 `C.Concurrency.verifiers`）只参加 `C.no-data-race.Concurrency` + `C.no-data-race.Huawei-Concurrency-Challenges` | ✅ 语义正确 |
 
 **D 节线上核实（bench-defs category-structure.yml 实查）**：
@@ -86,10 +99,10 @@
 
 | # | 条件 | 状态 |
 |---|---|---|
-| E1 | FM-Tools yml flags 正确 | ⚠️ 见 B3/B4（缺 competition_participations 等字段） |
+| E1 | FM-Tools yml flags 正确 | ✅ competition_participations / techniques / frameworks_solvers / literature / jury member 已补齐 |
 | E2 | 归档含合格 LICENSE | ✅ NASA-1.3（无输出限制） |
-| E3 | 与其他工具概念/实现差异（不能重复参赛） | ⚠️ 需在描述/论文论证：IKOS 上游 + 自研 thread-modular + lockset/HB + BMC 重确认 |
-| E4 | 贡献 jury member（或组织者批准） | 🚧 待定人选 + 报备邮箱 + 名字出现在 GitHub 提交记录/README |
+| E3 | 与其他工具概念/实现差异（不能重复参赛） | ✅ 描述已写：IKOS 上游 + 自研 thread-modular + lockset/HB + BMC 重确认 |
+| E4 | 贡献 jury member（或组织者批准） | ✅ 已定 Ronghui Ruan（ORCID/NUDT/China），邮箱已发 + 已回复报备（GitLab `ruanronghui`） |
 
 ---
 
@@ -97,8 +110,8 @@
 
 | 日期 | 节点 | 关联 |
 |---|---|---|
-| 2026-10-08 | 注册 + 验证任务提交（B/C/D 三 MR） | 最紧迫：**D 类 MR 尚未提交** |
-| 2026-10-20 | 工具提交截止（CI 全绿，DOI 定稿） | B2 DOI、B3/B4 jury member 必须在此前补齐 |
+| 2026-10-08 | 注册 + 验证任务提交（B/C/D 三 MR） | ✅ 三个 MR/PR 均已提交，待合并确认 |
+| 2026-10-20 | 工具提交截止（CI 全绿，DOI 定稿） | 🚧 **需重传新版 Zenodo 归档**（代码本次更新）+ 确认 fm-tools CI 绿 |
 | 2026-11-03 | 验证任务冻结 | 类别名/任务数/ILP32-LP64 以此为最终 |
 | 2026-11-10 / 11-17 | 合格通知 / 最终重提交 | |
 | 2026-12-01 / 12-04 | 离线评测完成 / 结果公开 | |
@@ -110,11 +123,11 @@
 
 | # | 风险 | 代码/证据 | 状态 |
 |---|---|---|---|
-| G1 | 计分：FALSE 错=−16、TRUE 错=−32、UNKNOWN=0 | 规则 §9 明确；代码设计上 `--demote-race-to-unknown` + BMC 重确认（`data_race.cpp` 析构 + `unroll.hpp/encode.hpp`）就是「拿不准报 UNKNOWN、能证明才报 FALSE」，实测 0 FN 0 FP | ✅ 设计对齐 |
-| G2 | ubuntu:24.04 干净容器跑通 smoketest | `required_ubuntu_packages` 已列，但未在干净容器实测 | 🚧 |
+| G1 | 计分：FALSE 错=−16、TRUE 错=−32、UNKNOWN=0 | 规则 §9 明确；`--demote-race-to-unknown` + BMC 重确认；**实测冻结集 TP=85/FP=0/TN=709/FN=0 = 1503 分** | ✅ |
+| G2 | ubuntu:24.04 干净容器跑通 smoketest | `required_ubuntu_packages` 已列（含 libz3-4），但未在干净容器实测 | 🚧 |
 | G3 | data_model ILP32/LP64 匹配 | `svcomp_witness.py`：`--data-model` → `-m 32/64`，witness 头部写 `data_model`；实测全量 ILP32 | ✅ |
-| G4 | 真实 witness validator（Dartagnan）验收 | 只有 linter 过了；validator 实测未跑 | 🚧 |
-| G5 | 归档/仓库公开可访问 | Zenodo 待上传；GitHub 仓库 `github.com/2393591260/ikos-conc` | 🚧 待上传后核实 |
+| G4 | witness 见证被 validator 验收 | 见证 2.2 已用 CPAchecker 复核：FALSE 见证被确认（正确调用见 `ikos-bmc-helper-inlining-design.md` §10/记忆） | ✅ |
+| G5 | 归档/仓库公开可访问 | Zenodo 已上传（DOI `10.5281/zenodo.23122650`）；GitHub `github.com/2393591260/ikos-conc` | ⚠️ 归档需重传新版 |
 
 ---
 
@@ -128,8 +141,10 @@
 
 ---
 
-## 九、待办排序（按截止日）
+## 九、待办排序（按截止日，2026-10-05 更新）
 
-1. **10-08 前**：提交 category-structure MR（D）；补全 `fm-tools-entry.yml`（B3/B4：`competition_participations` + jury member 占位 + techniques/frameworks_solvers/literature）。
-2. **10-20 前**：Zenodo 上传拿 DOI（B2）；jury member 定人 + 邮箱报备（E4）；`install/output.db` 清理（A8'）；干净容器跑 smoketest（G2）；Dartagnan witness validator 实测（G4）。
-3. **持续**：data_model 逐任务核对（G3）；仓库保持 public（G5）。
+1. **确认三个 MR/PR 合并**（10-08 注册截止）：fm-tools MR（之前 CI 卡 no-matching-runners，字段补齐后确认变绿）+ bench-defs category-structure MR + BenchExec tool-info PR。均已提交，等维护者合并。
+2. **加入 Zulip**：Dirk 已发邀请，jury 通讯/后续协调在这里。
+3. **重传 Zenodo 归档**（10-20 前）：本次代码更新了 helper 内联 + cast 修复（1476→1503），需 `python3 svcomp/package.py` 重打包并上传到 DOI `10.5281/zenodo.23122650`（同 DOI 更新版本）。
+4. **干净容器 smoketest**（G2，10-20 前）：ubuntu:24.04 容器实测 `install/smoketest.sh`。
+5. **持续**：仓库保持 public；`C.no-data-race.Huawei-Concurrency-Challenges` 是否计分在 MR 合并前确认。
