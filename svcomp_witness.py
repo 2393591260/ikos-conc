@@ -54,28 +54,23 @@ def first_race(data):
     return None
 
 
-def closing_paren_column(source, line, start_col):
-    """Column of the ')' that closes the call starting at (line, start_col).
+def opening_paren_column(source, line, start_col):
+    """Column of the '(' that opens the call starting at (line, start_col).
 
-    The 2.2 guide defines a `function_enter` waypoint's location as the RIGHT
-    parenthesis of the call site (the ')' after the arguments), not the opening
-    '('. Match parentheses so nested argument expressions resolve to the
-    outermost closing ')' (the one that ends the call).
+    The 2.2 guide nominally defines `function_enter` at the RIGHT parenthesis,
+    but CPAchecker's witness parser (the validator SV-COMP uses) still matches
+    the OPENING paren via getColumnOfFunctionCallParenthesis (= function-name
+    start column + name length; see CPAchecker work item 1687). Keep the
+    opening paren so CPAchecker confirms the witness.
     """
     try:
         with open(source, encoding="utf-8", errors="replace") as f:
             text = f.readlines()[line - 1]
     except (OSError, IndexError):
         return start_col
-    depth = 0
     for i in range(start_col - 1, len(text)):
-        c = text[i]
-        if c == "(":
-            depth += 1
-        elif c == ")":
-            depth -= 1
-            if depth == 0:
-                return i + 1  # 1-indexed column of the closing paren
+        if text[i] == "(":
+            return i + 1  # 1-indexed column of the opening paren
     return start_col
 
 
@@ -115,7 +110,7 @@ def loc(obj, source, function=None, kind="target", is_write=False):
     if "column" in obj:
         col = obj["column"]
         if kind == "function_enter":
-            col = closing_paren_column(source, obj["line"], col)
+            col = opening_paren_column(source, obj["line"], col)
         elif is_write:
             col = statement_start_column(source, obj["line"], col)
         out["column"] = col
