@@ -212,6 +212,13 @@ def package(install_dir, out, llvm_root, apron_dir):
                     os.path.join(install, "llvm", "lib", lib))
     shutil.copy("/usr/lib/x86_64-linux-gnu/libLLVM-14.so.1",
                 os.path.join(install, "llvm", "lib", "libLLVM-14.so.1"))
+    # clang 内建头文件（stddef.h / stdarg.h / float.h / ...）：编译 C 必需。
+    # 不打包的话，干净容器（无 gcc）里 clang 找不到 stddef.h（模拟考官环境
+    # 踩到的坑：仅装 required_ubuntu_packages + gcc 也不够，因为 clang 只认自己
+    # 资源目录里的 stddef.h）。目录版本是 14.0.6（非 14）。
+    shutil.copytree(os.path.join(llvm, "lib", "clang"),
+                    os.path.join(install, "llvm", "lib", "clang"),
+                    dirs_exist_ok=True)
 
     # 3. relocatable settings
     patch_settings(os.path.join(
