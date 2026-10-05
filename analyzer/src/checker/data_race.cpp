@@ -1503,6 +1503,32 @@ bool DataRaceChecker::snapshot_spawned_is_top(
   return inv.second().spawned_is_top();
 }
 
+/// 解析 pthread_create 的 start_routine（arg2）到线程函数：沿 value-preserving
+/// cast 解开。签名不匹配的 `(void*(*)(void*)) myPartOfCalc` 会包一层 Bitcast，
+/// 直接 dyn_cast 到 FunctionPointerConstant 会失败 → create-edge HB 失效
+/// （pthread-numerical-integration 的 numberOfIntervals 误判）。与
+/// concurrent_semantics.hpp exec_pthread_create 的解析对齐。
+static ar::Function* resolve_thread_function(ar::Value* v) {
+  for (int depth = 0; depth < 8; ++depth) {
+    if (auto* fpc = dyn_cast< ar::FunctionPointerConstant >(v)) {
+      return fpc->function();
+    }
+    auto* iv = dyn_cast< ar::InternalVariable >(v);
+    if (iv == nullptr) {
+      return nullptr;
+    }
+    ar::Statement* def = bmc::unique_def_bmc(iv);
+    if (auto* un = dyn_cast_or_null< ar::UnaryOperation >(def)) {
+      if (un->op() == ar::UnaryOperation::Bitcast) {
+        v = un->operand();
+        continue;
+      }
+    }
+    return nullptr;
+  }
+  return nullptr;
+}
+
 void DataRaceChecker::build_thread_creators() {
   // Static scan of pthread_create call sites: child entry name -> set of
   // creator entry names. Mirrors the engine-side detection
@@ -1635,12 +1661,12 @@ void DataRaceChecker::build_thread_creators() {
         if (call->arg_begin() + 2 == call->arg_end()) {
           continue;
         }
-        ar::FunctionPointerConstant* tfc =
-            dyn_cast< ar::FunctionPointerConstant >(*(call->arg_begin() + 2));
-        if (tfc == nullptr || tfc->function() == nullptr) {
+        ar::Function* tfunc =
+            resolve_thread_function(*(call->arg_begin() + 2));
+        if (tfunc == nullptr) {
           continue;
         }
-        const std::string child = tfc->function()->name();
+        const std::string child = tfunc->name();
 
         if (fun->name() == "main") {
           this->_thread_creators[child].insert("main");
