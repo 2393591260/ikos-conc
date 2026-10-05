@@ -1,7 +1,8 @@
 # BMC helper 内联 + 值域可行性 —— 第二期设计文档
 
 > 目标：找回「CPAchecker 能解、IKOS 报 UNKNOWN」的那批 TP（重点是 helper 内联类）。
-> 状态：设计定稿，待开工。
+> 状态：**一期（helper 内联）已落地**（commit fa3c4aa，TP 64→85 / FP=0 / FN=0）；
+> 二期（值域可行性）与「精确 create/join HB」仍未做，见 §10。
 > 红线：**FN=0 / FP=0**（sound 优先于 precision）。
 
 ---
@@ -184,3 +185,39 @@ BMC 只报 FALSE（确认竞争），靠「HB 编码完整 + 别名精确」。
 | `analyzer/include/ikos/analyzer/analysis/bmc/bmc.hpp` | `confirm_race` 门放宽 |
 | `analyzer/src/checker/data_race.cpp` | BMC gate（析构）、传 fixpoint 摘要 |
 | `core/include/ikos/core/domain/machine_int/abstract_domain.hpp` | `int_to_interval`（值域可行性） |
+
+---
+
+## 10. 一期落地结果（实测，commit fa3c4aa）
+
+**A/B 全量**（`IKOS_BMC_RECOVER=1 svcomp_race_test.py --demote`）：
+
+| 集 | TP | FP | TN | FN | 得分 |
+|---|---|---|---|---|---|
+| 基线（demote+BMC，无内联） | 64 | 0 | 706 | 0 | 1476 |
+| **一期（内联+门）** | **85** | **0** | **706** | **0** | **1497** |
+| 滚动集（1030） | 85 | 0 | 707 | 0 | 1499 |
+
+> 注意：不是设计文档里预期的 90——两条保守门各吃掉几个 TP（见下）。90 是
+> 「内联+原子/循环两门」的裸数，但那个状态下 FP=2。
+
+### 内联暴露的 4 类 FP 与对应 gate（实测逐文件核实）
+
+| FP 机制 | 代表文件 | gate |
+|---|---|---|
+| 单调用原子函数内联（`__VERIFIER_atomic_dec_a` 等裸访问） | pthread-atomic | `bmc_skip_inline`（跳过 `__VERIFIER_atomic_*`/`__atomic_*`/`__sync_*`） |
+| helper 带循环（DAG-only 展开器不精确） | — | `function_has_loop`（跳过含回边的 helper） |
+| **无锁协议**（原子区外快照读 × 原子区内写，线性化签名） | elimination_backoff_stack | `function_has_atomic_section`（跳过含 `__VERIFIER_atomic_begin/end` 的 helper） |
+| **隔代 create/join**（A→C→B 跨线程链，两线程 po+mutex 看不到中间线程 C 的 join） | race-4_1-thread_local_vars | 隔代祖先门（`_thread_ancestors` − `_thread_creators`） |
+
+### 尚未做（后续）
+
+1. **精确 create/join HB（区间时钟）**：现在的「隔代祖先门」是保守近似，会误挡
+   「隔代真竞争」（main 与孙子线程在 create 与 join 之间的竞争）。真正的
+   Stage 2 是在 `encode.hpp` 给每个线程加区间时钟 `S_T < E_T` + spawn/join 边，
+   才能既不漏报也不误报。直接父子竞争不受当前门影响，隔代真竞争被挡（cost ~1 TP）。
+2. **无锁协议建模**：elimination_backoff_stack 的 race-free 是线性化定理，不是
+   happens-before，锁集/HB（goblint 同款伪锁）证明不了。当前用保守 gate 挡成
+   UNKNOWN，不建模。参考 Dartagnan `rmw = amo | lxsx` 只认真原子 RMW。
+3. **值域可行性（原二期）**：`int_to_interval` 跳不可达分支防「条件写」FP。当前
+   一期没暴露条件写 FP（A/B FP=0），暂不需要；若后续更激进的内联暴露它，再做。
