@@ -79,7 +79,35 @@ def closing_paren_column(source, line, start_col):
     return start_col
 
 
-def loc(obj, source, function=None, kind="target"):
+def statement_start_column(source, line, col):
+    """Column of the first character of the statement containing (line, col).
+
+    IKOS reports a Store (write access) at the column of the assignment
+    operator `=`; the 2.2 guide wants a `target` waypoint at the first
+    character of the statement / full expression (the written location, e.g.
+    `x` in `x = 1`, or `arr` in `arr[i] = 1`). Scan backward to the statement
+    boundary (`;`/`{`/`}` or line start), then forward to the first
+    non-whitespace character. Reads (Load) already report the operand, so they
+    are not remapped.
+    """
+    try:
+        with open(source, encoding="utf-8", errors="replace") as f:
+            text = f.readlines()[line - 1]
+    except (OSError, IndexError):
+        return col
+    i = col - 1  # 0-indexed column IKOS reported
+    boundary = -1
+    for j in range(i - 1, -1, -1):
+        if text[j] in ";{}":
+            boundary = j
+            break
+    for j in range(boundary + 1, len(text)):
+        if not text[j].isspace():
+            return j + 1  # 1-indexed
+    return col
+
+
+def loc(obj, source, function=None, kind="target", is_write=False):
     """Build a witness location dict from an access/creation JSON object."""
     out = {"file_name": obj.get("file", "unknown.c")}
     if "line" in obj:
@@ -88,6 +116,8 @@ def loc(obj, source, function=None, kind="target"):
         col = obj["column"]
         if kind == "function_enter":
             col = closing_paren_column(source, obj["line"], col)
+        elif is_write:
+            col = statement_start_column(source, obj["line"], col)
         out["column"] = col
     if function:
         out["function"] = function
@@ -128,13 +158,15 @@ def build_witness(source, info, data_model):
         "action": "follow",
         "thread_id": tid.get(info["access_a"].get("thread_id"), 0),
         "location": loc(info["access_a"], source,
-                        function=info["access_a"].get("thread_id")),
+                        function=info["access_a"].get("thread_id"),
+                        is_write=info["access_a"].get("kind") == 1),
     }}, {"waypoint": {
         "type": "target",
         "action": "follow",
         "thread_id": tid.get(info["access_b"].get("thread_id"), 0),
         "location": loc(info["access_b"], source,
-                        function=info["access_b"].get("thread_id")),
+                        function=info["access_b"].get("thread_id"),
+                        is_write=info["access_b"].get("kind") == 1),
     }}]
     content.append({"segment": final})
 
