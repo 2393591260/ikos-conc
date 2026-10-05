@@ -36,6 +36,7 @@
 |---|---|
 | [concurrency-architecture.md](concurrency-architecture.md) | **并发子系统代码架构梳理**：目录结构、运行原理（thread-modular + 锁集 digest + ConcurrentGlobalEnv 黑板）、已知边界。 |
 | [ikos-bmc-design.md](ikos-bmc-design.md) | **BMC 找回 TP 设计**：demote→UNKNOWN 后用 Z3 路径敏感展开重确认竞争（只报 FALSE、不报 TRUE 的 sound 架构）、8 个 sound 修复的演进、1476/1478 基线。 |
+| [ikos-bmc-helper-inlining-design.md](ikos-bmc-helper-inlining-design.md) | **BMC helper 内联 + 值域可行性（第二期设计）**：找回「访问在辅助函数里」的 TP（pthread-atomic/40_barrier 共 ~11 个）的技术路线——展开器跟进函数调用 + `int_to_interval` 跳过不可达分支防条件写 FP。 |
 | [ikos-bmc-learning-notes.md](ikos-bmc-learning-notes.md) | **BMC 学习笔记**：展开器/编码/HB 边的设计记录与踩坑。 |
 | [ikos-mhp-design.md](ikos-mhp-design.md) | **MHP（may-happen-in-parallel）对标 goblint 设计**：goblint `mHP.ml`/`threadIdDomain.ml` vs IKOS 现状的逐维度对比 + 实例级 MHP 方案（instance_sid / _site_ancestors / may_happen_in_parallel 四判定）。后续 MHP 专项依据。 |
 | [ikos-condvar-modeling-design.md](ikos-condvar-modeling-design.md) | **条件变量语义建模方案**（`pthread_cond_wait/signal/broadcast`）：wait-queue + signal epoch + MAY digest 的设计与 soundness 论证。 |
