@@ -1209,18 +1209,31 @@ DataRaceChecker::~DataRaceChecker() {
                           core::IndexableTraits< MemoryLocation* >::index(mb);
       }
       if (same_global) {
-        ar::Code* ca = a0.stmt->code();
-        ar::Code* cb = b0.stmt->code();
-        if (ca != nullptr && cb != nullptr) {
-          ar::Function* fa = ca->function_or_null();
-          ar::Function* fb = cb->function_or_null();
-          // Only the simple case: the access sits directly in its thread-entry
-          // function (the unroller starts at the function entry; a helper would
-          // miss the thread's locks). Otherwise stay conservative (UNKNOWN).
-          if (fa != nullptr && fb != nullptr && fa->name() == a0.thread_id &&
-              fb->name() == b0.thread_id) {
-            bmc_confirmed = bmc::confirm_race(fa, a0.stmt, fb, b0.stmt);
-          }
+        // helper 内联：展开器会跟进调用链，访问在 helper 里也能收集到——线程入口
+        // 函数按 thread_id 名解析（不再要求访问语句直接在线程入口里）。
+        ar::Function* fa = this->_ctx.bundle->function_or_null(a0.thread_id);
+        ar::Function* fb = this->_ctx.bundle->function_or_null(b0.thread_id);
+        // 隔代 create/join HB 门：一方是另一方「传递但非直接」的祖先（A→C→B）时，
+        // 两者可能被跨线程 create/join 链排序（race-4_1：main→thread_usb→
+        // thread_ath9k），而 BMC 的两线程 po+mutex 编码看不到中间线程 C 的 join →
+        // 保守不确认（UNKNOWN）。直接父子（经典竞争，访问在 create 与 join 之间）
+        // 不受影响，仍可确认。
+        auto direct_creator = [&](const std::string& x, const std::string& y) {
+          auto it = this->_thread_creators.find(y);
+          return it != this->_thread_creators.end() && it->second.count(x) != 0;
+        };
+        auto transitive_ancestor = [&](const std::string& x,
+                                       const std::string& y) {
+          auto it = this->_thread_ancestors.find(y);
+          return it != this->_thread_ancestors.end() && it->second.count(x) != 0;
+        };
+        bool transitive_ordered =
+            (transitive_ancestor(a0.thread_id, b0.thread_id) &&
+             !direct_creator(a0.thread_id, b0.thread_id)) ||
+            (transitive_ancestor(b0.thread_id, a0.thread_id) &&
+             !direct_creator(b0.thread_id, a0.thread_id));
+        if (fa != nullptr && fb != nullptr && !transitive_ordered) {
+          bmc_confirmed = bmc::confirm_race(fa, a0.stmt, fb, b0.stmt);
         }
       }
     }

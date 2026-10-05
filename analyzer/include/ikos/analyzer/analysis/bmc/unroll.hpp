@@ -221,6 +221,115 @@ inline bool classify_event(ar::Statement* stmt, BmcEvent& ev) {
   return false;
 }
 
+/// 内联展开的最大调用深度（helper 内 helper 的递归上限，防爆炸）。
+constexpr int MAX_INLINE_DEPTH = 8;
+
+/// 内联时要跳过（不跟进）的函数：单调用原子（__VERIFIER_atomic_* / __atomic_* /
+/// __sync_*）和 assume_abort_if_not。前者是 BMC 没建模的锁无关语义（跟进会把
+/// 原子函数体里的裸访问暴露出来 → 误判），后者是纯假设调用。与 bmc.hpp 的
+/// is_unmodeled_atomic_call 前缀对齐。
+inline bool bmc_skip_inline(const std::string& nm) {
+  if (nm.size() >= 18 && nm.compare(0, 18, "__VERIFIER_atomic_") == 0) {
+    return true;
+  }
+  if (nm.size() >= 9 && nm.compare(0, 9, "__atomic_") == 0) {
+    return true;
+  }
+  if (nm.size() >= 7 && nm.compare(0, 7, "__sync_") == 0) {
+    return true;
+  }
+  return nm == "assume_abort_if_not";
+}
+
+/// 函数体是否含回边（循环）。helper 带循环时展开器（DAG-only）不能精确展开，
+/// 跟进只会得到不完整路径 → 跳过不内联（保守 UNKNOWN）。
+inline bool has_loop_dfs(ar::BasicBlock* bb,
+                         std::vector< ar::BasicBlock* >& on_path,
+                         std::vector< ar::BasicBlock* >& visited) {
+  for (ar::BasicBlock* b : on_path) {
+    if (b == bb) {
+      return true;  // 回边
+    }
+  }
+  for (ar::BasicBlock* b : visited) {
+    if (b == bb) {
+      return false;
+    }
+  }
+  visited.push_back(bb);
+  on_path.push_back(bb);
+  for (auto succ = bb->successor_begin(), succ_end = bb->successor_end();
+       succ != succ_end; ++succ) {
+    if (has_loop_dfs(*succ, on_path, visited)) {
+      on_path.pop_back();
+      return true;
+    }
+  }
+  on_path.pop_back();
+  return false;
+}
+
+inline bool function_has_loop(ar::Function* f) {
+  ar::Code* body = f->body_or_null();
+  if (body == nullptr || !body->has_entry_block()) {
+    return false;
+  }
+  std::vector< ar::BasicBlock* > on_path, visited;
+  return has_loop_dfs(body->entry_block(), on_path, visited);
+}
+
+/// 函数体是否含 `__VERIFIER_atomic_begin/end`（原子区标记）。内联一个「把
+/// __VERIFIER_atomic 段包在 helper 里」的函数（如 atomic_c_cas / Push）会把
+/// 原子区里的写暴露出来，与调用方原子区外的快照读配对成「伪锁内写 vs 伪锁外读」
+/// ——这是无锁协议（elimination_backoff_stack）的线性化签名，BMC 的伪锁模型
+/// 建不了模，只能保守 UNKNOWN。所以这类 helper 不内联。
+inline bool function_has_atomic_section(ar::Function* f) {
+  ar::Code* body = f->body_or_null();
+  if (body == nullptr) {
+    return false;
+  }
+  for (ar::BasicBlock* bb : *body) {
+    for (ar::Statement* s : *bb) {
+      if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
+        ar::FunctionPointerConstant* cst =
+            core::dyn_cast< ar::FunctionPointerConstant >(call->called());
+        if (cst != nullptr && cst->function() != nullptr) {
+          const std::string& nm = cst->function()->name();
+          if (nm == "__VERIFIER_atomic_begin" ||
+              nm == "__VERIFIER_atomic_end") {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/// 应被内联跟进的直接调用目标：直接函数指针调用 + 有函数体 + 非单调用原子 +
+/// 无循环 + 不含原子区标记。否则返回 nullptr（不跟进，保守）。
+inline ar::Function* direct_callee(ar::CallBase* call) {
+  ar::FunctionPointerConstant* cst =
+      core::dyn_cast< ar::FunctionPointerConstant >(call->called());
+  if (cst == nullptr || cst->function() == nullptr) {
+    return nullptr;
+  }
+  ar::Function* f = cst->function();
+  if (f->body_or_null() == nullptr) {
+    return nullptr;  // extern（pthread_* / 无体）
+  }
+  if (bmc_skip_inline(f->name())) {
+    return nullptr;  // 原子单调用 / assume
+  }
+  if (function_has_loop(f)) {
+    return nullptr;  // 带循环的 helper
+  }
+  if (function_has_atomic_section(f)) {
+    return nullptr;  // helper 里包 __VERIFIER_atomic_begin/end（无锁协议）
+  }
+  return f;
+}
+
 /// 路径敏感的 DFS：从 `bb` 出发，沿 CFG 后继枚举到 `target` 的所有路径。
 /// `current` 是当前路径上的事件前缀；到达 `target` 时把路径记入 `out` 并停止
 /// （target 之后的语句/后继与本次访问的竞争判定无关）。
@@ -229,7 +338,7 @@ inline bool classify_event(ar::Statement* stmt, BmcEvent& ev) {
 void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
                std::vector< BmcEvent >& current,
                std::vector< std::vector< BmcEvent > >& out,
-               std::vector< ar::BasicBlock* >& in_stack) {
+               std::vector< ar::BasicBlock* >& in_stack, int depth = 0) {
   // 回边检测：bb 已在栈上 → 循环，跳过（不展开）。
   for (ar::BasicBlock* on_stack : in_stack) {
     if (on_stack == bb) {
@@ -259,6 +368,17 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
       out.push_back(current);
       in_stack.pop_back();
       return;
+    }
+    // helper 内联：跟进有函数体、非原子、无循环的直接调用，把 helper 里的
+    // 访问/锁事件收进路径（target 在 helper 里时在这里命中）。depth 上限防递归
+    // 爆炸；跟不进的调用（extern/原子/循环）保守忽略 → 对应访问看不到 → UNKNOWN。
+    if (depth < MAX_INLINE_DEPTH) {
+      if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
+        if (ar::Function* callee = direct_callee(call)) {
+          dfs_paths(callee->body_or_null()->entry_block(), target, current,
+                    out, in_stack, depth + 1);
+        }
+      }
     }
   }
   for (auto succ = bb->successor_begin(), succ_end = bb->successor_end();
