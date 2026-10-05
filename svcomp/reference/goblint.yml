@@ -1,0 +1,371 @@
+id: goblint
+name: Goblint
+description: |
+  Goblint is an abstract interpretation framework that
+  is dedicated to the sound thread-modular analysis of multi-threaded
+  programs, especially for data races.
+input_languages:
+  - C
+project_url: https://goblint.in.tum.de/
+repository_url: https://github.com/goblint/analyzer
+spdx_license_identifier: MIT
+benchexec_toolinfo_module: benchexec.tools.goblint
+fmtools_format_version: "2.0"
+fmtools_entry_maintainers:
+  - sim642
+
+maintainers:
+  - orcid: 0000-0003-4553-1350
+    name: Simmo Saan
+    institution: University of Tartu
+    country: Estonia
+    url: https://sim642.eu/
+  - orcid: 0000-0002-9828-0308
+    name: Michael Schwarz
+    institution: National University of Singapore
+    country: Singapore
+    url: https://michael-schwarz.github.io/
+  - orcid: 0009-0008-3725-4131
+    name: Karoliine Holter
+    institution: University of Tartu
+    country: Estonia
+    url:
+
+versions:
+  - version: "svcomp26"
+    doi: 10.5281/zenodo.17642247
+    benchexec_toolinfo_options: ["--portfolio-conf", "conf/svcomp26/seq.txt"]
+    required_ubuntu_packages:
+      - libgmp10
+      - libmpfr6
+      - cpp
+      - libc6-dev
+      - libc6-dev-i386
+      - libgcc-13-dev
+      - lib32gcc-13-dev
+      - python3
+    base_container_images:
+      - docker.io/ubuntu:24.04
+    full_container_images:
+      - registry.gitlab.com/sosy-lab/benchmarking/fm-tools/10.5281/zenodo.18001984
+  - version: "svcomp26-validation-correctness"
+    doi: 10.5281/zenodo.17642247
+    benchexec_toolinfo_options: ["--witness.yaml.unassume", "${witness}", "--witness.yaml.validate", "${witness}", "--portfolio-conf", "conf/svcomp26/seq-validate.txt"]
+    required_ubuntu_packages:
+      - libgmp10
+      - libmpfr6
+      - cpp
+      - libc6-dev
+      - libc6-dev-i386
+      - libgcc-13-dev
+      - lib32gcc-13-dev
+      - python3
+    base_container_images:
+      - docker.io/ubuntu:24.04
+    full_container_images:
+      - registry.gitlab.com/sosy-lab/benchmarking/fm-tools/10.5281/zenodo.18001984
+  - version: "svcomp25"
+    doi: 10.5281/zenodo.14054652
+    benchexec_toolinfo_options: ["--conf", "conf/svcomp25.json"]
+    required_ubuntu_packages:
+      - libgmp10
+      - libmpfr6
+      - cpp
+      - libc6-dev
+      - libc6-dev-i386
+      - libgcc-13-dev
+      - lib32gcc-13-dev
+    base_container_images:
+      - docker.io/ubuntu:24.04
+    full_container_images:
+      - registry.gitlab.com/sosy-lab/benchmarking/fm-tools/10.5281/zenodo.18520393
+  - version: "svcomp25-validation-correctness"
+    doi: 10.5281/zenodo.14054652
+    benchexec_toolinfo_options: ["--witness.yaml.unassume", "${witness}", "--witness.yaml.validate", "${witness}", "--conf", "conf/svcomp25-validate.json"]
+    required_ubuntu_packages:
+      - libgmp10
+      - libmpfr6
+      - cpp
+      - libc6-dev
+      - libc6-dev-i386
+      - libgcc-13-dev
+      - lib32gcc-13-dev
+    base_container_images:
+      - docker.io/ubuntu:24.04
+    full_container_images:
+      - registry.gitlab.com/sosy-lab/benchmarking/fm-tools/10.5281/zenodo.18520393
+  - version: "svcomp24"
+    doi: 10.5281/zenodo.10202867
+    benchexec_toolinfo_options: ["--conf", "conf/svcomp24.json"]
+    required_ubuntu_packages:
+      - libgmp10
+      - libmpfr6
+      - cpp
+      - libc6-dev
+      - libc6-dev-i386
+      - libgcc-11-dev
+      - lib32gcc-11-dev
+    base_container_images:
+      - docker.io/ubuntu:22.04
+    full_container_images:
+      - registry.gitlab.com/sosy-lab/benchmarking/fm-tools/10.5281/zenodo.18520391
+  - version: "svcomp24-validation-correctness"
+    doi: 10.5281/zenodo.10202867
+    benchexec_toolinfo_options: ["--conf", "conf/svcomp24-validate.json"]
+    required_ubuntu_packages:
+      - libgmp10
+      - libmpfr6
+      - cpp
+      - libc6-dev
+      - libc6-dev-i386
+      - libgcc-11-dev
+      - lib32gcc-11-dev
+    base_container_images:
+      - docker.io/ubuntu:22.04
+    full_container_images:
+      - registry.gitlab.com/sosy-lab/benchmarking/fm-tools/10.5281/zenodo.18520391
+  - version: "svcomp23"
+    url: "https://gitlab.com/sosy-lab/sv-comp/archives-2023/-/raw/svcomp23/2023/goblint.zip"
+    benchexec_toolinfo_options: ["--conf", "conf/svcomp23.json"]
+    required_ubuntu_packages:
+      - libgmp10
+      - libmpfr6
+      - cpp
+      - libc6-dev
+      - libc6-dev-i386
+      - libgcc-11-dev
+      - lib32gcc-11-dev
+    base_container_images:
+      - docker.io/ubuntu:22.04
+    full_container_images:
+      - registry.gitlab.com/sosy-lab/benchmarking/fm-tools/10.5281/zenodo.18520374
+
+competition_participations:
+  - competition: "SV-COMP 2027"
+    track: "Verification"
+    tool_version: "svcomp26"
+    jury_member:
+      orcid: 0000-0000-0000-0000
+      name: Hors Concours
+      institution: --
+      country: --
+      url:
+    label:
+      - inactive
+  - competition: "SV-COMP 2027"
+    track: "Validation of Correctness Witnesses v2"
+    tool_version: "svcomp26-validation-correctness"
+    jury_member:
+      orcid: 0000-0000-0000-0000
+      name: Hors Concours
+      institution: --
+      country: --
+      url:
+    label:
+      - inactive
+  - competition: "SV-COMP 2026"
+    track: "Verification"
+    tool_version: "svcomp26"
+    jury_member:
+      orcid: 0000-0003-4553-1350
+      name: Simmo Saan
+      institution: University of Tartu
+      country: Estonia
+      url: https://sim642.eu/
+    participants: # From Zenodo artifact
+      - orcid: 0000-0003-4553-1350
+        name: Simmo Saan
+      - orcid: 0009-0004-9019-0852
+        name: Ali Rasim Koçal
+      - orcid: 0009-0009-7868-651X
+        name: Michael Petter
+      - orcid: 0009-0008-3725-4131
+        name: Karoliine Holter
+      - orcid: 0000-0002-1729-3925
+        name: Julian Erhard
+      - orcid: 0000-0002-9828-0308
+        name: Michael Schwarz
+      - orcid: 0000-0003-4336-7980
+        name: Vesal Vojdani
+      - orcid: 0000-0002-2135-1593
+        name: Helmut Seidl
+  - competition: "SV-COMP 2026"
+    track: "Validation of Correctness Witnesses v2"
+    tool_version: "svcomp26-validation-correctness"
+    jury_member:
+      orcid: 0000-0003-4553-1350
+      name: Simmo Saan
+      institution: University of Tartu
+      country: Estonia
+      url: https://sim642.eu/
+    participants: # From Zenodo artifact
+      - orcid: 0000-0003-4553-1350
+        name: Simmo Saan
+      - orcid: 0009-0004-9019-0852
+        name: Ali Rasim Koçal
+      - orcid: 0009-0009-7868-651X
+        name: Michael Petter
+      - orcid: 0009-0008-3725-4131
+        name: Karoliine Holter
+      - orcid: 0000-0002-1729-3925
+        name: Julian Erhard
+      - orcid: 0000-0002-9828-0308
+        name: Michael Schwarz
+      - orcid: 0000-0003-4336-7980
+        name: Vesal Vojdani
+      - orcid: 0000-0002-2135-1593
+        name: Helmut Seidl
+  - competition: "SV-COMP 2025"
+    track: "Verification"
+    tool_version: "svcomp25"
+    jury_member:
+      orcid: 0000-0003-4553-1350
+      name: Simmo Saan
+      institution: University of Tartu
+      country: Estonia
+      url: https://sim642.eu/
+    participants: # From Zenodo artifact
+      - orcid: 0000-0003-4553-1350
+        name: Simmo Saan
+      - orcid: 0009-0008-3725-4131
+        name: Karoliine Holter
+      - orcid: 0000-0002-1729-3925
+        name: Julian Erhard
+      - orcid: 0000-0002-9828-0308
+        name: Michael Schwarz
+      - orcid: 0009-0009-9644-7475
+        name: Sarah Tilscher
+      - orcid: 0000-0003-4336-7980
+        name: Vesal Vojdani
+      - orcid: 0000-0002-2135-1593
+        name: Helmut Seidl
+  - competition: "SV-COMP 2025"
+    track: "Validation of Correctness Witnesses v2"
+    tool_version: "svcomp25-validation-correctness"
+    jury_member:
+      orcid: 0000-0003-4553-1350
+      name: Simmo Saan
+      institution: University of Tartu
+      country: Estonia
+      url: https://sim642.eu/
+    participants: # From Zenodo artifact
+      - orcid: 0000-0003-4553-1350
+        name: Simmo Saan
+      - orcid: 0009-0008-3725-4131
+        name: Karoliine Holter
+      - orcid: 0000-0002-1729-3925
+        name: Julian Erhard
+      - orcid: 0000-0002-9828-0308
+        name: Michael Schwarz
+      - orcid: 0009-0009-9644-7475
+        name: Sarah Tilscher
+      - orcid: 0000-0003-4336-7980
+        name: Vesal Vojdani
+      - orcid: 0000-0002-2135-1593
+        name: Helmut Seidl
+  - competition: "SV-COMP 2024"
+    track: "Verification"
+    tool_version: "svcomp24"
+    jury_member:
+      orcid: 0000-0003-4553-1350
+      name: Simmo Saan
+      institution: University of Tartu
+      country: Estonia
+      url: https://sim642.eu/
+    participants: # From tool paper and Zenodo artifact
+      - orcid: 0000-0003-4553-1350
+        name: Simmo Saan
+      - orcid: 0000-0002-1729-3925
+        name: Julian Erhard
+      - orcid: 0000-0002-9828-0308
+        name: Michael Schwarz
+      - orcid: 0009-0002-1361-942X
+        name: Stanimir Bozhilov
+      - orcid: 0009-0008-3725-4131
+        name: Karoliine Holter
+      - orcid: 0009-0009-9644-7475
+        name: Sarah Tilscher
+      - orcid: 0000-0003-4336-7980
+        name: Vesal Vojdani
+      - orcid: 0000-0002-2135-1593
+        name: Helmut Seidl
+  - competition: "SV-COMP 2024"
+    track: "Validation of Correctness Witnesses v2"
+    tool_version: "svcomp24-validation-correctness"
+    jury_member:
+      orcid: 0000-0003-4553-1350
+      name: Simmo Saan
+      institution: University of Tartu
+      country: Estonia
+      url: https://sim642.eu/
+    participants: # From tool paper and Zenodo artifact
+      - orcid: 0000-0003-4553-1350
+        name: Simmo Saan
+      - orcid: 0000-0002-1729-3925
+        name: Julian Erhard
+      - orcid: 0000-0002-9828-0308
+        name: Michael Schwarz
+      - orcid: 0009-0002-1361-942X
+        name: Stanimir Bozhilov
+      - orcid: 0009-0008-3725-4131
+        name: Karoliine Holter
+      - orcid: 0009-0009-9644-7475
+        name: Sarah Tilscher
+      - orcid: 0000-0003-4336-7980
+        name: Vesal Vojdani
+      - orcid: 0000-0002-2135-1593
+        name: Helmut Seidl
+  - competition: "SV-COMP 2023"
+    track: "Verification"
+    tool_version: "svcomp23"
+    jury_member:
+      orcid: 0000-0003-4553-1350
+      name: Simmo Saan
+      institution: University of Tartu
+      country: Estonia
+      url: https://sim642.eu/
+    participants: # From tool paper and Zenodo artifact
+      - orcid: 0000-0003-4553-1350
+        name: Simmo Saan
+      - orcid: 0000-0002-9828-0308
+        name: Michael Schwarz
+      - orcid: 0000-0002-1729-3925
+        name: Julian Erhard
+      - orcid: 0009-0002-7349-4091
+        name: Manuel Pietsch
+      - orcid: 0000-0002-2135-1593
+        name: Helmut Seidl
+      - orcid: 0009-0009-9644-7475
+        name: Sarah Tilscher
+      - orcid: 0000-0003-4336-7980
+        name: Vesal Vojdani
+
+techniques:
+  - Abstract Interpretation
+  - Algorithm Selection
+  - Bit-Precise Analysis
+  - Concurrency Support
+  - Explicit-Value Analysis
+  - Floating-Point Arithmetics
+  - Numeric Interval Analysis
+  - Portfolio
+
+frameworks_solvers:
+  - Apron
+
+literature:
+  - doi: 10.1145/2970276.2970337
+    title: "Static race detection for device drivers: the Goblint approach"
+    year: 2016
+  - doi: 10.1007/978-3-031-57256-2_17
+    title: "Goblint Validator: Correctness Witness Validation by Abstract Interpretation (Competition Contribution)"
+    year: 2024
+  - doi: 10.1007/978-3-031-57256-2_25
+    title: "Goblint: Abstract Interpretation for Memory Safety and Termination (Competition Contribution)"
+    year: 2024
+  - doi: 10.1007/978-3-031-30820-8_34
+    title: "Goblint: Autotuning Thread-Modular Abstract Interpretation (Competition Contribution)"
+    year: 2023
+  - doi: 10.1007/978-3-030-72013-1_28
+    title: "Goblint: Thread-Modular Abstract Interpretation Using Side-Effecting Constraints (Competition Contribution)"
+    year: 2021
