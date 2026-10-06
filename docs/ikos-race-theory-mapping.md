@@ -2,7 +2,7 @@
 
 > **本文目标**：把「IKOS 原生（非并发）已有哪些理论、是否完善、soundness 前提是什么」和「并发这一块我们建了哪些语义、各自 A/B/C 分类、实现到哪一步、靠哪些具体测试文件兜底、现在的 soundness 依据是什么」讲清楚，最后给出能力边界与下一步路线。
 >
-> **红线（贯穿全文）**：判定器是**过近似**——宁可把真同步程序报成竞争（FP），也绝不把真竞争藏掉（FN）。这是 S. V. Adve, *Data Races are Evil with No Exceptions*, CACM 53(11), 2010 的直接推论。
+> **红线（贯穿全文）**：**FN=0（sound 优先于 precision）**——绝不把真竞争藏掉。这是 S. V. Adve, *Data Races are Evil with No Exceptions*, CACM 53(11), 2010 的直接推论。在此红线上，本工作进一步用「两层判定架构」（抽象过近似 → demote → BMC 欠近似重确认，见 §2.4）把**提交模式**的 FP 也压到 0——即「两分析器各准一边、中间 UNKNOWN 兜底」。
 
 **A/B/C 记号约定**（贯穿全文）：
 - **A 类 · 原生复用**：upstream IKOS 已完备实现，直接调用即可，满足上近似标准（上游已核验）。
@@ -82,6 +82,7 @@
 | 14 | 条件变量 wait/broadcast（stub） | C 类 · 自研新增 | **部分实现**（缺口 #5，signal→wait HB 缺失） | IEEE Std 1003.1（POSIX） | thread-join-counter、d7-01（弱） |
 | 15 | `_Thread_local`（TLS） | C 类 · 自研新增 | **未实现**（缺口 #7） | ISO/IEC 9899:2011（C11） | d7-03 |
 | 16 | 无锁算法线性化 | C 类 · 自研新增 | **未实现**（缺口 #8） | Herlihy & Wing, *Linearizability*, TOPLAS'90 | libvsync |
+| 17 | BMC 有界模型检测重确认（demote→UNKNOWN→BMC 找回 FALSE） | C 类 · 自研新增 | **完整实现** | Biere et al., *Symbolic Model Checking without BDDs*, TACAS'99；Clarke/Kroening, *BMC* | 全量（85 TP 找回） |
 
 > 状态说明：**完整实现** = 语义规则齐备 + 有边界测试兜底；**部分实现** = 有近似/子集；**未实现** = 完全没有。
 
@@ -104,6 +105,9 @@
 - **精度上限（非 soundness）**：字段/数组折叠成单 cell；可变下标折叠。`A[i]` 当 `i=[0,INT_MAX]` 时 offset=⊤ → points-to=⊤（这就是 weaver 目录 +93 FP 的根源，见 §2.3）。
 - **⊤ provenance 分类（阶段2 轻量原型，已评估并停用）**：对 `pts.is_top()` 的访问沿 def-chain（PointerShift/Bitcast/Load）做 region 近似分类——UnknownObject（链根是「值丢失的全局指针」）vs KnownObject（DynAlloc/栈局部/全局数组结构体）。**评估结论（FP 收益 -58 但破坏 soundness，已停用）**：「全局指针值丢失」不是健全的 FP 判别器——同一个「全局指针 + 可变下标」⊤ 既是 weaver FP（`popl20-more-sum-array-hom` 的 `A[i]` vs `sum2`），又是真竞争（`popl20-more-parray-copy` / `per-thread-array-index-race`，指针堆身份丢失但三线程仍竞争同一对象）。对象身份丢失是**精度问题**，非未实现并发语义，故必须保留 RACE，不能降 UNKNOWN。`classify_top_provenance` 与 `AccessRecord.provenance` 字段保留（备未来更健全判据），降级条件现仅用阶段3(atomic)。
   - **回归参照**：weaver 全局指针丢失 → `sv-benchmarks/c/weaver/popl20-more-sum-array-hom.wvr.c`（FP，但按顶层契约保留 RACE）；container_of → `sv-benchmarks/c/goblint-regression/09-regions_05-ptra_rc.c`（RACE）；全局数组可变下标 → `boundary-tests/d10-03-global-array-index-race.c`（RACE）。
+- **fresh heap node（goblint「fresh bullet」材料化）—— C 类 · 自研新增**：一个 malloc/calloc/realloc 的结果在**其指针尚未被存入跨线程可达位置**前是「fresh」的——只有分配它的线程持有该指针，故其访问线程私有、不可能竞争。`LocksetDomain::_fresh_heap_nodes`（**MUST 格，join=交集、⊤=∅**：只在所有入边都 fresh 时才是 fresh）追踪这类节点；`touches_shared_memory` 对 fresh 节点直接判「非共享」跳过。一旦本线程把该指针存入全局变量 / spawn 实参 / 非 fresh 堆字段（`unfresh_pointer_targets`，on_store_privatize 三处触发），节点即「发布」，离开 fresh 集，其后访问当共享处理。这是 goblint region-domain 「fresh bullet」soundness 论证的移植：fresh = 私有的**充分条件**（只去 FP 不去 FN），而发布的判定是**过近似**（宁可早发布多报，不可漏发布漏报）。
+  - **测试**：`boundary-tests/d5-*`、`clean-sv-benchmarks/goblint-regression/02-base_24-malloc_races.c`（FN 锚点：全局指针发布后子线程解引用必须可见）。
+  - **当前精度上限（已实测确认）**：fresh 节点按 **DynAlloc call-site（+context）** 建 cell；同一线程入口内循环里逐迭代 malloc 的多个实例会坍缩成同一 cell（上下文不敏感），「per-thread-struct / context-sensitive malloc」这类循环逐迭代分配**仍会误报**——goblint（当前最强竞态工具）对该类文件同样报竞争，说明这是**硬骨头**，非本 fork 独有缺陷（详见 §3.2 精度上限）。
 
 ### 2.1.3 锁集 must-lockset —— C 类 · 自研新增（完整实现）
 
@@ -162,11 +166,14 @@
 
 ### 2.1.8 原子内建（pseudo-lock） —— B 类 · 封装增强（部分实现）
 
-- **语义**：`__VERIFIER_atomic_begin/end`、`__sync_*`、`__atomic_*`、CAS/TAS 被注入一个**保留地址的伪锁** `PSEUDO_ATOMIC_LOCK`，使该段访问共享同一把「锁」而互斥。
+- **语义**：`classify_atomic_intrinsic`（concurrent_semantics.hpp 的单一事实源）把所有原子内建注入一个**保留地址的伪锁** `PSEUDO_ATOMIC_LOCK = 0xA7E0AD1C`，使原子访问与自身共享同一把「锁」而互斥。按形态分三档：
+  - **`__VERIFIER_atomic_begin/end`（SectionBegin/End）**：真正的**原子段标记**——begin 加伪锁、end 减伪锁，段内访问共享一把锁而互斥（这是 SV-COMP 原子段的非交错语义）。
+  - **`__VERIFIER_atomic_acquire/release`**：**故意不当作原子**——在 pthread benchmark 族里它们是**手写的 RACY 标志**（`assume(MTX==0); MTX=1`），按名字当原子段会注入伪锁、静默吞掉真竞争（40_barrier_vf-b.c FP）。故**不算同步**。
+  - **`__sync_*`/`__atomic_*`/`__VERIFIER_atomic_CAS/TAS/w/assert`/用户自定义 `__VERIFIER_atomic_<suffix>`（SingleCall）**：伪锁**只包住这一次调用**（add 后立即 remove），不跨语句。
 - **分类依据**：upstream **有** intrinsic 调用（CallBase）的建模点与锁集接入框架；我们**封装**成伪锁。
 - **论文**：ISO/IEC 9899:2011（C11）§7.17；H.-J. Boehm & S. V. Adve, *Foundations of the C++ Concurrency Memory Model*, PLDI 2008。
-- **测试**：`boundary-tests/d6-01-verifier-atomic-safe.c`。
-- **soundness 核验点（B 类的关键）**：伪锁把「CPU 原子段」近似成「该段与自身互斥」。核验：**这等价于 atomic 访问自身互斥**（C11 DRF 下 atomic 访问不竞争）——是**上近似**（伪锁过近似了原子段之间的乱序，但不漏竞争）。**但**伪锁不是真内存序，不提供 acquire/release HB（缺口 #3）。
+- **测试**：`boundary-tests/d6-01-verifier-atomic-safe.c`；`40_barrier_vf-b.c`（acquire/release 不算原子的回归锚点）。
+- **soundness 核验点（B 类的关键）**：伪锁把「CPU 原子段/单调用原子」近似成「该段与自身互斥」。核验：**这等价于 atomic 访问自身互斥**（C11 DRF 下 atomic 访问不竞争）——是**上近似**（伪锁过近似了原子段之间的乱序，但不漏竞争）。**但**伪锁不是真内存序，不提供 acquire/release HB（缺口 #3）。`begin/end` 与 `acquire/release` 的区分是本条 soundness 的关键：把 `acquire/release` 也当段会**漏报**（FN），把 `begin/end` 不当段会**多报**（FP）——前者是红线方向，绝不可犯。
 
 ### 2.1.9 C11 `_Atomic` 真原子语义 —— C 类 · 自研新增（部分实现）
 
@@ -227,6 +234,22 @@
 | `_Thread_local` | 每线程一份 cell | ISO/IEC 9899:2011（C11）§6.2.4/§6.7.1 | `boundary-tests/d7-03-tls-safe.c` | FP |
 | 无锁线性化 | lock-free 正确性（线性化点） | M. P. Herlihy & J. M. Wing, *Linearizability: A Correctness Condition for Concurrent Objects*, TOPLAS 12(3), 1990 | `clean-sv-benchmarks/pthread-ext/libvsync 族` | FP |
 
+### 2.1.17 BMC 有界模型检测重确认（demote→UNKNOWN→BMC 找回 FALSE） —— C 类 · 自研新增（完整实现）
+
+- **语义**：提交模式（`--demote-race-to-unknown` + `IKOS_BMC_RECOVER=1`）下，抽象判定器报出的每个具体 may-race 组先**降级成 UNKNOWN**，再由 BMC 对其中可证明的组做**欠近似重确认**：路径敏感展开两个线程入口到各自访问的 CFG 路径（`dfs_paths`，含 helper 内联），用 Z3 编码 SC 线性化 + mutex 互斥 + 竞争相邻性查询（`check_race`）。**SAT = 证明存在真实竞争 → 升回 FALSE；UNSAT / 无法证明 → 保持 UNKNOWN。**
+- **分类依据**：upstream 没有 BMC（无展开器、无 SMT 编码，已确认），`bmc/` 三个 header-only 模块（unroll/encode/bmc）从零实现。
+- **论文**：A. Biere, A. Cimatti, E. Clarke, Y. Zhu, *Symbolic Model Checking without BDDs*, TACAS'99；E. Clarke, D. Kroening, K. Yorav, *Behavioral Consistency of C and Verilog Programs Using Bounded Model Checking*, DAC'03（BMC 的欠近似 soundness 依据：只报**证实的**反例，报不出的都是 UNKNOWN）。
+- **测试**：全量 1030（85 TP 找回）；sound 锚点 `pthread-numerical-integration`（join 循环，必须仍 UNKNOWN）、`race-4_1`（嵌套 create/join，必须仍 UNKNOWN）、`elimination_backoff_stack`（无锁协议，必须仍 UNKNOWN）。
+- **soundness 核验点（BMC 是欠近似：只报证实的竞争，天然 FP=0；所有 gate 只做「不报 FALSE、退 UNKNOWN」这一件事）**：
+  1. **展开器 DAG-only + 回边保守**：`dfs_paths` 遇回边（循环）直接跳过不展开；`unroll_to` 对「访问在循环体内 / 循环体含同步」的路径标 `incomplete` → `confirm_race` 返回 false → UNKNOWN。绝不把「未展开完整」的路径当证明（对应 Dartagnan README「未完全展开 → UNKNOWN，不报 FALSE」）。
+  2. **helper 内联的 4 个保守门**（`direct_callee`，`MAX_INLINE_DEPTH=8`）：只跟进「直接调用 + 有函数体 + 非原子单调用 + 无循环 + 不含原子区」的 helper；跟不进则 helper 里的访问/锁事件看不到 → 保守 UNKNOWN。具体：`bmc_skip_inline`（`__VERIFIER_atomic_*`/`__atomic_*`/`__sync_*`/`assume_abort_if_not`）、`function_has_loop`（带循环 helper）、`function_has_atomic_section`（helper 里包 `__VERIFIER_atomic_begin/end`——无锁协议 elimination_backoff_stack 的线性化签名，BMC 的伪锁模型建不了模）。
+  3. **未建模同步门**：程序级 `has_unmodeled_sync(bundle)`（sem/barrier/spin/C11 原子/单调用原子，任一函数有 → 整个程序不报 FALSE）+ 函数级 `has_unmodeled_sync(funcA/B)` 再查。注意 `__VERIFIER_atomic_begin/end` 已建模为伪锁、`pthread_cond_wait` 已建模为 unlock+lock，不算未建模。
+  4. **别名门（same_global）**：两访问必须都是 **singleton points-to 且是同一个 GlobalMemoryLocation**——DynAlloc 排除（per-thread malloc 的 cell 按 call+context 建，同入口多实例坍缩成同一 cell，放开会误报 per-thread-struct 类 FP）；offset 用「有效区间相交」判同址（非 ⊤ 用抽象区间覆盖变量下标如 `data[4]` vs `data[i]`，⊤ 退回结构常量偏移）。
+  5. **隔代 create/join 门（transitive_ordered）**：一方是另一方「传递但非直接」的祖先（main→A→B，`_thread_ancestors` 传递闭包 ∩ 非 `_thread_creators` 直接集）时，两者可能被跨线程 create/join 链排序，而 BMC 的两线程 po+mutex 编码看不到中间线程 A 的 join → 保守不确认（race-4_1 的嵌套 create/join FP）。直接父子（访问在 create 与 join 之间）不受影响。
+  6. **锁门（shared_held）**：只在「双方访问都在各自临界区内（held 非空）且共享一把 held 锁」时跳过——这把锁可能承载**标志式 HB / 永久锁**（time_var_mutex、privatized 的 trace），互斥未完整建模，保守 UNKNOWN。已配对（balanced）的共享锁由 `check_race` 的互斥析取建模；完全不共享的锁（经典不同锁竞争）不约束对方；一方解锁访问（held 为空）时另一方锁不保护它，照常判。
+  7. **SMT 编码（check_race）**：`po`（路径内相邻事件 clock 递增）+ mutex 互斥（同一把锁 Unlock→Lock 二选一布尔）+ 竞争相邻性（两访问 clock 差 1，两个方向各查一次）。SAT 才返回 true。
+- **与抽象层 `is_unknown` demotion 的区分**：本条 BMC gate 管的是「具体 may-race 组在 demote 旗标下要不要升回 FALSE」；§2.1.9 的混合 atomic/non-atomic `is_unknown` demotion 管的是「该组根本不进 BMC 门，直接永久 UNKNOWN」。
+
 ## 2.2 实现状态清单（含具体测试文件）
 
 | 模块 | 实现状态 | 边界测试（boundary-tests/） | 回归集（clean-sv-benchmarks/） | 通过 |
@@ -245,6 +268,7 @@
 | 条件变量 | 部分（stub，无 signal→wait HB） | d7-01（弱） | pthread-race-challenges/thread-join-counter-inner-race-3.i | d7-02 barrier 仍 GAP |
 | TLS | 未实现 | d7-03 | — | GAP |
 | 无锁线性化 | 未实现 | — | pthread-ext/libvsync 族 | — |
+| BMC 重确认 | 完整（DAG + helper 内联 + 7 道 sound gate） | — | 全量（85 TP） | 嵌套 create/join、无锁协议、join 循环仍 UNKNOWN |
 
 > 边界测试 27 例完整清单见 `boundary-tests/run.py`（D1 锁集/D2 HB/D3 线程身份/D4 数值循环/D5 指针逃逸/D6 原子/D7 cond-var·barrier·TLS/D8 字段敏感）。**当前实测约 25 OK + 2 GAP**——仅剩 d7-02-barrier（缺口 #5 的 signal→wait HB）与 d7-03-tls（缺口 #7）两个真语义缺口，无意外。
 >
@@ -287,6 +311,49 @@
 
 **这些保守方向之所以 sound**，根子上依赖原生第 3 条（bit-width/sign 规范化）与第 4 条（cell 强/弱更新）不被并发代码破坏——这是并发模块每次改动的**高危雷区**（历史：黑板 join 漏规范曾 SIGABRT；materialize 的 `mem_write` 未 pin 指针曾 `mem_forget_all` 炸 ⊤）。
 
+> §2.3 论证的是**第 ① 层（抽象判定器）的 FN=0**——凡真实竞争必在 may-race 集里，故「空集才报 SAFE ⟹ 无竞争」。完整的 FP=0 论证见 §2.4 第 ② 层（BMC 欠近似）。
+
+## 2.4 两层判定架构与双面 soundness（demote + BMC）
+
+**当前提交模式的核心架构**：不再由「单一个过近似判定器」同时追求 sound 与 precision，而是把「报 FALSE（竞争）」与「报 SAFE（无竞争）」拆给两个**各自单向 sound**的分析器，中间地带一律 UNKNOWN：
+
+```
+             ┌──────────────────────────────────┐
+   程序 ──▶ │ ① 抽象判定器（thread-modular +     │
+             │    lockset/HB/PBR/region，过近似） │
+             └───────────────┬──────────────────┘
+                             │ may-race 集
+                  无 pair    │          有 pair
+                    ▼        │            ▼
+                 SAFE ◀──────┘     UNKNOWN（demote）
+（过近似：无 pair ⟹ 无竞争，FN=0）      │
+                                       ▼
+             ┌──────────────────────────────────┐
+             │ ② BMC 重确认（欠近似，7 道 gate）  │
+             └───────────────┬──────────────────┘
+                 SAT（证明竞争）│    UNSAT / 无法证明
+                    ▼          │           ▼
+                 FALSE ◀───────┘        UNKNOWN
+（欠近似：证明竞争 ⟹ 真竞争，FP=0）
+```
+
+- **FN=0 来自第 ① 层的过近似**：抽象判定器（lockset/HB/PBR/region…，§2.1.3–2.1.13）的 may-race 集是**上近似**——凡真实竞争必在集中。空集才报 SAFE，故「报 SAFE ⟹ 无竞争」（§2.3 的 must/may 对偶五层）。
+- **FP=0 来自第 ② 层的欠近似**：BMC 是**有界路径敏感的欠近似**——只有 Z3 证出「存在一条 SC 线性化让两访问相邻」才报 FALSE，其余一律 UNKNOWN。欠近似报出的竞争必是真竞争，故「报 FALSE ⟹ 真竞争」（§2.1.17 的 7 道 gate）。
+- **中间地带一律 UNKNOWN**：既不被①证无竞争、也不被②证有竞争的一切（别名不精确、循环、未建模同步、值域不可行、嵌套 create/join、无锁协议…）都是 UNKNOWN——UNKNOWN 既不等于 SAFE 也不等于 FALSE，对 FN=0 与 FP=0 **都不构成威胁**。
+- **`is_unknown` 模型边界 demotion（独立于 demote 旗标，永久生效）**：混合 atomic/non-atomic 访问对（§2.1.9）直接标 `Warning`，根本不进 BMC 门，永不升 FALSE/SAFE。历史上一度想对「⊤-provenance（全局指针值丢失）」也 demote，实测证明它**破坏 soundness**（同一个「全局指针 + 可变下标」⊤ 既是 weaver FP 又是 parray-copy 真竞争），已停用（§2.1.2）。
+
+**历史沿革（A/B 实测）**：
+
+| 模式 | TP | FP | TN | FN | 分数 |
+|---|---|---|---|---|---|
+| 单层：抽象判定器直接报 may-race 为 RACE（无 demote） | — | 98 | 709 | 0 | 负（FP=−16 计分，不可提交） |
+| 只 demote（`--demote-race-to-unknown`，BMC 关） | 0 | 0 | 709 | 0 | 1418 |
+| demote + BMC 找回（`IKOS_BMC_RECOVER=1`） | **85** | **0** | **709** | **0** | **1503** |
+
+（「无 demote」模式把抽象层的**全部** may-race（真竞争 + 误报）一并当 RACE 输出，FP=98 在 FP=−16 的计分下为负分，故不可直接提交——这正是引入 demote 的动机。）
+
+**一句话**：soundness 不再靠「一个分析器两边都准」，而靠「**两个分析器各准一边、中间 UNKNOWN 兜底**」——这是 Adve 红线（FN=0）之上、又额外达成 FP=0 的关键架构设计。代价是把「既不无竞争、又无法证明有竞争」的文件全部牺牲成 UNKNOWN（当前 235 个，见 §3.2）。
+
 ---
 
 # 第三部分：总结
@@ -295,26 +362,34 @@
 
 | 维度 | 现状 |
 |---|---|
-| **Recall（漏报率）** | **全集 FN=0**（Recall=1.000）——红线达成 |
-| **Precision** | 全集 FP=98（Precision≈0.706，正确 ILP32 arch）；clean-121 FP=0 |
-| **已建模同步** | mutex、rwlock、trylock（路径近似）、join/create HB、`__VERIFIER_atomic`（伪锁）、C11 `_Atomic`（access-level）、cond_wait/signal/broadcast（stub，无 HB 边） |
-| **未建模同步** | cond-var 的 signal→wait HB、barrier、TLS、无锁线性化、acquire/release 内存序 |
+| **Recall（漏报率）** | **全集 FN=0**（Recall=1.000）——红线达成（抽象层过近似，§2.3） |
+| **Precision** | **提交模式 FP=0**（demote + BMC 找回，§2.4）：TP=85 / FP=0 / TN=709 / FN=0 / unknown=235，**得分 1503**。无 demote 的「直报」模式 FP=98（Precision≈0.706，仅作对照） |
+| **已建模同步** | mutex、rwlock、trylock（路径近似）、join/create HB（实例级+传递）、`__VERIFIER_atomic_begin/end`（伪锁）、C11 `_Atomic`（access-level）、cond_wait/signal/broadcast（stub，无 HB 边）、BMC 的 po+mutex 互斥 |
+| **未建模同步** | cond-var 的 signal→wait HB、barrier、TLS、无锁线性化、acquire/release 内存序、sem（BMC 层）、spin（BMC 层） |
 
 ## 3.2 主要理论缺口（按杠杆排序）
 
-| 缺口 | 类型 | 影响 | 论文 |
+> 在 demote + BMC 提交模式下，「缺口」的表现不再是 FP/FN，而是**UNKNOWN 文件**：既不被抽象层证无竞争、也不被 BMC 证有竞争。当前 **unknown=235**，按期望判决拆成 **~150 个 lost-TP（真竞争但没被 BMC 找回）+ ~85 个 lost-TN（真无竞争但没被抽象层证 SAFE）**。下表每行是「回收该批 UNKNOWN 的杠杆」：
+
+| 缺口 | 类型 | 影响的 UNKNOWN 桶 | 论文 |
 |---|---|---|---|
-| #3 C11 内存序（acquire/release/relaxed） | 语义缺口 | ~95 文件的 FP+FN | Batty et al., *Mathematizing C++ Concurrency*, POPL'11 等 |
-| #5 条件变量/屏障 HB（signal→wait 边） | **MAY，不可 sound 使用**（见下注） | FP（value-barrier/thread-join-counter 等 ~9 例；**FN 已由 cond stub 堵住**，见 §2.1.14） | IEEE Std 1003.1（POSIX） |
-| #5b 互斥传递 HB（无锁写 → lock(m) → 互斥 → unlock(m) → 无锁读） | 语义缺口（通用） | 是 #5 那 9 例 + join 类一部分的**真根因** | — |
-| #6 结构体字段锁准入 | 语义缺口 | FP（折叠类 11 例的死因） | Flanagan & Qadeer, SPIN'03 |
-| #7 TLS | 语义缺口 | FP | ISO/IEC 9899:2011（C11） |
-| #8 无锁线性化 | 语义缺口 | FP | Herlihy & Wing, TOPLAS'90 |
-| **精度上限** | 折叠（字段/数组）+ ⊤ points-to 保守配对（含 join 句柄 `tids[i]` 读 ⊤ →「全部实例 joined」判定失败） | 大量 FP（weaver +93、thread-join-*、per-thread-* 等） | — |
+| #3 C11 内存序（acquire/release/relaxed） | 语义缺口 | 混合 atomic/non-atomic 永久 UNKNOWN（`is_unknown` demotion） | Batty et al., *Mathematizing C++ Concurrency*, POPL'11 等 |
+| #5 条件变量/屏障 HB（signal→wait 边） | **MAY，不可 sound 使用**（见下注） | value-barrier/thread-join-counter 等 ~9 例 lost-TN | IEEE Std 1003.1（POSIX） |
+| #5b 互斥传递 HB（无锁写 → lock(m) → 互斥 → unlock(m) → 无锁读） | 语义缺口（通用） | 是 #5 那 9 例 + join 类一部分 lost-TN 的**真根因** | — |
+| #6 结构体字段锁准入 | 语义缺口 | 折叠类 lost-TN（字段/数组折叠成单 cell） | Flanagan & Qadeer, SPIN'03 |
+| #7 TLS | 语义缺口 | lost-TN | ISO/IEC 9899:2011（C11） |
+| #8 无锁线性化 | 语义缺口 | libvsync 族 lost-TN；BMC 层 `function_has_atomic_section` gate 也把无锁协议挡在 UNKNOWN | Herlihy & Wing, TOPLAS'90 |
+| **别名精度（lost-TP 大头）** | 精度上限 | per-thread-*/thread-join-* 的 `tids[i]` 读 ⊤ →「全部实例 joined」判定失败；数组下标 `A[i]` 偏移 ⊤；线程身份折叠（同一 helper 被两线程调用） | — |
+| **值域可行性（lost-TP 大头）** | 精度上限 | nondet 循环界 `for(i=0;i<N;i++)` 展开 → `i=⊤`；BMC 的 same_global 门要求 singleton offset | — |
+| **context-sensitive malloc（lost-TN 硬骨头）** | 精度上限 | 循环逐迭代 malloc 的多实例坍缩成同一 cell（fresh 节点上下文不敏感）。**已实测确认 goblint 对该类文件同样报竞争**——非本 fork 独有，是竞态工具的通用难题 | — |
 
 > 注意 1：#3 里「C11 atomic 本身不竞争」已实现（去 FN），「混合 atomic/non-atomic」已标 UNKNOWN（去 FP、不吞真竞争），但「atomic 的 acquire/release 同步作用」未实现——这是 #3 剩余的核心。
 >
-> 注意 2（2026-09 实测更正）：**#5 的 signal→wait 边不能 sound 地补**——`cond_wait` 会伪唤醒、`signal` 唤醒哪个 waiter 不确定，所以「A signal c → B wait c」是 MAY 边（`lockset_domain.hpp:166-168` 注释已明确「cannot soundly suppress a race」）。`value-barrier.i` 这类案例真正变安全靠的是 `while(!ready) cond_wait` + `ready_mutex` 的**互斥传递 HB**（#5b），与 cond 无关。同理 `thread-join-*` 的 join 规则没缺，是 `tids[i]` 数组单元读 ⊤ 导致「全 joined」判定失败（精度上限，非语义缺口）。
+> 注意 2（2026-09 实测更正）：**#5 的 signal→wait 边不能 sound 地补**——`cond_wait` 会伪唤醒、`signal` 唤醒哪个 waiter 不确定，所以「A signal c → B wait c」是 MAY 边（`lockset_domain.hpp:166-168` 注释已明确「cannot soundly suppress a race」）。`value-barrier.i` 这类案例真正变安全靠的是 `while(!ready) cond_wait` + `ready_mutex` 的**互斥传递 HB**（#5b），与 cond 无关。同理 `thread-join-*` 的 join 规则没缺，是 `tids[i]` 数组单元读 ⊤ 导致「全 joined」判定失败（别名精度上限，非语义缺口）。
+>
+> 注意 3（BMC 层 gate 与 #3/#8 的关系）：BMC 的 `has_unmodeled_sync`（C11 原子/sem/barrier/spin）与 `function_has_atomic_section`（无锁协议）把这两类文件**永久挡在 UNKNOWN**——不是 BMC 编码不了，而是**加了建模就破坏欠近似 soundness**（伪锁模型不反映真实内存序/线性化点），必须保守。
+>
+> 注意 4（#5b 的 soundness 结论，原 `ikos-5b-mutex-hb-soundness.md`）：**纯 mutex-HB（LockRelease 式「上次 release」epoch）在 IKOS 的抽象 thread-modular 架构下无法 sound 落地**——它需要路径敏感的交错信息（「T2 的 lock 是否在 T1 的 unlock 之后」取决于交错），而抽象解释天生没有。唯一 sound 的 mutex-HB 是**结构性成立**（unlock 与 lock 在一条既有 HB 链上，如 `unlock(m); pthread_create(T2)` 经 create 边）。所以 #5b 的互斥传递 HB 只能靠 BMC 的欠近似（po+mutex 互斥）或未来的精确 create/join 区间时钟，不能靠抽象锁集补。
 
 ## 3.3 下一步路线
 
@@ -322,16 +397,19 @@
    - ✅ 间接 spawn 的 ⊤ 编码（`_spawned_threads` 加 ⊤ 标志）——已修复。
    - ✅ 全局指针逃逸标 `_escaped_locs`（`join_global_pointer` 标记发布目标）——已修复（d5-04 翻转）。
    - ✅ 条件变量 stub（cond_wait/signal/broadcast + `mem_forget_all`）——已修复（thread-join-counter FN 翻转，根因是可达性非锁集，见 §2.1.14）。
+   - ✅ BMC helper 内联（`direct_callee` + 4 道 gate，TP 64→85，FP=0）——已落地（fa3c4aa）。
+   - ✅ cast 包裹线程函数 `(void*(*)(void*)) myPartOfCalc`（`resolve_thread_function` 解 Bitcast）——已修复（+3 TN）。
+   - ✅ 隔代 create/join 的 `transitive_ordered` gate（嵌套 create/join 不再误报 FALSE）——已修复（4daf3d0）。
    - 逐条核验 §2.1 每个 B/C 模块的保守方向是否仍成立。
 
 2. **重新核验全部语义规则**
    - 以 §2.1 的「soundness 核验点」为 checklist，逐条跑边界测试 + 回归三件套，确认 FN=0 不破。
    - 给每个 C 类模块补一个「破坏 soundness 会翻红的哨兵用例」（红蓝对抗）。
 
-3. **精度调优（在 FN=0 前提下压 FP）**
-   - 字段敏感 MemoryFactory（清零 11 个折叠类 FP，杠杆最高）。
-   - ⊤ points-to 的定向收窄（在不漏 FN 的前提下，避免「⊤ 配对所有」的盲目 FP）。
-   - 数值域 widening-delay / threshold 调优，回收 weaver 目录的 +93 FP。
+3. **回收 235 UNKNOWN（在 FN=0/FP=0 前提下，两大方向）**
+   - **SAFE 方向（85 lost-TN，价值 +170 > +150）**：证 SAFE 靠**抽象层过近似**更精确——字段敏感 MemoryFactory、`tids[i]` 数组句柄的偏移收窄、`__VERIFIER_atomic` 伪锁放宽。两大子桶（手写锁 ~29、context-sensitive malloc ~22）都**已被实测确认是硬骨头**：手写锁需值域可行性（SMT）、context-malloc 连 goblint 都报竞争（§2.1.2 fresh 上限）。
+   - **RACE 方向（150 lost-TP，价值 +150）**：证 FALSE 靠**BMC 欠近似**覆盖更广——别名门（same_global 的 singleton offset 放开到数组下标）、值域可行性（nondet 循环界）、精确 create/join HB（BMC 加 spawn/join 区间时钟边）。当前 two-thread po+mutex 编码看不到中间线程的 join，隔代链路只能保守 UNKNOWN。
+   - 两条路都卡在**「别名精度（thread-id + 符号偏移）+ 值域可行性（path-sensitive）**」两个抽象域级缺口上，BMC 的「门」补不了，需从抽象域或 SMT 编码层面攻坚。
 
 ---
 
@@ -363,7 +441,9 @@
 17. 【待人工核验】ESOP'23 thread-uniqueness 抽象（`is_thread_unique` 代码注释引用；dblp 搜「thread uniqueness / thread-modular abstract interpretation / static data race detection」）。
 18. ISO/IEC 9899:2011（C11），§5.1.2.4（happens-before/数据竞争）、§6.2.4/§6.7.1（TLS）、§7.17（atomics）。
 19. IEEE Std 1003.1（POSIX），pthread_mutex/rwlock/cond（wait/signal/broadcast）/barrier。
+20. A. Biere, A. Cimatti, E. Clarke, Y. Zhu. *Symbolic Model Checking without BDDs.* TACAS 1999. DOI 10.1007/3-540-49059-0_14
+21. E. Clarke, D. Kroening, K. Yorav. *Behavioral Consistency of C and Verilog Programs Using Bounded Model Checking.* DAC 2003. DOI 10.1145/775832.775928
 
 ---
 
-*本报告随代码同步维护；最近的实质变更：`d19fad7`（materialize_globals 修复，popl20 最后一个 FN 清零）。*
+*本报告随代码同步维护；最近的实质变更：两层判定架构（demote + BMC 找回 FALSE，fa3c4aa helper 内联 → TP 64→85）+ `resolve_thread_function`（cast 包裹线程函数）+ 隔代 create/join gate（4daf3d0）+ fresh heap node（goblint fresh bullet）+ `__VERIFIER_atomic_begin/end` 与 `acquire/release` 的区分。当前提交分数 1503（TP=85/FP=0/TN=709/FN=0/unknown=235）。*

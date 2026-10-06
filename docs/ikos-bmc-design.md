@@ -1,128 +1,131 @@
-# IKOS BMC 模块设计 —— AR → SMT 映射
+# IKOS BMC 模块设计 —— AR → SMT 映射（demote 后找回真竞争）
 
-> 目标：接在 `--demote-race-to-unknown` 之后，对每个 demote 成 UNKNOWN 的抽象竞争对，
-> 用 Z3 精确判定「这两个访问是否真的能并发（真竞争）」。SAT ⟹ 报 FALSE（找回 TP）；
-> UNSAT ⟹ 保持 UNKNOWN（有界内无竞争）。永远不报 TRUE（证明 SAFE 交给抽象解释）。
+> **一句话目标**：接在 `--demote-race-to-unknown` 之后，对每个 demote 成 UNKNOWN 的抽象竞争对，
+> 用 Z3 精确判定「这两个访问是否真的能并发」。SAT ⟹ 报 FALSE（找回 TP）；UNSAT / 无法证明 ⟹
+> 保持 UNKNOWN。**永远不报 TRUE**（证明 SAFE 交给抽象解释）。
+>
+> **当前状态的权威描述**：见 `ikos-race-theory-mapping.md` §2.1.17（7 道 sound gate）与 §2.4
+> （两层判定架构）。本文档聚焦**设计依据 + 演进史 + 未做项**，不重复 gate 清单。
+>
+> 落地基线：**TP=85 / FP=0 / TN=709 / FN=0 / unknown=235 = 1503 分**（冻结集，`IKOS_BMC_RECOVER=1`）。
 
-## 0. 复用 checker 已有的提取（不要重写）
+---
 
-`DataRaceChecker` 已经做了大部分事件提取，BMC 模块**先复用它的产物**：
+## 1. 理论前提：SV-COMP 用 SC，不是弱内存模型
 
-| 需要的东西 | 现有代码 | 说明 |
-|---|---|---|
-| 访问事件（load/store） | `check_load` / `check_store`（data_race.cpp:2072/2129） | 已解析 `load->operand()`/`store->pointer()` → points-to、offset、thread、locks |
-| 线程归属 | `current_thread_id`（data_race.cpp:1480） | 沿 call-context 链上溯到线程入口 |
-| 锁集 | `snapshot_locks` / lockset 域 | 抽象锁集（**BMC 不用它，见 §4**） |
-| 竞争对 | `_accesses`（AccessRecord 列表）+ 析构里的 pairwise 判定 | demote 后的 UNKNOWN 对就在这里 |
+- SV-COMP no-data-race 写死 `cat/svcomp.cat`（Dartagnan-SVCOMP.sh 里 `cat/svcomp.cat`），**不是 RC11**。
+  所以 IKOS 的 BMC **只需要「SC 下的 race 检测」，不需要 acquire/release/fence/弱内存序**——难度远低于直觉。
+- `svcomp.cat` 的 happens-before：`hb = po | (com & int) | (rmw^-1? ; (com & ext))`。
+  即 HB = 程序序 ∪ 线程内通信 ∪ 跨线程同步（mutex 的 unlock→lock、create/join 折进 `po`）。
+- **推论**：BMC 的 HB 编码只需「po + mutex 互斥 + create/join」，不必建模 rmw 链、不必建模弱序。
 
-**关键结论**：BMC 模块**不是**从零扫描 AR，而是**接管 checker 析构里被判为「潜在竞争」的那一对访问**（`_accesses` 里的两个 AccessRecord），只对它们做精确判定。查询面窄到 O(1) 对，不用全程序展开所有对。
+## 2. 复用 checker 已有产物（不要重写）
 
-## 1. 事件模型
-
-BMC 需要两类事件，都从 AR 静态可得：
-
-```
-内存事件：
-  ar::Load   →  Read 事件，地址 = load->operand()
-  ar::Store  →  Write 事件，地址 = store->pointer()
-
-同步事件（建立 hb）：
-  ar::CallBase 且 callee 名含 "pthread_mutex"/"pthread.mutex"：
-     含 "lock"   → Lock(acquire)  事件，锁对象 = arg0
-     含 "unlock" → Unlock(release) 事件，锁对象 = arg0
-  pthread_create → Spawn 事件（create-HB）
-  pthread_join   → Join 事件（join-HB）
-```
-
-每个事件带：全局 id、所属线程（`current_thread_id`）、地址/锁对象、读写类型。
-
-## 2. 程序序（po）
-
-`ar::BasicBlock::_successors` 给 CFG 后继。同一线程内，事件沿 CFG 的先后就是 po。
-
-- **MUST 边**：直线代码段里的 po（无分支时必然成立）。
-- **分支/循环**：po 变成 CFG 路径关系，要发 `exec(e)`（事件是否被执行）布尔变量 + 控制流约束（见 §5 的「工程分期」）。
-
-## 3. happens-before（hb）与竞争判定（核心，已用原型验证）
-
-沿用 svcomp.cat 的 SC 语义：`hb = po ∪ 线程内通信 ∪ mutex/原子同步`。
-
-```
-对每个事件 e：clock(e) : int        # SC 线性化里的位置（拓扑序）
-对每条 MUST hb 边 (x,y)：clock(x) < clock(y)
-
-竞争查询（针对 checker 给的那对 w,m，w=写、m=另一访问，跨线程、同址）：
-  SAT(  clock(w) == clock(m)+1  ∨  clock(m) == clock(w)+1 )
-```
-
-**「相邻 ⟺ 竞争」已用 `scripts/bmc_race_encoding.cpp` 实测验证**：异锁 SAT、同锁 UNSAT。
-
-## 4. BMC 用哪些、不用哪些（关键架构判断）
+BMC **不是**从零扫 AR，而是**接管 checker 析构里被判为「潜在竞争」的那一对访问**（`_accesses` 里的两个 AccessRecord），
+只对它们精确判定，查询面窄到 O(1) 对：
 
 | checker 现成的 | BMC 用不用 | 为什么 |
 |---|---|---|
-| `resolve_points_to`（抽象 points-to） | ❌ 不用 | 它是过近似（per-thread malloc 的多个对象坍缩成同 cell）；BMC 要精确地址相等 |
-| lockset（抽象锁集） | ❌ 不用 | 抽象锁集不精确；BMC 要在 SMT 里重算同步 |
-| `current_thread_id` | ✅ 用 | 线程归属是静态事实 |
-| 竞争对的访问语句（`AccessRecord.stmt`） | ✅ 用 | 定位这两个 load/store 语句 |
-| 地址 | ✅ **编码成 SMT 值 + 判相等** | Dartagnan `sameAddress = mustAlias ? true : equal(addr_a, addr_b)` |
+| 访问事件 / 线程归属 / 竞争对语句 | ✅ 用 | 定位这两个 load/store 语句 + 所属线程入口 |
+| `resolve_points_to`（抽象 points-to） | ❌ 不用 | 它是**过近似**（per-thread malloc 多对象坍缩成同 cell）；BMC 要精确地址相等 |
+| lockset（抽象锁集） | ❌ 不用 | 抽象锁集不精确；BMC 在 SMT 里重算同步 |
 
-## 5. soundness 的精确条件（2026-10 调研修正，取代之前的草率结论）
-
-一个健全的 BMC 必须**同时**具备（对照 Dartagnan 源码 + 逐个 FP 文件核实）：
-
-1. **精确别名 = 地址编码 + 相等判定**：把每次访问的**地址**编码成 SMT 值，`sameAddress = equal(addr_a, addr_b)`。**不能**复用抽象 points-to 的过近似。这是消除 per-thread malloc / container_of / thread-id 类 FP 的唯一办法。
-2. **完整 HB = 所有同步原语**：mutex（acquire/release **资源语义**，含「永久锁」time_var_mutex 那种 lock 后不 unlock）、cond（signal→wait）、sem（post→wait）、barrier、spin、create/join、原子 acquire/release，全部编码成 HB 边。
-3. race = sameAddress ∧ 一个写 ∧ 跨线程 ∧ 非原子 ∧ 相邻（已验证）。
-
-**第一版只做了「mutex 的 unlock→lock 边」**，缺 (1) 整个地址编码、(2) cond/sem/barrier/spin/永久锁 —— 这就是实测 21 个 FP 的来源（cond 变量 3 个、信号量 1 个、每线程 malloc 别名 8 个、container_of 2 个、永久锁 1 个、其余若干）。
-
-## 6. 工程分期（修正后）
-
-**第一期（最小健全子集：全局变量 + mutex + create/join）**
-- 只对 checker 报的那一对访问，做路径敏感有限展开（展开界 K）。
-- **别名**：只处理两访问都是**同一个 GlobalMemoryLocation**（全局变量地址唯一标识，不用 SMT 编码地址；堆/容器指针 → 保守 UNKNOWN）。**堆（DynAlloc）暂不放开**——per-thread malloc 的 cell 按 call+context 建，但同一线程入口内的多实例坍缩成同一 cell（context 不敏感），放开导致 per-thread-struct/per-thread-index-inc 误报。放开堆需要先修 malloc 的 context 敏感性或上地址 SMT（第二期）。
-- **同步**：mutex + **`__VERIFIER_atomic_begin/end` 伪锁**（= Lock/Unlock PSEUDO_ATOMIC_LOCK，与 abstract checker 同语义；单调用原子 `__sync_*`/`__atomic_*`/`__VERIFIER_atomic_CAS|TAS|w|assert` 仍是 unmodeled → UNKNOWN，`acquire/release` 是手写 RACY 标志不算同步）+ **`pthread_cond_wait` = unlock(mutex)+lock(mutex)**（POSIX release/re-acquire；signal/broadcast 无 HB，数据由关联 mutex 保护——SV-COMP no-data-race 是 lockset 语义，非 signal→wait HB）+ **create/join**（create-HB、join-HB 待加——pthread-numerical-integration 靠 join 同步 `area`）。锁门（sound）：**只在「双方访问都在各自临界区内」且共享一把 held 锁时跳过**——这类锁可能承载标志式 HB / 永久锁（time_var_mutex 的 busy 标志、privatized 的 trace）；一方解锁访问时另一方的锁不保护它，照常判。sem/barrier/spin/C11 原子 → 检测到就保守 UNKNOWN。
-- **循环（DAG-only 能力边界）**：展开器只做 DAG（直线+分支）；访问块的**前向路径上有回边（循环）**——即访问块从某循环头可达——就把路径标记为 `incomplete` → 保守 UNKNOWN（被跳过的循环体里可能藏 join/create/mutex，pthread-numerical-integration 的 join 循环正是如此）。循环在访问**之后**（不可达访问块）或分叉支路上、且不影响本访问的，不拦截。**这是「能力边界」，不是 bug**——后续加 bound 展开 + join-HB 建模可攻克，见 §9。
-- 编码：po + mutex 同步（互斥析取）+ create/join 边 + clock + 相邻查询（已实现 `encode.hpp`，create/join 边待加）。
-
-**第二期（加精确别名 + 更多同步）**
-- 地址 SMT 编码（`address(e)` + `equal`）→ 支持堆对象、容器指针、thread-id 槽位。
-- cond（signal→wait）、sem（post→wait）、barrier 建模。
-- mutex 的完整资源语义（处理永久锁）。
-
-**第三期（工程化）**
-- 从「只判一对」扩展到「判所有 demote 对」。
-- 求解器缓存、增量求解。
-
-## 7. 集成点
-
-在 `DataRaceChecker` 的析构里，`--demote-race-to-unknown` 把竞争对判成 UNKNOWN 之后，**对每个满足第一期健全门（全局变量 + 平衡 mutex + 无其它同步）的 UNKNOWN 对调用 BMC**：
+## 3. 事件模型 + 判定
 
 ```
-对每个 demote 成 UNKNOWN 的 (a, b)，先过健全门：
-  门 = 同 GlobalMemoryLocation ∧ 锁平衡 ∧ 无 cond/sem/barrier/spin/原子
-  过门 → BMC.check_race → SAT 报 FALSE（+1），UNSAT 保持 UNKNOWN
-  不过门 → 保持 UNKNOWN
+内存事件：ar::Load → Read；ar::Store → Write
+同步事件：pthread_mutex_lock/unlock → Lock/Unlock（锁对象 = arg0，mutex_id 语法同一性）
+          __VERIFIER_atomic_begin/end → Lock/Unlock(PSEUDO_ATOMIC_LOCK)
+          pthread_cond_wait(&c,&m) → Unlock(m)+Lock(m)（POSIX release→重获；signal/broadcast 无 HB）
+          pthread_create/join → Spawn/Join（HB 边，**尚未编码**，见 §8）
+
+编码（encode.hpp / check_race）：
+  po：路径内相邻事件 clock 递增
+  mutex 互斥：同一把锁 Unlock→Lock 二选一布尔
+  竞争查询：两个访问能否在 SC 线性化里相邻（clock 差 1，两方向各查一次）→ SAT = 竞争
 ```
 
-result：BMC 只「找回 TP」，从不「证明 SAFE」，且健全门保证报 FALSE 的必是真竞争 → **FN=0 且 FP=0**。
+「相邻 ⟺ 竞争」已用 `scripts/bmc_race_encoding.cpp` 原型验证（异锁 SAT、同锁 UNSAT）。
 
-## 8. 已摸清的点（原 §7 的解答）
+## 4. soundness 的精确条件（对照 Dartagnan + 逐 FP 文件核实）
 
-1. **精确别名**：IKOS 没有独立 alias 分析。正确做法是 Dartagnan 的 `sameAddress`——第一期用全局变量的语法同一性，第二期把地址编码成 SMT 值判相等。
-2. **路径敏感展开**：IKOS 无现成 unroller，已手写 `bmc/unroll.hpp`（DAG DFS + 回边检测）。
-3. **mutex 对象身份**：语法 arg0 指针同一性（`mutex_id`，已实现）；但需补「锁配对平衡」检测处理永久锁。
+一个健全的 BMC 必须**同时**具备：
 
-## 9. 🚩 能力边界 = 潜在独特优势（重点标记，后续攻关）
+1. **精确别名 = 地址编码 + 相等判定**：把每次访问的**地址**编码成 SMT 值，`sameAddress = equal(addr_a, addr_b)`。
+   **不能**复用抽象 points-to 的过近似。这是消除 per-thread malloc / container_of / thread-id 类 FP 的唯一办法。
+2. **完整 HB = 所有同步原语**：mutex（含永久锁）、cond（signal→wait）、sem、barrier、spin、create/join、原子
+   acquire/release，全部编码成 HB 边。
+3. **race = sameAddress ∧ 一个写 ∧ 跨线程 ∧ 非原子 ∧ 相邻**。
 
-第一期 BMC 对「join-数组-循环」保守报 UNKNOWN（`pthread-numerical-integration` 是唯一剩 FP）。
-但这个用例**恰好暴露了 IKOS 相对现有工具的两个独特优势**，值得重点攻关：
+**第一期只做了「mutex 的 unlock→lock 边」**，缺 (1) 整个地址编码、(2) cond/sem/barrier/spin/永久锁。
+缺了的这些原语**不是「编不出」，而是「编了就破坏欠近似 soundness」**——所以用 gate 把含它们的文件
+整体挡成 UNKNOWN（见 theory-mapping §2.1.17 的 `has_unmodeled_sync` 门）。
+
+## 5. 工程分期
+
+- **第一期（已落地：全局变量 + mutex + 伪锁 + cond_wait）**：只处理两访问都是**同一个 GlobalMemoryLocation**
+  （DynAlloc 排除——per-thread malloc 同入口多实例坍缩成同 cell，放开误报）；同步只 mutex + 伪锁 + cond_wait。
+  sem/barrier/spin/C11 原子 → 保守 UNKNOWN。展开器 DAG-only，遇回边标 `incomplete` → UNKNOWN。
+- **第二期（未做）**：地址 SMT 编码（`address(e)` + `equal`）支持堆对象/容器指针/thread-id 槽位；cond/sem/barrier 建模；
+  mutex 完整资源语义（永久锁）。
+- **第三期（未做）**：从「判一对」扩展到「判所有 demote 对」；求解器缓存、增量求解。
+
+## 6. helper 内联（一期落地，commit fa3c4aa）
+
+**根因**：原 BMC 门要求「访问语句直接在线程入口函数里」（`fa->name() == a0.thread_id`），而展开器
+`unroll_to(func, target)` 只沿 CFG 走、**不跟进函数调用**。于是访问在 helper 里（如 40_barrier 的
+`Barrier2()`、pthread-atomic 的 `__VERIFIER_atomic_dec_a`）时，`fa->name()`（helper 名）≠ `thread_id`
+（`thr1`）→ 门失败 → UNKNOWN。
+
+**修复**：`dfs_paths` 遇「有函数体的直接调用」时递归展开 callee 的 CFG（`depth < MAX_INLINE_DEPTH=8`），
+把 helper 里的 Load/Store/Lock/Unlock 事件 + target 收进路径；`confirm_race` 的门从「访问必须在 thread 入口」
+放宽为「访问在 thread 入口、或在其有限深度的 helper 调用链里」（`bundle->function_or_null(thread_id)` 解析）。
+
+**内联暴露的 4 类 FP 与对应 gate**（实测逐文件核实，每个 gate 只做「不报 FALSE、退 UNKNOWN」）：
+
+| FP 机制 | 代表文件 | gate |
+|---|---|---|
+| 单调用原子函数内联（`__VERIFIER_atomic_dec_a` 等裸访问） | pthread-atomic | `bmc_skip_inline`（跳过 `__VERIFIER_atomic_*`/`__atomic_*`/`__sync_*`） |
+| helper 带循环（DAG-only 展开器不精确） | — | `function_has_loop`（跳过含回边的 helper） |
+| 无锁协议（原子区外快照读 × 原子区内写，线性化签名） | elimination_backoff_stack | `function_has_atomic_section`（跳过含 `__VERIFIER_atomic_begin/end` 的 helper） |
+| 隔代 create/join（A→C→B 跨线程链，两线程 po+mutex 看不到中间线程 C 的 join） | race-4_1-thread_local_vars | 隔代祖先门（`_thread_ancestors` − `_thread_creators`） |
+
+## 7. 落地结果（实测 A/B 全量）
+
+| 里程碑 | TP | FP | TN | FN | 得分 |
+|---|---|---|---|---|---|
+| demote 基线（BMC 关） | 0 | 0 | 706 | 0 | 1412 |
+| demote + BMC 一期 | 64 | 0 | 706 | 0 | 1476 |
+| **+ helper 内联（fa3c4aa）** | **85** | **0** | 706 | 0 | 1497 |
+| **+ cast 包裹线程函数（resolve_thread_function）** | **85** | **0** | **709** | **0** | **1503** |
+
+- `resolve_thread_function`：解开 `(void*(*)(void*)) myPartOfCalc` 的 Bitcast 包裹（`build_thread_creators`
+  与 `exec_pthread_create` 对齐），+3 TN（pthread-numerical-integration 的 numberOfIntervals 不再误判）。
+
+## 8. 尚未做（后续路线，按杠杆排序）
+
+1. **精确 create/join HB（区间时钟）**：现在的「隔代祖先门」是保守近似，会误挡「隔代真竞争」
+   （main 与孙子线程在 create 与 join 之间的竞争，cost ~1 TP）。真正的解法是在 `encode.hpp` 给每个
+   线程加区间时钟 `S_T < E_T` + spawn/join 边，才能既不漏报也不误报。直接父子竞争不受当前门影响。
+2. **无锁协议建模**：elimination_backoff_stack 的 race-free 是**线性化定理**，不是 happens-before，
+   锁集/HB（goblint 同款伪锁）证明不了。当前用保守 gate 挡成 UNKNOWN，不建模。
+3. **值域可行性（原二期）**：`int_to_interval` 跳不可达分支防「条件写」FP。当前一期没暴露条件写 FP
+   （A/B FP=0），暂不需要；若后续更激进的内联暴露它，再做。
+
+## 9. 🚩 能力边界 = 潜在独特优势
+
+第一期 BMC 对「join-数组-循环」保守报 UNKNOWN（`pthread-numerical-integration`）。但这类用例**恰好暴露
+IKOS 相对现有工具的两个独特优势**：
 
 | 难点 | 现有工具现状（已实测） | IKOS 的优势 |
 |---|---|---|
-| **double 浮点运算** | **Dartagnan 直接 CRASH**（`UnsupportedOperationException: Unsupported type in double`）；goblint / UAutomizer / CPAchecker 都 UNKNOWN 或 error | IKOS 用 APRON（多面体/octagon）**天然支持 double**，数值域不缺 |
-| **join 句柄是数组 + 变量下标（循环）** | 现有工具要么不建模 join-HB、要么数组摘要不够 → 全 UNKNOWN，**没有工具能解** | IKOS 是**抽象解释**框架，天然适合上 **Cousot & Logozzo POPL'11 分区数组域（partitioned array summarization）**，正是「thread-id 槽位桶（~22 FP）+ join-数组句柄」这类「循环 + 数组 + 句柄」问题的正解 |
+| double 浮点运算 | Dartagnan 直接 CRASH；goblint/UAutomizer/CPAchecker 都 UNKNOWN/error | IKOS 用 APRON（多面体/octagon）天然支持 double |
+| join 句柄是数组 + 变量下标（循环） | 现有工具要么不建模 join-HB、要么数组摘要不够 → 全 UNKNOWN | IKOS 是抽象解释框架，天然适合上 Cousot & Logozzo POPL'11 分区数组域 |
 
-结论：这不是「我能力不够所以放弃」，而是「**别人根本没资格碰这个题（double 就崩了），我有两条别人没有的路（double + 数组摘要域）**」。当前记为 UNKNOWN 是保守 gate 的副作用；一旦上数组摘要域，可同时攻下「thread-id 桶 ~22 FP」和这个 join-数组用例，是登顶 no-data-race 榜的关键杠杆。参见 memory `join-array-double-unique-advantage`。
+当前记为 UNKNOWN 是保守 gate 的副作用；一旦上数组摘要域，可同时攻下「thread-id 桶」和 join-数组用例，
+是登顶 no-data-race 榜的关键杠杆。参见 memory `join-array-double-unique-advantage`。
 
+---
+
+*本文由 `ikos-bmc-design.md`（一期设计）、`ikos-bmc-helper-inlining-design.md`（二期/helper 内联）、
+`ikos-bmc-learning-notes.md`（Dartagnan CAT 讲义）三份合并而成；CAT 讲义的原始推导过程已随 git 历史保留。*

@@ -90,17 +90,21 @@
 
 ### 当前基线（2026 冻结集全量，1029 任务，**全部 ILP32**）
 
-TP=235 FP=88 TN=706 **FN=0** err=0；precision 72.8%。红线 FN=0 守住。
+**提交模式（`--demote-race-to-unknown` + `IKOS_BMC_RECOVER=1`）实测：TP=85 / FP=0 / TN=709 / FN=0 / unknown=235 = 1503 分。** 红线 FN=0 守住，且 FP=0（两层判定架构，见 `docs/ikos-race-theory-mapping.md` §2.4）。
 
-**得分（用 2026 官方公式 TRUE=+2 / FALSE=+1 / FP=−16 / FN=−32）**：
-- 现状（报全部 race）：706×2 + 235×1 − 88×16 = **+239**。
-- **带 `--demote-race-to-unknown`（已提交 `3f07297`）：706×2 = +1412，FN=0 FP=0**。
-- **BMC 找回 TP（`IKOS_BMC_RECOVER=1 --demote`，本会话落地）**：TP 64 / FP 0 / FN 0 → **706×2 + 64 = 1476**（已超 Goblint 1426）。8 个 sound 修复：mutex 身份（`ac747e0`）、`__VERIFIER_atomic` 伪锁（`2f46dbc`）、both-held 锁门（`018715b`）、mutex 数组偏移 + 良性循环（`790df08`）、cond_wait=unlock+lock（`4278e6b`）、结构偏移回退（`1408afe`）、偏移区间相交别名门（`20d3a9e`）。
-- 对比 SV-COMP 2026 no-data-race 官方榜：Goblint 1426（#1）、Goblint-Par 1422（#2）、**IKOS demote 1412 / BMC 1476（#3，独立工具里 #2）**、Deagle 1352、UAutomizer 1295、Dartagnan 1186、CPAchecker 577。
+**得分（TRUE=+2 / FALSE=+1 / FP=−16 / FN=−32）演进**：
 
-### 滚动集（SV-COMP 2027 未冻结，1030 任务，全部 ILP32）
+| 里程碑 | TP | FP | TN | FN | 得分 |
+|---|---|---|---|---|---|
+| 直报全部 race（无 demote） | — | 88 | 706 | 0 | 负（FP=−16 不可提交） |
+| `--demote-race-to-unknown` | 0 | 0 | 709 | 0 | 1418 |
+| + BMC 一期（8 个 sound 修复） | 64 | 0 | 706 | 0 | 1476 |
+| + helper 内联（fa3c4aa） | 85 | 0 | 706 | 0 | 1497 |
+| + cast 包裹线程函数（resolve_thread_function） | **85** | **0** | **709** | **0** | **1503** |
 
-`IKOS_BMC_RECOVER=1 --demote` 实测：**TP=64 FP=0 TN=707 FN=0 err=1(timeout) unknown=258 → 707×2 + 64 = 1478**。0 FN 0 FP 守住。err=1 为 `weaver/chl-poker-hand-subst.wvr.c` 30s 超时（真实 90s/300s 限内大概率通过，非 soundness 问题）。
+- 对比 SV-COMP 2026 no-data-race 官方榜：Goblint 1426（#1）、Goblint-Par 1422（#2）、**IKOS 1503**、Deagle 1352、UAutomizer 1295、Dartagnan 1186、CPAchecker 577。
+- 8 个 sound 修复（BMC 一期）：mutex 身份（`ac747e0`）、`__VERIFIER_atomic` 伪锁（`2f46dbc`）、both-held 锁门（`018715b`）、mutex 数组偏移 + 良性循环（`790df08`）、cond_wait=unlock+lock（`4278e6b`）、结构偏移回退（`1408afe`）、偏移区间相交别名门（`20d3a9e`）。详见 `ikos-bmc-design.md` §7。
+- 剩余 235 UNKNOWN 的拆桶（~150 lost-TP + ~85 lost-TN）与回收杠杆见 `ikos-race-theory-mapping.md` §3.2。
 
 ### 独特优势（已用 Dartagnan 逐文件 verdict 交叉验证）
 
@@ -123,7 +127,7 @@ TP=235 FP=88 TN=706 **FN=0** err=0；precision 72.8%。红线 FN=0 守住。
 
 > ⚠️ 基线更正（2026-09-29 → 2026-09-30）：1029 个 no-data-race 任务**全是 ILP32**（无 LP64 任务）。此前 FP=173 是**默认 LP64（错误 arch）**测的；`-m32`（正确 ILP32）一度 FP=404 —— 根因不是「数值域退化」，而是上面那条 bitcast 让 `__VERIFIER_atomic_*` 识别全线失效。修完后正确 ILP32 的 108 FP **比错误 LP64 的 172 FP 还低**。
 
-剩余 FP 大头（对着 ILP32 重测）：weaver 的 ⊤ points-to、无锁线性化、per-thread 槽位、互斥传递 HB、container_of 等，见 `docs/ikos-race-theory-mapping.md` §3.2。注册/提交不看成绩，见 §5。
+> 说明：上面「已落地的 sound FP 修复」是 **demote+BMC 之前的直报模式**（FP 404→88）历史；提交模式经 demote+BMC 后 FP 已归 0。剩余的 235 UNKNOWN 拆桶见 `docs/ikos-race-theory-mapping.md` §3.2（weaver ⊤ points-to、无锁线性化、per-thread 槽位、互斥传递 HB、container_of 等）。注册/提交不看成绩，见 §5。
 
 ## 7. 相关仓库
 

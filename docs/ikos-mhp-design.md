@@ -1,5 +1,9 @@
 # IKOS MHP 对标 goblint 设计文档
 
+> **⚠️ 状态：未实施（待办专项）。** 本文是「实例级 create/join HB + 祖先关系」的**设计草案**，尚未落地。
+> 当前代码里只落地了它的一个子集：`_thread_creators` / `_thread_ancestors` 的传递闭包（用于抽象层的隔代
+> create 边 HB 与 BMC 的隔代祖先门，见 `data_race.cpp` `build_thread_creators`）。落地前仅供思路参考。
+>
 > 目的：梳理 goblint 的 MHP（may-happen-in-parallel）抽象，对照 IKOS 现状，给出一个结合 IKOS 实际的、
 > 可落地的 MHP 设计方案，作为后续「实例级 create/join HB + 祖先关系」专项的工作依据。
 >

@@ -1,7 +1,7 @@
 # SV-COMP 2027 最终核验清单（代码实查版）
 
 > 生成日期：2026-10-03
-> 依据：`docs/SVCOMP-FAQ中文翻译.md`、`SVCOMP2027-规则全文翻译与核验.md`、`SVCOMP2027-提交页翻译与核验.md`、`SVCOMP2027-基准页翻译.md` 四份文件，逐条对照**代码实查**（非文档/记忆）。线上核实：FM-Tools 格式（goblint.yml）、bench-defs category-structure.yml。
+> 依据：官方四份翻译（`docs/archive/SVCOMP-FAQ中文翻译.md`、`SVCOMP2027-规则全文翻译与核验.md`、`SVCOMP2027-提交页翻译与核验.md`、`SVCOMP2027-基准页翻译.md`，已归档），逐条对照**代码实查**（非文档/记忆）。线上核实：FM-Tools 格式（goblint.yml）、bench-defs category-structure.yml。
 > 状态图例：✅ 已具备 / ⚠️ 部分/需补 / ❌ 缺失 / 🚧 未验证（外部动作）
 
 ---
@@ -126,12 +126,12 @@
 | G1 | 计分：FALSE 错=−16、TRUE 错=−32、UNKNOWN=0 | 规则 §9 明确；`--demote-race-to-unknown` + BMC 重确认；**实测冻结集 TP=85/FP=0/TN=709/FN=0 = 1503 分** | ✅ |
 | G2 | ubuntu:24.04 干净容器跑通 smoketest | `required_ubuntu_packages` 已列（含 libz3-4），但未在干净容器实测 | 🚧 |
 | G3 | data_model ILP32/LP64 匹配 | `svcomp_witness.py`：`--data-model` → `-m 32/64`，witness 头部写 `data_model`；实测全量 ILP32 | ✅ |
-| G4 | witness 见证被 validator 验收 | 见证 2.2 已用 CPAchecker 复核：FALSE 见证被确认（正确调用见 `ikos-bmc-helper-inlining-design.md` §10/记忆） | ✅ |
+| G4 | witness 见证被 validator 验收 | 见证 2.2 已用 CPAchecker 复核：FALSE 见证被确认（正确调用见 `ikos-bmc-design.md` §7/记忆） | ✅ |
 | G5 | 归档/仓库公开可访问 | Zenodo 已上传（DOI `10.5281/zenodo.23122650`）；GitHub `github.com/2393591260/ikos-conc` | ⚠️ 归档需重传新版 |
 
 ---
 
-## 八、本次代码实查的**新增结论**（四份翻译文档里没有的）
+## 八、本次代码实查的**新增结论**（四份翻译文档里没有的，原文见 `docs/archive/`）
 
 1. **`fm-tools-entry.yml` 缺 `competition_participations`（参赛声明+jury member）**，且 jury member 位置错（应在 `competition_participations[].jury_member`，非仅 `maintainers`）。这是 B3/B4/E4 的硬缺口，也是 E1「flags 正确」的隐性失败点。
 2. **`fm-tools-entry.yml` 缺 `techniques` / `frameworks_solvers` / `literature`** 三个格式 2.0 字段（goblint.yml 有）。
