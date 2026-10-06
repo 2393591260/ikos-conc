@@ -45,6 +45,7 @@
 #include <ikos/analyzer/analysis/bmc/bmc.hpp>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
+#include <ikos/analyzer/analysis/pointer/function.hpp>
 #include <ikos/analyzer/support/cast.hpp>
 #include <ikos/analyzer/util/log.hpp>
 #include <ikos/analyzer/util/source_location.hpp>
@@ -1238,7 +1239,35 @@ DataRaceChecker::~DataRaceChecker() {
             (transitive_ancestor(b0.thread_id, a0.thread_id) &&
              !direct_creator(b0.thread_id, a0.thread_id));
         if (fa != nullptr && fb != nullptr && !transitive_ordered) {
-          bmc_confirmed = bmc::confirm_race(fa, a0.stmt, fb, b0.stmt);
+          // 间接调用解析：用 FunctionPointerAnalysis（流不敏感 Andersen）把
+          // `call %fp()` 的 fp 解析成候选目标集合（04-mutex_27 的 g()→{good,bad}，
+          // 找回 bad() 里 global++ 与 main printf 的竞态）。找不到/⊤ → 空集 →
+          // 不内联 → 对应访问看不到 → UNKNOWN（保守，只丢 TP）。
+          bmc::IndirectCalleeResolver resolve_indirect;
+          if (this->_ctx.function_pointer != nullptr) {
+            FunctionPointerAnalysis* fpa = this->_ctx.function_pointer;
+            VariableFactory* vf = this->_ctx.var_factory;
+            resolve_indirect = [fpa, vf](ar::CallBase* call) {
+              std::vector< ar::Function* > out;
+              auto* iv = dyn_cast< ar::InternalVariable >(call->called());
+              if (iv == nullptr) {
+                return out;
+              }
+              PointsToSet pts =
+                  fpa->results().get(vf->get_internal(iv)).points_to();
+              if (pts.is_bottom() || pts.is_top()) {
+                return out;
+              }
+              for (MemoryLocation* ml : pts) {
+                if (auto* fm = dyn_cast< FunctionMemoryLocation >(ml)) {
+                  out.push_back(fm->function());
+                }
+              }
+              return out;
+            };
+          }
+          bmc_confirmed =
+              bmc::confirm_race(fa, a0.stmt, fb, b0.stmt, resolve_indirect);
         }
       }
     }

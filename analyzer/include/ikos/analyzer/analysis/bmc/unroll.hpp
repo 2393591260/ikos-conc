@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -45,6 +46,12 @@ struct BmcEvent {
   BmcEvent(ar::Statement* s, EvKind k, std::uint64_t m = 0)
       : stmt(s), kind(k), mutex(m) {}
 };
+
+/// 间接调用的候选目标解析器（函数指针）：data_race.cpp 用 FunctionPointerAnalysis
+/// 结果填充，把 `call %fp()` 的 fp 解析成可能的目标函数集合。默认空 = 不解析间接
+/// 调用（保守，只丢 TP 不引 FP）。
+using IndirectCalleeResolver =
+    std::function< std::vector< ar::Function* >(ar::CallBase*) >;
 
 /// 锁的语法同一性：把 arg0 解析到其底层全局变量，用 GlobalVariable 指针做身份。
 /// 不能直接用 `*arg_begin()` 的裸指针——同一把锁在 lock / unlock 两个调用点
@@ -513,6 +520,23 @@ inline bool function_has_atomic_section(ar::Function* f) {
   return false;
 }
 
+/// 一个函数体能否被 BMC 内联（有体 + 非单调用原子/assume + 无循环 + 不含原子区）。
+inline bool inline_ok(ar::Function* f) {
+  if (f == nullptr || f->body_or_null() == nullptr) {
+    return false;  // extern（pthread_* / 无体）
+  }
+  if (bmc_skip_inline(f->name())) {
+    return false;  // 原子单调用 / assume
+  }
+  if (function_has_loop(f)) {
+    return false;  // 带循环的 helper
+  }
+  if (function_has_atomic_section(f)) {
+    return false;  // helper 里包 __VERIFIER_atomic_begin/end（无锁协议）
+  }
+  return true;
+}
+
 /// 应被内联跟进的直接调用目标：直接函数指针调用 + 有函数体 + 非单调用原子 +
 /// 无循环 + 不含原子区标记。否则返回 nullptr（不跟进，保守）。
 inline ar::Function* direct_callee(ar::CallBase* call) {
@@ -522,19 +546,7 @@ inline ar::Function* direct_callee(ar::CallBase* call) {
     return nullptr;
   }
   ar::Function* f = cst->function();
-  if (f->body_or_null() == nullptr) {
-    return nullptr;  // extern（pthread_* / 无体）
-  }
-  if (bmc_skip_inline(f->name())) {
-    return nullptr;  // 原子单调用 / assume
-  }
-  if (function_has_loop(f)) {
-    return nullptr;  // 带循环的 helper
-  }
-  if (function_has_atomic_section(f)) {
-    return nullptr;  // helper 里包 __VERIFIER_atomic_begin/end（无锁协议）
-  }
-  return f;
+  return inline_ok(f) ? f : nullptr;
 }
 
 /// 路径敏感的 DFS：从 `bb` 出发，沿 CFG 后继枚举到 `target` 的所有路径。
@@ -545,7 +557,8 @@ inline ar::Function* direct_callee(ar::CallBase* call) {
 void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
                std::vector< BmcEvent >& current,
                std::vector< std::vector< BmcEvent > >& out,
-               std::vector< ar::BasicBlock* >& in_stack, int depth = 0) {
+               std::vector< ar::BasicBlock* >& in_stack,
+               const IndirectCalleeResolver& resolve_indirect = {}, int depth = 0) {
   // 回边检测：bb 已在栈上 → 循环，跳过（不展开）。
   for (ar::BasicBlock* on_stack : in_stack) {
     if (on_stack == bb) {
@@ -604,11 +617,25 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
     // helper 内联：跟进有函数体、非原子、无循环的直接调用，把 helper 里的
     // 访问/锁事件收进路径（target 在 helper 里时在这里命中）。depth 上限防递归
     // 爆炸；跟不进的调用（extern/原子/循环）保守忽略 → 对应访问看不到 → UNKNOWN。
+    // 间接调用（函数指针）走 resolve_indirect（FPA 候选集），每个候选各一条路径。
     if (depth < MAX_INLINE_DEPTH) {
       if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
-        if (ar::Function* callee = direct_callee(call)) {
-          dfs_paths(callee->body_or_null()->entry_block(), target, current,
-                    out, in_stack, depth + 1);
+        std::vector< ar::Function* > callees;
+        if (ar::Function* d = direct_callee(call)) {
+          callees.push_back(d);
+        } else if (resolve_indirect) {
+          for (ar::Function* f : resolve_indirect(call)) {
+            if (inline_ok(f)) {
+              callees.push_back(f);
+            }
+          }
+        }
+        for (ar::Function* callee : callees) {
+          // copy per callee（同 Stage 1 回溯坑：多候选不能用同一 current，否则
+          // 上一候选的事件残留进下一候选 → 矛盾路径）。
+          std::vector< BmcEvent > callee_path = current;
+          dfs_paths(callee->body_or_null()->entry_block(), target, callee_path,
+                    out, in_stack, resolve_indirect, depth + 1);
         }
       }
     }
@@ -726,7 +753,9 @@ struct UnrollResult {
 };
 
 /// 从函数入口到 `target` 的所有路径（事件序列）。
-inline UnrollResult unroll_to(ar::Function* func, ar::Statement* target) {
+inline UnrollResult unroll_to(
+    ar::Function* func, ar::Statement* target,
+    const IndirectCalleeResolver& resolve_indirect = {}) {
   UnrollResult result;
   ar::Code* body = func->body_or_null();
   if (body == nullptr || !body->has_entry_block()) {
@@ -734,7 +763,8 @@ inline UnrollResult unroll_to(ar::Function* func, ar::Statement* target) {
   }
   std::vector< BmcEvent > current;
   std::vector< ar::BasicBlock* > in_stack;
-  dfs_paths(body->entry_block(), target, current, result.paths, in_stack);
+  dfs_paths(body->entry_block(), target, current, result.paths, in_stack,
+            resolve_indirect);
 
   // 精确能力边界：target 的块若从某回边（循环）头前向可达，则要看循环会不会
   // 影响访问（incomplete → UNKNOWN）：
