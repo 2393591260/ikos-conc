@@ -21,7 +21,7 @@ namespace analyzer {
 namespace bmc {
 
 /// 事件种类。
-enum class EvKind { Read, Write, Lock, Unlock };
+enum class EvKind { Read, Write, Lock, Unlock, Assume };
 
 /// __VERIFIER_atomic_begin/end 的合成全局锁 id（与 abstract checker 的
 /// PSEUDO_ATOMIC_LOCK 同值）。伪原子段 = 一把所有线程共享的锁。
@@ -29,10 +29,18 @@ constexpr std::uint64_t PSEUDO_ATOMIC_LOCK = 0xA7E0AD1CULL;
 
 /// 一个 BMC 事件（内存访问或锁同步）。
 struct BmcEvent {
-  ar::Statement* stmt;      // 对应的 AR 语句
-  EvKind kind;
+  ar::Statement* stmt = nullptr;  // 对应的 AR 语句
+  EvKind kind = EvKind::Read;
   std::uint64_t mutex = 0;  // Lock/Unlock 的锁对象语法同一性（arg0 指针）；内存事件为 0
+  // 符号地址（SMT 同址门）：base = 全局数组指针身份；const_off = 常量字节偏移；
+  // var_id/coeff = 单个变量下标项 `coeff * var`（var_id==0 ⟹ 纯常量偏移）。
+  // 提取失败时保持 base==0（调用方保守不确认）。
+  std::uint64_t base = 0;
+  std::int64_t const_off = 0;
+  std::uint64_t var_id = 0;
+  std::int64_t coeff = 0;
 
+  BmcEvent() = default;
   BmcEvent(ar::Statement* s, EvKind k, std::uint64_t m = 0)
       : stmt(s), kind(k), mutex(m) {}
 };
@@ -199,14 +207,159 @@ inline bool is_verifier_atomic(ar::CallBase* call) {
          nm.find("__VERIFIER_atomic_end") != std::string::npos;
 }
 
-/// 把一个语句分类成 BMC 事件（内存/锁/无关）。
+/// 提取一次内存访问指针的符号字节偏移：沿 def-chain 穿透 PointerShift / 值保持
+/// cast，累加常量项（stride*const）与至多一个变量下标项（stride*var）。下标只认
+/// 直接 InternalVariable；仿射（i+1）/多变量/phi 等不干净的形态返回 false（base
+/// 保持 0，调用方保守不确认，只丢 TP 不引 FP）。
+inline bool symbolic_byte_offset(ar::Value* ptr, BmcEvent& ev) {
+  for (int depth = 0; depth < 16; ++depth) {
+    if (auto* gv = core::dyn_cast< ar::GlobalVariable >(ptr)) {
+      ev.base = reinterpret_cast< std::uint64_t >(gv);
+      return true;
+    }
+    auto* iv = core::dyn_cast< ar::InternalVariable >(ptr);
+    if (iv == nullptr) {
+      return false;
+    }
+    ar::Statement* def = unique_def_bmc(iv);
+    if (auto* ps = core::dyn_cast_or_null< ar::PointerShift >(def)) {
+      for (std::size_t i = 0; i < ps->num_terms(); ++i) {
+        auto term = ps->term(i);
+        std::int64_t stride = term.first.to_z_number().to< std::int64_t >();
+        if (auto* ic = core::dyn_cast< ar::IntegerConstant >(term.second)) {
+          ev.const_off +=
+              stride * ic->value().to_z_number().to< std::int64_t >();
+        } else if (auto* viv =
+                       core::dyn_cast< ar::InternalVariable >(term.second)) {
+          if (ev.var_id != 0 &&
+              ev.var_id != reinterpret_cast< std::uint64_t >(viv)) {
+            return false; // 多变量下标：不干净
+          }
+          ev.var_id = reinterpret_cast< std::uint64_t >(viv);
+          ev.coeff += stride;
+        } else {
+          return false; // 仿射/其它下标：不干净
+        }
+      }
+      ptr = ps->pointer();
+      continue;
+    }
+    if (auto* un = core::dyn_cast_or_null< ar::UnaryOperation >(def)) {
+      switch (un->op()) {
+        case ar::UnaryOperation::Bitcast:
+        case ar::UnaryOperation::PtrToUI:
+        case ar::UnaryOperation::UIToPtr:
+          ptr = un->operand();
+          continue;
+        default:
+          return false;
+      }
+    }
+    return false;
+  }
+  return false;
+}
+
+/// 判断一个 CallBase 是否是 assume 语义调用（assume_abort_if_not / __VERIFIER_assume）。
+/// 它们「assume 实参为真」（假分支 abort/不可达），不能当普通调用跳过。
+inline bool is_assume_call(ar::CallBase* call) {
+  auto* cst = core::dyn_cast< ar::FunctionPointerConstant >(call->called());
+  if (cst == nullptr || cst->function() == nullptr) {
+    return false;
+  }
+  const std::string& nm = cst->function()->name();
+  return nm == "assume_abort_if_not" || nm == "__VERIFIER_assume";
+}
+
+/// 取 assume 实参的「正向比较」（cond 为真时成立的比较）。实参是某比较的结果，
+/// 前端用 add_comparison 拆成真/假两块：真块里 `Comparison(pred,l,r); %c=true`、
+/// 假块里 `Comparison(inverse(pred),l,r); %c=false`。先穿透 cast/变量赋值到达比较
+/// 结果变量，再找真块里的正向 Comparison；找不到返回 nullptr（保守，不新增约束）。
+inline ar::Comparison* forward_comparison_of(ar::Value* arg) {
+  for (int depth = 0; depth < 16; ++depth) {
+    auto* iv = core::dyn_cast< ar::InternalVariable >(arg);
+    if (iv == nullptr) {
+      return nullptr;
+    }
+    ar::Code* code = iv->code();
+    if (code == nullptr) {
+      return nullptr;
+    }
+    std::vector< ar::Statement* > defs;
+    for (ar::BasicBlock* bb : *code) {
+      for (ar::Statement* s : *bb) {
+        if (s->result_or_null() == iv) {
+          defs.push_back(s);
+        }
+      }
+    }
+    if (defs.empty()) {
+      return nullptr;
+    }
+    if (defs.size() == 1) {
+      // 单 def：cast / 变量赋值 → 继续 peel。
+      ar::Statement* d = defs[0];
+      if (auto* as = core::dyn_cast< ar::Assignment >(d)) {
+        arg = as->operand();
+        continue;
+      }
+      if (auto* un = core::dyn_cast< ar::UnaryOperation >(d)) {
+        switch (un->op()) {
+          case ar::UnaryOperation::ZExt:
+          case ar::UnaryOperation::SExt:
+          case ar::UnaryOperation::UTrunc:
+          case ar::UnaryOperation::STrunc:
+          case ar::UnaryOperation::Bitcast:
+          case ar::UnaryOperation::PtrToUI:
+          case ar::UnaryOperation::UIToPtr:
+            arg = un->operand();
+            continue;
+          default:
+            return nullptr;
+        }
+      }
+      return nullptr;
+    }
+    // 多 def = 比较结果（真/假块）：找「iv = true」块里的正向比较。
+    for (ar::BasicBlock* bb : *code) {
+      for (auto it = bb->begin(); it != bb->end(); ++it) {
+        ar::Statement* s = *it;
+        if (s->result_or_null() != iv) {
+          continue;
+        }
+        if (auto* as = core::dyn_cast< ar::Assignment >(s)) {
+          auto* cst = core::dyn_cast< ar::IntegerConstant >(as->operand());
+          if (cst != nullptr && !cst->value().is_zero()) {
+            for (auto jt = bb->begin(); jt != it; ++jt) {
+              if (auto* cmp = core::dyn_cast< ar::Comparison >(*jt)) {
+                return cmp;
+              }
+            }
+          }
+        }
+      }
+    }
+    return nullptr;
+  }
+  return nullptr;
+}
+
+/// 把一个语句分类成 BMC 事件（内存/锁/假设/无关）。
 inline bool classify_event(ar::Statement* stmt, BmcEvent& ev) {
-  if (core::isa< ar::Load >(stmt)) {
+  if (auto* load = core::dyn_cast< ar::Load >(stmt)) {
     ev = BmcEvent{stmt, EvKind::Read};
+    symbolic_byte_offset(load->operand(), ev);
     return true;
   }
-  if (core::isa< ar::Store >(stmt)) {
+  if (auto* store = core::dyn_cast< ar::Store >(stmt)) {
     ev = BmcEvent{stmt, EvKind::Write};
+    symbolic_byte_offset(store->pointer(), ev);
+    return true;
+  }
+  if (core::isa< ar::Comparison >(stmt)) {
+    // 路径条件（assume 约束）：比较在 AR 里就是 refine 语句，路径上每条
+    // Comparison 都成立，收集起来在 encode 阶段编码成 SMT 约束。
+    ev = BmcEvent{stmt, EvKind::Assume};
     return true;
   }
   if (auto* call = core::dyn_cast< ar::CallBase >(stmt)) {
@@ -349,10 +502,25 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
 
   for (auto sit = bb->begin(), send = bb->end(); sit != send; ++sit) {
     ar::Statement* s = *sit;
-    // pthread_cond_wait(&cond, &mutex)：POSIX 原子 release mutex → 阻塞 →
-    // re-acquire。竞态判定等价于 unlock(mutex) 后 lock(mutex)（net 不变，但释放
-    // 期间别的线程能拿锁）。signal/broadcast 无 HB（数据由 mutex 保护，与
-    // SV-COMP 语义一致，见 condvar / 13-privatized_67）。
+    // 死路径终止：ar::Unreachable，或 abort()/exit()（LibcAbort/LibcExit）——
+    // 否则 abort 分支会「掉回」调用方误报竞争。
+    if (core::isa< ar::Unreachable >(s)) {
+      in_stack.pop_back();
+      return;
+    }
+    if (auto* call0 = core::dyn_cast< ar::CallBase >(s)) {
+      if (auto* cst =
+              core::dyn_cast< ar::FunctionPointerConstant >(call0->called())) {
+        if (cst->function() != nullptr) {
+          const std::string& nm0 = cst->function()->name();
+          if (nm0 == "libc.abort" || nm0 == "libc.exit") {
+            in_stack.pop_back();
+            return;
+          }
+        }
+      }
+    }
+    // pthread_cond_wait(...) 处理
     if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
       if (is_cond_wait(call)) {
         std::uint64_t m = cond_wait_mutex_id(call);
@@ -363,6 +531,16 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
     BmcEvent ev(nullptr, EvKind::Read);
     if (classify_event(s, ev)) {
       current.push_back(ev);
+    }
+    // assume 语义（Dartagnan ResolveAborts → CondJump(cond, DEAD_END, continue)）：
+    // assume_abort_if_not/__VERIFIER_assume 断言实参为真。把实参的正向比较也压成
+    // Assume 事件，使「假分支」的正向约束与反向约束矛盾 → UNSAT（即假分支死）。
+    if (auto* call2 = core::dyn_cast< ar::CallBase >(s)) {
+      if (is_assume_call(call2) && call2->arg_begin() != call2->arg_end()) {
+        if (ar::Comparison* cmp = forward_comparison_of(*call2->arg_begin())) {
+          current.push_back(BmcEvent{cmp, EvKind::Assume});
+        }
+      }
     }
     if (s == target) {
       out.push_back(current);
@@ -381,9 +559,12 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
       }
     }
   }
+  // 后继 = 备选路径：每个后继用 `current` 的一份拷贝，避免死支的事件残留进
+  // 下一条路径（否则真/假分支的相反 Comparison 会混进同一路径 → 矛盾 → UNSAT）。
   for (auto succ = bb->successor_begin(), succ_end = bb->successor_end();
        succ != succ_end; ++succ) {
-    dfs_paths(*succ, target, current, out, in_stack);
+    std::vector< BmcEvent > succ_path = current;
+    dfs_paths(*succ, target, succ_path, out, in_stack);
   }
 
   in_stack.pop_back();

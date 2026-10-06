@@ -84,6 +84,174 @@ inline bool check_race(const std::vector< BmcEvent >& pathA,
     s.add(z3::implies(!ord, clock[nA + unlockB[m]] < clock[lockA[m]]));
   }
 
+  // var_id -> SMT 变量：地址相等与 assume 约束共享同一映射（同一 SSA 值 → 同一
+  // SMT 变量）。
+  std::map< std::uint64_t, z3::expr > vars;
+  auto var_of = [&](std::uint64_t vid) -> z3::expr {
+    auto it = vars.find(vid);
+    if (it != vars.end()) {
+      return it->second;
+    }
+    z3::expr v = ctx.int_const(("v" + std::to_string(vid)).c_str());
+    vars.emplace(vid, v);
+    return v;
+  };
+
+  // 编码一条 `var pred const` / `const pred var` 的整数比较；指针/浮点等无法编码
+  // 的比较置 `unencodable=true`（调用方据此保守不确认）。`var pred var` 也能编码。
+  bool unencodable = false;
+  auto encode_assume = [&](ar::Comparison* cmp) -> z3::expr {
+    ar::Value* l = cmp->left();
+    ar::Value* r = cmp->right();
+    // 指针比较（PEQ/PNE/…）或浮点比较：BMC 一期建不了模（pthread_getspecific 等
+    // 未建模函数的指针结果），置 unencodable → 不确认（sound，只丢 TP 不引 FP）。
+    switch (cmp->predicate()) {
+      case ar::Comparison::PEQ:
+      case ar::Comparison::PNE:
+      case ar::Comparison::PGT:
+      case ar::Comparison::PGE:
+      case ar::Comparison::PLT:
+      case ar::Comparison::PLE:
+      case ar::Comparison::FOEQ:
+      case ar::Comparison::FOGT:
+      case ar::Comparison::FOGE:
+      case ar::Comparison::FOLT:
+      case ar::Comparison::FOLE:
+      case ar::Comparison::FONE:
+      case ar::Comparison::FORD:
+      case ar::Comparison::FUNO:
+      case ar::Comparison::FUEQ:
+      case ar::Comparison::FUGT:
+      case ar::Comparison::FUGE:
+      case ar::Comparison::FULT:
+      case ar::Comparison::FULE:
+      case ar::Comparison::FUNE:
+        unencodable = true;
+        return ctx.bool_val(true);
+      default:
+        break;
+    }
+    // `var pred var`（两变量）：也能编码。
+    if (auto* li = core::dyn_cast< ar::InternalVariable >(l)) {
+      if (auto* ri = core::dyn_cast< ar::InternalVariable >(r)) {
+        z3::expr x = var_of(reinterpret_cast< std::uint64_t >(li));
+        z3::expr y = var_of(reinterpret_cast< std::uint64_t >(ri));
+        switch (cmp->predicate()) {
+          case ar::Comparison::UIEQ:
+          case ar::Comparison::SIEQ:
+            return x == y;
+          case ar::Comparison::UINE:
+          case ar::Comparison::SINE:
+            return x != y;
+          case ar::Comparison::UIGT:
+          case ar::Comparison::SIGT:
+            return x > y;
+          case ar::Comparison::UIGE:
+          case ar::Comparison::SIGE:
+            return x >= y;
+          case ar::Comparison::UILT:
+          case ar::Comparison::SILT:
+            return x < y;
+          case ar::Comparison::UILE:
+          case ar::Comparison::SILE:
+            return x <= y;
+          default:
+            unencodable = true;
+            return ctx.bool_val(true);
+        }
+      }
+    }
+    std::uint64_t vid;
+    std::int64_t cst;
+    bool var_on_left;
+    if (auto* li2 = core::dyn_cast< ar::InternalVariable >(l)) {
+      auto* rc = core::dyn_cast< ar::IntegerConstant >(r);
+      if (rc == nullptr) {
+        unencodable = true;
+        return ctx.bool_val(true);
+      }
+      vid = reinterpret_cast< std::uint64_t >(li2);
+      cst = rc->value().to_z_number().to< std::int64_t >();
+      var_on_left = true;
+    } else if (auto* lc = core::dyn_cast< ar::IntegerConstant >(l)) {
+      auto* ri = core::dyn_cast< ar::InternalVariable >(r);
+      if (ri == nullptr) {
+        unencodable = true;
+        return ctx.bool_val(true);
+      }
+      vid = reinterpret_cast< std::uint64_t >(ri);
+      cst = lc->value().to_z_number().to< std::int64_t >();
+      var_on_left = false;
+    } else {
+      unencodable = true;
+      return ctx.bool_val(true);
+    }
+    z3::expr x = var_on_left ? var_of(vid) : ctx.int_val(cst);
+    z3::expr y = var_on_left ? ctx.int_val(cst) : var_of(vid);
+    switch (cmp->predicate()) {
+      case ar::Comparison::UIEQ:
+      case ar::Comparison::SIEQ:
+        return x == y;
+      case ar::Comparison::UINE:
+      case ar::Comparison::SINE:
+        return x != y;
+      case ar::Comparison::UIGT:
+      case ar::Comparison::SIGT:
+        return x > y;
+      case ar::Comparison::UIGE:
+      case ar::Comparison::SIGE:
+        return x >= y;
+      case ar::Comparison::UILT:
+      case ar::Comparison::SILT:
+        return x < y;
+      case ar::Comparison::UILE:
+      case ar::Comparison::SILE:
+        return x <= y;
+      default:
+        unencodable = true;
+        return ctx.bool_val(true);
+    }
+  };
+
+  // 路径条件（assume 约束）：两路径上每条 Comparison 都成立。
+  for (const BmcEvent& e : pathA) {
+    if (e.kind == EvKind::Assume) {
+      if (auto* cmp = core::dyn_cast< ar::Comparison >(e.stmt)) {
+        s.add(encode_assume(cmp));
+      }
+    }
+  }
+  for (const BmcEvent& e : pathB) {
+    if (e.kind == EvKind::Assume) {
+      if (auto* cmp = core::dyn_cast< ar::Comparison >(e.stmt)) {
+        s.add(encode_assume(cmp));
+      }
+    }
+  }
+  // 有无法编码的比较（指针/浮点）→ 保守不确认（UNKNOWN），避免误报。
+  if (unencodable) {
+    return false;
+  }
+
+  // SMT 同址门：两个访问必须在同一 base 的同一字节偏移
+  // （const_off + coeff*var）。base 相同由 checker 的 same_global 门保证，这里只
+  // 判偏移相等；base 不同或提取失败（base==0）则不确认（保持 UNKNOWN）。
+  {
+    const BmcEvent& ea = pathA.back();
+    const BmcEvent& eb = pathB.back();
+    if (ea.base != 0 && eb.base != 0 && ea.base == eb.base) {
+      z3::expr off_a = ctx.int_val(ea.const_off);
+      z3::expr off_b = ctx.int_val(eb.const_off);
+      if (ea.var_id != 0) {
+        off_a = off_a + ctx.int_val(ea.coeff) * var_of(ea.var_id);
+      }
+      if (eb.var_id != 0) {
+        off_b = off_b + ctx.int_val(eb.coeff) * var_of(eb.var_id);
+      }
+      s.add(off_a == off_b);
+    }
+  }
+
   // 竞争查询：两个访问（各自路径最后一个事件）能否相邻。
   bool any = false;
   for (int dir = 0; dir < 2; ++dir) {

@@ -1195,8 +1195,13 @@ DataRaceChecker::~DataRaceChecker() {
       bool off_overlap = eff_interval(a0, lo_a, hi_a) &&
                          eff_interval(b0, lo_b, hi_b) && lo_a <= hi_b &&
                          lo_b <= hi_a;
+      // 裸变量下标（⊤ offset 且无常量结构偏移，如 data[i]）：抽象区间判不了同址，
+      // 交给 BMC 的 SMT 同址门（const_off + coeff*var）。sound：⊤ 可能同址，BMC
+      // 只对「证明同址」报 FALSE，仍不破 FP=0。
+      bool var_index = (a0.offset.is_top() && a0.structural_type == nullptr) ||
+                       (b0.offset.is_top() && b0.structural_type == nullptr);
       if (a0.pts.is_set() && a0.pts.size() == 1 && b0.pts.is_set() &&
-          b0.pts.size() == 1 && off_overlap) {
+          b0.pts.size() == 1 && (off_overlap || var_index)) {
         MemoryLocation* ma = *a0.pts.begin();
         MemoryLocation* mb = *b0.pts.begin();
         // 别名门：两访问的 points-to 都是 singleton（精确到单一对象）且是同一个
