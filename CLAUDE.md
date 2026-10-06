@@ -67,7 +67,7 @@ python3 svcomp_race_test.py   # SV-COMP 2026 冻结集全量（默认 /home/ruan
 
 ## 文档索引
 
-- `docs/README.md` —— 文档导航（新人从 `ikos-architecture-survey.md` → `concurrency-architecture.md` → `ikos-race-theory-mapping.md` 开始）
+- `docs/README.md` —— 文档导航（新人按里面的「学习路线」阶段 0~4 走：红线 → 理论总纲 §2.0/§2.4 → 架构 → BMC → 踩坑）
 - `docs/dev-gotchas.md` —— 完整 22 条踩坑清单
 
 ## 工作偏好
