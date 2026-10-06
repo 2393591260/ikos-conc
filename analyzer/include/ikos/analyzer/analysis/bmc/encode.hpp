@@ -25,7 +25,8 @@ namespace bmc {
 /// 判断两个访问（各线程路径的最后一个事件）是否真竞争。
 /// 返回 true = SAT（可相邻，竞争）；false = UNSAT（不可相邻，无竞争）。
 inline bool check_race(const std::vector< BmcEvent >& pathA,
-                       const std::vector< BmcEvent >& pathB) {
+                       const std::vector< BmcEvent >& pathB,
+                       ar::Function* funcA, ar::Function* funcB) {
   if (pathA.empty() || pathB.empty()) {
     return false;
   }
@@ -51,6 +52,22 @@ inline bool check_race(const std::vector< BmcEvent >& pathA,
   }
   for (std::size_t i = 0; i + 1 < nB; ++i) {
     s.add(clock[nA + i] < clock[nA + i + 1]);
+  }
+
+  // spawn HB（svcomp.cat 的 po 跨线程边）：路径里 create(T)（T = 对方线程入口函数）
+  // < T 的首事件。funcA/funcB 是两线程入口函数，Create 事件的 thread 字段存线程
+  // 函数指针。detach 无 join、只有 spawn 边；join 边（E_T < join）后续再加。
+  std::uint64_t ta = reinterpret_cast< std::uint64_t >(funcA);
+  std::uint64_t tb = reinterpret_cast< std::uint64_t >(funcB);
+  for (std::size_t i = 0; i < nA; ++i) {
+    if (pathA[i].kind == EvKind::Create && pathA[i].thread == tb) {
+      s.add(clock[i] < clock[nA]);  // A 的 create(B) < B 首事件（clock[nA] = b_0）
+    }
+  }
+  for (std::size_t i = 0; i < nB; ++i) {
+    if (pathB[i].kind == EvKind::Create && pathB[i].thread == ta) {
+      s.add(clock[nA + i] < clock[0]);  // B 的 create(A) < A 首事件（clock[0] = a_0）
+    }
   }
 
   // mutex 同步（互斥）：收集每把锁在每个路径里的 Lock/Unlock 位置。

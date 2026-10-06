@@ -189,7 +189,7 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
       if (both_held && shared_held) {
         continue;
       }
-      if (check_race(pA, pB)) {
+      if (check_race(pA, pB, funcA, funcB)) {
         return true;
       }
     }

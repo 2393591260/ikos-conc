@@ -23,7 +23,7 @@ namespace analyzer {
 namespace bmc {
 
 /// 事件种类。
-enum class EvKind { Read, Write, Lock, Unlock, Assume };
+enum class EvKind { Read, Write, Lock, Unlock, Assume, Create, Join };
 
 /// __VERIFIER_atomic_begin/end 的合成全局锁 id（与 abstract checker 的
 /// PSEUDO_ATOMIC_LOCK 同值）。伪原子段 = 一把所有线程共享的锁。
@@ -41,6 +41,9 @@ struct BmcEvent {
   std::int64_t const_off = 0;
   std::uint64_t var_id = 0;
   std::int64_t coeff = 0;
+  // Create/Join 的线程身份：Create = 线程函数指针（reinterpret_cast）；Join =
+  // 句柄身份（mutex_id_of_value 同款解析）。仅 Create/Join 事件用，其余为 0。
+  std::uint64_t thread = 0;
 
   BmcEvent() = default;
   BmcEvent(ar::Statement* s, EvKind k, std::uint64_t m = 0)
@@ -430,6 +433,35 @@ inline bool classify_event(
           is_verifier_atomic(call) ? PSEUDO_ATOMIC_LOCK : mutex_id(call, in_stack);
       ev = BmcEvent{stmt, kind, mid};
       return true;
+    }
+    // pthread_create/pthread_join → Create/Join 事件（spawn/join HB 锚点）。
+    ar::FunctionPointerConstant* cst =
+        core::dyn_cast< ar::FunctionPointerConstant >(call->called());
+    if (cst != nullptr && cst->function() != nullptr) {
+      const std::string& nm = cst->function()->name();
+      if (nm.find("pthread_create") != std::string::npos) {
+        // arg2 = 线程函数（FunctionPointerConstant）。函数指针变量/间接线程函数
+        // 提取失败 → 不产生 Create 事件（保守，只丢 TP）。
+        auto it = call->arg_begin();
+        ++it;
+        ++it;
+        if (it != call->arg_end()) {
+          if (auto* fpc = core::dyn_cast< ar::FunctionPointerConstant >(*it)) {
+            if (fpc->function() != nullptr) {
+              ev = BmcEvent{stmt, EvKind::Create};
+              ev.thread = reinterpret_cast< std::uint64_t >(fpc->function());
+              return true;
+            }
+          }
+        }
+      } else if (nm.find("pthread_join") != std::string::npos) {
+        // arg0 = pthread_t 句柄（mutex_id_of_value 同款解析到稳定身份）。
+        if (call->arg_begin() != call->arg_end()) {
+          ev = BmcEvent{stmt, EvKind::Join};
+          ev.thread = mutex_id_of_value(*call->arg_begin(), in_stack);
+          return true;
+        }
+      }
     }
   }
   return false;
