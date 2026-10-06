@@ -69,9 +69,47 @@ inline ar::Statement* unique_def_bmc(ar::InternalVariable* iv) {
   return found;
 }
 
+/// 路径敏感 def 解析：单 def 直接返回；phi（多 def）选「当前 DFS 路径 in_stack
+/// 经过的前驱块」的 def —— 把 nondet 指针（04-mutex_23 的 unlock(m)，m 在
+/// #2=bitcast @mutex2 / #3=bitcast @mutex1 两个前驱块各 def 一次）按路径解析到
+/// 具体那把锁，而不是坍缩成裸指针假锁。找不到（无 def / phi 但路径块都不含 def）
+/// 返回 nullptr（保守，沿用旧坍缩行为，只丢 TP 不引 FP）。
+inline ar::Statement* unique_def_bmc_on_path(
+    ar::InternalVariable* iv, const std::vector< ar::BasicBlock* >& in_stack) {
+  ar::Code* code = iv->code();
+  if (code == nullptr) {
+    return nullptr;
+  }
+  std::vector< ar::Statement* > defs;
+  for (ar::BasicBlock* bb : *code) {
+    for (ar::Statement* s : *bb) {
+      if (s->result_or_null() == iv) {
+        defs.push_back(s);
+      }
+    }
+  }
+  if (defs.size() == 1) {
+    return defs[0];
+  }
+  if (defs.empty()) {
+    return nullptr;
+  }
+  // phi：选 def 所在块在当前 DFS 路径（in_stack）上的那个。
+  for (ar::Statement* s : defs) {
+    for (ar::BasicBlock* b : in_stack) {
+      if (s->parent() == b) {
+        return s;
+      }
+    }
+  }
+  return nullptr;
+}
+
 /// 把锁/互斥量的指针 Value 解析到 (base global, const_off) 合成身份。变量偏移坍缩
-/// 到 base（保守）；碰撞只会多丢 TP、不 FP。
-inline std::uint64_t mutex_id_of_value(ar::Value* v) {
+/// 到 base（保守）；碰撞只会多丢 TP、不 FP。传入 in_stack（非 null）时 phi 按路径
+/// 敏感解析（见 unique_def_bmc_on_path）；null（默认）沿用旧的「phi=叶子」坍缩。
+inline std::uint64_t mutex_id_of_value(
+    ar::Value* v, const std::vector< ar::BasicBlock* >* in_stack = nullptr) {
   std::int64_t const_off = 0;
   bool variable_off = false;
   std::uint64_t base = 0;
@@ -84,7 +122,9 @@ inline std::uint64_t mutex_id_of_value(ar::Value* v) {
     if (iv == nullptr) {
       break;
     }
-    ar::Statement* def = unique_def_bmc(iv);
+    ar::Statement* def = in_stack != nullptr
+                             ? unique_def_bmc_on_path(iv, *in_stack)
+                             : unique_def_bmc(iv);
     if (auto* ps = core::dyn_cast_or_null< ar::PointerShift >(def)) {
       // 累加常量字节偏移（`&m[3]` vs `&m[4]` 是不同锁）；变量下标（`m[i]`）
       // → 身份不确定，坍缩到 base（保守，只丢 TP 不 FP）。
@@ -128,11 +168,12 @@ inline std::uint64_t mutex_id_of_value(ar::Value* v) {
 }
 
 /// pthread_mutex_lock/unlock 的锁身份 = arg0。
-inline std::uint64_t mutex_id(ar::CallBase* call) {
+inline std::uint64_t mutex_id(
+    ar::CallBase* call, const std::vector< ar::BasicBlock* >* in_stack = nullptr) {
   if (call->arg_begin() == call->arg_end()) {
     return 0;
   }
-  return mutex_id_of_value(*call->arg_begin());
+  return mutex_id_of_value(*call->arg_begin(), in_stack);
 }
 
 /// 是否 pthread_cond_wait（含 AR 内禀 ar.pthread.cond.wait）。
@@ -356,7 +397,9 @@ inline ar::Comparison* forward_comparison_of(ar::Value* arg) {
 }
 
 /// 把一个语句分类成 BMC 事件（内存/锁/假设/无关）。
-inline bool classify_event(ar::Statement* stmt, BmcEvent& ev) {
+inline bool classify_event(
+    ar::Statement* stmt, BmcEvent& ev,
+    const std::vector< ar::BasicBlock* >* in_stack = nullptr) {
   if (auto* load = core::dyn_cast< ar::Load >(stmt)) {
     ev = BmcEvent{stmt, EvKind::Read};
     symbolic_byte_offset(load->operand(), ev);
@@ -377,7 +420,7 @@ inline bool classify_event(ar::Statement* stmt, BmcEvent& ev) {
     EvKind kind;
     if (classify_mutex_call(call, kind)) {
       std::uint64_t mid =
-          is_verifier_atomic(call) ? PSEUDO_ATOMIC_LOCK : mutex_id(call);
+          is_verifier_atomic(call) ? PSEUDO_ATOMIC_LOCK : mutex_id(call, in_stack);
       ev = BmcEvent{stmt, kind, mid};
       return true;
     }
@@ -540,7 +583,7 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
       }
     }
     BmcEvent ev(nullptr, EvKind::Read);
-    if (classify_event(s, ev)) {
+    if (classify_event(s, ev, &in_stack)) {
       current.push_back(ev);
     }
     // assume 语义（Dartagnan ResolveAborts → CondJump(cond, DEAD_END, continue)）：
