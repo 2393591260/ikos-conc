@@ -645,7 +645,7 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
   for (auto succ = bb->successor_begin(), succ_end = bb->successor_end();
        succ != succ_end; ++succ) {
     std::vector< BmcEvent > succ_path = current;
-    dfs_paths(*succ, target, succ_path, out, in_stack);
+    dfs_paths(*succ, target, succ_path, out, in_stack, resolve_indirect, depth);
   }
 
   in_stack.pop_back();
