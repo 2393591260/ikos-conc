@@ -1,7 +1,9 @@
 # IKOS 架构调研 + 原生版 vs 并发修改版对比
 
+> **本文讲「我们相对上游改了什么、风险在哪」；并发子系统内部怎么运转（五层/数据流/判定闸门）见 `concurrency-architecture.md`。**
+>
 > 基准：`/home/ruan/ikos-original`（原生）　目标：`/home/ruan/ikos`（并发修改）
-> 结论先行：并发扩展**大体遵循了 IKOS 的插件式扩展范式**（新增 intrinsic、新增抽象域、新增 checker）。侵入内核的部分为：锁集域承载在 `DomainProduct2` 顶层第二分量（`first()`=数据域、`second()`=锁集域，锁集不再走 `memory/scalar` forwarder）；pthread/并发 transfer 语义集中在独立模块 `execution_engine/concurrent_semantics.hpp`（`numerical.hpp` 只留门控守卫 + SFINAE 双态访问器）；全局干扰黑板 `ConcurrentGlobalEnv` 由 `analyzer::Context` 持有（非单例）。此外 `memory/scalar` 仍有 `uninit_assign_maybe` 轻量 forwarder、`memory_location` 加 `stable_id`、前端翻译 C11 原子——完整清单见第三部分。
+> 结论先行：并发扩展**大体遵循了 IKOS 的插件式扩展范式**（新增 intrinsic、新增抽象域、新增 checker）。侵入内核的部分为：锁集域承载在 `DomainProduct2` 顶层第二分量（`first()`=数据域、`second()`=锁集域，锁集不再走 `memory/scalar` forwarder）；pthread/并发 transfer 语义集中在独立模块 `execution_engine/concurrent_semantics.hpp`（`numerical.hpp` 只留门控守卫 + SFINAE 双态访问器）；全局干扰黑板 `ConcurrentGlobalEnv` 由 `analyzer::Context` 持有（非单例）。此外 `memory/scalar` 仍有 `uninit_assign_maybe` 轻量 forwarder、`memory_location` 加 `stable_id`、前端翻译 C11 原子——逐文件清单见 `ikos-upstream-diff.md`。
 
 ---
 
@@ -100,80 +102,24 @@ C/C++ 源码 →[clang]→ LLVM .bc →[ikos-pp 优化]→ .bc →[ikos-import �
 
 ---
 
-## 第三部分：并发修改版改动清单（严格基于 `diff -r` 与原生对比）
+## 第三部分：并发改动分布（概览）
 
-> 对比基准：`/home/ruan/ikos-original`（原生）。下面只列**实际有 diff 的文件**；未列出的 = 与原生逐字节相同。
+> 严格逐文件的客观 diff 清单见 [`ikos-upstream-diff.md`](ikos-upstream-diff.md)（类别1 = 原版未动、类别2 = 本地新增/修改）。本节只给「改在哪些层」的地图 + 核心新增文件，不重复逐条清单。
 
-### A. AR 层（`ar/`）
+并发改动分布在 8 个层，且**零文件删除**（本地 = 原版严格超集，原生数值/指针/内存域全部保留）：
 
-| 文件 | 改动 |
-|---|---|
-| `ar/semantic/intrinsic.hpp/.cpp` | 新增 4 个 pthread 内建：`PthreadCreate/PthreadJoin/PthreadMutexLock/PthreadMutexUnlock`（签名 `void*`、返回 si32） |
-| `ar/semantic/statement.hpp/.cpp` | `Load`/`Store` 加 `AtomicOrdering` 字段（`NotAtomic/Unordered/Monotonic/Acquire/Release/AcqRel/SeqCst`）+ `is_atomic()`/`ordering()` |
-| `ar/semantic/value.hpp/.cpp` | `GlobalVariable` 加 `is_thread_local` 标志（`__thread`/`_Thread_local` 线程私有全局，访问永不跨线程竞争） |
+| 层 | 一句话改动 | 客观清单 |
+|---|---|---|
+| AR（`ar/`） | 新增 pthread 内建 + Load/Store 原子序 + TLS 标志 | upstream-diff 2.D |
+| core 域 | 新增 `LocksetDomain` + `ConcurrentGlobalEnv` 黑板；`uninit_assign_maybe` forwarder | upstream-diff 2.A/2.B |
+| analyzer 引擎 | pthread 语义独立成 `concurrent_semantics.hpp`；`DomainProduct2` 正交产品 | upstream-diff 2.C |
+| 基础设施 | `stable_id`（ASLR 确定性）、选项、context 去单例 | upstream-diff 2.F/2.G |
+| checker | 新增 `DataRaceChecker` | upstream-diff 2.A/2.F |
+| 前端 LLVM | 原子指令翻译、container_of 常量、pthread→intrinsic 映射 | upstream-diff 2.E |
+| CLI/python | race 分析注册、--concurrency 三态、UNKNOWN 判决 | upstream-diff 2.F |
+| 测试/文档 | boundary-tests、回归脚本 | upstream-diff 2.H |
 
-### B. core 抽象域（`core/domain/`）
-
-| 文件 | 改动 |
-|---|---|
-| `lockset/lockset_domain.hpp`（新增） | `LocksetDomain`：must 锁集、读锁集、条件锁、spawned/joined 线程 digest |
-| `concurrent_global_env.hpp`（新增） | `ConcurrentGlobalEnv`：全局干扰黑板（扁平黑板 + 锁分区 + 指针黑板 + 线程发现表），由 `analyzer::Context` 持有 |
-| `domain_product.hpp` | `DomainProduct2` 加 `FirstDomain/SecondDomain` 类型别名 + `widening_threshold` |
-| `memory/{abstract_domain,dummy,partitioning,polymorphic_domain,value}.hpp` | 加 `uninit_assign_maybe`（共享内存读的未初始化「可能已初始化」解耦，forwarder 贯穿 memory/scalar） |
-| `scalar/{abstract_domain,composite,dummy,machine_int}.hpp` | 同上；`composite.hpp` 的 ptrtoint 在 width/sign 不匹配时改 `Cast`（原 `SignCast`） |
-| `uninitialized/{abstract_domain,dummy,separate_domain}.hpp` | 加 `assign_maybe` |
-
-### C. analyzer 执行引擎 + 调度
-
-| 文件 | 改动 |
-|---|---|
-| `value/abstract_domain.hpp/.cpp` | 顶层 `AbstractDomain = DomainProduct2<ExceptionDomain<MemoryDomain>, LocksetDomain>`（`first()`=数据、`second()`=锁集） |
-| `execution_engine/numerical.hpp` | SFINAE 双态访问器（`data()/lockset()/data_of()`）+ `enable_thread_modular` 门控守卫 + 4 个 getter（`ctx/lit_factory/var_factory/data_layout/call_context`） |
-| `execution_engine/concurrent_semantics.hpp`（新增） | pthread/并发 transfer 语义（15 个自由函数模板：`exec_pthread_*`、`on_load/on_store/on_comparison_*`、原子伪锁、PBR 私有化、`exec_pthread_create`） |
-| `execution_engine/symbolic_index.hpp`（新增） | 符号数组下标提取（`symbolic_index_of`/`pointershift_base`） |
-| `execution_engine/inliner.hpp` / `concurrent_inliner.hpp` / `context_insensitive.hpp` | FS+FI 混合间接调用、`post.second().set_to_bottom()`（DomainProduct2 双态初始化） |
-| `value/interprocedural/sequential/analysis.cpp` | `Analysis::run()` 入口分叉：`enable_thread_modular` → `ThreadModularAnalysis`；顺序路径重构为 Phase 3 / Phase 4 |
-| `value/interprocedural/init_invariant.cpp` | `.normal()` → `.first().normal()`（DomainProduct2 机械） |
-| `value/thread_modular.hpp/.cpp`（新增） | `ThreadModularAnalysis`：全局 worklist 不动点（外层迭代到 `is_dirty()` 为假），每线程用 `interprocedural::sequential::FunctionFixpoint` 跑内层不动点 |
-| `value/concurrency_scanner.hpp`（新增） | `requires_concurrency` 零配置探测 |
-
-### D. 辅助 / 基础设施（改内核）
-
-| 文件 | 改动 |
-|---|---|
-| `analysis/memory_location.hpp/.cpp` | 加 `stable_id`（全局单调原子计数器，替换裸指针地址作为排序/哈希键，消除 ASLR 非确定性） |
-| `analysis/pointer/constraint.hpp` | 4 个 pthread 内建在 FPA 中按不透明指针消费者处理 |
-| `analysis/option.hpp/.cpp` | 加 `enable_thread_modular`、`emit_concurrency_invariants` 选项 |
-| `analysis/context.hpp` | `opts` 由 const 改非 const + 加 `concurrent_env` 成员（去单例化） |
-
-### E. checker
-
-| 文件 | 改动 |
-|---|---|
-| `checker/data_race.hpp/.cpp`（新增） | `DataRaceChecker`：析构期 O(N²) 两两配对，HB digest + 锁集交集判定竞态 |
-| `checker/kind.hpp` / `name.hpp` / `checker.cpp` | 注册 `CheckKind::DataRace` / `CheckerName::DataRace` |
-| 17 个 `checker/*.cpp`（assert_prover/buffer_overflow/division_by_zero/…） | (a) `.normal()` → `.first().normal()`（DomainProduct2 机械）；(b) 4 个 pthread 内建加 no-op/空结果分支（避免 `ikos_unreachable`） |
-
-### F. 前端 LLVM 导入（改内核）
-
-| 文件 | 改动 |
-|---|---|
-| `import/function.cpp/.hpp` | `AtomicRMWInst`/`AtomicCmpXchgInst` 翻译（拆成 atomic load/store，带 `AtomicOrdering`） |
-| `import/constant.cpp/.hpp` | `container_of`/`offsetof` 常量折叠（`sub(0, ptrtoint(GEP null))` 的 zext/sext/trunc 常量表达式） |
-| `import/type.cpp` | 指针类型匹配放宽（任意 LLVM 指针 ↔ AR `void*`/opaque/i8 泛型指针，pthread 声明签名兼容） |
-| `import/bundle.cpp` | `is_thread_local` 标志透传 + declaration 函数也走 `LibraryFunctionImporter`（有 DWARF 也映射 pthread 内建） |
-| `import/library_function.cpp` | `pthread_*` 名字 → `ar::Intrinsic::PthreadXxx` 映射 |
-| `ikos_pp.cpp` | 移除 `LowerAtomicPass`（改由 importer 处理原子）；DCE → `create_preserve_loads_dce_pass` |
-| `pass.hpp` / `pass/initialize.cpp` | 注册 `PreserveLoadsDCEPass` |
-| `pass/freeze_uninit.cpp` / `pass/preserve_loads_dce.cpp`（新增） | 两个 ikos-pp pass（freeze undef、保留 load 的 DCE） |
-
-### G. CLI / python
-
-- `python/ikos/{analyzer,args,enums,report}.py` — `race` 分析注册、`--concurrency` 三态、freeze-undef 透传、`Summary.unknown` 字段
-
-### H. 测试 / 文档（非内核）
-
-- `boundary-tests/`、`clean-sv-benchmarks/`、`docs/`、回归脚本（`yaml_ab_test.py` 等）
+**核心新增文件（并发分析的骨架）**：`lockset_domain.hpp`（锁集域）、`concurrent_global_env.hpp`（全局黑板）、`concurrent_semantics.hpp`（pthread 语义）、`symbolic_index.hpp`（符号下标）、`thread_modular.{hpp,cpp}`（两层 fixpoint 驱动）、`data_race.{hpp,cpp}`（判定器）。这些文件之间的协作见 `concurrency-architecture.md`。
 
 ---
 
