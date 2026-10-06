@@ -226,7 +226,7 @@ flowchart TD
     CONT --> LOOP
 ```
 
-> 关键:⛩8 是 7 个 FP 靶点无效化的地方——`region_collect` 对**堆节点 `->next` load 判 ambiguous**(data_race.cpp:233),导致 `has_region=false`,`self_locked` 的符号锁分支永不命中。直接对接 §7 的 Class A/B 病理。
+> 关键:⛩8 是 7 个 FP 靶点无效化的地方——`region_collect` 对**堆节点 `->next` load 判 ambiguous**(data_race.cpp:233),导致 `has_region=false`,`self_locked` 的符号锁分支永不命中。直接对接 §7 的「循环 malloc 折叠 / 字段 offset 偏移」病理。
 
 ---
 
@@ -295,7 +295,7 @@ classDiagram
     }
 ```
 
-> `DynAllocMemoryLocation` 只按 (call, context) 折叠——这是 Class A FP 的死因(见 §7)。
+> `DynAllocMemoryLocation` 只按 (call, context) 折叠——这是循环 malloc 折叠 FP 的死因(见 §7)。
 
 ### 6.2 ConcurrentGlobalEnv 黑板结构
 
@@ -322,8 +322,8 @@ classDiagram
 
 | 病理 | 死因根 | 探针铁证 | 优化方向(种子) |
 |---|---|---|---|
-| Class A FP(11/13/17/19) | `get_dyn_alloc(call,ctx)` 折叠循环 malloc | dumprace 同一 `dyn_alloc:new:X:Y` | 调用点敏感 DynAlloc 键(方向已论证,未落地) |
-| Class B FP(21/22/24) | 结构体字段 offset 变量偏移 widen 成 ⊤ | offset 探针 `a=T b=T` | 数据侧符号下标 / offset 收窄 |
+| 循环 malloc 折叠 FP（11/13/17/19） | `get_dyn_alloc(call,ctx)` 折叠循环 malloc | dumprace 同一 `dyn_alloc:new:X:Y` | 调用点敏感 DynAlloc 键(方向已论证,未落地) |
+| 字段 offset 变量偏移 FP（21/22/24） | 结构体字段 offset 变量偏移 widen 成 ⊤ | offset 探针 `a=T b=T` | 数据侧符号下标 / offset 收窄 |
 | container_of offset 丢失 | `scalar_pointer_to_int` 只 forget 不回填 | def 链 `PS UN` offset=[0,0] | checker 层 container_of 语法回推 |
 
 ---
