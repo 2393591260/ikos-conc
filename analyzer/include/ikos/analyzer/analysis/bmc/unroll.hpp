@@ -14,6 +14,7 @@
 
 #include <ikos/ar/semantic/code.hpp>
 #include <ikos/ar/semantic/statement.hpp>
+#include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 #include <ikos/core/support/cast.hpp>
 
 namespace ikos {
@@ -238,7 +239,17 @@ inline bool symbolic_byte_offset(ar::Value* ptr, BmcEvent& ev) {
           ev.var_id = reinterpret_cast< std::uint64_t >(viv);
           ev.coeff += stride;
         } else {
-          return false; // 仿射/其它下标：不干净
+          // 仿射下标（i+1、2*i 等）：resolve_linear_index 解析成 coeff*var+const。
+          LinearIndex li;
+          if (!resolve_linear_index(term.second, li)) {
+            return false;
+          }
+          if (ev.var_id != 0 && ev.var_id != li.var_id) {
+            return false; // 多变量下标：不干净
+          }
+          ev.var_id = li.var_id;
+          ev.coeff += stride * li.coeff;
+          ev.const_off += stride * li.const_term;
         }
       }
       ptr = ps->pointer();
