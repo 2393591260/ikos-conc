@@ -17,11 +17,16 @@ namespace ikos {
 namespace analyzer {
 namespace bmc {
 
-/// BMC 没建模的单调用原子（SingleCall）：CAS/TAS/w/assert、__sync_*、__atomic_*、
-/// 以及用户自定义的 __VERIFIER_atomic_<suffix>。它们不是「begin/end 段」也不是
-/// 普通函数，锁无关语义 BMC 一期建不了模，必须报 UNKNOWN。与 abstract checker
-/// 的 classify_atomic_intrinsic 对齐：begin/end 是段标记（BMC 已建模为伪锁）、
-/// acquire/release 是手写 RACY 标志（非原子，不算同步）。
+/// BMC 建不了模的原子/标志原语（能力边界，见到即报 UNKNOWN）：
+///   - GCC 硬件原子 __sync_* / __atomic_*（CAS/fetch_add 等锁无关 RMW）。
+///   - 除 begin/end 外的所有 __VERIFIER_atomic_*：CAS/TAS/w/assert、acquire/release
+///     及自定义 suffix（dec_a 等）。它们的 body 是 plain 非原子 C，但按 SV-COMP 约定
+///     可能被当作原子 RMW / 标志式 HB（acquire/release 的 assume(MTX==0);MTX=1 自旋锁，
+///     互斥由值流 rf/co 提供、非 mutex）。BMC 的两线程编码既建不了原子 RMW 语义、也建
+///     不了标志式 HB 的值流，无法判定标志是否排序访问 → 必须 UNKNOWN。
+///   只有 __VERIFIER_atomic_begin/end 是段标记（BMC 已建模为伪锁），不算这里。
+///   与 unroll.hpp 的 bmc_skip_inline 对齐：那里把这些原语全跳过不内联（body 当 no-op），
+///   所以这里必须把同集合标为 unmodeled——否则「标志当无同步但程序算可建模」→ 误报。
 inline bool is_unmodeled_atomic_call(const std::string& nm) {
   if (nm.size() >= 7 && nm.compare(0, 7, "__sync_") == 0) {
     return true;
@@ -29,22 +34,18 @@ inline bool is_unmodeled_atomic_call(const std::string& nm) {
   if (nm.size() >= 9 && nm.compare(0, 9, "__atomic_") == 0) {
     return true;
   }
-  if (nm == "__VERIFIER_atomic_CAS" || nm == "__VERIFIER_atomic_TAS" ||
-      nm == "__VERIFIER_atomic_w" || nm == "__VERIFIER_atomic_assert") {
-    return true;
-  }
+  // 除 begin/end 外，所有 __VERIFIER_atomic_*（CAS/TAS/w/assert/acquire/release/
+  // 自定义 suffix）都是 BMC 建不了模的原语。
   if (nm.size() > 18 && nm.compare(0, 18, "__VERIFIER_atomic_") == 0 &&
-      nm != "__VERIFIER_atomic_begin" && nm != "__VERIFIER_atomic_end" &&
-      nm != "__VERIFIER_atomic_acquire" &&
-      nm != "__VERIFIER_atomic_release") {
+      nm != "__VERIFIER_atomic_begin" && nm != "__VERIFIER_atomic_end") {
     return true;
   }
   return false;
 }
 
-/// 检测一个函数里有没有 BMC 第一期没建模的同步：
+/// 检测一个函数里有没有 BMC 没建模的同步：
 ///   - C11 原子（atomic_int 等，Load/Store 的 ordering != NotAtomic）
-///   - 单调用原子（__VERIFIER_atomic_CAS/TAS/w、__sync_*、__atomic_*）
+///   - 原子/标志原语（__sync_*、__atomic_*、__VERIFIER_atomic_* 除 begin/end）
 ///   - sem_*（信号量 post/wait 建 HB）
 ///   - pthread_barrier_* / pthread_spin_*（屏障/自旋锁）
 /// 有则返回 true（调用方必须报 UNKNOWN，不能报 FALSE）。
