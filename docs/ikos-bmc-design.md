@@ -7,7 +7,11 @@
 > **当前状态的权威描述**：见 `ikos-race-theory-mapping.md` §2.1.17（7 道 sound gate）与 §2.4
 > （两层判定架构）。本文档聚焦**设计依据 + 演进史 + 未做项**，不重复 gate 清单。
 >
-> 落地基线：**TP=85 / FP=0 / TN=709 / FN=0 / unknown=235 = 1503 分**（冻结集，`IKOS_BMC_RECOVER=1`）。
+> 落地基线：**TP=80 / FP=0 / TN=709 / FN=0 / err=1 = 1506 分**（冻结集，`IKOS_BMC_RECOVER=1`，steps 1-4 之后）。
+>
+> **Dartagnan 权威参照（版本 + 机制）见 `dartagnan-svcomp2026-reference.md`；差距分析见 `ikos-vs-dartagnan-gap.md`。**
+> 注意：Dartagnan 的 176-TP 官方版是 `7caef5c`（SV-COMP 2026），race 判定是内置 `encodeDataRaces`（hb 相邻），
+> 不是 2027 版 cat 的 `dr/conflict`。
 
 ---
 
@@ -102,8 +106,39 @@ BMC **不是**从零扫 AR，而是**接管 checker 析构里被判为「潜在�
 - `resolve_thread_function`：解开 `(void*(*)(void*)) myPartOfCalc` 的 Bitcast 包裹（`build_thread_creators`
   与 `exec_pthread_create` 对齐），+3 TN（pthread-numerical-integration 的 numberOfIntervals 不再误判）。
 
+### 7.1 「去启发式、只留能力边界」（2026-10-07，4 个 commit，TP 96→80 换 sound）
+
+用户拍板：只留「清楚能力边界」的 gate（边界内 100% sound 的 TP、witness 可验证），去掉为具体文件
+调出来的启发式。逐个 A/B（FP=0/FN=0 全程保持）：
+
+| commit | 内容 | TP 变化 |
+|---|---|---|
+| `956bc72` | `__VERIFIER_atomic_acquire/release` 归入 unmodeled（标志式 HB 建不了 → UNKNOWN）| 96→88（丢 8 个 racy 标志，deferred 到 rf/co）|
+| `072086e` | `function_has_sync_recursive` 补查 mutex/cond_wait（去掉「每条目锁」启发式）| 88→86（丢 2 funloop）|
+| `3480ec2` | 删掉全局归纳变量启发式（只留局部 SSA 自增）| 86→80（丢 6 fib）|
+| `facca8d` | held 锁门注释改写成能力边界（纯注释）| — |
+
+**解耦 anchor（遍历组内所有对）已探针验证能找回 airline/floating_read 的 ~12 TP，但 `workstealqueue_mutex-2`
+崩（dfs_paths 里一个定位不到的 null-deref），暂挂起，待单独用 ASAN 定位。**
+
+### 7.2 当前 sound gate 全清单（能力边界）
+
+1. `has_unmodeled_sync`：C11 原子/`__sync_*`/`__atomic_*`/`__VERIFIER_atomic_*`(除 begin/end)/sem/barrier/spin → UNKNOWN。
+2. `incomplete`：nondet 循环未展开 + `function_has_sync_recursive`（mutex/cond_wait/create/join）→ UNKNOWN。
+3. `transitive_ordered`：隔代 create/join → UNKNOWN。
+4. `same_global`+offset：points-to 非 singleton / 偏移 ⊤ → UNKNOWN。
+5. held 锁门：访问在临界区内、双方同锁（unlock 在访问后不在路径里）→ UNKNOWN。
+6. 资源上限：MAX_UNROLL=8 / MAX_PATHS=256 / MAX_PATH_EVENTS=1024 → UNKNOWN。
+7. 地址/锁身份提取失败 → 保守不确认。
+
 ## 8. 尚未做（后续路线，按杠杆排序）
 
+> 重新排序见 `ikos-vs-dartagnan-gap.md` §2——**最该先做 rf/co 值流**（对齐 Dartagnan 的 `com` 机制、
+> 对应 commit `#820` rf 边数据类型转换），它同时解锁标志式 HB + lock-free 两桶。
+
+0. **rf/co 值流（新第一杠杆）**：Dartagnan 的 `hb` 含 `com=rf|fr|co`，IKOS 的 hb 只有 po+mutex。
+   缺口 = rf（读值=写值）+ co（写全序整数时钟）。驱动样例 `40_barrier_vf-b`(racy) vs `43_NetBSD`(safe)
+   同一套 `assume(MTX==0);MTX=1` 标志，靠 rf/co 区分。见 `dartagnan-svcomp2026-reference.md` §3。
 1. **精确 create/join HB（区间时钟）**：现在的「隔代祖先门」是保守近似，会误挡「隔代真竞争」
    （main 与孙子线程在 create 与 join 之间的竞争，cost ~1 TP）。真正的解法是在 `encode.hpp` 给每个
    线程加区间时钟 `S_T < E_T` + spawn/join 边，才能既不漏报也不误报。直接父子竞争不受当前门影响。
@@ -111,6 +146,8 @@ BMC **不是**从零扫 AR，而是**接管 checker 析构里被判为「潜在�
    锁集/HB（goblint 同款伪锁）证明不了。当前用保守 gate 挡成 UNKNOWN，不建模。
 3. **值域可行性（原二期）**：`int_to_interval` 跳不可达分支防「条件写」FP。当前一期没暴露条件写 FP
    （A/B FP=0），暂不需要；若后续更激进的内联暴露它，再做。
+4. **解耦 anchor（已探针验证，挂起）**：遍历组内所有对能找回 ~12 TP（airline/floating_read），但
+   `workstealqueue_mutex-2` 崩（dfs_paths 的 null-deref，待 ASAN 定位），暂不落地。
 
 ## 9. 🚩 能力边界 = 潜在独特优势
 

@@ -1,0 +1,89 @@
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_09-ptrmunge_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/03-practical_15-exit_problems.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_03-munge_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/00-sanity_09-include.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/03-practical_07-nonterm.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_06-ps_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_11-ptr_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_01-simple_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_20-stdfun_rc.c|CRASH
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_21-sound_base.c|CRASH
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_14-funarg_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_25-single_acc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_16-ps_add1_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_23-sound_unlock.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_24-sound_lock.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_27-base_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_37-indirect_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_47-fun_write.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_50-funptr_rc.c|CRASH
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_44-malloc_sound.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_55-pt_rwlock_rr.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_03-fld_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_05-glob_idx_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_01-idx_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_07-glob_fld_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_08-glob_fld_2_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_11-fldsense_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_09-idxsense_rc.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_15-fldunknown_access.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_14-idxunknown_access.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_13-idxunknown_lock.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_03-funloop_simple.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/ldv-races/race-1_3b-join.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_09-tricky_address4.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/ldv-races/race-1_2b-join.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-atomic/dekker-b-unfair.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/10-synch_02-thread_nonunique.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-atomic/dekker-b.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_04-funloop_hard1.c|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-atomic/lamport-b.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-atomic/scull.i|CRASH
+/home/ruan/sv-benchmarks-2026/c/pthread-atomic/peterson-b.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-atomic/read_write_lock-1b.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-atomic/szymanski-b.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-10.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-complex/elimination_backoff_stack-race.i|ERR
+/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-20.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-30.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-40.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-50.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-10.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-20.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-ext/06_ticket.i|CRASH
+/home/ruan/sv-benchmarks-2026/c/pthread-ext/07_rand.i|CRASH
+/home/ruan/sv-benchmarks-2026/c/pthread-ext/27_Boop_simple_vf.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_current-race.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_current_pc8736x_gpio_set-race.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_set-race.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-ext/39_rand_lock_p0_vs-b.i|CRASH
+/home/ruan/sv-benchmarks-2026/c/pthread-ext/32_pthread5_vs.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-ext/42_FreeBSD_rdma_addr_sliced.i|CRASH
+/home/ruan/sv-benchmarks-2026/c/pthread-ext/44_Solaris_space_map_sliced.i|CRASH
+/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-30.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-40.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-50.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-ext/01_inc.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2013_variant-1.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2013_variant-2.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2013-2.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-lit/qw2004-1.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-lit/qw2004-2.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2013-1.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-ext/40_barrier_vf-b.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-ext/41_FreeBSD_abd_kbd_sliced.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-lit/qw2004_variant.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-loop-bound-1.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-loop-bound-2.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-ext/45_monabsex1_vs-b.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-loop-bound-variant-1.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread-ext/46_monabsex2_vs-b.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-loop-bound-variant-2.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread/bigshot_p.i|Result: FAIL
+/home/ruan/sv-benchmarks-2026/c/pthread/reorder_2-race.i|CRASH
+/home/ruan/sv-benchmarks-2026/c/pthread/reorder_5-race.i|CRASH
+/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2014.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-array-1.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-array-2.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-index-inc-race.i|Result: UNKNOWN
+/home/ruan/sv-benchmarks-2026/c/pthread/indexer.i|ERR

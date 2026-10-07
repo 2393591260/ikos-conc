@@ -80,6 +80,8 @@
 
 ### 设计
 - [ikos-bmc-design.md](ikos-bmc-design.md) —— BMC 设计 + 演进（helper 内联 4 类 gate + 未做项）
+- [dartagnan-svcomp2026-reference.md](dartagnan-svcomp2026-reference.md) —— Dartagnan 权威参照：SV-COMP 2026 官方版 7caef5c/4.3.1 + encodeDataRaces 机制 + 关键 commits→IKOS 缺口映射
+- [ikos-vs-dartagnan-gap.md](ikos-vs-dartagnan-gap.md) —— 差距分析：176 TP vs 80 TP、23 独有、119 lost target 分桶 + 可实现性
 - [ikos-mhp-design.md](ikos-mhp-design.md) —— ⚠️ MHP 设计（未实施，仅供思路）
 - [dev-gotchas.md](dev-gotchas.md) —— 22 条踩坑清单
 
