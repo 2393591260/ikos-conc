@@ -70,6 +70,20 @@ inline bool check_race(const std::vector< BmcEvent >& pathA,
     }
   }
 
+  // join HB（svcomp.cat 的 po 跨线程边）：joined 线程末事件 < join。过近似——把
+  // A 路径里每个 Join 都约束成「B 末事件 < join」（假设 B 被 A join），B 路径同理。
+  // 过约束只丢 TP（unjoined 实例，2 线程抽象表达不了），不引 FP（sound）。
+  for (std::size_t i = 0; i < nA; ++i) {
+    if (pathA[i].kind == EvKind::Join) {
+      s.add(clock[nA + nB - 1] < clock[i]);  // B 末事件 < A 的 join
+    }
+  }
+  for (std::size_t i = 0; i < nB; ++i) {
+    if (pathB[i].kind == EvKind::Join) {
+      s.add(clock[nA - 1] < clock[nA + i]);  // A 末事件 < B 的 join
+    }
+  }
+
   // mutex 同步（互斥）：收集每把锁在每个路径里的 Lock/Unlock 位置。
   std::map< std::uint64_t, std::size_t > lockA, unlockA, lockB, unlockB;
   for (std::size_t i = 0; i < nA; ++i) {
