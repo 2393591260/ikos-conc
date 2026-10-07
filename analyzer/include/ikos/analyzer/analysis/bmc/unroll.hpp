@@ -585,11 +585,12 @@ inline ar::Function* direct_callee(ar::CallBase* call) {
 /// 超过此界的常量界循环视作「未知界」→ 保守不展开（UNKNOWN）。
 constexpr std::int64_t MAX_UNROLL = 8;
 
-/// 判断 v 是否是循环归纳变量：
-///   - 局部：v 有 def 形如 `v = (v op const)`（自增/自减，`for(i=0;i<N;i++)`）。
-///   - 全局：v 的 def 是 `load @g`（Load of GlobalVariable），且循环体 body 里有
-///     `store @g`（增量 `store @p`，fib_*-racy 的 p 是全局）。`if(i<5)` 的 i 两者都不是。
-inline bool is_induction_var(ar::Value* v, ar::BasicBlock* body) {
+/// 判断 v 是否是循环归纳变量：只认局部 SSA 自增/自减（`v = v ± const`，
+/// `for(i=0;i<N;i++)`）。
+/// 全局归纳变量（fib_*-racy 的 `load @g` + 循环体 `store @g`）不认——「有 store @g」
+/// 无法确认那是一次严格自增（可能条件写/多次写），按 N 次展开会漏路径 → 误报。保守
+/// 不认 → 不展开 → UNKNOWN（丢 fib TP，属能力边界）。
+inline bool is_induction_var(ar::Value* v) {
   auto* iv = core::dyn_cast< ar::InternalVariable >(v);
   if (iv == nullptr) {
     return false;
@@ -598,7 +599,6 @@ inline bool is_induction_var(ar::Value* v, ar::BasicBlock* body) {
   if (code == nullptr) {
     return false;
   }
-  ar::GlobalVariable* loaded_gv = nullptr;  // v = load @g
   for (ar::BasicBlock* bb : *code) {
     for (ar::Statement* s : *bb) {
       if (s->result_or_null() != iv) {
@@ -615,21 +615,6 @@ inline bool is_induction_var(ar::Value* v, ar::BasicBlock* body) {
             unique_def_bmc(iv2));
         if (bo != nullptr && (bo->left() == iv || bo->right() == iv)) {
           return true;  // v = v ± const
-        }
-      } else if (auto* load = core::dyn_cast< ar::Load >(s)) {
-        // 全局：v = load @g
-        if (auto* g = core::dyn_cast< ar::GlobalVariable >(load->operand())) {
-          loaded_gv = g;
-        }
-      }
-    }
-  }
-  // 全局：v = load @g 且循环体 body 里有 store @g（增量）。
-  if (loaded_gv != nullptr && body != nullptr) {
-    for (auto sit = body->begin(), se = body->end(); sit != se; ++sit) {
-      if (auto* store = core::dyn_cast< ar::Store >(*sit)) {
-        if (store->pointer() == loaded_gv) {
-          return true;
         }
       }
     }
@@ -690,7 +675,7 @@ inline std::int64_t constant_loop_bound(ar::BasicBlock* header,
   // （43_NetBSD 等病态形态），去展开本不该展开的无限循环 → 状态爆炸。
   if (body == nullptr || exit_bb == nullptr || body_bound != exit_bound ||
       body_bound < 0 || body_bound > MAX_UNROLL ||
-      !is_induction_var(ind_var, body)) {
+      !is_induction_var(ind_var)) {
     body = nullptr;
     exit_bb = nullptr;
     return -1;
