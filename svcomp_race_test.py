@@ -117,7 +117,8 @@ def run_one(src: Path, ikos: Path, timeout_sec: int, out_db: Path, concurrency: 
         out = proc.stdout + proc.stderr
     except subprocess.TimeoutExpired as exc:
         timed_out = True
-        out = (exc.stdout or "") + (exc.stderr or "")
+        out = ((exc.stdout or b"").decode(errors="replace") +
+               (exc.stderr or b"").decode(errors="replace"))
     return classify(out, returncode, timed_out), time.perf_counter() - start
 
 
