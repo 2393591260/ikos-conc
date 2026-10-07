@@ -920,11 +920,12 @@ inline bool cfg_reachable(ar::BasicBlock* src, ar::BasicBlock* tgt,
   return false;
 }
 
-/// 递归查一个函数体（含被调用的 helper）是否含 create/join（会建 HB、排序访问的同步）。
-/// 只查 create/join、不查 mutex/cond_wait——helper 里的 mutex 常是「每条目锁」（如
-/// cache_entry_addref 的 refs_mutex，funloop 文件），不排序目标访问，查它会误标
-/// incomplete 丢 TP。depth 上限防 helper 相互调用的环。race-4_1 的 create/join 藏在
-/// ath_ahb_probe 等 helper 里、被 while(1) 循环调用，直接查 block 查不到 → 必须递归。
+/// 递归查一个函数体（含被调用的 helper）是否含「能排序访问」的同步：mutex
+/// lock/unlock（含 __VERIFIER_atomic_begin/end 伪锁）、cond_wait、create/join。
+/// 能力边界：BMC 无法判定 helper 里的锁/信号量是否排序目标访问（那需要值流分析），
+/// 所以一律保守算「含同步」→ 循环标 incomplete → UNKNOWN。depth 上限防 helper
+/// 相互调用的环。race-4_1 的 create/join 藏在 ath_ahb_probe 等 helper 里、被
+/// while(1) 循环调用，直接查 block 查不到 → 必须递归。
 inline bool function_has_sync_recursive(ar::Function* f, int depth = 0) {
   if (f == nullptr || depth > 8) {
     return false;
@@ -939,6 +940,14 @@ inline bool function_has_sync_recursive(ar::Function* f, int depth = 0) {
       if (call == nullptr) {
         continue;
       }
+      // mutex lock/unlock（含 __VERIFIER_atomic_begin/end 伪锁）
+      EvKind kind;
+      if (classify_mutex_call(call, kind)) {
+        return true;
+      }
+      if (is_cond_wait(call)) {
+        return true;
+      }
       auto* cst = core::dyn_cast< ar::FunctionPointerConstant >(call->called());
       if (cst == nullptr || cst->function() == nullptr) {
         continue;
@@ -949,7 +958,7 @@ inline bool function_has_sync_recursive(ar::Function* f, int depth = 0) {
         return true;
       }
       if (function_has_sync_recursive(cst->function(), depth + 1)) {
-        return true;  // helper 里有 create/join
+        return true;  // helper 里有同步
       }
     }
   }
