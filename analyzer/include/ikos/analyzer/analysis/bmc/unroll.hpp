@@ -920,9 +920,46 @@ inline bool cfg_reachable(ar::BasicBlock* src, ar::BasicBlock* tgt,
   return false;
 }
 
+/// 递归查一个函数体（含被调用的 helper）是否含 create/join（会建 HB、排序访问的同步）。
+/// 只查 create/join、不查 mutex/cond_wait——helper 里的 mutex 常是「每条目锁」（如
+/// cache_entry_addref 的 refs_mutex，funloop 文件），不排序目标访问，查它会误标
+/// incomplete 丢 TP。depth 上限防 helper 相互调用的环。race-4_1 的 create/join 藏在
+/// ath_ahb_probe 等 helper 里、被 while(1) 循环调用，直接查 block 查不到 → 必须递归。
+inline bool function_has_sync_recursive(ar::Function* f, int depth = 0) {
+  if (f == nullptr || depth > 8) {
+    return false;
+  }
+  ar::Code* body = f->body_or_null();
+  if (body == nullptr) {
+    return false;  // extern（pthread_* 等无体）
+  }
+  for (ar::BasicBlock* bb : *body) {
+    for (ar::Statement* s : *bb) {
+      auto* call = core::dyn_cast< ar::CallBase >(s);
+      if (call == nullptr) {
+        continue;
+      }
+      auto* cst = core::dyn_cast< ar::FunctionPointerConstant >(call->called());
+      if (cst == nullptr || cst->function() == nullptr) {
+        continue;
+      }
+      const std::string& nm = cst->function()->name();
+      if (nm.find("pthread_create") != std::string::npos ||
+          nm.find("pthread_join") != std::string::npos) {
+        return true;
+      }
+      if (function_has_sync_recursive(cst->function(), depth + 1)) {
+        return true;  // helper 里有 create/join
+      }
+    }
+  }
+  return false;
+}
+
 /// 一个基本块是否含「能排序访问」的同步调用：mutex lock/unlock、create/join、
-/// __VERIFIER_atomic_begin/end。pthread_mutex_init 等非排序调用不算——它们不影响
-/// 竞态判定，只算「良性」循环体（如 05-lval_ls_01 的 init 循环）。
+/// __VERIFIER_atomic_begin/end，及**被调 helper 里的同步**。pthread_mutex_init 等
+/// 非排序调用不算——它们不影响竞态判定，只算「良性」循环体（如 05-lval_ls_01 的
+/// init 循环）。
 inline bool block_has_sync(ar::BasicBlock* bb) {
   for (auto sit = bb->begin(), send = bb->end(); sit != send; ++sit) {
     if (auto* call = core::dyn_cast< ar::CallBase >(*sit)) {
@@ -940,6 +977,10 @@ inline bool block_has_sync(ar::BasicBlock* bb) {
         if (nm.find("pthread_create") != std::string::npos ||
             nm.find("pthread_join") != std::string::npos) {
           return true;  // create/join（HB 建边，未展开则漏）
+        }
+        // helper 里有同步（ath_ahb_probe → pthread_create 在 while(1) 循环里）
+        if (function_has_sync_recursive(cst->function())) {
+          return true;
         }
       }
     }
