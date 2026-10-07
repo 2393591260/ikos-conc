@@ -118,9 +118,9 @@ inline std::set< std::uint64_t > held_locks(const std::vector< BmcEvent >& path)
 }
 
 /// 整个函数里出现过的所有锁（任一分支上的 lock/unlock 都算）。
-/// 用「函数级」而非「路径级」：标志式 HB（time_var_mutex 的 busy 标志、
-/// privatized 的 trace）靠一把在两个线程里都出现的锁保护标志变量，这把锁
-/// 可能在另一条分支上才被当前线程使用，路径级 used 会漏掉它 → 误判竞争。
+/// 能力边界：展开路径在目标访问处截止，锁的 unlock 在访问之后、不在路径里，所以
+/// 「访问时是否持有锁」用路径级 held 判不精确——某把锁可能在另一条分支上才被当前
+/// 线程使用。函数级是更保守的过近似（sound，只多丢 TP）。
 inline std::set< std::uint64_t > func_used_locks(ar::Function* func) {
   std::set< std::uint64_t > locks;
   ar::Code* body = func->body_or_null();
@@ -158,11 +158,11 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   if (rA.incomplete || rB.incomplete) {
     return false;
   }
-  // 锁门（sound）：只在「双方访问都在各自临界区内」且共享一把 held 锁时跳过——
-  // 这种锁可能承载标志式 HB / 永久锁（time_var_mutex、privatized），互斥未完整
-  // 建模，可能排序两个访问，保守 UNKNOWN。已配对（balanced）的共享锁由
-  // check_race 的互斥析取建模；完全不共享的锁（经典不同锁竞争）不约束对方；
-  // 一方解锁访问（held 为空）时另一方的锁不保护它，照常判。
+  // held 锁门（能力边界）：路径在目标访问处截止，锁的 unlock 在访问之后、不在路径里，
+  // 若双方访问都处在同一把锁的临界区内（held），check_race 的 balanced 互斥析取
+  // （Unlock→Lock）没有解锁事件可排序，表达不了「两访问互斥」→ 保守 UNKNOWN。
+  // 完全不共享的锁（经典不同锁竞争）不约束对方；一方 held 为空时另一方的锁不保护
+  // 它，照常判。
   std::set< std::uint64_t > funcLocksA = func_used_locks(funcA);
   std::set< std::uint64_t > funcLocksB = func_used_locks(funcB);
   for (const auto& pA : rA.paths) {
