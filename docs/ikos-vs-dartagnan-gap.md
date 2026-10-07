@@ -10,10 +10,15 @@
 | Dartagnan 官方 TP | 176 | `docs/artifacts/dartagnan_official_tp_176.txt` |
 | IKOS TP | 80 | `svcomp_race_test.py`（`IKOS_BMC_RECOVER=1 --demote`）|
 | 交集 | 57 | — |
-| IKOS 独有（IKOS=FALSE，Dartagnan≠FALSE）| 23 | `docs/artifacts/ikos_unique_23.txt` |
+| IKOS 独有（IKOS=FALSE，Dartagnan≠FALSE）| **19**（旧 artifact 记 23，虚高）| `docs/artifacts/ikos_unique_real_19.txt` |
 | Dartagnan 独有（lost target）| 119 | = 176 − 57 |
 
-## 1. IKOS 多做了什么（23 个独有 TP）——你存疑的点
+## 1. IKOS 多做了什么（19 个独有 TP）——你存疑的点
+
+> ⚠️ **2026-10-07 实跑本地 Dartagnan 4.3.1 修正**：旧 artifact 的「23 独有」**虚高**。
+> 其中 4 个 Dartagnan 其实也报 **FAIL**（不是独有）：`lamport-b`、`05-lval_ls_13-idxunknown_lock`、
+> `06-symbeq_09-tricky_address4`、`fkp2013-1`。真实独有 = **19**，全部是「Dartagnan 崩/超时/C11 循环展不开」，
+> 见 `docs/artifacts/ikos_unique_real_19.txt`。下面按修正后的 19 分析。
 
 **已核实的事实**（三条都拿代码/yml/日志验证过）：
 

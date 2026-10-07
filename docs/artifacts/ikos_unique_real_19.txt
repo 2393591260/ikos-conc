@@ -1,0 +1,35 @@
+# IKOS 真实独有 TP（2026-10-07 直接跑本地 Dartagnan 4.3.1 核实，取代旧的 ikos_unique_23.txt）
+
+# 旧 artifact 的「23 独有」虚高：其中 4 个 Dartagnan 其实也报 FAIL（= 不是独有）：
+#   lamport-b                     -> FAIL（旧记 [false(no-data-race)]，错）
+#   05-lval_ls_13-idxunknown_lock -> FAIL
+#   06-symbeq_09-tricky_address4  -> FAIL
+#   fkp2013-1                     -> FAIL（旧记 [TIMEOUT]，错）
+# 这 4 个应从「独有」挪到「shared」，Dartagnan 真实 TP >= 180（旧记 176 少算了它们）。
+
+# 真实独有 = 19 个（Dartagnan 结果 != FAIL）：
+
+# --- Dartagnan = ERROR（崩溃）---
+goblint-regression/04-mutex_20-stdfun_rc
+goblint-regression/04-mutex_21-sound_base
+goblint-regression/04-mutex_50-funptr_rc
+pthread/reorder_2-race
+pthread/reorder_5-race
+
+# --- Dartagnan = TIMEOUT ---
+pthread-complex/elimination_backoff_stack-race
+pthread-lit/fkp2013-2
+pthread/indexer
+
+# --- Dartagnan = UNKNOWN（Not fully unrolled loops，C11 重排循环）---
+pthread-deagle/reorder_c11_bad-10
+pthread-deagle/reorder_c11_bad-20
+pthread-deagle/reorder_c11_bad-30
+pthread-deagle/reorder_c11_bad-40
+pthread-deagle/reorder_c11_bad-50
+pthread-deagle/reorder_c11_good-10
+pthread-deagle/reorder_c11_good-20
+pthread-deagle/reorder_c11_good-30
+pthread-deagle/reorder_c11_good-40
+pthread-deagle/reorder_c11_good-50
+pthread-race-challenges/per-thread-index-inc-race
