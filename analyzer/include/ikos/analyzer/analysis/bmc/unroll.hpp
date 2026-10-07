@@ -581,6 +581,108 @@ inline ar::Function* direct_callee(ar::CallBase* call) {
   return inline_ok(f) ? f : nullptr;
 }
 
+/// 常量界循环展开的上限（防 `for(i<1000000)` / 带分支循环体的 `B^N` 状态爆炸）。
+/// 超过此界的常量界循环视作「未知界」→ 保守不展开（UNKNOWN）。
+constexpr std::int64_t MAX_UNROLL = 8;
+
+/// 判断 v 是否是循环归纳变量：v 有 def 形如 `v = (v op const)`（自增/自减）。
+/// `for(i=0;i<N;i++)` 的 i 会被 `i=i+1` 更新；`for(;;)` 体内的 `if(i<5)` 的 i 不是。
+inline bool is_induction_var(ar::Value* v) {
+  auto* iv = core::dyn_cast< ar::InternalVariable >(v);
+  if (iv == nullptr) {
+    return false;
+  }
+  ar::Code* code = iv->code();
+  if (code == nullptr) {
+    return false;
+  }
+  for (ar::BasicBlock* bb : *code) {
+    for (ar::Statement* s : *bb) {
+      if (s->result_or_null() != iv) {
+        continue;
+      }
+      auto* as = core::dyn_cast< ar::Assignment >(s);
+      if (as == nullptr) {
+        continue;
+      }
+      // `%.01 = %11` 且 `%11 = %.01 + 1`（BinaryOperation 是 Statement，结果是
+      // %11，Assignment 的 operand 是 %11 这个 InternalVariable）。解析 operand
+      // 的 def 到 BinaryOperation，看是否自引用 iv。
+      auto* iv2 = core::dyn_cast< ar::InternalVariable >(as->operand());
+      if (iv2 == nullptr) {
+        continue;
+      }
+      auto* bo = core::dyn_cast_or_null< ar::BinaryOperation >(
+          unique_def_bmc(iv2));
+      if (bo != nullptr && (bo->left() == iv || bo->right() == iv)) {
+        return true;  // v = v ± const
+      }
+    }
+  }
+  return false;
+}
+
+/// 常量界循环检测（仿 Dartagnan 的 LLVM -loop-unroll：`for(i=0;i<N;i++)` 完整展开）。
+/// 扫 header 的后继块，body = 含 `Comparison(i <op> N)`（< / <=，N 常量）的块、
+/// exit = 含 `i >= N` 的块；返回 N。非此形态 / 超大界 / 归纳变量不是自增 → -1。
+inline std::int64_t constant_loop_bound(ar::BasicBlock* header,
+                                        ar::BasicBlock*& body,
+                                        ar::BasicBlock*& exit_bb) {
+  body = nullptr;
+  exit_bb = nullptr;
+  ar::Value* ind_var = nullptr;
+  std::int64_t body_bound = -1;
+  std::int64_t exit_bound = -1;
+  for (auto succ = header->successor_begin(), send = header->successor_end();
+       succ != send; ++succ) {
+    for (auto sit = (*succ)->begin(), se = (*succ)->end(); sit != se; ++sit) {
+      auto* cmp = core::dyn_cast< ar::Comparison >(*sit);
+      if (cmp == nullptr) {
+        continue;
+      }
+      auto* rc = core::dyn_cast< ar::IntegerConstant >(cmp->right());
+      if (rc == nullptr) {
+        continue;
+      }
+      std::int64_t n = rc->value().to_z_number().to< std::int64_t >();
+      switch (cmp->predicate()) {
+        case ar::Comparison::SILT:
+        case ar::Comparison::SILE:
+        case ar::Comparison::UILT:
+        case ar::Comparison::UILE:
+          if (body == nullptr) {
+            body = *succ;
+            body_bound = n;
+            ind_var = cmp->left();
+          }
+          break;
+        case ar::Comparison::SIGE:
+        case ar::Comparison::SIGT:
+        case ar::Comparison::UIGE:
+        case ar::Comparison::UIGT:
+          if (exit_bb == nullptr) {
+            exit_bb = *succ;
+            exit_bound = n;
+          }
+          break;
+        default:
+          break;
+      }
+    }
+  }
+  // 需 body（i<N）与 exit（i>=N）成对且 N 一致，且 i 是自增归纳变量，才认定是
+  // `for(i<N)` 循环——否则会把 `for(;;)` 体内的 `if(i<5){...}else{...}` 误当循环界
+  // （43_NetBSD 等病态形态），去展开本不该展开的无限循环 → 状态爆炸。
+  if (body == nullptr || exit_bb == nullptr || body_bound != exit_bound ||
+      body_bound < 0 || body_bound > MAX_UNROLL ||
+      !is_induction_var(ind_var)) {
+    body = nullptr;
+    exit_bb = nullptr;
+    return -1;
+  }
+  return body_bound;
+}
+
 /// 路径敏感的 DFS：从 `bb` 出发，沿 CFG 后继枚举到 `target` 的所有路径。
 /// `current` 是当前路径上的事件前缀；到达 `target` 时把路径记入 `out` 并停止
 /// （target 之后的语句/后继与本次访问的竞争判定无关）。
@@ -590,97 +692,168 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
                std::vector< BmcEvent >& current,
                std::vector< std::vector< BmcEvent > >& out,
                std::vector< ar::BasicBlock* >& in_stack,
-               const IndirectCalleeResolver& resolve_indirect = {}, int depth = 0) {
-  // 回边检测：bb 已在栈上 → 循环，跳过（不展开）。
-  for (ar::BasicBlock* on_stack : in_stack) {
-    if (on_stack == bb) {
-      return;
+               const IndirectCalleeResolver& resolve_indirect,
+               const std::set< ar::BasicBlock* >& headers,
+               std::map< ar::BasicBlock*, int > iter,
+               int depth = 0, bool skip_cmp = false) {
+  bool is_header = headers.count(bb) != 0;
+  bool on_stack = false;
+  for (ar::BasicBlock* os : in_stack) {
+    if (os == bb) {
+      on_stack = true;
+      break;
     }
   }
-  in_stack.push_back(bb);
 
-  for (auto sit = bb->begin(), send = bb->end(); sit != send; ++sit) {
-    ar::Statement* s = *sit;
-    // 死路径终止：ar::Unreachable，或 abort()/exit()（LibcAbort/LibcExit）——
-    // 否则 abort 分支会「掉回」调用方误报竞争。
-    if (core::isa< ar::Unreachable >(s)) {
-      in_stack.pop_back();
-      return;
-    }
-    if (auto* call0 = core::dyn_cast< ar::CallBase >(s)) {
-      if (auto* cst =
-              core::dyn_cast< ar::FunctionPointerConstant >(call0->called())) {
-        if (cst->function() != nullptr) {
-          const std::string& nm0 = cst->function()->name();
-          if (nm0 == "libc.abort" || nm0 == "libc.exit") {
-            in_stack.pop_back();
-            return;
-          }
+  bool reentered = false;  // 常量界 loop unroll 的回边重入（bb 已在栈上）
+  if (on_stack && is_header) {
+    // 常量界循环回边（仿 Dartagnan 的 LLVM -loop-unroll）：完整展开 N 次。
+    ar::BasicBlock* body = nullptr;
+    ar::BasicBlock* exit_bb = nullptr;
+    std::int64_t N = constant_loop_bound(bb, body, exit_bb);
+    if (N > 0) {
+      while (in_stack.back() != bb) {
+        in_stack.pop_back();  // 弹出 loop body 块，准备重入
+      }
+      if (iter[bb] < N) {
+        reentered = true;  // 继续第 iter+1 次 body：掉到下面的后继循环
+      } else {
+        // N 次 body 已走完：只走 exit。
+        if (exit_bb != nullptr) {
+          std::vector< BmcEvent > succ_path = current;
+          dfs_paths(exit_bb, target, succ_path, out, in_stack, resolve_indirect,
+                    headers, iter, depth, true);
         }
+        return;
       }
+    } else {
+      return;  // nondet/未知界：停止（老行为，保守 UNKNOWN）
     }
-    // pthread_cond_wait(...) 处理
-    if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
-      if (is_cond_wait(call)) {
-        std::uint64_t m = cond_wait_mutex_id(call);
-        current.push_back(BmcEvent{s, EvKind::Unlock, m});
-        current.push_back(BmcEvent{s, EvKind::Lock, m});
+  }
+  if (on_stack && !reentered) {
+    return;  // 非 header 块在栈上（不可约 CFG 等复杂循环）：停（老行为，防死循环）
+  }
+
+  if (!on_stack) {
+    in_stack.push_back(bb);
+  }
+
+  if (!on_stack) {
+    for (auto sit = bb->begin(), send = bb->end(); sit != send; ++sit) {
+      ar::Statement* s = *sit;
+      // 死路径终止：ar::Unreachable，或 abort()/exit()（LibcAbort/LibcExit）——
+      // 否则 abort 分支会「掉回」调用方误报竞争。
+      if (core::isa< ar::Unreachable >(s)) {
+        in_stack.pop_back();
+        return;
       }
-    }
-    BmcEvent ev(nullptr, EvKind::Read);
-    if (classify_event(s, ev, &in_stack)) {
-      current.push_back(ev);
-    }
-    // assume 语义（Dartagnan ResolveAborts → CondJump(cond, DEAD_END, continue)）：
-    // assume_abort_if_not/__VERIFIER_assume 断言实参为真。把实参的正向比较也压成
-    // Assume 事件，使「假分支」的正向约束与反向约束矛盾 → UNSAT（即假分支死）。
-    if (auto* call2 = core::dyn_cast< ar::CallBase >(s)) {
-      if (is_assume_call(call2) && call2->arg_begin() != call2->arg_end()) {
-        if (ar::Comparison* cmp = forward_comparison_of(*call2->arg_begin())) {
-          current.push_back(BmcEvent{cmp, EvKind::Assume});
-        }
-      }
-    }
-    if (s == target) {
-      out.push_back(current);
-      in_stack.pop_back();
-      return;
-    }
-    // helper 内联：跟进有函数体、非原子、无循环的直接调用，把 helper 里的
-    // 访问/锁事件收进路径（target 在 helper 里时在这里命中）。depth 上限防递归
-    // 爆炸；跟不进的调用（extern/原子/循环）保守忽略 → 对应访问看不到 → UNKNOWN。
-    // 间接调用（函数指针）走 resolve_indirect（FPA 候选集），每个候选各一条路径。
-    if (depth < MAX_INLINE_DEPTH) {
-      if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
-        std::vector< ar::Function* > callees;
-        if (ar::Function* d = direct_callee(call)) {
-          callees.push_back(d);
-        } else if (resolve_indirect) {
-          for (ar::Function* f : resolve_indirect(call)) {
-            if (inline_ok(f)) {
-              callees.push_back(f);
+      if (auto* call0 = core::dyn_cast< ar::CallBase >(s)) {
+        if (auto* cst =
+                core::dyn_cast< ar::FunctionPointerConstant >(call0->called())) {
+          if (cst->function() != nullptr) {
+            const std::string& nm0 = cst->function()->name();
+            if (nm0 == "libc.abort" || nm0 == "libc.exit") {
+              in_stack.pop_back();
+              return;
             }
           }
         }
-        for (ar::Function* callee : callees) {
-          // copy per callee（同 Stage 1 回溯坑：多候选不能用同一 current，否则
-          // 上一候选的事件残留进下一候选 → 矛盾路径）。
-          std::vector< BmcEvent > callee_path = current;
-          dfs_paths(callee->body_or_null()->entry_block(), target, callee_path,
-                    out, in_stack, resolve_indirect, depth + 1);
+      }
+      // pthread_cond_wait(...) 处理
+      if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
+        if (is_cond_wait(call)) {
+          std::uint64_t m = cond_wait_mutex_id(call);
+          current.push_back(BmcEvent{s, EvKind::Unlock, m});
+          current.push_back(BmcEvent{s, EvKind::Lock, m});
+        }
+      }
+      BmcEvent ev(nullptr, EvKind::Read);
+      if (skip_cmp && core::isa< ar::Comparison >(s)) {
+        // 常量界循环 body/exit 的循环条件（i<N / i>=N）：bookkeeping，不 emit
+        // Assume——否则同一 phi 变量跨迭代重复 + 反向 exit 条件会矛盾 → UNSAT。
+      } else if (classify_event(s, ev, &in_stack)) {
+        current.push_back(ev);
+      }
+      // assume 语义（Dartagnan ResolveAborts → CondJump(cond, DEAD_END, continue)）：
+      // assume_abort_if_not/__VERIFIER_assume 断言实参为真。把实参的正向比较也压成
+      // Assume 事件，使「假分支」的正向约束与反向约束矛盾 → UNSAT（即假分支死）。
+      if (auto* call2 = core::dyn_cast< ar::CallBase >(s)) {
+        if (is_assume_call(call2) && call2->arg_begin() != call2->arg_end()) {
+          if (ar::Comparison* cmp = forward_comparison_of(*call2->arg_begin())) {
+            current.push_back(BmcEvent{cmp, EvKind::Assume});
+          }
+        }
+      }
+      if (s == target) {
+        out.push_back(current);
+        in_stack.pop_back();
+        return;
+      }
+      // helper 内联：跟进有函数体、非原子、无循环的直接调用，把 helper 里的
+      // 访问/锁事件收进路径（target 在 helper 里时在这里命中）。depth 上限防递归
+      // 爆炸；跟不进的调用（extern/原子/循环）保守忽略 → 对应访问看不到 → UNKNOWN。
+      // 间接调用（函数指针）走 resolve_indirect（FPA 候选集），每个候选各一条路径。
+      if (depth < MAX_INLINE_DEPTH) {
+        if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
+          std::vector< ar::Function* > callees;
+          if (ar::Function* d = direct_callee(call)) {
+            callees.push_back(d);
+          } else if (resolve_indirect) {
+            for (ar::Function* f : resolve_indirect(call)) {
+              if (inline_ok(f)) {
+                callees.push_back(f);
+              }
+            }
+          }
+          for (ar::Function* callee : callees) {
+            // copy per callee（同 Stage 1 回溯坑：多候选不能用同一 current，否则
+            // 上一候选的事件残留进下一候选 → 矛盾路径）。
+            std::vector< BmcEvent > callee_path = current;
+            dfs_paths(callee->body_or_null()->entry_block(), target, callee_path,
+                      out, in_stack, resolve_indirect, headers, iter, depth + 1,
+                      false);
+          }
         }
       }
     }
   }
+
   // 后继 = 备选路径：每个后继用 `current` 的一份拷贝，避免死支的事件残留进
   // 下一条路径（否则真/假分支的相反 Comparison 会混进同一路径 → 矛盾 → UNSAT）。
+  // 常量界循环 header：body 走 iter<N 次、exit 走 iter>=N 后（完整展开，无「0 次」假路径）。
+  ar::BasicBlock* body = nullptr;
+  ar::BasicBlock* exit_bb = nullptr;
+  std::int64_t N = is_header ? constant_loop_bound(bb, body, exit_bb) : -1;
   for (auto succ = bb->successor_begin(), succ_end = bb->successor_end();
        succ != succ_end; ++succ) {
     std::vector< BmcEvent > succ_path = current;
-    dfs_paths(*succ, target, succ_path, out, in_stack, resolve_indirect, depth);
+    bool succ_skip = (N > 0) && (*succ == body || *succ == exit_bb);
+    if (N > 0) {
+      std::map< ar::BasicBlock*, int > succ_iter = iter;
+      if (*succ == body) {
+        if (iter[bb] < N) {
+          succ_iter[bb] = iter[bb] + 1;
+          dfs_paths(*succ, target, succ_path, out, in_stack, resolve_indirect,
+                    headers, succ_iter, depth, succ_skip);
+        }
+      } else if (*succ == exit_bb) {
+        if (iter[bb] >= N) {
+          dfs_paths(*succ, target, succ_path, out, in_stack, resolve_indirect,
+                    headers, iter, depth, succ_skip);
+        }
+      } else {
+        dfs_paths(*succ, target, succ_path, out, in_stack, resolve_indirect,
+                  headers, iter, depth, succ_skip);
+      }
+    } else {
+      dfs_paths(*succ, target, succ_path, out, in_stack, resolve_indirect,
+                headers, iter, depth, false);
+    }
   }
 
-  in_stack.pop_back();
+  if (!on_stack) {
+    in_stack.pop_back();
+  }
 }
 
 /// 收集 CFG 里所有回边（循环）头：DFS 中回边 succ（已在栈上）的 succ 即循环头。
@@ -793,21 +966,48 @@ inline UnrollResult unroll_to(
   if (body == nullptr || !body->has_entry_block()) {
     return result;
   }
+  // 先收集循环头（供 dfs_paths 做常量界展开）。
+  std::vector< ar::BasicBlock* > header_vec;
+  std::vector< ar::BasicBlock* > in_stack2;
+  collect_loop_headers(body->entry_block(), in_stack2, header_vec);
+  std::set< ar::BasicBlock* > headers(header_vec.begin(), header_vec.end());
+
   std::vector< BmcEvent > current;
   std::vector< ar::BasicBlock* > in_stack;
+  std::map< ar::BasicBlock*, int > iter;
   dfs_paths(body->entry_block(), target, current, result.paths, in_stack,
-            resolve_indirect);
+            resolve_indirect, headers, iter);
+
+  // 路径数上限：常量界展开遇带分支循环体会 B^N 爆炸，超限保守标 incomplete。
+  constexpr std::size_t MAX_PATHS = 256;
+  if (result.paths.size() > MAX_PATHS) {
+    result.paths.clear();
+    result.incomplete = true;
+    return result;
+  }
+  // 单路径事件数上限：嵌套/大循环体会让单条路径事件数暴涨，导致 check_race 的
+  // SMT 编码巨大（内存/时间爆炸）。超限保守标 incomplete。
+  constexpr std::size_t MAX_PATH_EVENTS = 1024;
+  for (const auto& p : result.paths) {
+    if (p.size() > MAX_PATH_EVENTS) {
+      result.paths.clear();
+      result.incomplete = true;
+      return result;
+    }
+  }
 
   // 精确能力边界：target 的块若从某回边（循环）头前向可达，则要看循环会不会
   // 影响访问（incomplete → UNKNOWN）：
-  //   - 访问在循环体内（target 块能回到 header）：迭代 0 可达需 N≥1（界分析未做）
-  //     → 保守 incomplete。
-  //   - 访问在循环之后：只有循环体含同步（mutex/create/join）才可能排序访问 →
+  //   - 常量界循环已在 dfs_paths 完整展开（N 次 body + exit），跳过；
+  //   - 访问在循环体内（target 块能回到 header）：nondet 界保守 incomplete；
+  //   - 访问在循环之后：循环体含同步（mutex/create/join）才可能排序访问 →
   //     incomplete；良性循环体（init/算术，无同步）不影响竞态 → 照常判。
-  std::vector< ar::BasicBlock* > headers;
-  std::vector< ar::BasicBlock* > in_stack2;
-  collect_loop_headers(body->entry_block(), in_stack2, headers);
-  for (ar::BasicBlock* h : headers) {
+  for (ar::BasicBlock* h : header_vec) {
+    ar::BasicBlock* body_tmp = nullptr;
+    ar::BasicBlock* exit_tmp = nullptr;
+    if (constant_loop_bound(h, body_tmp, exit_tmp) > 0) {
+      continue;  // 已完整展开
+    }
     std::vector< ar::BasicBlock* > visited;
     if (!cfg_reachable(h, target->parent(), visited)) {
       continue;
