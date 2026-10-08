@@ -41,7 +41,7 @@
 
 | 文档 | 难度 | 读什么 |
 |---|---|---|
-| [ikos-bmc-design.md](ikos-bmc-design.md) | ⭐⭐ | §1 理论前提（SV-COMP 用 SC）→ §6 helper 内联的 4 类 FP gate → §7 落地结果 → §8 未做项 |
+| [ikos-bmc-complete.md](ikos-bmc-complete.md) | ⭐⭐ | 从头读：§1 理论依据（Dartagnan encodeDataRaces）→ §4 事件模型 → §5 展开 → §6 SMT 编码 → §7 sound gate → §9 待验证设计 |
 
 读完你会：知道 demote 成 UNKNOWN 的竞争对是怎么被 Z3 精确确认回 FALSE 的，以及 7 道 gate 各自挡什么。
 
@@ -59,7 +59,7 @@
 |---|---|
 | 改竞态判定逻辑（为什么报/不报） | `concurrency-architecture.md` §4 闸门 + `theory-mapping.md` §2.1.x 对应模块 |
 | 加/改一个同步语义（锁/原子/cond/sem） | `theory-mapping.md` §2.1.x 对应小节 + 对应模块的 soundness 核验点 |
-| 找回更多 TP（BMC 方向） | `ikos-bmc-design.md` §8「尚未做」 |
+| 找回更多 TP（BMC 方向） | `ikos-bmc-complete.md` §9「待验证设计」 |
 | 回收 lost-TN（SAFE 方向） | `theory-mapping.md` §3.2 的 235 UNKNOWN 拆桶 |
 | 查某个 FP/FN 的历史根因 | `archive/`（fn-root-cause / fp-classification 的原始快照） |
 | 准备 SV-COMP 提交 | `SVCOMP2027-最终核验清单.md`（打勾）+ `SVCOMP2027-干净环境检测流程.md` |
@@ -79,7 +79,6 @@
 - [ikos-upstream-diff.md](ikos-upstream-diff.md) —— 本地 vs 上游源码 diff 客观清单
 
 ### 设计
-- [ikos-bmc-design.md](ikos-bmc-design.md) —— BMC 设计 + 演进（helper 内联 4 类 gate + 未做项）
 - [ikos-bmc-complete.md](ikos-bmc-complete.md) —— **BMC 完整学习文档**（事件模型→展开→SMT→sound gate 全流程；铁证 vs 待验证设计严格分开）
 - [dartagnan-svcomp2026-reference.md](dartagnan-svcomp2026-reference.md) —— Dartagnan 权威参照：SV-COMP 2026 官方版 7caef5c/4.3.1 + encodeDataRaces 机制 + 关键 commits→IKOS 缺口映射
 - [ikos-vs-dartagnan-gap.md](ikos-vs-dartagnan-gap.md) —— 差距分析：176 TP vs 80 TP、23 独有、119 lost target 分桶 + 可实现性

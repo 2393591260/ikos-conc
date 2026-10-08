@@ -182,5 +182,32 @@ struct BmcEvent {
 
 ---
 
+## 10. 设计决策史（从 ikos-bmc-design.md 并入，避免文档冗余）
+
+### 10.1 核心设计决策：不重写 checker，复用它的产物（【铁证】）
+
+BMC 不是从零扫 AR，而是接管抽象解释判为「潜在竞争」的那一对访问：
+- **用 checker 的**：访问事件 / 线程归属 / 竞争对语句（定位 load/store + 线程入口）。
+- **不用** `resolve_points_to`（过近似，per-thread malloc 多对象坍缩成同 cell）——BMC 要精确地址相等。
+- **不用** 抽象锁集（不精确）——BMC 在 SMT 里重算同步。
+
+### 10.2 helper 内联暴露的 4 类 FP（gate 的历史根因）（【铁证】）
+
+| FP 机制 | 代表文件 | 对应 gate |
+|---|---|---|
+| 单调用原子函数内联（裸访问） | pthread-atomic | `bmc_skip_inline` |
+| helper 带循环（DAG 展开不精确） | — | `function_has_loop` |
+| 无锁协议（线性化非 hb） | elimination_backoff_stack | `function_has_atomic_section` |
+| 隔代 create/join（2 线程看不到中间线程） | race-4_1 | 隔代祖先门（`_thread_ancestors`−`_thread_creators`）|
+
+### 10.3 独特优势（比 Dartagnan 强的地方）（【铁证】）
+
+| 难点 | Dartagnan 现状 | IKOS 优势 |
+|---|---|---|
+| double 浮点 | 直接 CRASH | APRON（多面体/octagon）天然支持 double |
+| join 句柄是数组 + 变量下标 | 全 UNKNOWN | 抽象解释天然适合上数组摘要域 |
+
+---
+
 *铁证来源：Dartagnan `7caef5c` 源码（svcomp.cat / PropertyEncoder.encodeDataRaces / VisitorLlvm）、
 IKOS `unroll.hpp` / `encode.hpp` / `bmc.hpp` / `data_race.cpp`、实跑 Dartagnan 4.3.1 与 IKOS A/B。*
