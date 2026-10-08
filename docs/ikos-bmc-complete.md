@@ -2,7 +2,9 @@
 
 > **阅读前提**：本文把「事件模型 → 展开算法 → SMT 编码 → sound 证明 → gate 体系」讲完整，供学习与后续开发。
 > **严格标注**：每节开头标【铁证】= 已读源码/实跑验证；【待验证】= 我的设计提案，未落地，正确性待 A/B 证实。
-> 数据基准：2026-10-07，steps 1-4 之后（TP=80 / FP=0 / TN=709 / FN=0 / err=1）。
+> 数据基准：2026-10-08，修复 Codex 复现的 1 FP + 2 FN 之后（TP=50 / FP=0 / TN=709 / FN=0 / err=1）。
+> ⚠️ 此前「TP=80」含 30 个靠自由变量**不 sound** 确认的竞争，A0 gate 已退回 UNKNOWN（见 §11）。
+> 测试集 = SV-COMP 2026 no-data-race 全量（`svcomp_race_test.py`，默认 /home/ruan/sv-benchmarks-2026，~1029 任务）。
 
 ---
 
@@ -10,8 +12,11 @@
 
 - **目标**：接在抽象解释（over-approx，保 FN=0）之后，对每个 demote 成 UNKNOWN 的候选竞争对，用 Z3 精确判定
   「这两个访问是否真的能并发」。**SAT ⟹ 报 FALSE（找回 TP）；UNSAT / 无法证明 ⟹ 保持 UNKNOWN。永不报 TRUE**（证 SAFE 交给抽象解释）。
-- **红线 FN=0**：sound 优先于 precision，宁多报 FP 不漏报 FN（但当前也守 FP=0）。
+- **红线 FN=0**：sound 优先于 precision，宁多报 FP 不漏报 FN（当前也守 FP=0，但见 §11：FP=0 是实测结果，
+  不是「欠近似」自动保证——BMC 数据上过近似，靠 A0 gate 主动封自由变量才守住）。
 - **有界红线（【待验证】后续开发约束）**：只做逐对、带上限的编码，不碰全程序 SMT；任何一片让某文件超几十秒即打回。
+- **内存模型**：目标 = SV-COMP no-data-race 的 pthread 程序，Dartagnan 官方以 `acyclic hb as sc`（SC）建模（§1.1），
+  IKOS 编码同为 SC。弱内存（RC11/TSO/acquire-release 原子）不在本设计范围——统一走 `has_unmodeled_sync` 门保守 UNKNOWN，不引 FP。
 
 ---
 
@@ -42,7 +47,13 @@ acyclic hb as sc
 4. `isAdjacentInHb = hb(m,w) && clock_hb(w)==clock_hb(m)+1`（**hb 里相邻**）。
 5. `hasRace |= conflicting && adjacent`。
 
-**核心语义：相邻 ⟺ 无 hb 排序 ⟺ 竞态。** IKOS `check_race` 的「相邻判定」对齐的正是这条（不是 2027 版 `sw` 的「两端必须原子」）。
+**核心语义：race ⟺ conflicting ∧ hb-相邻**（`isAdjacentInHb = hb(m,w) ∧ clock_hb(w)==clock_hb(m)+1`）。
+「相邻」指在 hb 的某个线性扩展里两事件连续（中间无其他事件），**不是**「两事件之间没有 hb」——可比且无
+中间元素的两事件同样相邻。IKOS `check_race` 对齐的正是这个「相邻」判定（不是 2027 版 `sw` 的「两端必须原子」）。
+
+> 注：这里的 hb 是 Dartagnan CAT 里的 `po | com | rmw`（含 rf/fr/co 值流），不能直接等同于 POSIX/C11 的
+> happens-before；assume/值约束是执行约束、不是事件二元排序关系。IKOS 的编码只覆盖这条 hb 的一个子集
+> （po+mutex+spawn/join，无 com），见 §8 缺口。
 
 ### 1.3 Dartagnan 为何慢（【铁证】+ 复杂度分析）
 
@@ -60,8 +71,10 @@ acyclic hb as sc
         └────────────── 候选对 ──────────────┘
 ```
 
-- **sound 保证**：抽象解释的「潜在竞争」不直接报 FALSE，先 demote；只有 BMC 确认（SAT）才报 FALSE。
-  所以 FP=0（BMC 是欠近似，确认的都是真竞态）。
+- **SAFE 方向 sound**：抽象解释是 over-approx，SAFE 结论可靠（FN=0）；「潜在竞争」不直接报 FALSE，先 demote。
+- **FALSE 方向需主动守 FP=0**：BMC 结构上欠近似（有界路径）、**数据上过近似**（未建模值建成自由 SMT 变量，
+  会凭空造出程序没有的执行）——所以「欠近似 ⇒ FP=0」**不成立**。FP=0 靠 A0 gate 主动封自由变量守住，是
+  实测结果而非架构自动保证（见 §11）。
 - **完备性缺失的后果**：硬程序两头都「可能」→ UNKNOWN（0 分），**不是 FP/FN**。soundness 与完备性正交。
 
 ---
@@ -123,8 +136,10 @@ struct BmcEvent {
 3. **spawn HB**：`Create(B) < B 首事件`。
 4. **join HB**：`joined 线程末事件 < Join`（过约束，只丢 TP 不引 FP）。
 5. **mutex 互斥**：共享锁 `Unlock_A → Lock_B` 或 `Unlock_B → Lock_A`（二选一布尔）。
-6. **assume 约束**：路径上每条 Comparison 编码（整数比较；指针/浮点比较 → `unencodable` → 不确认）。
-7. **同址门**：两访问 `base` 相同 + `const_off + coeff*var` 相等。
+6. **assume 约束**：路径上每条 Comparison 编码。**A0 gate**：只认 `const pred const`；变量 operand /
+   指针 / 浮点 → `unencodable` → 不确认（变量值来源未建模，自由变量造执行）。
+7. **同址门**：两访问 `base` 相同（否则提前返回不确认）+ **字节范围重叠**（`off_a < off_b+width_b ∧ off_b < off_a+width_a`）；
+   变量下标 `var_id!=0` → 不确认。
 8. **竞争查询**：两访问能否相邻（`clock 差 1`，两方向各查一次）→ SAT = 竞态。
 
 ---
@@ -142,9 +157,13 @@ struct BmcEvent {
 | 5 | held 锁门 | 双方持同一 held 锁（unlock 在访问后、不在路径里，互斥表达不了）|
 | 6 | 资源上限 | MAX_UNROLL=8 / MAX_PATHS=256 / MAX_PATH_EVENTS=1024 |
 | 7 | 地址/锁身份提取失败 | 保守不确认 |
+| 8 | A0 值来源 gate | assume 变量 operand / 变量下标 `var_id` / base 提取失败 → 不确认（自由变量造执行，见 §11）|
 
 **去启发式史（steps 1-4）**：acquire/release 归入 unmodeled、`function_has_sync_recursive` 补查 mutex/cond_wait、
 `is_induction_var` 只留局部 SSA、held 锁门注释改写成边界。TP 96→80，FP=0/FN=0 全程保持。
+
+**待办（gate 埋点量化）**：各 gate 的拦截率与对应潜在 TP 数尚未量化（尤其 `has_unmodeled_sync` vs `same_global`
+谁挡得多）。优化前先给 7 个 gate 加 env-gated 埋点，按「拦 TP 数 / 实现成本」排序，优先动低成本的。
 
 ---
 
@@ -176,9 +195,9 @@ struct BmcEvent {
 4. **N 线程**：2→K 路径展开（K 有上限）。
 5. **堆对象精确别名**：DynAlloc 精确化（当前 per-thread malloc 多实例坍缩，故排除堆）。
 
-**最终边界（【待验证】估算）**：加 rf/co + 别名 + N 线程，TP 可从 80 追到 ~140，仍保持有界快；
+**最终边界（【待验证】估算）**：加 rf/co + 别名 + N 线程，TP 可从 50（sound 基线）追到 ~140，仍保持有界快；
 但最后 ~35 个需要 Dartagnan 全程序 SMT 完备性的 TP，IKOS 的欠近似架构**追不到**（数学上快≠完备）。
-**这不影响反超**：IKOS 靠抽象解释的 TN 优势（709 vs 505）分数已 1498 > Dartagnan 1186。
+**这不影响反超**：IKOS 靠抽象解释的 TN 优势（709 vs 505），sound 基线（TP=50）分数 1468 仍 > Dartagnan 1186。
 
 ---
 
@@ -206,6 +225,24 @@ BMC 不是从零扫 AR，而是接管抽象解释判为「潜在竞争」的那�
 |---|---|---|
 | double 浮点 | 直接 CRASH | APRON（多面体/octagon）天然支持 double |
 | join 句柄是数组 + 变量下标 | 全 UNKNOWN | 抽象解释天然适合上数组摘要域 |
+
+---
+
+## 11. 已复现并修复的 soundness 缺陷（2026-10-08，Codex 审查）
+
+Codex 审查（`docs/ikos-bmc-review-2026-10-08.md`）复现了 1 FP + 2 FN，均已修复并提交：
+
+| 用例 | 问题 | 根因 | 修复 commit |
+|---|---|---|---|
+| `exclusive-flag.c` | **FP**：无竞争程序报 FALSE | 自由变量：两线程读同一 shared var 各取不同值，造出程序没有的执行 | `4910339`（A0 gate）|
+| `published-before-init.c` | **FN**：真竞争报 SAFE | `private_init` 未证对象未发布即删候选 | `df63329`（禁用）|
+| `overlapping-widths.c` | **FN**：真竞争报 SAFE | 偏移过滤无访问宽度 | `df63329`（width+范围重叠）|
+
+**核心教训**：「BMC 是欠近似 ⇒ FP=0」证伪。BMC 结构上欠近似（有界路径）、数据上过近似（自由变量），
+两种近似方向同时存在，不能靠模块名称判断。FP=0 是 A0 gate 主动封自由变量后的**实测结果**，不是架构保证。
+
+**代价**：TP 80→50（掉 30 = 原靠自由变量不 sound 确认的值守卫/变量下标/标志式竞争）。恢复需 A1 局部值编码
+（rf/co + 算术 + 实参/返回值绑定），不能再用自由变量。复现脚本 `docs/review-repros/bmc-2026-10-08/run.py`。
 
 ---
 
