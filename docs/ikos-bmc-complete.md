@@ -2,7 +2,7 @@
 
 > **阅读前提**：本文把「事件模型 → 展开算法 → SMT 编码 → sound 证明 → gate 体系」讲完整，供学习与后续开发。
 > **严格标注**：每节开头标【铁证】= 已读源码/实跑验证；【待验证】= 我的设计提案，未落地，正确性待 A/B 证实。
-> 数据基准：2026-10-08，修复 Codex 复现的 1 FP + 2 FN 之后（TP=50 / FP=0 / TN=709 / FN=0 / err=1）。
+> 数据基准：2026-10-08，修复 1 FP + 2 FN + A1 局部值编码之后（TP=52 / FP=0 / TN=709 / FN=0 / err=1）。
 > ⚠️ 此前「TP=80」含 30 个靠自由变量**不 sound** 确认的竞争，A0 gate 已退回 UNKNOWN（见 §11）。
 > 测试集 = SV-COMP 2026 no-data-race 全量（`svcomp_race_test.py`，默认 /home/ruan/sv-benchmarks-2026，~1029 任务）。
 
@@ -136,8 +136,9 @@ struct BmcEvent {
 3. **spawn HB**：`Create(B) < B 首事件`。
 4. **join HB**：`joined 线程末事件 < Join`（过约束，只丢 TP 不引 FP）。
 5. **mutex 互斥**：共享锁 `Unlock_A → Lock_B` 或 `Unlock_B → Lock_A`（二选一布尔）。
-6. **assume 约束**：路径上每条 Comparison 编码。**A0 gate**：只认 `const pred const`；变量 operand /
-   指针 / 浮点 → `unencodable` → 不确认（变量值来源未建模，自由变量造执行）。
+6. **assume 约束**：路径上每条 Comparison 编码。**A0/A1 值来源 gate**：常量 + `__VERIFIER_nondet_*` 结果
+   （自由符号 + 类型范围）可编码；变量 operand 若追溯到 load / 实参 / 未知调用 / phi → `unencodable` → 不确认；
+   指针 / 浮点 → 不确认。每路径独立 cache（同入口函数两实例的局部值互不相关）。
 7. **同址门**：两访问 `base` 相同（否则提前返回不确认）+ **字节范围重叠**（`off_a < off_b+width_b ∧ off_b < off_a+width_a`）；
    变量下标 `var_id!=0` → 不确认。
 8. **竞争查询**：两访问能否相邻（`clock 差 1`，两方向各查一次）→ SAT = 竞态。
@@ -157,7 +158,7 @@ struct BmcEvent {
 | 5 | held 锁门 | 双方持同一 held 锁（unlock 在访问后、不在路径里，互斥表达不了）|
 | 6 | 资源上限 | MAX_UNROLL=8 / MAX_PATHS=256 / MAX_PATH_EVENTS=1024 |
 | 7 | 地址/锁身份提取失败 | 保守不确认 |
-| 8 | A0 值来源 gate | assume 变量 operand / 变量下标 `var_id` / base 提取失败 → 不确认（自由变量造执行，见 §11）|
+| 8 | A0/A1 值来源 gate | 变量 operand 追溯到 load/实参/未知调用/phi → 不确认；变量下标 `var_id` / base 提取失败 → 不确认（自由变量造执行，见 §11）|
 
 **去启发式史（steps 1-4）**：acquire/release 归入 unmodeled、`function_has_sync_recursive` 补查 mutex/cond_wait、
 `is_induction_var` 只留局部 SSA、held 锁门注释改写成边界。TP 96→80，FP=0/FN=0 全程保持。
@@ -195,7 +196,7 @@ struct BmcEvent {
 4. **N 线程**：2→K 路径展开（K 有上限）。
 5. **堆对象精确别名**：DynAlloc 精确化（当前 per-thread malloc 多实例坍缩，故排除堆）。
 
-**最终边界（【待验证】估算）**：加 rf/co + 别名 + N 线程，TP 可从 50（sound 基线）追到 ~140，仍保持有界快；
+**最终边界（【待验证】估算）**：加 rf/co + 别名 + N 线程，TP 可从 52（sound 基线）追到 ~140，仍保持有界快；
 但最后 ~35 个需要 Dartagnan 全程序 SMT 完备性的 TP，IKOS 的欠近似架构**追不到**（数学上快≠完备）。
 **这不影响反超**：IKOS 靠抽象解释的 TN 优势（709 vs 505），sound 基线（TP=50）分数 1468 仍 > Dartagnan 1186。
 
