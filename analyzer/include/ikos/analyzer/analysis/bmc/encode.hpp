@@ -115,18 +115,9 @@ inline bool check_race(const std::vector< BmcEvent >& pathA,
     s.add(z3::implies(!ord, clock[nA + unlockB[m]] < clock[lockA[m]]));
   }
 
-  // var_id -> SMT 变量：地址相等与 assume 约束共享同一映射（同一 SSA 值 → 同一
-  // SMT 变量）。
-  std::map< std::uint64_t, z3::expr > vars;
-  auto var_of = [&](std::uint64_t vid) -> z3::expr {
-    auto it = vars.find(vid);
-    if (it != vars.end()) {
-      return it->second;
-    }
-    z3::expr v = ctx.int_const(("v" + std::to_string(vid)).c_str());
-    vars.emplace(vid, v);
-    return v;
-  };
+  // A0 值来源 gate：不再为未建模值建自由 SMT 整数。任何依赖 load/算术/实参值的
+  // 约束都会置 unencodable → 不确认（见 encode_assume 与同址门）。自由变量会凭空
+  // 造出程序没有的执行（exclusive-flag.c FP）。
 
   // 编码一条 `var pred const` / `const pred var` 的整数比较；指针/浮点等无法编码
   // 的比较置 `unencodable=true`（调用方据此保守不确认）。`var pred var` 也能编码。
@@ -162,63 +153,18 @@ inline bool check_race(const std::vector< BmcEvent >& pathA,
       default:
         break;
     }
-    // `var pred var`（两变量）：也能编码。
-    if (auto* li = core::dyn_cast< ar::InternalVariable >(l)) {
-      if (auto* ri = core::dyn_cast< ar::InternalVariable >(r)) {
-        z3::expr x = var_of(reinterpret_cast< std::uint64_t >(li));
-        z3::expr y = var_of(reinterpret_cast< std::uint64_t >(ri));
-        switch (cmp->predicate()) {
-          case ar::Comparison::UIEQ:
-          case ar::Comparison::SIEQ:
-            return x == y;
-          case ar::Comparison::UINE:
-          case ar::Comparison::SINE:
-            return x != y;
-          case ar::Comparison::UIGT:
-          case ar::Comparison::SIGT:
-            return x > y;
-          case ar::Comparison::UIGE:
-          case ar::Comparison::SIGE:
-            return x >= y;
-          case ar::Comparison::UILT:
-          case ar::Comparison::SILT:
-            return x < y;
-          case ar::Comparison::UILE:
-          case ar::Comparison::SILE:
-            return x <= y;
-          default:
-            unencodable = true;
-            return ctx.bool_val(true);
-        }
-      }
-    }
-    std::uint64_t vid;
-    std::int64_t cst;
-    bool var_on_left;
-    if (auto* li2 = core::dyn_cast< ar::InternalVariable >(l)) {
-      auto* rc = core::dyn_cast< ar::IntegerConstant >(r);
-      if (rc == nullptr) {
-        unencodable = true;
-        return ctx.bool_val(true);
-      }
-      vid = reinterpret_cast< std::uint64_t >(li2);
-      cst = rc->value().to_z_number().to< std::int64_t >();
-      var_on_left = true;
-    } else if (auto* lc = core::dyn_cast< ar::IntegerConstant >(l)) {
-      auto* ri = core::dyn_cast< ar::InternalVariable >(r);
-      if (ri == nullptr) {
-        unencodable = true;
-        return ctx.bool_val(true);
-      }
-      vid = reinterpret_cast< std::uint64_t >(ri);
-      cst = lc->value().to_z_number().to< std::int64_t >();
-      var_on_left = false;
-    } else {
+    // A0：只建模 `const pred const`。任何 InternalVariable operand 的值来源
+    // （load 结果 / 算术 / 实参）都未被编码——自由 SMT 变量会造出程序没有的执行
+    // （exclusive-flag.c：两线程的 selector load 各自取 1/2 → 两写都可达 → FP）。
+    // 常量比较交给 Z3 求值：false 断言令查询 UNSAT，不会确认不可达路径。
+    auto* lc = core::dyn_cast< ar::IntegerConstant >(l);
+    auto* rc = core::dyn_cast< ar::IntegerConstant >(r);
+    if (lc == nullptr || rc == nullptr) {
       unencodable = true;
       return ctx.bool_val(true);
     }
-    z3::expr x = var_on_left ? var_of(vid) : ctx.int_val(cst);
-    z3::expr y = var_on_left ? ctx.int_val(cst) : var_of(vid);
+    z3::expr x = ctx.int_val(lc->value().to_z_number().to< std::int64_t >());
+    z3::expr y = ctx.int_val(rc->value().to_z_number().to< std::int64_t >());
     switch (cmp->predicate()) {
       case ar::Comparison::UIEQ:
       case ar::Comparison::SIEQ:
@@ -259,26 +205,23 @@ inline bool check_race(const std::vector< BmcEvent >& pathA,
       }
     }
   }
-  // 有无法编码的比较（指针/浮点）→ 保守不确认（UNKNOWN），避免误报。
-  if (unencodable) {
-    return false;
-  }
-
   // SMT 同址门：两个访问必须在同一 base 上字节范围重叠。base 相同由 checker 的
   // same_global 门保证，这里判范围重叠；base 不同或提取失败（base==0）则不确认
   // （保持 UNKNOWN）。
   {
     const BmcEvent& ea = pathA.back();
     const BmcEvent& eb = pathB.back();
-    if (ea.base != 0 && eb.base != 0 && ea.base == eb.base) {
+    // 同址必须可证：base 提取失败（0）或 base 不同 → 缺失同址约束会让两访问被
+    // 「假相邻」确认 → FP。保守不确认（UNKNOWN）。
+    if (ea.base == 0 || eb.base == 0 || ea.base != eb.base) {
+      return false;
+    }
+    if (ea.var_id != 0 || eb.var_id != 0) {
+      // A0：变量下标（data[i]）的 i 来源未编码，自由 var 证不了同址 → 不确认。
+      unencodable = true;
+    } else {
       z3::expr off_a = ctx.int_val(ea.const_off);
       z3::expr off_b = ctx.int_val(eb.const_off);
-      if (ea.var_id != 0) {
-        off_a = off_a + ctx.int_val(ea.coeff) * var_of(ea.var_id);
-      }
-      if (eb.var_id != 0) {
-        off_b = off_b + ctx.int_val(eb.coeff) * var_of(eb.var_id);
-      }
       // 字节范围重叠（而非起始 offset 相等）：`x`(u32@[0]) 与 `((u8*)&x)[1]`
       // (u8@[1]) 起始不同但范围重叠 → 同址（overlapping-widths.c FN）。width==0
       // （未知）退化为起始相等（保守，只丢 TP 不引 FP）。
@@ -290,6 +233,12 @@ inline bool check_race(const std::vector< BmcEvent >& pathA,
         s.add(off_a == off_b);
       }
     }
+  }
+
+  // 有无法编码的约束（变量值来源 / 变量下标 / 指针 / 浮点比较）→ 保守不确认
+  // （UNKNOWN），避免误报。
+  if (unencodable) {
+    return false;
   }
 
   // 竞争查询：两个访问（各自路径最后一个事件）能否相邻。
