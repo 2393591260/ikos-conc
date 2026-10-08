@@ -115,14 +115,87 @@ inline bool check_race(const std::vector< BmcEvent >& pathA,
     s.add(z3::implies(!ord, clock[nA + unlockB[m]] < clock[lockA[m]]));
   }
 
-  // A0 值来源 gate：不再为未建模值建自由 SMT 整数。任何依赖 load/算术/实参值的
-  // 约束都会置 unencodable → 不确认（见 encode_assume 与同址门）。自由变量会凭空
-  // 造出程序没有的执行（exclusive-flag.c FP）。
-
-  // 编码一条 `var pred const` / `const pred var` 的整数比较；指针/浮点等无法编码
-  // 的比较置 `unencodable=true`（调用方据此保守不确认）。`var pred var` 也能编码。
+  // A0/A1 值来源 gate：自由 SMT 变量会凭空造出程序没有的执行（exclusive-flag.c
+  // FP）。A0 只认常量；A1 额外编码「单一定义的局部值」——整数常量 + `__VERIFIER_nondet_*`
+  // 调用结果（真非确定，独立于 store，可为自由符号，但必须加类型范围约束）。
+  // load（共享读）/ 实参 / 未知调用 / phi / 未初始化 → 无法编码 → unencodable。
   bool unencodable = false;
-  auto encode_assume = [&](ar::Comparison* cmp) -> z3::expr {
+
+  // 每路径独立的 cache 与符号前缀：同一线程入口函数的两个实例，其局部变量共享同一
+  // InternalVariable 指针，但不同实例互不相关——共用同一 SMT 符号会错误相关两实例
+  // 的独立值（FN）。
+  std::map< ar::InternalVariable*, z3::expr > cache_a, cache_b;
+  auto encode_value = [&](ar::Value* v, z3::expr& out,
+                          std::map< ar::InternalVariable*, z3::expr >& cache,
+                          const std::string& prefix) -> bool {
+    if (auto* c = core::dyn_cast< ar::IntegerConstant >(v)) {
+      out = ctx.int_val(c->value().to_z_number().to< std::int64_t >());
+      return true;
+    }
+    auto* iv = core::dyn_cast< ar::InternalVariable >(v);
+    if (iv == nullptr) {
+      return false;
+    }
+    auto it = cache.find(iv);
+    if (it != cache.end()) {
+      out = it->second;
+      return true;
+    }
+    ar::Statement* def = unique_def_bmc(iv);
+    if (auto* call = core::dyn_cast_or_null< ar::CallBase >(def)) {
+      // 识别 nondet 调用：直调是 FunctionPointerConstant；`__VERIFIER_nondet_int`
+      // 常被 frontend 变成 `%5 = bitcast @__VERIFIER_nondet_int; %6 = call %5()`，
+      // 剥 bitcast 拿底层函数（sound：bitcast 不改函数身份）。
+      ar::Value* called = call->called();
+      bool is_nondet = false;
+      for (int depth = 0; depth < 4 && !is_nondet; ++depth) {
+        if (auto* fpc =
+                core::dyn_cast< ar::FunctionPointerConstant >(called)) {
+          is_nondet = fpc->function() != nullptr &&
+                      fpc->function()->name().find("nondet") !=
+                          std::string::npos;
+          break;
+        }
+        auto* civ = core::dyn_cast< ar::InternalVariable >(called);
+        if (civ == nullptr) {
+          break;
+        }
+        ar::Statement* cdef = unique_def_bmc(civ);
+        auto* un = core::dyn_cast_or_null< ar::UnaryOperation >(cdef);
+        if (un == nullptr || un->op() != ar::UnaryOperation::Bitcast) {
+          break;
+        }
+        called = un->operand();
+      }
+      if (is_nondet) {
+        z3::expr e = ctx.int_const(
+            (prefix + std::to_string(cache.size())).c_str());
+        // 类型范围约束：nondet 只能取该整型范围内的值（sound，防 SMT 取到
+        // 超出机器整型范围的值）。
+        if (auto* it = core::dyn_cast< ar::IntegerType >(iv->type())) {
+          std::uint64_t bw = it->bit_width();
+          ZNumber lo, hi;
+          if (it->is_signed()) {
+            lo = -(ZNumber(1) << (bw - 1));
+            hi = (ZNumber(1) << (bw - 1)) - 1;
+          } else {
+            lo = 0;
+            hi = (ZNumber(1) << bw) - 1;
+          }
+          s.add(e >= ctx.int_val(lo.str().c_str()) &&
+                e <= ctx.int_val(hi.str().c_str()));
+        }
+        cache.emplace(iv, e);
+        out = e;
+        return true;
+      }
+    }
+    return false;  // load / 实参 / 未知调用 / phi / 未初始化
+  };
+
+  auto encode_assume = [&](ar::Comparison* cmp,
+                           std::map< ar::InternalVariable*, z3::expr >& cache,
+                           const std::string& prefix) -> z3::expr {
     ar::Value* l = cmp->left();
     ar::Value* r = cmp->right();
     // 指针比较（PEQ/PNE/…）或浮点比较：BMC 一期建不了模（pthread_getspecific 等
@@ -153,18 +226,13 @@ inline bool check_race(const std::vector< BmcEvent >& pathA,
       default:
         break;
     }
-    // A0：只建模 `const pred const`。任何 InternalVariable operand 的值来源
-    // （load 结果 / 算术 / 实参）都未被编码——自由 SMT 变量会造出程序没有的执行
-    // （exclusive-flag.c：两线程的 selector load 各自取 1/2 → 两写都可达 → FP）。
-    // 常量比较交给 Z3 求值：false 断言令查询 UNSAT，不会确认不可达路径。
-    auto* lc = core::dyn_cast< ar::IntegerConstant >(l);
-    auto* rc = core::dyn_cast< ar::IntegerConstant >(r);
-    if (lc == nullptr || rc == nullptr) {
+    // A1：编码两个 operand（常量 或 追溯到合法来源的值）。任一无法编码 → 不确认。
+    z3::expr x(ctx), y(ctx);
+    if (!encode_value(l, x, cache, prefix) ||
+        !encode_value(r, y, cache, prefix)) {
       unencodable = true;
       return ctx.bool_val(true);
     }
-    z3::expr x = ctx.int_val(lc->value().to_z_number().to< std::int64_t >());
-    z3::expr y = ctx.int_val(rc->value().to_z_number().to< std::int64_t >());
     switch (cmp->predicate()) {
       case ar::Comparison::UIEQ:
       case ar::Comparison::SIEQ:
@@ -190,18 +258,19 @@ inline bool check_race(const std::vector< BmcEvent >& pathA,
     }
   };
 
-  // 路径条件（assume 约束）：两路径上每条 Comparison 都成立。
+  // 路径条件（assume 约束）：两路径上每条 Comparison 都成立，各自用独立 cache
+  // 与符号前缀（同入口函数两实例的局部值必须互不相关）。
   for (const BmcEvent& e : pathA) {
     if (e.kind == EvKind::Assume) {
       if (auto* cmp = core::dyn_cast< ar::Comparison >(e.stmt)) {
-        s.add(encode_assume(cmp));
+        s.add(encode_assume(cmp, cache_a, "a"));
       }
     }
   }
   for (const BmcEvent& e : pathB) {
     if (e.kind == EvKind::Assume) {
       if (auto* cmp = core::dyn_cast< ar::Comparison >(e.stmt)) {
-        s.add(encode_assume(cmp));
+        s.add(encode_assume(cmp, cache_b, "b"));
       }
     }
   }
