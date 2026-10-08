@@ -806,11 +806,19 @@ DataRaceChecker::~DataRaceChecker() {
         continue;
       }
       // Happens-before (private-init publication, 09-regions_02-list_nr.c):
-      // an unlocked initialization write precedes its thread's promotion of
-      // the object under a single lock, so it happens-before a locked read
-      // of the same object by another thread (the promoting lock serializes
-      // the two critical sections).
-      {
+      // DISABLED (kEnablePrivateInit = false). The rule only proves "the same
+      // thread later accesses this DynAlloc while holding exactly one lock" —
+      // it does NOT prove the object was still un-published at the unlocked
+      // write. published-before-init.c (main publishes `p` through a global
+      // BEFORE spawning threads, so thread A's unlocked `p->v=1` races thread
+      // B's locked write) is a real race this rule wrongly suppressed → FN,
+      // violating FN=0. Re-enable only with (a) an escape/freshness proof that
+      // the object is not yet reachable by other threads at the write, and
+      // (b) an explicit publication edge (init write → promoting unlock →
+      // reader lock → reader access). See is_heap_node_fresh /
+      // touches_shared_memory as candidate sources for (a).
+      constexpr bool kEnablePrivateInit = false;
+      if (kEnablePrivateInit) {
         auto hb_private_init = [](const AccessRecord& writer,
                                   const AccessRecord& reader) {
           if (!writer.private_init || writer.promote_locks.size() != 1 ||
@@ -876,18 +884,22 @@ DataRaceChecker::~DataRaceChecker() {
           continue;
         }
       }
-      // Field/element sensitivity on the DATA side: `data.x` and `data.y`
-      // (or `data[3]` and `data[4]`) collapse to the same base location, but
-      // their byte offsets are disjoint — provably distinct elements, so no
-      // race. A top/imprecise offset overlaps everything (conservative).
-      //
-      // Skip the interval meet when either side is TOP: top overlaps any
-      // interval, so `meet(...).is_bottom()` can never be true — the meet and
-      // disjointness test would be pure wasted work. (Class B's `c.slot[j]`
-      // accesses are exactly this top-offset case.)
-      if (!a.offset.is_top() && !b.offset.is_top() &&
-          a.offset.meet(b.offset).is_bottom()) {
-        continue;
+      // Field/element sensitivity on the DATA side, width-aware: `data.x` and
+      // `data.y` (or `data[3]` and `data[4]`) collapse to the same base
+      // location, but their byte RANGES are disjoint — provably distinct, no
+      // race. A top/imprecise offset overlaps everything (conservative), and
+      // an unknown width (0) is treated as "may overlap" (no skip). The width
+      // extends each start interval to a byte range, so `x` (u32 at [0])
+      // overlaps `((u8*)&x)[1]` (u8 at [1]) — overlapping-widths.c FN.
+      // Upper-bound + width is exact (ZNumber, no machine-integer wrap).
+      if (!a.offset.is_top() && !b.offset.is_top() && a.width != 0 &&
+          b.width != 0) {
+        ZNumber a_hi = a.offset.ub().to_z_number();
+        ZNumber b_hi = b.offset.ub().to_z_number();
+        if (a_hi + a.width <= b.offset.lb().to_z_number() ||
+            b_hi + b.width <= a.offset.lb().to_z_number()) {
+          continue;
+        }
       }
       // Structural field disjointness under an OPAQUE base: when the abstract
       // offset is ⊤ (the base's points-to is ⊤, so `⊤ + field` collapsed to ⊤),
@@ -1193,9 +1205,17 @@ DataRaceChecker::~DataRaceChecker() {
         return true;
       };
       std::int64_t lo_a = 0, hi_a = 0, lo_b = 0, hi_b = 0;
-      bool off_overlap = eff_interval(a0, lo_a, hi_a) &&
-                         eff_interval(b0, lo_b, hi_b) && lo_a <= hi_b &&
-                         lo_b <= hi_a;
+      bool off_overlap = false;
+      if (eff_interval(a0, lo_a, hi_a) && eff_interval(b0, lo_b, hi_b)) {
+        // 宽度感知的字节范围重叠（offset/width 都很小，int64 加法不回绕）。
+        // width==0（未知）退回起始区间重叠（保守，仍只丢 TP 不引 FP）。
+        if (a0.width != 0 && b0.width != 0) {
+          off_overlap = hi_a + static_cast< std::int64_t >(a0.width) > lo_b &&
+                        hi_b + static_cast< std::int64_t >(b0.width) > lo_a;
+        } else {
+          off_overlap = lo_a <= hi_b && lo_b <= hi_a;
+        }
+      }
       // 裸变量下标（⊤ offset 且无常量结构偏移，如 data[i]）：抽象区间判不了同址，
       // 交给 BMC 的 SMT 同址门（const_off + coeff*var）。sound：⊤ 可能同址，BMC
       // 只对「证明同址」报 FALSE，仍不破 FP=0。
@@ -1267,7 +1287,8 @@ DataRaceChecker::~DataRaceChecker() {
             };
           }
           bmc_confirmed =
-              bmc::confirm_race(fa, a0.stmt, fb, b0.stmt, resolve_indirect);
+              bmc::confirm_race(fa, a0.stmt, a0.width, fb, b0.stmt, b0.width,
+                                resolve_indirect);
         }
       }
     }
@@ -2172,6 +2193,7 @@ void DataRaceChecker::check_extern_call_effects(
                      locks,
                      read_locks,
                      this->resolve_offset(arg, inv),
+                     /* width = */ 0,
                      base,
                      instance,
                      has_region,
@@ -2207,6 +2229,7 @@ void DataRaceChecker::check_extern_call_effects(
                      locks,
                      read_locks,
                      core::machine_int::Interval::top(64, core::Signed),
+                     /* width = */ 0,
                      core::IndexableTraits< MemoryLocation* >::index(libc_state),
                      /* instance = */ 0,
                      /* has_region = */ false,
@@ -2240,6 +2263,7 @@ void DataRaceChecker::check_extern_call_effects(
                          locks,
                          read_locks,
                          core::machine_int::Interval::top(64, core::Signed),
+                         /* width = */ 0,
                          core::IndexableTraits< MemoryLocation* >::index(gml),
                          /* instance = */ 0,
                          /* has_region = */ false,
@@ -2286,6 +2310,12 @@ void DataRaceChecker::check_load(ar::Load* load,
   if (off.is_top()) {
     structural_field_of(load->operand(), soff, stype);
   }
+  std::uint64_t width = 0;
+  if (load->result() != nullptr) {
+    width = this->_ctx.bundle->data_layout()
+                .store_size_in_bytes(load->result()->type())
+                .to< std::uint64_t >();
+  }
   this->_accesses.push_back(
       AccessRecord{load,
                    call_context,
@@ -2294,6 +2324,7 @@ void DataRaceChecker::check_load(ar::Load* load,
                    this->snapshot_locks(inv, branch_guard_of(load)),
                    this->snapshot_read_locks(inv),
                    off,
+                   width,
                    base,
                    instance,
                    has_region,
@@ -2373,6 +2404,9 @@ void DataRaceChecker::check_store(ar::Store* store,
   if (off.is_top()) {
     structural_field_of(store->pointer(), soff, stype);
   }
+  std::uint64_t width = this->_ctx.bundle->data_layout()
+                            .store_size_in_bytes(store->value()->type())
+                            .to< std::uint64_t >();
   this->_accesses.push_back(
       AccessRecord{store,
                    call_context,
@@ -2381,6 +2415,7 @@ void DataRaceChecker::check_store(ar::Store* store,
                    this->snapshot_locks(inv, branch_guard_of(store)),
                    this->snapshot_read_locks(inv),
                    off,
+                   width,
                    base,
                    instance,
                    has_region,

@@ -264,9 +264,9 @@ inline bool check_race(const std::vector< BmcEvent >& pathA,
     return false;
   }
 
-  // SMT 同址门：两个访问必须在同一 base 的同一字节偏移
-  // （const_off + coeff*var）。base 相同由 checker 的 same_global 门保证，这里只
-  // 判偏移相等；base 不同或提取失败（base==0）则不确认（保持 UNKNOWN）。
+  // SMT 同址门：两个访问必须在同一 base 上字节范围重叠。base 相同由 checker 的
+  // same_global 门保证，这里判范围重叠；base 不同或提取失败（base==0）则不确认
+  // （保持 UNKNOWN）。
   {
     const BmcEvent& ea = pathA.back();
     const BmcEvent& eb = pathB.back();
@@ -279,7 +279,16 @@ inline bool check_race(const std::vector< BmcEvent >& pathA,
       if (eb.var_id != 0) {
         off_b = off_b + ctx.int_val(eb.coeff) * var_of(eb.var_id);
       }
-      s.add(off_a == off_b);
+      // 字节范围重叠（而非起始 offset 相等）：`x`(u32@[0]) 与 `((u8*)&x)[1]`
+      // (u8@[1]) 起始不同但范围重叠 → 同址（overlapping-widths.c FN）。width==0
+      // （未知）退化为起始相等（保守，只丢 TP 不引 FP）。
+      if (ea.width != 0 && eb.width != 0) {
+        z3::expr w_a = ctx.int_val(static_cast< std::int64_t >(ea.width));
+        z3::expr w_b = ctx.int_val(static_cast< std::int64_t >(eb.width));
+        s.add(off_a < off_b + w_b && off_b < off_a + w_a);
+      } else {
+        s.add(off_a == off_b);
+      }
     }
   }
 

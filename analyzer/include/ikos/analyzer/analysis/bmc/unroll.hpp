@@ -41,6 +41,9 @@ struct BmcEvent {
   std::int64_t const_off = 0;
   std::uint64_t var_id = 0;
   std::int64_t coeff = 0;
+  // 目标访问的字节宽度（encode.hpp 用范围重叠判同址，Read/Write 事件才有意义）。
+  // 0 = 未知，保守视为可能重叠。由 confirm_race 在展开后填入 path.back()。
+  std::uint64_t width = 0;
   // Create/Join 的线程身份：Create = 线程函数指针（reinterpret_cast）；Join =
   // 句柄身份（mutex_id_of_value 同款解析）。仅 Create/Join 事件用，其余为 0。
   std::uint64_t thread = 0;

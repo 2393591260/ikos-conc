@@ -94,6 +94,12 @@ struct AccessRecord {
   /// (offset 0) and `data.y` (offset 4) both resolve to `@data`, but their
   /// offsets are disjoint. Top when the offset is imprecise (conservative).
   core::machine_int::Interval offset;
+  /// \brief Byte width of the access, from the target data layout. 0 = unknown
+  /// (synthesized extern access or unresolvable type) and is treated as "may
+  /// overlap any other access" (conservative). Makes `x` (u32 at [0]) and
+  /// `((u8*)&x)[1]` (u8 at [1]) overlap as byte RANGES, not disjoint start
+  /// offsets (overlapping-widths.c FN).
+  std::uint64_t width = 0;
   /// \brief Stable id of the (single) base MemoryLocation this access
   /// resolved to. 0 when the points-to set is not a singleton. Used to
   /// distinguish "lock on the SAME object" from "lock on a different object".

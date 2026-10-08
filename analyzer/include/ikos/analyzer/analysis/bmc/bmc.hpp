@@ -141,10 +141,13 @@ inline std::set< std::uint64_t > func_used_locks(ar::Function* func) {
 }
 
 /// 确认两个访问（在各自线程入口函数里）是否真竞争。
-/// funcA/funcB = 两访问所在的线程入口函数；stmtA/stmtB = 两访问语句。
+/// funcA/funcB = 两访问所在的线程入口函数；stmtA/stmtB = 两访问语句；
+/// widthA/widthB = 两访问的字节宽度（data_layout 的 store size，0=未知），
+/// 供 encode 阶段用字节范围重叠判同址。
 /// 返回 true = 确认竞争（报 FALSE 找回 TP）；false = 不确认（保持 UNKNOWN）。
 inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
-                         ar::Function* funcB, ar::Statement* stmtB,
+                         std::uint64_t widthA, ar::Function* funcB,
+                         ar::Statement* stmtB, std::uint64_t widthB,
                          const IndirectCalleeResolver& resolve_indirect = {}) {
   // Soundness 门：有任何未建模同步，就不能报 FALSE。
   if (has_unmodeled_sync(funcA) || has_unmodeled_sync(funcB)) {
@@ -152,6 +155,17 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   }
   UnrollResult rA = unroll_to(funcA, stmtA, resolve_indirect);
   UnrollResult rB = unroll_to(funcB, stmtB, resolve_indirect);
+  // 目标访问的字节宽度（路径最后一个事件即目标访问），encode 阶段判范围重叠。
+  for (auto& p : rA.paths) {
+    if (!p.empty()) {
+      p.back().width = widthA;
+    }
+  }
+  for (auto& p : rB.paths) {
+    if (!p.empty()) {
+      p.back().width = widthB;
+    }
+  }
   // Soundness 门：展开遇到回边（循环）→ 路径不完整，循环里可能藏着
   // join/create/mutex 等未展开的同步（如 pthread-numerical-integration 的
   // join 循环），不能 sound 判 FALSE → 保守 UNKNOWN（能力边界，后续加 bound 展开）。
