@@ -1,0 +1,34 @@
+{
+  "archive": "ikos-conc.zip",
+  "archive_size": 149398460,
+  "sha256": "b06a6b850bed78562626d21f5c8d008b5ea35409308bf6b82830a3d7a2856b34",
+  "md5": "87a17d9490aab3490f10a7951ecd516b",
+  "files": 707,
+  "doi_unchanged_per_user": "10.5281/zenodo.23122650",
+  "upload_performed": false,
+  "build_hashes": {
+    "bin/ikos-analyzer": "3043999b0e36620f977aeb8d397afeb3921bc4d445d78df5945eb80ccbd8424c",
+    "bin/ikos-pp": "5af52ab266091625988977d99e5dd3c356c0b425937934accb259ad38f144b6b",
+    "bin/svcomp_witness.py": "3dbdc65281f81a99ede765e203c68b4cdc0f2093ead9f7f023be23f6c6da8687"
+  },
+  "p0_observations": 20,
+  "relocated_smoke": {
+    "ILP32": "PASS",
+    "LP64": "PASS"
+  },
+  "clean_ubuntu24_smoketest_exit_code": 0,
+  "standard_witnesslint": {
+    "ILP32": 0,
+    "LP64": 0
+  },
+  "strict_witnesslint": {
+    "ILP32": 1,
+    "LP64": 1,
+    "observed_reason": "Unknown waypoint type target; strict implementation lacks a target AST branch"
+  },
+  "independent_semantic_validation": false,
+  "cpachecker422": "parse exception on 2.2 witness",
+  "cpachecker_development_reference": "bd91e2fd933ac2704dc240089774db4e5ec877da",
+  "jury_email": "User confirms sent email and GitLab username; awaiting organizer reply",
+  "program_files_note": "Optional tool-file collection; does not install or need to collect system Ubuntu packages"
+}

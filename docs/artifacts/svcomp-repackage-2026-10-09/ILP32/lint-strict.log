@@ -1,0 +1,15 @@
+Running witnesslint version 2.2
+
+--- Witness File Metadata ---
+Witness File: /tmp/ikos-release-final-validation/ILP32/witness.yml
+Witness Size in Bytes: 1252
+Witness Lines of Code: 70
+Witness Hash: 7373b97f1e3d1bd721b3d24e41355281f10bda9c1ab835c578fbb7480829e88d
+
+--- Witness Information Before Linting ---
+Witness Version: 2.2
+Witness Version-Match: True
+
+
+witnesslint finished with exit code 1
+CRITICAL: Unknown waypoint type target.

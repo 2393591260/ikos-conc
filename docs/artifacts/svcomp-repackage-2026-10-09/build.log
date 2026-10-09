@@ -1,0 +1,5 @@
+[ 18%] Built target ikos-ar
+[ 25%] Built target ikos-llvm-to-ar
+[100%] Built target ikos-analyzer
+[ 83%] Built target ikos-pp-lib
+[100%] Built target ikos-pp

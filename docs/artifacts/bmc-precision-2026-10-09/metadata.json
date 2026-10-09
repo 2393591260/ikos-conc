@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-09",
+  "head": "51b795c4b09f36170a69be4e5ce0a10345db2de6",
+  "dataset_head": "0a254fdddcfe24949be9edd47f8d609462eb52fb",
+  "matrix": {
+    "TP": 35,
+    "FP": 0,
+    "TN": 709,
+    "FN": 0,
+    "error": 0,
+    "unknown": 285
+  },
+  "baseline_matrix": {
+    "TP": 7,
+    "FP": 0,
+    "TN": 709,
+    "FN": 0,
+    "unknown": 312,
+    "error": 1
+  },
+  "command": "IKOS_BMC_RECOVER=1 python3 -B svcomp_race_test.py --demote",
+  "timeout": 30,
+  "jobs": 8,
+  "architectures_full": {
+    "ILP32": 1029,
+    "LP64": 0
+  },
+  "minimal_assertions": {
+    "correctness": 68,
+    "address": 28,
+    "candidates": 30,
+    "values": 82
+  },
+  "diagnostic_counts": {
+    "ai_candidate_bounds": 256,
+    "ai_no_wrap": 0,
+    "sc_read_from": 648,
+    "integer_operation": 199
+  },
+  "baseline_analyzer_sha256": "3e2262aa7e2e1177d56aa40ed97a838f07396d5dd5e65d29f44e4466a18a868f",
+  "pre_linear_analyzer_sha256": "8d5de02badd077043424231a40c064dfca06d1d99c2edae61436b29809a020ae",
+  "fingerprints": {
+    "install/bin/ikos-analyzer": "3043999b0e36620f977aeb8d397afeb3921bc4d445d78df5945eb80ccbd8424c",
+    "build/analyzer/ikos-analyzer": "3043999b0e36620f977aeb8d397afeb3921bc4d445d78df5945eb80ccbd8424c",
+    "install/bin/ikos-pp": "5af52ab266091625988977d99e5dd3c356c0b425937934accb259ad38f144b6b",
+    "install/bin/ikos": "e902b97ff2ca21fb2f5cc89a9b883fedfbe946722afcc45af8b9a3d58d64ae42"
+  },
+  "independent_witness_validation": false,
+  "note": "Finite test observations and manually reviewed selected source prefixes, not a whole-project soundness proof. No general performance claim. source.snapshot includes pre-existing changes."
+}

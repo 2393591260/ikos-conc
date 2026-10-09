@@ -1,0 +1,283 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" >
+<head>
+<link rel="stylesheet" type="text/css" href="../layout.css" />
+<link rel="stylesheet" type="text/css" href="../design.css" />
+<meta http-equiv="content-language" content="en" />
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
+<meta http-equiv="Content-Language" content="en" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SV-COMP 2027 - 16th International Competition on Software Verification</title>
+</head>
+
+<body>
+<div id="head">
+<br/>
+<table style="background-color: #2C68A3; color: white; font-size: 220%; width: 100%; max-width: 100%; border: 0px;">
+<tr>
+<td style="text-align: center; border: 0px; width: 50%;">
+<a title="TACAS 2027 - Competition on Software Verification" href="https://etaps.org/2027/tacas">
+<img src="https://sv-comp.sosy-lab.org/etapsLogolarge_white.png" style="width: 300px;" alt="ETAPS Logo"/>
+</a>
+</td>
+<td style="text-align: center; border: 0px; width: 50%;">
+<b>TACAS 2027</b>
+</td>
+</tr>
+<tr>
+<td style="text-align: center; border: 0px;" colspan="2">
+16th Competition on Software Verification <br/> <small>(SV-COMP 2027)</small>
+</td>
+</tr>
+</table>
+
+<br/>
+</div>
+
+<div id="Navigation">
+<div id="navigation-head"><p id="location"><a href="https://etaps.org/2027/tacas">TACAS '27</a><br/>April ??, 2027<br/>
+Copenhagen, Denmark</p></div>
+<ul class="Navigation">
+<li><a href="../index.php">About SV-COMP</a></li>
+<li><a href="../publications.php">Publications</a></li>
+<li><a href="../reproduce.php">Reproduction</a></li>
+</ul>
+
+<ul class="Navigation">
+<li><a href="index.php">News & Dates</a></li>
+<li><a href="organization.php">Committees</a></li>
+<li><a href="submission.php">Submission</a></li>
+<li><a href="systems.php">Participants</a></li>
+</ul>
+</div>
+
+<div id="main"><div id="content">
+
+<h2>Tool Submission</h2>
+
+<p>
+Since SV-COMP 2027, tool submissions consist of the following parts only:
+</p>
+<ol>
+  <li>
+    An <b>archive with the tool</b> <!-- (= competition candidate) -->
+    published at <a href="https://zenodo.org/">Zenodo</a>.<br>
+    The archive has to meet the following requirements.
+    <ul>
+      <li>The archive is publicly available and contains a <tt>LICENSE</tt> that
+        allows reproduction and evaluation of the tool by anybody and
+        does not place any restriction on the tool output (log files, witnesses).
+      </li>
+      <li>The archive contains a <tt>README</tt> file that describes the contents.
+      </li>
+      <li>The archive contains a script <tt>smoketest.sh</tt> that runs the tool on some simple example(s) that are also in the archive.
+      </li>
+      <li>The tool is archived in a ZIP file (.zip), which contains exactly one directory (no tarbomb),
+          with the files <tt>LICENSE</tt>, <tt>README</tt>, <tt>smoketest.sh</tt>, and all other files and folders
+          of the tool.
+      </li>
+      <li>The tool does not exceed an stdout/stderr limit of at most 2 MB.
+      </li>
+      <li>The tool has an option to report its version (ideally <tt>--version</tt>).
+      </li>
+      <li>The archive does not contain large amounts of unnecessary data, such as
+        repository data (<tt>.svn</tt>, <tt>.git</tt>), source files, aux folders like <tt>__MACOSX</tt>, and test files.
+      </li>
+      <li>The tool should not require any special software on the competition machines; all necessary libraries and external tools
+        should be contained in the archive.
+        Standard packages that are available as Ubuntu packages can be requested via an entry in the
+        <a href="https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/tree/main/data">FM-Tools repository</a>.
+      </li>
+      <li>The tool should be executable from any path,
+        and should not expect the working directory to match the tool directory.
+      </li>
+    </ul>
+  </li>
+  <li>
+    An <b>entry at the <a href="https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/tree/main/data">FM-Tools repository</a></b>
+    named <tt>&lt;tool_id&gt;.yml</tt>.<br>
+    The structure of the file is described in <a href="https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/blob/main/data/schema.yml"><tt>schema.yml</tt></a> [we refer to the version after <a href="https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/merge_requests/1112">this
+    merge request</a> is merged]. In particular, the file has to contain
+    <ul>
+      <li>description that shortly explains the principles of the tool
+      and the components it uses,</li>
+      <li>a version entry containing the DOI of the archive mentioned above,</li>  
+      <li>a participation declaration for each competition track the tool wants to participate in, where each such a declaration includes</li>
+      <ul>
+	<li>the tool version participating in the track,</li>
+        <li>a jury member who is (a) a contributing designer/developer
+        of the submitted tool (witnessed by occurrence of the person’s
+        name on the tool's project web page, a tool paper, or in the
+        revision logs) or (b) authorized by the competition organizer
+        (after the designers/developers of the tool were contacted about the
+        participation),</li>
+        <li>label <b>meta_tool</b> if the tool is a meta-verifier,</li>
+        <li>label <b>ai</b> if the tool uses an LLM or other sophisticated
+	kind of artificial intelligence, and</li>
+	<li>the list of categories the tool wants to participate in (with
+	each declared category, the tool automatically participates in all
+	its subcategories; it is possible to specify subcategories for which 
+	the tool's results will not be displayed).</li>
+      </ul>
+    </ul>
+    Note that the merge request will be merged only if the script
+    <tt>smoketest.sh</tt> mentioned above successfully passes (exit code 0).
+    Further, note that each tool participating in the previous year
+    (except the inactive tools for which the community explicitly agreed to
+    not evaluate them again)  
+    will be automatically registered for the current competition as <b>inactive</b>.
+    If you want to actively participate with this tool,
+    please add a jury member and delete the <b>inactive</b> label.
+
+    <p style="color:#FF0000;"><b>Please do not create/modify your
+    <tt>&lt;tool_id&gt;.yml</tt> file before <a
+    href="https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/merge_requests/1112">this
+    merge request</a> is merged.</b></p>
+  </li>
+  <li>
+    A <b>tool-info module</b> for BenchExec
+    added to the <a href="https://github.com/sosy-lab/benchexec/tree/main/benchexec/tools">BenchExec repository</a>.
+     The tool-info module enables BenchExec to abstract from the concrete command-line interface by
+     assembling the command line, parsing the output to determine the result/status, and to get tool version.
+  </li>
+  <li>
+    Additionally, new jury members have to announce their e-mail address to the organizers.
+  </li>
+</ol>
+<p>
+  In contrast to previous years, it is no longer needed to make any merge requests to
+  <a href="https://gitlab.com/sosy-lab/sv-comp/bench-defs/-/blob/main/benchmark-defs/category-structure.yml"><tt>category-structure.yml</tt></a>.
+  It may be a good idea to look at <tt>&lt;tool_id&gt;.yml</tt> of some established tool for inspiration, e.g., at
+  <a href="https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/blob/main/data/cpachecker.yml"><tt>cpachecker.yml</tt></a>.
+</p>
+<p>
+  We strongly recommend to subscribe to
+  the <a href="https://groups.google.com/forum/#!forum/sv-comp">mailing list</a> and
+  the <a href="https://competition.zulipchat.com/">Zulip stream</a>.
+</p>
+
+<h3>Qualification</h3>
+
+<p>
+  To be qualified for the competition, each tool needs to have:
+  <ul>
+    <li><tt>&lt;tool_id&gt;.yml</tt> merged in the
+    <a href="https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/tree/main/data">FM-Tools
+    repository</a> with a non-trivial <tt>smoketest.sh</tt>, reasonable description, and correct labels,</li>
+    <li>a license in the archive with the tool satisfying the requirements given above,</li>
+    <li>conceptual or implementation differences compared to other participating tools,</li>
+    <li>a jury member who contributes to the development of the tool or has an approval from the organizers.</li>
+  </ul>
+</p>
+
+<h2>Submission of Competition-Contribution Papers</h2>
+
+<p>The requirements on competition-contribution papers will be
+specified later. In contrast to the previous years, we expect slightly
+less restrictions on the paper structure in order to reduce repetitive
+parts in the papers about new versions of established tools and to
+accommodate papers about interesting new benchmark categories etc.</p>
+
+<!--
+<p>
+The competition contribution paper should be structured as follows
+(the structure is recommended, not mandatory; but the below-mentioned information must be provided):
+</p>
+
+<ul>
+  <li> <h4>Title, Authors, and Abstract</h4>
+       The format is defined in the usual LNCS style.
+       It is a good idea to mention the name of the tool and/or technique (or a combination thereof) in the title.
+       Please mark the jury member in the paper (asterisk after the name and footnote, perhaps).
+  </li>
+  <li> <h4>1. Verification/Validation Approach</h4>
+       A short overview of the theory that the tool is based on.
+       Description of the abstract domains and algorithms that are used.
+       Reference to the concept papers that describe the technical details.
+  </li>
+  <li> <h4>2. Software Architecture</h4>
+     <ul>
+       <li> Libraries and external tools that the tool uses (e.g., parser frontend, SAT solver)
+       </li>
+       <li> Software structure and architecture (e.g., components that are used in the competition)
+       </li>
+       <li> Implementation technology (e.g., programming language)
+       </li>
+     </ul>
+  </li>
+  <li> <h4>3. Discussion of Strengths and Weaknesses of the Approach</h4>
+        Evaluation of the results for the benchmark categories, where was the tool successful, where not, why? 
+  </li> 
+  <li> <h4>4. Tool Setup and Configuration</h4>
+    <ul>
+      <li> Download instructions (a public web page from which the tool can be downloaded) including a reference to a precise
+           version of the tool (do not refer to ``the latest version'' or such, because that is not stable and not replicable)
+      </li>
+      <li> Installation instructions
+      </li>
+      <li> Participation statement (a clear statement which categories the tool participates in)
+      </li>
+      <li> Configuration definition (there is one global set of parameters for all categories of the benchmark set,
+           a full definition of the parameter set must be provided);
+           check the rules page under <a href="rules.php#parameters">Parameters</a> for more details
+      </li>
+    </ul>
+  </li>
+  <li> <h4>5. Software Project and Contributors</h4>
+    <ul>
+      <li> Contact info (web page of the project, people involved in the project)
+      </li>
+      <li> Information about the software project, licensing, development model, institution that hosts the software project,
+        acknowledgement of contributors 
+      </li>
+    </ul>
+  </li> 
+  <li> <h4>6. Data-Availability Statement</h4>
+       Publish your tool archive and reference it here via DOI to ensure reproducibility,
+       also provide the URL of the project web site and repository.
+  </li> 
+  <li><h4>References</h4>
+      Bibliographic references to more in-depth papers about the approaches used in the tool.
+  </li>
+</ul>
+
+-->
+
+<!--
+<h3>Requirements for (ii) Executable Tool, (iii) Tool-Info Module, and (iv) Benchmark Definition</h3>
+
+<p>
+See rules under <a href="rules.php#setup">"Competition Environment and Requirements"</a> and <a href="rules.php#qualification">"Qualification"</a>.
+</p>
+-->
+
+</div></div><div id="footer"><p>
+If you did not find what you are looking for, please do not hesitate to contact 
+<a href="https://www.sosy-lab.org/people/beyer/">Dirk Beyer</a> (competition webmaster).</p>
+
+<div>
+<p><small>
+  <a href="https://www.sosy-lab.org/contact.php">Imprint and Privacy Policy</a>
+</small></p>
+</div>
+
+<!-- Matomo -->
+<script type="text/javascript">
+  var _paq = window._paq || [];
+  /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+  _paq.push(["setDoNotTrack", true]);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u="https://matomo.sosy-lab.org/";
+    _paq.push(['setTrackerUrl', u+'matomo.php']);
+    _paq.push(['setSiteId', '6']);
+    var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+    g.type='text/javascript'; g.async=true; g.defer=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+  })();
+</script>
+<noscript><p><img src="https://matomo.sosy-lab.org/matomo.php?idsite=6&amp;rec=1" style="border:0;" alt="" /></p></noscript>
+<!-- End Matomo Code -->
+<img src="https://ssl-vg03.met.vgwort.de/na/300a86bb887746429c9a3fa7b9c737cb" width="1" height="1" alt="" />
+</div></body></html>

@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-09",
+  "task": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/10-synch_02-thread_nonunique.yml",
+  "input_sha256": "bc78788d98da2638169fe03657250fbf876e72c9f507aa825539bd8508a72f4d",
+  "data_model": "ILP32",
+  "property": "no-data-race",
+  "ikos_mode": {
+    "IKOS_BMC_RECOVER": "1",
+    "IKOS_BMC_DIAGNOSTICS": "1",
+    "demote": true
+  },
+  "ikos_result": "unconfirmed warning, demoted verdict UNKNOWN",
+  "ikos_observed_blocker": "thread_activation_unproven",
+  "dartagnan_result": "FAIL: SVCOMP data race found",
+  "dartagnan_environment": {
+    "CFLAGS": "-fgnu89-inline -m32",
+    "DAT3M_HOME": "/home/ruan/dartagnan-svcomp2026/dartagnan",
+    "DAT3M_OUTPUT": "/tmp/dartagnan-reference-plan-2vdv4y7e"
+  },
+  "dartagnan_runtime_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+  "dartagnan_observed_threads_including_main": 11,
+  "binary_sha256": {
+    "analyzer": "3043999b0e36620f977aeb8d397afeb3921bc4d445d78df5945eb80ccbd8424c",
+    "launcher": "c996ad93c25db7f65bc885edc24f10418027ca366726866a41b41ff5b269ea29",
+    "library": "e7e63dd6815f26b4b9f3b160899cf809cb4de6db86fbf2e1796bfd6e5ab422f6"
+  },
+  "stage_model_probes_run": false,
+  "exact_model_replay_run": false,
+  "source_scope": "ThreadCreation.createThreads, ProgramEncoder thread activation/control flow, LoopUnrolling bounded copies, PropertyEncoder data races; not a full audit",
+  "artifacts_sha256": {
+    "10-synch_02-thread_nonunique.c": "bc78788d98da2638169fe03657250fbf876e72c9f507aa825539bd8508a72f4d",
+    "10-synch_02-thread_nonunique.yml": "3205ca179510f1247610edcc28013f643563d928c25879afe070319ea70cffa1",
+    "dartagnan/command.json": "f70f6853768469ba340054483cc1fbcbce1257e231cd28887aa4e8de4569ee4b",
+    "dartagnan/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "dartagnan/stdout.log": "b3f2ef0f32bf4d1aacb9bb615875c0a720e609114f712497f960eae024fd568d",
+    "ikos/command.json": "1e620c473709e0dc64c2037b998621049f8a385eca7543dfd629010e9c4d313b",
+    "ikos/report.json": "9f416997e01b60ab09ba728eb048f89113f0d20c381e2ab2946eaf61fdac66c6",
+    "ikos/stderr.log": "416f2fc1e3edefb5e83d624023901689623c62c0e8d946a5b86c44a5870b345e",
+    "ikos/stdout.log": "5ed632ee31cc640278d0d3b41c63f70b6f8b0a51bf985f49efdf95b12b2e30ca",
+    "references/LoopUnrolling.java": "1e4143cb29b853ad393b751fd1fb8b29ab52b6a826b90aabdd932bf46026dfea",
+    "references/ProgramEncoder.java": "e975d6b8c8718878ab402d8ed4bd310d0de55255dae56956b849bab219be0879",
+    "references/PropertyEncoder.java": "f538eb24cef00767d77727b3b4bdee583317884faba8698d5c672c56b51d19af",
+    "references/ThreadCreation.java": "99e6e3877009c5d82336a3bd40b9ad214d0a57712f6e12853daa43036d2680b7"
+  }
+}

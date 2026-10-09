@@ -1,0 +1,818 @@
+[
+  {
+    "bits": "32",
+    "case": 0,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sc_read_from": 2,
+      "smt_unsat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 1,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2,
+      "sc_read_from": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 2,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "ai_no_wrap": 1,
+      "integer_operation": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 3,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 4,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 5,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "32",
+    "case": 6,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 7,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 8,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "32",
+    "case": 9,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "32",
+    "case": 10,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 11,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 12,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "32",
+    "case": 13,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 14,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sc_read_from": 1,
+      "smt_unsat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 15,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "bits": "32",
+    "case": 16,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sc_read_from": 1,
+      "smt_unsat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 18,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sc_read_from": 1,
+      "smt_unsat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 19,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "bits": "32",
+    "case": 21,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "bits": "32",
+    "case": 22,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "bits": "32",
+    "case": 23,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 25,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "bits": "32",
+    "case": 26,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "prefix_value_origin": 3,
+      "smt_unsat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 27,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "32",
+    "case": 28,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 29,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 3,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 30,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "32",
+    "case": 31,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "ai_no_wrap": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 32,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "32",
+    "case": 34,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 1,
+      "not_searched_after_confirmation": 2,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "bits": "32",
+    "case": 35,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "32",
+    "case": 36,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 1,
+      "not_searched_after_confirmation": 2,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "bits": "32",
+    "case": 37,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "32",
+    "case": 38,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 39,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "call_summary": 1
+    }
+  },
+  {
+    "bits": "32",
+    "case": 40,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 43,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "smt_unsat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 44,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 45,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 3,
+      "not_searched_after_confirmation": 2,
+      "sat": 6,
+      "thread_activation_unproven": 2
+    }
+  },
+  {
+    "bits": "32",
+    "case": 46,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "call_summary": 1
+    }
+  },
+  {
+    "bits": "64",
+    "case": 0,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sc_read_from": 2,
+      "smt_unsat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 1,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2,
+      "sc_read_from": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 2,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "ai_no_wrap": 1,
+      "integer_operation": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 3,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 4,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 5,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "64",
+    "case": 6,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 7,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 8,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "64",
+    "case": 9,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "64",
+    "case": 10,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 11,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 12,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "64",
+    "case": 13,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 14,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sc_read_from": 1,
+      "smt_unsat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 15,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "bits": "64",
+    "case": 16,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sc_read_from": 1,
+      "smt_unsat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 18,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sc_read_from": 1,
+      "smt_unsat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 19,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "bits": "64",
+    "case": 21,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "bits": "64",
+    "case": 22,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "bits": "64",
+    "case": 23,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 25,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "bits": "64",
+    "case": 26,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "prefix_value_origin": 3,
+      "smt_unsat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 27,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "64",
+    "case": 28,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 29,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 3,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 30,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "64",
+    "case": 31,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "ai_no_wrap": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 32,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "64",
+    "case": 34,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 1,
+      "not_searched_after_confirmation": 2,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "bits": "64",
+    "case": 35,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "64",
+    "case": 36,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 1,
+      "not_searched_after_confirmation": 2,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "bits": "64",
+    "case": 37,
+    "verdict": "Safe",
+    "passed": true,
+    "counts": {}
+  },
+  {
+    "bits": "64",
+    "case": 38,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 39,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "call_summary": 1
+    }
+  },
+  {
+    "bits": "64",
+    "case": 40,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 43,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "smt_unsat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 44,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 45,
+    "verdict": "Race Found",
+    "passed": true,
+    "counts": {
+      "ai_candidate_bounds": 3,
+      "not_searched_after_confirmation": 2,
+      "sat": 6,
+      "thread_activation_unproven": 2
+    }
+  },
+  {
+    "bits": "64",
+    "case": 46,
+    "verdict": "Unknown",
+    "passed": true,
+    "counts": {
+      "call_summary": 1
+    }
+  }
+]

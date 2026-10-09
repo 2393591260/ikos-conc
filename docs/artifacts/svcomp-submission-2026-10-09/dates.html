@@ -1,0 +1,191 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" >
+<head>
+<link rel="stylesheet" type="text/css" href="../layout.css" />
+<link rel="stylesheet" type="text/css" href="../design.css" />
+<meta http-equiv="content-language" content="en" />
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
+<meta http-equiv="Content-Language" content="en" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SV-COMP 2027 - 16th International Competition on Software Verification</title>
+</head>
+
+<body>
+<div id="head">
+<br/>
+<table style="background-color: #2C68A3; color: white; font-size: 220%; width: 100%; max-width: 100%; border: 0px;">
+<tr>
+<td style="text-align: center; border: 0px; width: 50%;">
+<a title="TACAS 2027 - Competition on Software Verification" href="https://etaps.org/2027/tacas">
+<img src="https://sv-comp.sosy-lab.org/etapsLogolarge_white.png" style="width: 300px;" alt="ETAPS Logo"/>
+</a>
+</td>
+<td style="text-align: center; border: 0px; width: 50%;">
+<b>TACAS 2027</b>
+</td>
+</tr>
+<tr>
+<td style="text-align: center; border: 0px;" colspan="2">
+16th Competition on Software Verification <br/> <small>(SV-COMP 2027)</small>
+</td>
+</tr>
+</table>
+
+<br/>
+</div>
+
+<div id="Navigation">
+<div id="navigation-head"><p id="location"><a href="https://etaps.org/2027/tacas">TACAS '27</a><br/>April ??, 2027<br/>
+Copenhagen, Denmark</p></div>
+<ul class="Navigation">
+<li><a href="../index.php">About SV-COMP</a></li>
+<li><a href="../publications.php">Publications</a></li>
+<li><a href="../reproduce.php">Reproduction</a></li>
+</ul>
+
+<ul class="Navigation">
+<li><a href="index.php">News & Dates</a></li>
+<li><a href="organization.php">Committees</a></li>
+<li><a href="submission.php">Submission</a></li>
+<li><a href="systems.php">Participants</a></li>
+</ul>
+</div>
+
+<div id="main"><div id="content">
+
+<h3>News</h3> 
+ 
+<ul>
+<!--  <li>A lot of detailed information can be found in the  
+  <a href="https://www.sosy-lab.org/research/pub/2027-TACAS....SV-COMP_2027.pdf"><img src="../../../img/pdf-32.png" />2027 Competition Report</a>.</li> -->
+  <li>We have the web for SV-COMP 2027 including the important dates (web pages with new submission instructions, benchmark description, and rules will be added soon).</li>
+  <li>Meeting dates are published.</li>
+</ul>
+
+<h3>Community Discussions and Meetings</h3>
+
+<p>The preferred communication channel for general community discussion, topics specific to solving any technical problems,
+  and questions is our <a href="https://competition.zulipchat.com/">Zulip stream</a>.
+  Please send an email to <a href="https://www.sosy-lab.org/people/beyer/">Dirk Beyer</a> or <a href="https://www.fi.muni.cz/~xstrejc/">Jan Strejček</a>
+  (competition organizers) for an invitation to the Zulip stream.
+</p> 
+
+<p>The joint SV-COMP/Test-Comp community meetings take place <!-- until mid-December--> via
+  <a href="https://lmu-munich.zoom-x.de/j/91030644678?pwd=aGFjTUV0YVo3Y1JvSTBaOUVCS2tSZz09">this Zoom meeting room</a> in the following dates. The meeting times alternate between 10:00 and 16:00 (CET), in order to make it easier for participants in different time zones. These meetings usually take up to one hour.</p>
+<table>
+  <tr>
+    <td style="padding-right: 30px;">2026-10-08 16:00</td>    <td>2026-10-15 10:00</td>
+  </tr>
+  <tr><td>2026-10-22 16:00</td><td>2026-10-29 10:00</td></tr>
+  <tr><td>2026-11-05 16:00</td><td>2026-11-12 10:00</td></tr>
+  <tr><td>2026-11-19 16:00</td><td>2026-11-26 10:00</td></tr>
+  <tr><td>2026-12-03 16:00</td><td>2026-12-10 10:00</td></tr>
+</table>
+
+<h3>Important Dates</h3>
+
+<table cellpadding="5px">
+  <tbody>
+<!--
+    <tr>
+      <td style="width: 160px;"><span style="text-decoration: line-through;">Jul. 31</span> Aug. 9, 2026</td>
+      <td>Announcement of SV-COMP 2027 including supported witness formats</td>
+    </tr>
+-->
+    <tr>    
+      <td style="width: 160px;">Oct. 12, 2026</td>
+      <td><strong>Tool registration</strong> deadline (create merge request for
+         <tt>&lt;tool_id&gt;.yml</tt> in <a href="https://gitlab.com/sosy-lab/benchmarking/fm-tools">FM-Tools</a> repository)</td>
+    </tr>
+    <tr>
+      <td>Oct. 12, 2026</td>
+      <td>Submission deadline for verification tasks (via merge request in <a href="https://gitlab.com/sosy-lab/benchmarking/sv-benchmarks/-/merge_requests">SV-Benchmarks</a> repository)</td>
+    </tr>
+    <tr>
+      <td>Oct. 20, 2026</td>
+      <td><strong>Tool submission</strong> deadline (all CI checks must succeed)</td>
+    </tr>
+    <tr>
+      <td>Nov. 3, 2026</td>
+      <td>Freezing of verification tasks (any pull request merged after this date invalidates the task)</td>
+    </tr>
+    <tr>
+      <td>Nov. 10, 2026</td>
+      <td>Notification of qualified tool</td>
+    </tr>
+    <tr>
+      <td>Nov. 17, 2026</td>
+      <td><strong>Final tool resubmission</strong> deadline (the last chance to resubmit a new version of the tool, evaluation phase starts)</td>
+    </tr>
+    <tr>
+      <td>Dec. 1, 2026</td>
+      <td>Offline benchmarking phase completed and <strong>competition results</strong> communicated to the participants (evaluation phase ends)</td>
+    </tr>
+    <tr>
+      <td>Dec. 4, 2026</td>
+      <td>Publication of competition results</td>
+    </tr>
+    <tr>
+      <td>Dec. 17, 2026</td>
+      <td><strong>Submission</strong> of competition-contribution papers</td>
+    </tr>
+    <tr>
+      <td>Jan. 14, 2027</td>
+      <td><strong>Notification</strong> of competition-contribution papers</strong></td>
+    </tr>
+    <tr>
+      <td>Jan. 21, 2027</td>
+      <td><strong>Camera-ready submission</strong> of accepted competition-contribution papers</td>
+    </tr>
+  </tbody>
+</table>  
+
+<h3>Sponsors</h3>
+
+<p>
+  SV-COMP 2027 is sponsored by:
+</p>
+<ul>
+  <li>
+    Huawei – Dresden Research Center, Germany
+  </li>
+  <li>
+    Ludwig-Maximilians-Universität München (LMU Munich), Germany
+  </li>
+</ul>
+
+<div>
+  <img src="logo_huawei.png" alt="Logo Huawei" width="290" style="padding-right:80px;" />
+  <img src="logo_lmu.svg"    alt="Logo LMU"    width="260" style="padding-right:80px;" />
+</div>
+
+</div></div><div id="footer"><p>
+If you did not find what you are looking for, please do not hesitate to contact 
+<a href="https://www.sosy-lab.org/people/beyer/">Dirk Beyer</a> (competition webmaster).</p>
+
+<div>
+<p><small>
+  <a href="https://www.sosy-lab.org/contact.php">Imprint and Privacy Policy</a>
+</small></p>
+</div>
+
+<!-- Matomo -->
+<script type="text/javascript">
+  var _paq = window._paq || [];
+  /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+  _paq.push(["setDoNotTrack", true]);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u="https://matomo.sosy-lab.org/";
+    _paq.push(['setTrackerUrl', u+'matomo.php']);
+    _paq.push(['setSiteId', '6']);
+    var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+    g.type='text/javascript'; g.async=true; g.defer=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+  })();
+</script>
+<noscript><p><img src="https://matomo.sosy-lab.org/matomo.php?idsite=6&amp;rec=1" style="border:0;" alt="" /></p></noscript>
+<!-- End Matomo Code -->
+<img src="https://ssl-vg03.met.vgwort.de/na/300a86bb887746429c9a3fa7b9c737cb" width="1" height="1" alt="" />
+</div></body></html>

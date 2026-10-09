@@ -1,0 +1,95 @@
+{
+  "tasks": 1029,
+  "matrix": {
+    "TP": 35,
+    "FP": 0,
+    "TN": 709,
+    "FN": 0,
+    "error": 0,
+    "unknown": 285
+  },
+  "unknown_tasks_by_observed_reason": {
+    "non_global_object": {
+      "racy": 45,
+      "safe": 29
+    },
+    "target_not_reached": {
+      "racy": 4
+    },
+    "address_base": {
+      "racy": 1
+    },
+    "integer_operation": {
+      "racy": 10
+    },
+    "sc_read_from": {
+      "racy": 12,
+      "safe": 1
+    },
+    "call_summary": {
+      "racy": 13
+    },
+    "thread_activation_unproven": {
+      "racy": 131,
+      "safe": 65
+    },
+    "prefix_address": {
+      "racy": 1
+    },
+    "mutex_identity": {
+      "racy": 7
+    },
+    "ai_candidate_bounds": {
+      "racy": 12,
+      "safe": 2
+    },
+    "smt_unsat": {
+      "racy": 4,
+      "safe": 1
+    },
+    "points_to_not_singleton": {
+      "racy": 13,
+      "safe": 10
+    },
+    "offset_prefilter": {
+      "safe": 10,
+      "racy": 10
+    },
+    "transitive_thread_order": {
+      "safe": 7,
+      "racy": 1
+    },
+    "unmodeled_sync": {
+      "safe": 42,
+      "racy": 63
+    },
+    "mixed_atomic": {
+      "safe": 2
+    },
+    "prefix_value_origin": {
+      "racy": 15
+    },
+    "assume_value": {
+      "racy": 8,
+      "safe": 1
+    },
+    "search_budget": {
+      "racy": 2,
+      "safe": 2
+    },
+    "unroll_work_budget": {
+      "racy": 2,
+      "safe": 2
+    },
+    "atomic_prefix_open": {
+      "racy": 1
+    }
+  },
+  "note": "Reasons overlap; counts are observed blockers, not recoverable TP estimates. First blockers describe recorded traversal order; later stages behind failed gates were not explored.",
+  "timeout": 30,
+  "jobs": 8,
+  "environment": {
+    "IKOS_BMC_RECOVER": "1",
+    "IKOS_BMC_DIAGNOSTICS": "1"
+  }
+}

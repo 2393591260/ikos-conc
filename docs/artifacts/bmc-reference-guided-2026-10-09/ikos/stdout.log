@@ -1,0 +1,33 @@
+[*] Compiling /home/ruan/sv-benchmarks-2026/c/goblint-regression/10-synch_02-thread_nonunique.c
+[*] Running ikos preprocessor
+[*] Running ikos analyzer
+[*] Translating LLVM bitcode to AR
+[*] Running liveness analysis
+[*] Running widening hint analysis
+[*] Running interprocedural value analysis
+[*] Race analysis requested: auto-enabling thread-modular transfer-function gates
+[*] Running function pointer analysis (thread-modular)
+[*] Starting global Worklist fixpoint iteration
+[*] Analyzing function 'main'
+[*] Analyzing function 'main'
+[*] Analyzing function 't_fun'
+[*] Analyzing function 'main'
+[*] Analyzing function 't_fun'
+[*] Running post-loop checks for all analyzed functions
+[*] Checking properties for function 'main'
+[*] Checking properties for function 't_fun'
+
+# Time stats:
+clang        : 0.213 sec
+ikos-analyzer: 0.046 sec
+ikos-pp      : 0.032 sec
+
+# Summary:
+Total number of checks                : 1
+Total number of unreachable checks    : 0
+Total number of safe checks           : 0
+Total number of definite unsafe checks: 0
+Total number of warnings              : 1
+Total number of unknown checks        : 0
+
+The program is potentially UNSAFE

@@ -1,0 +1,142 @@
+[
+  {
+    "source": "exclusive-flag.c",
+    "mode": "demote",
+    "data_model": "ILP32",
+    "exit_code": 0,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "source": "exclusive-flag.c",
+    "mode": "bmc",
+    "data_model": "ILP32",
+    "exit_code": 0,
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "source": "overlapping-widths-control.c",
+    "mode": "default",
+    "data_model": "ILP32",
+    "exit_code": 0,
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "source": "overlapping-widths-control.c",
+    "mode": "bmc",
+    "data_model": "ILP32",
+    "exit_code": 0,
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "source": "overlapping-widths.c",
+    "mode": "default",
+    "data_model": "ILP32",
+    "exit_code": 0,
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "overlapping-widths.c",
+    "mode": "bmc",
+    "data_model": "ILP32",
+    "exit_code": 0,
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "published-before-init-control.c",
+    "mode": "default",
+    "data_model": "ILP32",
+    "exit_code": 0,
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "source": "published-before-init-control.c",
+    "mode": "bmc",
+    "data_model": "ILP32",
+    "exit_code": 0,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "source": "published-before-init.c",
+    "mode": "default",
+    "data_model": "ILP32",
+    "exit_code": 0,
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "published-before-init.c",
+    "mode": "bmc",
+    "data_model": "ILP32",
+    "exit_code": 0,
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "exclusive-flag.c",
+    "mode": "demote",
+    "data_model": "LP64",
+    "exit_code": 0,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "source": "exclusive-flag.c",
+    "mode": "bmc",
+    "data_model": "LP64",
+    "exit_code": 0,
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "source": "overlapping-widths-control.c",
+    "mode": "default",
+    "data_model": "LP64",
+    "exit_code": 0,
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "source": "overlapping-widths-control.c",
+    "mode": "bmc",
+    "data_model": "LP64",
+    "exit_code": 0,
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "source": "overlapping-widths.c",
+    "mode": "default",
+    "data_model": "LP64",
+    "exit_code": 0,
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "overlapping-widths.c",
+    "mode": "bmc",
+    "data_model": "LP64",
+    "exit_code": 0,
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "published-before-init-control.c",
+    "mode": "default",
+    "data_model": "LP64",
+    "exit_code": 0,
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "source": "published-before-init-control.c",
+    "mode": "bmc",
+    "data_model": "LP64",
+    "exit_code": 0,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "source": "published-before-init.c",
+    "mode": "default",
+    "data_model": "LP64",
+    "exit_code": 0,
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "published-before-init.c",
+    "mode": "bmc",
+    "data_model": "LP64",
+    "exit_code": 0,
+    "verdict": "The program is SAFE"
+  }
+]

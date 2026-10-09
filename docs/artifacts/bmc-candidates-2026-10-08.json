@@ -1,0 +1,525 @@
+{
+  "analyzer_commit": "51b795c4b09f36170a69be4e5ce0a10345db2de6",
+  "dataset_commit": "0a254fdddcfe24949be9edd47f8d609462eb52fb",
+  "tasks": 1029,
+  "mode": "IKOS_BMC_RECOVER=1 --demote",
+  "timeout": 30,
+  "jobs": 8,
+  "baseline_binary_sha256": "8da2854c0366532d5b12a49494ea8431155788382538e9a6e378bc3d4fad3561",
+  "candidate_binary_sha256": "e47d8811d0971af28ec354551dfe899d3c1b1c51fb10764899eb459aa600056a",
+  "baseline": {
+    "TP": 53,
+    "TN": 709,
+    "FP": 0,
+    "FN": 0,
+    "error": 1,
+    "unknown": 266
+  },
+  "candidate": {
+    "TP": 27,
+    "TN": 709,
+    "FP": 0,
+    "FN": 0,
+    "error": 1,
+    "unknown": 292
+  },
+  "source": "51b795c4b09f36170a69be4e5ce0a10345db2de6 + uncommitted working tree",
+  "changes": [
+    {
+      "task": "c/goblint-regression/10-synch_02-thread_nonunique.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/10-synch_02-thread_nonunique.c",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-atomic/scull.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/scull.i",
+      "expected": "Race Found",
+      "before": "Unknown",
+      "after": "Race Found",
+      "reasons": [
+        "assume_value",
+        "not_searched_after_confirmation",
+        "sat",
+        "value_arithmetic",
+        "value_load",
+        "value_no_unique_definition",
+        "value_unknown_call"
+      ]
+    },
+    {
+      "task": "c/pthread-complex/elimination_backoff_stack-race.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-complex/elimination_backoff_stack-race.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "offset_prefilter",
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-deagle/reorder_c11_bad-10.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-10.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-deagle/reorder_c11_bad-20.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-20.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-deagle/reorder_c11_bad-30.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-30.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-deagle/reorder_c11_bad-40.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-40.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-deagle/reorder_c11_bad-50.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-50.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-deagle/reorder_c11_good-10.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-10.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-deagle/reorder_c11_good-20.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-20.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-deagle/reorder_c11_good-30.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-30.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-deagle/reorder_c11_good-40.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-40.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-deagle/reorder_c11_good-50.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-50.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-ext/06_ticket.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/06_ticket.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-ext/45_monabsex1_vs-b.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/45_monabsex1_vs-b.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-lit/fkp2013-1.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2013-1.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-lit/fkp2013-2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2013-2.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-lit/fkp2013_variant-1.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2013_variant-1.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-lit/fkp2013_variant-2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2013_variant-2.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-lit/fkp2014.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2014.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-lit/qw2004_variant.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/qw2004_variant.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-nondet/nondet-array-1.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-array-1.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven",
+        "unroll_loop_or_sync"
+      ]
+    },
+    {
+      "task": "c/pthread-nondet/nondet-array-2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-array-2.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven",
+        "unroll_loop_or_sync"
+      ]
+    },
+    {
+      "task": "c/pthread-nondet/nondet-loop-bound-1.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-loop-bound-1.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-nondet/nondet-loop-bound-2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-loop-bound-2.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread-race-challenges/per-thread-index-inc-race.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-index-inc-race.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "non_global_object",
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread/reorder_2-race.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread/reorder_2-race.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    },
+    {
+      "task": "c/pthread/reorder_5-race.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread/reorder_5-race.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown",
+      "reasons": [
+        "thread_activation_unproven"
+      ]
+    }
+  ],
+  "diagnostics": {
+    "tasks": 1029,
+    "matrix": {
+      "TP": 27,
+      "FP": 0,
+      "TN": 709,
+      "FN": 0,
+      "error": 1,
+      "unknown": 292
+    },
+    "unknown_tasks_by_observed_reason": {
+      "non_global_object": {
+        "racy": 45,
+        "safe": 28
+      },
+      "target_not_reached": {
+        "racy": 9,
+        "safe": 1
+      },
+      "address_base": {
+        "racy": 4
+      },
+      "assume_value": {
+        "racy": 16
+      },
+      "held_lock": {
+        "racy": 3,
+        "safe": 1
+      },
+      "value_arithmetic": {
+        "racy": 2
+      },
+      "value_no_unique_definition": {
+        "racy": 11
+      },
+      "thread_activation_unproven": {
+        "racy": 128,
+        "safe": 61
+      },
+      "unroll_loop_or_sync": {
+        "racy": 54,
+        "safe": 11
+      },
+      "address_value": {
+        "racy": 4
+      },
+      "points_to_not_singleton": {
+        "racy": 13,
+        "safe": 9
+      },
+      "offset_prefilter": {
+        "safe": 9,
+        "racy": 10
+      },
+      "transitive_thread_order": {
+        "safe": 6,
+        "racy": 1
+      },
+      "value_load": {
+        "racy": 8
+      },
+      "unmodeled_sync": {
+        "safe": 33,
+        "racy": 45
+      },
+      "mixed_atomic": {
+        "safe": 2
+      },
+      "group_search_budget": {
+        "racy": 1,
+        "safe": 1
+      },
+      "unroll_path_budget": {
+        "racy": 6
+      },
+      "search_budget": {
+        "racy": 3
+      },
+      "value_cast": {
+        "racy": 3
+      },
+      "assume_predicate": {
+        "racy": 1
+      },
+      "value_unknown_call": {
+        "racy": 1
+      },
+      "smt_unsat": {
+        "racy": 2,
+        "safe": 1
+      }
+    },
+    "note": "Reasons overlap; counts are observed blockers, not recoverable TP estimates. First blockers describe recorded traversal order; later stages behind failed gates were not explored.",
+    "timeout": 30,
+    "jobs": 8,
+    "environment": {
+      "IKOS_BMC_RECOVER": "1",
+      "IKOS_BMC_DIAGNOSTICS": "1"
+    }
+  },
+  "activation_safety": [
+    {
+      "case": "one-instance",
+      "bits": "32",
+      "version": "baseline",
+      "verdict": "Race Found"
+    },
+    {
+      "case": "one-instance",
+      "bits": "32",
+      "version": "candidate",
+      "verdict": "Unknown"
+    },
+    {
+      "case": "one-instance",
+      "bits": "64",
+      "version": "baseline",
+      "verdict": "Race Found"
+    },
+    {
+      "case": "one-instance",
+      "bits": "64",
+      "version": "candidate",
+      "verdict": "Unknown"
+    },
+    {
+      "case": "exclusive-spawns",
+      "bits": "32",
+      "version": "baseline",
+      "verdict": "Race Found"
+    },
+    {
+      "case": "exclusive-spawns",
+      "bits": "32",
+      "version": "candidate",
+      "verdict": "Unknown"
+    },
+    {
+      "case": "exclusive-spawns",
+      "bits": "64",
+      "version": "baseline",
+      "verdict": "Race Found"
+    },
+    {
+      "case": "exclusive-spawns",
+      "bits": "64",
+      "version": "candidate",
+      "verdict": "Unknown"
+    },
+    {
+      "case": "exclusive-entries",
+      "bits": "32",
+      "version": "baseline",
+      "verdict": "Race Found"
+    },
+    {
+      "case": "exclusive-entries",
+      "bits": "32",
+      "version": "candidate",
+      "verdict": "Unknown"
+    },
+    {
+      "case": "exclusive-entries",
+      "bits": "64",
+      "version": "baseline",
+      "verdict": "Race Found"
+    },
+    {
+      "case": "exclusive-entries",
+      "bits": "64",
+      "version": "candidate",
+      "verdict": "Unknown"
+    }
+  ],
+  "raw_artifacts": "/tmp/ikos-bmc-pairs-k_deuhyo",
+  "witness_validation": {
+    "validator": "CPAchecker 4.2.2",
+    "format": "violation_sequence 2.2",
+    "validated": false,
+    "result": "parser exception: AutomatonWitnessV2d0Parser NoSuchElementException"
+  },
+  "targeted_checks": {
+    "candidate_activation_budget": 30,
+    "address": 28,
+    "p0_observations": 20
+  },
+  "witness_adapter_sha256": "c4ba7c2d34cc3426a71d6f2ff8460d9abfa4af6ab0f41f923d0ef1bc78b5d3d6",
+  "coverage_note": "All 1029 scan tasks are ILP32; LP64 coverage is targeted only. No official 2027 manifest or packaged BenchExec full run.",
+  "adapter_check": {
+    "task": "pthread-atomic/scull.i",
+    "data_model": "ILP32",
+    "verdict": "FALSE(no-data-race)",
+    "witness_generated": true,
+    "independent_validation": false
+  },
+  "implementation_file_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/bmc/bmc.hpp": "254ad578aca4d2e39046e6c9752c3bff7ed263b6c3087db9a088990a921f28ed",
+    "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp": "36b9fe21532d927587318cdd6de0bab943625b1bcba6c2b818a873ae72c94417",
+    "analyzer/include/ikos/analyzer/analysis/bmc/unroll.hpp": "786a22f6eebbb1c59fb7522ad2cbaaf96f55363d0035f111a792567a706d06bf",
+    "analyzer/include/ikos/analyzer/analysis/bmc/diagnostics.hpp": "1d9164a4a5e5f72503a9c32f41b533abf637cc388621d0bdb81257be027e59e4",
+    "analyzer/src/checker/data_race.cpp": "9150e2897db4860b1dc6b3defec55659ea5760a462c608bdd9fb13dff00be10f",
+    "svcomp_witness.py": "c4ba7c2d34cc3426a71d6f2ff8460d9abfa4af6ab0f41f923d0ef1bc78b5d3d6",
+    "scripts/bmc_diagnostics.py": "f033857900c7a881478de2f9131607a3becd1d85285b30789762c72ef93350e7",
+    "analyzer/test/regression/bmc-candidates/candidates.c": "203824d26edb1e78df8135b7e77517ab51066b17e6bfce05d9babad264037cac",
+    "analyzer/test/regression/bmc-candidates/runtest": "e53d2b7ab4d38a627540c7becf15bf71f52dea675d63b2dc3bc25e4b4413c1b1"
+  }
+}

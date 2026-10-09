@@ -1,0 +1,4 @@
+Warning: llvm function pthread_join and ar intrinsic ar.pthread.join have a different type
+LLVM function declaration
+ikos ar expected function declaration
+Expected signature will be ignored.

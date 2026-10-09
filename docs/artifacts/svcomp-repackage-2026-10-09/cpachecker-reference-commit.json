@@ -1,0 +1,106 @@
+{
+  "sha": "bd91e2fd933ac2704dc240089774db4e5ec877da",
+  "node_id": "C_kwDOATLP5toAKGJkOTFlMmZkOTMzYWMyNzA0ZGMyNDAwODk3NzRkYjRlNWVjODc3ZGE",
+  "commit": {
+    "author": {
+      "name": "Csanád Telbisz",
+      "email": "csanadtelbisz@gmail.com",
+      "date": "2026-10-07T15:19:44Z"
+    },
+    "committer": {
+      "name": "Csanád Telbisz",
+      "email": "csanadtelbisz@gmail.com",
+      "date": "2026-10-07T15:19:44Z"
+    },
+    "message": "Merge branch 'value-analysis-memory-location-creation' into 'main'\n\nImprove memory location creations in value analysis transfer relation\n\nSee merge request sosy-lab/software/cpachecker!654",
+    "tree": {
+      "sha": "e91c3f7a6161f56c99e44f7cf942769d4b488e0c",
+      "url": "https://api.github.com/repos/sosy-lab/cpachecker/git/trees/e91c3f7a6161f56c99e44f7cf942769d4b488e0c"
+    },
+    "url": "https://api.github.com/repos/sosy-lab/cpachecker/git/commits/bd91e2fd933ac2704dc240089774db4e5ec877da",
+    "comment_count": 0,
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "url": "https://api.github.com/repos/sosy-lab/cpachecker/commits/bd91e2fd933ac2704dc240089774db4e5ec877da",
+  "html_url": "https://github.com/sosy-lab/cpachecker/commit/bd91e2fd933ac2704dc240089774db4e5ec877da",
+  "comments_url": "https://api.github.com/repos/sosy-lab/cpachecker/commits/bd91e2fd933ac2704dc240089774db4e5ec877da/comments",
+  "author": {
+    "login": "csanadtelbisz",
+    "id": 56129746,
+    "node_id": "MDQ6VXNlcjU2MTI5NzQ2",
+    "avatar_url": "https://avatars.githubusercontent.com/u/56129746?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/csanadtelbisz",
+    "html_url": "https://github.com/csanadtelbisz",
+    "followers_url": "https://api.github.com/users/csanadtelbisz/followers",
+    "following_url": "https://api.github.com/users/csanadtelbisz/following{/other_user}",
+    "gists_url": "https://api.github.com/users/csanadtelbisz/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/csanadtelbisz/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/csanadtelbisz/subscriptions",
+    "organizations_url": "https://api.github.com/users/csanadtelbisz/orgs",
+    "repos_url": "https://api.github.com/users/csanadtelbisz/repos",
+    "events_url": "https://api.github.com/users/csanadtelbisz/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/csanadtelbisz/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "csanadtelbisz",
+    "id": 56129746,
+    "node_id": "MDQ6VXNlcjU2MTI5NzQ2",
+    "avatar_url": "https://avatars.githubusercontent.com/u/56129746?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/csanadtelbisz",
+    "html_url": "https://github.com/csanadtelbisz",
+    "followers_url": "https://api.github.com/users/csanadtelbisz/followers",
+    "following_url": "https://api.github.com/users/csanadtelbisz/following{/other_user}",
+    "gists_url": "https://api.github.com/users/csanadtelbisz/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/csanadtelbisz/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/csanadtelbisz/subscriptions",
+    "organizations_url": "https://api.github.com/users/csanadtelbisz/orgs",
+    "repos_url": "https://api.github.com/users/csanadtelbisz/repos",
+    "events_url": "https://api.github.com/users/csanadtelbisz/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/csanadtelbisz/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "b1d22c2c546563f70d9ee05ee383f39cab0fdab8",
+      "url": "https://api.github.com/repos/sosy-lab/cpachecker/commits/b1d22c2c546563f70d9ee05ee383f39cab0fdab8",
+      "html_url": "https://github.com/sosy-lab/cpachecker/commit/b1d22c2c546563f70d9ee05ee383f39cab0fdab8"
+    },
+    {
+      "sha": "fdcefd51b303d78322ac769e45ab687ebc46019b",
+      "url": "https://api.github.com/repos/sosy-lab/cpachecker/commits/fdcefd51b303d78322ac769e45ab687ebc46019b",
+      "html_url": "https://github.com/sosy-lab/cpachecker/commit/fdcefd51b303d78322ac769e45ab687ebc46019b"
+    }
+  ],
+  "stats": {
+    "total": 20,
+    "additions": 3,
+    "deletions": 17
+  },
+  "files": [
+    {
+      "sha": "98b9159928c2c34b38e95725a2aa68b6a3b14019",
+      "filename": "src/org/sosy_lab/cpachecker/cpa/value/ValueAnalysisTransferRelation.java",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 17,
+      "changes": 20,
+      "blob_url": "https://github.com/sosy-lab/cpachecker/blob/bd91e2fd933ac2704dc240089774db4e5ec877da/src%2Forg%2Fsosy_lab%2Fcpachecker%2Fcpa%2Fvalue%2FValueAnalysisTransferRelation.java",
+      "raw_url": "https://github.com/sosy-lab/cpachecker/raw/bd91e2fd933ac2704dc240089774db4e5ec877da/src%2Forg%2Fsosy_lab%2Fcpachecker%2Fcpa%2Fvalue%2FValueAnalysisTransferRelation.java",
+      "contents_url": "https://api.github.com/repos/sosy-lab/cpachecker/contents/src%2Forg%2Fsosy_lab%2Fcpachecker%2Fcpa%2Fvalue%2FValueAnalysisTransferRelation.java?ref=bd91e2fd933ac2704dc240089774db4e5ec877da",
+      "patch": "@@ -415,11 +415,9 @@ protected ValueAnalysisState handleFunctionCallEdge(\n       }\n \n       AParameterDeclaration param = parameters.get(i);\n-      String paramName = param.getName();\n       Type paramType = param.getType();\n \n-      MemoryLocation formalParamName =\n-          MemoryLocation.forLocalVariable(calledFunctionName, paramName);\n+      MemoryLocation formalParamName = MemoryLocation.forDeclaration(param);\n \n       if (value.isUnknown()) {\n         if (isMissingCExpressionInformation(visitor, exp)) {\n@@ -788,14 +786,8 @@ protected ValueAnalysisState handleDeclarationEdge(\n       }\n     }\n \n-    MemoryLocation memoryLocation;\n-\n     // assign initial value if necessary\n-    if (decl.isGlobal()) {\n-      memoryLocation = MemoryLocation.forIdentifier(varName);\n-    } else {\n-      memoryLocation = MemoryLocation.forLocalVariable(functionName, varName);\n-    }\n+    MemoryLocation memoryLocation = MemoryLocation.forDeclaration(decl);\n \n     if (addressedVariables.contains(decl.getQualifiedName()) && declarationType instanceof CType) {\n       ValueAnalysisState.addToBlacklist(memoryLocation);\n@@ -1066,13 +1058,7 @@ private boolean isTrackedType(Type pType) {\n   }\n \n   private MemoryLocation getMemoryLocation(AIdExpression pIdExpression) {\n-    String varName = pIdExpression.getName();\n-\n-    if (isGlobal(pIdExpression)) {\n-      return MemoryLocation.parseExtendedQualifiedName(varName);\n-    } else {\n-      return MemoryLocation.forLocalVariable(functionName, varName);\n-    }\n+    return MemoryLocation.forDeclaration(pIdExpression.getDeclaration());\n   }\n \n   private boolean isRelevant(AExpression pOp1, ARightHandSide pOp2) {"
+    }
+  ]
+}

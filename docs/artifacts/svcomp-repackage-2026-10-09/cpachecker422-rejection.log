@@ -1,0 +1,22 @@
+Running CPAchecker with default heap size (1200M). Specify a larger value with --heap if you have more RAM.
+Running CPAchecker with default stack size (1024k). Specify a larger value with --stack if needed.
+Using the following resource limits: CPU-time limit of 900s (ResourceLimitChecker.fromConfiguration, INFO)
+
+CPAchecker 4.2.2 (OpenJDK 64-Bit Server VM 21.0.12.1) started (CPAchecker.run, INFO)
+
+Parsing CFA from file(s) "/tmp/ikos-release-check-2026-10-09/ikos-conc/examples/smoke.c" (CPAchecker.parse, INFO)
+
+Parsing failed with preprocessing using an external pre-processor disabled, now trying to parse the code with usage of an external pre-processor. (CFACreator.parseFileAndCreateCFA, INFO)
+
+program contains concurrency, cloning functions... (CFACreator.postProcessingOnMutableCFAs, INFO)
+
+Exception in thread "main" java.util.NoSuchElementException: No value present
+	at java.base/java.util.Optional.orElseThrow(Optional.java:377)
+	at org.sosy_lab.cpachecker.cpa.automaton.AutomatonWitnessV2d0Parser.parseAutomatonFile(AutomatonWitnessV2d0Parser.java:79)
+	at org.sosy_lab.cpachecker.cpa.automaton.AutomatonGraphmlParser.handlePotentiallyGZippedInput(AutomatonGraphmlParser.java:2307)
+	at org.sosy_lab.cpachecker.cpa.automaton.AutomatonWitnessV2d0Parser.parseAutomatonFile(AutomatonWitnessV2d0Parser.java:51)
+	at org.sosy_lab.cpachecker.core.specification.Specification.parseSpecificationFile(Specification.java:255)
+	at org.sosy_lab.cpachecker.core.specification.Specification.fromFiles(Specification.java:205)
+	at org.sosy_lab.cpachecker.core.CPAchecker.run0(CPAchecker.java:350)
+	at org.sosy_lab.cpachecker.core.CPAchecker.run(CPAchecker.java:302)
+	at org.sosy_lab.cpachecker.cmdline.CPAMain.main(CPAMain.java:165)
