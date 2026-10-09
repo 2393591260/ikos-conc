@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import time
@@ -70,6 +71,23 @@ def write_certificate(path, cert):
     path.write_text(''.join(f'{k}={v}\n' for k, v in cert.items()))
 
 
+def classify_result(text, returncode):
+    if 'REFERENCE_CERTIFICATE_UNSUPPORTED:' in text:
+        return 'UNSUPPORTED'
+    bounded = returncode == 1 and re.search(r'^Result: UNKNOWN$', text, re.MULTILINE) is not None
+    if returncode not in (0, 13) and not bounded:
+        return 'ERROR'
+    if 'REFERENCE_CERTIFICATE_SAT' in text:
+        return 'SAT' if returncode == 13 else 'ERROR'
+    if 'REFERENCE_CERTIFICATE_UNSAT_AT_BOUND' in text:
+        return 'UNSAT_AT_BOUND' if returncode == 0 or bounded else 'ERROR'
+    if bounded:
+        return 'SOURCE_UNKNOWN'
+    if 'Result: FAIL' in text:
+        return 'SOURCE_RACE' if returncode == 13 else 'ERROR'
+    return 'OTHER'
+
+
 def run(args, cp, source, bits, folder, cert=None):
     folder.mkdir()
     env = dict(os.environ)
@@ -94,16 +112,7 @@ def run(args, cp, source, bits, folder, cert=None):
         status = 'TIMEOUT'
     else:
         text = log.decode(errors='replace')
-        if proc.returncode not in (0, 13):
-            status = 'UNSUPPORTED' if 'REFERENCE_CERTIFICATE_UNSUPPORTED:' in text else 'ERROR'
-        elif 'REFERENCE_CERTIFICATE_SAT' in text:
-            status = 'SAT'
-        elif 'REFERENCE_CERTIFICATE_UNSAT_AT_BOUND' in text:
-            status = 'UNSAT_AT_BOUND'
-        elif 'Result: FAIL' in text:
-            status = 'SOURCE_RACE'
-        else:
-            status = 'OTHER'
+        status = classify_result(text, proc.returncode)
     (folder / 'run.log').write_bytes(log)
     row = dict(status=status, returncode=proc.returncode, seconds=time.monotonic()-start,
                command=cmd, source_sha256=digest(source), data_model=f'{bits}')

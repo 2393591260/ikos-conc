@@ -19,6 +19,10 @@ UNSAT_AT_BOUND2、TIMEOUT3。详情见
 fmaxsymopt界限6得到SAT；后者界限15参考运行60秒超时，没有导出IR，保持未映射。
 所有首次不满足和重试观察均保留，不能从有界不满足推出IKOS反例错误。
 [重试证据](artifacts/bmc-tp77-validation-2026-10-09/selected-retries.json)。
+原始fmaxsymopt源码查询日志实际为UNKNOWN、exit1（Not fully unrolled loops），
+首轮接口误记ERROR。固定版本ExitCode.java明确BOUNDED_RESULT=1、UNKNOWN_ERROR=30；
+后续分类已修复并通过11项协议断言及该真实日志复查。旧统计保留为历史观察，
+后续不得把界限不足当成工具错误；内部FAIL后launcher报错仍不得算参考竞争。
 
 ## 重复内存访问不能塌缩为一个事件
 
