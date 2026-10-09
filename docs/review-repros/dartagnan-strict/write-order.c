@@ -2,7 +2,7 @@
 
 volatile int data;
 void* writer(void* arg) {
-  data = 7;
+  data = 9;
   data = 9;
   return 0;
 }

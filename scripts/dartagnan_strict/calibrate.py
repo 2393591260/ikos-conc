@@ -37,6 +37,8 @@ def build(args, out):
     if digest(source) != ORIGINAL_SHA:
         raise ValueError('AssumeSolver source does not match pinned version')
     text = source.read_text()
+    text = replace_once(text, 'preprocessMemoryModel(task, config);',
+                        'StrictWitness.prepare(memoryModel);\n        preprocessMemoryModel(task, config);')
     text = replace_once(text, 'prover.addConstraint(symmetryEncoder.encodeFullSymmetryBreaking());',
                         'StrictWitness.constrain(context, prover);\n'
                         '        if (!StrictWitness.enabled()) prover.addConstraint(symmetryEncoder.encodeFullSymmetryBreaking());')
@@ -185,6 +187,12 @@ def calibrate(args):
         other = next(e for e in es if e['line'] == 6 and 'store(' in e['code'] and e['thread'] == stores[1]['thread'])
         c = certificate(h, [stores[0], other])
         cases.append(('other-race-cannot-substitute', c, 'UNSAT_AT_BOUND'))
+        c = certificate(h, stores + [other])
+        c.update(order_count=1, **{'order.0.before': other['id'], 'order.0.after': stores[0]['id']})
+        cases.append(('independent-objects-relative-order', c, 'SAT'))
+        c = certificate(h, stores + [other])
+        c.update(edge_count=1, **{'edge.0.relation': 'hb', 'edge.0.from': other['id'], 'edge.0.to': stores[0]['id']})
+        cases.append(('independent-objects-not-a-hb-edge', c, 'UNSAT_AT_BOUND'))
         c = copy.deepcopy(cert)
         # These are explicitly CAT hb constraints, NOT an IKOS total schedule.
         c.update(edge_count=2)
@@ -344,16 +352,24 @@ def calibrate(args):
         first, last = sorted(stores, key=lambda e: e['id'])
         read = reads[0]
         cert = certificate(h, [last, read, first])
-        cert.update({'event.0.value': 9, 'event.1.value': 9, 'event.2.value': 7,
+        cert.update({'event.0.value': 9, 'event.1.value': 9, 'event.2.value': 9,
                      'edge_count': 2, 'edge.0.relation': 'co', 'edge.0.from': first['id'],
                      'edge.0.to': last['id'], 'edge.1.relation': 'rf',
-                     'edge.1.from': last['id'], 'edge.1.to': read['id']})
+                     'edge.1.from': last['id'], 'edge.1.to': read['id'],
+                     'order_count': 2, 'order.0.before': first['id'], 'order.0.after': last['id'],
+                     'order.1.before': last['id'], 'order.1.after': read['id']})
         cases = [('write-order-rf-co-valid', cert, 'SAT')]
         for name, updates in (
                 ('write-order-wrong-rf', {'edge.1.from': first['id']}),
-                ('write-order-reversed-co', {'edge.0.from': last['id'], 'edge.0.to': first['id']})):
+                ('write-order-reversed-co', {'edge.0.from': last['id'], 'edge.0.to': first['id']}),
+                ('write-order-reversed-schedule', {'order.0.before': last['id'], 'order.0.after': first['id']})):
             changed = copy.deepcopy(cert); changed.update(updates)
             cases.append((name, changed, 'UNSAT_AT_BOUND'))
+        changed = {k: v for k, v in cert.items() if not k.startswith('order.')}
+        changed.update(order_count=0, **{'edge.1.from': first['id']})
+        cases.append(('write-order-equal-values-without-schedule', changed, 'SAT'))
+        changed = copy.deepcopy(cert); changed['order.0.before'] = 999999
+        cases.append(('write-order-unknown-schedule-event', changed, 'UNSUPPORTED'))
         for name, cert, expected in cases:
             row = run(args, cp, ordered, bits, out / f'{bits}-{name}', cert)
             row.update(case=name, expected=expected, matched=row['status'] == expected)

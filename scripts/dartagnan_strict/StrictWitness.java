@@ -16,6 +16,9 @@ import com.dat3m.dartagnan.program.event.metadata.MemoryOrder;
 import com.dat3m.dartagnan.program.event.metadata.SourceLocation;
 import com.dat3m.dartagnan.program.event.metadata.OriginalId;
 import com.dat3m.dartagnan.program.event.metadata.UnrollingId;
+import com.dat3m.dartagnan.wmm.Wmm;
+import com.dat3m.dartagnan.wmm.axiom.ForceEncodeAxiom;
+import com.dat3m.dartagnan.wmm.analysis.RelationAnalysis;
 import org.sosy_lab.java_smt.api.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -26,6 +29,9 @@ import java.util.*;
 /** Research adapter for pinned Dat3M 7caef5c; NOT a competition witness validator. */
 public final class StrictWitness {
     public static boolean enabled() { return System.getenv("IKOS_STRICT_CERTIFICATE") != null; }
+    public static void prepare(Wmm model) {
+        if (enabled()) model.addConstraint(new ForceEncodeAxiom(model.getRelation("hb")));
+    }
     private static String b64(String s) {
         return Base64.getEncoder().encodeToString(s.getBytes(StandardCharsets.UTF_8));
     }
@@ -155,7 +161,7 @@ public final class StrictWitness {
             try (var reader = Files.newBufferedReader(Path.of(System.getenv("IKOS_STRICT_CERTIFICATE")))) { p.load(reader); }
             if (!"1".equals(p.getProperty("schema")) || !hash.equals(p.getProperty("ir_sha256")))
                 throw new IllegalArgumentException("schema or processed IR mismatch");
-            var used = new HashSet<String>(List.of("schema", "ir_sha256", "count", "target_a", "target_b", "edge_count"));
+            var used = new HashSet<String>(List.of("schema", "ir_sha256", "count", "target_a", "target_b", "edge_count", "order_count"));
             var bm = c.getBooleanFormulaManager();
             int count = Integer.parseInt(p.getProperty("count"));
             if (count < 2 || count > 10000) throw new IllegalArgumentException("invalid event count");
@@ -207,6 +213,27 @@ public final class StrictWitness {
                 if (!boundIds.contains(from.getGlobalId()) || !boundIds.contains(to.getGlobalId()))
                     throw new IllegalArgumentException("edge references unbound event");
                 prover.addConstraint(c.edge(c.getTask().getMemoryModel().getRelation(relation), from, to));
+            }
+            int orders = Integer.parseInt(p.getProperty("order_count", "0"));
+            if (orders < 0 || orders > 10000) throw new IllegalArgumentException("invalid order count");
+            if (orders > 0) {
+                var im = c.getFormulaManager().getIntegerFormulaManager();
+                var terms = new ArrayList<BooleanFormula>();
+                var hb = c.getTask().getMemoryModel().getRelation("hb");
+                // Extend the actual SC graph with relative ranks, not invented hb edges.
+                c.getAnalysisContext().get(RelationAnalysis.class).getKnowledge(hb).getMaySet().apply((from, to) ->
+                    terms.add(bm.implication(c.edge(hb, from, to), im.lessThan(
+                        c.clockVariable("ikos_schedule", from), c.clockVariable("ikos_schedule", to)))));
+                for (int i = 0; i < orders; ++i) {
+                    String k = "order." + i + ".";
+                    used.addAll(List.of(k + "before", k + "after"));
+                    Event from = event(p, k + "before", events), to = event(p, k + "after", events);
+                    if (!boundIds.contains(from.getGlobalId()) || !boundIds.contains(to.getGlobalId())
+                        || !(from instanceof MemoryCoreEvent) || !(to instanceof MemoryCoreEvent))
+                        throw new IllegalArgumentException("order requires bound memory events");
+                    terms.add(im.lessThan(c.clockVariable("ikos_schedule", from), c.clockVariable("ikos_schedule", to)));
+                }
+                prover.addConstraint(bm.and(terms));
             }
             if (!used.containsAll(p.stringPropertyNames())) throw new IllegalArgumentException("unknown certificate field");
             System.out.println("REFERENCE_CERTIFICATE_BOUND events=" + count + " edges=" + edges);

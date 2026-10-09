@@ -117,6 +117,26 @@ def communication(replay, memory_bindings):
     return edges, omitted
 
 
+def memory_orderings(replay, bindings):
+    traces = {t['id']: t for t in replay['traces']}
+    groups, omitted = {}, []
+    for binding in bindings:
+        trace, i = binding['trace'], binding['step']
+        step = traces[trace]['steps'][i]
+        if trace == 'startup':
+            time = (0, i)
+        elif 'clock' in step:
+            time = (1, int(step['clock']))
+        else:
+            omitted.append(dict(trace=trace, step=i, reason='missing memory clock'))
+            continue
+        groups.setdefault(time, []).append(binding['reference_event'])
+    ordered = [groups[t] for t in sorted(groups)]
+    # Equal clocks do not specify an inter-thread order.
+    return [dict(before=a, after=b) for first, last in zip(ordered, ordered[1:])
+            for a in first for b in last], omitted
+
+
 def translate(replay, ir_hash, ir_events):
     instructions = replay['program']['instructions']
     traces = {t['id']: t for t in replay['traces']}
@@ -288,6 +308,11 @@ def translate(replay, ir_hash, ir_events):
     for i, edge in enumerate(edges):
         for key, value in edge.items():
             cert[f'edge.{i}.{key}'] = value
+    orders, order_omissions = memory_orderings(replay, memory_bindings)
+    cert['order_count'] = len(orders)
+    for i, order in enumerate(orders):
+        for key, value in order.items():
+            cert[f'order.{i}.{key}'] = value
     return cert, dict(scope='PARTIAL_FIXED_MEMORY_MODEL', threads=threads,
                       mapped_memory_events=len(memory_bindings), omitted_steps=omitted,
                       creation_bindings=creation_bindings,
@@ -295,6 +320,7 @@ def translate(replay, ir_hash, ir_events):
                       nondet_bindings=nondet_bindings,
                       communication_bindings=edges,
                       communication_omissions=communication_omissions,
+                      memory_orderings=orders, memory_order_omissions=order_omissions,
                       unbound_claims=['CFG and call occurrence mapping', 'local values and nondet occurrences',
                                       'synchronization history and identities', 'IKOS total schedule and rf choices'],
                       full_counterexample_validated=False)
