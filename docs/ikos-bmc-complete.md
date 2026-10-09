@@ -2,7 +2,8 @@
 
 > 本文描述当前实现、证据前提和能力边界；读过源码或测试通过不等于获得完整 soundness 证明。
 > 最新 UNKNOWN 全量遍历及基线见 [逐任务恢复报告](ikos-bmc-unknown-sweep-2026-10-09.md)。
-> 当前冻结集回归：TP=60（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=272 / 错误=0。
+> 当前冻结集回归：TP=61（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=271 / 错误=0。
+> 动态仿射守卫减少无溢出循环的不可行路径，唯一恢复 fmaxsymopt，见[守卫报告](ikos-bmc-affine-guards-2026-10-09.md)（60→61）。
 > 创建基数审查修复递归/发现遗忘漏报，并恢复三项join SAFE，见[单次执行报告](ikos-single-execution-2026-10-09.md)。
 > SAFE 审查修复stdio访问遗漏，四项TN转UNKNOWN，见[库访问报告](ikos-stdio-effects-2026-10-09.md)。
 > sem_getvalue共享输出漏报另已修复，冻结集计数不变，见[输出槽报告](ikos-sem-value-2026-10-09.md)。

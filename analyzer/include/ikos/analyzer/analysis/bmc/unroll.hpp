@@ -548,6 +548,60 @@ inline bool constant_integer_on_path(ar::Value* value,
   return result >= lo && result <= hi;
 }
 
+// Normalize x + c only through value-preserving assignments and no-wrap
+// additions/subtractions. The leaf is one executed definition, never a load's
+// assumed value; equal leaves cancel without knowing x.
+struct AffineInteger {
+  ar::InternalVariable* base = nullptr;
+  std::size_t definition = 0;
+  core::ZNumber offset{0};
+};
+
+inline bool affine_integer_on_path(ar::Value* value,
+                                   const std::vector< BmcEvent >& path,
+                                   std::size_t before, AffineInteger& result,
+                                   unsigned depth = 0) {
+  if (depth >= 128) return false;
+  if (auto* constant = core::dyn_cast< ar::IntegerConstant >(value)) {
+    result = {nullptr, 0, constant->value().to_z_number()}; return true;
+  }
+  auto* variable = core::dyn_cast< ar::InternalVariable >(value);
+  if (variable == nullptr || !variable->type()->is_integer()) return false;
+  std::size_t index = 0;
+  auto* definition = reaching_definition(variable, path, before, index);
+  if (definition == nullptr) {
+    auto* actual = formal_argument(variable, path, before, index);
+    return actual != nullptr && actual->type() == variable->type() &&
+           affine_integer_on_path(actual, path, index, result, depth + 1);
+  }
+  if (abstract_initializer(definition)) return false;
+  if (auto* assignment = core::dyn_cast< ar::Assignment >(definition)) {
+    if (assignment->operand()->type() == variable->type())
+      return affine_integer_on_path(assignment->operand(), path, index, result, depth + 1);
+  }
+  if (auto* operation = core::dyn_cast< ar::BinaryOperation >(definition)) {
+    auto* type = core::cast< ar::IntegerType >(variable->type());
+    bool signed_op = operation->op() == ar::BinaryOperation::SAdd || operation->op() == ar::BinaryOperation::SSub;
+    if (operation->has_no_wrap() && type->is_signed() == signed_op && operation->left()->type() == variable->type() &&
+        operation->right()->type() == variable->type()) {
+      AffineInteger left, right;
+      bool add = operation->op() == ar::BinaryOperation::SAdd || operation->op() == ar::BinaryOperation::UAdd;
+      bool sub = operation->op() == ar::BinaryOperation::SSub || operation->op() == ar::BinaryOperation::USub;
+      if ((add || sub) && affine_integer_on_path(operation->left(), path, index, left, depth + 1) &&
+          affine_integer_on_path(operation->right(), path, index, right, depth + 1)) {
+        if (right.base == nullptr) {
+          result = left; result.offset += sub ? -right.offset : right.offset; return true;
+        }
+        if (add && left.base == nullptr) {
+          result = right; result.offset += left.offset; return true;
+        }
+      }
+    }
+  }
+  result = {variable, index, core::ZNumber(0)};
+  return true;
+}
+
 // Resolve pointers from executed definitions and actual helper/thread args.
 // Root arguments were consumed on the already checked creation prefix; only
 // constant global address chains may be followed outside the selected path.
@@ -913,9 +967,16 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
       if (auto* comparison = core::dyn_cast< ar::Comparison >(s)) {
         core::ZNumber left, right;
         auto* type = core::dyn_cast< ar::IntegerType >(comparison->left()->type());
+        AffineInteger affine_left, affine_right;
+        bool known = constant_integer_on_path(comparison->left(), current, current.size(), left) &&
+                     constant_integer_on_path(comparison->right(), current, current.size(), right);
+        if (!known && affine_integer_on_path(comparison->left(), current, current.size(), affine_left) &&
+            affine_integer_on_path(comparison->right(), current, current.size(), affine_right) &&
+            affine_left.base == affine_right.base && affine_left.definition == affine_right.definition) {
+          left = affine_left.offset; right = affine_right.offset; known = true;
+        }
         if (type != nullptr && comparison->right()->type() == type &&
-            constant_integer_on_path(comparison->left(), current, current.size(), left) &&
-            constant_integer_on_path(comparison->right(), current, current.size(), right)) {
+            known) {
           bool feasible = true;
           switch (comparison->predicate()) {
             case ar::Comparison::SIEQ: case ar::Comparison::UIEQ: feasible = left == right; break;
