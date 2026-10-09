@@ -921,18 +921,8 @@ DataRaceChecker::~DataRaceChecker() {
           continue;
         }
       }
-      // Structural field disjointness under an OPAQUE base: when the abstract
-      // offset is ⊤ (the base's points-to is ⊤, so `⊤ + field` collapsed to ⊤),
-      // fall back to the compile-time field offset. Two DIFFERENT constant
-      // offsets of the SAME struct type are disjoint bytes regardless of which
-      // object the opaque base points to (04-mutex_78-type-array.c:
-      // `getS()->field` vs `getS()->arr[1]`). The type must MATCH — fields of
-      // different struct types are not comparable (their objects could overlap).
-      if (a.structural_type != nullptr &&
-          a.structural_type == b.structural_type &&
-          a.structural_offset != b.structural_offset) {
-        continue;
-      }
+      // Unknown base displacement cannot be replaced by a relative field
+      // offset: equal pointee types do not establish a common object origin.
 
       // Lockset intersection: a shared EXCLUSIVE lock (or an exclusive
       // lock meeting a read lock) makes the two accesses mutually
@@ -1388,11 +1378,7 @@ DataRaceChecker::~DataRaceChecker() {
           hi = access.offset.ub().to_z_number();
           return true;
         }
-        if (access.structural_type == nullptr) {
-          return false;
-        }
-        lo = hi = ZNumber(access.structural_offset);
-        return true;
+        return false;
       };
       ZNumber lo_a, hi_a, lo_b, hi_b;
       bool off_overlap = false;
@@ -1404,8 +1390,7 @@ DataRaceChecker::~DataRaceChecker() {
           off_overlap = lo_a <= hi_b && lo_b <= hi_a;
         }
       }
-      bool var_index = (a.offset.is_top() && a.structural_type == nullptr) ||
-                       (b.offset.is_top() && b.structural_type == nullptr);
+      bool var_index = a.offset.is_top() || b.offset.is_top();
       gate(!off_overlap && !var_index, "offset_prefilter");
       ar::Function* fa = this->_ctx.bundle->function_or_null(a.thread_id);
       ar::Function* fb = this->_ctx.bundle->function_or_null(b.thread_id);
@@ -1696,52 +1681,6 @@ DataRaceChecker::PointsToSet DataRaceChecker::resolve_points_to(
   }
 
   return inv.first().normal().pointer_to_points_to(ptr.var());
-}
-
-/// \brief Constant STRUCTURAL byte offset of a pointer's PointerShift chain
-/// (the field offset within the base struct/array) and the base pointee type.
-///
-/// Used as a FALLBACK when the abstract offset is ⊤ (opaque base): the
-/// abstract domain loses the field offset because the base's points-to is ⊤
-/// (⊤ + 0 = ⊤), but two DIFFERENT fields of the SAME struct are provably
-/// disjoint regardless of which object the opaque base points to
-/// (04-mutex_78-type-array.c: `getS()->field` vs `getS()->arr[1]`).
-///
-/// Returns false (leaving `type` null) when any PointerShift term has a
-/// VARIABLE operand (a variable array index / pointer arithmetic) — the offset
-/// is then not a compile-time constant, and no disjointness may be claimed.
-static bool structural_field_of(ar::Value* ptr, std::int64_t& out,
-                                ar::Type*& type) {
-  std::int64_t acc = 0;
-  for (int depth = 0; depth < 8; ++depth) {
-    auto* iv = dyn_cast< ar::InternalVariable >(ptr);
-    if (iv == nullptr) {
-      break; // GlobalVariable / constant leaf: base reached
-    }
-    ar::Statement* def = unique_def(iv);
-    auto* ps = dyn_cast_or_null< ar::PointerShift >(def);
-    if (ps == nullptr) {
-      break; // call / load / phi: base reached
-    }
-    for (std::size_t i = 0; i < ps->num_terms(); ++i) {
-      auto term = ps->term(i);
-      auto* c = dyn_cast< ar::IntegerConstant >(term.second);
-      if (c == nullptr) {
-        return false; // variable index → not a constant field offset
-      }
-      acc += term.first.to_z_number().to< std::int64_t >() *
-             c->value().to_z_number().to< std::int64_t >();
-    }
-    ptr = ps->pointer(); // peel to the base pointer
-  }
-  type = (ptr != nullptr && isa< ar::PointerType >(ptr->type()))
-             ? cast< ar::PointerType >(ptr->type())->pointee()
-             : nullptr;
-  if (type == nullptr) {
-    return false;
-  }
-  out = acc;
-  return true;
 }
 
 core::machine_int::Interval DataRaceChecker::resolve_offset(
@@ -2583,11 +2522,6 @@ void DataRaceChecker::check_load(ar::Load* load,
     provenance = classify_top_provenance(load->operand(), this->_ctx);
   }
   core::machine_int::Interval off = this->resolve_offset(load->operand(), inv);
-  std::int64_t soff = 0;
-  ar::Type* stype = nullptr;
-  if (off.is_top()) {
-    structural_field_of(load->operand(), soff, stype);
-  }
   std::uint64_t width = 0;
   if (load->result() != nullptr) {
     width = this->_ctx.bundle->data_layout()
@@ -2616,9 +2550,7 @@ void DataRaceChecker::check_load(ar::Load* load,
                    load->is_atomic(),
                    provenance,
                    /*private_init=*/false,
-                   /*promote_locks=*/{},
-                   soff,
-                   stype});
+                   /*promote_locks=*/{}});
 }
 
 void DataRaceChecker::check_store(ar::Store* store,
@@ -2677,11 +2609,6 @@ void DataRaceChecker::check_store(ar::Store* store,
     provenance = classify_top_provenance(store->pointer(), this->_ctx);
   }
   core::machine_int::Interval off = this->resolve_offset(store->pointer(), inv);
-  std::int64_t soff = 0;
-  ar::Type* stype = nullptr;
-  if (off.is_top()) {
-    structural_field_of(store->pointer(), soff, stype);
-  }
   std::uint64_t width = this->_ctx.bundle->data_layout()
                             .store_size_in_bytes(store->value()->type())
                             .to< std::uint64_t >();
@@ -2707,9 +2634,7 @@ void DataRaceChecker::check_store(ar::Store* store,
                    store->is_atomic(),
                    provenance,
                    /*private_init=*/false,
-                   /*promote_locks=*/{},
-                   soff,
-                   stype});
+                   /*promote_locks=*/{}});
 }
 
 } // end namespace analyzer

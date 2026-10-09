@@ -166,14 +166,7 @@ struct AccessRecord {
   /// same thread (the "promoting" lock). A locked read holding one of these
   /// locks is ordered after this private init write.
   std::vector< std::uint64_t > promote_locks;
-  /// \brief Constant STRUCTURAL byte offset within the base struct type, used
-  /// as a fallback when `offset` is ⊤ (opaque base — e.g. `getS()->field` vs
-  /// `getS()->arr[1]`, both ⊤ points-to). `structural_type` (the base pointee
-  /// type) is non-null only when the access is a constant-offset field access;
-  /// two structural offsets are disjoint only when their types MATCH, so the
-  /// checker never conflates fields of different structs (04-mutex_78 FP).
-  std::int64_t structural_offset = 0;
-  const ar::Type* structural_type = nullptr;
+
 };
 
 /// \brief Data race checker

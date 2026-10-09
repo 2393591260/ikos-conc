@@ -7,6 +7,7 @@
 > 独立方向query恢复回绕最小竞争、定向减轻求解超时，冻结集逐项不变，见[求解方式报告](ikos-bmc-fresh-solver-2026-10-09.md)。
 > 当前271项UNKNOWN已重新诊断，历史/新增参考结果分开保留，见[最新台账](ikos-bmc-current-ledger-2026-10-09.md)。
 > 同步API用户输出/超时输入及混合callee遗漏已修复，冻结集逐项不变，见[参数效果审查](ikos-sync-effects-2026-10-09.md)。
+> 未知基址的struct字段偏移不再替代对象地址证明，见[原点审查](ikos-structural-offset-2026-10-09.md)，冻结集逐项不变。
 > 创建基数审查修复递归/发现遗忘漏报，并恢复三项join SAFE，见[单次执行报告](ikos-single-execution-2026-10-09.md)。
 > SAFE 审查修复stdio访问遗漏，四项TN转UNKNOWN，见[库访问报告](ikos-stdio-effects-2026-10-09.md)。
 > sem_getvalue共享输出漏报另已修复，冻结集计数不变，见[输出槽报告](ikos-sem-value-2026-10-09.md)。
