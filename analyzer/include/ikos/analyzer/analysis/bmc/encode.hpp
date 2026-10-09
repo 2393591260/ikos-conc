@@ -52,6 +52,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
         if (!pointer_on_path(pointer, path, i, root, argument, event)) {record(diagnostics, "prefix_address", event.stmt); return false;}
       }
       if ((event.kind == EvKind::Lock || event.kind == EvKind::Unlock) &&
+          !event.synthetic_atomic &&
           !is_verifier_atomic(core::cast< ar::CallBase >(event.stmt))) {
         auto* call = core::cast< ar::CallBase >(event.stmt);
         BmcEvent address;
@@ -871,6 +872,8 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
           }
           for (std::size_t i = 0; i < path.size(); ++i) {
             JsonDict step; step.put("statement", snapshot.statement_id(path[i].stmt));
+            if (path[i].synthetic_atomic)
+              step.put("synthetic_event", path[i].kind == EvKind::Lock ? "atomic_begin" : "atomic_end");
             if (id != "startup") step.put("clock", Z3_get_numeral_string(ctx, model.eval(clock[start + i], true)));
             auto* result = core::dyn_cast_or_null< ar::InternalVariable >(path[i].stmt->result_or_null());
             if (result != nullptr) {

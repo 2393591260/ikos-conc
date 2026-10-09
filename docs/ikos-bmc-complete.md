@@ -2,10 +2,11 @@
 
 > 本文描述当前实现、证据前提和能力边界；读过源码或测试通过不等于获得完整 soundness 证明。
 > 最新 UNKNOWN 全量遍历及基线见 [逐任务恢复报告](ikos-bmc-unknown-sweep-2026-10-09.md)。
-> 当前冻结集回归：TP=61（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=271 / 错误=0。
+> 当前冻结集回归：TP=67（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=265 / 错误=0。
+> 完整命名atomic helper前缀已保留不可分割区间，六项UNKNOWN恢复FALSE，见[命名atomic报告](ikos-bmc-named-atomic-2026-10-09.md)（61→67）。
 > 动态仿射守卫减少无溢出循环的不可行路径，唯一恢复 fmaxsymopt，见[守卫报告](ikos-bmc-affine-guards-2026-10-09.md)（60→61）。
 > 独立方向query恢复回绕最小竞争、定向减轻求解超时，冻结集逐项不变，见[求解方式报告](ikos-bmc-fresh-solver-2026-10-09.md)。
-> 当前271项UNKNOWN已重新诊断，历史/新增参考结果分开保留，见[最新台账](ikos-bmc-current-ledger-2026-10-09.md)。
+> 此前271项UNKNOWN在3806ea4重新诊断，历史/新增参考结果分开保留，见[最新台账](ikos-bmc-current-ledger-2026-10-09.md)。
 > 同步API用户输出/超时输入及混合callee遗漏已修复，冻结集逐项不变，见[参数效果审查](ikos-sync-effects-2026-10-09.md)。
 > 未知基址的struct字段偏移不再替代对象地址证明，见[原点审查](ikos-structural-offset-2026-10-09.md)，冻结集逐项不变。
 > 已展开helper的实际返回全局地址进入BMC，重叠成员/重复调用变体恢复FALSE，见[返回指针](ikos-bmc-pointer-returns-2026-10-09.md)，冻结集逐项不变。
@@ -301,7 +302,7 @@ BMC 不是从零扫 AR，而是接管抽象解释判为「潜在竞争」的那�
 
 | FP 机制 | 代表文件 | 对应 gate |
 |---|---|---|
-| 单调用原子函数内联（裸访问） | pthread-atomic | `bmc_skip_inline` |
+| 命名atomic内部目标/未知硬件原子 | pthread-atomic | 完整命名helper已包装；内部目标仍需尾部闭包 |
 | helper 带循环（历史 DAG 展开不精确） | — | 已替换为保留 guard/动态定义的有界展开和预算检查 |
 | 无锁协议（线性化非 hb） | elimination_backoff_stack | `function_has_atomic_section` |
 | 隔代 create/join（2 线程看不到中间线程） | race-4_1 | 隔代祖先门（`_thread_ancestors`−`_thread_creators`）|

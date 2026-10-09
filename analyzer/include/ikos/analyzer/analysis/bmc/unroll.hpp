@@ -36,6 +36,7 @@ struct BmcEvent {
   const char* blocker = nullptr;
   ar::Statement* stmt = nullptr;  // 对应的 AR 语句
   ar::Function* called_function = nullptr; // Callee proven on this executed call.
+  bool synthetic_atomic = false; // Boundary marker, not another source call.
   EvKind kind = EvKind::Read;
   std::uint64_t mutex = 0;  // Lock/Unlock 的锁对象语法同一性（arg0 指针）；内存事件为 0
   bool reader = false; // Two rwlock read acquisitions do not exclude each other.
@@ -190,6 +191,11 @@ inline bool is_verifier_atomic(ar::CallBase* call) {
   auto* f = exact_callee(call);
   return f != nullptr && f->is_declaration() &&
          (f->name() == "__VERIFIER_atomic_begin" || f->name() == "__VERIFIER_atomic_end");
+}
+
+inline bool named_verifier_atomic(ar::Function* function) {
+  return function != nullptr && function->is_definition() &&
+         function->name().compare(0, 18, "__VERIFIER_atomic_") == 0;
 }
 
 /// 提取一次内存访问指针的符号字节偏移：沿 def-chain 穿透 PointerShift / 值保持
@@ -424,6 +430,7 @@ inline std::size_t invocation_call(const std::vector< BmcEvent >& path,
                                    ar::Code* code, std::size_t before) {
   std::vector< std::pair< ar::Code*, std::size_t > > stack;
   for (std::size_t i = 0; i < before; ++i) {
+    if (path[i].synthetic_atomic) continue;
     if (auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt)) {
       auto* function = path[i].called_function != nullptr ? path[i].called_function : exact_callee(call);
       if (function != nullptr && function->is_definition()) stack.push_back({function->body_or_null(), i});
@@ -443,7 +450,7 @@ inline ar::Statement* reaching_definition(ar::InternalVariable* value,
   std::size_t begin = call == path.size() ? 0 : call + 1;
   ar::Statement* definition = nullptr;
   for (std::size_t i = begin; i < before; ++i)
-    if (path[i].stmt->result_or_null() == value && invocation_call(path, value->code(), i) == call) {definition = path[i].stmt; index = i;}
+    if (!path[i].synthetic_atomic && path[i].stmt->result_or_null() == value && invocation_call(path, value->code(), i) == call) {definition = path[i].stmt; index = i;}
   return definition;
 }
 
@@ -772,6 +779,7 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
     return true;
   };
   for (std::size_t i = 0; i < path.size(); ++i) {
+    if (path[i].synthetic_atomic) continue;
     auto* stmt = path[i].stmt;
     // These two marked operations are abstract bookkeeping, not source uses.
     if (abstract_initializer(stmt)) continue;
@@ -869,12 +877,9 @@ inline bool classify_event(
 /// 内联展开的最大调用深度（helper 内 helper 的递归上限，防爆炸）。
 constexpr int MAX_INLINE_DEPTH = 8;
 
-/// Single-call atomics need an atomic summary rather than exposing their bodies
-/// as ordinary accesses. Ordinary assume helpers compose their real CFG.
+/// Hardware atomic builtins need summaries; verifier atomic definitions compose
+/// their actual CFG with explicit indivisible-region boundaries.
 inline bool bmc_skip_inline(const std::string& nm) {
-  if (nm.size() >= 18 && nm.compare(0, 18, "__VERIFIER_atomic_") == 0) {
-    return true;
-  }
   if (nm.size() >= 9 && nm.compare(0, 9, "__atomic_") == 0) {
     return true;
   }
@@ -1065,6 +1070,12 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
           return;
         }
         current.back().called_function = callee;
+        const bool atomic = named_verifier_atomic(callee);
+        if (atomic) {
+          BmcEvent begin(s, EvKind::Lock, PSEUDO_ATOMIC_LOCK);
+          begin.synthetic_atomic = true;
+          current.push_back(begin);
+        }
         // First search for a target inside the callee. Then compose every
         // concrete return prefix with the rest of the caller; never discard it.
         auto callee_path = current;
@@ -1081,6 +1092,11 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
         }
         in_stack.pop_back(); // resuming the same caller block is not a backedge
         for (auto& returned : returns) {
+          if (atomic) {
+            BmcEvent end(s, EvKind::Unlock, PSEUDO_ATOMIC_LOCK);
+            end.synthetic_atomic = true;
+            returned.push_back(end);
+          }
           dfs_paths(bb, target, returned, out, in_stack, budget, depth, s);
         }
         return;
@@ -1112,6 +1128,12 @@ inline UnrollResult unroll_to(
     ar::Function* func, ar::Statement* target,
     unsigned target_occurrence = 1, unsigned loop_bound = 1) {
   UnrollResult result;
+  // A root invocation has no source call on which to attach the boundaries.
+  if (named_verifier_atomic(func)) {
+    result.rejected_reason = "atomic_root";
+    result.rejected_statement = target;
+    return result;
+  }
   ar::Code* body = func->body_or_null();
   if (body == nullptr || !body->has_entry_block()) {
     return result;
