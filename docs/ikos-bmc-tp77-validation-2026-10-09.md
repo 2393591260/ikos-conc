@@ -103,6 +103,32 @@ IKOS实际前缀也执行15次创建；参考界限2无法越过该创建循环�
 全部调用/CFG、同步和总调度尚未绑定，完整反例验证计数仍不增加；
 这次仅改研究验证工具，分析器TP77基线未重测也未改变。
 
+rf/co增量后再次运行全部95候选，绑定254条通信边：SAT82、UNMAPPED8、
+UNSUPPORTED2、UNSAT_AT_BOUND2、TIMEOUT1。原SAT没有转为不满足；
+airline-20和fkp2013-2从上轮超时转SAT。运行时间与负载都可能影响这两项，
+未做稳定性能A/B，不能据此宣称优化提速。
+[全部候选记录](artifacts/bmc-tp77-validation-2026-10-09/communication-fixed-memory.json)。
+fmaxsymopt在界限6还固定7条rf/co边，查询SAT、改值后UNSAT。
+[记录](artifacts/bmc-tp77-validation-2026-10-09/communication-fmax-bound6.json)。
+
+### 实际创建次数不等于参考循环界限
+
+固定版本LoopUnrolling.java:185–190会把最后一次迭代的回跳替换成BOUND终止。
+对头部检查条件、尾部无条件回跳的创建循环，执行N次创建后还需访问一次头部
+来退出；界限N不足。新增最小nondet创建循环固定count=3，ILP32/LP64下
+bound3均UNSAT_AT_BOUND、bound4均SAT，共4项参考校准通过。
+[校准](artifacts/bmc-tp77-validation-2026-10-09/loop-exit-calibration.json)。
+
+参考原生支持 `--bound.save` / `--bound.load`（CSV），允许只扩大创建循环，
+避免把所有worker/锁自旋循环同时扩大。真实inner-race使用原报告对应的.i输入、
+保存的循环ID149，创建循环界限15、其他保持原2/已识别spin界限1，查询在22.674秒
+结束但仍不满足；界限16/60秒超时，故未验证原threads_total=15模型。
+把值改14的控制也超时，不能计作有效原模型。未更改源码、未按文件名改变分析语义；
+循环ID和设置只作为这个可复核实验的输入。较早拿.c试验时映射到.i报告被拒绝，
+那次参考运行不计作该报告的证据。IR采集有意使用错误hash在求解前停止，
+只使用导出快照，不把该拒绝当成验证结果。
+[逐循环重试](artifacts/bmc-tp77-validation-2026-10-09/communication-loop-retries.json)。
+
 局部nondet取值、全部CFG/调用实例、同步历史和IKOS总调度/rf仍未全部绑定。
 独立验证数量没有升格。接下来补这些证据、扩大无法覆盖的参考界限并检查剩余映射失败，
 随后继续UNKNOWN的对象/指针、线程依赖闭包、join和公平搜索；本次提交不是结束节点。
