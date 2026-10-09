@@ -1,0 +1,279 @@
+{
+  "before": {
+    "TP": 60,
+    "FP": 0,
+    "TN": 694,
+    "FN": 0,
+    "unknown": 275,
+    "error": 0
+  },
+  "after": {
+    "TP": 60,
+    "FP": 0,
+    "TN": 694,
+    "FN": 0,
+    "unknown": 275,
+    "error": 0
+  },
+  "tasks": 1029,
+  "transitions": [],
+  "before_analyzer_sha256": "4d87fb0852e84e911af969df760dd7555e4749597ca322ed95b032a9781c7dc8",
+  "after_analyzer_sha256": "12a6aac15db08d210d777f3e74593efef685900c0a4e0ed255b94d111254c69e",
+  "regressions": [
+    {
+      "case": "local-output-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "sem-getvalue-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "sem-getvalue-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "sem-getvalue-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "sem-getvalue-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    }
+  ],
+  "targeted_before": [
+    {
+      "case": "local-output-control",
+      "bits": 32,
+      "returncode": 0,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 64,
+      "returncode": 0,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 32,
+      "returncode": 0,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 64,
+      "returncode": 0,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "sem-getvalue-race",
+      "bits": 32,
+      "returncode": 0,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "sem-getvalue-race",
+      "bits": 64,
+      "returncode": 0,
+      "verdict": "The program is SAFE"
+    }
+  ],
+  "p0_observations": [
+    {
+      "source": "exclusive-flag.c",
+      "mode": "demote",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "demote",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    }
+  ],
+  "contract": "/usr/share/man/man3/sem_getvalue.3.gz",
+  "raw_logs": "/tmp/ikos-sem-value-2026-10-09",
+  "warning": "Label statistics; other library summaries and SAFE rules remain unaudited"
+}

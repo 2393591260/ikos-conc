@@ -2370,13 +2370,8 @@ void DataRaceChecker::check_extern_call_effects(
       // cond/mutex object itself (pthread/sync01.c FP: `pthread_cond_wait`
       // and `pthread_cond_signal` "race" on `&empty`/`&full`/`&m`).
       callee_nm.find("pthread_cond") != std::string::npos ||
-      // POSIX semaphores (sem_wait/sem_post/sem_init/...): their pointer
-      // argument is the semaphore OBJECT, not shared data — synthesizing a
-      // Write on it fabricates cross-thread races on the semaphore itself
-      // (semaphore-posix.c). sem_getvalue's int* output is a thread-local
-      // (filtered by touches_shared_memory), so excluding the whole family is
-      // sound.
-      callee_nm.rfind("sem_", 0) == 0 ||
+      // sem_getvalue also writes a caller-provided int, which may be shared.
+      (callee_nm.rfind("sem_", 0) == 0 && callee_nm != "sem_getvalue") ||
       // free() deallocates the pointed-to memory — it does NOT write through
       // the pointer to the object's data (C11: free ends the object's
       // lifetime, it performs no lvalue access; use-after-free is
@@ -2410,7 +2405,12 @@ void DataRaceChecker::check_extern_call_effects(
   bool spawned_is_top = this->snapshot_spawned_is_top(inv);
   auto locks = this->snapshot_locks(inv);
   auto read_locks = this->snapshot_read_locks(inv);
+  auto* exact = bmc::exact_callee(call);
+  const bool semaphore_query = exact != nullptr && exact->is_declaration() &&
+                               exact->name() == "sem_getvalue" && call->num_arguments() == 2;
   for (auto it = call->arg_begin(), et = call->arg_end(); it != et; ++it) {
+    // Synchronization-object internals are separate from the user output slot.
+    if (semaphore_query && it == call->arg_begin()) continue;
     ar::Value* arg = *it;
     PointsToSet pts = this->resolve_points_to(arg, inv);
     // A bottom set has no target; a concrete-but-thread-private set is not

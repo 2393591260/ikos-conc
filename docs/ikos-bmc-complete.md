@@ -4,6 +4,7 @@
 > 最新 UNKNOWN 全量遍历及基线见 [逐任务恢复报告](ikos-bmc-unknown-sweep-2026-10-09.md)。
 > 当前冻结集回归：TP=60（标签确认、未全部独立验证）/ FP=0 / TN=694 / FN=0 / UNKNOWN=275 / 错误=0。
 > SAFE 审查修复stdio访问遗漏，四项TN转UNKNOWN，见[库访问报告](ikos-stdio-effects-2026-10-09.md)。
+> sem_getvalue共享输出漏报另已修复，冻结集计数不变，见[输出槽报告](ikos-sem-value-2026-10-09.md)。
 > 中间循环界限实验因配对TP回退已撤回，见[搜索实验](ikos-bmc-loop-search-2026-10-09.md)。
 > 最新增量见[成功创建返回值](ikos-bmc-create-result-2026-10-09.md)（58→59）及
 > [启动数组地址](ikos-bmc-startup-address-2026-10-09.md)（59→60）。历史 23 项新 TP 有参考竞争确认。
