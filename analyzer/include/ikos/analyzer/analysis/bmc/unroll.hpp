@@ -609,15 +609,17 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
                              std::size_t before, ar::Function* root,
                              ar::Value* root_argument, BmcEvent& event) {
   bool external = false;
+  bool returned = false;
   for (unsigned depth = 0; depth < 32; ++depth) {
     if (auto* global = core::dyn_cast< ar::GlobalVariable >(value)) {event.base = reinterpret_cast< std::uint64_t >(global); return true;}
     if (auto* local = core::dyn_cast< ar::LocalVariable >(value)) {
-      if (external) return false;
+      if (external || returned) return false; // returned stack lifetime is unproved
       event.local_base = local; return true;
     }
     auto* variable = core::dyn_cast< ar::InternalVariable >(value);
     if (variable == nullptr) return false;
     std::size_t index = 0;
+    std::size_t use = before;
     auto* definition = external ? unique_def_bmc(variable) : reaching_definition(variable, path, before, index);
     if (definition == nullptr && !external) {
       auto* argument = formal_argument(variable, path, before, index);
@@ -650,6 +652,21 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
       value = cast->operand();
     } else if (auto* assignment = core::dyn_cast< ar::Assignment >(definition)) {
       value = assignment->operand();
+    } else if (auto* call = core::dyn_cast< ar::CallBase >(definition)) {
+      if (external) return false;
+      auto* callee = callee_on_path(call, path, index);
+      if (callee == nullptr || callee->body_or_null() == nullptr) return false;
+      ar::ReturnValue* result = nullptr;
+      for (std::size_t j = index + 1; j < use; ++j) {
+        auto* ret = core::dyn_cast< ar::ReturnValue >(path[j].stmt);
+        if (ret != nullptr && ret->code() == callee->body_or_null() &&
+            invocation_call(path, ret->code(), j) == index) {
+          result = ret; before = j; break;
+        }
+      }
+      if (result == nullptr || !result->has_operand() ||
+          !result->operand()->type()->is_pointer()) return false;
+      value = result->operand(); returned = true;
     } else return false;
   }
   return false;
