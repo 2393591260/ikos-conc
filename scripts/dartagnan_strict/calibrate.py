@@ -331,6 +331,34 @@ def calibrate(args):
             row.update(case=name, expected=expected, matched=row['status'] == expected)
             results.append(row)
             print(bits, name, row['status'], 'expected', expected, flush=True)
+        ordered = source.with_name('write-order.c')
+        folder = out / f'{bits}-write-order-source'
+        base = run(args, cp, ordered, bits, folder)
+        if base['status'] != 'SOURCE_RACE':
+            raise AssertionError(base)
+        h, es = events(folder / 'events.tsv')
+        stores = [e for e in es if 'store(&data,' in e['code']]
+        reads = [e for e in es if 'load(&data)' in e['code']]
+        if len(stores) != 2 or len(reads) != 1:
+            raise AssertionError('expected two retained volatile writes and a read')
+        first, last = sorted(stores, key=lambda e: e['id'])
+        read = reads[0]
+        cert = certificate(h, [last, read, first])
+        cert.update({'event.0.value': 9, 'event.1.value': 9, 'event.2.value': 7,
+                     'edge_count': 2, 'edge.0.relation': 'co', 'edge.0.from': first['id'],
+                     'edge.0.to': last['id'], 'edge.1.relation': 'rf',
+                     'edge.1.from': last['id'], 'edge.1.to': read['id']})
+        cases = [('write-order-rf-co-valid', cert, 'SAT')]
+        for name, updates in (
+                ('write-order-wrong-rf', {'edge.1.from': first['id']}),
+                ('write-order-reversed-co', {'edge.0.from': last['id'], 'edge.0.to': first['id']})):
+            changed = copy.deepcopy(cert); changed.update(updates)
+            cases.append((name, changed, 'UNSAT_AT_BOUND'))
+        for name, cert, expected in cases:
+            row = run(args, cp, ordered, bits, out / f'{bits}-{name}', cert)
+            row.update(case=name, expected=expected, matched=row['status'] == expected)
+            results.append(row)
+            print(bits, name, row['status'], 'expected', expected, flush=True)
     summary = dict(reference_commit=PIN, adapter_sha256=digest(HERE/'StrictWitness.java'),
                    reference_jar_sha256=digest(args.reference/'dartagnan/target/dartagnan.jar'),
                    scope='processed-IR constraints; not arbitrary IKOS witness validation',

@@ -56,6 +56,67 @@ def is_creation(ar):
             and operands[0].get('id') in ('pthread_create', 'ar.pthread.create'))
 
 
+def communication(replay, memory_bindings):
+    """Bind known SC write order/read sources, leaving incomplete regions explicit."""
+    mapped = {(m['trace'], m['step']): m['reference_event'] for m in memory_bindings}
+    regions, unsupported, omitted = {}, set(), []
+    unknown_writer = False
+    for trace in replay['traces']:
+        for i, step in enumerate(trace['steps']):
+            ar = replay['program']['instructions'][step['statement']]
+            if ar['kind'] not in ('load', 'store'):
+                continue
+            address = step.get('encoded_address', {})
+            obj = address.get('object', {})
+            if obj.get('kind') != 'global':
+                if ar['kind'] == 'store' and obj.get('kind') != 'local':
+                    unknown_writer = True
+                continue
+            name = obj['id']
+            if 'offset' not in address or not address.get('width'):
+                unsupported.add(name)
+                continue
+            region = (name, int(address['offset']), int(address['width']))
+            # encode.hpp folds startup before either selected path. It has no SMT clock.
+            if trace['id'] == 'startup':
+                time = (0, i)
+            elif 'clock' in step:
+                time = (1, int(step['clock']))
+            else:
+                unsupported.add(name)
+                continue
+            regions.setdefault(region, []).append(dict(trace=trace['id'], step=i,
+                kind=ar['kind'], time=time, event=mapped.get((trace['id'], i))))
+    keys = list(regions)
+    for i, (name, off, width) in enumerate(keys):
+        for other, start, size in keys[i + 1:]:
+            if name == other and off < start + size and start < off + width:
+                unsupported.add(name)
+    edges = []
+    for region, accesses in regions.items():
+        if region[0] in unsupported:
+            omitted.append(dict(region=region, reason='incomplete/overlapping memory regions'))
+            continue
+        if len({a['time'] for a in accesses}) != len(accesses):
+            omitted.append(dict(region=region, reason='memory clock is not unique'))
+            continue
+        writes = sorted((a for a in accesses if a['kind'] == 'store'), key=lambda a: a['time'])
+        known = [a for a in writes if a['event'] is not None]
+        for first, last in zip(known, known[1:]):
+            edges.append(dict(relation='co', **{'from': first['event'], 'to': last['event']}))
+        for read in (a for a in accesses if a['kind'] == 'load' and a['event'] is not None):
+            prior = [w for w in writes if w['time'] < read['time']]
+            if unknown_writer or any(w['event'] is None for w in writes):
+                reason = 'unmapped/unknown write source'
+            elif not prior:
+                reason = 'implicit initial write not mapped'
+            else:
+                edges.append(dict(relation='rf', **{'from': prior[-1]['event'], 'to': read['event']}))
+                continue
+            omitted.append(dict(trace=read['trace'], step=read['step'], reason=reason))
+    return edges, omitted
+
+
 def translate(replay, ir_hash, ir_events):
     instructions = replay['program']['instructions']
     traces = {t['id']: t for t in replay['traces']}
@@ -222,11 +283,18 @@ def translate(replay, ir_hash, ir_events):
         cert.update({f'event.{i}.{k}': v for k, v in claims.get(e['id'], {}).items()})
         if e['id'] in creators and creators[e['id']][1] is not None:
             cert[f'event.{i}.creation_occurrence'] = creators[e['id']][1]
+    edges, communication_omissions = communication(replay, memory_bindings)
+    cert['edge_count'] = len(edges)
+    for i, edge in enumerate(edges):
+        for key, value in edge.items():
+            cert[f'edge.{i}.{key}'] = value
     return cert, dict(scope='PARTIAL_FIXED_MEMORY_MODEL', threads=threads,
                       mapped_memory_events=len(memory_bindings), omitted_steps=omitted,
                       creation_bindings=creation_bindings,
                       memory_bindings=memory_bindings,
                       nondet_bindings=nondet_bindings,
+                      communication_bindings=edges,
+                      communication_omissions=communication_omissions,
                       unbound_claims=['CFG and call occurrence mapping', 'local values and nondet occurrences',
                                       'synchronization history and identities', 'IKOS total schedule and rf choices'],
                       full_counterexample_validated=False)
