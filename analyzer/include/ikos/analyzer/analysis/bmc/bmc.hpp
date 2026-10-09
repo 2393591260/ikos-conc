@@ -194,6 +194,10 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
                                             diagnostics, budget, creations, facts, 16);
     return false;
   }
+  // Prefer smaller concrete prefixes before spending the shared query budget.
+  auto shorter = [](const auto& a, const auto& b) {return a.size() < b.size();};
+  std::stable_sort(rA.paths.begin(), rA.paths.end(), shorter);
+  std::stable_sort(rB.paths.begin(), rB.paths.end(), shorter);
   for (const auto& pA : rA.paths) {
     for (const auto& pB : rB.paths) {
       if (budget != nullptr && (budget->expired() || budget->queries == 0)) {

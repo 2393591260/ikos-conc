@@ -1,0 +1,460 @@
+{
+  "before_commit": "2bee899",
+  "before_analyzer_sha256": "05bbb5ff2aea3b177a8e96fbd9388b295d7d3abad6c58a0c4a16bf2c9efbf1a7",
+  "after_analyzer_sha256": "ee73d3d65be88b75e53d0e045247761cabb32a47115324ffc093b020078ac696",
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "matrix": {
+    "TP": 77,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 255,
+    "error": 0
+  },
+  "transitions": [],
+  "full_counterexample_validated": false,
+  "mechanism": "stable sort complete retained paths by event count; no path or constraint removed",
+  "p0": {
+    "32": [
+      {
+        "source": "exclusive-flag.c",
+        "mode": "demote",
+        "data_model": "ILP32",
+        "exit_code": 0,
+        "verdict": "The program is potentially UNSAFE"
+      },
+      {
+        "source": "exclusive-flag.c",
+        "mode": "bmc",
+        "data_model": "ILP32",
+        "exit_code": 0,
+        "verdict": "The program is potentially UNSAFE"
+      },
+      {
+        "source": "overlapping-widths-control.c",
+        "mode": "default",
+        "data_model": "ILP32",
+        "exit_code": 0,
+        "verdict": "The program is definitely UNSAFE"
+      },
+      {
+        "source": "overlapping-widths-control.c",
+        "mode": "bmc",
+        "data_model": "ILP32",
+        "exit_code": 0,
+        "verdict": "The program is definitely UNSAFE"
+      },
+      {
+        "source": "overlapping-widths.c",
+        "mode": "default",
+        "data_model": "ILP32",
+        "exit_code": 0,
+        "verdict": "The program is definitely UNSAFE"
+      },
+      {
+        "source": "overlapping-widths.c",
+        "mode": "bmc",
+        "data_model": "ILP32",
+        "exit_code": 0,
+        "verdict": "The program is definitely UNSAFE"
+      },
+      {
+        "source": "published-before-init-control.c",
+        "mode": "default",
+        "data_model": "ILP32",
+        "exit_code": 0,
+        "verdict": "The program is definitely UNSAFE"
+      },
+      {
+        "source": "published-before-init-control.c",
+        "mode": "bmc",
+        "data_model": "ILP32",
+        "exit_code": 0,
+        "verdict": "The program is potentially UNSAFE"
+      },
+      {
+        "source": "published-before-init.c",
+        "mode": "default",
+        "data_model": "ILP32",
+        "exit_code": 0,
+        "verdict": "The program is definitely UNSAFE"
+      },
+      {
+        "source": "published-before-init.c",
+        "mode": "bmc",
+        "data_model": "ILP32",
+        "exit_code": 0,
+        "verdict": "The program is potentially UNSAFE"
+      }
+    ],
+    "64": [
+      {
+        "source": "exclusive-flag.c",
+        "mode": "demote",
+        "data_model": "LP64",
+        "exit_code": 0,
+        "verdict": "The program is potentially UNSAFE"
+      },
+      {
+        "source": "exclusive-flag.c",
+        "mode": "bmc",
+        "data_model": "LP64",
+        "exit_code": 0,
+        "verdict": "The program is potentially UNSAFE"
+      },
+      {
+        "source": "overlapping-widths-control.c",
+        "mode": "default",
+        "data_model": "LP64",
+        "exit_code": 0,
+        "verdict": "The program is definitely UNSAFE"
+      },
+      {
+        "source": "overlapping-widths-control.c",
+        "mode": "bmc",
+        "data_model": "LP64",
+        "exit_code": 0,
+        "verdict": "The program is definitely UNSAFE"
+      },
+      {
+        "source": "overlapping-widths.c",
+        "mode": "default",
+        "data_model": "LP64",
+        "exit_code": 0,
+        "verdict": "The program is definitely UNSAFE"
+      },
+      {
+        "source": "overlapping-widths.c",
+        "mode": "bmc",
+        "data_model": "LP64",
+        "exit_code": 0,
+        "verdict": "The program is definitely UNSAFE"
+      },
+      {
+        "source": "published-before-init-control.c",
+        "mode": "default",
+        "data_model": "LP64",
+        "exit_code": 0,
+        "verdict": "The program is definitely UNSAFE"
+      },
+      {
+        "source": "published-before-init-control.c",
+        "mode": "bmc",
+        "data_model": "LP64",
+        "exit_code": 0,
+        "verdict": "The program is potentially UNSAFE"
+      },
+      {
+        "source": "published-before-init.c",
+        "mode": "default",
+        "data_model": "LP64",
+        "exit_code": 0,
+        "verdict": "The program is definitely UNSAFE"
+      },
+      {
+        "source": "published-before-init.c",
+        "mode": "bmc",
+        "data_model": "LP64",
+        "exit_code": 0,
+        "verdict": "The program is potentially UNSAFE"
+      }
+    ]
+  },
+  "candidate_regression_cases": 30,
+  "reference_checks": [
+    {
+      "experiment": "reference-inner",
+      "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+      "report_sha256": "1d9495e604b96a5a57ee42a2fad55579d179e7838d342e54487cd4dee3ca8831",
+      "input_sha256": "490e43bb8ca19cea87b27390f3d2ab0cf6fc9da6355c682d1c6272a9c3d813c1",
+      "rows": [
+        {
+          "report_index": 1,
+          "pair_id": 0,
+          "full_counterexample_validated": false,
+          "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+          "threads": {
+            "a": 0,
+            "b": 1
+          },
+          "mapped_memory_events": 3,
+          "creation_bindings": [
+            {
+              "trace": "b",
+              "parent_trace": "a",
+              "creator_step": 18,
+              "reference_event": 20,
+              "occurrence": 1,
+              "pre_unroll_id": 131
+            }
+          ],
+          "memory_bindings": [
+            {
+              "trace": "a",
+              "step": 24,
+              "reference_event": 77,
+              "occurrence": null,
+              "pre_unroll_id": 155
+            },
+            {
+              "trace": "b",
+              "step": 0,
+              "reference_event": 131,
+              "occurrence": null,
+              "pre_unroll_id": 2
+            },
+            {
+              "trace": "b",
+              "step": 2,
+              "reference_event": 132,
+              "occurrence": null,
+              "pre_unroll_id": 4
+            }
+          ],
+          "nondet_bindings": [
+            {
+              "trace": "a",
+              "step": 7,
+              "reference_event": 2,
+              "callee": "__VERIFIER_nondet_int"
+            }
+          ],
+          "communication_bindings": [
+            {
+              "relation": "rf",
+              "from": 132,
+              "to": 77
+            }
+          ],
+          "communication_omissions": [
+            {
+              "trace": "b",
+              "step": 0,
+              "reason": "implicit initial write not mapped"
+            }
+          ],
+          "unbound_claims": [
+            "CFG and call occurrence mapping",
+            "local values and nondet occurrences",
+            "synchronization history and identities",
+            "IKOS total schedule and rf choices"
+          ],
+          "result": {
+            "status": "SAT",
+            "returncode": 13,
+            "seconds": 2.9329305110004498,
+            "command": [
+              "java",
+              "-Xmx2g",
+              "-cp",
+              "/tmp/ikos-short-prefix-2026-10-09/reference-inner/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+              "com.dat3m.dartagnan.Dartagnan",
+              "cat/svcomp.cat",
+              "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race.i",
+              "svcomp.properties",
+              "--property=DATARACEFREEDOM",
+              "--bound=2",
+              "--program.processing.skipAssertionsOfType=USER"
+            ],
+            "source_sha256": "490e43bb8ca19cea87b27390f3d2ab0cf6fc9da6355c682d1c6272a9c3d813c1",
+            "data_model": "32"
+          },
+          "corruption_probe": {
+            "status": "UNSAT_AT_BOUND",
+            "returncode": 1,
+            "seconds": 2.889903956995113,
+            "command": [
+              "java",
+              "-Xmx2g",
+              "-cp",
+              "/tmp/ikos-short-prefix-2026-10-09/reference-inner/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+              "com.dat3m.dartagnan.Dartagnan",
+              "cat/svcomp.cat",
+              "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race.i",
+              "svcomp.properties",
+              "--property=DATARACEFREEDOM",
+              "--bound=2",
+              "--program.processing.skipAssertionsOfType=USER"
+            ],
+            "source_sha256": "490e43bb8ca19cea87b27390f3d2ab0cf6fc9da6355c682d1c6272a9c3d813c1",
+            "data_model": "32"
+          }
+        }
+      ],
+      "warning": "Partial fixed-memory evidence; no full-counterexample verification claim"
+    },
+    {
+      "experiment": "reference-outer",
+      "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+      "report_sha256": "c001b8e6295a82ddc7e210ca8d84e54dc058497db7581c56401a180542e38cc3",
+      "input_sha256": "47827fdca8ccc83dae99015d656cdcf2872ea585121905304e5ffb2ef40b4eac",
+      "rows": [
+        {
+          "report_index": 1,
+          "pair_id": 5,
+          "full_counterexample_validated": false,
+          "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+          "threads": {
+            "a": 0,
+            "b": 1
+          },
+          "mapped_memory_events": 6,
+          "creation_bindings": [
+            {
+              "trace": "b",
+              "parent_trace": "a",
+              "creator_step": 21,
+              "reference_event": 22,
+              "occurrence": 1,
+              "pre_unroll_id": 73
+            }
+          ],
+          "memory_bindings": [
+            {
+              "trace": "a",
+              "step": 18,
+              "reference_event": 18,
+              "occurrence": 1,
+              "pre_unroll_id": 67
+            },
+            {
+              "trace": "a",
+              "step": 20,
+              "reference_event": 19,
+              "occurrence": 1,
+              "pre_unroll_id": 70
+            },
+            {
+              "trace": "a",
+              "step": 27,
+              "reference_event": 81,
+              "occurrence": null,
+              "pre_unroll_id": 97
+            },
+            {
+              "trace": "b",
+              "step": 4,
+              "reference_event": 124,
+              "occurrence": null,
+              "pre_unroll_id": 23
+            },
+            {
+              "trace": "b",
+              "step": 7,
+              "reference_event": 128,
+              "occurrence": null,
+              "pre_unroll_id": 28
+            },
+            {
+              "trace": "b",
+              "step": 9,
+              "reference_event": 129,
+              "occurrence": null,
+              "pre_unroll_id": 30
+            }
+          ],
+          "nondet_bindings": [
+            {
+              "trace": "a",
+              "step": 7,
+              "reference_event": 2,
+              "callee": "__VERIFIER_nondet_int"
+            }
+          ],
+          "communication_bindings": [
+            {
+              "relation": "co",
+              "from": 19,
+              "to": 129
+            },
+            {
+              "relation": "rf",
+              "from": 129,
+              "to": 81
+            },
+            {
+              "relation": "rf",
+              "from": 19,
+              "to": 128
+            }
+          ],
+          "communication_omissions": [
+            {
+              "trace": "a",
+              "step": 18,
+              "reason": "implicit initial write not mapped"
+            }
+          ],
+          "unbound_claims": [
+            "CFG and call occurrence mapping",
+            "local values and nondet occurrences",
+            "synchronization history and identities",
+            "IKOS total schedule and rf choices"
+          ],
+          "result": {
+            "status": "SAT",
+            "returncode": 13,
+            "seconds": 2.6073405360002653,
+            "command": [
+              "java",
+              "-Xmx2g",
+              "-cp",
+              "/tmp/ikos-short-prefix-2026-10-09/reference-outer/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+              "com.dat3m.dartagnan.Dartagnan",
+              "cat/svcomp.cat",
+              "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-outer-race.i",
+              "svcomp.properties",
+              "--property=DATARACEFREEDOM",
+              "--bound=2",
+              "--program.processing.skipAssertionsOfType=USER"
+            ],
+            "source_sha256": "47827fdca8ccc83dae99015d656cdcf2872ea585121905304e5ffb2ef40b4eac",
+            "data_model": "32"
+          },
+          "corruption_probe": {
+            "status": "UNSAT_AT_BOUND",
+            "returncode": 0,
+            "seconds": 2.6208146200006013,
+            "command": [
+              "java",
+              "-Xmx2g",
+              "-cp",
+              "/tmp/ikos-short-prefix-2026-10-09/reference-outer/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+              "com.dat3m.dartagnan.Dartagnan",
+              "cat/svcomp.cat",
+              "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-outer-race.i",
+              "svcomp.properties",
+              "--property=DATARACEFREEDOM",
+              "--bound=2",
+              "--program.processing.skipAssertionsOfType=USER"
+            ],
+            "source_sha256": "47827fdca8ccc83dae99015d656cdcf2872ea585121905304e5ffb2ef40b4eac",
+            "data_model": "32"
+          }
+        }
+      ],
+      "warning": "Partial fixed-memory evidence; no full-counterexample verification claim"
+    }
+  ],
+  "before_selected": {
+    "inner": {
+      "main_steps": 109,
+      "fixed_count": 15
+    },
+    "outer": {
+      "fixed_count": 15
+    }
+  },
+  "after_selected": {
+    "inner": {
+      "main_steps": 25,
+      "fixed_count": 1
+    },
+    "outer": {
+      "main_steps": 28,
+      "fixed_count": 1
+    }
+  },
+  "evidence_scope": "All paired verdicts unchanged. Reference checks cover selected partial models only; no full-model or aggregate speed claim."
+}
