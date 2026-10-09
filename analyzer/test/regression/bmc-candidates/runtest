@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+"""Check candidate provenance, conservative gates and bounded path construction."""
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[3]
+sys.path.insert(0, str(ROOT))
+import svcomp_race_test as suite
+import svcomp_witness
+
+
+def budget_source(kind):
+    if kind in ("paths", "work"):
+        body = "\n".join("if (__VERIFIER_nondet_int()) local = 1; else local = 2;"
+                         for _ in range(300 if kind == "work" else 10))
+    else:
+        body = "\n".join("local = 1;" for _ in range(1030))
+    return """#include <pthread.h>
+extern int __VERIFIER_nondet_int(void);
+int datum;
+static void* worker(void* ignored) {
+  volatile int local = 0;
+%s
+  datum = 1;
+  return 0;
+}
+int main(void) {
+  pthread_t t;
+  pthread_create(&t, 0, worker, 0);
+  datum = 2;
+  pthread_join(t, 0);
+}
+""" % body
+
+
+def activation_source(kind):
+    if kind == "exclusive-entries":
+        return activation_source("exclusive-spawns").replace(
+            "static void* worker(void* ignored) {datum = 1; return 0;}",
+            "static void* worker(void* ignored) {datum = 1; return 0;}\nstatic void* other(void* ignored) {datum = 2; return 0;}").replace(
+            "pthread_create(&b, 0, worker, 0)", "pthread_create(&b, 0, other, 0)")
+    if kind == "one-instance":
+        creation = "int n = __VERIFIER_nondet_int(); if (n < 0 || n > 1) return 0; for (int i=0; i<n; ++i) {pthread_create(&a, 0, worker, 0); pthread_detach(a);}"
+    elif kind == "exclusive-spawns":
+        creation = "if (__VERIFIER_nondet_int()) pthread_create(&a, 0, worker, 0); else pthread_create(&b, 0, worker, 0);"
+    else:
+        creation = "pthread_create(&a, 0, worker, 0); "
+        if kind == "serial-instances":
+            creation += "pthread_join(a, 0); "
+        creation += "pthread_create(&b, 0, worker, 0); pthread_join(b, 0);"
+    return """#include <pthread.h>
+extern int __VERIFIER_nondet_int(void);
+int datum;
+static void* worker(void* ignored) {datum = 1; return 0;}
+int main(void) {pthread_t a, b; %s return 0;}
+""" % creation
+
+
+def fairness_source():
+    stores = "\n".join("a_busy = 1;" for _ in range(25))
+    # Concrete small loops are now supported. Keep this first group costly by
+    # branching before its accesses, so it still exercises search fairness.
+    branches = "\n".join("if (__VERIFIER_nondet_int()) local = 1; else local = 2;"
+                         for _ in range(10))
+    return """#include <pthread.h>
+extern int __VERIFIER_nondet_int(void);
+volatile int a_busy;
+int z_race;
+static void busy_helper(void) {volatile int local = 0; %s while (__VERIFIER_nondet_int()) {%s}}
+static void* busy_a(void* ignored) {busy_helper(); return 0;}
+static void* busy_b(void* ignored) {busy_helper(); return 0;}
+static void* plain(void* ignored) {z_race = 1; return 0;}
+int main(void) {pthread_t a, b, c;
+pthread_create(&a, 0, busy_a, 0); pthread_create(&b, 0, busy_b, 0);
+pthread_create(&c, 0, plain, 0); z_race = 2;
+pthread_join(a, 0); pthread_join(b, 0); pthread_join(c, 0); return 0;}
+""" % (branches, stores)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--ikos", type=Path, default=ROOT / "install/bin/ikos")
+    args = parser.parse_args()
+    fixture = (HERE / "candidates.c").read_text().replace("data", "datum")
+    with tempfile.TemporaryDirectory(prefix="ikos-bmc-candidates-") as tmp:
+        work = Path(tmp)
+        for bits in ("32", "64"):
+            for case in (0, 1, 2, 3, "paths", "events", "work", "no-diagnostics", "disabled",
+                         "one-instance", "exclusive-spawns", "exclusive-entries", "two-instances", "serial-instances", "fairness"):
+                source = work / "renamed-fixture.c"
+                if case in ("paths", "events", "work"):
+                    source.write_text(budget_source(case))
+                elif case in ("one-instance", "exclusive-spawns", "exclusive-entries", "two-instances", "serial-instances"):
+                    source.write_text(activation_source(case))
+                elif case == "fairness":
+                    source.write_text(fairness_source())
+                else:
+                    source.write_text(fixture)
+                report = work / "report.json"
+                report.unlink(missing_ok=True)
+                env = dict(os.environ, IKOS_BMC_RECOVER="1", IKOS_BMC_DIAGNOSTICS="1")
+                if case == "no-diagnostics":
+                    env.pop("IKOS_BMC_DIAGNOSTICS", None)
+                if case == "disabled":
+                    env.pop("IKOS_BMC_RECOVER", None)
+                command = [str(args.ikos.resolve()), "--analyses=race", "--concurrency=auto",
+                           "--demote-race-to-unknown", "-m", bits, "-D",
+                           "CASE=" + str(case if isinstance(case, int) else 0),
+                           "--format=json", "--report-file=" + str(report),
+                           "-o", str(work / "output.db"), str(source)]
+                proc = subprocess.run(command, cwd=work, env=env, capture_output=True,
+                                      text=True, timeout=30)
+                actual = suite.classify(proc.stdout + proc.stderr, proc.returncode, False)
+                expected = (suite.VERDICT_RACE if case in (0, 1, 3, "no-diagnostics", "two-instances", "fairness") else
+                            suite.VERDICT_SAFE if case == 2 else suite.VERDICT_UNKNOWN)
+                if case in ("one-instance", "exclusive-spawns", "exclusive-entries", "serial-instances") and actual == suite.VERDICT_SAFE:
+                    expected = suite.VERDICT_SAFE
+                assert proc.returncode == 0 and actual == expected, (bits, case, actual, proc.stdout + proc.stderr)
+                reports = json.loads(report.read_text()).get("reports", [])
+                if case in (0, "no-diagnostics"):
+                    info = svcomp_witness.first_race({"reports": reports})
+                    assert info is not None and info["confirmed_pair_id"] > 0, info
+                    pair = info["conflicting_accesses"][info["confirmed_pair_id"]]
+                    assert info["access_a"] == pair["access_a"]
+                    assert info["access_b"] == pair["access_b"]
+                    witness = svcomp_witness.build_witness(str(source), info,
+                                                          "ILP32" if bits == "32" else "LP64")
+                    targets = witness[0]["content"][-1]["segment"]
+                    assert [p["waypoint"]["location"]["line"] for p in targets] == [
+                        info["access_a"]["line"], info["access_b"]["line"]]
+                    if case == 0:
+                        first = info["bmc"]["candidates"][0]
+                        assert first["first_blocker"] == "call_summary", first
+                        assert any(e["reason"] == "call_summary" and "line" in e
+                                   for e in first["examples"]), first
+                    else:
+                        assert all("bmc" not in r.get("info", {}) for r in reports)
+                if case == "two-instances":
+                    info = svcomp_witness.first_race({"reports": reports})
+                    witness = svcomp_witness.build_witness(str(source), info,
+                                                          "ILP32" if bits == "32" else "LP64")
+                    targets = witness[0]["content"][-1]["segment"]
+                    assert targets[0]["waypoint"]["thread_id"] != targets[1]["waypoint"]["thread_id"]
+                if case == "fairness":
+                    assert any("group_search_budget" in r.get("info", {}).get("bmc", {}).get("counts", {})
+                               for r in reports), reports
+                if case in ("paths", "events", "work"):
+                    reason = {"paths": "unroll_path_budget", "events": "unroll_event_budget",
+                              "work": "unroll_work_budget"}[case]
+                    assert any(reason in r.get("info", {}).get("bmc", {}).get("counts", {})
+                               for r in reports), reports
+                print(f"{bits}-bit {case}: {actual} [PASS]", flush=True)
+
+
+if __name__ == "__main__":
+    main()

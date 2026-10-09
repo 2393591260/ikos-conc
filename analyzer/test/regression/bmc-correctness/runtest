@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""Verify feasible prefixes and safe controls independently of benchmark labels."""
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[3]
+sys.path.insert(0, str(ROOT))
+import svcomp_race_test as suite
+import svcomp_witness
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--ikos", type=Path, default=ROOT / "install/bin/ikos")
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
+    rows = []
+    with tempfile.TemporaryDirectory(prefix="ikos-bmc-correctness-test-") as tmp:
+        work = Path(tmp)
+        for bits in ("32", "64"):
+            for case in range(40):
+                # Rename globals, helpers and entries: rules must not use names.
+                text = (HERE / "correctness.c").read_text()
+                for old, new in (("datum", "payload"), ("worker_a", "first_entry"),
+                                 ("worker_b", "second_entry"), ("gate_left", "first_filter")):
+                    text = text.replace(old, new)
+                source = work / "renamed.c"
+                source.write_text(text)
+                report = work / "report.json"
+                report.unlink(missing_ok=True)
+                cmd = [str(args.ikos.resolve()), "--analyses=race", "--concurrency=auto",
+                       "--demote-race-to-unknown", "-m", bits, "-D", "CASE=" + str(case),
+                       "--format=json", "--report-file=" + str(report),
+                       "-o", str(work / "output.db"), str(source)]
+                if case == 17:
+                    cmd.append("--inline-all")
+                proc = subprocess.run(cmd, env=dict(os.environ, IKOS_BMC_RECOVER="1",
+                                      IKOS_BMC_DIAGNOSTICS="1"), cwd=work,
+                                      capture_output=True, text=True, timeout=30)
+                actual = suite.classify(proc.stdout + proc.stderr, proc.returncode, False)
+                racy = case in (6, 7, 8, 11, 14, 15, 19, 26, 27, 28, 32, 34, 35, 37, 39)
+                unsupported = case in (10, 16, 17, 18, 20, 21, 22, 23, 24, 25, 29, 31, 33, 36, 38)
+                # Narrow undef may be eliminated before BMC. It must not be
+                # confirmed; this UB input is not a labeled race-free control.
+                ok = actual == suite.VERDICT_RACE if racy else actual != suite.VERDICT_RACE
+                if unsupported:
+                    ok = actual == suite.VERDICT_UNKNOWN
+                rows.append(dict(bits=bits, case=case, verdict=actual, passed=ok))
+                assert proc.returncode == 0 and ok, (bits, case, actual, proc.stdout + proc.stderr)
+                if case in (16, 17):
+                    data = json.loads(report.read_text())
+                    assert any("prefix_value_origin" in r.get("info", {}).get("bmc", {}).get("counts", {})
+                               for r in data.get("reports", [])), data
+                if racy:
+                    info = svcomp_witness.first_race(json.loads(report.read_text()))
+                    assert info is not None
+                    if case == 15:
+                        assert len(info["thread_creations"]) == 1, info["thread_creations"]
+                    witness = svcomp_witness.build_witness(str(source), info,
+                                                           "ILP32" if bits == "32" else "LP64")
+                    targets = witness[0]["content"][-1]["segment"]
+                    assert all("function" not in step["waypoint"]["location"] for step in targets)
+                    # Diagnostics are evidence, not independent validation.
+                    diagnostic = next(c for c in info["bmc"]["candidates"]
+                                      if c["pair_id"] == info["confirmed_pair_id"])
+                    assert diagnostic["smt_model"]
+                    for label in ("a", "b"):
+                        path = diagnostic["confirmed_path_" + label]
+                        assert path and path[-1]["line"] == info["access_" + label]["line"]
+                        clocks = [int(step["clock"]) for step in path]
+                        assert all(a < b for a, b in zip(clocks, clocks[1:]))
+                print(f"{bits}-bit case {case}: {actual} [PASS]", flush=True)
+    if args.output:
+        args.output.write_text(json.dumps(rows, indent=2) + "\n")
+
+
+if __name__ == "__main__":
+    main()

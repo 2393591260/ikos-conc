@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+"""Verify bounded creation, non-overlap and pointer-definition contexts."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[3]
+sys.path.insert(0, str(ROOT))
+import svcomp_race_test as suite
+
+rows = []
+with tempfile.TemporaryDirectory(prefix='ikos-instances-') as directory:
+    work = Path(directory)
+    source = work / 'renamed.c'
+    source.write_text((HERE / 'instances.c').read_text().replace('payload', 'shared_result')
+                      .replace('worker', 'entry_thread'))
+    for bits in ('32', '64'):
+        for case in range(8):
+            cmd = [str(ROOT / 'install/bin/ikos'), '--analyses=race', '--concurrency=auto',
+                   '--demote-race-to-unknown', '-m', bits, '-DCASE=' + str(case),
+                   '--format=json', '--report-file=' + str(work / 'report.json'),
+                   '-o', str(work / 'out.db'), str(source)]
+            proc = subprocess.run(cmd, cwd=work, env=dict(os.environ, IKOS_BMC_RECOVER='1',
+                                  IKOS_BMC_DIAGNOSTICS='1'), capture_output=True, text=True, timeout=30)
+            verdict = suite.classify(proc.stdout + proc.stderr, proc.returncode, False)
+            racy = case in (0, 5, 7)
+            assert proc.returncode == 0 and (verdict == suite.VERDICT_RACE if racy else verdict != suite.VERDICT_RACE), (bits, case, verdict, proc.stdout + proc.stderr)
+            if case == 0:
+                report = json.loads((work / 'report.json').read_text())
+                info = next(r['info'] for r in report['reports'] if 'confirmed_pair_id' in r['info'])
+                assert len(info['thread_creations']) == 2, info
+                assert info['access_a']['thread_id'] == info['access_b']['thread_id'], info
+            rows.append(dict(bits=bits, case=case, verdict=verdict))
+            print(f'{bits}-bit case {case}: {verdict} [PASS]', flush=True)
+if len(sys.argv) > 1:
+    Path(sys.argv[1]).write_text(json.dumps(rows, indent=2) + '\n')
