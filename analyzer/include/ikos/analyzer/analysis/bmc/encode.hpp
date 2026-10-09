@@ -898,6 +898,8 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       }
     }
     s.pop();
+    // One SAT direction proves this existential query and preserves its first model.
+    if (any) return true;
   }
   return any;
 }
