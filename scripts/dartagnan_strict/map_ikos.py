@@ -89,12 +89,15 @@ def translate(replay, ir_hash, ir_events):
     if remaining:
         raise ValueError('unmapped thread traces: ' + ','.join(remaining))
     bound, omitted, mapped_steps, claims = {}, [], {}, {}
+    memory_bindings = []
     for name, trace in traces.items():
         values = {}
         for index, step in enumerate(trace['steps']):
             ar = instructions[step['statement']]
-            if 'encoded_result' in step and ar.get('result', {}).get('kind') == 'variable':
-                values[ar['result']['id']] = step['encoded_result']
+            if ar.get('result', {}).get('kind') == 'variable':
+                values.pop(ar['result']['id'], None)
+                if 'encoded_result' in step:
+                    values[ar['result']['id']] = step['encoded_result']
             address = step.get('encoded_address', {})
             obj = address.get('object', {})
             kind = ar['kind']
@@ -104,15 +107,32 @@ def translate(replay, ir_hash, ir_events):
             token = 'load(' if kind == 'load' else 'store('
             matches = [e for e in ir_events if e['thread'] == threads[name] and same_source(ar, e)
                        and token in e['code'] and re.search(r'\b' + re.escape(obj['id']) + r'\b', e['code'])]
-            if len(matches) != 1:
+            if not matches:
                 omitted.append(dict(trace=name, step=index, kind=kind, reason='ambiguous/unmapped memory event'))
                 continue
-            e = matches[0]
+            ordinal = sum(s['statement'] == step['statement'] for s in trace['steps'][:index + 1])
+            if ordinal > len(matches):
+                raise ValueError('memory occurrence exceeds reference bound')
+            occurrence = None
+            if len(matches) > 1:
+                origins = {e.get('unrolling_id', -1) for e in matches}
+                sites = [sid for sid, stmt in instructions.items()
+                         if stmt['kind'] == kind and same_source(stmt, matches[0])]
+                if len(origins) != 1 or -1 in origins or sites != [step['statement']]:
+                    omitted.append(dict(trace=name, step=index, kind=kind, reason='distinct/unknown static memory origins'))
+                    continue
+                occurrence = ordinal
+            matches.sort(key=lambda e: e['id'])
+            e = matches[ordinal - 1]
             if e['id'] in bound:
                 raise ValueError('dynamic occurrences collapse to one reference event')
             bound[e['id']] = e
             mapped_steps[name, index] = e['id']
             claim = dict(object=obj['id'], offset=address['offset'], width=address['width'])
+            if occurrence is not None:
+                claim['memory_occurrence'] = occurrence
+            memory_bindings.append(dict(trace=name, step=index, reference_event=e['id'],
+                                        occurrence=occurrence, pre_unroll_id=e.get('unrolling_id', -1)))
             if kind == 'load' and 'encoded_result' in step:
                 claim['value'] = str(int(step['encoded_result']) % (1 << ar['result']['type']['bits']))
             elif kind == 'store':
@@ -139,6 +159,7 @@ def translate(replay, ir_hash, ir_events):
     return cert, dict(scope='PARTIAL_FIXED_MEMORY_MODEL', threads=threads,
                       mapped_memory_events=len(bound), omitted_steps=omitted,
                       creation_bindings=creation_bindings,
+                      memory_bindings=memory_bindings,
                       unbound_claims=['CFG and call occurrence mapping', 'local values and nondet occurrences',
                                       'synchronization history and identities', 'IKOS total schedule and rf choices'],
                       full_counterexample_validated=False)

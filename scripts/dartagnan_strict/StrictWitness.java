@@ -39,17 +39,21 @@ public final class StrictWitness {
             + "\t" + (unrolling == null ? -1 : unrolling.value());
     }
     private static void creationOccurrence(EncodingContext c, ProverWithTracker prover, Event e, String ordinal) throws InterruptedException {
+        occurrence(c, prover, e, ordinal, true);
+    }
+    private static void occurrence(EncodingContext c, ProverWithTracker prover, Event e, String ordinal, boolean creation) throws InterruptedException {
         var source = e.getMetadata(SourceLocation.class);
         var origin = e.getMetadata(UnrollingId.class);
-        if (!(e instanceof ThreadCreate) || source == null || origin == null)
-            throw new IllegalArgumentException("creation occurrence requires source and pre-unroll identity");
+        if ((creation ? !(e instanceof ThreadCreate) : !(e instanceof MemoryCoreEvent)) || source == null || origin == null)
+            throw new IllegalArgumentException("occurrence requires matching event kind, source and pre-unroll identity");
         // In a forward-only bounded CFG, executing every earlier clone makes this
         // the requested dynamic occurrence. Skipped clones are deliberately unsupported.
         var parentEvents = e.getThread().getEvents();
         if (parentEvents.stream().anyMatch(x -> x instanceof CondJump j
                 && j.getLabel().getGlobalId() <= j.getGlobalId()))
             throw new IllegalArgumentException("creation occurrence requires forward-only CFG");
-        var clones = parentEvents.stream().filter(x -> x instanceof ThreadCreate
+        var clones = parentEvents.stream().filter(x -> (creation ? x instanceof ThreadCreate : x instanceof MemoryCoreEvent
+                && x.hasTag(Tag.READ) == e.hasTag(Tag.READ) && x.hasTag(Tag.WRITE) == e.hasTag(Tag.WRITE))
                 && source.equals(x.getMetadata(SourceLocation.class))).toList();
         if (clones.stream().anyMatch(x -> !origin.equals(x.getMetadata(UnrollingId.class))))
             throw new IllegalArgumentException("source location contains distinct creation sites");
@@ -153,7 +157,7 @@ public final class StrictWitness {
             var boundIds = new HashSet<Integer>();
             for (int i = 0; i < count; ++i) {
                 String k = "event." + i + ".";
-                used.addAll(List.of(k + "id", k + "thread", k + "creator", k + "descriptor", k + "value", k + "address", k + "object", k + "offset", k + "width", k + "creation_occurrence"));
+                used.addAll(List.of(k + "id", k + "thread", k + "creator", k + "descriptor", k + "value", k + "address", k + "object", k + "offset", k + "width", k + "creation_occurrence", k + "memory_occurrence"));
                 Event e = event(p, k + "id", events);
                 if (!boundIds.add(e.getGlobalId())) throw new IllegalArgumentException("duplicate event");
                 var creator = e.getThread().getEntry().getCreator();
@@ -164,6 +168,8 @@ public final class StrictWitness {
                 prover.addConstraint(c.execution(e));
                 if (p.containsKey(k + "creation_occurrence"))
                     creationOccurrence(c, prover, e, p.getProperty(k + "creation_occurrence"));
+                if (p.containsKey(k + "memory_occurrence"))
+                    occurrence(c, prover, e, p.getProperty(k + "memory_occurrence"), false);
                 if (p.containsKey(k + "value") || p.containsKey(k + "address") || p.containsKey(k + "object") || p.containsKey(k + "offset") || p.containsKey(k + "width")) {
                     if (!(e instanceof MemoryCoreEvent m)) throw new IllegalArgumentException("not a memory event");
                     if (p.containsKey(k + "value")) prover.addConstraint(number(c, c.value(m).formula(), p.getProperty(k + "value")));

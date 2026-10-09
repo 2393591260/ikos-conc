@@ -264,6 +264,34 @@ def calibrate(args):
             row.update(case=name, expected=expected, matched=row['status'] == expected)
             results.append(row)
             print(bits, name, row['status'], 'expected', expected, flush=True)
+        memory = source.with_name('loop-memory.c')
+        folder = out / f'{bits}-loop-memory-source'
+        base = run(args, cp, memory, bits, folder)
+        if base['status'] != 'SOURCE_RACE':
+            raise AssertionError(base)
+        h, es = events(folder / 'events.tsv')
+        stores = [[e for e in es if e['thread'] == t and 'store(&data,' in e['code']] for t in (1, 2)]
+        if any(len(group) != 2 for group in stores):
+            raise AssertionError('expected two memory clones per worker')
+        flag = next(e for e in es if e['thread'] == 0 and 'store(&skip_first,' in e['code'])
+        cert = certificate(h, [stores[0][1], stores[1][1], flag])
+        cert.update({'event.0.value': 2, 'event.1.value': 2, 'event.2.value': 0,
+                     'event.0.memory_occurrence': 2, 'event.1.memory_occurrence': 2})
+        cases = [('memory-occurrence-valid', cert, 'SAT')]
+        for name, updates, expected in (
+                ('memory-occurrence-wrong-rank', {'event.0.memory_occurrence': 1}, 'UNSUPPORTED'),
+                ('memory-occurrence-wrong-value', {'event.0.value': 1}, 'UNSAT_AT_BOUND'),
+                ('memory-occurrence-skipped-clone', {'event.2.value': 1}, 'UNSAT_AT_BOUND')):
+            changed = copy.deepcopy(cert); changed.update(updates)
+            cases.append((name, changed, expected))
+        changed = {k: v for k, v in cert.items() if not k.endswith('.memory_occurrence')}
+        changed['event.2.value'] = 1
+        cases.append(('memory-skipped-first-still-feasible', changed, 'SAT'))
+        for name, cert, expected in cases:
+            row = run(args, cp, memory, bits, out / f'{bits}-{name}', cert)
+            row.update(case=name, expected=expected, matched=row['status'] == expected)
+            results.append(row)
+            print(bits, name, row['status'], 'expected', expected, flush=True)
     summary = dict(reference_commit=PIN, adapter_sha256=digest(HERE/'StrictWitness.java'),
                    reference_jar_sha256=digest(args.reference/'dartagnan/target/dartagnan.jar'),
                    scope='processed-IR constraints; not arbitrary IKOS witness validation',

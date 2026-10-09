@@ -94,6 +94,40 @@ def main(args):
     rejected(r, es)
     print('7 repeated-creation mapping assertions passed')
 
+    if args.memory_report is None:
+        return
+    if args.memory_events is None:
+        raise ValueError('--memory-events is required with --memory-report')
+    report = json.loads(args.memory_report.read_text())
+    replay = next(c['replay'] for r in report['reports']
+                  for c in r.get('info', {}).get('bmc', {}).get('candidates', []) if 'replay' in c)
+    h, es = events(args.memory_events)
+    cert, coverage = translate(replay, h, es)
+    init = [m for m in coverage['memory_bindings'] if m['trace'] == 'startup']
+    assert [m['occurrence'] for m in init] == list(range(1, 7))
+    assert coverage['full_counterexample_validated'] is False
+    e = copy.deepcopy(es)
+    next(x for x in e if x['id'] == init[1]['reference_event'])['unrolling_id'] += 1
+    _, reduced = translate(replay, h, e)
+    assert not any(m['trace'] == 'startup' for m in reduced['memory_bindings'])
+    assert any(s['reason'] == 'distinct/unknown static memory origins' for s in reduced['omitted_steps'])
+    r = copy.deepcopy(replay)
+    trace = next(t for t in r['traces'] if t['id'] == 'startup')
+    stmt = trace['steps'][init[0]['step']]['statement']
+    r['program']['instructions']['duplicate-memory-site'] = copy.deepcopy(r['program']['instructions'][stmt])
+    _, reduced = translate(r, h, es)
+    assert not any(m['trace'] == 'startup' for m in reduced['memory_bindings'])
+    r = copy.deepcopy(replay)
+    trace = next(t for t in r['traces'] if t['id'] == 'startup')
+    # Removing the current invocation's result must not reuse the previous one.
+    previous = next(s for s in reversed(trace['steps'][:init[1]['step']])
+                    if 'encoded_result' in s and r['program']['instructions'][s['statement']]['kind'] == 'call')
+    del previous['encoded_result']
+    cert, _ = translate(r, h, es)
+    slot = next(i for i in range(cert['count']) if cert[f'event.{i}.id'] == init[1]['reference_event'])
+    assert f'event.{slot}.value' not in cert
+    print('4 repeated-memory mapping assertions passed')
+
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description=__doc__)
@@ -101,4 +135,6 @@ if __name__ == '__main__':
     p.add_argument('--events', type=Path, required=True)
     p.add_argument('--repeated-report', type=Path)
     p.add_argument('--repeated-events', type=Path)
+    p.add_argument('--memory-report', type=Path)
+    p.add_argument('--memory-events', type=Path)
     main(p.parse_args())
