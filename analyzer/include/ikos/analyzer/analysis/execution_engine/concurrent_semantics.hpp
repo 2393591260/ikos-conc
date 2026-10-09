@@ -105,7 +105,7 @@ inline std::uint64_t heap_pointer_key(std::uint64_t stable_id,
 /// `p` = iter-3 object and `q` = iter-7 object alias the same cell, silently
 /// sharing a spurious common lock). Detect the loop as a CFG cycle through
 /// the call's basic block.
-inline bool dynalloc_in_loop(ar::CallBase* call) {
+inline bool dynalloc_in_loop(ar::Statement* call) {
   ar::BasicBlock* bb = call->parent();
   if (bb == nullptr) {
     return false;
@@ -128,6 +128,28 @@ inline bool dynalloc_in_loop(ar::CallBase* call) {
     }
   }
   return false;
+}
+
+inline bool concrete_lock_object(MemoryLocation* location,
+                                 core::ConcurrentGlobalEnv& env) {
+  if (auto* global = dyn_cast< GlobalMemoryLocation >(location))
+    return !global->global_var()->is_thread_local();
+  ar::Statement* allocation = nullptr;
+  if (auto* dynamic = dyn_cast< DynAllocMemoryLocation >(location)) {
+    allocation = dynamic->call();
+  } else if (auto* local = dyn_cast< LocalMemoryLocation >(location)) {
+    auto* function = local->local_var()->function();
+    if (function == nullptr || !function->is_definition()) return false;
+    for (auto* block : *function->body_or_null()) for (auto* statement : *block) {
+      if (statement->result_or_null() != local->local_var()) continue;
+      if (allocation != nullptr || !isa< ar::Allocate >(statement)) return false;
+      allocation = statement;
+    }
+  }
+  // A singleton abstract location can summarize several live allocations.
+  return allocation != nullptr && !dynalloc_in_loop(allocation) &&
+         allocation->code()->is_function_body() &&
+         env.function_executes_at_most_once(allocation->code()->function());
 }
 
 /// \brief Classification of hardware-atomic / pseudo-locked intrinsics.
@@ -433,29 +455,6 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
           points_to.points_to().is_set() &&
           points_to.points_to().size() == 1) {
         MemoryLocation* loc = *points_to.points_to().begin();
-        // 🧱 Loop-allocated DynAlloc guard: a malloc site inside a loop
-        // yields a DISTINCT object per iteration, yet they all fold onto
-        // ONE DynAlloc summary cell. Two pointers to such a cell are
-        // may-alias, not must-alias — admitting it as a definite lock would
-        // let `p` (iter 3) and `q` (iter 7) share a spurious common lock
-        // (04-mutex_44-malloc_sound.c FN). Refuse it: fewer certainly-held
-        // locks only widens the race set — the sound direction.
-        bool loop_summary = false;
-        if (auto* dalloc = dyn_cast< DynAllocMemoryLocation >(loc)) {
-          loop_summary = dynalloc_in_loop(dalloc->call());
-          // A malloc inside a HELPER called from a loop is also
-          // loop-allocated: the malloc's own block may be loop-free while
-          // the helper's CALL SITE sits in a caller's loop
-          // (04-mutex_44-malloc_sound.c FN: safe_malloc's malloc is not on
-          // a cycle directly, but main calls safe_malloc from its loop).
-          // Walk the call-context chain and test each call site for a CFG
-          // cycle.
-          for (CallContext* ctx = dalloc->context();
-               !loop_summary && ctx != nullptr && !ctx->empty();
-               ctx = ctx->parent()) {
-            loop_summary = dynalloc_in_loop(ctx->call());
-          }
-        }
         // ⭐ Offset-aware locking: the memory model collapses a whole
         // global struct/array into ONE MemoryLocation (`struct{...} m`
         // → `@m`, `pthread_mutex_t m[10]` → `@m`). Keying the lock by
@@ -467,10 +466,7 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
         // ambiguous and must NOT be admitted (sound: fewer certainly-
         // held locks only widens the race set) — this is what keeps
         // 05-lval_ls_13-idxunknown_lock.c RACE.
-        auto* global = dyn_cast< GlobalMemoryLocation >(loc);
-        // This summary key cannot identify an owning TLS thread instance.
-        bool tls_summary = global != nullptr && global->global_var()->is_thread_local();
-        if (!loop_summary && !tls_summary) {
+        if (concrete_lock_object(loc, eng.ctx().concurrent_env)) {
           const auto& poff = points_to.offset();
           std::uint64_t base =
               ikos::core::IndexableTraits<MemoryLocation*>::index(loc);
@@ -501,11 +497,10 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
       } else if (!points_to.is_bottom() && !points_to.is_top() &&
                  points_to.points_to().is_set() &&
                  points_to.points_to().size() > 1 &&
-                 std::none_of(points_to.points_to().begin(), points_to.points_to().end(),
-                              [](MemoryLocation* loc) {
-                                auto* global = dyn_cast< GlobalMemoryLocation >(loc);
-                                return global != nullptr && global->global_var()->is_thread_local();
-                              })) {
+                 std::all_of(points_to.points_to().begin(), points_to.points_to().end(),
+                             [&](MemoryLocation* loc) {
+                               return concrete_lock_object(loc, eng.ctx().concurrent_env);
+                             })) {
         // Polymorphic lock (`m = &s->mutex` where `s = x ? &A : &B`, so
         // points-to = {A, B}): the must-lockset needs a singleton and would
         // drop this lock entirely (06-symbeq_11-equ_nr.c FP). But the lock

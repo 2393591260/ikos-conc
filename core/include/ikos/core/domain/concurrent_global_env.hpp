@@ -1315,6 +1315,13 @@ public:
     return count != _spawn_counts_by_name.end() && count->second == sites->second.size();
   }
 
+  // This direct, acyclic call-chain certificate excludes escaped/recursive
+  // functions and thread entries; one live thread is not one lifetime call.
+  bool function_executes_at_most_once(ar::Function* function) {
+    std::lock_guard< std::mutex > lock(_mutex);
+    return function != nullptr && this->function_executes_once_locked(function);
+  }
+
   /// \brief True iff the thread function's create sites are all SEQUENTIAL —
   /// each create is joined before the next create. A single straight-line
   /// basic block whose creates are balance-interleaved with joins (at every

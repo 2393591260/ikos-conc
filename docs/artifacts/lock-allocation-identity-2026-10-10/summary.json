@@ -1,0 +1,627 @@
+{
+  "before_behavior_commit": "105b986",
+  "before_sha256": "427dcfc9d92ea112bf3d0ab435e75c6d757ec14ce2ed4472f22f8ebd323d734e",
+  "after_sha256": "f45ac6d51ab93b223aa720e609e938981cefecdd33915b43d76a85aa7d816918",
+  "tasks": 1029,
+  "matrix": {
+    "TP": 78,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 254,
+    "error": 0
+  },
+  "transitions": [],
+  "data_model": "ILP32",
+  "LP64": "targeted regressions only",
+  "before": [
+    {
+      "case": "heap-helper-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "heap-helper-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "heap-helper-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "heap-helper-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "heap-main-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "heap-main-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "heap-main-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "heap-main-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "stack-main-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "stack-main-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "stack-main-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "stack-main-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "worker-heap-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "worker-heap-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "worker-heap-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "worker-heap-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "worker-stack-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "worker-stack-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "worker-stack-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "worker-stack-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    }
+  ],
+  "after": [
+    {
+      "case": "heap-helper-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "heap-helper-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "heap-helper-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "heap-helper-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "heap-main-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "heap-main-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "heap-main-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "heap-main-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "stack-main-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "stack-main-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "stack-main-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "stack-main-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "worker-heap-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "worker-heap-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "worker-heap-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "worker-heap-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "worker-stack-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "worker-stack-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "worker-stack-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "worker-stack-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    }
+  ],
+  "p0": [
+    {
+      "source": "exclusive-flag.c",
+      "mode": "demote",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "demote",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    }
+  ],
+  "creation_regressions": 28,
+  "tls_regressions": 24,
+  "reference": [
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.5354823249999754,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/lock-allocation-identity/heap-helper-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "063436ae9962f69660a1df3029287ca300f80ca79f066fde16543da942424b6b",
+      "data_model": "32",
+      "case": "heap-helper-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.4333254000002853,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/lock-allocation-identity/heap-helper-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "063436ae9962f69660a1df3029287ca300f80ca79f066fde16543da942424b6b",
+      "data_model": "64",
+      "case": "heap-helper-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.4385432069998387,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/lock-allocation-identity/heap-main-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "9ee3185121aaab214e157b641fc2914fb1bab70f284d3716857bb7dfa3ca6ae5",
+      "data_model": "32",
+      "case": "heap-main-control",
+      "native_result": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.4426720739998018,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/lock-allocation-identity/heap-main-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "9ee3185121aaab214e157b641fc2914fb1bab70f284d3716857bb7dfa3ca6ae5",
+      "data_model": "64",
+      "case": "heap-main-control",
+      "native_result": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.440619501999663,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/lock-allocation-identity/stack-main-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "ddfcae509e358ace2e68886f5e804bc52bf37512f3825c742b33c2384807f299",
+      "data_model": "32",
+      "case": "stack-main-control",
+      "native_result": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.434227543000361,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/lock-allocation-identity/stack-main-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "ddfcae509e358ace2e68886f5e804bc52bf37512f3825c742b33c2384807f299",
+      "data_model": "64",
+      "case": "stack-main-control",
+      "native_result": "PASS"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.3683635660004256,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/lock-allocation-identity/worker-heap-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "990aeef2f1a98d7711952f8546930e230dfccf2b5a0c18e6210b8b216045689c",
+      "data_model": "32",
+      "case": "worker-heap-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.3277340449999429,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/lock-allocation-identity/worker-heap-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "990aeef2f1a98d7711952f8546930e230dfccf2b5a0c18e6210b8b216045689c",
+      "data_model": "64",
+      "case": "worker-heap-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.2943190170003618,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/lock-allocation-identity/worker-stack-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "b87ba87b0722962262bb97273ad4f2ec551077cf7735bfb6dccab2de58eccb41",
+      "data_model": "32",
+      "case": "worker-stack-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.3963672419999966,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/lock-allocation-identity/worker-stack-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "b87ba87b0722962262bb97273ad4f2ec551077cf7735bfb6dccab2de58eccb41",
+      "data_model": "64",
+      "case": "worker-stack-race",
+      "native_result": "FAIL"
+    }
+  ]
+}
