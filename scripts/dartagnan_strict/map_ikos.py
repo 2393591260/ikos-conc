@@ -16,10 +16,20 @@ def same_source(ar, event):
     return event['line'] == ar.get('line') and Path(event['file']).resolve() == Path(ar.get('file', '')).resolve()
 
 
+def is_creation(ar):
+    operands = ar.get('operands', [])
+    return (ar.get('kind') == 'call' and len(operands) == 5
+            and operands[0].get('kind') == 'function'
+            and operands[0].get('id') in ('pthread_create', 'ar.pthread.create'))
+
+
 def translate(replay, ir_hash, ir_events):
     instructions = replay['program']['instructions']
     traces = {t['id']: t for t in replay['traces']}
+    if len(traces) != len(replay['traces']):
+        raise ValueError('duplicate trace identity')
     threads = {}
+    creators, creation_bindings = {}, []
     remaining = dict(traces)
     for _ in range(len(traces)):
         progress = False
@@ -28,25 +38,51 @@ def translate(replay, ir_hash, ir_events):
                 threads[name] = 0
             elif trace.get('creator_trace') in threads:
                 parent = traces[trace['creator_trace']]
+                index = trace.get('creator_step')
+                if type(index) is not int or not 0 <= index < len(parent['steps']):
+                    raise ValueError('invalid creator step')
                 ar = instructions[parent['steps'][trace['creator_step']]['statement']]
                 operands = ar.get('operands', [])
-                if (ar.get('kind') != 'call' or len(operands) != 5
-                        or operands[0].get('kind') != 'function'
-                        or operands[0].get('id') not in ('pthread_create', 'ar.pthread.create')
+                if (not is_creation(ar)
                         or operands[3].get('kind') != 'function'
                         or operands[3].get('id') != trace['entry']):
                     raise ValueError('creator step is not a matching direct thread creation')
                 matches = [e for e in ir_events if e['thread'] == threads[parent['id']]
                            and same_source(ar, e) and 'ThreadCreate(' in e['code']
                            and not e['code'].startswith('ThreadStart')]
-                if len(matches) != 1:
+                if not matches:
                     raise ValueError('ambiguous/unmapped dynamic creator: ' + name)
-                children = {e['thread'] for e in ir_events if e['creator'] == matches[0]['id']}
+                matches.sort(key=lambda e: e['id'])
+                sites = [sid for sid, stmt in instructions.items()
+                         if is_creation(stmt) and same_source(stmt, matches[0])]
+                statement = parent['steps'][trace['creator_step']]['statement']
+                if sites != [statement]:
+                    raise ValueError('ambiguous AR creation site: ' + name)
+                ordinal = sum(step['statement'] == statement and 'synthetic_event' not in step
+                              for step in parent['steps'][:trace['creator_step'] + 1])
+                if not 1 <= ordinal <= len(matches):
+                    raise ValueError('creation occurrence exceeds reference bound: ' + name)
+                occurrence = None
+                if len(matches) > 1:
+                    origins = {e.get('unrolling_id', -1) for e in matches}
+                    if len(origins) != 1 or -1 in origins:
+                        raise ValueError('ambiguous/unmapped dynamic creator: ' + name)
+                    occurrence = ordinal
+                creator = matches[(occurrence or 1) - 1]
+                if not re.match(r'ThreadCreate\(T\d+:' + re.escape(trace['entry']) + r',', creator['code']):
+                    raise ValueError('reference creation entry mismatch: ' + name)
+                children = {e['thread'] for e in ir_events if e['creator'] == creator['id']}
                 if len(children) != 1:
                     raise ValueError('ambiguous/unmapped created thread: ' + name)
                 threads[name] = children.pop()
+                creators[creator['id']] = creator, occurrence
+                creation_bindings.append(dict(trace=name, parent_trace=parent['id'],
+                                              creator_step=trace['creator_step'], reference_event=creator['id'],
+                                              occurrence=occurrence, pre_unroll_id=creator.get('unrolling_id', -1)))
             else:
                 continue
+            if threads[name] in (t for n, t in threads.items() if n != name):
+                raise ValueError('distinct traces collapse to one reference thread')
             del remaining[name]; progress = True
         if not remaining or not progress:
             break
@@ -91,14 +127,18 @@ def translate(replay, ir_hash, ir_events):
         if key not in mapped_steps:
             raise ValueError('chosen target is unmapped')
         target_ids.append(mapped_steps[key])
-    selected = [bound[i] for i in target_ids] + [e for i, e in bound.items() if i not in target_ids]
+    selected = ([bound[i] for i in target_ids] + [e for i, e in bound.items() if i not in target_ids]
+                + [e for e, _ in creators.values()])
     if target_ids[0] == target_ids[1]:
         raise ValueError('targets collapse to one dynamic event')
     cert = certificate(ir_hash, selected)
     for i, e in enumerate(selected):
-        cert.update({f'event.{i}.{k}': v for k, v in claims[e['id']].items()})
+        cert.update({f'event.{i}.{k}': v for k, v in claims.get(e['id'], {}).items()})
+        if e['id'] in creators and creators[e['id']][1] is not None:
+            cert[f'event.{i}.creation_occurrence'] = creators[e['id']][1]
     return cert, dict(scope='PARTIAL_FIXED_MEMORY_MODEL', threads=threads,
                       mapped_memory_events=len(bound), omitted_steps=omitted,
+                      creation_bindings=creation_bindings,
                       unbound_claims=['CFG and call occurrence mapping', 'local values and nondet occurrences',
                                       'synchronization history and identities', 'IKOS total schedule and rf choices'],
                       full_counterexample_validated=False)

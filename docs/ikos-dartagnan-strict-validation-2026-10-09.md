@@ -91,3 +91,30 @@ python3 -B scripts/dartagnan_strict/sweep_ikos.py \
 
 输入摘要通过 `--export-summary` 指定；参考包、源码和JDK路径可覆盖。
 映射失败/有界不满足均需进一步分析，不能据此撤回任务标签或判断程序安全。
+
+## 循环动态创建的受约束映射
+
+参考事件描述增加 OriginalId 和 UnrollingId，并纳入处理后 IR 指纹。
+固定版本 LoopUnrolling.java:120 在展开前保存事件身份；ThreadCreation.java:160–171
+替换创建事件时保留该元数据。只有 AR 同源码位置唯一、参考同位置只有一个展开前
+身份时，才按实际父路径中的创建次数选取克隆。证书显式绑定创建事件和 occurrence；
+参考端检查父 CFG 没有回跳、源码位置没有混入其他静态创建点，且要求所有前序克隆
+也实际执行。因此第二个克隆不能冒充跳过首轮后的第一次创建。
+不支持跳过克隆的任意对应；这种查询不满足不是 IKOS 反例错误的充分证据。
+同一参考线程不能对应两个不同 IKOS trace，缺元数据、超出展开界限、入口不匹配和
+同源码行多个创建点继续拒绝。旧六字段事件文件仍可用于唯一映射，不支持重复创建。
+
+ILP32/LP64 共44项参考校准通过，另有15项映射断言；新增检查覆盖实际参数与实例、
+错误 occurrence、错误事件类型、交换两实例值，以及被跳过的首轮创建。
+[校准证据](artifacts/dartagnan-strict-2026-10-09/creation-occurrence-calibration.json)。
+IKOS 分析器和前端未改，build/install cmp 一致，本阶段不重复1029项行为回归；
+基线仍为既有 TP77/TN697/UNKNOWN255、FP/FN/error0，并非本阶段重测统计。
+
+真实 fkp2014 的两组候选和13_unverif的一组候选不再因动态创建歧义而拒绝：
+均绑定 startup→T0、a→T1、b→T2 和 occurrence 1/2，但完整已映射内存值查询
+返回 UNSAT_AT_BOUND。三组仅固定候选/去掉值时均 SAT，去掉 occurrence 保留值仍 UNSAT；
+故当前不满足不能归因于新增创建顺序约束。原 native 竞争查询对读写方向的约定仍需
+核实，不能立即声称发现 IKOS 假反例。
+[逐候选及删约束记录](artifacts/dartagnan-strict-2026-10-09/creation-occurrence-real-candidates.json)。
+仍是部分验证，完整 CFG、局部值、同步和总调度/rf 未绑定；独立验证计数没有增加。
+日志、编译类和DB留在 `/tmp/ikos-dartagnan-creation-rank-2026-10-09-*`。

@@ -6,8 +6,12 @@ import com.dat3m.dartagnan.expression.type.TypeFactory;
 import com.dat3m.dartagnan.program.event.Event;
 import com.dat3m.dartagnan.program.event.Tag;
 import com.dat3m.dartagnan.program.event.core.MemoryCoreEvent;
+import com.dat3m.dartagnan.program.event.core.CondJump;
+import com.dat3m.dartagnan.program.event.core.threading.ThreadCreate;
 import com.dat3m.dartagnan.program.event.metadata.MemoryOrder;
 import com.dat3m.dartagnan.program.event.metadata.SourceLocation;
+import com.dat3m.dartagnan.program.event.metadata.OriginalId;
+import com.dat3m.dartagnan.program.event.metadata.UnrollingId;
 import org.sosy_lab.java_smt.api.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -24,10 +28,34 @@ public final class StrictWitness {
     private static String descriptor(Event e) {
         var source = e.getMetadata(SourceLocation.class);
         var creator = e.getThread().getEntry().getCreator();
+        var original = e.getMetadata(OriginalId.class);
+        var unrolling = e.getMetadata(UnrollingId.class);
         return e.getGlobalId() + "\t" + e.getThread().getId() + "\t"
             + (creator == null ? -1 : creator.getGlobalId()) + "\t"
             + b64(source == null ? "" : source.sourceCodeFilePath()) + "\t"
-            + (source == null ? -1 : source.lineNumber()) + "\t" + b64(e.toString());
+            + (source == null ? -1 : source.lineNumber()) + "\t" + b64(e.toString())
+            + "\t" + (original == null ? -1 : original.value())
+            + "\t" + (unrolling == null ? -1 : unrolling.value());
+    }
+    private static void creationOccurrence(EncodingContext c, ProverWithTracker prover, Event e, String ordinal) throws InterruptedException {
+        var source = e.getMetadata(SourceLocation.class);
+        var origin = e.getMetadata(UnrollingId.class);
+        if (!(e instanceof ThreadCreate) || source == null || origin == null)
+            throw new IllegalArgumentException("creation occurrence requires source and pre-unroll identity");
+        // In a forward-only bounded CFG, executing every earlier clone makes this
+        // the requested dynamic occurrence. Skipped clones are deliberately unsupported.
+        var parentEvents = e.getThread().getEvents();
+        if (parentEvents.stream().anyMatch(x -> x instanceof CondJump j
+                && j.getLabel().getGlobalId() <= j.getGlobalId()))
+            throw new IllegalArgumentException("creation occurrence requires forward-only CFG");
+        var clones = parentEvents.stream().filter(x -> x instanceof ThreadCreate
+                && source.equals(x.getMetadata(SourceLocation.class))).toList();
+        if (clones.stream().anyMatch(x -> !origin.equals(x.getMetadata(UnrollingId.class))))
+            throw new IllegalArgumentException("source location contains distinct creation sites");
+        int occurrence = Integer.parseInt(ordinal);
+        if (occurrence < 1 || occurrence > clones.size() || clones.get(occurrence - 1) != e)
+            throw new IllegalArgumentException("creation occurrence mismatch");
+        for (int i = 0; i < occurrence; ++i) prover.addConstraint(c.execution(clones.get(i)));
     }
     private static BooleanFormula number(EncodingContext c, Formula f, String value) {
         if (f == null) throw new IllegalArgumentException("value has no encoded source");
@@ -117,7 +145,7 @@ public final class StrictWitness {
             var boundIds = new HashSet<Integer>();
             for (int i = 0; i < count; ++i) {
                 String k = "event." + i + ".";
-                used.addAll(List.of(k + "id", k + "thread", k + "creator", k + "descriptor", k + "value", k + "address", k + "object", k + "offset", k + "width"));
+                used.addAll(List.of(k + "id", k + "thread", k + "creator", k + "descriptor", k + "value", k + "address", k + "object", k + "offset", k + "width", k + "creation_occurrence"));
                 Event e = event(p, k + "id", events);
                 if (!boundIds.add(e.getGlobalId())) throw new IllegalArgumentException("duplicate event");
                 var creator = e.getThread().getEntry().getCreator();
@@ -126,6 +154,8 @@ public final class StrictWitness {
                     || !b64(descriptor(e)).equals(p.getProperty(k + "descriptor")))
                     throw new IllegalArgumentException("event/instance/creation mismatch");
                 prover.addConstraint(c.execution(e));
+                if (p.containsKey(k + "creation_occurrence"))
+                    creationOccurrence(c, prover, e, p.getProperty(k + "creation_occurrence"));
                 if (p.containsKey(k + "value") || p.containsKey(k + "address") || p.containsKey(k + "object") || p.containsKey(k + "offset") || p.containsKey(k + "width")) {
                     if (!(e instanceof MemoryCoreEvent m)) throw new IllegalArgumentException("not a memory event");
                     if (p.containsKey(k + "value")) prover.addConstraint(number(c, c.value(m).formula(), p.getProperty(k + "value")));

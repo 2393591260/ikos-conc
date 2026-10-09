@@ -113,10 +113,15 @@ def events(path):
     lines = path.read_text().splitlines()
     rows = []
     for line in lines[1:]:
-        eid, thread, creator, file64, lineno, code64 = line.split('\t')
+        fields = line.split('\t')
+        if len(fields) not in (6, 8):
+            raise ValueError('unsupported reference event descriptor')
+        eid, thread, creator, file64, lineno, code64 = fields[:6]
         rows.append(dict(id=int(eid), thread=int(thread), creator=int(creator),
                          file=base64.b64decode(file64).decode(), line=int(lineno),
                          code=base64.b64decode(code64).decode(),
+                         original_id=int(fields[6]) if len(fields) == 8 else -1,
+                         unrolling_id=int(fields[7]) if len(fields) == 8 else -1,
                          descriptor=base64.b64encode(line.encode()).decode()))
     return lines[0], rows
 
@@ -178,6 +183,29 @@ def calibrate(args):
             row.update(case=name, expected=expected, matched=row['status'] == expected)
             results.append(row)
             print(bits, name, row['status'], 'expected', expected, flush=True)
+        skipped = source.with_name('loop-create-skipped.c')
+        folder = out / f'{bits}-skipped-source'
+        base = run(args, cp, skipped, bits, folder)
+        if base['status'] != 'SOURCE_RACE':
+            raise AssertionError(base)
+        h, es = events(folder / 'events.tsv')
+        creates = [e for e in es if e['code'].startswith('ThreadCreate(')]
+        if len(creates) != 2:
+            raise AssertionError('expected both conditional creation clones in IR')
+        child = next(e['thread'] for e in es if e['creator'] == creates[1]['id'])
+        targets = [next(e for e in es if e['thread'] == t and 'store(&data,' in e['code'])
+                   for t in (0, child)]
+        flag = next(e for e in es if e['thread'] == 0 and 'store(&skip_first,' in e['code'])
+        cert = certificate(h, targets + [flag, creates[1]])
+        cert['event.2.value'] = 1
+        forced = copy.deepcopy(cert); forced['event.3.creation_occurrence'] = 2
+        for name, cert, expected in (
+                ('skipped-clone-source-feasible', cert, 'SAT'),
+                ('skipped-clone-cannot-be-second-occurrence', forced, 'UNSAT_AT_BOUND')):
+            row = run(args, cp, skipped, bits, out / f'{bits}-{name}', cert)
+            row.update(case=name, expected=expected, matched=row['status'] == expected)
+            results.append(row)
+            print(bits, name, row['status'], 'expected', expected, flush=True)
         locked = source.with_name('same-entry-locked.c')
         folder = out / f'{bits}-locked-source'
         base = run(args, cp, locked, bits, folder)
@@ -191,6 +219,31 @@ def calibrate(args):
         row.update(case='common-lock', expected='UNSAT_AT_BOUND', matched=row['status'] == 'UNSAT_AT_BOUND')
         results.append(row)
         print(bits, 'common-lock', row['status'], flush=True)
+        loop = source.with_name('loop-create.c')
+        folder = out / f'{bits}-loop-source'
+        base = run(args, cp, loop, bits, folder)
+        if base['status'] != 'SOURCE_RACE':
+            raise AssertionError(base)
+        h, es = events(folder / 'events.tsv')
+        targets = [e for e in es if 'store(&data,' in e['code']]
+        creates = [e for e in es if e['code'].startswith('ThreadCreate(')]
+        if len(targets) != 2 or len(creates) != 2 or len({e['unrolling_id'] for e in creates}) != 1:
+            raise AssertionError('expected two clones of one creation site')
+        cert = certificate(h, targets + creates)
+        cert.update({'event.0.value': 1, 'event.1.value': 2,
+                     'event.2.creation_occurrence': 1, 'event.3.creation_occurrence': 2})
+        cases = [('loop-creation-valid', cert, 'SAT')]
+        for name, updates, expected in (
+                ('loop-creation-wrong-rank', {'event.3.creation_occurrence': 1}, 'UNSUPPORTED'),
+                ('loop-creation-wrong-kind', {'event.0.creation_occurrence': 1}, 'UNSUPPORTED'),
+                ('loop-creation-swapped-values', {'event.0.value': 2, 'event.1.value': 1}, 'UNSAT_AT_BOUND')):
+            changed = copy.deepcopy(cert); changed.update(updates)
+            cases.append((name, changed, expected))
+        for name, cert, expected in cases:
+            row = run(args, cp, loop, bits, out / f'{bits}-{name}', cert)
+            row.update(case=name, expected=expected, matched=row['status'] == expected)
+            results.append(row)
+            print(bits, name, row['status'], 'expected', expected, flush=True)
     summary = dict(reference_commit=PIN, adapter_sha256=digest(HERE/'StrictWitness.java'),
                    reference_jar_sha256=digest(args.reference/'dartagnan/target/dartagnan.jar'),
                    scope='processed-IR constraints; not arbitrary IKOS witness validation',
