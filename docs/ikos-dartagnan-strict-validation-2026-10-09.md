@@ -8,13 +8,15 @@
 `scripts/dartagnan_strict/calibrate.py` 核对固定提交
 `7caef5c850dc2dbf81c5554dcf41e402007f7a19` 的 AssumeSolver 源码 hash，
 在临时目录生成并编译 hook，通过 classpath 使用原 JAR/依赖，不覆盖原工具包。
-完整程序、CAT 内存模型及性质编码仍由 Dartagnan 提供。
+完整程序和 CAT 内存模型编码仍由 Dartagnan 提供。无证书运行保留原生性质查询；
+固定证书查询后来改为指定对的双向相邻可行性，见末节，不再叠加原生单方向存在性查询。
 
 hook 把查询限制到证书指定的动态事件/线程、具体创建事件、所选竞争对，以及
 可选内存值、地址和 rf/co/hb 关系。处理后 IR 指纹与事件描述必须匹配。
 未识别字段、无法表示的值及错误身份在求解之前终止，不忽略后继续接受。
 证书模式关闭线程对称性破缺：指定实例不能因与另一个实例对称而被任意排除。
-竞争对公式参考原 PropertyEncoder，归属与许可见 `DAT3M-LICENSE`。
+竞争对公式参考原 PropertyEncoder，固定模型模式另支持相反实际方向；
+归属与许可见 `DAT3M-LICENSE`。
 
 ILP32/LP64 共 **26 项断言通过**：合法同入口两实例证书 SAT；错误线程、
 创建事件、IR、描述和越界值被拒绝处理；错误值/地址、同实例候选、非冲突候选、
@@ -118,3 +120,28 @@ IKOS 分析器和前端未改，build/install cmp 一致，本阶段不重复102
 [逐候选及删约束记录](artifacts/dartagnan-strict-2026-10-09/creation-occurrence-real-candidates.json)。
 仍是部分验证，完整 CFG、局部值、同步和总调度/rf 未绑定；独立验证计数没有增加。
 日志、编译类和DB留在 `/tmp/ikos-dartagnan-creation-rank-2026-10-09-*`。
+
+## 固定值查询不能沿用原生的单方向存在性公式
+
+已定位上述三组固定值 UNSAT 的接口原因。固定版本 PropertyEncoder.java:388–396
+对读写对只尝试 `read-hb->write` 且 clock 差1。源码竞争存在性查询可以选择读到旧值，
+但固定 IKOS 模型可能先写、随后读到该写入值；后者不能保留固定值再交换访问顺序。
+最小例 read-after-write.c 中，worker 写7，main 读共享值：旧接口固定读0得到SAT，
+固定读7却得到UNSAT；两个方向都是无同步的合法竞争执行。
+
+证书模式现在检查同一指定冲突对的两个 CAT 相邻方向，仍要求真实执行、同址、
+不同线程及原非原子/RMW前提。只在此模式关闭原生的单方向性质约束，避免其通过
+另一个竞争对/另一个读值干扰固定模型查询；原程序、CAT、同步和证书约束都保留。
+无证书源码竞争查询保持原实现；证书模式拒绝 DATARACEFREEDOM 之外的性质。
+这仍是参考编码中的**指定对可行性研究接口**，不是官方validator，也不是完整IKOS
+反例验证器；双向 CAT 相邻关系不能直接称为一般 POSIX hb 证明。
+
+ILP32/LP64 共50项校准全部通过（原44项加读旧值、读新值、读不可能值三项每架构）；
+公共锁、同实例、错误值和错误候选仍被拒绝。旧/新查询的12项双架构配对都符合预期。
+[50项校准](artifacts/dartagnan-strict-2026-10-09/fixed-orientation-calibration.json)，
+[12项旧/新对照及真实候选](artifacts/dartagnan-strict-2026-10-09/fixed-orientation-evidence.json)。
+在不改实例、地址或固定值的情况下，fkp2014两组、13_unverif一组现均SAT；
+各组改变一个真实store值、保留原操作数/其余值，均UNSAT_AT_BOUND。
+此前UNSAT记录保留，用新接口结果解释，不撤回IKOS标签。
+完整CFG、局部值、同步顺序和总调度/rf仍未绑定，独立验证计数仍未增加。
+IKOS行为没有修改，本阶段不重跑build/P0/1029项；此前TP77基线不是本阶段新测数字。

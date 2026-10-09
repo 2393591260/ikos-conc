@@ -39,6 +39,8 @@ def build(args, out):
     text = replace_once(text, 'prover.addConstraint(symmetryEncoder.encodeFullSymmetryBreaking());',
                         'StrictWitness.constrain(context, prover);\n'
                         '        if (!StrictWitness.enabled()) prover.addConstraint(symmetryEncoder.encodeFullSymmetryBreaking());')
+    text = replace_once(text, 'propertyEncoder.encodeProperties(task.getProperty())',
+                        'StrictWitness.enabled() ? bmgr.makeTrue() : propertyEncoder.encodeProperties(task.getProperty())')
     text = replace_once(text, 'prover.writeComment("Bound encoding");',
                         'if (StrictWitness.enabled()) System.out.println("REFERENCE_CERTIFICATE_UNSAT_AT_BOUND");\n'
                         '            prover.writeComment("Bound encoding");')
@@ -241,6 +243,24 @@ def calibrate(args):
             cases.append((name, changed, expected))
         for name, cert, expected in cases:
             row = run(args, cp, loop, bits, out / f'{bits}-{name}', cert)
+            row.update(case=name, expected=expected, matched=row['status'] == expected)
+            results.append(row)
+            print(bits, name, row['status'], 'expected', expected, flush=True)
+        read_after = source.with_name('read-after-write.c')
+        folder = out / f'{bits}-read-after-source'
+        base = run(args, cp, read_after, bits, folder)
+        if base['status'] != 'SOURCE_RACE':
+            raise AssertionError(base)
+        h, es = events(folder / 'events.tsv')
+        targets = [next(e for e in es if 'load(&data)' in e['code']),
+                   next(e for e in es if 'store(&data,' in e['code'])]
+        cert = certificate(h, targets)
+        cert['event.1.value'] = 7
+        for name, value, expected in (
+                ('read-before-write', 0, 'SAT'), ('read-after-write', 7, 'SAT'),
+                ('read-impossible-value', 8, 'UNSAT_AT_BOUND')):
+            changed = copy.deepcopy(cert); changed['event.0.value'] = value
+            row = run(args, cp, read_after, bits, out / f'{bits}-{name}', changed)
             row.update(case=name, expected=expected, matched=row['status'] == expected)
             results.append(row)
             print(bits, name, row['status'], 'expected', expected, flush=True)

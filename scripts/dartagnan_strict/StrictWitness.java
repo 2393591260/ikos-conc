@@ -2,6 +2,7 @@ package com.dat3m.dartagnan.verification.solving;
 
 import com.dat3m.dartagnan.encoding.EncodingContext;
 import com.dat3m.dartagnan.encoding.ProverWithTracker;
+import com.dat3m.dartagnan.configuration.Property;
 import com.dat3m.dartagnan.expression.type.TypeFactory;
 import com.dat3m.dartagnan.program.event.Event;
 import com.dat3m.dartagnan.program.event.Tag;
@@ -109,16 +110,21 @@ public final class StrictWitness {
         var mo = e.getMetadata(MemoryOrder.class);
         return !e.hasTag(Tag.INIT) && (mo == null || mo.value().equals(Tag.C11.NONATOMIC));
     }
-    // Restrict the existing native race query to exactly this pair. This is CAT hb,
-    // not POSIX hb or IKOS's scheduler clock. Do not translate total order to this edge.
+    // Fix this pair at either adjacent orientation. This is CAT hb, not POSIX hb
+    // or IKOS's scheduler clock. Do not translate total order to this edge.
     private static BooleanFormula race(EncodingContext c, MemoryCoreEvent w, MemoryCoreEvent m) {
         var bm = c.getBooleanFormulaManager();
         if (!w.hasTag(Tag.WRITE) || w.getThread() == m.getThread() || !canRace(w) || !canRace(m)
             || (w.hasTag(Tag.RMW) && m.hasTag(Tag.RMW))) return bm.makeFalse();
         var im = c.getFormulaManager().getIntegerFormulaManager();
-        return bm.and(c.execution(w, m), c.sameAddress(w, m),
-            c.edge(c.getTask().getMemoryModel().getRelation("hb"), m, w),
+        var hb = c.getTask().getMemoryModel().getRelation("hb");
+        // The native existence query chooses read-before-write. A fixed model
+        // can read this very write, so retain both actual adjacent orientations.
+        var before = bm.and(c.edge(hb, m, w),
             im.equal(c.clockVariable("hb", w), im.add(c.clockVariable("hb", m), im.makeNumber(1))));
+        var after = bm.and(c.edge(hb, w, m),
+            im.equal(c.clockVariable("hb", m), im.add(c.clockVariable("hb", w), im.makeNumber(1))));
+        return bm.and(c.execution(w, m), c.sameAddress(w, m), bm.or(before, after));
     }
     public static void constrain(EncodingContext c, ProverWithTracker prover) {
         try {
@@ -134,6 +140,8 @@ public final class StrictWitness {
             String dump = System.getenv("IKOS_STRICT_EVENT_DUMP");
             if (dump != null) Files.writeString(Path.of(dump), hash + "\n" + snapshot);
             if (!enabled()) return;
+            if (c.getTask().getProperty().size() != 1 || !c.getTask().getProperty().contains(Property.DATARACEFREEDOM))
+                throw new IllegalArgumentException("fixed-model query only supports DATARACEFREEDOM");
             Properties p = new Properties();
             try (var reader = Files.newBufferedReader(Path.of(System.getenv("IKOS_STRICT_CERTIFICATE")))) { p.load(reader); }
             if (!"1".equals(p.getProperty("schema")) || !hash.equals(p.getProperty("ir_sha256")))

@@ -60,6 +60,10 @@ airline-25在60/180秒及单对约束检查均超时，75个事件值和24条co�
 named-target最小例固定两个IKOS内存事件后参考SAT，修改存值后UNSAT_AT_BOUND。
 fkp2014、13_unverif因循环创建点无法唯一映射到参考实例，严格映射器返回UNMAPPED，
 没有选择另一个实例代替。具体同步、局部值、CFG、总调度和所有TP的完整验证仍未闭环。
+后续严格接口已补循环创建occurrence约束：上述两例共三组候选的已绑定内存部分得到SAT，
+修改store值后UNSAT；原生单方向查询与固定值的冲突已单独校准。
+这是部分验证的进展，未升级成完整反例验证；见
+[严格验证更新](ikos-dartagnan-strict-validation-2026-10-09.md)。
 全量是ILP32；LP64仅定向回归。原始日志/试验/DB均在
 `/tmp/ikos-atomic-target-2026-10-09/`。
 
