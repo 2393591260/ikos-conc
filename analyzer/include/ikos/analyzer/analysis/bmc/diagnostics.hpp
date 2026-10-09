@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <ikos/ar/semantic/statement.hpp>
+#include <ikos/analyzer/json/json.hpp>
 
 namespace ikos {
 namespace analyzer {
@@ -19,6 +20,7 @@ struct Diagnostics {
   struct Step {ar::Statement* stmt; std::string clock;};
   std::vector< Step > confirmed_a, confirmed_b, confirmed_startup;
   std::string model;
+  JsonDict replay;
   std::map< std::string, std::size_t > counts;
   std::vector< Example > examples;
   std::string first_blocker;

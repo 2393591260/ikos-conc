@@ -1,0 +1,924 @@
+{
+  "tasks": 1029,
+  "identical": true,
+  "matrix": {
+    "TP": 58,
+    "FP": 0,
+    "TN": 698,
+    "FN": 0,
+    "error": 0,
+    "unknown": 273
+  },
+  "p0_observations": 20,
+  "analyzer_sha256": "e5ff1cce7ac586051699923787588b8ea3efab5360e1068409d4cf3d0a1e3471",
+  "stage": "structured export only",
+  "tasks_with_export": 58,
+  "exported_pairs": 71,
+  "observations": [
+    {
+      "task": "c/goblint-regression/00-sanity_09-include.yml",
+      "input_sha256": "9d688e86e7e4087606ab9d08173c4c227b663da7e997bbf86bcc599e41d5985e",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 17,
+          "steps": 11,
+          "encoded_values": 2,
+          "encoded_addresses": 5
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/03-practical_07-nonterm.yml",
+      "input_sha256": "1a5c45a44223147f393b74702a24905a50f014553bda5f1e486b1b813907bad6",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 27,
+          "steps": 13,
+          "encoded_values": 2,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/03-practical_08-nonterm1.yml",
+      "input_sha256": "3e969e32a88a5e156b51cffed83cf3d4aa28237f70c2f7ecca29f3fc87e23114",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 40,
+          "steps": 24,
+          "encoded_values": 4,
+          "encoded_addresses": 10
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/03-practical_15-exit_problems.yml",
+      "input_sha256": "5a6f58d33d2b81528ca8565b89a520d0b28390552fc2b179422de5d107efa015",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 24,
+          "steps": 15,
+          "encoded_values": 2,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_01-simple_rc.yml",
+      "input_sha256": "f386a8eced027f444b288d0e2b86adb39ba6177e302e8e8c075532cb09ebacc4",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 23,
+          "steps": 13,
+          "encoded_values": 2,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_03-munge_rc.yml",
+      "input_sha256": "aab2115ad2e925c4213b3ce20b28f5d1793c3c4d4ff2243b939094d903ee91f0",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 21,
+          "steps": 17,
+          "encoded_values": 2,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_06-ps_rc.yml",
+      "input_sha256": "6ff62bc1009e856ebfdbcc1756ddab571d8672e93ee6d6eb2d652f5f205a6980",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 36,
+          "steps": 22,
+          "encoded_values": 3,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_09-ptrmunge_rc.yml",
+      "input_sha256": "98ade1545a6507815c327cd3fc492f66b7c6ddf31c82d9f9cf04be524a97482e",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 21,
+          "steps": 17,
+          "encoded_values": 2,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_11-ptr_rc.yml",
+      "input_sha256": "71ba38fd5ed66bb007d5bb9846445fbaefd63ff00f3378443bfa6be6d343bab6",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 23,
+          "steps": 13,
+          "encoded_values": 2,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_14-funarg_rc.yml",
+      "input_sha256": "c5b7dc0e540e307a6b72f1c856de4e5efd074e26d20a9cb66b738ee1a80b8921",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 32,
+          "steps": 13,
+          "encoded_values": 2,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_16-ps_add1_rc.yml",
+      "input_sha256": "f14ae10b41ae5d21e4843c4d2c5b0585a53e06611a0f2164ba4ebd070e3a3e0d",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 38,
+          "steps": 21,
+          "encoded_values": 4,
+          "encoded_addresses": 5
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_19-call_by_ptr_rc.yml",
+      "input_sha256": "09bd5495e14a3740024968451b998f3083d63bdb3b7ff8a79710ef998155339e",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 37,
+          "steps": 21,
+          "encoded_values": 4,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_21-sound_base.yml",
+      "input_sha256": "68c0c5000c21f9e9ce587210ecf523aa294fc1749c89b05b6201f4ee47346a2b",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 22,
+          "steps": 8,
+          "encoded_values": 0,
+          "encoded_addresses": 3
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_24-sound_lock.yml",
+      "input_sha256": "00547e36d203d351ce109def1a1c049ccdf8634fc105a04d7e326eea727b86e1",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 34,
+          "steps": 21,
+          "encoded_values": 4,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_25-single_acc.yml",
+      "input_sha256": "d750445530daa57cef2f441377464e89f7d2e9f88f73166de8896066b4af753c",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 14,
+          "steps": 13,
+          "encoded_values": 2,
+          "encoded_addresses": 5
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_47-fun_write.yml",
+      "input_sha256": "5b0292c738c94357f593ff6c55dd0d3ce5b536c491ec9ddb366c9e0619302adc",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 23,
+          "steps": 13,
+          "encoded_values": 0,
+          "encoded_addresses": 5
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_50-funptr_rc.yml",
+      "input_sha256": "ee142d20666d60ac4fd7f821852d0a9e3e7678fb9031d4a65233e7f955d8ec95",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 24,
+          "steps": 12,
+          "encoded_values": 0,
+          "encoded_addresses": 5
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_55-pt_rwlock_rr.yml",
+      "input_sha256": "3bc4e24382ea60332625fc43697e18a0341207a28648f6b22b09d36670c74715",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 29,
+          "steps": 13,
+          "encoded_values": 2,
+          "encoded_addresses": 6
+        },
+        {
+          "pair_id": 0,
+          "instructions": 29,
+          "steps": 19,
+          "encoded_values": 4,
+          "encoded_addresses": 9
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_01-idx_rc.yml",
+      "input_sha256": "56a6e25282b29868c16664dd03b49f4664ee7d481a2f71d72d1017e2ed35171a",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 29,
+          "steps": 66,
+          "encoded_values": 23,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_03-fld_rc.yml",
+      "input_sha256": "10228ef7c40ddc635535d704f043727867d6dccb8dd54aab36d2ec6c768346d1",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 25,
+          "steps": 17,
+          "encoded_values": 2,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_05-glob_idx_rc.yml",
+      "input_sha256": "d685ff0dbd621781bc284ec18b9cefcdab391a7cba0994455a59081cf8a12788",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 17,
+          "steps": 12,
+          "encoded_values": 2,
+          "encoded_addresses": 4
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_07-glob_fld_rc.yml",
+      "input_sha256": "051e9de902f5f925b76552326852b754e8794c3d6efac87d73f390ecaab1f793",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 17,
+          "steps": 12,
+          "encoded_values": 2,
+          "encoded_addresses": 4
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_08-glob_fld_2_rc.yml",
+      "input_sha256": "f42aa68b87f2b35193e6ff5d46d2fe0f91ded9a814a1ef0270a9838c89e0ea48",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 21,
+          "steps": 16,
+          "encoded_values": 2,
+          "encoded_addresses": 5
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_09-idxsense_rc.yml",
+      "input_sha256": "8c1781f4276fb7477e65ff70325038ade597aa15f5765b1b35bb643b25a9eda4",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 33,
+          "steps": 69,
+          "encoded_values": 23,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_11-fldsense_rc.yml",
+      "input_sha256": "4aad48867934589e3a01ca7f74518ea1c168c8ea92dc1c011e0828ba06fbf654",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 29,
+          "steps": 20,
+          "encoded_values": 2,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_13-idxunknown_lock.yml",
+      "input_sha256": "7688aff6d5d22cc8ccec6097e1f98cf9f4c3da7a9a8bbabab449855d0421cf17",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 53,
+          "steps": 82,
+          "encoded_values": 28,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_14-idxunknown_access.yml",
+      "input_sha256": "604d6f32ad556c32a6b07f3bb57d696511cb4f2a0c5078b65ceef78243de6f21",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 36,
+          "steps": 25,
+          "encoded_values": 7,
+          "encoded_addresses": 4
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_15-fldunknown_access.yml",
+      "input_sha256": "822e3cbe8154a40a0b16b4ed770984d9583e88fef936bc78ca0b018dfdbef072",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 24,
+          "steps": 17,
+          "encoded_values": 3,
+          "encoded_addresses": 4
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/06-symbeq_03-funloop_simple.yml",
+      "input_sha256": "ef37663658139b358a9f093f3b929c9ceece424d125426dc196af43d94bde65c",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 46,
+          "steps": 294,
+          "encoded_values": 85,
+          "encoded_addresses": 65
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/06-symbeq_04-funloop_hard1.yml",
+      "input_sha256": "24244265f01939585dcad60d79e24558b858e5e4c04744e3239e6582f5d25cc4",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 50,
+          "steps": 296,
+          "encoded_values": 85,
+          "encoded_addresses": 66
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/06-symbeq_09-tricky_address4.yml",
+      "input_sha256": "1f3bfcbefa47ffbbca39d8d8566e5ce2761e25d53033962fa4c6edf41ef0c3ed",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 72,
+          "steps": 109,
+          "encoded_values": 34,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/goblint-regression/10-synch_02-thread_nonunique.yml",
+      "input_sha256": "bc78788d98da2638169fe03657250fbf876e72c9f507aa825539bd8508a72f4d",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 21,
+          "steps": 14,
+          "encoded_values": 3,
+          "encoded_addresses": 2
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/ldv-races/race-1_2b-join.yml",
+      "input_sha256": "475c64db2a2029c09985266553634853aa5ae7653363254bdcc8a56a9d27dc04",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 80,
+          "steps": 23,
+          "encoded_values": 5,
+          "encoded_addresses": 5
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/ldv-races/race-1_3b-join.yml",
+      "input_sha256": "c73b137d4d055d601e6891c370b9da4780621da8a7fc8a5ca4886c6b3b685d8b",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 80,
+          "steps": 28,
+          "encoded_values": 7,
+          "encoded_addresses": 5
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-atomic/dekker-b-unfair.yml",
+      "input_sha256": "00eedb63fb9d62a729cbdbbc78c20dc2306cd626b581321e129d31c09fc5db8e",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 78,
+          "steps": 24,
+          "encoded_values": 6,
+          "encoded_addresses": 7
+        },
+        {
+          "pair_id": 0,
+          "instructions": 78,
+          "steps": 24,
+          "encoded_values": 6,
+          "encoded_addresses": 7
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-atomic/dekker-b.yml",
+      "input_sha256": "ee2c91df2652a75c113f2667be77b799d83dae8d01b1c36baa45b8c25ceec25f",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 78,
+          "steps": 24,
+          "encoded_values": 6,
+          "encoded_addresses": 7
+        },
+        {
+          "pair_id": 0,
+          "instructions": 78,
+          "steps": 24,
+          "encoded_values": 6,
+          "encoded_addresses": 7
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-atomic/lamport-b.yml",
+      "input_sha256": "9bb446a7af732154870b2839e66288d9133e28dfbbe8fe81423789728796a44c",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 81,
+          "steps": 13,
+          "encoded_values": 0,
+          "encoded_addresses": 6
+        },
+        {
+          "pair_id": 0,
+          "instructions": 81,
+          "steps": 17,
+          "encoded_values": 1,
+          "encoded_addresses": 9
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-atomic/peterson-b.yml",
+      "input_sha256": "13ba0c0f12adccd3d0e8bef05c1f05e632aaa49018b022a8b148494f09e3ffe5",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 61,
+          "steps": 13,
+          "encoded_values": 0,
+          "encoded_addresses": 6
+        },
+        {
+          "pair_id": 0,
+          "instructions": 61,
+          "steps": 13,
+          "encoded_values": 0,
+          "encoded_addresses": 6
+        },
+        {
+          "pair_id": 0,
+          "instructions": 61,
+          "steps": 13,
+          "encoded_values": 0,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-atomic/read_write_lock-1b.yml",
+      "input_sha256": "d6a3f8c57ab77e58af8013fe9ddd1fa7c1d656ac7e087660662f74a34f2abc91",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 49,
+          "steps": 26,
+          "encoded_values": 0,
+          "encoded_addresses": 11
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-atomic/scull.yml",
+      "input_sha256": "aa00f20131f5095ed14e7a46332bb5342dc26be5a17ecfa68bf5b51120e1579b",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 361,
+          "steps": 63,
+          "encoded_values": 1,
+          "encoded_addresses": 20
+        },
+        {
+          "pair_id": 0,
+          "instructions": 361,
+          "steps": 56,
+          "encoded_values": 1,
+          "encoded_addresses": 13
+        },
+        {
+          "pair_id": 0,
+          "instructions": 361,
+          "steps": 57,
+          "encoded_values": 1,
+          "encoded_addresses": 14
+        },
+        {
+          "pair_id": 0,
+          "instructions": 361,
+          "steps": 53,
+          "encoded_values": 1,
+          "encoded_addresses": 10
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-atomic/szymanski-b.yml",
+      "input_sha256": "85c07d53d6385c45c48e29a19b83e4c86409a0ffe74e084bb9e5c8a5937c23fb",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 89,
+          "steps": 12,
+          "encoded_values": 0,
+          "encoded_addresses": 5
+        },
+        {
+          "pair_id": 0,
+          "instructions": 89,
+          "steps": 12,
+          "encoded_values": 0,
+          "encoded_addresses": 5
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-ext/17_szymanski.yml",
+      "input_sha256": "9d000bd3a81a7401f4ccb21c2696e2644e9236d2ccbd2094291c987ec91aaa92",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 84,
+          "steps": 9,
+          "encoded_values": 0,
+          "encoded_addresses": 4
+        },
+        {
+          "pair_id": 0,
+          "instructions": 84,
+          "steps": 9,
+          "encoded_values": 0,
+          "encoded_addresses": 4
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-ext/27_Boop_simple_vf.yml",
+      "input_sha256": "ce64fcfa63b9df647c320ea90e20b624e2dad5b9ca256083b6d2f56c3177560a",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 63,
+          "steps": 23,
+          "encoded_values": 6,
+          "encoded_addresses": 11
+        },
+        {
+          "pair_id": 0,
+          "instructions": 63,
+          "steps": 11,
+          "encoded_values": 0,
+          "encoded_addresses": 5
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-ext/45_monabsex1_vs-b.yml",
+      "input_sha256": "8f6daa714ad29a28643c70bea2be7f060091d3c3adf6e85890e4056205fd8d77",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 22,
+          "steps": 15,
+          "encoded_values": 0,
+          "encoded_addresses": 5
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-ext/46_monabsex2_vs-b.yml",
+      "input_sha256": "cb0da49952f084f4179c44b957c91689c392bf769782a6b0853667237fdff1db",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 37,
+          "steps": 22,
+          "encoded_values": 6,
+          "encoded_addresses": 6
+        },
+        {
+          "pair_id": 2,
+          "instructions": 37,
+          "steps": 26,
+          "encoded_values": 9,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-lit/fkp2013-1.yml",
+      "input_sha256": "ac100ce7c66b3266dc643fb77471441d693f59fe8c56e13ccaa684a73cdda8b0",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 50,
+          "steps": 19,
+          "encoded_values": 3,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-lit/fkp2013-2.yml",
+      "input_sha256": "e812004a84a4494a04d3a026bee09dbf1dbf7d202520f02258b12ac817a7a74e",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 50,
+          "steps": 19,
+          "encoded_values": 3,
+          "encoded_addresses": 6
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-lit/fkp2013_variant-1.yml",
+      "input_sha256": "6f1a33edf94ce8e584ad249b95ad5bb2102c6ab4d820eebd8874b39ecbf22785",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 63,
+          "steps": 32,
+          "encoded_values": 9,
+          "encoded_addresses": 9
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-lit/fkp2013_variant-2.yml",
+      "input_sha256": "37f99419c791b8329e91533415d896c367c9197a331e0ac4d97f5b27dc6c2be9",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 63,
+          "steps": 32,
+          "encoded_values": 9,
+          "encoded_addresses": 9
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-lit/qw2004-1.yml",
+      "input_sha256": "3fb83c29fe591f537beeb8acce355ea986d79a29cfcecdcee0a9fb1725d601d1",
+      "pairs": [
+        {
+          "pair_id": 1,
+          "instructions": 83,
+          "steps": 54,
+          "encoded_values": 11,
+          "encoded_addresses": 15
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-lit/qw2004-2.yml",
+      "input_sha256": "a0f042164bf78d3595348b117153fa7346585efa21c060e488a9879023a64e1b",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 104,
+          "steps": 72,
+          "encoded_values": 10,
+          "encoded_addresses": 16
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-nondet/nondet-loop-bound-1.yml",
+      "input_sha256": "cdf629ba70521b99830442583c87012a34d164ca28f01f7e59d76ae2f1e525ff",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 68,
+          "steps": 35,
+          "encoded_values": 11,
+          "encoded_addresses": 10
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-nondet/nondet-loop-bound-2.yml",
+      "input_sha256": "9d7936e5b6ec9509cab6289f8b3da6dd07c923c681ccf9d629892aaea9fa54f9",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 68,
+          "steps": 35,
+          "encoded_values": 11,
+          "encoded_addresses": 10
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-nondet/nondet-loop-bound-variant-1.yml",
+      "input_sha256": "645ee85d2a671dd1acf511bbf13e9e3bda7e0b5cc29e8abc16fb4ed3af500077",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 89,
+          "steps": 52,
+          "encoded_values": 17,
+          "encoded_addresses": 12
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-nondet/nondet-loop-bound-variant-2.yml",
+      "input_sha256": "dc1a8bd7c922f93873ec39bdce92396c491017d4a5984ae9a59a0e03f4bb08ec",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 89,
+          "steps": 52,
+          "encoded_values": 17,
+          "encoded_addresses": 12
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-race-challenges/thread-join-counter-inner-race.yml",
+      "input_sha256": "490e43bb8ca19cea87b27390f3d2ab0cf6fc9da6355c682d1c6272a9c3d813c1",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 70,
+          "steps": 112,
+          "encoded_values": 37,
+          "encoded_addresses": 19
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-race-challenges/thread-join-counter-outer-race-3.yml",
+      "input_sha256": "a77d68c8e15036e88d70009e5342d88dd2f93f021b72148028da08073ac36a38",
+      "pairs": [
+        {
+          "pair_id": 0,
+          "instructions": 65,
+          "steps": 43,
+          "encoded_values": 10,
+          "encoded_addresses": 12
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    },
+    {
+      "task": "c/pthread-race-challenges/thread-join-counter-outer-race.yml",
+      "input_sha256": "47827fdca8ccc83dae99015d656cdcf2872ea585121905304e5ffb2ef40b4eac",
+      "pairs": [
+        {
+          "pair_id": 5,
+          "instructions": 48,
+          "steps": 164,
+          "encoded_values": 67,
+          "encoded_addresses": 52
+        }
+      ],
+      "validation_status": "UNVALIDATED"
+    }
+  ],
+  "raw_evidence": "/tmp/ikos-p0-replay-2026-10-09",
+  "full_command": "IKOS_BMC_RECOVER=1 python3 svcomp_race_test.py --demote --jobs 4 --only-fail"
+}

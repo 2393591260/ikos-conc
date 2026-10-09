@@ -1520,6 +1520,7 @@ DataRaceChecker::~DataRaceChecker() {
             d.put("confirmed_path_b", path_info(diagnostics.confirmed_b));
             d.put("confirmed_startup", path_info(diagnostics.confirmed_startup));
             d.put("smt_model", diagnostics.model);
+            d.put("replay", diagnostics.replay);
           }
           candidate_diagnostics.add(d);
         }

@@ -16,6 +16,7 @@
 #include "unroll.hpp"
 #include "facts.hpp"
 #include "initial.hpp"
+#include "replay.hpp"
 
 namespace ikos {
 namespace analyzer {
@@ -209,6 +210,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   using ValueKey = std::pair< ar::InternalVariable*, std::size_t >;
   using ValueCache = std::map< ValueKey, z3::expr >;
   ValueCache cache_a, cache_b, cache_init;
+  std::map< const BmcEvent*, z3::expr > replay_offsets;
   std::function<
       bool(ar::Value*, z3::expr&, ValueCache&, const std::string&, unsigned, std::size_t) >
       encode_value;
@@ -754,6 +756,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
         }
         out = out + ctx.int_val(e.coeff.str().c_str()) * value;
       }
+      replay_offsets.emplace(&e, out);
       return true;
     };
     auto valid_memory = [&](const std::vector< BmcEvent >& path, ValueCache& cache, const std::string& prefix) {
@@ -840,6 +843,52 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       if (diagnostics != nullptr && diagnostics->model.empty()) {
         auto model = s.get_model();
         diagnostics->model = model.to_string();
+        ReplaySnapshot snapshot(funcA->bundle());
+        diagnostics->replay.put("schema", 1);
+        diagnostics->replay.put("validation_status", "UNVALIDATED");
+        diagnostics->replay.put("program", snapshot.program());
+        JsonList traces;
+        auto export_trace = [&](const std::vector< BmcEvent >& path, const ValueCache& values,
+                                const std::string& id, ar::Function* entry, std::size_t start) {
+          JsonDict trace; trace.put("id", id); trace.put("entry", entry->name()); JsonList steps;
+          if (id != "startup" && entry->name() != "main") {
+            const auto& creator = funcA->name() == "main" ? pathA : funcB->name() == "main" ? pathB : startup;
+            std::size_t occurrence = id == "b" && funcA == funcB ? 1 : 0;
+            for (std::size_t j = 0; j < creator.size(); ++j)
+              if (creator[j].kind == EvKind::Create && creator[j].thread == reinterpret_cast< std::uint64_t >(entry)) {
+                if (occurrence-- != 0) continue;
+                trace.put("creator_trace", funcA->name() == "main" ? "a" : funcB->name() == "main" ? "b" : "startup");
+                trace.put("creator_step", j); break;
+              }
+          }
+          for (std::size_t i = 0; i < path.size(); ++i) {
+            JsonDict step; step.put("statement", snapshot.statement_id(path[i].stmt));
+            if (id != "startup") step.put("clock", Z3_get_numeral_string(ctx, model.eval(clock[start + i], true)));
+            auto* result = core::dyn_cast_or_null< ar::InternalVariable >(path[i].stmt->result_or_null());
+            if (result != nullptr) {
+              auto cached = values.find({result, i});
+              if (cached != values.end()) step.put("encoded_result", Z3_get_numeral_string(ctx, model.eval(cached->second, true)));
+            }
+            const auto& e = path[i];
+            if (e.base != 0 || e.local_base != nullptr) {
+              auto offset = replay_offsets.find(&e);
+              if (offset != replay_offsets.end() || e.var_id == 0) {
+                step.put("encoded_address", JsonDict{
+                    {"object", snapshot.value(e.base != 0 ? static_cast< ar::Value* >(reinterpret_cast< ar::GlobalVariable* >(e.base)) : e.local_base)},
+                    {"offset", offset != replay_offsets.end() ? std::string(Z3_get_numeral_string(ctx, model.eval(offset->second, true))) : e.const_off.str()},
+                    {"width", e.width}});
+              }
+            }
+            steps.add(step);
+          }
+          trace.put("steps", steps); traces.add(trace);
+        };
+        if (!startup.empty()) export_trace(startup, cache_init, "startup", funcA->bundle()->function_or_null("main"), 0);
+        export_trace(pathA, cache_a, "a", funcA, 0);
+        export_trace(pathB, cache_b, "b", funcB, nA);
+        diagnostics->replay.put("traces", traces);
+        diagnostics->replay.put("targets", JsonList(JsonDict{{"trace", "a"}, {"step", nA - 1}},
+                                                   JsonDict{{"trace", "b"}, {"step", nB - 1}}));
         for (std::size_t i = 0; i < startup.size(); ++i)
           diagnostics->confirmed_startup.push_back({startup[i].stmt, "startup_" + std::to_string(i)});
         for (std::size_t i = 0; i < nA; ++i)
