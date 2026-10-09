@@ -54,26 +54,6 @@ def first_race(data):
     return None
 
 
-def opening_paren_column(source, line, start_col):
-    """Column of the '(' that opens the call starting at (line, start_col).
-
-    The 2.2 guide nominally defines `function_enter` at the RIGHT parenthesis,
-    but CPAchecker's witness parser (the validator SV-COMP uses) still matches
-    the OPENING paren via getColumnOfFunctionCallParenthesis (= function-name
-    start column + name length; see CPAchecker work item 1687). Keep the
-    opening paren so CPAchecker confirms the witness.
-    """
-    try:
-        with open(source, encoding="utf-8", errors="replace") as f:
-            text = f.readlines()[line - 1]
-    except (OSError, IndexError):
-        return start_col
-    for i in range(start_col - 1, len(text)):
-        if text[i] == "(":
-            return i + 1  # 1-indexed column of the opening paren
-    return start_col
-
-
 def statement_start_column(source, line, col):
     """Column of the first character of the statement containing (line, col).
 
@@ -107,11 +87,12 @@ def loc(obj, source, function=None, kind="target", is_write=False):
     out = {"file_name": obj.get("file", "unknown.c")}
     if "line" in obj:
         out["line"] = obj["line"]
-    if "column" in obj:
+    # The released 2.2 guide uses the closing parenthesis for function_enter,
+    # while CPAchecker's current matcher uses the opening one. Column is
+    # optional in the format: keep a line location instead of a wrong column.
+    if "column" in obj and kind != "function_enter":
         col = obj["column"]
-        if kind == "function_enter":
-            col = opening_paren_column(source, obj["line"], col)
-        elif is_write:
+        if is_write:
             col = statement_start_column(source, obj["line"], col)
         out["column"] = col
     if function:
@@ -124,8 +105,20 @@ def build_witness(source, info, data_model):
 
     # thread_id map: main -> 0, k-th pthread_create (in source order) -> k.
     tid = {"main": 0}
+    instances = {}
     for k, tc in enumerate(thread_creations, start=1):
-        tid.setdefault(tc.get("thread_function"), k)
+        name = tc.get("thread_function")
+        tid.setdefault(name, k)
+        instances.setdefault(name, []).append(k)
+    a_name = info["access_a"].get("thread_id")
+    b_name = info["access_b"].get("thread_id")
+    target_ids = [tid.get(a_name, 0), tid.get(b_name, 0)]
+    if a_name == b_name:
+        # The checker only confirms these pairs with two explicit live spawns.
+        created = instances.get(a_name, [])
+        if len(created) < 2:
+            raise ValueError("race witness requires two proven thread instances")
+        target_ids = created[:2]
 
     creator_id = {}
     for tc in thread_creations:
@@ -138,8 +131,7 @@ def build_witness(source, info, data_model):
             "type": "function_enter",
             "action": "follow",
             "thread_id": creator_id.get(tc.get("creator", "main"), 0),
-            "location": loc(tc, source, function=tc.get("creator", "main"),
-                            kind="function_enter"),
+            "location": loc(tc, source, kind="function_enter"),
         }}]
         content.append({"segment": seg})
 
@@ -151,16 +143,14 @@ def build_witness(source, info, data_model):
     final = [{"waypoint": {
         "type": "target",
         "action": "follow",
-        "thread_id": tid.get(info["access_a"].get("thread_id"), 0),
+        "thread_id": target_ids[0],
         "location": loc(info["access_a"], source,
-                        function=info["access_a"].get("thread_id"),
                         is_write=info["access_a"].get("kind") == 1),
     }}, {"waypoint": {
         "type": "target",
         "action": "follow",
-        "thread_id": tid.get(info["access_b"].get("thread_id"), 0),
+        "thread_id": target_ids[1],
         "location": loc(info["access_b"], source,
-                        function=info["access_b"].get("thread_id"),
                         is_write=info["access_b"].get("kind") == 1),
     }}]
     content.append({"segment": final})

@@ -1,14 +1,13 @@
 id: ikos-conc
 name: IKOS-ConC
 description: |
-  IKOS-ConC is a sound static analyzer for detecting data races in
-  concurrent C programs, built on the NASA IKOS framework. It performs a
-  thread-modular interprocedural analysis with a must-lockset / happens-before
-  check, then demotes every abstract race to UNKNOWN and re-confirms the
-  provable ones with a bounded model checker (SMT happens-before/alias
-  encoding). This is sound in both directions: no missed race (FN=0) and no
-  false positive (FP=0); a race is only claimed when the bounded checker
-  proves it.
+  IKOS-ConC analyzes data races in concurrent C programs using abstract
+  interpretation on the NASA IKOS framework. It combines thread-modular
+  interprocedural analysis with lockset and happens-before reasoning.
+  In its competition configuration, abstract race reports are demoted to
+  UNKNOWN and candidates are checked using a bounded SMT encoding with Z3.
+  Unsupported or inconclusive candidates remain UNKNOWN. For reported data
+  races, the tool emits YAML violation witnesses in SV-Witnesses format 2.2.
 input_languages:
   - C
 project_url: https://github.com/2393591260/ikos-conc
@@ -61,6 +60,8 @@ competition_participations:
   - competition: "SV-COMP 2027"
     track: "Verification"
     tool_version: "svcomp27"
+    categories:
+      - C.no-data-race.Concurrency
     jury_member:
       orcid: 0009-0007-5722-0468
       name: Ronghui Ruan

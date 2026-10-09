@@ -20,10 +20,13 @@ Usage:
 """
 
 import argparse
+import hashlib
+import json
 import os
 import shutil
 import subprocess
 import zipfile
+from datetime import datetime, timezone
 
 EXAMPLE_C = r"""// Built-in smoke-test example: a data race between two threads on `x`.
 #include <pthread.h>
@@ -38,26 +41,70 @@ int main(void) {
 }
 """
 
+SAFE_EXAMPLE_C = r"""// Both accesses to x are protected by the same mutex.
+#include <pthread.h>
+int x = 0;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+void *t(void *arg) {
+  pthread_mutex_lock(&lock);
+  x = 1;
+  pthread_mutex_unlock(&lock);
+  return 0;
+}
+int main(void) {
+  pthread_t th;
+  pthread_create(&th, 0, t, 0);
+  pthread_mutex_lock(&lock);
+  x = 2;
+  pthread_mutex_unlock(&lock);
+  pthread_join(th, 0);
+  return 0;
+}
+"""
+
 SMOKETEST = r"""#!/bin/sh
-# Smoke test: the analyzer must run on a built-in example and produce a
-# verdict. Exits 0 on success (the tool is functional), non-zero on failure.
-# Covers both data models: the SV-COMP no-data-race category is entirely
-# ILP32, so the -m32 run is the path the competition actually exercises (and
-# needs the 32-bit headers declared in required_ubuntu_packages:
-# libc6-dev-i386 + lib32gcc-13-dev).
+# Exercise the competition wrapper, verdicts and witness output in both models.
 set -e
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT
+trap 'exit 1' HUP INT TERM
+cd "$WORK"
 "$DIR/bin/ikos" --version
-"$DIR/bin/ikos" --analyses=race --concurrency=auto --format=no "$DIR/examples/smoke.c"
-"$DIR/bin/ikos" -m 32 --analyses=race --concurrency=auto --format=no "$DIR/examples/smoke.c"
-# SV-COMP scoring switch: --demote-race-to-unknown turns every abstract race
-# into UNKNOWN, then IKOS_BMC_RECOVER=1 lets the bounded checker re-confirm the
-# provable ones as "definitely UNSAFE" (FALSE). The smoke race is provable, so
-# the shipped config must report "definitely UNSAFE" — sound (FN=0/FP=0) with
-# recovered TRUE positives.
-IKOS_BMC_RECOVER=1 "$DIR/bin/ikos" -m 32 --analyses=race --concurrency=auto \
-  --demote-race-to-unknown --format=no "$DIR/examples/smoke.c" 2>&1 \
-  | grep -q "definitely UNSAFE"
+for model in ILP32 LP64; do
+  if ! output=$(python3 "$DIR/bin/svcomp_witness.py" \
+    --ikos "$DIR/bin/ikos" --data-model "$model" \
+    --out "$WORK/race-$model.yml" "$DIR/examples/smoke.c" 2>&1); then
+    printf '%s\n' "$output"
+    exit 1
+  fi
+  printf '%s\n' "$output"
+  case "$output" in
+    *"The program is definitely UNSAFE"*) ;;
+    *) exit 1 ;;
+  esac
+  python3 - "$WORK/race-$model.yml" "$model" <<'PY'
+import json
+import sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    witness = json.load(f)
+assert witness[0]["entry_type"] == "violation_sequence"
+assert witness[0]["metadata"]["format_version"] == "2.2"
+assert witness[0]["metadata"]["task"]["data_model"] == sys.argv[2]
+PY
+  if ! output=$(python3 "$DIR/bin/svcomp_witness.py" \
+    --ikos "$DIR/bin/ikos" --data-model "$model" \
+    --out "$WORK/safe-$model.yml" "$DIR/examples/safe.c" 2>&1); then
+    printf '%s\n' "$output"
+    exit 1
+  fi
+  printf '%s\n' "$output"
+  case "$output" in
+    *"The program is SAFE"*) ;;
+    *) exit 1 ;;
+  esac
+  test ! -e "$WORK/safe-$model.yml"
+done
 """
 
 README = r"""# IKOS-ConC — Concurrent Data-Race Detection
@@ -66,8 +113,11 @@ IKOS-ConC is a static analyzer for detecting data races in concurrent C
 programs, built on the NASA IKOS framework. It participates in the SV-COMP
 `C.no-data-race` category.
 
-The analysis is sound with respect to data races (no missed races): it reports
-every potential data race it can prove, at the cost of some false positives.
+The abstract analysis reports potential races. The competition entry point
+demotes these warnings to UNKNOWN and uses bounded execution/value/address/
+synchronization constraints to confirm supported finite race executions.
+Unsupported confirmation cases stay UNKNOWN. Finite regression results are
+not a proof of whole-tool soundness.
 
 ## Usage (standalone)
 
@@ -91,11 +141,9 @@ runs IKOS in two stages:
    happens-before / alias encoding with SMT. A proven race is reported as
    `definitely UNSAFE` (= FALSE, +1); everything else stays UNKNOWN (0).
 
-The re-confirmation is sound for the FALSE direction — it only claims a race
-when the HB/alias encoding proves one — so the net result is FN=0 and FP=0
-with a few dozen recovered TRUE positives. This is the scoring configuration
-the entry point ships (a recovered race is claimed by the bounded checker, not
-the imprecise abstract front end).
+The entry point only claims a race after bounded confirmation. UNSAT or
+unsupported bounded searches do not prove SAFE. Independently validating the
+violation witness remains a separate check.
 
     ./bin/ikos --analyses=race --concurrency=auto --demote-race-to-unknown <file.c>   # + env IKOS_BMC_RECOVER=1
 
@@ -116,9 +164,20 @@ and forwards it, recording the matching `data_model` in `witness.yml`.
 BenchExec tool-info module: `benchexec/tools/ikos-conc.py` (tool id `ikos-conc`).
 The tool fixes the analysis to `--analyses=race --concurrency=auto
 --demote-race-to-unknown` + the bounded re-confirmation (`IKOS_BMC_RECOVER=1`),
-and emits TRUE (SAFE) / FALSE (race, only when proven) / UNKNOWN. Because a
-race is only ever claimed when the bounded checker proves it, the FALSE
-direction is sound: no missed race (FN=0) and no false positive (FP=0).
+and emits TRUE (SAFE) / FALSE (confirmed race) / UNKNOWN. On a confirmed race,
+the wrapper writes witness.yml in YAML-compatible JSON, format 2.2.
+Run ./smoketest.sh to check the wrapper on bundled race and safe examples in
+ILP32 and LP64. The smoke check does not perform independent witness validation.
+
+## Source and build identity
+
+Source repository: https://github.com/2393591260/ikos-conc
+BUILD-INFO.json records the source revision, local modifications and binary
+hashes of this archive. Uncommitted source changes must also be made publicly
+available by the submitter to reproduce the recorded build.
+MODIFICATIONS.txt identifies the concurrency extension to the original NASA
+IKOS software. LICENSE.txt contains the NASA Open Source Agreement 1.3.
+Third-party notices for bundled components are in licenses/.
 
 ## Layout
 
@@ -248,6 +307,8 @@ def package(install_dir, out, llvm_root, apron_dir):
     os.makedirs(os.path.join(install, "examples"), exist_ok=True)
     with open(os.path.join(install, "examples", "smoke.c"), "w") as f:
         f.write(EXAMPLE_C)
+    with open(os.path.join(install, "examples", "safe.c"), "w") as f:
+        f.write(SAFE_EXAMPLE_C)
     with open(os.path.join(install, "smoketest.sh"), "w") as f:
         f.write(SMOKETEST)
     os.chmod(os.path.join(install, "smoketest.sh"), 0o755)
@@ -259,6 +320,40 @@ def package(install_dir, out, llvm_root, apron_dir):
     # next to the `ikos` executable: the BenchExec tool-info module locates it
     # via Path(executable).parent / "svcomp_witness.py".
     shutil.copy("svcomp_witness.py", os.path.join(install, "bin", "svcomp_witness.py"))
+
+    # Record the concrete binaries; HEAD alone cannot identify a dirty build.
+    def git_output(*args):
+        return subprocess.check_output(["git", *args], text=True).strip()
+
+    binaries = ["bin/ikos-analyzer", "bin/ikos-pp", "bin/svcomp_witness.py"]
+    build_info = {
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "repository": "https://github.com/2393591260/ikos-conc",
+        "git_head": git_output("rev-parse", "HEAD"),
+        "working_tree_status": git_output("status", "--short"),
+        "sha256": {},
+    }
+    for binary in binaries:
+        with open(os.path.join(install, binary), "rb") as f:
+            build_info["sha256"][binary] = hashlib.sha256(f.read()).hexdigest()
+    with open(os.path.join(install, "BUILD-INFO.json"), "w") as f:
+        json.dump(build_info, f, indent=2)
+        f.write("\n")
+    with open(os.path.join(install, "MODIFICATIONS.txt"), "w") as f:
+        f.write(
+            "IKOS-ConC modifications, maintained by Ronghui Ruan, "
+            + build_info["created_at"][:10] + "\n"
+            "This software is derived from original IKOS software provided by "
+            "NASA and is characterized as a Modification.\n"
+            "The extension adds concurrent thread/memory analysis, race checking, "
+            "bounded confirmation and SV-COMP integration.\n"
+            "See BUILD-INFO.json and the source repository for build identity.\n"
+        )
+
+    notice_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              "third-party-licenses")
+    shutil.copytree(notice_dir, os.path.join(install, "licenses"),
+                    dirs_exist_ok=True)
 
     # 7. zip (single top-level dir, executable bit preserved)
     # Exclude Python bytecode caches (__pycache__/*.pyc) and stray result
