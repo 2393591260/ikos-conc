@@ -1,0 +1,157 @@
+{
+  "analyzer_commit": "3806ea4",
+  "analyzer_sha256": "9dcbee95ade0881b13b171b313cb3da5f170a66991f2c3763231b53d1061cc68",
+  "frozen_tasks": 1029,
+  "baseline": {
+    "TP": 61,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 271,
+    "error": 0
+  },
+  "records": 300,
+  "current_unknown": 271,
+  "current_unknown_statuses": {
+    "confirmed_reference_race_ikos_remaining": 132,
+    "reference_timeout": 83,
+    "reference_error": 25,
+    "reference_pass": 26,
+    "reference_label_disagreement": 4,
+    "reference_unknown": 1
+  },
+  "all_records_statuses": {
+    "confirmed_reference_race_ikos_remaining": 132,
+    "reference_timeout": 83,
+    "reference_error": 25,
+    "reference_pass": 26,
+    "restored_label_tp_not_fully_validated": 26,
+    "restored_safe": 3,
+    "reference_label_disagreement": 4,
+    "reference_unknown": 1
+  },
+  "reference_outcomes_current_unknown": {
+    "FAIL": 133,
+    "TIMEOUT": 83,
+    "ERROR": 25,
+    "PASS": 29,
+    "UNKNOWN": 1
+  },
+  "new_reference_tasks": [
+    "c/goblint-regression/04-mutex_36-trylock_nr.yml",
+    "c/pthread/reorder_2.yml",
+    "c/pthread/reorder_5.yml",
+    "c/pthread/twostage_3.yml"
+  ],
+  "diagnostics": {
+    "tasks": 271,
+    "matrix": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 0,
+      "FN": 0,
+      "error": 0,
+      "unknown": 271
+    },
+    "unknown_tasks_by_observed_reason": {
+      "non_global_object": {
+        "racy": 45,
+        "safe": 32
+      },
+      "address_base": {
+        "racy": 1
+      },
+      "integer_operation": {
+        "racy": 6,
+        "safe": 8
+      },
+      "sc_read_from": {
+        "racy": 6,
+        "safe": 9
+      },
+      "call_summary": {
+        "racy": 87,
+        "safe": 34
+      },
+      "target_not_reached": {
+        "racy": 87,
+        "safe": 42
+      },
+      "points_to_not_singleton": {
+        "racy": 18,
+        "safe": 15
+      },
+      "thread_activation_unproven": {
+        "racy": 58,
+        "safe": 46
+      },
+      "prefix_address": {
+        "racy": 1
+      },
+      "ai_candidate_bounds": {
+        "safe": 11,
+        "racy": 5
+      },
+      "smt_unsat": {
+        "safe": 11,
+        "racy": 5
+      },
+      "offset_prefilter": {
+        "safe": 10,
+        "racy": 10
+      },
+      "transitive_thread_order": {
+        "safe": 11,
+        "racy": 3
+      },
+      "prefix_statement": {
+        "safe": 14,
+        "racy": 16
+      },
+      "mixed_atomic": {
+        "safe": 2
+      },
+      "unroll_path_budget": {
+        "safe": 3,
+        "racy": 4
+      },
+      "unmodeled_sync": {
+        "safe": 3
+      },
+      "startup_read_from": {
+        "safe": 1
+      },
+      "search_budget": {
+        "racy": 7,
+        "safe": 5
+      },
+      "unroll_work_budget": {
+        "racy": 7,
+        "safe": 4
+      },
+      "atomic_prefix_open": {
+        "racy": 19,
+        "safe": 5
+      },
+      "prefix_value_origin": {
+        "racy": 6,
+        "safe": 1
+      },
+      "group_search_budget": {
+        "racy": 18,
+        "safe": 6
+      }
+    },
+    "note": "Reasons overlap; counts are observed blockers, not recoverable TP estimates. First blockers describe recorded traversal order; later stages behind failed gates were not explored.",
+    "timeout": 30,
+    "jobs": 8,
+    "environment": {
+      "IKOS_BMC_RECOVER": "1",
+      "IKOS_BMC_DIAGNOSTICS": "1"
+    }
+  },
+  "source_hashes_verified": true,
+  "reference_reuse": "Only identical source hashes reuse historical reference observations; inherited reference results were not rerun.",
+  "warning": "Overlapping diagnostic blockers are not recoverable TP counts. No mathematical impossibility or full independent counterexample validation is claimed.",
+  "raw_logs": "/tmp/ikos-ledger-current-2026-10-09"
+}
