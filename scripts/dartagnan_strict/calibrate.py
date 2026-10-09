@@ -130,14 +130,18 @@ def events(path):
         if len(fields) not in (6, 8, 9):
             raise ValueError('unsupported reference event descriptor')
         eid, thread, creator, file64, lineno, code64 = fields[:6]
-        rows.append(dict(id=int(eid), thread=int(thread), creator=int(creator),
+        row = dict(id=int(eid), thread=int(thread), creator=int(creator),
                          file=base64.b64decode(file64).decode(), line=int(lineno),
                          code=base64.b64decode(code64).decode(),
                          original_id=int(fields[6]) if len(fields) >= 8 else -1,
                          unrolling_id=int(fields[7]) if len(fields) >= 8 else -1,
                          nondet=len(fields) == 9 and fields[8].startswith('nondet'),
                          nondet_bits=int(fields[8].split(':')[1]) if len(fields) == 9 and fields[8].startswith('nondet:') else -1,
-                         descriptor=base64.b64encode(line.encode()).decode()))
+                         descriptor=base64.b64encode(line.encode()).decode())
+        if len(fields) == 9 and fields[8].startswith('init:'):
+            _, name, offset, bits = fields[8].split(':')
+            row['initial'] = dict(object=base64.b64decode(name).decode(), offset=int(offset), bits=int(bits))
+        rows.append(row)
     return lines[0], rows
 
 

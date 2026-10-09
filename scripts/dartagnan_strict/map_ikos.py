@@ -56,7 +56,7 @@ def is_creation(ar):
             and operands[0].get('id') in ('pthread_create', 'ar.pthread.create'))
 
 
-def communication(replay, memory_bindings):
+def communication(replay, memory_bindings, initial_writes=None):
     """Bind known SC write order/read sources, leaving incomplete regions explicit."""
     mapped = {(m['trace'], m['step']): m['reference_event'] for m in memory_bindings}
     regions, unsupported, omitted = {}, set(), []
@@ -109,12 +109,41 @@ def communication(replay, memory_bindings):
             if unknown_writer or any(w['event'] is None for w in writes):
                 reason = 'unmapped/unknown write source'
             elif not prior:
+                initial = (initial_writes or {}).get(region)
+                if initial is not None:
+                    edges.append(dict(relation='rf', **{'from': initial, 'to': read['event']}))
+                    continue
                 reason = 'implicit initial write not mapped'
             else:
                 edges.append(dict(relation='rf', **{'from': prior[-1]['event'], 'to': read['event']}))
                 continue
             omitted.append(dict(trace=read['trace'], step=read['step'], reason=reason))
     return edges, omitted
+
+
+def initial_sources(replay, memory_bindings, ir_events):
+    """Only identical integer fields can bind an implicit initial read source."""
+    traces = {t['id']: t for t in replay['traces']}
+    regions = {}
+    for binding in memory_bindings:
+        step = traces[binding['trace']]['steps'][binding['step']]
+        ar = replay['program']['instructions'][step['statement']]
+        if ar['kind'] != 'load':
+            continue
+        address = step['encoded_address']
+        region = (address['object']['id'], int(address['offset']), int(address['width']))
+        t = ar.get('result', {}).get('type', {})
+        regions.setdefault(region, set()).add(t.get('bits') if t.get('kind') == 'integer' else None)
+    sources = {}
+    for (name, offset, width), bits in regions.items():
+        if len(bits) != 1 or None in bits:
+            continue
+        matches = [e for e in ir_events if e.get('initial') ==
+                   dict(object=name, offset=offset, bits=next(iter(bits)))
+                   and (next(iter(bits)) + 7) // 8 == width]
+        if len(matches) == 1:
+            sources[name, offset, width] = matches[0]['id']
+    return sources
 
 
 def memory_orderings(replay, bindings):
@@ -294,6 +323,17 @@ def translate(replay, ir_hash, ir_events):
         if key not in mapped_steps:
             raise ValueError('chosen target is unmapped')
         target_ids.append(mapped_steps[key])
+    initial_writes = initial_sources(replay, memory_bindings, ir_events)
+    edges, communication_omissions = communication(replay, memory_bindings, initial_writes)
+    used_initial = {edge['from'] for edge in edges if edge['relation'] == 'rf'} & set(initial_writes.values())
+    initial_bindings = []
+    for e in ir_events:
+        if e['id'] not in used_initial:
+            continue
+        init = e['initial']
+        bound[e['id']] = e
+        claims[e['id']] = dict(object=init['object'], offset=init['offset'], width=(init['bits'] + 7) // 8)
+        initial_bindings.append(dict(reference_event=e['id'], **init))
     selected = ([bound[i] for i in target_ids] + [e for i, e in bound.items() if i not in target_ids]
                 + [e for e, _ in creators.values()])
     if target_ids[0] == target_ids[1]:
@@ -303,7 +343,6 @@ def translate(replay, ir_hash, ir_events):
         cert.update({f'event.{i}.{k}': v for k, v in claims.get(e['id'], {}).items()})
         if e['id'] in creators and creators[e['id']][1] is not None:
             cert[f'event.{i}.creation_occurrence'] = creators[e['id']][1]
-    edges, communication_omissions = communication(replay, memory_bindings)
     cert['edge_count'] = len(edges)
     for i, edge in enumerate(edges):
         for key, value in edge.items():
@@ -318,6 +357,7 @@ def translate(replay, ir_hash, ir_events):
                       creation_bindings=creation_bindings,
                       memory_bindings=memory_bindings,
                       nondet_bindings=nondet_bindings,
+                      initial_bindings=initial_bindings,
                       communication_bindings=edges,
                       communication_omissions=communication_omissions,
                       memory_orderings=orders, memory_order_omissions=order_omissions,

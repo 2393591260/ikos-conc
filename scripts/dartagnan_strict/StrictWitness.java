@@ -10,6 +10,7 @@ import com.dat3m.dartagnan.program.event.Tag;
 import com.dat3m.dartagnan.program.event.core.MemoryCoreEvent;
 import com.dat3m.dartagnan.program.event.core.CondJump;
 import com.dat3m.dartagnan.program.event.core.Local;
+import com.dat3m.dartagnan.program.event.core.Init;
 import com.dat3m.dartagnan.program.event.core.threading.ThreadCreate;
 import com.dat3m.dartagnan.program.misc.NonDetValue;
 import com.dat3m.dartagnan.program.event.metadata.MemoryOrder;
@@ -47,7 +48,10 @@ public final class StrictWitness {
             + "\t" + (original == null ? -1 : original.value())
             + "\t" + (unrolling == null ? -1 : unrolling.value())
             + "\t" + (e instanceof Local l && l.getExpr() instanceof NonDetValue
-                && l.getResultRegister().getType() instanceof IntegerType t ? "nondet:" + t.getBitWidth() : "");
+                && l.getResultRegister().getType() instanceof IntegerType t ? "nondet:" + t.getBitWidth()
+                : e instanceof Init i && i.getBase().isStaticallyAllocated()
+                    && i.getBase().getName() != null && i.getValue().getType() instanceof IntegerType t
+                    ? "init:" + b64(i.getBase().getName()) + ":" + i.getOffset() + ":" + t.getBitWidth() : "");
     }
     private static void creationOccurrence(EncodingContext c, ProverWithTracker prover, Event e, String ordinal) throws InterruptedException {
         occurrence(c, prover, e, ordinal, true);

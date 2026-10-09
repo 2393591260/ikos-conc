@@ -1,0 +1,193 @@
+{
+  "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+  "report_sha256": "256458c0359f7593cfc5bb5429868d4b8bb415ae303d3626e215baa754124830",
+  "input_sha256": "f386a8eced027f444b288d0e2b86adb39ba6177e302e8e8c075532cb09ebacc4",
+  "rows": [
+    {
+      "report_index": 0,
+      "pair_id": 0,
+      "full_counterexample_validated": false,
+      "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+      "threads": {
+        "a": 0,
+        "b": 1
+      },
+      "mapped_memory_events": 3,
+      "omitted_steps": [
+        {
+          "trace": "a",
+          "step": 0,
+          "kind": "call",
+          "reason": "not a mapped global memory access"
+        },
+        {
+          "trace": "a",
+          "step": 1,
+          "kind": "allocate",
+          "reason": "not a mapped global memory access"
+        },
+        {
+          "trace": "a",
+          "step": 2,
+          "kind": "call",
+          "reason": "not a mapped global memory access"
+        },
+        {
+          "trace": "a",
+          "step": 3,
+          "kind": "store",
+          "reason": "not a mapped global memory access"
+        },
+        {
+          "trace": "a",
+          "step": 4,
+          "kind": "call",
+          "reason": "not a mapped global memory access"
+        },
+        {
+          "trace": "a",
+          "step": 5,
+          "kind": "unary",
+          "reason": "not a mapped global memory access"
+        },
+        {
+          "trace": "a",
+          "step": 6,
+          "kind": "call",
+          "reason": "not a mapped global memory access"
+        },
+        {
+          "trace": "b",
+          "step": 0,
+          "kind": "unary",
+          "reason": "not a mapped global memory access"
+        },
+        {
+          "trace": "b",
+          "step": 1,
+          "kind": "call",
+          "reason": "not a mapped global memory access"
+        },
+        {
+          "trace": "b",
+          "step": 3,
+          "kind": "binary",
+          "reason": "not a mapped global memory access"
+        }
+      ],
+      "creation_bindings": [
+        {
+          "trace": "b",
+          "parent_trace": "a",
+          "creator_step": 4,
+          "reference_event": 3,
+          "occurrence": null,
+          "pre_unroll_id": 30
+        }
+      ],
+      "memory_bindings": [
+        {
+          "trace": "a",
+          "step": 7,
+          "reference_event": 32,
+          "occurrence": null,
+          "pre_unroll_id": 54
+        },
+        {
+          "trace": "b",
+          "step": 2,
+          "reference_event": 86,
+          "occurrence": null,
+          "pre_unroll_id": 19
+        },
+        {
+          "trace": "b",
+          "step": 4,
+          "reference_event": 87,
+          "occurrence": null,
+          "pre_unroll_id": 21
+        }
+      ],
+      "nondet_bindings": [],
+      "initial_bindings": [
+        {
+          "reference_event": 138,
+          "object": "myglobal",
+          "offset": 0,
+          "bits": 32
+        }
+      ],
+      "communication_bindings": [
+        {
+          "relation": "rf",
+          "from": 87,
+          "to": 32
+        },
+        {
+          "relation": "rf",
+          "from": 138,
+          "to": 86
+        }
+      ],
+      "communication_omissions": [],
+      "memory_orderings": [
+        {
+          "before": 86,
+          "after": 87
+        },
+        {
+          "before": 87,
+          "after": 32
+        }
+      ],
+      "memory_order_omissions": [],
+      "unbound_claims": [
+        "CFG and call occurrence mapping",
+        "local values and nondet occurrences",
+        "synchronization history and identities",
+        "IKOS total schedule and rf choices"
+      ],
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 1.9960290399999394,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/initial-simple/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_01-simple_rc.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "f386a8eced027f444b288d0e2b86adb39ba6177e302e8e8c075532cb09ebacc4",
+        "data_model": "32"
+      },
+      "corruption_probe": {
+        "status": "UNSAT_AT_BOUND",
+        "returncode": 0,
+        "seconds": 1.9569238720000612,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/initial-simple/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_01-simple_rc.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "f386a8eced027f444b288d0e2b86adb39ba6177e302e8e8c075532cb09ebacc4",
+        "data_model": "32"
+      }
+    }
+  ],
+  "warning": "Partial fixed-memory evidence; no full-counterexample verification claim"
+}

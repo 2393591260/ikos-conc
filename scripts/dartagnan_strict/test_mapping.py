@@ -16,7 +16,7 @@ def main(args):
     cert, coverage = translate(replay, h, es)
     assert coverage['full_counterexample_validated'] is False
     assert coverage['mapped_memory_events'] == 3
-    assert cert['count'] == 3 + len(coverage['creation_bindings'])
+    assert cert['count'] == 3 + len(coverage['creation_bindings']) + len(coverage['initial_bindings'])
     traces = {t['id']: t for t in replay['traces']}
     child_name = next(t['id'] for t in replay['traces'] if 'creator_trace' in t)
 
@@ -91,7 +91,11 @@ def main(args):
     rejected(replay, e)
     r = copy.deepcopy(replay)
     t = next(t for t in r['traces'] if t['id'] == 'startup')
-    t['steps'].append(copy.deepcopy(t['steps'][-1]))
+    # Some constant loops are fully expanded before the requested bound.
+    # Exceed the actual creation capacity, rather than assuming two clones.
+    creation = t['steps'][next(x for x in r['traces'] if x['id'] == 'b')['creator_step']]
+    capacity = sum(e['code'].startswith('ThreadCreate(') for e in es)
+    t['steps'].extend(copy.deepcopy(creation) for _ in range(capacity + 1))
     next(t for t in r['traces'] if t['id'] == 'b')['creator_step'] = len(t['steps']) - 1
     rejected(r, es)
     print('7 repeated-creation mapping assertions passed')
