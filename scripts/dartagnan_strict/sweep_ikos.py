@@ -18,6 +18,7 @@ parser.add_argument('--reports', type=Path, required=True)
 parser.add_argument('--output', type=Path, required=True)
 parser.add_argument('--export-summary', type=Path, default=root/'docs/artifacts/bmc-replay-2026-10-09/export-summary.json')
 parser.add_argument('--timeout', type=int, default=60)
+parser.add_argument('--bound', type=int, default=2)
 parser.add_argument('--jobs', type=int, default=2)
 parser.add_argument('--reference', type=Path, default=Path('/home/ruan/dartagnan-svcomp2026/dartagnan'))
 parser.add_argument('--source', type=Path, default=Path('/tmp/ikos-dartagnan-source/Dat3M-'+PIN))
@@ -66,7 +67,7 @@ from collections import Counter
 summary={'reference_commit':PIN,'reference_jar_sha256':digest(args.reference/'dartagnan/target/dartagnan.jar'),
  'cat_sha256':digest(args.reference/'cat/svcomp.cat'),'mapper_sha256':digest(root/'scripts/dartagnan_strict/map_ikos.py'),
  'hook_sha256':digest(root/'scripts/dartagnan_strict/StrictWitness.java'),'scope':'PARTIAL_FIXED_MEMORY_MODEL',
- 'full_counterexample_validated':False,'bound':2,'timeout':cli.timeout,'jobs':cli.jobs,'tasks':len(rows),'pairs':sum(len(r['pairs']) for r in rows),
+ 'full_counterexample_validated':False,'bound':cli.bound,'timeout':cli.timeout,'jobs':cli.jobs,'tasks':len(rows),'pairs':sum(len(r['pairs']) for r in rows),
  'counts':dict(Counter(p['status'] for r in rows for p in r['pairs'])),
  'rows':sorted(rows,key=lambda r:r['task'])}
 (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')

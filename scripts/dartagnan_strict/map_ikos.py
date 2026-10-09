@@ -150,4 +150,5 @@ if __name__ == '__main__':
     p.add_argument('--source', type=Path, default=Path('/tmp/ikos-dartagnan-source/Dat3M-'+PIN))
     p.add_argument('--javac', type=Path, default=Path('/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/javac'))
     p.add_argument('--timeout', type=int, default=60)
+    p.add_argument('--bound', type=int, default=2)
     main(p.parse_args())

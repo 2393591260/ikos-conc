@@ -80,7 +80,7 @@ def run(args, cp, source, bits, folder, cert=None):
         env['IKOS_STRICT_CERTIFICATE'] = str(folder / 'certificate.properties')
     cmd = ['java', '-Xmx2g', '-cp', cp, 'com.dat3m.dartagnan.Dartagnan',
            'cat/svcomp.cat', str(source), 'svcomp.properties', '--property=DATARACEFREEDOM',
-           '--bound=2', '--program.processing.skipAssertionsOfType=USER']
+           f'--bound={getattr(args, "bound", 2)}', '--program.processing.skipAssertionsOfType=USER']
     start = time.monotonic()
     proc = subprocess.Popen(cmd, cwd=args.reference, env=env, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, start_new_session=True)
@@ -207,4 +207,5 @@ if __name__ == '__main__':
     p.add_argument('--javac', type=Path, default=Path('/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/javac'))
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--timeout', type=int, default=60)
+    p.add_argument('--bound', type=int, default=2)
     calibrate(p.parse_args())
