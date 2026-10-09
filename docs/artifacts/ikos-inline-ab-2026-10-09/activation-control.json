@@ -1,0 +1,64 @@
+[
+  {
+    "name": "current",
+    "inline_all": false,
+    "returncode": 0,
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos-pp",
+      "-opt=none",
+      "-entry-points=main",
+      "/tmp/ikos-inline-ab-2026-10-09/noinline-control.ll",
+      "-o",
+      "/tmp/ikos-inline-ab-2026-10-09/control-current-False.bc"
+    ],
+    "error": "",
+    "helper_remains": true
+  },
+  {
+    "name": "current",
+    "inline_all": true,
+    "returncode": 0,
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos-pp",
+      "-opt=none",
+      "-entry-points=main",
+      "-inline-all",
+      "/tmp/ikos-inline-ab-2026-10-09/noinline-control.ll",
+      "-o",
+      "/tmp/ikos-inline-ab-2026-10-09/control-current-True.bc"
+    ],
+    "error": "",
+    "helper_remains": false
+  },
+  {
+    "name": "preserve-noinline",
+    "inline_all": false,
+    "returncode": 0,
+    "command": [
+      "/tmp/ikos-inline-ab-2026-10-09/ikos-pp-preserve-noinline",
+      "-opt=none",
+      "-entry-points=main",
+      "/tmp/ikos-inline-ab-2026-10-09/noinline-control.ll",
+      "-o",
+      "/tmp/ikos-inline-ab-2026-10-09/control-preserve-noinline-False.bc"
+    ],
+    "error": "",
+    "helper_remains": true
+  },
+  {
+    "name": "preserve-noinline",
+    "inline_all": true,
+    "returncode": 0,
+    "command": [
+      "/tmp/ikos-inline-ab-2026-10-09/ikos-pp-preserve-noinline",
+      "-opt=none",
+      "-entry-points=main",
+      "-inline-all",
+      "/tmp/ikos-inline-ab-2026-10-09/noinline-control.ll",
+      "-o",
+      "/tmp/ikos-inline-ab-2026-10-09/control-preserve-noinline-True.bc"
+    ],
+    "error": "",
+    "helper_remains": false
+  }
+]
