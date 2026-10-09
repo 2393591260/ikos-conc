@@ -1,0 +1,33 @@
+{
+  "analyzer_commit": "25e3a1e",
+  "analyzer_sha256": "05bbb5ff2aea3b177a8e96fbd9388b295d7d3abad6c58a0c4a16bf2c9efbf1a7",
+  "baseline": {
+    "TP": 77,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 255,
+    "error": 0
+  },
+  "records": 300,
+  "current_unknown": 255,
+  "current_unknown_statuses": {
+    "confirmed_reference_race_ikos_remaining": 117,
+    "reference_timeout": 82,
+    "reference_error": 25,
+    "reference_pass": 26,
+    "reference_label_disagreement": 4,
+    "reference_unknown": 1
+  },
+  "diagnostic_matrix": {
+    "TP": 0,
+    "FP": 0,
+    "TN": 0,
+    "FN": 0,
+    "error": 0,
+    "unknown": 255
+  },
+  "all_current_unknown_diagnostics_fresh": true,
+  "scope": "Frozen 1029 ILP32; current UNKNOWN rerun 255/255, reference reuse only under source hash equality",
+  "full_counterexample_validation": false
+}

@@ -3,6 +3,7 @@
 > 本文描述当前实现、证据前提和能力边界；读过源码或测试通过不等于获得完整 soundness 证明。
 > 最新 UNKNOWN 全量遍历及基线见 [逐任务恢复报告](ikos-bmc-unknown-sweep-2026-10-09.md)。
 > 当前冻结集回归：TP=77（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=255 / 错误=0。
+> 剩余255项已用TP77二进制全部重新诊断，300条历史/当前记录见[更新台账](ikos-bmc-post-atomic-ledger-2026-10-09.md)。
 > atomic内部目标可保留真实尾部，要求双方完成路径并提前排除atomic/atomic候选，见[目标闭包报告](ikos-bmc-atomic-target-2026-10-09.md)（67→77）；完整独立验证仍未闭环。
 > 完整命名atomic helper前缀已保留不可分割区间，六项UNKNOWN恢复FALSE，见[命名atomic报告](ikos-bmc-named-atomic-2026-10-09.md)（61→67）。
 > 动态仿射守卫减少无溢出循环的不可行路径，唯一恢复 fmaxsymopt，见[守卫报告](ikos-bmc-affine-guards-2026-10-09.md)（60→61）。

@@ -1268,6 +1268,27 @@
       ],
       "source_sha256": "dc44c09c63836e77e2249e5abf8328354015a2494c028ff1b2e04f58fa741976",
       "data_model": "32"
+    },
+    {
+      "artifact": "reference-airline/airline-25-fixed-co/result.json",
+      "status": "TIMEOUT",
+      "returncode": -9,
+      "seconds": 180.11115774499922,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-named-atomic-2026-10-09/reference-before/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/airline-25.i",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "a0d81069750f24e52e04bdb7efecd6d77b64aec41e058c154f75fbba11e6c11d",
+      "data_model": "32"
     }
   ],
   "partial_mapping": {
@@ -1647,5 +1668,5 @@
       "candidates": 4
     }
   ],
-  "reference_airline_25": "Unconstrained checks timeout at 60/180 seconds; pair check timeout at 180; fixed co retry pending. Do not claim a reference FAIL."
+  "reference_airline_25": "Unconstrained 60/180 second checks, fixed pair, and 75-event/24-co-edge checks all TIMEOUT; no fresh reference race confirmation."
 }

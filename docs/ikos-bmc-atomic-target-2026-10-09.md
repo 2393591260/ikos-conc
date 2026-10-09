@@ -54,7 +54,7 @@ intermediate、opposite-assume、both-atomic、mutex、ordered-state对照参考
 十项新TP：airline-5/10/15/20/25、01_inc、13_unverif、39_rand_lock_p0_vs-b、
 fkp2014、qw2004_variant。八项有本次无附加约束native FAIL；
 airline-20首轮60秒超时，固定两个参考访问及值后native竞争查询SAT。
-airline-25在60/180秒及单对约束检查均超时，固定更多值/co的检查另记录；
+airline-25在60/180秒及单对约束检查均超时，75个事件值和24条co边约束的重试仍在180秒超时；
 **不得把超时写成参考FAIL或把该标签TP称为独立确认的原IKOS反例**。
 
 named-target最小例固定两个IKOS内存事件后参考SAT，修改存值后UNSAT_AT_BOUND。
