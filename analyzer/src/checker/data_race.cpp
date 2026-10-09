@@ -640,8 +640,16 @@ DataRaceChecker::~DataRaceChecker() {
   // (after the non-unique write duplication above).
   std::vector< std::unordered_set< std::string > > joined_names(
       this->_accesses.size());
+  std::unordered_set< std::string > single_instance_threads{"main"};
   {
     auto thread_funcs = this->_ctx.concurrent_env.get_all_thread_functions();
+    for (ar::Function* f : thread_funcs) {
+      if (f != nullptr &&
+          this->_ctx.concurrent_env.thread_instances_are_static(f->name()) &&
+          this->_ctx.concurrent_env.get_func_instances(f->name()).size() == 1) {
+        single_instance_threads.insert(f->name());
+      }
+    }
     for (std::size_t k = 0; k < this->_accesses.size(); ++k) {
       const auto& joined = this->_accesses[k].joined_threads;
       const auto& spawned_insts = this->_accesses[k].spawned_instances;
@@ -784,6 +792,10 @@ DataRaceChecker::~DataRaceChecker() {
         // an intermediate ancestor.
         auto creates_before = [&](const AccessRecord& x,
                                   const AccessRecord& y) {
+          // Even a terminated instance of x may have left y running.
+          if (!single_instance_threads.count(x.thread_id)) {
+            return false;
+          }
           auto dir = this->_thread_creators.find(y.thread_id);
           if (dir == this->_thread_creators.end() ||
               dir->second.size() != 1) {
