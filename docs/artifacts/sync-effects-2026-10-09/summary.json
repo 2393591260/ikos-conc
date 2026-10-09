@@ -1,0 +1,962 @@
+{
+  "before_commit": "3fa264e",
+  "before": {
+    "TP": 61,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 271,
+    "error": 0
+  },
+  "after": {
+    "TP": 61,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 271,
+    "error": 0
+  },
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "transitions": [],
+  "before_analyzer_sha256": "9dcbee95ade0881b13b171b313cb3da5f170a66991f2c3763231b53d1061cc68",
+  "after_analyzer_sha256": "dc0ac791bd92ffd783159d0e3ef55503af4007e8a7b87ae0680a37ab99d63734",
+  "targeted_before": [
+    {
+      "case": "condattr-output-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "condattr-output-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "condattr-output-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "condattr-output-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "mixed-callee-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "mixed-callee-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "mixed-callee-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "mixed-callee-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "mutexattr-output-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "mutexattr-output-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "mutexattr-output-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "mutexattr-output-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "renamed-api-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "renamed-api-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "renamed-api-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "renamed-api-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "shared-handle-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "shared-handle-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "shared-handle-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "shared-handle-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "timeout-input-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "timeout-input-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "timeout-input-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "timeout-input-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    }
+  ],
+  "targeted_after": [
+    {
+      "case": "condattr-output-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "condattr-output-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "condattr-output-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "condattr-output-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "mixed-callee-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "mixed-callee-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "mixed-callee-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "mixed-callee-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "mutexattr-output-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "mutexattr-output-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "mutexattr-output-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "mutexattr-output-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "renamed-api-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "renamed-api-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "renamed-api-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "renamed-api-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "shared-handle-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "shared-handle-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "shared-handle-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "shared-handle-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "timeout-input-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "timeout-input-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "timeout-input-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "timeout-input-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    }
+  ],
+  "p0_observations": [
+    {
+      "source": "exclusive-flag.c",
+      "mode": "demote",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "demote",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    }
+  ],
+  "stdio_regressions": [
+    {
+      "case": "literal-output-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "literal-output-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "literal-output-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "literal-output-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-buffer-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-buffer-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-buffer-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-buffer-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "mutable-symbol-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "mutable-symbol-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "mutable-symbol-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "mutable-symbol-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "printf-n-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "printf-n-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "printf-n-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "printf-n-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "printf-string-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "printf-string-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "printf-string-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "printf-string-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "snprintf-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "snprintf-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "snprintf-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "snprintf-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    }
+  ],
+  "sem_regressions": [
+    {
+      "case": "local-output-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "local-output-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "locked-output-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "sem-getvalue-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "sem-getvalue-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "sem-getvalue-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "sem-getvalue-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    }
+  ],
+  "wrapping_regressions": [
+    {
+      "case": "unsigned-overflow-control",
+      "bits": 32,
+      "verdict": "The program is SAFE",
+      "counts": {}
+    },
+    {
+      "case": "unsigned-overflow-control",
+      "bits": 64,
+      "verdict": "The program is SAFE",
+      "counts": {}
+    },
+    {
+      "case": "unsigned-overflow-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "sat": 1
+      }
+    },
+    {
+      "case": "unsigned-overflow-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "sat": 1
+      }
+    },
+    {
+      "case": "wrapping-guard-control",
+      "bits": 32,
+      "verdict": "The program is SAFE",
+      "counts": {}
+    },
+    {
+      "case": "wrapping-guard-control",
+      "bits": 64,
+      "verdict": "The program is SAFE",
+      "counts": {}
+    },
+    {
+      "case": "unsigned-wrap-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "sat": 1
+      }
+    },
+    {
+      "case": "unsigned-wrap-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "sat": 1
+      }
+    }
+  ],
+  "reference": {
+    "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+    "bound": 2,
+    "rows": [
+      {
+        "case": "mutexattr-output-race",
+        "verdict": "PASS",
+        "status": "OTHER",
+        "returncode": 0,
+        "seconds": 1.434239135000098,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-sync-effects-2026-10-09/reference/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/sync-effects/mutexattr-output-race.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "ed869b540e08391182ad402af6df1a26df82e2095b6177b7a2bc68a8700d5263",
+        "data_model": "32"
+      },
+      {
+        "case": "condattr-output-race",
+        "verdict": "PASS",
+        "status": "OTHER",
+        "returncode": 0,
+        "seconds": 1.4572194849970401,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-sync-effects-2026-10-09/reference/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/sync-effects/condattr-output-race.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "3083259d0edc1a9cc42f4e1376310131f9dae65e975e0033a325bc969d4280cb",
+        "data_model": "32"
+      },
+      {
+        "case": "shared-handle-race",
+        "verdict": "FAIL",
+        "status": "SOURCE_RACE",
+        "returncode": 13,
+        "seconds": 1.7382528880043537,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-sync-effects-2026-10-09/reference/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/sync-effects/shared-handle-race.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "eb60a30e89997e595cf136b938a0834070720178f86752813f1e3215de5c64a2",
+        "data_model": "32"
+      },
+      {
+        "case": "timeout-input-race",
+        "verdict": "PASS",
+        "status": "OTHER",
+        "returncode": 0,
+        "seconds": 1.3428255210019415,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-sync-effects-2026-10-09/reference/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/sync-effects/timeout-input-race.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "3b707ea96366adc127f492c412c4bf32d28e3309058bda3d003e04608c5ed832",
+        "data_model": "32"
+      }
+    ]
+  },
+  "spec": [
+    {
+      "api": "pthread_mutexattr_gettype",
+      "url": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_mutexattr_gettype.html",
+      "status": "FETCHED",
+      "excerpt": "DESCRIPTION The pthread_mutexattr_gettype () and pthread_mutexattr_settype () functions, respectively, shall get and set the mutex type attribute. This attribute is set in the type parameter to these functions. The default value of the type attribute is PTHREAD_MUTEX_DEFAULT. The type of mutex is contained in the type attribute of the mutex attributes. Valid mutex types include: PTHREAD_MUTEX_NORMAL PTHREAD_MUTEX_ERRORCHECK PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_DEFAULT The mutex type affects the behavior of calls which lock and unlock the mutex. See pthread_mutex_lock () for details. An implementation may map PTHREAD_MUTEX_DEFAULT to one of the other mutex types. The behavior is undefined if the value specified by the attr argument to pthread_mutexattr_gettype () or pthread_mutexattr_settype () does not refer to an initialized mutex attributes object. "
+    },
+    {
+      "api": "pthread_condattr_getclock",
+      "url": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_condattr_getclock.html",
+      "status": "FETCHED",
+      "excerpt": "DESCRIPTION The pthread_condattr_getclock () function shall obtain the value of the clock attribute from the attributes object referenced by attr . The pthread_condattr_setclock () function shall set the clock attribute in an initialized attributes object referenced by attr . If pthread_condattr_setclock () is called with a clock_id argument that refers to a CPU-time clock, the call shall fail. The clock attribute is the clock ID of the clock that shall be used to measure the timeout service of pthread_cond_timedwait () . The default value of the clock attribute shall refer to the system clock. The clock attribute shall have no effect on the pthread_cond_clockwait () function. The behavior is undefined if the value specified by the attr argument to pthread_condattr_getclock () or pthread_condattr_setclock () does not refer to an initialized condition variable attributes object. "
+    },
+    {
+      "api": "pthread_create",
+      "url": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_create.html",
+      "status": "FETCHED",
+      "excerpt": "DESCRIPTION The pthread_create () function shall create a new thread, with attributes specified by attr , within a process. If attr is NULL, the default attributes shall be used. If the attributes specified by attr are modified later, the thread's attributes shall not be affected. Upon successful completion, pthread_create () shall store the ID of the created thread in the location referenced by thread . The thread is created executing start_routine with arg as its sole argument. If the start_routine returns, the effect shall be as if there was an implicit call to pthread_exit () using the return value of start_routine as the exit status. Note that the thread in which main () was originally invoked differs from this. When it returns from main (), the effect shall be as if there was an implicit call to exit () using the return value of main () as the exit status. The signal state of the new thread shall be initialized as follows: The signal mask shall be inherited from the creating thread. The set of signals pending for the new thread shall be empty. The thread-local current locale [ XSI ] &nbsp;and the alternate stack &nbsp;shall not be inherited. The floating-point environment shall be inherited from the creating thread. If pthread_create () fails, no new thread is created and the contents of the location referenced by thread are undefined. [ TCT ] If _POSIX_THREAD_CPUTIME is defined, the new thread shall have a CPU-time clock accessible, and the initial value of this clock shall be set to zero. The behavior is undefined if the value specified by the attr argument to pthread_create () does not refer to an initialized thread attributes object. "
+    },
+    {
+      "api": "sem_timedwait",
+      "url": "https://pubs.opengroup.org/onlinepubs/9799919799/functions/sem_timedwait.html",
+      "status": "FETCHED",
+      "excerpt": "DESCRIPTION The sem_clockwait () and sem_timedwait () functions shall lock the semaphore referenced by sem as in the sem_wait () function. However, if the semaphore cannot be locked without waiting for another process or thread to unlock the semaphore by performing a sem_post () function, this wait shall be terminated when the specified timeout expires. The timeout shall expire when the absolute time specified by abstime passes, as measured by the clock on which timeouts are based (that is, when the value of that clock equals or exceeds abstime ), or if the absolute time specified by abstime has already been passed at the time of the call. For sem_timedwait (), the timeout shall be based on the CLOCK_REALTIME clock. For sem_clockwait (), the timeout shall be based on the clock specified by the clock_id argument. The resolution of the timeout shall be the resolution of the clock on which it is based. Implementations shall support passing CLOCK_REALTIME and CLOCK_MONOTONIC to sem_clockwait () as the clock_id argument. Under no circumstance shall the function fail with a timeout if the semaphore can be locked immediately. The validity of the abstime need not be checked if the semaphore can be locked immediately. "
+    }
+  ],
+  "raw_logs": "/tmp/ikos-sync-effects-2026-10-09",
+  "warning": "Conservative external effects restore candidate coverage, not concrete BMC counterexamples. Pinned reference omits attribute getter output/unknown semaphore effects; source library contracts take precedence. Other SAFE/lifetime rules remain unaudited."
+}

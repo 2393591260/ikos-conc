@@ -2295,21 +2295,28 @@ void DataRaceChecker::check_extern_call_effects(
   // Determine whether the callee has no analyzable body (extern).
   ar::Value* called = call->called();
   bool extern_call = false;
+  auto thread_unsafe = [](ar::Function* function) {
+    return function->is_declaration() &&
+           (function->name() == "rand" || function->name() == "srand" ||
+            function->name() == "ar.libc.rand" || function->name() == "ar.libc.srand");
+  };
+  bool may_thread_unsafe = false;
   if (auto* cst = dyn_cast< ar::FunctionPointerConstant >(called)) {
     extern_call = cst->function()->is_declaration();
+    may_thread_unsafe = thread_unsafe(cst->function());
   } else if (auto* ptr = dyn_cast< ar::InternalVariable >(called)) {
     Variable* pv = this->_ctx.var_factory->get_internal(ptr);
     PointsToSet cpts = inv.first().normal().pointer_to_points_to(pv);
     if (cpts.is_top()) {
       extern_call = true; // unknown target: conservatively extern
     } else if (!cpts.is_bottom() && cpts.is_set() && cpts.size() > 0) {
-      extern_call = true;
+      extern_call = false;
       for (MemoryLocation* loc : cpts) {
         auto* fm = dyn_cast< FunctionMemoryLocation >(loc);
-        if (fm == nullptr || fm->function()->is_definition()) {
-          extern_call = false; // at least one analyzable body exists
-          break;
+        if (fm == nullptr || fm->function()->is_declaration()) {
+          extern_call = true; // any unmodeled target may access user memory
         }
+        if (fm != nullptr) may_thread_unsafe |= thread_unsafe(fm->function());
       }
     }
   } else {
@@ -2322,75 +2329,70 @@ void DataRaceChecker::check_extern_call_effects(
   // buffer destinations, %n and pointer conversions can access shared data.
   if (bmc::constant_output_call(call)) return;
 
-  // Exclude the pthread lock primitives: their pointer argument is the
-  // MUTEX ITSELF, not shared data — synthesizing a Write on it (with an
-  // empty lockset, since the record is taken before/after the abstract
-  // lock manipulation) fabricates "unprotected write on the mutex"
-  // pairs between threads (04-mutex_02-simple_nr.c FP).
-  std::string callee_nm;
-  if (auto* cst = dyn_cast< ar::FunctionPointerConstant >(called)) {
-    callee_nm = cst->function()->name();
-  } else if (auto* ptr = dyn_cast< ar::InternalVariable >(called)) {
-    Variable* pv = this->_ctx.var_factory->get_internal(ptr);
-    PointsToSet cpts = inv.first().normal().pointer_to_points_to(pv);
-    if (!cpts.is_top() && !cpts.is_bottom() && cpts.is_set()) {
-      for (MemoryLocation* loc : cpts) {
-        if (auto* fm = dyn_cast< FunctionMemoryLocation >(loc)) {
-          callee_nm = fm->function()->name();
+  auto* exact = bmc::exact_callee(call);
+  const std::string callee_nm = exact != nullptr ? exact->name() : "";
+  unsigned ignored_arguments = 0;
+  if (exact != nullptr && exact->is_declaration()) {
+    // Preserve the existing lifetime/stack handling separately from user buffers.
+    // Lifetime conflicts still need their own property and object model audit.
+    if (exact->intrinsic_id() == ar::Intrinsic::LibcFree ||
+        exact->intrinsic_id() == ar::Intrinsic::StackSave ||
+        exact->intrinsic_id() == ar::Intrinsic::StackRestore) return;
+
+    // Only runtime-managed sync slots are exempt. Attribute/timeout inputs and
+    // caller-owned outputs remain conservative accesses; names alone are no gate.
+    struct SyncArguments {
+      const char* name;
+      std::size_t arity;
+      unsigned ignored;
+    };
+    static const SyncArguments summaries[] = {
+        {"pthread_mutex_lock", 1, 1}, {"pthread_mutex_unlock", 1, 1},
+        {"pthread_mutex_trylock", 1, 1}, {"pthread_mutex_timedlock", 2, 1},
+        {"pthread_mutex_init", 2, 1}, {"pthread_mutex_destroy", 1, 1},
+        {"pthread_mutex_consistent", 1, 1},
+        {"pthread_rwlock_rdlock", 1, 1}, {"pthread_rwlock_wrlock", 1, 1},
+        {"pthread_rwlock_unlock", 1, 1}, {"pthread_rwlock_tryrdlock", 1, 1},
+        {"pthread_rwlock_trywrlock", 1, 1}, {"pthread_rwlock_timedrdlock", 2, 1},
+        {"pthread_rwlock_timedwrlock", 2, 1}, {"pthread_rwlock_init", 2, 1},
+        {"pthread_rwlock_destroy", 1, 1},
+        {"pthread_spin_lock", 1, 1}, {"pthread_spin_unlock", 1, 1},
+        {"pthread_spin_trylock", 1, 1}, {"pthread_spin_init", 2, 1},
+        {"pthread_spin_destroy", 1, 1},
+        {"pthread_barrier_wait", 1, 1}, {"pthread_barrier_init", 3, 1},
+        {"pthread_barrier_destroy", 1, 1},
+        {"pthread_cond_wait", 2, 3}, {"pthread_cond_timedwait", 3, 3},
+        {"pthread_cond_signal", 1, 1}, {"pthread_cond_broadcast", 1, 1},
+        {"pthread_cond_init", 2, 1}, {"pthread_cond_destroy", 1, 1},
+        {"pthread_once", 2, 3},
+        // create writes arg0, reads attr arg1, and merely passes arg3 to the child.
+        {"pthread_create", 4, 12},
+        {"sem_init", 3, 1}, {"sem_destroy", 1, 1}, {"sem_wait", 1, 1},
+        {"sem_trywait", 1, 1}, {"sem_timedwait", 2, 1}, {"sem_post", 1, 1},
+        {"sem_close", 1, 1}, {"sem_getvalue", 2, 1}};
+    auto* returned = dyn_cast< ar::IntegerType >(exact->type()->return_type());
+    if (returned != nullptr && returned->bit_width() == 32 && returned->is_signed()) {
+      for (const auto& summary : summaries) {
+        if (exact->name() == summary.name && exact->num_parameters() == summary.arity &&
+            call->num_arguments() == summary.arity) {
+          ignored_arguments = summary.ignored;
+          break;
+        }
+      }
+      // AR intrinsics carry the contract even after source names are translated.
+      if (exact->intrinsic_id() == ar::Intrinsic::PthreadMutexLock ||
+          exact->intrinsic_id() == ar::Intrinsic::PthreadMutexUnlock) {
+        if (call->num_arguments() == 1) ignored_arguments = 1;
+      } else if (exact->intrinsic_id() == ar::Intrinsic::PthreadCreate) {
+        if (call->num_arguments() == 4) ignored_arguments = 12;
+      }
+      for (std::size_t i = 0; i < call->num_arguments() && i < 4; ++i) {
+        if ((ignored_arguments & (1u << i)) != 0 && !call->argument(i)->type()->is_pointer()) {
+          ignored_arguments = 0;
           break;
         }
       }
     }
-  }
-  // Matches both "pthread_mutex_lock" and the AR intrinsic form
-  // "ar.pthread.mutex.lock" written by ikos-pp.
-  if (callee_nm.find("pthread.mutex") != std::string::npos ||
-      callee_nm.find("pthread_mutex") != std::string::npos ||
-      callee_nm.find("pthread_rwlock") != std::string::npos ||
-      callee_nm.find("pthread.spin") != std::string::npos ||
-      callee_nm.find("pthread_barrier") != std::string::npos ||
-      // pthread_create is fully modelled by exec_pthread_create: its only
-      // side effect is storing the thread id into the *pthread_t handle
-      // (a thread-private stack cell, filtered by touches_shared_memory).
-      // The trailing `void *arg` is PASSED to the child (read, not written),
-      // so synthesizing a Write through it fabricates a "main writes the
-      // shared object it hands to the thread" race — the child's own access
-      // to that object races, main's pthread_create call does not
-      // (06-symbeq_26/27/33-symb_lockfuns FP).
-      callee_nm.find("pthread_create") != std::string::npos ||
-      // pthread_once(&once, init): the once-control (arg0) is pthread runtime
-      // state, not shared data — synthesizing a Write on it fabricates a
-      // cross-thread race on the once-control itself (87-once/* FP). The
-      // callback's own accesses are handled by exec_pthread_once.
-      callee_nm.find("pthread_once") != std::string::npos ||
-      // pthread_cond_wait/signal/broadcast/init/destroy: their pointer args
-      // are the CONDITION-VARIABLE and MUTEX objects, not shared data.
-      // They are already modeled by exec_pthread_cond_wait/signal; the
-      // write-synthesis fallback here fabricates cross-thread races on the
-      // cond/mutex object itself (pthread/sync01.c FP: `pthread_cond_wait`
-      // and `pthread_cond_signal` "race" on `&empty`/`&full`/`&m`).
-      callee_nm.find("pthread_cond") != std::string::npos ||
-      // sem_getvalue also writes a caller-provided int, which may be shared.
-      (callee_nm.rfind("sem_", 0) == 0 && callee_nm != "sem_getvalue") ||
-      // free() deallocates the pointed-to memory — it does NOT write through
-      // the pointer to the object's data (C11: free ends the object's
-      // lifetime, it performs no lvalue access; use-after-free is
-      // valid-memsafety's concern, not no-data-race). Synthesizing a Write
-      // here, on a pointer whose identity is often ⊤ (malloc'd with a nondet
-      // size, so resolve_points_to is ⊤), fabricates a "write to any cell"
-      // that pairs with EVERY concurrent access — value-barrier.c's
-      // `free(tids)` ⊤ Write pairing with `while(!ready)` on @ready is the
-      // FP. The raw C form is `free`; ikos-pp maps it to `ar.libc.free`.
-      callee_nm == "free" || callee_nm == "ar.libc.free" ||
-      // Stack save/restore intrinsics (llvm.stacksave/stackrestore, mapped to
-      // ar.stacksave/ar.stackrestore) for VLA cleanup: their operand is the
-      // saved STACK POINTER (⊤), which is not shared data. Synthesizing a Write
-      // through it fabricates a ⊤ Write at the function's exit that pairs with
-      // EVERY concurrent access (reorder_5.c: main's VLA cleanup "races"
-      // setThread/checkThread's atomic `a`/`b`).
-      callee_nm.find("stacksave") != std::string::npos ||
-      callee_nm.find("stackrestore") != std::string::npos) {
-    return; // modeled sync primitive: args are lock/thread ids, not data
   }
 
   // Synthesize ONE Write access per pointer argument: the library may
@@ -2405,12 +2407,9 @@ void DataRaceChecker::check_extern_call_effects(
   bool spawned_is_top = this->snapshot_spawned_is_top(inv);
   auto locks = this->snapshot_locks(inv);
   auto read_locks = this->snapshot_read_locks(inv);
-  auto* exact = bmc::exact_callee(call);
-  const bool semaphore_query = exact != nullptr && exact->is_declaration() &&
-                               exact->name() == "sem_getvalue" && call->num_arguments() == 2;
-  for (auto it = call->arg_begin(), et = call->arg_end(); it != et; ++it) {
-    // Synchronization-object internals are separate from the user output slot.
-    if (semaphore_query && it == call->arg_begin()) continue;
+  std::size_t argument_index = 0;
+  for (auto it = call->arg_begin(), et = call->arg_end(); it != et; ++it, ++argument_index) {
+    if (argument_index < 4 && (ignored_arguments & (1u << argument_index)) != 0) continue;
     ar::Value* arg = *it;
     PointsToSet pts = this->resolve_points_to(arg, inv);
     // A bottom set has no target; a concrete-but-thread-private set is not
@@ -2497,8 +2496,7 @@ void DataRaceChecker::check_extern_call_effects(
   // (04-mutex_36-trylock_nr.c's strerror-on-abort-path) without fixing any FN:
   // Goblint's ThreadUnsafe is gated on may-happen-in-parallel, whereas a naive
   // "always synthesize" is too coarse. Revisit only with an MHP-precise gate.
-  if (callee_nm == "rand" || callee_nm == "srand" ||
-      callee_nm == "ar.libc.rand" || callee_nm == "ar.libc.srand") {
+  if (may_thread_unsafe) {
     MemoryLocation* libc_state = this->_ctx.mem_factory->get_libc_state();
     PointsToSet state_pts{libc_state};
     this->_accesses.push_back(
