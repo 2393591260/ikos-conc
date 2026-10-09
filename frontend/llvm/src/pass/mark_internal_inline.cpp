@@ -64,6 +64,7 @@ struct MarkInternalInlinePass final : public ModulePass {
     bool change = false;
     for (Function& f : m) {
       if (!f.isDeclaration() && f.hasLocalLinkage()) {
+        f.removeFnAttr(Attribute::NoInline);
         f.addFnAttr(Attribute::AlwaysInline);
         change = true;
       }

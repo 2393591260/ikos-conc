@@ -12,6 +12,7 @@
  ******************************************************************************/
 
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 
 #include <ikos/frontend/llvm/pass.hpp>
@@ -79,7 +80,10 @@ struct FreezeUninitPass final : public FunctionPass {
           M->getOrInsertFunction(name, FunctionType::get(elem, false));
       Instruction* insert_pt = AI->getNextNode();
       auto* call = CallInst::Create(nd, {}, "", insert_pt);
-      new StoreInst(call, AI, insert_pt);
+      // BMC must distinguish an abstract initializer from a source nondet call.
+      call->setMetadata("ikos.freeze_uninit", MDNode::get(F.getContext(), {}));
+      auto* store = new StoreInst(call, AI, insert_pt);
+      store->setMetadata("ikos.freeze_uninit", MDNode::get(F.getContext(), {}));
       changed = true;
     }
     return changed;
