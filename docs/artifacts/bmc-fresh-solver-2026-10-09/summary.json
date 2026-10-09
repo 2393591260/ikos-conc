@@ -1,0 +1,604 @@
+{
+  "before_commit": "c9f92af",
+  "before": {
+    "TP": 61,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 271,
+    "error": 0
+  },
+  "after": {
+    "TP": 61,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 271,
+    "error": 0
+  },
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "transitions": [],
+  "before_analyzer_sha256": "ecb8a11cb14855a85be8f6e00e25e2ce14a4cd4821dc59d8409a1c9c72f6c546",
+  "after_analyzer_sha256": "9dcbee95ade0881b13b171b313cb3da5f170a66991f2c3763231b53d1061cc68",
+  "affine_regressions": [
+    {
+      "case": "equal-values-control",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 64,
+        "integer_operation": 256,
+        "prefix_statement": 2,
+        "sc_read_from": 384,
+        "smt_unsat": 128,
+        "target_not_reached": 2
+      }
+    },
+    {
+      "case": "equal-values-control",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 64,
+        "integer_operation": 256,
+        "prefix_statement": 2,
+        "sc_read_from": 384,
+        "smt_unsat": 128,
+        "target_not_reached": 2
+      }
+    },
+    {
+      "case": "helper-loop-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 35,
+        "integer_operation": 350,
+        "not_searched_after_confirmation": 1,
+        "prefix_statement": 1,
+        "sat": 1,
+        "sc_read_from": 210,
+        "smt_unsat": 68,
+        "target_not_reached": 1
+      }
+    },
+    {
+      "case": "helper-loop-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 35,
+        "integer_operation": 350,
+        "not_searched_after_confirmation": 1,
+        "prefix_statement": 1,
+        "sat": 1,
+        "sc_read_from": 210,
+        "smt_unsat": 68,
+        "target_not_reached": 1
+      }
+    },
+    {
+      "case": "offset-loop-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 35,
+        "integer_operation": 350,
+        "not_searched_after_confirmation": 1,
+        "prefix_statement": 1,
+        "sat": 1,
+        "sc_read_from": 210,
+        "smt_unsat": 68,
+        "target_not_reached": 1
+      }
+    },
+    {
+      "case": "offset-loop-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 35,
+        "integer_operation": 350,
+        "not_searched_after_confirmation": 1,
+        "prefix_statement": 1,
+        "sat": 1,
+        "sc_read_from": 210,
+        "smt_unsat": 68,
+        "target_not_reached": 1
+      }
+    },
+    {
+      "case": "unsigned-wrap-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "sat": 1
+      }
+    },
+    {
+      "case": "unsigned-wrap-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "sat": 1
+      }
+    }
+  ],
+  "wrapping_regressions": [
+    {
+      "case": "unsigned-overflow-control",
+      "bits": 32,
+      "verdict": "The program is SAFE",
+      "counts": {}
+    },
+    {
+      "case": "unsigned-overflow-control",
+      "bits": 64,
+      "verdict": "The program is SAFE",
+      "counts": {}
+    },
+    {
+      "case": "unsigned-overflow-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "sat": 1
+      }
+    },
+    {
+      "case": "unsigned-overflow-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "sat": 1
+      }
+    },
+    {
+      "case": "wrapping-guard-control",
+      "bits": 32,
+      "verdict": "The program is SAFE",
+      "counts": {}
+    },
+    {
+      "case": "wrapping-guard-control",
+      "bits": 64,
+      "verdict": "The program is SAFE",
+      "counts": {}
+    },
+    {
+      "case": "unsigned-wrap-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "sat": 1
+      }
+    },
+    {
+      "case": "unsigned-wrap-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "sat": 1
+      }
+    }
+  ],
+  "p0_observations": [
+    {
+      "source": "exclusive-flag.c",
+      "mode": "demote",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "demote",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    }
+  ],
+  "reference": {
+    "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+    "bound": 2,
+    "rows": [
+      {
+        "case": "unsigned-overflow-control",
+        "bits": 32,
+        "verdict": "PASS",
+        "status": "OTHER",
+        "returncode": 0,
+        "seconds": 2.223165548995894,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-fresh-solver-2026-10-09/reference/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/bmc-fresh-solver/unsigned-overflow-control.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "219d51ee068c24e1fed7918d86bbcfd878df92585baaa24966b1b9757df7b377",
+        "data_model": "32"
+      },
+      {
+        "case": "unsigned-overflow-control",
+        "bits": 64,
+        "verdict": "PASS",
+        "status": "OTHER",
+        "returncode": 0,
+        "seconds": 2.164910895000503,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-fresh-solver-2026-10-09/reference/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/bmc-fresh-solver/unsigned-overflow-control.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "219d51ee068c24e1fed7918d86bbcfd878df92585baaa24966b1b9757df7b377",
+        "data_model": "64"
+      },
+      {
+        "case": "unsigned-overflow-race",
+        "bits": 32,
+        "verdict": "FAIL",
+        "status": "SOURCE_RACE",
+        "returncode": 13,
+        "seconds": 2.1075116229985724,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-fresh-solver-2026-10-09/reference/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/bmc-fresh-solver/unsigned-overflow-race.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "5f3fee241a6a8e3219c1530cf5778ae6ad914c4f78569dfb2be250ff65cee793",
+        "data_model": "32"
+      },
+      {
+        "case": "unsigned-overflow-race",
+        "bits": 64,
+        "verdict": "FAIL",
+        "status": "SOURCE_RACE",
+        "returncode": 13,
+        "seconds": 2.0898458110023057,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-fresh-solver-2026-10-09/reference/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/bmc-fresh-solver/unsigned-overflow-race.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "5f3fee241a6a8e3219c1530cf5778ae6ad914c4f78569dfb2be250ff65cee793",
+        "data_model": "64"
+      },
+      {
+        "case": "wrapping-guard-control",
+        "bits": 32,
+        "verdict": "PASS",
+        "status": "OTHER",
+        "returncode": 0,
+        "seconds": 2.3076955340002314,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-fresh-solver-2026-10-09/reference/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/bmc-fresh-solver/wrapping-guard-control.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "99efb23880af1abaf81006ddf37baf493057e585d68b23ec84b37bacb74d5a07",
+        "data_model": "32"
+      },
+      {
+        "case": "wrapping-guard-control",
+        "bits": 64,
+        "verdict": "PASS",
+        "status": "OTHER",
+        "returncode": 0,
+        "seconds": 2.3098177589999977,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-fresh-solver-2026-10-09/reference/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/bmc-fresh-solver/wrapping-guard-control.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "99efb23880af1abaf81006ddf37baf493057e585d68b23ec84b37bacb74d5a07",
+        "data_model": "64"
+      }
+    ]
+  },
+  "partial_fixed_memory": {
+    "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+    "report_sha256": "fc0182a8e915c2216116e2dfd8d0229fc36be22a0ec358aa8a16502bca0c21de",
+    "input_sha256": "3ed756b79a783793341290c705b45dd63e88075e852437c9739e0a3a414edd81",
+    "rows": [
+      {
+        "report_index": 0,
+        "pair_id": 0,
+        "full_counterexample_validated": false,
+        "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+        "threads": {
+          "startup": 0,
+          "a": 1,
+          "b": 2
+        },
+        "mapped_memory_events": 2,
+        "unbound_claims": [
+          "CFG and call occurrence mapping",
+          "local values and nondet occurrences",
+          "synchronization history and identities",
+          "IKOS total schedule and rf choices"
+        ],
+        "result": {
+          "status": "SAT",
+          "returncode": 13,
+          "seconds": 1.7721870259993011,
+          "command": [
+            "java",
+            "-Xmx2g",
+            "-cp",
+            "/tmp/ikos-fresh-solver-2026-10-09/partial-wrap32/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+            "com.dat3m.dartagnan.Dartagnan",
+            "cat/svcomp.cat",
+            "/home/ruan/ikos-conc/docs/review-repros/bmc-affine-guards/unsigned-wrap-race.c",
+            "svcomp.properties",
+            "--property=DATARACEFREEDOM",
+            "--bound=2",
+            "--program.processing.skipAssertionsOfType=USER"
+          ],
+          "source_sha256": "3ed756b79a783793341290c705b45dd63e88075e852437c9739e0a3a414edd81",
+          "data_model": "32"
+        },
+        "corruption_probe": {
+          "status": "UNSAT_AT_BOUND",
+          "returncode": 0,
+          "seconds": 1.7254238309978973,
+          "command": [
+            "java",
+            "-Xmx2g",
+            "-cp",
+            "/tmp/ikos-fresh-solver-2026-10-09/partial-wrap32/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+            "com.dat3m.dartagnan.Dartagnan",
+            "cat/svcomp.cat",
+            "/home/ruan/ikos-conc/docs/review-repros/bmc-affine-guards/unsigned-wrap-race.c",
+            "svcomp.properties",
+            "--property=DATARACEFREEDOM",
+            "--bound=2",
+            "--program.processing.skipAssertionsOfType=USER"
+          ],
+          "source_sha256": "3ed756b79a783793341290c705b45dd63e88075e852437c9739e0a3a414edd81",
+          "data_model": "32"
+        }
+      }
+    ],
+    "warning": "Partial fixed-memory evidence; no full-counterexample verification claim"
+  },
+  "timing": {
+    "case": "unsigned-wrap-race ILP32",
+    "sequential_interleaved_repeats": 3,
+    "rows": [
+      {
+        "repeat": 0,
+        "phase": "before",
+        "seconds": 11.427448517999437,
+        "verdict": "The program is potentially UNSAFE"
+      },
+      {
+        "repeat": 0,
+        "phase": "after",
+        "seconds": 0.184671791997971,
+        "verdict": "The program is definitely UNSAFE"
+      },
+      {
+        "repeat": 1,
+        "phase": "before",
+        "seconds": 11.114837253997393,
+        "verdict": "The program is potentially UNSAFE"
+      },
+      {
+        "repeat": 1,
+        "phase": "after",
+        "seconds": 0.18694377900101244,
+        "verdict": "The program is definitely UNSAFE"
+      },
+      {
+        "repeat": 2,
+        "phase": "before",
+        "seconds": 11.229342001999612,
+        "verdict": "The program is potentially UNSAFE"
+      },
+      {
+        "repeat": 2,
+        "phase": "after",
+        "seconds": 0.1870532920002006,
+        "verdict": "The program is definitely UNSAFE"
+      }
+    ],
+    "median_before_seconds": 11.229342001999612,
+    "median_after_seconds": 0.18694377900101244,
+    "scope": "Single targeted input; no whole-suite speedup claim"
+  },
+  "withdrawn_integer_modulo_experiment": {
+    "tasks": 1029,
+    "transitions": [],
+    "wrap_verdict": "Unknown",
+    "raw_logs": "/tmp/ikos-integer-normalization-2026-10-09",
+    "note": "Arithmetic rewrite and dump probe removed before final solver change"
+  },
+  "raw_logs": "/tmp/ikos-fresh-solver-2026-10-09",
+  "warning": "Labels and partial reference constraints do not independently validate the complete IKOS counterexample."
+}

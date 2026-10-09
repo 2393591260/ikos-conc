@@ -94,7 +94,6 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
 
   z3::context ctx;
   z3::solver s(ctx);
-  s.set("timeout", 1000u);
 
   const std::size_t nA = pathA.size();
   const std::size_t nB = pathB.size();
@@ -834,19 +833,23 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   // 竞争查询：两个访问（各自路径最后一个事件）能否相邻。
   bool any = false;
   for (int dir = 0; dir < 2; ++dir) {
-    s.push();
+    // Each query is independent. push/pop switches Z3 to incremental solving,
+    // disabling preprocessing needed by some mixed Int/BV guards.
+    z3::solver query(ctx);
+    query.set("timeout", 1000u);
+    query.add(s.assertions());
     if (dir == 0) {
-      s.add(clock[nA - 1] == clock[nA + nB - 1] + 1);
+      query.add(clock[nA - 1] == clock[nA + nB - 1] + 1);
     } else {
-      s.add(clock[nA + nB - 1] == clock[nA - 1] + 1);
+      query.add(clock[nA + nB - 1] == clock[nA - 1] + 1);
     }
-    z3::check_result result = s.check();
+    z3::check_result result = query.check();
     record(diagnostics, result == z3::sat ? "sat" :
                         result == z3::unsat ? "smt_unsat" : "smt_unknown");
     if (result == z3::sat) {
       any = true;
       if (diagnostics != nullptr && diagnostics->model.empty()) {
-        auto model = s.get_model();
+        auto model = query.get_model();
         diagnostics->model = model.to_string();
         ReplaySnapshot snapshot(funcA->bundle());
         diagnostics->replay.put("schema", 1);
@@ -902,7 +905,6 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
           diagnostics->confirmed_b.push_back({pathB[i].stmt, Z3_get_numeral_string(ctx, model.eval(clock[nA + i], true))});
       }
     }
-    s.pop();
     // One SAT direction proves this existential query and preserves its first model.
     if (any) return true;
   }
