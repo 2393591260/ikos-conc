@@ -1,0 +1,582 @@
+{
+  "before_behavior_commit": "f090659",
+  "before_sha256": "f8bcea962048cd1e73e0938f1d6322d848aa86632d5e4f9dfd2f12c2b1ae5f12",
+  "after_sha256": "427dcfc9d92ea112bf3d0ab435e75c6d757ec14ce2ed4472f22f8ebd323d734e",
+  "tasks": 1029,
+  "matrix": {
+    "TP": 78,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 254,
+    "error": 0
+  },
+  "transitions": [],
+  "data_model": "ILP32",
+  "LP64": "targeted regressions only",
+  "before": [
+    {
+      "case": "escaped-copy-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "escaped-copy-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "escaped-copy-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "escaped-copy-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "global-lock-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "global-lock-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "global-lock-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "global-lock-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "own-copies-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "own-copies-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "own-copies-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "own-copies-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "tls-array-lock-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "tls-array-lock-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "tls-array-lock-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "tls-array-lock-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "tls-lock-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "tls-lock-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "tls-lock-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "tls-lock-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "tls-poly-lock-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "tls-poly-lock-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "tls-poly-lock-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "tls-poly-lock-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is definitely UNSAFE"
+    }
+  ],
+  "after": [
+    {
+      "case": "escaped-copy-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "escaped-copy-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "escaped-copy-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "escaped-copy-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "global-lock-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "global-lock-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "global-lock-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "global-lock-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "own-copies-control",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "own-copies-control",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "own-copies-control",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "own-copies-control",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "tls-array-lock-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "tls-array-lock-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "tls-array-lock-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "tls-array-lock-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "tls-lock-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "tls-lock-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "tls-lock-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "tls-lock-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "tls-poly-lock-race",
+      "bits": 32,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "tls-poly-lock-race",
+      "bits": 32,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "tls-poly-lock-race",
+      "bits": 64,
+      "mode": "default",
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "tls-poly-lock-race",
+      "bits": 64,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    }
+  ],
+  "reference": [
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.6921525719999408,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/tls-identity/escaped-copy-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "e3c48352891b96df600772ad0a55a36596ea025976983d69010b2a807745a321",
+      "data_model": "32",
+      "case": "escaped-copy-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.515185861999953,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/tls-identity/escaped-copy-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "e3c48352891b96df600772ad0a55a36596ea025976983d69010b2a807745a321",
+      "data_model": "64",
+      "case": "escaped-copy-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.4357224970001425,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/tls-identity/global-lock-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "bbd8279a3e61cd751bf0280724478bdfd49daac394239d0a990383cc9dee2463",
+      "data_model": "32",
+      "case": "global-lock-control",
+      "native_result": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.4155274919999101,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/tls-identity/global-lock-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "bbd8279a3e61cd751bf0280724478bdfd49daac394239d0a990383cc9dee2463",
+      "data_model": "64",
+      "case": "global-lock-control",
+      "native_result": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.6224734329998682,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/tls-identity/own-copies-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "65f86be407cd70a55d74d0ab31df8fa1ab084e30b83abd343a7a58bc8ed276d2",
+      "data_model": "32",
+      "case": "own-copies-control",
+      "native_result": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.5363341610000134,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/tls-identity/own-copies-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "65f86be407cd70a55d74d0ab31df8fa1ab084e30b83abd343a7a58bc8ed276d2",
+      "data_model": "64",
+      "case": "own-copies-control",
+      "native_result": "PASS"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.520239618000005,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/tls-identity/tls-array-lock-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "1723a21d47051193d2e65d496780c00e3534dac45accffffb2e4aac5b5cc9de3",
+      "data_model": "32",
+      "case": "tls-array-lock-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.280539213000111,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/tls-identity/tls-array-lock-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "1723a21d47051193d2e65d496780c00e3534dac45accffffb2e4aac5b5cc9de3",
+      "data_model": "64",
+      "case": "tls-array-lock-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.3187464540001201,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/tls-identity/tls-lock-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "9dc82ef6bd5912863ed737826baf3704b4b48d3b6e14175c6d0ca704a096d375",
+      "data_model": "32",
+      "case": "tls-lock-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.2724467250000089,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/tls-identity/tls-lock-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "9dc82ef6bd5912863ed737826baf3704b4b48d3b6e14175c6d0ca704a096d375",
+      "data_model": "64",
+      "case": "tls-lock-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.440368350000199,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/tls-identity/tls-poly-lock-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "f280973acdd0090ec47031a2bc5af7bec5ecaba63c8de07cb23d9629ecebebc8",
+      "data_model": "32",
+      "case": "tls-poly-lock-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.5810608589999902,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/tls-identity/tls-poly-lock-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "f280973acdd0090ec47031a2bc5af7bec5ecaba63c8de07cb23d9629ecebebc8",
+      "data_model": "64",
+      "case": "tls-poly-lock-race",
+      "native_result": "FAIL"
+    }
+  ],
+  "p0_observations_checked": 20,
+  "creation_regressions_checked": 28,
+  "full_counterexample_validated": false,
+  "remaining_confirmed_issues": [
+    "same-entry threads allocate distinct heap locks but one DynAlloc summary permits a false common lock",
+    "same-entry threads use distinct stack locks but one Local summary permits a false common lock"
+  ]
+}

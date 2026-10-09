@@ -467,7 +467,10 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
         // ambiguous and must NOT be admitted (sound: fewer certainly-
         // held locks only widens the race set) — this is what keeps
         // 05-lval_ls_13-idxunknown_lock.c RACE.
-        if (!loop_summary) {
+        auto* global = dyn_cast< GlobalMemoryLocation >(loc);
+        // This summary key cannot identify an owning TLS thread instance.
+        bool tls_summary = global != nullptr && global->global_var()->is_thread_local();
+        if (!loop_summary && !tls_summary) {
           const auto& poff = points_to.offset();
           std::uint64_t base =
               ikos::core::IndexableTraits<MemoryLocation*>::index(loc);
@@ -497,7 +500,12 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
         }
       } else if (!points_to.is_bottom() && !points_to.is_top() &&
                  points_to.points_to().is_set() &&
-                 points_to.points_to().size() > 1) {
+                 points_to.points_to().size() > 1 &&
+                 std::none_of(points_to.points_to().begin(), points_to.points_to().end(),
+                              [](MemoryLocation* loc) {
+                                auto* global = dyn_cast< GlobalMemoryLocation >(loc);
+                                return global != nullptr && global->global_var()->is_thread_local();
+                              })) {
         // Polymorphic lock (`m = &s->mutex` where `s = x ? &A : &B`, so
         // points-to = {A, B}): the must-lockset needs a singleton and would
         // drop this lock entirely (06-symbeq_11-equ_nr.c FP). But the lock

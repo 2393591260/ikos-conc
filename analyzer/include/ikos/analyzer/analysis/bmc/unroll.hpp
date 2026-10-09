@@ -259,7 +259,8 @@ inline bool memory_extent(const BmcEvent& event, core::ZNumber& size) {
   if (event.base != 0) {
     auto* g = reinterpret_cast< ar::GlobalVariable* >(event.base);
     auto* type = g->type()->pointee();
-    if (!g->is_definition() || type->is_opaque()) return false;
+    // A TLS declaration denotes one object per dynamic thread instance.
+    if (!g->is_definition() || g->is_thread_local() || type->is_opaque()) return false;
     size = g->bundle()->data_layout().alloc_size_in_bytes(type);
     return true;
   }
