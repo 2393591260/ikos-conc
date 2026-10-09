@@ -36,11 +36,14 @@ implementation observations, not certification of the current or entire analyzer
   `kEnablePrivateInit=false` disables the private-init skip, not its record collection.
 - `4910339`: value/address gates reject some unsupported operands, variable indices,
   and failed base extraction before BMC confirmation.
-- `249e004`: `encode_value` accepts integer constants and recognized nondeterministic
-  call results with integer range constraints; caches/prefixes are per path.
-  **Recognition currently uses `name().find("nondet")`, not an exact verified
-  `__VERIFIER_nondet_*` contract.** Treat arbitrary matching functions as a review
-  question, not as justified independent sources. Bitcast peeling is bounded.
+- `249e004` historically introduced local nondet encoding. As checked at
+  `8a27daf`/`2e29048`, `encode_value` now uses `IkosNonDet` or an exact list of
+  declared integer `__VERIFIER_nondet_*` APIs, checks call/return types, and rejects
+  synthetic initialization or missing source provenance. `source_nondet` also
+  requires `supported_leaf_call`, whose named APIs use an exact list. The earlier
+  `name().find("nondet")` warning is historical, not the current implementation.
+  Caches and dynamic definition identities still require per-instance review;
+  bitcast peeling is bounded. API recognition alone is not a soundness proof.
 - `confirm_race` returns `false` for both failure to confirm and unsupported cases;
   it is not a proof of no race. The checker invokes BMC only on selected candidates.
   Removed candidates cannot be recovered by improving BMC.
