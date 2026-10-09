@@ -493,6 +493,11 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       return true;
     }
     if (auto* call = core::dyn_cast_or_null< ar::CallBase >(def)) {
+      if (successful_create_result(path[definition_index])) {
+        out = ctx.int_val(0);
+        cache.emplace(key, out);
+        return true;
+      }
       // 识别 nondet 调用：直调是
       // FunctionPointerConstant；`__VERIFIER_nondet_int` 常被 frontend 变成 `%5
       // = bitcast @__VERIFIER_nondet_int; %6 = call %5()`， 剥 bitcast

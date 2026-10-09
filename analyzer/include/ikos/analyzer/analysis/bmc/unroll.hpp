@@ -601,6 +601,22 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
   return false;
 }
 
+// Create events choose a successful default-attribute spawn. The prefix checker
+// separately proves its output slot valid; the corresponding POSIX int result is 0.
+inline bool successful_create_result(const BmcEvent& event) {
+  if (event.kind != EvKind::Create) return false;
+  auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+  auto* f = call != nullptr ? exact_callee(call) : nullptr;
+  auto* result = call != nullptr && call->result_or_null() != nullptr
+                     ? core::dyn_cast< ar::IntegerType >(call->result_or_null()->type()) : nullptr;
+  auto* returned = f != nullptr ? core::dyn_cast< ar::IntegerType >(f->type()->return_type()) : nullptr;
+  return f != nullptr && f->is_declaration() && call->num_arguments() == 4 &&
+         (f->name() == "pthread_create" || f->intrinsic_id() == ar::Intrinsic::PthreadCreate) &&
+         core::isa< ar::NullConstant >(call->argument(1)) && event.thread != 0 &&
+         result != nullptr && returned != nullptr && result->bit_width() == 32 &&
+         result->is_signed() && returned->bit_width() == 32 && returned->is_signed();
+}
+
 // Definedness is required even for values not used in guards/addresses.
 // This does not encode load values or establish read-from relations.
 inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
@@ -668,6 +684,7 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
     }
     if (auto* call = core::dyn_cast< ar::CallBase >(def)) {
       if (source_nondet(call)) return true;
+      if (successful_create_result(path[index])) return true;
       auto* f = callee_on_path(call, path, index);
       if (f == nullptr || f->body_or_null() == nullptr) return false;
       for (std::size_t j = index + 1; j < before; ++j) {

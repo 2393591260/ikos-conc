@@ -1,0 +1,805 @@
+{
+  "before": {
+    "TP": 58,
+    "FP": 0,
+    "TN": 698,
+    "FN": 0,
+    "unknown": 273,
+    "error": 0
+  },
+  "after": {
+    "TP": 59,
+    "FP": 0,
+    "TN": 698,
+    "FN": 0,
+    "unknown": 272,
+    "error": 0
+  },
+  "tasks": 1029,
+  "transitions": [
+    {
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-C-DAC/pthread-demo-datarace-2.i",
+      "expected": "Race Found",
+      "before": "Unknown",
+      "after": "Race Found"
+    }
+  ],
+  "before_analyzer_sha256": "187e5341399d6ade879dd2f94ef8b9a0dbcc5cc54e22e7d201cc003234dd054b",
+  "after_analyzer_sha256": "9d83918bfc36a320f99e426ae61d7b2df098b6bc7d3e92a5eb2898007e0f7d75",
+  "targeted_before": [
+    {
+      "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/failure-branch-control.c",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/failure-branch-control.c",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/success-guard.c",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/success-guard.c",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/helper-guard.c",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/helper-guard.c",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "/home/ruan/sv-benchmarks-2026/c/pthread-C-DAC/pthread-demo-datarace-2.i",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    }
+  ],
+  "targeted_after": [
+    {
+      "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/failure-branch-control.c",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE",
+      "encoded_creates": []
+    },
+    {
+      "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/failure-branch-control.c",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE",
+      "encoded_creates": []
+    },
+    {
+      "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/success-guard.c",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE",
+      "encoded_creates": [
+        {
+          "trace": "a",
+          "statement": "s4",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/success-guard.c",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE",
+      "encoded_creates": [
+        {
+          "trace": "a",
+          "statement": "s4",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/helper-guard.c",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE",
+      "encoded_creates": [
+        {
+          "trace": "a",
+          "statement": "s16",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/helper-guard.c",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE",
+      "encoded_creates": [
+        {
+          "trace": "a",
+          "statement": "s16",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/home/ruan/sv-benchmarks-2026/c/pthread-C-DAC/pthread-demo-datarace-2.i",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE",
+      "encoded_creates": [
+        {
+          "trace": "a",
+          "statement": "s25",
+          "value": "0"
+        }
+      ]
+    }
+  ],
+  "reference": [
+    {
+      "case": "failure-branch-control",
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.202978813998925,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-dartagnan-strict-2026-10-09-e/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/failure-branch-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "b4f0a2e493a426affb60e7f6ba4c566a3be2da1bf7a161656071888128f23f9b",
+      "data_model": "32"
+    },
+    {
+      "case": "failure-branch-control",
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.1427367720025359,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-dartagnan-strict-2026-10-09-e/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/failure-branch-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "b4f0a2e493a426affb60e7f6ba4c566a3be2da1bf7a161656071888128f23f9b",
+      "data_model": "64"
+    },
+    {
+      "case": "success-guard",
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.2297616779978853,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-dartagnan-strict-2026-10-09-e/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/success-guard.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "9ba18ffffc3b8203a1896bd3b0d21a82dff3b28a56d1fad77a26f03c6056ac92",
+      "data_model": "32"
+    },
+    {
+      "case": "success-guard",
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.1460202079979354,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-dartagnan-strict-2026-10-09-e/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/success-guard.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "9ba18ffffc3b8203a1896bd3b0d21a82dff3b28a56d1fad77a26f03c6056ac92",
+      "data_model": "64"
+    },
+    {
+      "case": "helper-guard",
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.1433413150007254,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-dartagnan-strict-2026-10-09-e/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/helper-guard.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "39b9bade2197aa0c25a60fef2a9e32ecf8d7f52803340bdea2b8b6089340b6cc",
+      "data_model": "32"
+    },
+    {
+      "case": "helper-guard",
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.175115926998842,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-dartagnan-strict-2026-10-09-e/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/helper-guard.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "39b9bade2197aa0c25a60fef2a9e32ecf8d7f52803340bdea2b8b6089340b6cc",
+      "data_model": "64"
+    },
+    {
+      "case": "pthread-demo-datarace-2",
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 4.715804838000622,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-dartagnan-strict-2026-10-09-e/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-C-DAC/pthread-demo-datarace-2.i",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "8dedc3ea8e96f333d418860556906c8618bbf50be75cff10b45de6d34fe23444",
+      "data_model": "32"
+    }
+  ],
+  "fixed_memory_checks": [
+    {
+      "case": "success-guard",
+      "bits": 32,
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 1.2081750840006862,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-dartagnan-strict-2026-10-09-e/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/success-guard.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "9ba18ffffc3b8203a1896bd3b0d21a82dff3b28a56d1fad77a26f03c6056ac92",
+        "data_model": "32"
+      },
+      "coverage": {
+        "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+        "threads": {
+          "a": 0,
+          "b": 1
+        },
+        "mapped_memory_events": 2,
+        "omitted_steps": [
+          {
+            "trace": "a",
+            "step": 0,
+            "kind": "call",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 1,
+            "kind": "allocate",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 2,
+            "kind": "call",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 3,
+            "kind": "store",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 4,
+            "kind": "call",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 5,
+            "kind": "compare",
+            "reason": "not a mapped global memory access"
+          }
+        ],
+        "unbound_claims": [
+          "CFG and call occurrence mapping",
+          "local values and nondet occurrences",
+          "synchronization history and identities",
+          "IKOS total schedule and rf choices"
+        ],
+        "full_counterexample_validated": false
+      }
+    },
+    {
+      "case": "success-guard",
+      "bits": 64,
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 1.1329410530015593,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-dartagnan-strict-2026-10-09-e/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/success-guard.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "9ba18ffffc3b8203a1896bd3b0d21a82dff3b28a56d1fad77a26f03c6056ac92",
+        "data_model": "64"
+      },
+      "coverage": {
+        "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+        "threads": {
+          "a": 0,
+          "b": 1
+        },
+        "mapped_memory_events": 2,
+        "omitted_steps": [
+          {
+            "trace": "a",
+            "step": 0,
+            "kind": "call",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 1,
+            "kind": "allocate",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 2,
+            "kind": "call",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 3,
+            "kind": "store",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 4,
+            "kind": "call",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 5,
+            "kind": "compare",
+            "reason": "not a mapped global memory access"
+          }
+        ],
+        "unbound_claims": [
+          "CFG and call occurrence mapping",
+          "local values and nondet occurrences",
+          "synchronization history and identities",
+          "IKOS total schedule and rf choices"
+        ],
+        "full_counterexample_validated": false
+      }
+    },
+    {
+      "case": "helper-guard",
+      "bits": 32,
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 1.1756301159985014,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-dartagnan-strict-2026-10-09-e/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/helper-guard.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "39b9bade2197aa0c25a60fef2a9e32ecf8d7f52803340bdea2b8b6089340b6cc",
+        "data_model": "32"
+      },
+      "coverage": {
+        "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+        "threads": {
+          "a": 0,
+          "b": 1
+        },
+        "mapped_memory_events": 2,
+        "omitted_steps": [
+          {
+            "trace": "a",
+            "step": 0,
+            "kind": "call",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 1,
+            "kind": "allocate",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 2,
+            "kind": "call",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 3,
+            "kind": "unary",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 4,
+            "kind": "store",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 5,
+            "kind": "call",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 6,
+            "kind": "unary",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 7,
+            "kind": "call",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 8,
+            "kind": "return",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 9,
+            "kind": "compare",
+            "reason": "not a mapped global memory access"
+          }
+        ],
+        "unbound_claims": [
+          "CFG and call occurrence mapping",
+          "local values and nondet occurrences",
+          "synchronization history and identities",
+          "IKOS total schedule and rf choices"
+        ],
+        "full_counterexample_validated": false
+      }
+    },
+    {
+      "case": "helper-guard",
+      "bits": 64,
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 1.1484985429997323,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-dartagnan-strict-2026-10-09-e/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/bmc-create-result/helper-guard.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "39b9bade2197aa0c25a60fef2a9e32ecf8d7f52803340bdea2b8b6089340b6cc",
+        "data_model": "64"
+      },
+      "coverage": {
+        "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+        "threads": {
+          "a": 0,
+          "b": 1
+        },
+        "mapped_memory_events": 2,
+        "omitted_steps": [
+          {
+            "trace": "a",
+            "step": 0,
+            "kind": "call",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 1,
+            "kind": "allocate",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 2,
+            "kind": "call",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 3,
+            "kind": "unary",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 4,
+            "kind": "store",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 5,
+            "kind": "call",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 6,
+            "kind": "unary",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 7,
+            "kind": "call",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 8,
+            "kind": "return",
+            "reason": "not a mapped global memory access"
+          },
+          {
+            "trace": "a",
+            "step": 9,
+            "kind": "compare",
+            "reason": "not a mapped global memory access"
+          }
+        ],
+        "unbound_claims": [
+          "CFG and call occurrence mapping",
+          "local values and nondet occurrences",
+          "synchronization history and identities",
+          "IKOS total schedule and rf choices"
+        ],
+        "full_counterexample_validated": false
+      }
+    }
+  ],
+  "p0": [
+    {
+      "source": "exclusive-flag.c",
+      "mode": "demote",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "default",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "bmc",
+      "data_model": "ILP32",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "demote",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "exclusive-flag.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths-control.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "overlapping-widths.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init-control.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "default",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "source": "published-before-init.c",
+      "mode": "bmc",
+      "data_model": "LP64",
+      "exit_code": 0,
+      "verdict": "The program is potentially UNSAFE"
+    }
+  ],
+  "full_counterexamples_independently_validated": false,
+  "reference_contract": "Pinned Intrinsics.inlinePthreadCreate emits zero status; selected child must actually execute. Linux man-pages pthread_create success=0.",
+  "scope": "Successful default-attribute Create only; no general failure-status encoding",
+  "full_command": [
+    "IKOS_BMC_RECOVER=1",
+    "python3",
+    "-B",
+    "svcomp_race_test.py",
+    "--ikos",
+    "/tmp/ikos-inline-ab-2026-10-09/ikos-current",
+    "--demote",
+    "--jobs",
+    "4"
+  ],
+  "before_full_log": "/tmp/ikos-search-short-circuit-2026-10-09/after-full.log",
+  "raw_evidence": "/tmp/ikos-create-result-2026-10-09"
+}
