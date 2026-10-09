@@ -125,14 +125,16 @@ def events(path):
     rows = []
     for line in lines[1:]:
         fields = line.split('\t')
-        if len(fields) not in (6, 8):
+        if len(fields) not in (6, 8, 9):
             raise ValueError('unsupported reference event descriptor')
         eid, thread, creator, file64, lineno, code64 = fields[:6]
         rows.append(dict(id=int(eid), thread=int(thread), creator=int(creator),
                          file=base64.b64decode(file64).decode(), line=int(lineno),
                          code=base64.b64decode(code64).decode(),
-                         original_id=int(fields[6]) if len(fields) == 8 else -1,
-                         unrolling_id=int(fields[7]) if len(fields) == 8 else -1,
+                         original_id=int(fields[6]) if len(fields) >= 8 else -1,
+                         unrolling_id=int(fields[7]) if len(fields) >= 8 else -1,
+                         nondet=len(fields) == 9 and fields[8].startswith('nondet'),
+                         nondet_bits=int(fields[8].split(':')[1]) if len(fields) == 9 and fields[8].startswith('nondet:') else -1,
                          descriptor=base64.b64encode(line.encode()).decode()))
     return lines[0], rows
 
@@ -298,6 +300,34 @@ def calibrate(args):
         cases.append(('memory-skipped-first-still-feasible', changed, 'SAT'))
         for name, cert, expected in cases:
             row = run(args, cp, memory, bits, out / f'{bits}-{name}', cert)
+            row.update(case=name, expected=expected, matched=row['status'] == expected)
+            results.append(row)
+            print(bits, name, row['status'], 'expected', expected, flush=True)
+        local = source.with_name('local-nondet.c')
+        folder = out / f'{bits}-local-nondet-source'
+        base = run(args, cp, local, bits, folder)
+        if base['status'] != 'SOURCE_RACE':
+            raise AssertionError(base)
+        h, es = events(folder / 'events.tsv')
+        stores = [e for e in es if 'store(&data,' in e['code']]
+        choices = [e for e in es if e['nondet']]
+        if len(stores) != 2 or len(choices) != 2 or choices[0]['thread'] == choices[1]['thread']:
+            raise AssertionError('expected independent nondet results per worker')
+        cert = certificate(h, stores + choices)
+        cert.update({'event.0.value': 7, 'event.1.value': 9,
+                     'event.2.nondet_value': 7, 'event.3.nondet_value': 9,
+                     'event.2.nondet_width': 32, 'event.3.nondet_width': 32})
+        cases = [('local-nondet-valid', cert, 'SAT')]
+        for name, updates, expected in (
+                ('local-nondet-wrong-guard', {'event.2.nondet_value': 8}, 'UNSAT_AT_BOUND'),
+                ('local-nondet-swapped-instances', {'event.2.nondet_value': 9, 'event.3.nondet_value': 7}, 'UNSAT_AT_BOUND'),
+                ('local-nondet-memory-not-free', {'event.0.nondet_value': 7}, 'UNSUPPORTED'),
+                ('local-nondet-wrong-width', {'event.2.nondet_width': 64}, 'UNSUPPORTED'),
+                ('local-nondet-out-of-range', {'event.2.nondet_value': 2**32}, 'UNSUPPORTED')):
+            changed = copy.deepcopy(cert); changed.update(updates)
+            cases.append((name, changed, expected))
+        for name, cert, expected in cases:
+            row = run(args, cp, local, bits, out / f'{bits}-{name}', cert)
             row.update(case=name, expected=expected, matched=row['status'] == expected)
             results.append(row)
             print(bits, name, row['status'], 'expected', expected, flush=True)

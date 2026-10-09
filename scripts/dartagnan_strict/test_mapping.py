@@ -40,6 +40,8 @@ def main(args):
     e = copy.deepcopy(es)
     original = next(x for x in e if x['id'] == cert['target_a'])
     duplicate = copy.deepcopy(original); duplicate['id'] = max(x['id'] for x in e)+1
+    # A clone with matching provenance is supported; this extra event has none.
+    duplicate['unrolling_id'] = -1
     e.append(duplicate)
     rejected(replay, e)
     r = copy.deepcopy(replay)

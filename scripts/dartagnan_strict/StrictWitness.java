@@ -4,11 +4,14 @@ import com.dat3m.dartagnan.encoding.EncodingContext;
 import com.dat3m.dartagnan.encoding.ProverWithTracker;
 import com.dat3m.dartagnan.configuration.Property;
 import com.dat3m.dartagnan.expression.type.TypeFactory;
+import com.dat3m.dartagnan.expression.type.IntegerType;
 import com.dat3m.dartagnan.program.event.Event;
 import com.dat3m.dartagnan.program.event.Tag;
 import com.dat3m.dartagnan.program.event.core.MemoryCoreEvent;
 import com.dat3m.dartagnan.program.event.core.CondJump;
+import com.dat3m.dartagnan.program.event.core.Local;
 import com.dat3m.dartagnan.program.event.core.threading.ThreadCreate;
+import com.dat3m.dartagnan.program.misc.NonDetValue;
 import com.dat3m.dartagnan.program.event.metadata.MemoryOrder;
 import com.dat3m.dartagnan.program.event.metadata.SourceLocation;
 import com.dat3m.dartagnan.program.event.metadata.OriginalId;
@@ -36,7 +39,9 @@ public final class StrictWitness {
             + b64(source == null ? "" : source.sourceCodeFilePath()) + "\t"
             + (source == null ? -1 : source.lineNumber()) + "\t" + b64(e.toString())
             + "\t" + (original == null ? -1 : original.value())
-            + "\t" + (unrolling == null ? -1 : unrolling.value());
+            + "\t" + (unrolling == null ? -1 : unrolling.value())
+            + "\t" + (e instanceof Local l && l.getExpr() instanceof NonDetValue
+                && l.getResultRegister().getType() instanceof IntegerType t ? "nondet:" + t.getBitWidth() : "");
     }
     private static void creationOccurrence(EncodingContext c, ProverWithTracker prover, Event e, String ordinal) throws InterruptedException {
         occurrence(c, prover, e, ordinal, true);
@@ -157,7 +162,7 @@ public final class StrictWitness {
             var boundIds = new HashSet<Integer>();
             for (int i = 0; i < count; ++i) {
                 String k = "event." + i + ".";
-                used.addAll(List.of(k + "id", k + "thread", k + "creator", k + "descriptor", k + "value", k + "address", k + "object", k + "offset", k + "width", k + "creation_occurrence", k + "memory_occurrence"));
+                used.addAll(List.of(k + "id", k + "thread", k + "creator", k + "descriptor", k + "value", k + "address", k + "object", k + "offset", k + "width", k + "creation_occurrence", k + "memory_occurrence", k + "nondet_value", k + "nondet_width"));
                 Event e = event(p, k + "id", events);
                 if (!boundIds.add(e.getGlobalId())) throw new IllegalArgumentException("duplicate event");
                 var creator = e.getThread().getEntry().getCreator();
@@ -170,6 +175,14 @@ public final class StrictWitness {
                     creationOccurrence(c, prover, e, p.getProperty(k + "creation_occurrence"));
                 if (p.containsKey(k + "memory_occurrence"))
                     occurrence(c, prover, e, p.getProperty(k + "memory_occurrence"), false);
+                if (p.containsKey(k + "nondet_value") || p.containsKey(k + "nondet_width")) {
+                    if (!(e instanceof Local l) || !(l.getExpr() instanceof NonDetValue)
+                        || !(l.getResultRegister().getType() instanceof IntegerType t)
+                        || !p.containsKey(k + "nondet_value")
+                        || t.getBitWidth() != Integer.parseInt(p.getProperty(k + "nondet_width")))
+                        throw new IllegalArgumentException("not a direct nondet local result");
+                    prover.addConstraint(number(c, c.result(l).formula(), p.getProperty(k + "nondet_value")));
+                }
                 if (p.containsKey(k + "value") || p.containsKey(k + "address") || p.containsKey(k + "object") || p.containsKey(k + "offset") || p.containsKey(k + "width")) {
                     if (!(e instanceof MemoryCoreEvent m)) throw new IllegalArgumentException("not a memory event");
                     if (p.containsKey(k + "value")) prover.addConstraint(number(c, c.value(m).formula(), p.getProperty(k + "value")));

@@ -11,6 +11,39 @@ from pathlib import Path
 import re
 from calibrate import build, certificate, digest, events, run, PIN
 
+NONDET = {'__VERIFIER_nondet_' + n for n in
+          ('bool', 'char', 'uchar', 'short', 'ushort', 'int', 'uint', 'long',
+           'ulong', 'longlong', 'ulonglong')}
+
+
+def exact_function(program, trace, before, value, depth=0):
+    if depth >= 32:
+        return None
+    if value.get('kind') == 'function':
+        return value['id']
+    if value.get('kind') != 'variable':
+        return None
+    instructions = program['instructions']
+    owners = {b: name for name, fn in program['functions'].items() for b in fn.get('blocks', {})}
+    owner = owners.get(instructions[trace['steps'][before]['statement']]['block'])
+    if owner is None:
+        return None
+    for i in range(before - 1, -1, -1):
+        step = trace['steps'][i]
+        if 'synthetic_event' in step:
+            continue
+        ar = instructions[step['statement']]
+        if owners.get(ar['block']) != owner:
+            continue
+        if ar['kind'] == 'return':
+            return None
+        if ar.get('result', {}).get('id') != value['id']:
+            continue
+        if (ar['kind'] == 'assign' or ar['kind'] == 'unary' and ar['operator'] == 14) and len(ar['operands']) == 1:
+            return exact_function(program, trace, i, ar['operands'][0], depth + 1)
+        return None
+    return None
+
 
 def same_source(ar, event):
     return event['line'] == ar.get('line') and Path(event['file']).resolve() == Path(ar.get('file', '')).resolve()
@@ -90,6 +123,7 @@ def translate(replay, ir_hash, ir_events):
         raise ValueError('unmapped thread traces: ' + ','.join(remaining))
     bound, omitted, mapped_steps, claims = {}, [], {}, {}
     memory_bindings = []
+    nondet_bindings = []
     for name, trace in traces.items():
         values = {}
         for index, step in enumerate(trace['steps']):
@@ -101,6 +135,38 @@ def translate(replay, ir_hash, ir_events):
             address = step.get('encoded_address', {})
             obj = address.get('object', {})
             kind = ar['kind']
+            if kind == 'call' and 'encoded_result' in step and not ar.get('abstract_initializer'):
+                callee = exact_function(replay['program'], trace, index, ar['operands'][0])
+                fn = replay['program']['functions'].get(callee, {})
+                result_type = ar.get('result', {}).get('type', {})
+                return_type = fn.get('return_type', {})
+                if (callee in NONDET and fn.get('declaration') and not fn.get('parameter_types')
+                        and len(ar['operands']) == 1 and result_type.get('kind') == 'integer'
+                        and return_type.get('kind') == 'integer'
+                        and (return_type.get('bits'), return_type.get('signed'))
+                            == (result_type.get('bits'), result_type.get('signed'))):
+                    matches = [e for e in ir_events if e['thread'] == threads[name]
+                               and same_source(ar, e) and e.get('nondet')
+                               and e.get('nondet_bits') == result_type['bits']]
+                    sites = [sid for sid, stmt in instructions.items()
+                             if stmt['kind'] == 'call' and not stmt.get('abstract_initializer')
+                             and same_source(stmt, ar)]
+                    # Repeated/optimized nondet sources need further occurrence mapping.
+                    ordinal = sum(s['statement'] == step['statement'] and 'synthetic_event' not in s
+                                  for s in trace['steps'][:index + 1])
+                    if (len(matches) == 1 and sites == [step['statement']]
+                            and ordinal == 1 and matches[0]['id'] not in bound):
+                        bits = result_type['bits']
+                        value = int(step['encoded_result'])
+                        lo = -(1 << (bits - 1)) if result_type['signed'] else 0
+                        hi = (1 << (bits - int(result_type['signed']))) - 1
+                        if not lo <= value <= hi:
+                            raise ValueError('nondet result outside AR integer range')
+                        e = matches[0]
+                        bound[e['id']] = e
+                        claims[e['id']] = {'nondet_value': str(value % (1 << bits)), 'nondet_width': bits}
+                        nondet_bindings.append(dict(trace=name, step=index, reference_event=e['id'], callee=callee))
+                        continue
             if kind not in ('load', 'store') or obj.get('kind') != 'global':
                 omitted.append(dict(trace=name, step=index, kind=kind, reason='not a mapped global memory access'))
                 continue
@@ -157,9 +223,10 @@ def translate(replay, ir_hash, ir_events):
         if e['id'] in creators and creators[e['id']][1] is not None:
             cert[f'event.{i}.creation_occurrence'] = creators[e['id']][1]
     return cert, dict(scope='PARTIAL_FIXED_MEMORY_MODEL', threads=threads,
-                      mapped_memory_events=len(bound), omitted_steps=omitted,
+                      mapped_memory_events=len(memory_bindings), omitted_steps=omitted,
                       creation_bindings=creation_bindings,
                       memory_bindings=memory_bindings,
+                      nondet_bindings=nondet_bindings,
                       unbound_claims=['CFG and call occurrence mapping', 'local values and nondet occurrences',
                                       'synchronization history and identities', 'IKOS total schedule and rf choices'],
                       full_counterexample_validated=False)
