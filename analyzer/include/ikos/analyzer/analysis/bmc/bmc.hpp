@@ -1,11 +1,11 @@
-// BMC 模块 —— 顶层 API：原子检测 + 竞争确认（供 checker 集成调用）
+// BMC 模块 —— 有界竞争确认（供 checker 集成调用）
 //
-// confirm_race：对 checker 报的一对访问，先检测函数里有没有 BMC 没建模的
-// 同步（C11 原子 / __VERIFIER_atomic），有则保守返回 false（不能确认）；
-// 否则路径敏感展开两线程路径 + check_race 编码判定。
+// confirm_race：展开实际执行前缀，再由 check_race 检查同步、值、地址和
+// 实例前提。未支持的操作仅阻止执行到它的前缀，不因整函数扫描否决其他路径。
 
 #pragma once
 
+#include <chrono>
 #include <set>
 #include <string>
 #include <vector>
@@ -49,9 +49,10 @@ inline bool is_unmodeled_atomic_call(const std::string& nm) {
 ///   - sem_*（信号量 post/wait 建 HB）
 ///   - pthread_barrier_* / pthread_spin_*（屏障/自旋锁）
 /// 有则返回 true（调用方必须报 UNKNOWN，不能报 FALSE）。
-/// 注意：__VERIFIER_atomic_begin/end 已建模为伪锁、pthread_cond_wait 已建模为
-/// unlock+lock（unroll.hpp），不算这里。
-inline bool has_unmodeled_sync(ar::Function* func) {
+/// __VERIFIER_atomic_begin/end use a pseudo mutex. Condition variables and
+/// other rwlock APIs currently lack sufficient summaries and remain UNKNOWN.
+inline bool has_unmodeled_sync(ar::Function* func,
+                               ar::Statement** unsupported = nullptr) {
   ar::Code* body = func->body_or_null();
   if (body == nullptr) {
     return false;
@@ -61,23 +62,38 @@ inline bool has_unmodeled_sync(ar::Function* func) {
       ar::Statement* s = *sit;
       if (auto* load = core::dyn_cast< ar::Load >(s)) {
         if (load->is_atomic()) {
+          if (unsupported != nullptr) {
+            *unsupported = s;
+          }
           return true;
         }
       } else if (auto* store = core::dyn_cast< ar::Store >(s)) {
         if (store->is_atomic()) {
+          if (unsupported != nullptr) {
+            *unsupported = s;
+          }
           return true;
         }
       } else if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
-        ar::FunctionPointerConstant* cst =
-            core::dyn_cast< ar::FunctionPointerConstant >(call->called());
-        if (cst != nullptr && cst->function() != nullptr) {
-          const std::string& nm = cst->function()->name();
+        ar::Function* f = exact_callee(call);
+        if (f != nullptr) {
+          const std::string& nm = f->name();
           if (is_unmodeled_atomic_call(nm)) {
+            if (unsupported != nullptr) {
+              *unsupported = s;
+            }
             return true;
           }
           if (nm.find("pthread_barrier") != std::string::npos ||
               nm.find("pthread_spin") != std::string::npos ||
+              nm.find("pthread_cond") != std::string::npos ||
+              (nm.find("pthread_rwlock") != std::string::npos &&
+               !(f->is_declaration() && call->num_arguments() == 1 &&
+                 (nm == "pthread_rwlock_rdlock" || nm == "pthread_rwlock_wrlock" || nm == "pthread_rwlock_unlock"))) ||
               nm.rfind("sem_", 0) == 0) {
+            if (unsupported != nullptr) {
+              *unsupported = s;
+            }
             return true;
           }
         }
@@ -87,58 +103,29 @@ inline bool has_unmodeled_sync(ar::Function* func) {
   return false;
 }
 
-/// 检测整个程序里有没有 BMC 第一期没建模的同步（保守：任一函数有 → 整个程序报 UNKNOWN）。
-inline bool has_unmodeled_sync(ar::Bundle* bundle) {
+/// 静态能力扫描；生产查询检查实际前缀，不用这个扫描否决整个程序。
+inline bool has_unmodeled_sync(ar::Bundle* bundle,
+                               ar::Statement** unsupported = nullptr) {
   for (auto fit = bundle->function_begin(), fend = bundle->function_end();
        fit != fend; ++fit) {
-    if ((*fit)->is_definition() && has_unmodeled_sync(*fit)) {
+    if ((*fit)->is_definition() && has_unmodeled_sync(*fit, unsupported)) {
       return true;
     }
   }
   return false;
 }
 
-/// 一条展开路径末尾仍持有的锁（lock 次数 > unlock 次数 = 访问时在临界区内）。
-inline std::set< std::uint64_t > held_locks(const std::vector< BmcEvent >& path) {
-  std::map< std::uint64_t, int > balance;
-  for (const BmcEvent& ev : path) {
-    if (ev.kind == EvKind::Lock) {
-      ++balance[ev.mutex];
-    } else if (ev.kind == EvKind::Unlock) {
-      --balance[ev.mutex];
-    }
-  }
-  std::set< std::uint64_t > held;
-  for (const auto& kv : balance) {
-    if (kv.second > 0) {
-      held.insert(kv.first);
-    }
-  }
-  return held;
-}
+// A shared budget bounds all groups; exhaustion only leaves races unconfirmed.
+struct SearchBudget {
+  std::size_t candidates = 256;
+  std::size_t queries = 1024;
+  std::chrono::steady_clock::time_point deadline =
+      std::chrono::steady_clock::now() + std::chrono::seconds(10);
 
-/// 整个函数里出现过的所有锁（任一分支上的 lock/unlock 都算）。
-/// 能力边界：展开路径在目标访问处截止，锁的 unlock 在访问之后、不在路径里，所以
-/// 「访问时是否持有锁」用路径级 held 判不精确——某把锁可能在另一条分支上才被当前
-/// 线程使用。函数级是更保守的过近似（sound，只多丢 TP）。
-inline std::set< std::uint64_t > func_used_locks(ar::Function* func) {
-  std::set< std::uint64_t > locks;
-  ar::Code* body = func->body_or_null();
-  if (body == nullptr) {
-    return locks;
+  bool expired() const {
+    return std::chrono::steady_clock::now() >= deadline;
   }
-  for (auto bit = body->begin(), bend = body->end(); bit != bend; ++bit) {
-    for (auto sit = (*bit)->begin(), send = (*bit)->end(); sit != send; ++sit) {
-      if (auto* call = core::dyn_cast< ar::CallBase >(*sit)) {
-        EvKind kind;
-        if (classify_mutex_call(call, kind)) {
-          locks.insert(mutex_id(call));
-        }
-      }
-    }
-  }
-  return locks;
-}
+};
 
 /// 确认两个访问（在各自线程入口函数里）是否真竞争。
 /// funcA/funcB = 两访问所在的线程入口函数；stmtA/stmtB = 两访问语句；
@@ -148,13 +135,21 @@ inline std::set< std::uint64_t > func_used_locks(ar::Function* func) {
 inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
                          std::uint64_t widthA, ar::Function* funcB,
                          ar::Statement* stmtB, std::uint64_t widthB,
-                         const IndirectCalleeResolver& resolve_indirect = {}) {
-  // Soundness 门：有任何未建模同步，就不能报 FALSE。
-  if (has_unmodeled_sync(funcA) || has_unmodeled_sync(funcB)) {
-    return false;
+                         Diagnostics* diagnostics = nullptr,
+                         SearchBudget* budget = nullptr,
+                         std::vector< ar::Statement* >* creations = nullptr,
+                         const CandidateFacts* facts = nullptr,
+                         unsigned loop_bound = 1) {
+  // The actual startup and worker prefixes reject unsupported atomic memory
+  // events/calls. Synchronization outside them need not be executable here.
+  UnrollResult rA = unroll_to(funcA, stmtA, 1, loop_bound);
+  UnrollResult rB = unroll_to(funcB, stmtB, 1, loop_bound);
+  if (rA.rejected_reason != nullptr) record(diagnostics, rA.rejected_reason, rA.rejected_statement);
+  if (rB.rejected_reason != nullptr) record(diagnostics, rB.rejected_reason, rB.rejected_statement);
+  if (diagnostics != nullptr) {
+    diagnostics->paths_a = rA.paths.size();
+    diagnostics->paths_b = rB.paths.size();
   }
-  UnrollResult rA = unroll_to(funcA, stmtA, resolve_indirect);
-  UnrollResult rB = unroll_to(funcB, stmtB, resolve_indirect);
   // 目标访问的字节宽度（路径最后一个事件即目标访问），encode 阶段判范围重叠。
   for (auto& p : rA.paths) {
     if (!p.empty()) {
@@ -166,49 +161,62 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
       p.back().width = widthB;
     }
   }
-  // Soundness 门：展开遇到回边（循环）→ 路径不完整，循环里可能藏着
-  // join/create/mutex 等未展开的同步（如 pthread-numerical-integration 的
-  // join 循环），不能 sound 判 FALSE → 保守 UNKNOWN（能力边界，后续加 bound 展开）。
+  // Construction exhaustion discards partial enumerations. Cutting a CFG
+  // backedge alone is bounded search; it never justifies a guessed loop exit.
   if (rA.incomplete || rB.incomplete) {
+    if (rA.incomplete) {
+      record(diagnostics, rA.reason != nullptr ? rA.reason : "unroll_incomplete", stmtA);
+    }
+    if (rB.incomplete) {
+      record(diagnostics, rB.reason != nullptr ? rB.reason : "unroll_incomplete", stmtB);
+    }
     return false;
   }
-  // held 锁门（能力边界）：路径在目标访问处截止，锁的 unlock 在访问之后、不在路径里，
-  // 若双方访问都处在同一把锁的临界区内（held），check_race 的 balanced 互斥析取
-  // （Unlock→Lock）没有解锁事件可排序，表达不了「两访问互斥」→ 保守 UNKNOWN。
-  // 完全不共享的锁（经典不同锁竞争）不约束对方；一方 held 为空时另一方的锁不保护
-  // 它，照常判。
-  std::set< std::uint64_t > funcLocksA = func_used_locks(funcA);
-  std::set< std::uint64_t > funcLocksB = func_used_locks(funcB);
+  if (rA.paths.empty() || rB.paths.empty()) {
+    record(diagnostics, "target_not_reached", rA.paths.empty() ? stmtA : stmtB);
+    if (loop_bound == 1) return confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
+                                            diagnostics, budget, creations, facts, 16);
+    return false;
+  }
   for (const auto& pA : rA.paths) {
-    std::set< std::uint64_t > heldA = held_locks(pA);
     for (const auto& pB : rB.paths) {
-      std::set< std::uint64_t > heldB = held_locks(pB);
-      bool shared_held = false;
-      for (std::uint64_t m : heldA) {
-        if (funcLocksB.count(m)) {
-          shared_held = true;
-          break;
-        }
+      if (budget != nullptr && (budget->expired() || budget->queries == 0)) {
+        record(diagnostics, "search_budget");
+        return false;
       }
-      if (!shared_held) {
-        for (std::uint64_t m : heldB) {
-          if (funcLocksA.count(m)) {
-            shared_held = true;
-            break;
+      if (diagnostics != nullptr) {
+        ++diagnostics->path_pairs;
+      }
+      auto starts = [](const std::vector< BmcEvent >& path, ar::Function* child) {
+        for (const BmcEvent& event : path) {
+          if (event.kind == EvKind::Create &&
+              event.thread == reinterpret_cast< std::uint64_t >(child)) {
+            return true;
           }
         }
-      }
-      // 只在「双方访问都在各自临界区内」且共享一把 held 锁时才 skip（标志式 HB /
-      // 永久锁）。一方解锁访问（held 为空）时，另一方的锁不保护它 → 照常判。
-      bool both_held = !heldA.empty() && !heldB.empty();
-      if (both_held && shared_held) {
+        return false;
+      };
+      if ((funcA->name() == "main" && !starts(pA, funcB)) ||
+          (funcB->name() == "main" && !starts(pB, funcA))) {
+        record(diagnostics, "thread_activation_unproven");
         continue;
       }
-      if (check_race(pA, pB, funcA, funcB)) {
+      if (budget != nullptr) {
+        --budget->queries;
+      }
+      if (check_race(pA, pB, funcA, funcB, diagnostics, facts)) {
+        if (creations != nullptr) {
+          creations->clear();
+          for (const auto* path : {&pA, &pB})
+            for (const auto& event : *path)
+              if (event.kind == EvKind::Create) creations->push_back(event.stmt);
+        }
         return true;
       }
     }
   }
+  if (loop_bound == 1) return confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
+                                          diagnostics, budget, creations, facts, 16);
   return false;
 }
 

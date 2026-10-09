@@ -1101,7 +1101,11 @@ public:
             }
           }
         }
-        _spawn_counts_by_name[func->name()] += (in_loop ? 2u : 1u);
+        auto* code = call_site->code();
+        bool main_site = code != nullptr && code->is_function_body() && code->function()->name() == "main";
+        // A helper/worker invocation can repeat even when its own CFG is
+        // acyclic. One static create site is then not one concrete instance.
+        _spawn_counts_by_name[func->name()] += (in_loop || !main_site ? 2u : 1u);
       }
     }
     // Thread-instance registry: assign this create site a stable id (once) and
@@ -1231,6 +1235,16 @@ public:
     return this->spawns_are_sequential_locked(thread_id);
   }
 
+  // Joined static site IDs cover all dynamic instances only when each create
+  // executes at most once. Once-control instances retain their separate IDs.
+  bool thread_instances_are_static(const std::string& name) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    auto sites = _spawn_sites_by_name.find(name);
+    if (sites == _spawn_sites_by_name.end()) return true;
+    auto count = _spawn_counts_by_name.find(name);
+    return count != _spawn_counts_by_name.end() && count->second == sites->second.size();
+  }
+
   /// \brief True iff the thread function's create sites are all SEQUENTIAL —
   /// each create is joined before the next create. A single straight-line
   /// basic block whose creates are balance-interleaved with joins (at every
@@ -1244,6 +1258,8 @@ public:
     bool seq = false; // size<=1 (a loop'd create site) is concurrent, not unique
     auto si = _spawn_sites_by_name.find(name);
     if (si != _spawn_sites_by_name.end() && si->second.size() > 1) {
+      auto count = _spawn_counts_by_name.find(name);
+      if (count == _spawn_counts_by_name.end() || count->second != si->second.size()) return false;
       seq = true; // multiple sites: assume sequential, verify below
       ar::BasicBlock* bb = nullptr;
       for (ar::CallBase* site : si->second) {
@@ -1259,11 +1275,13 @@ public:
         }
       }
       if (seq) {
-        unsigned creates = 0;
-        unsigned joins = 0;
+        ar::CallBase* pending = nullptr;
+        std::unordered_set< ar::Statement* > since_create;
         for (ar::Statement* st : *bb) {
           auto* c = dyn_cast< ar::CallBase >(st);
           if (c == nullptr) {
+            if (pending != nullptr && isa< ar::Store >(st)) {seq = false; break;}
+            if (pending != nullptr) since_create.insert(st);
             continue;
           }
           // Identify the create sites by the SITE SET (exec_pthread_create has
@@ -1271,19 +1289,29 @@ public:
           // wrapper formals); re-resolving arg2 here would miss bitcast-wrapped
           // thread functions.
           if (si->second.count(c) != 0) {
-            if (creates > joins) {
+            if (pending != nullptr || !isa< ar::LocalVariable >(c->argument(0)) ||
+                !isa< ar::NullConstant >(c->argument(3))) {
               seq = false; // previous create not joined → concurrent
               break;
             }
-            ++creates;
+            pending = c;
+            since_create.clear();
             continue;
           }
           auto* fpc =
               dyn_cast_or_null< ar::FunctionPointerConstant >(c->called());
           if (fpc != nullptr && fpc->function() != nullptr &&
-              fpc->function()->name() == "pthread_join") {
-            ++joins;
-          }
+              fpc->function()->name() == "pthread_join" && pending != nullptr) {
+            ar::Load* handle = nullptr;
+            for (auto* statement : since_create) {
+              if (statement->result_or_null() == c->argument(0)) {
+                if (handle != nullptr) {seq = false; break;}
+                handle = dyn_cast< ar::Load >(statement);
+              }
+            }
+            if (!seq || handle == nullptr || handle->operand() != pending->argument(0)) {seq = false; break;}
+            pending = nullptr;
+          } else if (pending != nullptr) {seq = false; break;}
         }
       }
     }

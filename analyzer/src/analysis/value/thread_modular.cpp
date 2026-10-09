@@ -153,16 +153,25 @@ void ThreadModularAnalysis::run() {
          ++it) {
       ar::GlobalVariable* gv = *it;
       ar::Type* ty = gv->type()->pointee();
-      if (!gv->is_definition() || !ty->is_integer()) {
+      if (!gv->is_definition()) {
         continue;
       }
-      auto* int_ty = ar::cast< ar::IntegerType >(ty);
       MemoryLocation* loc = _ctx.mem_factory->get_global(gv);
       std::uint64_t addr = core::IndexableTraits< MemoryLocation* >::index(loc);
       auto bit = board.find(addr);
       if (bit == board.end()) {
         continue;
       }
+      if (!ty->is_integer()) {
+        if (ty->is_pointer()) continue; // separate pointer-interference channel
+        // The flat board has no field offsets. Retaining the static array or
+        // struct initializer would discard real writes made before a spawn.
+        Variable* ptr_var = _ctx.var_factory->get_global(gv);
+        entry_inv.first().normal().pointer_assign(ptr_var, loc, core::Nullity::non_null());
+        entry_inv.first().normal().mem_forget_reachable(ptr_var);
+        continue;
+      }
+      auto* int_ty = ar::cast< ar::IntegerType >(ty);
       // Join the board interval into the global's integer CONTENT. The
       // content is a memory CELL, not a scalar, so `int_set` on the pointer
       // variable (or the cell variable) is not applicable — go through the

@@ -1,21 +1,23 @@
-// BMC 模块 —— 路径敏感 CFG 展开器 + 事件提取（第一版）
-//
-// 从线程入口函数沿 CFG 路径敏感地枚举到目标访问的所有路径，提取：
-//   - 内存事件：ar::Load（读）/ ar::Store（写）
-//   - 同步事件：pthread_mutex_lock（Lock）/ unlock（Unlock）
-//
-// 第一版只处理 DAG（直线代码 + 分支，无回边）；循环（回边）后续用 bound 展开。
+// Bounded, path-sensitive prefixes to a candidate access. Calls compose their
+// actual return prefixes; loop guards remain explicit and backedges are cut.
+// Unsupported prefix semantics leave the candidate unconfirmed.
 
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
-#include <functional>
+#include <map>
+#include <set>
 #include <string>
 #include <vector>
+#include <functional>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/GlobalVariable.h>
+
+#include "diagnostics.hpp"
 
 #include <ikos/ar/semantic/code.hpp>
 #include <ikos/ar/semantic/statement.hpp>
-#include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 #include <ikos/core/support/cast.hpp>
 
 namespace ikos {
@@ -23,26 +25,31 @@ namespace analyzer {
 namespace bmc {
 
 /// 事件种类。
-enum class EvKind { Read, Write, Lock, Unlock, Assume, Create, Join };
+enum class EvKind { Read, Write, Lock, Unlock, Assume, Create, Join, Local, Unsupported };
 
 /// __VERIFIER_atomic_begin/end 的合成全局锁 id（与 abstract checker 的
-/// PSEUDO_ATOMIC_LOCK 同值）。伪原子段 = 一把所有线程共享的锁。
+/// PSEUDO_ATOMIC_LOCK 同值）。编码还须排除原子段外的其他线程事件。
 constexpr std::uint64_t PSEUDO_ATOMIC_LOCK = 0xA7E0AD1CULL;
 
 /// 一个 BMC 事件（内存访问或锁同步）。
 struct BmcEvent {
+  const char* blocker = nullptr;
   ar::Statement* stmt = nullptr;  // 对应的 AR 语句
+  ar::Function* called_function = nullptr; // Callee proven on this executed call.
   EvKind kind = EvKind::Read;
   std::uint64_t mutex = 0;  // Lock/Unlock 的锁对象语法同一性（arg0 指针）；内存事件为 0
+  bool reader = false; // Two rwlock read acquisitions do not exclude each other.
   // 符号地址（SMT 同址门）：base = 全局数组指针身份；const_off = 常量字节偏移；
   // var_id/coeff = 单个变量下标项 `coeff * var`（var_id==0 ⟹ 纯常量偏移）。
   // 提取失败时保持 base==0（调用方保守不确认）。
+  ar::LocalVariable* local_base = nullptr;
   std::uint64_t base = 0;
-  std::int64_t const_off = 0;
+  core::ZNumber const_off{0};
   std::uint64_t var_id = 0;
-  std::int64_t coeff = 0;
+  std::size_t var_before = 0; // Definition context of the pointer's index.
+  core::ZNumber coeff{0};
   // 目标访问的字节宽度（encode.hpp 用范围重叠判同址，Read/Write 事件才有意义）。
-  // 0 = 未知，保守视为可能重叠。由 confirm_race 在展开后填入 path.back()。
+  // Set for every memory event; confirmation requires known object bounds.
   std::uint64_t width = 0;
   // Create/Join 的线程身份：Create = 线程函数指针（reinterpret_cast）；Join =
   // 句柄身份（mutex_id_of_value 同款解析）。仅 Create/Join 事件用，其余为 0。
@@ -53,16 +60,8 @@ struct BmcEvent {
       : stmt(s), kind(k), mutex(m) {}
 };
 
-/// 间接调用的候选目标解析器（函数指针）：data_race.cpp 用 FunctionPointerAnalysis
-/// 结果填充，把 `call %fp()` 的 fp 解析成可能的目标函数集合。默认空 = 不解析间接
-/// 调用（保守，只丢 TP 不引 FP）。
-using IndirectCalleeResolver =
-    std::function< std::vector< ar::Function* >(ar::CallBase*) >;
-
-/// 锁的语法同一性：把 arg0 解析到其底层全局变量，用 GlobalVariable 指针做身份。
-/// 不能直接用 `*arg_begin()` 的裸指针——同一把锁在 lock / unlock 两个调用点
-/// 的 arg 可能是不同的 InternalVariable（各带一条 PointerShift/Bitcast 定义链），
-/// 裸指针会拆成两个假锁，破坏锁集平衡与共享锁判定。
+// A unique static definition is usable only when its execution is also
+// established by the selected path (encode.hpp).
 inline ar::Statement* unique_def_bmc(ar::InternalVariable* iv) {
   ar::Code* code = iv->code();
   if (code == nullptr) {
@@ -82,102 +81,77 @@ inline ar::Statement* unique_def_bmc(ar::InternalVariable* iv) {
   return found;
 }
 
-/// 路径敏感 def 解析：单 def 直接返回；phi（多 def）选「当前 DFS 路径 in_stack
-/// 经过的前驱块」的 def —— 把 nondet 指针（04-mutex_23 的 unlock(m)，m 在
-/// #2=bitcast @mutex2 / #3=bitcast @mutex1 两个前驱块各 def 一次）按路径解析到
-/// 具体那把锁，而不是坍缩成裸指针假锁。找不到（无 def / phi 但路径块都不含 def）
-/// 返回 nullptr（保守，沿用旧坍缩行为，只丢 TP 不引 FP）。
+// Multiple definitions need actual reaching-definition evidence, not the first
+// block found anywhere on the DFS stack.
 inline ar::Statement* unique_def_bmc_on_path(
     ar::InternalVariable* iv, const std::vector< ar::BasicBlock* >& in_stack) {
-  ar::Code* code = iv->code();
-  if (code == nullptr) {
-    return nullptr;
-  }
-  std::vector< ar::Statement* > defs;
-  for (ar::BasicBlock* bb : *code) {
+  ar::Statement* found = nullptr;
+  if (iv->code() == nullptr) return nullptr;
+  for (ar::BasicBlock* bb : in_stack) {
     for (ar::Statement* s : *bb) {
       if (s->result_or_null() == iv) {
-        defs.push_back(s);
+        if (found != nullptr) return nullptr;
+        found = s;
       }
     }
   }
-  if (defs.size() == 1) {
-    return defs[0];
-  }
-  if (defs.empty()) {
-    return nullptr;
-  }
-  // phi：选 def 所在块在当前 DFS 路径（in_stack）上的那个。
-  for (ar::Statement* s : defs) {
-    for (ar::BasicBlock* b : in_stack) {
-      if (s->parent() == b) {
-        return s;
+  return found;
+}
+
+// Only exact global addresses establish lock identity. An unresolved pointer
+// cannot be assigned a distinct synthetic lock: it may alias the other lock.
+inline std::uint64_t mutex_id_of_value(
+    ar::Value* v, const std::vector< ar::BasicBlock* >* in_stack = nullptr) {
+  core::ZNumber offset{0};
+  for (unsigned depth = 0; depth < 16; ++depth) {
+    if (auto* global = core::dyn_cast< ar::GlobalVariable >(v)) {
+      if (!global->is_definition() || global->type()->pointee()->is_opaque()) return 0;
+      auto size = global->bundle()->data_layout().alloc_size_in_bytes(global->type()->pointee());
+      if (offset < 0 || offset >= size) return 0;
+      auto base = reinterpret_cast< std::uint64_t >(global);
+      // A collision can only add exclusion; incomplete ownership is rejected.
+      std::uint64_t off = offset.to< std::uint64_t >();
+      return base ^ (off + 0x9e3779b97f4a7c15ULL + (base << 6) + (base >> 2));
+    }
+    auto* iv = core::dyn_cast< ar::InternalVariable >(v);
+    if (iv == nullptr) return 0;
+    auto* def = in_stack != nullptr ? unique_def_bmc_on_path(iv, *in_stack) : unique_def_bmc(iv);
+    if (auto* shift = core::dyn_cast_or_null< ar::PointerShift >(def)) {
+      for (std::size_t i = 0; i < shift->num_terms(); ++i) {
+        auto term = shift->term(i);
+        auto* c = core::dyn_cast< ar::IntegerConstant >(term.second);
+        if (c == nullptr) return 0;
+        offset += term.first.to_z_number() * c->value().to_z_number();
       }
+      v = shift->pointer();
+    } else if (auto* cast = core::dyn_cast_or_null< ar::UnaryOperation >(def)) {
+      if (cast->op() != ar::UnaryOperation::Bitcast) return 0;
+      v = cast->operand();
+    } else {
+      return 0;
+    }
+  }
+  return 0;
+}
+
+// A points-to MAY set does not prove a particular indirect callee executes.
+inline ar::Function* exact_callee(ar::CallBase* call) {
+  ar::Value* value = call->called();
+  for (unsigned depth = 0; depth < 16; ++depth) {
+    if (auto* f = core::dyn_cast< ar::FunctionPointerConstant >(value)) return f->function();
+    auto* iv = core::dyn_cast< ar::InternalVariable >(value);
+    if (iv == nullptr) return nullptr;
+    auto* def = unique_def_bmc(iv);
+    if (auto* cast = core::dyn_cast_or_null< ar::UnaryOperation >(def)) {
+      if (cast->op() != ar::UnaryOperation::Bitcast) return nullptr;
+      value = cast->operand();
+    } else if (auto* assignment = core::dyn_cast_or_null< ar::Assignment >(def)) {
+      value = assignment->operand();
+    } else {
+      return nullptr;
     }
   }
   return nullptr;
-}
-
-/// 把锁/互斥量的指针 Value 解析到 (base global, const_off) 合成身份。变量偏移坍缩
-/// 到 base（保守）；碰撞只会多丢 TP、不 FP。传入 in_stack（非 null）时 phi 按路径
-/// 敏感解析（见 unique_def_bmc_on_path）；null（默认）沿用旧的「phi=叶子」坍缩。
-inline std::uint64_t mutex_id_of_value(
-    ar::Value* v, const std::vector< ar::BasicBlock* >* in_stack = nullptr) {
-  std::int64_t const_off = 0;
-  bool variable_off = false;
-  std::uint64_t base = 0;
-  for (int depth = 0; depth < 16; ++depth) {
-    if (auto* gv = core::dyn_cast< ar::GlobalVariable >(v)) {
-      base = reinterpret_cast< std::uint64_t >(gv);
-      break;
-    }
-    auto* iv = core::dyn_cast< ar::InternalVariable >(v);
-    if (iv == nullptr) {
-      break;
-    }
-    ar::Statement* def = in_stack != nullptr
-                             ? unique_def_bmc_on_path(iv, *in_stack)
-                             : unique_def_bmc(iv);
-    if (auto* ps = core::dyn_cast_or_null< ar::PointerShift >(def)) {
-      // 累加常量字节偏移（`&m[3]` vs `&m[4]` 是不同锁）；变量下标（`m[i]`）
-      // → 身份不确定，坍缩到 base（保守，只丢 TP 不 FP）。
-      for (std::size_t i = 0; i < ps->num_terms(); ++i) {
-        auto term = ps->term(i);
-        auto* c = core::dyn_cast< ar::IntegerConstant >(term.second);
-        if (c == nullptr) {
-          variable_off = true;
-          break;
-        }
-        const_off += term.first.to_z_number().to< std::int64_t >() *
-                     c->value().to_z_number().to< std::int64_t >();
-      }
-      if (variable_off) {
-        break;
-      }
-      v = ps->pointer();
-    } else if (auto* un = core::dyn_cast_or_null< ar::UnaryOperation >(def)) {
-      if (un->op() == ar::UnaryOperation::Bitcast ||
-          un->op() == ar::UnaryOperation::PtrToUI ||
-          un->op() == ar::UnaryOperation::UIToPtr) {
-        v = un->operand();
-      } else {
-        break;
-      }
-    } else {
-      break;
-    }
-  }
-  if (base == 0) {
-    return reinterpret_cast< std::uint64_t >(v);
-  }
-  if (variable_off) {
-    return base;  // 变量偏移：坍缩到 base
-  }
-  // (base, const_off) 组合。碰撞只会让两把不同锁看起来同锁 → 多丢 TP、不 FP（sound）。
-  std::uint64_t h = base;
-  h ^= static_cast< std::uint64_t >(const_off) + 0x9e3779b97f4a7c15ULL +
-       (h << 6) + (h >> 2);
-  return h;
 }
 
 /// pthread_mutex_lock/unlock 的锁身份 = arg0。
@@ -189,61 +163,22 @@ inline std::uint64_t mutex_id(
   return mutex_id_of_value(*call->arg_begin(), in_stack);
 }
 
-/// 是否 pthread_cond_wait（含 AR 内禀 ar.pthread.cond.wait）。
-inline bool is_cond_wait(ar::CallBase* call) {
-  ar::FunctionPointerConstant* cst =
-      core::dyn_cast< ar::FunctionPointerConstant >(call->called());
-  if (cst == nullptr || cst->function() == nullptr) {
-    return false;
-  }
-  const std::string& nm = cst->function()->name();
-  return nm.find("pthread_cond_wait") != std::string::npos ||
-         nm.find("pthread.cond.wait") != std::string::npos;
-}
-
-/// pthread_cond_wait(&cond, &mutex) 的 mutex 身份 = arg1（arg0 是 cond）。
-inline std::uint64_t cond_wait_mutex_id(ar::CallBase* call) {
-  auto arg = call->arg_begin();
-  if (arg == call->arg_end()) {
-    return 0;
-  }
-  ++arg;
-  if (arg == call->arg_end()) {
-    return 0;
-  }
-  return mutex_id_of_value(*arg);
-}
-
 /// 判断一个 CallBase 是否是对 pthread_mutex 的 lock/unlock，返回事件种类；
 /// 非锁调用返回 false。
 inline bool classify_mutex_call(ar::CallBase* call, EvKind& kind) {
-  ar::FunctionPointerConstant* cst =
-      core::dyn_cast< ar::FunctionPointerConstant >(call->called());
-  if (cst == nullptr || cst->function() == nullptr) {
-    return false;
-  }
-  const std::string& nm = cst->function()->name();
-  // Matches "pthread_mutex_lock" / "pthread_mutex_unlock" and the AR intrinsic
-  // forms "ar.pthread.mutex.lock" / "ar.pthread.mutex.unlock".
-  bool is_lock = nm.find("pthread_mutex_lock") != std::string::npos ||
-                 nm.find("pthread.mutex.lock") != std::string::npos;
-  bool is_unlock = nm.find("pthread_mutex_unlock") != std::string::npos ||
-                   nm.find("pthread.mutex.unlock") != std::string::npos;
-  if (is_lock) {
+  ar::Function* f = exact_callee(call);
+  if (f == nullptr || !f->is_declaration()) return false;
+  const auto& name = f->name();
+  if (f->intrinsic_id() == ar::Intrinsic::PthreadMutexLock || name == "pthread_mutex_lock" ||
+      (name == "pthread_rwlock_rdlock" && call->num_arguments() == 1) ||
+      (name == "pthread_rwlock_wrlock" && call->num_arguments() == 1) ||
+      name == "__VERIFIER_atomic_begin") {
     kind = EvKind::Lock;
     return true;
   }
-  if (is_unlock) {
-    kind = EvKind::Unlock;
-    return true;
-  }
-  // __VERIFIER_atomic_begin/end = 伪原子段（PSEUDO_ATOMIC_LOCK），与 abstract
-  // checker 同语义（concurrent_semantics.hpp SectionBegin/End）。
-  if (nm.find("__VERIFIER_atomic_begin") != std::string::npos) {
-    kind = EvKind::Lock;
-    return true;
-  }
-  if (nm.find("__VERIFIER_atomic_end") != std::string::npos) {
+  if (f->intrinsic_id() == ar::Intrinsic::PthreadMutexUnlock || name == "pthread_mutex_unlock" ||
+      (name == "pthread_rwlock_unlock" && call->num_arguments() == 1) ||
+      name == "__VERIFIER_atomic_end") {
     kind = EvKind::Unlock;
     return true;
   }
@@ -252,14 +187,9 @@ inline bool classify_mutex_call(ar::CallBase* call, EvKind& kind) {
 
 /// 判断一个 CallBase 是否是对 __VERIFIER_atomic_begin/end 的调用。
 inline bool is_verifier_atomic(ar::CallBase* call) {
-  ar::FunctionPointerConstant* cst =
-      core::dyn_cast< ar::FunctionPointerConstant >(call->called());
-  if (cst == nullptr || cst->function() == nullptr) {
-    return false;
-  }
-  const std::string& nm = cst->function()->name();
-  return nm.find("__VERIFIER_atomic_begin") != std::string::npos ||
-         nm.find("__VERIFIER_atomic_end") != std::string::npos;
+  auto* f = exact_callee(call);
+  return f != nullptr && f->is_declaration() &&
+         (f->name() == "__VERIFIER_atomic_begin" || f->name() == "__VERIFIER_atomic_end");
 }
 
 /// 提取一次内存访问指针的符号字节偏移：沿 def-chain 穿透 PointerShift / 值保持
@@ -272,6 +202,10 @@ inline bool symbolic_byte_offset(ar::Value* ptr, BmcEvent& ev) {
       ev.base = reinterpret_cast< std::uint64_t >(gv);
       return true;
     }
+    if (auto* local = core::dyn_cast< ar::LocalVariable >(ptr)) {
+      ev.local_base = local;
+      return true;
+    }
     auto* iv = core::dyn_cast< ar::InternalVariable >(ptr);
     if (iv == nullptr) {
       return false;
@@ -280,10 +214,9 @@ inline bool symbolic_byte_offset(ar::Value* ptr, BmcEvent& ev) {
     if (auto* ps = core::dyn_cast_or_null< ar::PointerShift >(def)) {
       for (std::size_t i = 0; i < ps->num_terms(); ++i) {
         auto term = ps->term(i);
-        std::int64_t stride = term.first.to_z_number().to< std::int64_t >();
+        core::ZNumber stride = term.first.to_z_number();
         if (auto* ic = core::dyn_cast< ar::IntegerConstant >(term.second)) {
-          ev.const_off +=
-              stride * ic->value().to_z_number().to< std::int64_t >();
+          ev.const_off += stride * ic->value().to_z_number();
         } else if (auto* viv =
                        core::dyn_cast< ar::InternalVariable >(term.second)) {
           if (ev.var_id != 0 &&
@@ -293,17 +226,7 @@ inline bool symbolic_byte_offset(ar::Value* ptr, BmcEvent& ev) {
           ev.var_id = reinterpret_cast< std::uint64_t >(viv);
           ev.coeff += stride;
         } else {
-          // 仿射下标（i+1、2*i 等）：resolve_linear_index 解析成 coeff*var+const。
-          LinearIndex li;
-          if (!resolve_linear_index(term.second, li)) {
-            return false;
-          }
-          if (ev.var_id != 0 && ev.var_id != li.var_id) {
-            return false; // 多变量下标：不干净
-          }
-          ev.var_id = li.var_id;
-          ev.coeff += stride * li.coeff;
-          ev.const_off += stride * li.const_term;
+          return false;
         }
       }
       ptr = ps->pointer();
@@ -312,8 +235,6 @@ inline bool symbolic_byte_offset(ar::Value* ptr, BmcEvent& ev) {
     if (auto* un = core::dyn_cast_or_null< ar::UnaryOperation >(def)) {
       switch (un->op()) {
         case ar::UnaryOperation::Bitcast:
-        case ar::UnaryOperation::PtrToUI:
-        case ar::UnaryOperation::UIToPtr:
           ptr = un->operand();
           continue;
         default:
@@ -325,88 +246,471 @@ inline bool symbolic_byte_offset(ar::Value* ptr, BmcEvent& ev) {
   return false;
 }
 
+// Known object extent for prefix validity. Locals require one bounded stack
+// allocation; candidate objects still have to be globals.
+inline bool memory_extent(const BmcEvent& event, core::ZNumber& size) {
+  if (event.base != 0) {
+    auto* g = reinterpret_cast< ar::GlobalVariable* >(event.base);
+    auto* type = g->type()->pointee();
+    if (!g->is_definition() || type->is_opaque()) return false;
+    size = g->bundle()->data_layout().alloc_size_in_bytes(type);
+    return true;
+  }
+  if (event.local_base == nullptr) return false;
+  ar::Allocate* found = nullptr;
+  for (ar::BasicBlock* bb : *event.local_base->function()->body_or_null()) {
+    for (ar::Statement* s : *bb) {
+      if (s->result_or_null() == event.local_base) {
+        if (found != nullptr) return false;
+        found = core::dyn_cast< ar::Allocate >(s);
+        if (found == nullptr) return false;
+      }
+    }
+  }
+  if (found == nullptr || found->allocated_type()->is_opaque()) return false;
+  auto* n = core::dyn_cast< ar::IntegerConstant >(found->array_size());
+  if (n == nullptr || n->value().to_z_number() <= 0) return false;
+  size = event.local_base->bundle()->data_layout().alloc_size_in_bytes(found->allocated_type()) * n->value().to_z_number();
+  return size > 0 && size <= 1048576;
+}
+
 /// 判断一个 CallBase 是否是 assume 语义调用（assume_abort_if_not / __VERIFIER_assume）。
 /// 它们「assume 实参为真」（假分支 abort/不可达），不能当普通调用跳过。
 inline bool is_assume_call(ar::CallBase* call) {
-  auto* cst = core::dyn_cast< ar::FunctionPointerConstant >(call->called());
-  if (cst == nullptr || cst->function() == nullptr) {
-    return false;
-  }
-  const std::string& nm = cst->function()->name();
-  return nm == "assume_abort_if_not" || nm == "__VERIFIER_assume";
+  auto* f = exact_callee(call);
+  return f != nullptr && f->is_declaration() &&
+         (f->intrinsic_id() == ar::Intrinsic::IkosAssume || f->name() == "__VERIFIER_assume");
 }
 
-/// 取 assume 实参的「正向比较」（cond 为真时成立的比较）。实参是某比较的结果，
-/// 前端用 add_comparison 拆成真/假两块：真块里 `Comparison(pred,l,r); %c=true`、
-/// 假块里 `Comparison(inverse(pred),l,r); %c=false`。先穿透 cast/变量赋值到达比较
-/// 结果变量，再找真块里的正向 Comparison；找不到返回 nullptr（保守，不新增约束）。
-inline ar::Comparison* forward_comparison_of(ar::Value* arg) {
-  for (int depth = 0; depth < 16; ++depth) {
-    auto* iv = core::dyn_cast< ar::InternalVariable >(arg);
-    if (iv == nullptr) {
-      return nullptr;
+// A deliberately small stdio summary: an immutable, terminated literal and
+// optionally promoted int conversions. String/pointer arguments, %n, dynamic
+// width and return-value dependencies remain unsupported.
+inline bool constant_output_call(ar::CallBase* call) {
+  auto* function = exact_callee(call);
+  if (function == nullptr || !function->is_declaration()) return false;
+  auto name = function->name();
+  bool puts = name == "puts" || name == "ar.libc.puts";
+  bool printf = name == "printf" || name == "ar.libc.printf";
+  if ((!puts && !printf) || call->num_arguments() == 0) return false;
+  BmcEvent address;
+  if (!symbolic_byte_offset(call->argument(0), address) || address.base == 0 || address.var_id != 0 || address.const_off < 0) return false;
+  auto* global = reinterpret_cast< ar::GlobalVariable* >(address.base);
+  if (!global->is_definition() || !global->has_frontend() ||
+      !global->frontend< llvm::GlobalVariable >()->isConstant()) return false;
+  ar::ArrayConstant* text = nullptr;
+  for (auto* block : *global->initializer())
+    for (auto* statement : *block) {
+      auto* store = core::dyn_cast< ar::Store >(statement);
+      if (store == nullptr || store->pointer() != global || text != nullptr) return false;
+      text = core::dyn_cast< ar::ArrayConstant >(store->value());
     }
-    ar::Code* code = iv->code();
-    if (code == nullptr) {
-      return nullptr;
+  if (text == nullptr || address.const_off >= text->values().size()) return false;
+  std::string format;
+  bool terminated = false;
+  for (std::size_t i = address.const_off.to< std::size_t >(); i < text->values().size(); ++i) {
+    auto* c = core::dyn_cast< ar::IntegerConstant >(text->values()[i]);
+    if (c == nullptr || c->value().bit_width() != 8) return false;
+    auto character = c->value().to_z_number();
+    if (character == 0) {terminated = true; break;}
+    if (character < 0 || character > 127) return false;
+    format += static_cast< char >(character.to< unsigned >());
+  }
+  if (!terminated) return false;
+  if (puts) return call->num_arguments() == 1;
+  std::size_t argument = 1;
+  for (std::size_t i = 0; i < format.size(); ++i) {
+    if (format[i] != '%') continue;
+    if (++i == format.size()) return false;
+    if (format[i] == '%') continue;
+    if (std::string("diuoxXc").find(format[i]) == std::string::npos || argument >= call->num_arguments()) return false;
+    auto* type = core::dyn_cast< ar::IntegerType >(call->argument(argument++)->type());
+    bool signed_conversion = format[i] == 'd' || format[i] == 'i' || format[i] == 'c';
+    if (type == nullptr || type->bit_width() != 32 || type->is_signed() != signed_conversion) return false;
+  }
+  return argument == call->num_arguments();
+}
+
+// These summaries do not touch user memory or hide thread synchronization.
+// Other memory-using libc calls and unknown externals have no such summary.
+inline bool supported_leaf_call(ar::CallBase* call) {
+  auto* f = exact_callee(call);
+  if (f == nullptr || !f->is_declaration()) return false;
+  if (constant_output_call(call)) return true;
+  if (f->intrinsic_id() == ar::Intrinsic::IkosNonDet) return true;
+  static const std::set< std::string > nondet{
+      "__VERIFIER_nondet_bool", "__VERIFIER_nondet_char", "__VERIFIER_nondet_uchar",
+      "__VERIFIER_nondet_short", "__VERIFIER_nondet_ushort", "__VERIFIER_nondet_int",
+      "__VERIFIER_nondet_uint", "__VERIFIER_nondet_long", "__VERIFIER_nondet_ulong",
+      "__VERIFIER_nondet_longlong", "__VERIFIER_nondet_ulonglong", "__VERIFIER_nondet_size_t"};
+  if (nondet.count(f->name()) != 0 && call->num_arguments() == 0) return true;
+  if (f->name() == "pthread_detach") return call->num_arguments() == 1;
+  if (f->name() == "pthread_mutex_init") {
+    return call->num_arguments() == 2 && core::isa< ar::NullConstant >(call->argument(1));
+  }
+  return false;
+}
+
+// Supported local operations remain in the prefix. The encoder must discharge
+// arithmetic definedness even when their results do not affect the target.
+inline bool total_local_statement(ar::Statement* s) {
+  if (auto* allocation = core::dyn_cast< ar::Allocate >(s)) {
+    BmcEvent event;
+    event.local_base = allocation->result();
+    core::ZNumber size;
+    return memory_extent(event, size);
+  }
+  if (core::isa< ar::Assignment >(s) || core::isa< ar::PointerShift >(s) ||
+      core::isa< ar::ReturnValue >(s)) return true;
+  if (auto* op = core::dyn_cast< ar::BinaryOperation >(s)) {
+    switch (op->op()) {
+      case ar::BinaryOperation::UAdd: case ar::BinaryOperation::SAdd:
+      case ar::BinaryOperation::USub: case ar::BinaryOperation::SSub:
+      case ar::BinaryOperation::UMul: case ar::BinaryOperation::SMul:
+        return true;
+      case ar::BinaryOperation::UAnd: case ar::BinaryOperation::SAnd:
+      case ar::BinaryOperation::UOr: case ar::BinaryOperation::SOr:
+      case ar::BinaryOperation::UXor: case ar::BinaryOperation::SXor:
+      case ar::BinaryOperation::UDiv: case ar::BinaryOperation::SDiv:
+      case ar::BinaryOperation::URem: case ar::BinaryOperation::SRem:
+      case ar::BinaryOperation::UShl: case ar::BinaryOperation::SShl:
+      case ar::BinaryOperation::ULShr: case ar::BinaryOperation::SLShr:
+      case ar::BinaryOperation::UAShr: case ar::BinaryOperation::SAShr:
+        return true;
+      default: return false;
     }
-    std::vector< ar::Statement* > defs;
-    for (ar::BasicBlock* bb : *code) {
-      for (ar::Statement* s : *bb) {
-        if (s->result_or_null() == iv) {
-          defs.push_back(s);
-        }
-      }
+  }
+  auto* un = core::dyn_cast< ar::UnaryOperation >(s);
+  if (un == nullptr) return false;
+  switch (un->op()) {
+    case ar::UnaryOperation::Bitcast:
+    case ar::UnaryOperation::ZExt:
+    case ar::UnaryOperation::SExt:
+    case ar::UnaryOperation::UTrunc:
+    case ar::UnaryOperation::STrunc:
+      return true;
+    default: return false;
+  }
+}
+
+inline bool abstract_initializer(ar::Statement* s) {
+  auto* source = s->has_frontend()
+                     ? llvm::dyn_cast< llvm::Instruction >(s->frontend< llvm::Value >())
+                     : nullptr;
+  return source != nullptr && source->getMetadata("ikos.freeze_uninit") != nullptr;
+}
+
+inline bool source_nondet(ar::CallBase* call) {
+  auto* f = exact_callee(call);
+  auto* source = call->has_frontend()
+                     ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >())
+                     : nullptr;
+  auto* returned = f != nullptr ? core::dyn_cast< ar::IntegerType >(f->type()->return_type()) : nullptr;
+  auto* result = call->result_or_null() != nullptr ? core::dyn_cast< ar::IntegerType >(call->result_or_null()->type()) : nullptr;
+  return f != nullptr && f->num_parameters() == 0 && call->num_arguments() == 0 &&
+         returned != nullptr && result != nullptr &&
+         returned->bit_width() == result->bit_width() && returned->is_signed() == result->is_signed() &&
+         supported_leaf_call(call) &&
+         (f->intrinsic_id() == ar::Intrinsic::IkosNonDet ||
+          f->name().compare(0, 18, "__VERIFIER_nondet_") == 0) &&
+         source != nullptr && source->getDebugLoc() && !abstract_initializer(call);
+}
+
+// Dynamic invocation boundaries, reconstructed from the composed call/return
+// prefix. Static AR variables are reused by separate helper invocations.
+inline ar::Function* callee_on_path(ar::CallBase* call,
+                                    const std::vector< BmcEvent >& path,
+                                    std::size_t before);
+inline std::size_t invocation_call(const std::vector< BmcEvent >& path,
+                                   ar::Code* code, std::size_t before) {
+  std::vector< std::pair< ar::Code*, std::size_t > > stack;
+  for (std::size_t i = 0; i < before; ++i) {
+    if (auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt)) {
+      auto* function = path[i].called_function != nullptr ? path[i].called_function : exact_callee(call);
+      if (function != nullptr && function->is_definition()) stack.push_back({function->body_or_null(), i});
+    } else if (core::isa< ar::ReturnValue >(path[i].stmt) && !stack.empty() && stack.back().first == path[i].stmt->code()) {
+      stack.pop_back();
     }
-    if (defs.empty()) {
-      return nullptr;
-    }
-    if (defs.size() == 1) {
-      // 单 def：cast / 变量赋值 → 继续 peel。
-      ar::Statement* d = defs[0];
-      if (auto* as = core::dyn_cast< ar::Assignment >(d)) {
-        arg = as->operand();
-        continue;
-      }
-      if (auto* un = core::dyn_cast< ar::UnaryOperation >(d)) {
-        switch (un->op()) {
-          case ar::UnaryOperation::ZExt:
-          case ar::UnaryOperation::SExt:
-          case ar::UnaryOperation::UTrunc:
-          case ar::UnaryOperation::STrunc:
-          case ar::UnaryOperation::Bitcast:
-          case ar::UnaryOperation::PtrToUI:
-          case ar::UnaryOperation::UIToPtr:
-            arg = un->operand();
-            continue;
-          default:
-            return nullptr;
-        }
-      }
-      return nullptr;
-    }
-    // 多 def = 比较结果（真/假块）：找「iv = true」块里的正向比较。
-    for (ar::BasicBlock* bb : *code) {
-      for (auto it = bb->begin(); it != bb->end(); ++it) {
-        ar::Statement* s = *it;
-        if (s->result_or_null() != iv) {
-          continue;
-        }
-        if (auto* as = core::dyn_cast< ar::Assignment >(s)) {
-          auto* cst = core::dyn_cast< ar::IntegerConstant >(as->operand());
-          if (cst != nullptr && !cst->value().is_zero()) {
-            for (auto jt = bb->begin(); jt != it; ++jt) {
-              if (auto* cmp = core::dyn_cast< ar::Comparison >(*jt)) {
-                return cmp;
-              }
-            }
-          }
-        }
-      }
-    }
-    return nullptr;
+  }
+  for (auto i = stack.rbegin(); i != stack.rend(); ++i)
+    if (i->first == code) return i->second;
+  return path.size();
+}
+
+inline ar::Statement* reaching_definition(ar::InternalVariable* value,
+                                          const std::vector< BmcEvent >& path,
+                                          std::size_t before, std::size_t& index) {
+  auto call = invocation_call(path, value->code(), before);
+  std::size_t begin = call == path.size() ? 0 : call + 1;
+  ar::Statement* definition = nullptr;
+  for (std::size_t i = begin; i < before; ++i)
+    if (path[i].stmt->result_or_null() == value && invocation_call(path, value->code(), i) == call) {definition = path[i].stmt; index = i;}
+  return definition;
+}
+
+inline ar::Value* formal_argument(ar::InternalVariable* value,
+                                 const std::vector< BmcEvent >& path,
+                                 std::size_t before, std::size_t& call_index) {
+  if (value->code() == nullptr || !value->code()->is_function_body()) return nullptr;
+  auto* function = value->code()->function();
+  call_index = invocation_call(path, value->code(), before);
+  if (call_index == path.size()) return nullptr;
+  auto* call = core::cast< ar::CallBase >(path[call_index].stmt);
+  for (std::size_t i = 0; i < function->num_parameters(); ++i)
+    if (function->param(i) == value && i < call->num_arguments()) return call->argument(i);
+  return nullptr;
+}
+
+// A callback passed by an executed call is concrete evidence. A points-to
+// set or a pointer loaded from shared memory is not such evidence.
+inline ar::Function* callee_on_path(ar::CallBase* call,
+                                    const std::vector< BmcEvent >& path,
+                                    std::size_t before) {
+  if (auto* function = exact_callee(call)) return function;
+  ar::Value* value = call->called();
+  for (unsigned depth = 0; depth < 32; ++depth) {
+    if (auto* pointer = core::dyn_cast< ar::FunctionPointerConstant >(value)) return pointer->function();
+    auto* variable = core::dyn_cast< ar::InternalVariable >(value);
+    if (variable == nullptr) return nullptr;
+    std::size_t index = 0;
+    auto* definition = reaching_definition(variable, path, before, index);
+    if (definition == nullptr) {
+      value = formal_argument(variable, path, before, index);
+      if (value == nullptr) return nullptr;
+    } else if (auto* assignment = core::dyn_cast< ar::Assignment >(definition)) {
+      value = assignment->operand();
+    } else if (auto* cast = core::dyn_cast< ar::UnaryOperation >(definition)) {
+      if (cast->op() != ar::UnaryOperation::Bitcast) return nullptr;
+      value = cast->operand();
+    } else return nullptr;
+    before = index;
   }
   return nullptr;
+}
+
+inline bool root_parameter(ar::InternalVariable* value, ar::Function* root) {
+  return root != nullptr && root->is_definition() && root->num_parameters() == 1 && root->param(0) == value;
+}
+
+inline ar::Value* created_argument(ar::Function* child,
+                                   const std::vector< BmcEvent >& creator,
+                                   unsigned instance = 0) {
+  for (const auto& event : creator) {
+    if (event.kind == EvKind::Create && event.thread == reinterpret_cast< std::uint64_t >(child)) {
+      if (instance-- == 0) return core::cast< ar::CallBase >(event.stmt)->argument(3);
+    }
+  }
+  return nullptr;
+}
+
+// Fold only executed, pure integer definitions with representable results.
+// Symbolic/loaded indices still require SMT; overflow never proves an address.
+inline bool constant_integer_on_path(ar::Value* value,
+                                     const std::vector< BmcEvent >& path,
+                                     std::size_t before, core::ZNumber& result,
+                                     unsigned depth = 0) {
+  if (depth >= 128) return false;
+  if (auto* constant = core::dyn_cast< ar::IntegerConstant >(value)) {
+    result = constant->value().to_z_number(); return true;
+  }
+  auto* variable = core::dyn_cast< ar::InternalVariable >(value);
+  auto* type = variable == nullptr ? nullptr : core::dyn_cast< ar::IntegerType >(variable->type());
+  if (type == nullptr) return false;
+  std::size_t index = 0;
+  auto* definition = reaching_definition(variable, path, before, index);
+  if (definition == nullptr || abstract_initializer(definition)) return false;
+  if (auto* assignment = core::dyn_cast< ar::Assignment >(definition)) {
+    if (assignment->operand()->type() != variable->type() ||
+        !constant_integer_on_path(assignment->operand(), path, index, result, depth + 1)) return false;
+  } else if (auto* operation = core::dyn_cast< ar::BinaryOperation >(definition)) {
+    core::ZNumber left, right;
+    if (operation->left()->type() != variable->type() || operation->right()->type() != variable->type() ||
+        !constant_integer_on_path(operation->left(), path, index, left, depth + 1) ||
+        !constant_integer_on_path(operation->right(), path, index, right, depth + 1)) return false;
+    switch (operation->op()) {
+      case ar::BinaryOperation::SAdd: case ar::BinaryOperation::UAdd: result = left + right; break;
+      case ar::BinaryOperation::SSub: case ar::BinaryOperation::USub: result = left - right; break;
+      case ar::BinaryOperation::SMul: case ar::BinaryOperation::UMul: result = left * right; break;
+      default: return false;
+    }
+  } else if (auto* cast = core::dyn_cast< ar::UnaryOperation >(definition)) {
+    if (cast->op() != ar::UnaryOperation::SExt && cast->op() != ar::UnaryOperation::ZExt &&
+        cast->op() != ar::UnaryOperation::Bitcast) return false;
+    auto* source = core::dyn_cast< ar::IntegerType >(cast->operand()->type());
+    if (source == nullptr || type->bit_width() < source->bit_width() ||
+        !constant_integer_on_path(cast->operand(), path, index, result, depth + 1) ||
+        (cast->op() == ar::UnaryOperation::Bitcast && type->bit_width() != source->bit_width()) ||
+        (cast->op() == ar::UnaryOperation::ZExt && result < 0) ||
+        (cast->op() == ar::UnaryOperation::SExt && !source->is_signed() &&
+         result >= (core::ZNumber(1) << (source->bit_width() - 1)))) return false;
+  } else return false;
+  core::ZNumber lo = type->is_signed() ? -(core::ZNumber(1) << (type->bit_width() - 1)) : core::ZNumber(0);
+  core::ZNumber hi = (core::ZNumber(1) << (type->is_signed() ? type->bit_width() - 1 : type->bit_width())) - 1;
+  return result >= lo && result <= hi;
+}
+
+// Resolve pointers from executed definitions and actual helper/thread args.
+// Root arguments were consumed on the already checked creation prefix; only
+// constant global address chains may be followed outside the selected path.
+inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& path,
+                             std::size_t before, ar::Function* root,
+                             ar::Value* root_argument, BmcEvent& event) {
+  bool external = false;
+  for (unsigned depth = 0; depth < 32; ++depth) {
+    if (auto* global = core::dyn_cast< ar::GlobalVariable >(value)) {event.base = reinterpret_cast< std::uint64_t >(global); return true;}
+    if (auto* local = core::dyn_cast< ar::LocalVariable >(value)) {
+      if (external) return false;
+      event.local_base = local; return true;
+    }
+    auto* variable = core::dyn_cast< ar::InternalVariable >(value);
+    if (variable == nullptr) return false;
+    std::size_t index = 0;
+    auto* definition = external ? unique_def_bmc(variable) : reaching_definition(variable, path, before, index);
+    if (definition == nullptr && !external) {
+      auto* argument = formal_argument(variable, path, before, index);
+      if (argument != nullptr) {value = argument; before = index; continue;}
+      if (root_parameter(variable, root) && root_argument != nullptr) {
+        value = root_argument; external = true; continue;
+      }
+      return false;
+    }
+    if (definition == nullptr) return false;
+    if (!external) before = index;
+    if (auto* shift = core::dyn_cast< ar::PointerShift >(definition)) {
+      for (std::size_t i = 0; i < shift->num_terms(); ++i) {
+        auto term = shift->term(i);
+        if (auto* c = core::dyn_cast< ar::IntegerConstant >(term.second)) event.const_off += term.first.to_z_number() * c->value().to_z_number();
+        else if (auto* index_var = core::dyn_cast< ar::InternalVariable >(term.second)) {
+          core::ZNumber constant;
+          if (!external && constant_integer_on_path(index_var, path, before, constant)) {
+            event.const_off += term.first.to_z_number() * constant;
+            continue;
+          }
+          auto identity = reinterpret_cast< std::uint64_t >(index_var);
+          if (external || (event.var_id != 0 && (event.var_id != identity || event.var_before != before))) return false;
+          event.var_id = identity; event.var_before = before; event.coeff += term.first.to_z_number();
+        } else return false;
+      }
+      value = shift->pointer();
+    } else if (auto* cast = core::dyn_cast< ar::UnaryOperation >(definition)) {
+      if (cast->op() != ar::UnaryOperation::Bitcast) return false;
+      value = cast->operand();
+    } else if (auto* assignment = core::dyn_cast< ar::Assignment >(definition)) {
+      value = assignment->operand();
+    } else return false;
+  }
+  return false;
+}
+
+// Definedness is required even for values not used in guards/addresses.
+// This does not encode load values or establish read-from relations.
+inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
+                                  Diagnostics* diagnostics = nullptr,
+                                  ar::Function* root = nullptr,
+                                  ar::Value* root_argument = nullptr) {
+  std::function< bool(ar::Value*, std::size_t, unsigned) > defined;
+  defined = [&](ar::Value* value, std::size_t before, unsigned depth) {
+    if (depth >= 32 || core::isa< ar::UndefinedConstant >(value)) return false;
+    if (auto* aggregate = core::dyn_cast< ar::StructConstant >(value)) {
+      for (const auto& field : aggregate->values())
+        if (!defined(field.value, before, depth + 1)) return false;
+    } else if (auto* aggregate = core::dyn_cast< ar::SequentialConstant >(value)) {
+      for (auto* element : aggregate->values())
+        if (!defined(element, before, depth + 1)) return false;
+    }
+    if (core::isa< ar::Constant >(value) || core::isa< ar::GlobalVariable >(value)) return true;
+    std::size_t index = 0;
+    ar::Statement* def = nullptr;
+    if (auto* variable = core::dyn_cast< ar::InternalVariable >(value)) {
+      def = reaching_definition(variable, path, before, index);
+      if (def == nullptr) {
+        auto* actual = formal_argument(variable, path, before, index);
+        if (actual != nullptr) return defined(actual, index, depth + 1);
+        if (root_parameter(variable, root) && root_argument != nullptr) {
+          if (core::isa< ar::Constant >(root_argument) || core::isa< ar::GlobalVariable >(root_argument))
+            return !core::isa< ar::UndefinedConstant >(root_argument);
+          BmcEvent address;
+          return pointer_on_path(variable, path, before, root, root_argument, address) && address.base != 0 && address.var_id == 0;
+        }
+      }
+    } else {
+      for (std::size_t i = 0; i < before; ++i)
+        if (path[i].stmt->result_or_null() == value) {def = path[i].stmt; index = i;}
+    }
+    if (def == nullptr || abstract_initializer(def)) return false;
+    if (core::isa< ar::Allocate >(def)) return true;
+    if (core::isa< ar::Load >(def)) {
+      const auto& access = path[index];
+      if (access.base != 0) return true; // demanded values still need initialization/rf
+      if (access.local_base == nullptr || access.var_id != 0) return false;
+      for (std::size_t j = index; j-- > 0;) {
+        const auto& previous = path[j];
+        // A prior invocation's store cannot initialize a new stack object.
+        if (previous.stmt->result_or_null() == access.local_base) return false;
+        if (previous.kind == EvKind::Create) {
+          auto* call = core::cast< ar::CallBase >(previous.stmt);
+          BmcEvent output;
+          if (symbolic_byte_offset(call->argument(0), output) &&
+              output.local_base == access.local_base && output.var_id == 0 &&
+              output.const_off == access.const_off &&
+              access.width <= call->bundle()->data_layout().store_size_in_bytes(
+                  core::cast< ar::PointerType >(call->argument(0)->type())->pointee()).to< std::uint64_t >()) return true;
+        }
+        if (previous.kind != EvKind::Write || previous.local_base != access.local_base) continue;
+        if (previous.var_id != 0) return false;
+        if (previous.const_off >= access.const_off + access.width ||
+            access.const_off >= previous.const_off + previous.width) continue;
+        if (abstract_initializer(previous.stmt) ||
+            previous.const_off > access.const_off ||
+            previous.const_off + previous.width < access.const_off + access.width) return false;
+        return defined(core::cast< ar::Store >(previous.stmt)->value(), j, depth + 1);
+      }
+      return false;
+    }
+    if (auto* call = core::dyn_cast< ar::CallBase >(def)) {
+      if (source_nondet(call)) return true;
+      auto* f = callee_on_path(call, path, index);
+      if (f == nullptr || f->body_or_null() == nullptr) return false;
+      for (std::size_t j = index + 1; j < before; ++j) {
+        auto* ret = core::dyn_cast< ar::ReturnValue >(path[j].stmt);
+        if (ret != nullptr && ret->code() == f->body_or_null() &&
+            invocation_call(path, ret->code(), j) == index) {
+          return ret->has_operand() && defined(ret->operand(), j, depth + 1);
+        }
+      }
+      return false;
+    }
+    for (auto it = def->op_begin(); it != def->op_end(); ++it)
+      if (!defined(*it, index, depth + 1)) return false;
+    return true;
+  };
+  for (std::size_t i = 0; i < path.size(); ++i) {
+    auto* stmt = path[i].stmt;
+    // These two marked operations are abstract bookkeeping, not source uses.
+    if (abstract_initializer(stmt)) continue;
+    if (path[i].kind == EvKind::Create) {
+      auto* call = core::cast< ar::CallBase >(stmt);
+      BmcEvent output;
+      core::ZNumber extent;
+      auto* pointer = core::dyn_cast< ar::PointerType >(call->argument(0)->type());
+      // Choose a successful default-attribute spawn only with a valid output
+      // object. Null/unknown handles cannot establish a live child.
+      if (pointer == nullptr || !core::isa< ar::IntegerType >(pointer->pointee()) ||
+          !core::isa< ar::NullConstant >(call->argument(1)) ||
+          !pointer_on_path(call->argument(0), path, i, root, root_argument, output) || output.var_id != 0 ||
+          !memory_extent(output, extent) || output.const_off < 0 ||
+          output.const_off + call->bundle()->data_layout().store_size_in_bytes(pointer->pointee()) > extent) {
+        record(diagnostics, "create_arguments", stmt);
+        return false;
+      }
+    }
+    for (auto it = stmt->op_begin(); it != stmt->op_end(); ++it) {
+      if (!defined(*it, i, 0)) {
+        record(diagnostics, "prefix_value_origin", stmt);
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 /// 把一个语句分类成 BMC 事件（内存/锁/假设/无关）。
@@ -415,12 +719,16 @@ inline bool classify_event(
     const std::vector< ar::BasicBlock* >* in_stack = nullptr) {
   if (auto* load = core::dyn_cast< ar::Load >(stmt)) {
     ev = BmcEvent{stmt, EvKind::Read};
+    if (load->is_atomic()) {ev.kind = EvKind::Unsupported; ev.blocker = "unmodeled_sync"; return true;}
     symbolic_byte_offset(load->operand(), ev);
+    ev.width = stmt->parent()->bundle()->data_layout().store_size_in_bytes(load->result()->type()).to< std::uint64_t >();
     return true;
   }
   if (auto* store = core::dyn_cast< ar::Store >(stmt)) {
     ev = BmcEvent{stmt, EvKind::Write};
+    if (store->is_atomic()) {ev.kind = EvKind::Unsupported; ev.blocker = "unmodeled_sync"; return true;}
     symbolic_byte_offset(store->pointer(), ev);
+    ev.width = stmt->parent()->bundle()->data_layout().store_size_in_bytes(store->value()->type()).to< std::uint64_t >();
     return true;
   }
   if (core::isa< ar::Comparison >(stmt)) {
@@ -435,14 +743,14 @@ inline bool classify_event(
       std::uint64_t mid =
           is_verifier_atomic(call) ? PSEUDO_ATOMIC_LOCK : mutex_id(call, in_stack);
       ev = BmcEvent{stmt, kind, mid};
+      auto* lock_function = exact_callee(call);
+      ev.reader = lock_function != nullptr && lock_function->name() == "pthread_rwlock_rdlock";
       return true;
     }
     // pthread_create/pthread_join → Create/Join 事件（spawn/join HB 锚点）。
-    ar::FunctionPointerConstant* cst =
-        core::dyn_cast< ar::FunctionPointerConstant >(call->called());
-    if (cst != nullptr && cst->function() != nullptr) {
-      const std::string& nm = cst->function()->name();
-      if (nm.find("pthread_create") != std::string::npos) {
+    ar::Function* f = exact_callee(call);
+    if (f != nullptr && f->is_declaration()) {
+      if ((f->name() == "pthread_create" || f->intrinsic_id() == ar::Intrinsic::PthreadCreate) && call->num_arguments() == 4) {
         // arg2 = 线程函数（FunctionPointerConstant）。函数指针变量/间接线程函数
         // 提取失败 → 不产生 Create 事件（保守，只丢 TP）。
         auto it = call->arg_begin();
@@ -457,7 +765,7 @@ inline bool classify_event(
             }
           }
         }
-      } else if (nm.find("pthread_join") != std::string::npos) {
+      } else if (f->name() == "pthread_join" || f->intrinsic_id() == ar::Intrinsic::PthreadJoin) {
         // arg0 = pthread_t 句柄（mutex_id_of_value 同款解析到稳定身份）。
         if (call->arg_begin() != call->arg_end()) {
           ev = BmcEvent{stmt, EvKind::Join};
@@ -473,10 +781,8 @@ inline bool classify_event(
 /// 内联展开的最大调用深度（helper 内 helper 的递归上限，防爆炸）。
 constexpr int MAX_INLINE_DEPTH = 8;
 
-/// 内联时要跳过（不跟进）的函数：单调用原子（__VERIFIER_atomic_* / __atomic_* /
-/// __sync_*）和 assume_abort_if_not。前者是 BMC 没建模的锁无关语义（跟进会把
-/// 原子函数体里的裸访问暴露出来 → 误判），后者是纯假设调用。与 bmc.hpp 的
-/// is_unmodeled_atomic_call 前缀对齐。
+/// Single-call atomics need an atomic summary rather than exposing their bodies
+/// as ordinary accesses. Ordinary assume helpers compose their real CFG.
 inline bool bmc_skip_inline(const std::string& nm) {
   if (nm.size() >= 18 && nm.compare(0, 18, "__VERIFIER_atomic_") == 0) {
     return true;
@@ -487,7 +793,7 @@ inline bool bmc_skip_inline(const std::string& nm) {
   if (nm.size() >= 7 && nm.compare(0, 7, "__sync_") == 0) {
     return true;
   }
-  return nm == "assume_abort_if_not";
+  return false;
 }
 
 /// 函数体是否含回边（循环）。helper 带循环时展开器（DAG-only）不能精确展开，
@@ -495,6 +801,7 @@ inline bool bmc_skip_inline(const std::string& nm) {
 inline bool has_loop_dfs(ar::BasicBlock* bb,
                          std::vector< ar::BasicBlock* >& on_path,
                          std::vector< ar::BasicBlock* >& visited) {
+  if (on_path.size() >= 256 || visited.size() >= 16384) return true;
   for (ar::BasicBlock* b : on_path) {
     if (b == bb) {
       return true;  // 回边
@@ -527,35 +834,7 @@ inline bool function_has_loop(ar::Function* f) {
   return has_loop_dfs(body->entry_block(), on_path, visited);
 }
 
-/// 函数体是否含 `__VERIFIER_atomic_begin/end`（原子区标记）。内联一个「把
-/// __VERIFIER_atomic 段包在 helper 里」的函数（如 atomic_c_cas / Push）会把
-/// 原子区里的写暴露出来，与调用方原子区外的快照读配对成「伪锁内写 vs 伪锁外读」
-/// ——这是无锁协议（elimination_backoff_stack）的线性化签名，BMC 的伪锁模型
-/// 建不了模，只能保守 UNKNOWN。所以这类 helper 不内联。
-inline bool function_has_atomic_section(ar::Function* f) {
-  ar::Code* body = f->body_or_null();
-  if (body == nullptr) {
-    return false;
-  }
-  for (ar::BasicBlock* bb : *body) {
-    for (ar::Statement* s : *bb) {
-      if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
-        ar::FunctionPointerConstant* cst =
-            core::dyn_cast< ar::FunctionPointerConstant >(call->called());
-        if (cst != nullptr && cst->function() != nullptr) {
-          const std::string& nm = cst->function()->name();
-          if (nm == "__VERIFIER_atomic_begin" ||
-              nm == "__VERIFIER_atomic_end") {
-            return true;
-          }
-        }
-      }
-    }
-  }
-  return false;
-}
-
-/// 一个函数体能否被 BMC 内联（有体 + 非单调用原子/assume + 无循环 + 不含原子区）。
+// Inline acyclic definitions; synchronization inside them remains explicit.
 inline bool inline_ok(ar::Function* f) {
   if (f == nullptr || f->body_or_null() == nullptr) {
     return false;  // extern（pthread_* / 无体）
@@ -563,295 +842,160 @@ inline bool inline_ok(ar::Function* f) {
   if (bmc_skip_inline(f->name())) {
     return false;  // 原子单调用 / assume
   }
-  if (function_has_loop(f)) {
-    return false;  // 带循环的 helper
-  }
-  if (function_has_atomic_section(f)) {
-    return false;  // helper 里包 __VERIFIER_atomic_begin/end（无锁协议）
-  }
   return true;
-}
-
-/// 应被内联跟进的直接调用目标：直接函数指针调用 + 有函数体 + 非单调用原子 +
-/// 无循环 + 不含原子区标记。否则返回 nullptr（不跟进，保守）。
-inline ar::Function* direct_callee(ar::CallBase* call) {
-  ar::FunctionPointerConstant* cst =
-      core::dyn_cast< ar::FunctionPointerConstant >(call->called());
-  if (cst == nullptr || cst->function() == nullptr) {
-    return nullptr;
-  }
-  ar::Function* f = cst->function();
-  return inline_ok(f) ? f : nullptr;
-}
-
-/// 常量界循环展开的上限（防 `for(i<1000000)` / 带分支循环体的 `B^N` 状态爆炸）。
-/// 超过此界的常量界循环视作「未知界」→ 保守不展开（UNKNOWN）。
-constexpr std::int64_t MAX_UNROLL = 8;
-
-/// 判断 v 是否是循环归纳变量：只认局部 SSA 自增/自减（`v = v ± const`，
-/// `for(i=0;i<N;i++)`）。
-/// 全局归纳变量（fib_*-racy 的 `load @g` + 循环体 `store @g`）不认——「有 store @g」
-/// 无法确认那是一次严格自增（可能条件写/多次写），按 N 次展开会漏路径 → 误报。保守
-/// 不认 → 不展开 → UNKNOWN（丢 fib TP，属能力边界）。
-inline bool is_induction_var(ar::Value* v) {
-  auto* iv = core::dyn_cast< ar::InternalVariable >(v);
-  if (iv == nullptr) {
-    return false;
-  }
-  ar::Code* code = iv->code();
-  if (code == nullptr) {
-    return false;
-  }
-  for (ar::BasicBlock* bb : *code) {
-    for (ar::Statement* s : *bb) {
-      if (s->result_or_null() != iv) {
-        continue;
-      }
-      if (auto* as = core::dyn_cast< ar::Assignment >(s)) {
-        // 局部：`%.0 = %11` 且 `%11 = %.0 + 1`（BinaryOperation 是 Statement，
-        // 结果是 %11，Assignment 的 operand 是 %11 这个 InternalVariable）。
-        auto* iv2 = core::dyn_cast< ar::InternalVariable >(as->operand());
-        if (iv2 == nullptr) {
-          continue;
-        }
-        auto* bo = core::dyn_cast_or_null< ar::BinaryOperation >(
-            unique_def_bmc(iv2));
-        if (bo != nullptr && (bo->left() == iv || bo->right() == iv)) {
-          return true;  // v = v ± const
-        }
-      }
-    }
-  }
-  return false;
-}
-
-/// 常量界循环检测（仿 Dartagnan 的 LLVM -loop-unroll：`for(i=0;i<N;i++)` 完整展开）。
-/// 扫 header 的后继块，body = 含 `Comparison(i <op> N)`（< / <=，N 常量）的块、
-/// exit = 含 `i >= N` 的块；返回 N。非此形态 / 超大界 / 归纳变量不是自增 → -1。
-inline std::int64_t constant_loop_bound(ar::BasicBlock* header,
-                                        ar::BasicBlock*& body,
-                                        ar::BasicBlock*& exit_bb) {
-  body = nullptr;
-  exit_bb = nullptr;
-  ar::Value* ind_var = nullptr;
-  std::int64_t body_bound = -1;
-  std::int64_t exit_bound = -1;
-  for (auto succ = header->successor_begin(), send = header->successor_end();
-       succ != send; ++succ) {
-    for (auto sit = (*succ)->begin(), se = (*succ)->end(); sit != se; ++sit) {
-      auto* cmp = core::dyn_cast< ar::Comparison >(*sit);
-      if (cmp == nullptr) {
-        continue;
-      }
-      auto* rc = core::dyn_cast< ar::IntegerConstant >(cmp->right());
-      if (rc == nullptr) {
-        continue;
-      }
-      std::int64_t n = rc->value().to_z_number().to< std::int64_t >();
-      switch (cmp->predicate()) {
-        case ar::Comparison::SILT:
-        case ar::Comparison::SILE:
-        case ar::Comparison::UILT:
-        case ar::Comparison::UILE:
-          if (body == nullptr) {
-            body = *succ;
-            body_bound = n;
-            ind_var = cmp->left();
-          }
-          break;
-        case ar::Comparison::SIGE:
-        case ar::Comparison::SIGT:
-        case ar::Comparison::UIGE:
-        case ar::Comparison::UIGT:
-          if (exit_bb == nullptr) {
-            exit_bb = *succ;
-            exit_bound = n;
-          }
-          break;
-        default:
-          break;
-      }
-    }
-  }
-  // 需 body（i<N）与 exit（i>=N）成对且 N 一致，且 i 是自增归纳变量，才认定是
-  // `for(i<N)` 循环——否则会把 `for(;;)` 体内的 `if(i<5){...}else{...}` 误当循环界
-  // （43_NetBSD 等病态形态），去展开本不该展开的无限循环 → 状态爆炸。
-  if (body == nullptr || exit_bb == nullptr || body_bound != exit_bound ||
-      body_bound < 0 || body_bound > MAX_UNROLL ||
-      !is_induction_var(ind_var)) {
-    body = nullptr;
-    exit_bb = nullptr;
-    return -1;
-  }
-  return body_bound;
 }
 
 /// 路径敏感的 DFS：从 `bb` 出发，沿 CFG 后继枚举到 `target` 的所有路径。
 /// `current` 是当前路径上的事件前缀；到达 `target` 时把路径记入 `out` 并停止
 /// （target 之后的语句/后继与本次访问的竞争判定无关）。
 /// `in_stack` 记录当前 DFS 栈上的基本块，用于检测回边（循环）并跳过——
-/// 第一版不展开循环（DAG only），后续用 bound 展开。
+/// Backedges are cut; retained prefixes must still satisfy their actual guards.
+constexpr std::size_t MAX_PATHS = 256;
+constexpr std::size_t MAX_PATH_EVENTS = 1024;
+struct UnrollBudget {
+  std::size_t steps = 0;
+  unsigned loop_bound = 1;
+  unsigned target_occurrence = 1;
+  ar::Statement* root_target = nullptr;
+  const char* exhausted = nullptr;
+  const char* rejected_reason = nullptr;
+  ar::Statement* rejected_statement = nullptr;
+};
+
 void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
                std::vector< BmcEvent >& current,
                std::vector< std::vector< BmcEvent > >& out,
-               std::vector< ar::BasicBlock* >& in_stack,
-               const IndirectCalleeResolver& resolve_indirect,
-               const std::set< ar::BasicBlock* >& headers,
-               std::map< ar::BasicBlock*, int > iter,
-               int depth = 0, bool skip_cmp = false) {
-  bool is_header = headers.count(bb) != 0;
+               std::vector< ar::BasicBlock* > in_stack,
+               UnrollBudget& budget, int depth = 0, ar::Statement* resume_after = nullptr) {
+  if (budget.exhausted != nullptr) {
+    return;
+  }
+  if (++budget.steps > 16384 || in_stack.size() >= 256) {
+    budget.exhausted = "unroll_work_budget";
+    return;
+  }
+  if (out.size() >= MAX_PATHS) {
+    budget.exhausted = "unroll_path_budget";
+    return;
+  }
   bool on_stack = false;
-  for (ar::BasicBlock* os : in_stack) {
-    if (os == bb) {
-      on_stack = true;
-      break;
-    }
-  }
-
-  bool reentered = false;  // 常量界 loop unroll 的回边重入（bb 已在栈上）
-  if (on_stack && is_header) {
-    // 常量界循环回边（仿 Dartagnan 的 LLVM -loop-unroll）：完整展开 N 次。
-    ar::BasicBlock* body = nullptr;
-    ar::BasicBlock* exit_bb = nullptr;
-    std::int64_t N = constant_loop_bound(bb, body, exit_bb);
-    if (N > 0) {
-      while (in_stack.back() != bb) {
-        in_stack.pop_back();  // 弹出 loop body 块，准备重入
-      }
-      if (iter[bb] < N) {
-        reentered = true;  // 继续第 iter+1 次 body：掉到下面的后继循环
-      } else {
-        // N 次 body 已走完：只走 exit。
-        if (exit_bb != nullptr) {
-          std::vector< BmcEvent > succ_path = current;
-          dfs_paths(exit_bb, target, succ_path, out, in_stack, resolve_indirect,
-                    headers, iter, depth, true);
-        }
-        return;
-      }
-    } else {
-      return;  // nondet/未知界：停止（老行为，保守 UNKNOWN）
-    }
-  }
-  if (on_stack && !reentered) {
-    return;  // 非 header 块在栈上（不可约 CFG 等复杂循环）：停（老行为，防死循环）
-  }
+  if (std::count(in_stack.begin(), in_stack.end(), bb) >= budget.loop_bound) return;
 
   if (!on_stack) {
     in_stack.push_back(bb);
   }
 
   if (!on_stack) {
+    bool resumed = resume_after == nullptr;
     for (auto sit = bb->begin(), send = bb->end(); sit != send; ++sit) {
       ar::Statement* s = *sit;
+      if (!resumed) {
+        if (s == resume_after) resumed = true;
+        continue;
+      }
+      if (auto* comparison = core::dyn_cast< ar::Comparison >(s)) {
+        core::ZNumber left, right;
+        auto* type = core::dyn_cast< ar::IntegerType >(comparison->left()->type());
+        if (type != nullptr && comparison->right()->type() == type &&
+            constant_integer_on_path(comparison->left(), current, current.size(), left) &&
+            constant_integer_on_path(comparison->right(), current, current.size(), right)) {
+          bool feasible = true;
+          switch (comparison->predicate()) {
+            case ar::Comparison::SIEQ: case ar::Comparison::UIEQ: feasible = left == right; break;
+            case ar::Comparison::SINE: case ar::Comparison::UINE: feasible = left != right; break;
+            case ar::Comparison::SIGT: if (type->is_signed()) feasible = left > right; break;
+            case ar::Comparison::SIGE: if (type->is_signed()) feasible = left >= right; break;
+            case ar::Comparison::SILT: if (type->is_signed()) feasible = left < right; break;
+            case ar::Comparison::SILE: if (type->is_signed()) feasible = left <= right; break;
+            case ar::Comparison::UIGT: if (!type->is_signed()) feasible = left > right; break;
+            case ar::Comparison::UIGE: if (!type->is_signed()) feasible = left >= right; break;
+            case ar::Comparison::UILT: if (!type->is_signed()) feasible = left < right; break;
+            case ar::Comparison::UILE: if (!type->is_signed()) feasible = left <= right; break;
+            default: break;
+          }
+          if (!feasible) return;
+        }
+      }
       // 死路径终止：ar::Unreachable，或 abort()/exit()（LibcAbort/LibcExit）——
       // 否则 abort 分支会「掉回」调用方误报竞争。
       if (core::isa< ar::Unreachable >(s)) {
         in_stack.pop_back();
         return;
       }
-      if (auto* call0 = core::dyn_cast< ar::CallBase >(s)) {
-        if (auto* cst =
-                core::dyn_cast< ar::FunctionPointerConstant >(call0->called())) {
-          if (cst->function() != nullptr) {
-            const std::string& nm0 = cst->function()->name();
-            if (nm0 == "libc.abort" || nm0 == "libc.exit") {
-              in_stack.pop_back();
-              return;
-            }
-          }
-        }
-      }
-      // pthread_cond_wait(...) 处理
       if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
-        if (is_cond_wait(call)) {
-          std::uint64_t m = cond_wait_mutex_id(call);
-          current.push_back(BmcEvent{s, EvKind::Unlock, m});
-          current.push_back(BmcEvent{s, EvKind::Lock, m});
-        }
+        auto* f = exact_callee(call);
+        if (f != nullptr && (f->intrinsic_id() == ar::Intrinsic::LibcAbort ||
+                             f->intrinsic_id() == ar::Intrinsic::LibcExit)) return;
       }
-      BmcEvent ev(nullptr, EvKind::Read);
-      if (skip_cmp && core::isa< ar::Comparison >(s)) {
-        // 常量界循环 body/exit 的循环条件（i<N / i>=N）：bookkeeping，不 emit
-        // Assume——否则同一 phi 变量跨迭代重复 + 反向 exit 条件会矛盾 → UNSAT。
-      } else if (classify_event(s, ev, &in_stack)) {
+      BmcEvent ev;
+      if (classify_event(s, ev, &in_stack)) {
         current.push_back(ev);
+      } else if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
+        // Encode the actual nonzero argument, including casts. Failure to
+        // extract a comparison must not turn an assume into a no-op.
+        current.emplace_back(s, is_assume_call(call) ? EvKind::Assume : EvKind::Local);
+      } else if (total_local_statement(s)) {
+        current.emplace_back(s, EvKind::Local);
+      } else {
+        BmcEvent unsupported(s, EvKind::Unsupported);
+        unsupported.blocker = "prefix_statement";
+        current.push_back(unsupported);
       }
-      // assume 语义（Dartagnan ResolveAborts → CondJump(cond, DEAD_END, continue)）：
-      // assume_abort_if_not/__VERIFIER_assume 断言实参为真。把实参的正向比较也压成
-      // Assume 事件，使「假分支」的正向约束与反向约束矛盾 → UNSAT（即假分支死）。
-      if (auto* call2 = core::dyn_cast< ar::CallBase >(s)) {
-        if (is_assume_call(call2) && call2->arg_begin() != call2->arg_end()) {
-          if (ar::Comparison* cmp = forward_comparison_of(*call2->arg_begin())) {
-            current.push_back(BmcEvent{cmp, EvKind::Assume});
-          }
-        }
-      }
-      if (s == target) {
-        out.push_back(current);
-        in_stack.pop_back();
+      if (current.size() > MAX_PATH_EVENTS) {
+        budget.exhausted = "unroll_event_budget";
         return;
       }
-      // helper 内联：跟进有函数体、非原子、无循环的直接调用，把 helper 里的
-      // 访问/锁事件收进路径（target 在 helper 里时在这里命中）。depth 上限防递归
-      // 爆炸；跟不进的调用（extern/原子/循环）保守忽略 → 对应访问看不到 → UNKNOWN。
-      // 间接调用（函数指针）走 resolve_indirect（FPA 候选集），每个候选各一条路径。
-      if (depth < MAX_INLINE_DEPTH) {
-        if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
-          std::vector< ar::Function* > callees;
-          if (ar::Function* d = direct_callee(call)) {
-            callees.push_back(d);
-          } else if (resolve_indirect) {
-            for (ar::Function* f : resolve_indirect(call)) {
-              if (inline_ok(f)) {
-                callees.push_back(f);
-              }
-            }
-          }
-          for (ar::Function* callee : callees) {
-            // copy per callee（同 Stage 1 回溯坑：多候选不能用同一 current，否则
-            // 上一候选的事件残留进下一候选 → 矛盾路径）。
-            std::vector< BmcEvent > callee_path = current;
-            dfs_paths(callee->body_or_null()->entry_block(), target, callee_path,
-                      out, in_stack, resolve_indirect, headers, iter, depth + 1,
-                      false);
+      if (current.back().kind == EvKind::Unsupported) {
+        budget.rejected_reason = current.back().blocker;
+        budget.rejected_statement = s;
+        return; // This executed prefix cannot reach a supported SAT query.
+      }
+      if (s == target) {
+        auto occurrences = std::count_if(current.begin(), current.end(),
+                                          [&](const BmcEvent& event) {return event.stmt == target;});
+        if (occurrences >= (target == budget.root_target ? budget.target_occurrence : 1)) {
+          out.push_back(current);
+          in_stack.pop_back();
+          return;
+        }
+      }
+      if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
+        BmcEvent classified;
+        if (classify_event(s, classified, &in_stack) || is_assume_call(call) ||
+            supported_leaf_call(call)) continue;
+        ar::Function* callee = callee_on_path(call, current, current.size() - 1);
+        if (depth >= MAX_INLINE_DEPTH || !inline_ok(callee)) {
+          budget.rejected_reason = "call_summary";
+          budget.rejected_statement = s;
+          return;
+        }
+        current.back().called_function = callee;
+        // First search for a target inside the callee. Then compose every
+        // concrete return prefix with the rest of the caller; never discard it.
+        auto callee_path = current;
+        dfs_paths(callee->body_or_null()->entry_block(), target, callee_path,
+                  out, in_stack, budget, depth + 1);
+        std::vector< std::vector< BmcEvent > > returns;
+        for (ar::BasicBlock* block : *callee->body_or_null()) {
+          for (ar::Statement* ret : *block) {
+            if (!core::isa< ar::ReturnValue >(ret)) continue;
+            auto return_path = current;
+            dfs_paths(callee->body_or_null()->entry_block(), ret, return_path,
+                      returns, in_stack, budget, depth + 1);
           }
         }
+        in_stack.pop_back(); // resuming the same caller block is not a backedge
+        for (auto& returned : returns) {
+          dfs_paths(bb, target, returned, out, in_stack, budget, depth, s);
+        }
+        return;
       }
     }
   }
 
-  // 后继 = 备选路径：每个后继用 `current` 的一份拷贝，避免死支的事件残留进
-  // 下一条路径（否则真/假分支的相反 Comparison 会混进同一路径 → 矛盾 → UNSAT）。
-  // 常量界循环 header：body 走 iter<N 次、exit 走 iter>=N 后（完整展开，无「0 次」假路径）。
-  ar::BasicBlock* body = nullptr;
-  ar::BasicBlock* exit_bb = nullptr;
-  std::int64_t N = is_header ? constant_loop_bound(bb, body, exit_bb) : -1;
-  for (auto succ = bb->successor_begin(), succ_end = bb->successor_end();
-       succ != succ_end; ++succ) {
-    std::vector< BmcEvent > succ_path = current;
-    bool succ_skip = (N > 0) && (*succ == body || *succ == exit_bb);
-    if (N > 0) {
-      std::map< ar::BasicBlock*, int > succ_iter = iter;
-      if (*succ == body) {
-        if (iter[bb] < N) {
-          succ_iter[bb] = iter[bb] + 1;
-          dfs_paths(*succ, target, succ_path, out, in_stack, resolve_indirect,
-                    headers, succ_iter, depth, succ_skip);
-        }
-      } else if (*succ == exit_bb) {
-        if (iter[bb] >= N) {
-          dfs_paths(*succ, target, succ_path, out, in_stack, resolve_indirect,
-                    headers, iter, depth, succ_skip);
-        }
-      } else {
-        dfs_paths(*succ, target, succ_path, out, in_stack, resolve_indirect,
-                  headers, iter, depth, succ_skip);
-      }
-    } else {
-      dfs_paths(*succ, target, succ_path, out, in_stack, resolve_indirect,
-                headers, iter, depth, false);
-    }
+  for (auto succ = bb->successor_begin(), end = bb->successor_end(); succ != end; ++succ) {
+    auto path = current;
+    dfs_paths(*succ, target, path, out, in_stack, budget, depth);
   }
 
   if (!on_stack) {
@@ -859,218 +1003,45 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
   }
 }
 
-/// 收集 CFG 里所有回边（循环）头：DFS 中回边 succ（已在栈上）的 succ 即循环头。
-inline void collect_loop_headers(ar::BasicBlock* bb,
-                                 std::vector< ar::BasicBlock* >& in_stack,
-                                 std::vector< ar::BasicBlock* >& headers) {
-  for (ar::BasicBlock* on_stack : in_stack) {
-    if (on_stack == bb) {
-      return;
-    }
-  }
-  in_stack.push_back(bb);
-  for (auto succ = bb->successor_begin(), succ_end = bb->successor_end();
-       succ != succ_end; ++succ) {
-    bool on_stack = false;
-    for (ar::BasicBlock* os : in_stack) {
-      if (os == *succ) {
-        on_stack = true;
-        break;
-      }
-    }
-    if (on_stack) {
-      headers.push_back(*succ);
-    } else {
-      collect_loop_headers(*succ, in_stack, headers);
-    }
-  }
-  in_stack.pop_back();
-}
-
-/// tgt 是否从 src 沿 CFG 前向可达。
-inline bool cfg_reachable(ar::BasicBlock* src, ar::BasicBlock* tgt,
-                          std::vector< ar::BasicBlock* >& visited) {
-  if (src == tgt) {
-    return true;
-  }
-  for (ar::BasicBlock* v : visited) {
-    if (v == src) {
-      return false;
-    }
-  }
-  visited.push_back(src);
-  for (auto succ = src->successor_begin(), succ_end = src->successor_end();
-       succ != succ_end; ++succ) {
-    if (cfg_reachable(*succ, tgt, visited)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/// 递归查一个函数体（含被调用的 helper）是否含「能排序访问」的同步：mutex
-/// lock/unlock（含 __VERIFIER_atomic_begin/end 伪锁）、cond_wait、create/join。
-/// 能力边界：BMC 无法判定 helper 里的锁/信号量是否排序目标访问（那需要值流分析），
-/// 所以一律保守算「含同步」→ 循环标 incomplete → UNKNOWN。depth 上限防 helper
-/// 相互调用的环。race-4_1 的 create/join 藏在 ath_ahb_probe 等 helper 里、被
-/// while(1) 循环调用，直接查 block 查不到 → 必须递归。
-inline bool function_has_sync_recursive(ar::Function* f, int depth = 0) {
-  if (f == nullptr || depth > 8) {
-    return false;
-  }
-  ar::Code* body = f->body_or_null();
-  if (body == nullptr) {
-    return false;  // extern（pthread_* 等无体）
-  }
-  for (ar::BasicBlock* bb : *body) {
-    for (ar::Statement* s : *bb) {
-      auto* call = core::dyn_cast< ar::CallBase >(s);
-      if (call == nullptr) {
-        continue;
-      }
-      // mutex lock/unlock（含 __VERIFIER_atomic_begin/end 伪锁）
-      EvKind kind;
-      if (classify_mutex_call(call, kind)) {
-        return true;
-      }
-      if (is_cond_wait(call)) {
-        return true;
-      }
-      auto* cst = core::dyn_cast< ar::FunctionPointerConstant >(call->called());
-      if (cst == nullptr || cst->function() == nullptr) {
-        continue;
-      }
-      const std::string& nm = cst->function()->name();
-      if (nm.find("pthread_create") != std::string::npos ||
-          nm.find("pthread_join") != std::string::npos) {
-        return true;
-      }
-      if (function_has_sync_recursive(cst->function(), depth + 1)) {
-        return true;  // helper 里有同步
-      }
-    }
-  }
-  return false;
-}
-
-/// 一个基本块是否含「能排序访问」的同步调用：mutex lock/unlock、create/join、
-/// __VERIFIER_atomic_begin/end，及**被调 helper 里的同步**。pthread_mutex_init 等
-/// 非排序调用不算——它们不影响竞态判定，只算「良性」循环体（如 05-lval_ls_01 的
-/// init 循环）。
-inline bool block_has_sync(ar::BasicBlock* bb) {
-  for (auto sit = bb->begin(), send = bb->end(); sit != send; ++sit) {
-    if (auto* call = core::dyn_cast< ar::CallBase >(*sit)) {
-      EvKind kind;
-      if (classify_mutex_call(call, kind)) {
-        return true;  // mutex lock/unlock + __VERIFIER_atomic_begin/end
-      }
-      if (is_cond_wait(call)) {
-        return true;  // cond_wait 释放/重获 mutex（同步）
-      }
-      ar::FunctionPointerConstant* cst =
-          core::dyn_cast< ar::FunctionPointerConstant >(call->called());
-      if (cst != nullptr && cst->function() != nullptr) {
-        const std::string& nm = cst->function()->name();
-        if (nm.find("pthread_create") != std::string::npos ||
-            nm.find("pthread_join") != std::string::npos) {
-          return true;  // create/join（HB 建边，未展开则漏）
-        }
-        // helper 里有同步（ath_ahb_probe → pthread_create 在 while(1) 循环里）
-        if (function_has_sync_recursive(cst->function())) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-/// header 所在循环体（与 header 同环的块 + header 本身）是否含同步调用。
-inline bool loop_has_sync(ar::Code* body, ar::BasicBlock* header) {
-  if (block_has_sync(header)) {
-    return true;
-  }
-  for (ar::BasicBlock* bb : *body) {
-    if (bb == header) {
-      continue;
-    }
-    std::vector< ar::BasicBlock* > fwd, back;
-    if (cfg_reachable(header, bb, fwd) && cfg_reachable(bb, header, back)) {
-      if (block_has_sync(bb)) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 /// 展开结果：路径集合 + 是否不完整（target 在循环体内或循环之后）。
 struct UnrollResult {
   std::vector< std::vector< BmcEvent > > paths;
-  bool incomplete = false;  // true = target 受某循环影响，循环内容未展开
+  bool incomplete = false;  // true = construction budget exhausted
+  const char* reason = nullptr;
+  const char* rejected_reason = nullptr;
+  ar::Statement* rejected_statement = nullptr;
 };
 
 /// 从函数入口到 `target` 的所有路径（事件序列）。
 inline UnrollResult unroll_to(
     ar::Function* func, ar::Statement* target,
-    const IndirectCalleeResolver& resolve_indirect = {}) {
+    unsigned target_occurrence = 1, unsigned loop_bound = 1) {
   UnrollResult result;
   ar::Code* body = func->body_or_null();
   if (body == nullptr || !body->has_entry_block()) {
     return result;
   }
-  // 先收集循环头（供 dfs_paths 做常量界展开）。
-  std::vector< ar::BasicBlock* > header_vec;
-  std::vector< ar::BasicBlock* > in_stack2;
-  collect_loop_headers(body->entry_block(), in_stack2, header_vec);
-  std::set< ar::BasicBlock* > headers(header_vec.begin(), header_vec.end());
-
+  UnrollBudget budget;
+  budget.target_occurrence = target_occurrence;
+  budget.loop_bound = loop_bound;
+  budget.root_target = target;
   std::vector< BmcEvent > current;
   std::vector< ar::BasicBlock* > in_stack;
-  std::map< ar::BasicBlock*, int > iter;
   dfs_paths(body->entry_block(), target, current, result.paths, in_stack,
-            resolve_indirect, headers, iter);
+            budget);
+  result.rejected_reason = budget.rejected_reason;
+  result.rejected_statement = budget.rejected_statement;
 
-  // 路径数上限：常量界展开遇带分支循环体会 B^N 爆炸，超限保守标 incomplete。
-  constexpr std::size_t MAX_PATHS = 256;
-  if (result.paths.size() > MAX_PATHS) {
+  // A partial enumeration cannot bypass the existing completeness gate.
+  if (budget.exhausted != nullptr) {
     result.paths.clear();
     result.incomplete = true;
+    result.reason = budget.exhausted;
     return result;
   }
-  // 单路径事件数上限：嵌套/大循环体会让单条路径事件数暴涨，导致 check_race 的
-  // SMT 编码巨大（内存/时间爆炸）。超限保守标 incomplete。
-  constexpr std::size_t MAX_PATH_EVENTS = 1024;
-  for (const auto& p : result.paths) {
-    if (p.size() > MAX_PATH_EVENTS) {
-      result.paths.clear();
-      result.incomplete = true;
-      return result;
-    }
-  }
 
-  // 精确能力边界：target 的块若从某回边（循环）头前向可达，则要看循环会不会
-  // 影响访问（incomplete → UNKNOWN）：
-  //   - 常量界循环已在 dfs_paths 完整展开（N 次 body + exit），跳过；
-  //   - 访问在循环体内（target 块能回到 header）：nondet 界保守 incomplete；
-  //   - 访问在循环之后：循环体含同步（mutex/create/join）才可能排序访问 →
-  //     incomplete；良性循环体（init/算术，无同步）不影响竞态 → 照常判。
-  for (ar::BasicBlock* h : header_vec) {
-    ar::BasicBlock* body_tmp = nullptr;
-    ar::BasicBlock* exit_tmp = nullptr;
-    if (constant_loop_bound(h, body_tmp, exit_tmp) > 0) {
-      continue;  // 已完整展开
-    }
-    std::vector< ar::BasicBlock* > visited;
-    if (!cfg_reachable(h, target->parent(), visited)) {
-      continue;
-    }
-    std::vector< ar::BasicBlock* > back;
-    if (cfg_reachable(target->parent(), h, back) || loop_has_sync(body, h)) {
-      result.incomplete = true;
-      break;
-    }
-  }
+  // Every retained prefix follows actual CFG guards. Backedges are cut,
+  // so this is bounded search, never a proof of safety. No guessed loop exits.
   return result;
 }
 

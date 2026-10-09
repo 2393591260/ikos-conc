@@ -43,6 +43,7 @@
 
 #pragma once
 
+#include <map>
 #include <string>
 #include <unordered_set>
 
@@ -295,6 +296,11 @@ private:
 private:
   /// \brief Access digest collected during the analysis pass
   std::vector< AccessRecord > _accesses;
+
+  // Conjunction across checked contexts; only shared-independent integer
+  // computations may discharge a BMC definedness obligation.
+  std::map< ar::BinaryOperation*, bool > _bmc_no_wrap;
+  std::map< ar::Code*, bool > _bmc_local_control;
 
   /// \brief Result of the flat-array region-tainting soundness gate, cached
   /// after the first computation.

@@ -62,6 +62,40 @@ namespace analyzer {
 
 namespace {
 
+// A fresh source nondet and its pure SSA expressions are independent of shared
+// memory and of the caller's context. Loads, parameters and phi are excluded.
+bool bmc_local_integer(ar::Value* value, unsigned depth = 0) {
+  if (depth >= 32 || !value->type()->is_integer()) return false;
+  if (isa< ar::IntegerConstant >(value)) return true;
+  auto* variable = dyn_cast< ar::InternalVariable >(value);
+  if (variable == nullptr) return false;
+  auto* definition = bmc::unique_def_bmc(variable);
+  if (definition == nullptr) return false;
+  if (auto* call = dyn_cast< ar::CallBase >(definition)) return bmc::source_nondet(call);
+  if (!isa< ar::Assignment >(definition) && !isa< ar::UnaryOperation >(definition) &&
+      !isa< ar::BinaryOperation >(definition)) return false;
+  for (auto i = definition->op_begin(); i != definition->op_end(); ++i)
+    if (!bmc_local_integer(*i, depth + 1)) return false;
+  return true;
+}
+
+bool bmc_shared_independent_control(ar::Code* code) {
+  for (auto* block : *code) {
+    for (auto* statement : *block) {
+      if (bmc::abstract_initializer(statement)) continue;
+      if (auto* comparison = dyn_cast< ar::Comparison >(statement)) {
+        if (!bmc_local_integer(comparison->left()) || !bmc_local_integer(comparison->right())) return false;
+      } else if (auto* call = dyn_cast< ar::CallBase >(statement)) {
+        if (bmc::source_nondet(call)) continue;
+        if (bmc::is_assume_call(call) && call->num_arguments() == 1 && bmc_local_integer(call->argument(0))) continue;
+        // A callee may hide a shared-dependent assume or branch refinement.
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 /// \brief True iff the (possibly `ar.libc.`-prefixed) callee is a stdio OUTPUT
 /// function (printf/fprintf/sprintf/snprintf/puts/fputs/…). Their pointer
 /// arguments are the stream / format string / values-to-print, none of which
@@ -477,6 +511,7 @@ DataRaceChecker::~DataRaceChecker() {
             case bmc::EvKind::Write: k = "WRITE"; break;
             case bmc::EvKind::Lock: k = "LOCK"; break;
             case bmc::EvKind::Unlock: k = "UNLOCK"; break;
+            default: break;
           }
           std::cerr << "    " << k;
           if (auto loc = source_location(s)) {
@@ -631,6 +666,7 @@ DataRaceChecker::~DataRaceChecker() {
         if (f == nullptr) {
           continue;
         }
+        if (!this->_ctx.concurrent_env.thread_instances_are_static(f->name())) continue;
         auto instances =
             this->_ctx.concurrent_env.get_func_instances(f->name());
         if (instances.empty()) {
@@ -1085,25 +1121,176 @@ DataRaceChecker::~DataRaceChecker() {
   // pthread_create call sites, for the violation witness's thread
   // registration (function_enter waypoints). Emitted once and reused in
   // every group's info so downstream parsers can read it from any report.
-  JsonList thread_creations;
-  for (const ThreadCreation& tc : this->_thread_creations) {
-    JsonDict d;
-    if (auto loc = source_location(tc.stmt)) {
-      d.put("line", static_cast< int >(loc.line()));
-      d.put("column", static_cast< int >(loc.column()));
-      d.put("file", loc.path().filename().string());
+  auto creation_info = [&](const std::vector< ar::Statement* >* selected) {
+    JsonList list;
+    auto append = [&](const ThreadCreation& tc) {
+      JsonDict item;
+      if (auto loc = source_location(tc.stmt)) {
+        item.put("line", static_cast< int >(loc.line()));
+        item.put("column", static_cast< int >(loc.column()));
+        item.put("file", loc.path().filename().string());
+      }
+      item.put("thread_function", tc.child);
+      ar::Code* code = tc.stmt->parent()->code();
+      if (code != nullptr && code->is_function_body()) item.put("creator", code->function()->name());
+      list.add(item);
+    };
+    if (selected == nullptr) {
+      for (const auto& creation : this->_thread_creations) append(creation);
+    } else {
+      // Preserve execution order and dynamic repetitions, not source order.
+      for (auto* stmt : *selected) {
+        for (const auto& creation : this->_thread_creations) {
+          if (creation.stmt == stmt) {append(creation); break;}
+        }
+      }
     }
-    d.put("thread_function", tc.child);
-    ar::Code* code = tc.stmt->parent()->code();
-    if (code != nullptr && code->is_function_body()) {
-      d.put("creator", code->function()->name());
-    }
-    thread_creations.add(d);
-  }
+    return list;
+  };
 
-  // BMC soundness gate (computed once): the whole program must use only mutex
-  // sync — no cond/sem/barrier/spin/atomic — for the BMC to report FALSE.
-  bool bmc_program_sound = !bmc::has_unmodeled_sync(this->_ctx.bundle);
+  // Every concrete prefix must discharge its own synchronization semantics.
+
+  const bool bmc_enabled = this->_ctx.opts.demote_race_to_unknown &&
+                           getenv("IKOS_BMC_RECOVER") != nullptr;
+  const bool diagnostics_enabled = getenv("IKOS_BMC_DIAGNOSTICS") != nullptr;
+  bmc::SearchBudget search_budget;
+  // A may-multiplicity flag cannot establish two live concrete instances.
+  // Initially support two explicit spawns on a linear main prefix, with no
+  // intervening waits or unknown calls. Loop/conditional creation needs modeling.
+  std::map< std::pair< std::string, std::string >, std::vector< std::vector< bmc::BmcEvent > > > activation_prefixes;
+  auto two_live_threads = [&](const std::string& thread_a, const std::string& thread_b) {
+    ar::Function* main = this->_ctx.bundle->function_or_null("main");
+    if (main == nullptr || main->body_or_null() == nullptr ||
+        !main->body_or_null()->has_entry_block()) {
+      return false;
+    }
+    std::map< std::string, unsigned > required{{thread_a, 1}, {thread_b, 1}};
+    if (thread_a == thread_b) {
+      required[thread_a] = 2;
+    }
+    std::map< std::string, unsigned > sites;
+    for (const ThreadCreation& tc : this->_thread_creations) {
+      if (required.count(tc.child)) {
+        if (tc.stmt->parent()->code() != main->body_or_null()) {
+          return false;
+        }
+        ++sites[tc.child];
+      }
+    }
+    if (sites != required) {
+      return false;
+    }
+    std::set< ar::BasicBlock* > visited;
+    ar::BasicBlock* bb = main->body_or_null()->entry_block();
+    std::map< std::string, unsigned > spawns;
+    std::vector< bmc::BmcEvent > execution;
+    while (visited.insert(bb).second) {
+      for (ar::Statement* stmt : *bb) {
+        bmc::BmcEvent step(stmt, bmc::EvKind::Local);
+        bmc::classify_event(stmt, step);
+        execution.push_back(step);
+        if (isa< ar::Comparison >(stmt) || isa< ar::Unreachable >(stmt)) {
+          return false;
+        }
+        if (auto* store = dyn_cast< ar::Store >(stmt)) {
+          bmc::BmcEvent event;
+          bmc::classify_event(store, event);
+          core::ZNumber size;
+          if (event.var_id != 0 || event.width == 0 || !bmc::memory_extent(event, size)) return false;
+          if (event.const_off < 0 || event.const_off + event.width > size) return false;
+        }
+        if (auto* call = dyn_cast< ar::CallBase >(stmt)) {
+          bool creation = false;
+          for (const ThreadCreation& tc : this->_thread_creations) {
+            if (tc.stmt == call) {
+              bmc::BmcEvent event;
+              ar::Function* child = this->_ctx.bundle->function_or_null(tc.child);
+              if (!bmc::classify_event(call, event) || event.kind != bmc::EvKind::Create ||
+                  child == nullptr || event.thread != reinterpret_cast< std::uint64_t >(child)) return false;
+              creation = true;
+              if (required.count(tc.child)) {
+                ++spawns[tc.child];
+                if (spawns == required) {
+                  if (!bmc::prefix_values_defined(execution)) return false;
+                  activation_prefixes[std::minmax(thread_a, thread_b)] = {execution};
+                  return true;
+                }
+              }
+              break;
+            }
+          }
+          if (!creation && !bmc::supported_leaf_call(call)) return false;
+        } else if (!bmc::total_local_statement(stmt) && !isa< ar::Store >(stmt)) {
+          return false;
+        }
+      }
+      if (bb->num_successors() != 1) {
+        return false;
+      }
+      bb = *bb->successor_begin();
+    }
+    return false;
+  };
+  // Reuse the same bounded AR path engine for conditional creation. Static
+  // site counts are not existence evidence; the retained guards are later
+  // checked together with both workers' value/scheduling constraints.
+  auto conditional_live_threads = [&](const std::string& thread_a, const std::string& thread_b) {
+    auto* main = this->_ctx.bundle->function_or_null("main");
+    if (main == nullptr || !main->is_definition()) return false;
+    std::map< std::string, unsigned > required{{thread_a, 1}, {thread_b, 1}};
+    if (thread_a == thread_b) required[thread_a] = 2;
+    auto& alternatives = activation_prefixes[std::minmax(thread_a, thread_b)];
+    for (const auto& creation : this->_thread_creations) {
+      if (search_budget.expired()) break;
+      if (!required.count(creation.child)) continue;
+      for (unsigned occurrence = 1; occurrence <= 2; ++occurrence) {
+        auto result = bmc::unroll_to(main, creation.stmt, occurrence, 16);
+        if (result.incomplete) continue;
+        for (auto& path : result.paths) {
+          std::map< std::string, unsigned > spawns;
+          std::set< std::pair< std::uint64_t, core::ZNumber > > held;
+          bool supported = true;
+          for (std::size_t step = 0; step < path.size(); ++step) {
+            const auto& event = path[step];
+            if (event.kind == bmc::EvKind::Unsupported || event.kind == bmc::EvKind::Join) {supported = false; break;}
+            if (event.kind == bmc::EvKind::Lock || event.kind == bmc::EvKind::Unlock) {
+              bmc::BmcEvent address;
+              if (event.mutex == bmc::PSEUDO_ATOMIC_LOCK) address.base = bmc::PSEUDO_ATOMIC_LOCK;
+              else {
+                auto* call = cast< ar::CallBase >(event.stmt);
+                core::ZNumber size;
+                if (call->num_arguments() != 1 ||
+                    !bmc::pointer_on_path(call->argument(0), path, step, main, nullptr, address) ||
+                    address.base == 0 || address.var_id != 0 || !bmc::memory_extent(address, size) ||
+                    address.const_off < 0 || address.const_off >= size) {supported = false; break;}
+              }
+              auto identity = std::make_pair(address.base, address.const_off);
+              // This is a main-only execution: all spawned children can remain
+              // unscheduled until the checked, fully released startup ends.
+              if (event.kind == bmc::EvKind::Lock ? !held.insert(identity).second : held.erase(identity) == 0) {
+                supported = false; break;
+              }
+            }
+            if (event.kind == bmc::EvKind::Create) {
+              auto* child = reinterpret_cast< ar::Function* >(event.thread);
+              if (required.count(child->name())) ++spawns[child->name()];
+            }
+            if (event.kind == bmc::EvKind::Read || event.kind == bmc::EvKind::Write) {
+              core::ZNumber size;
+              if (event.var_id != 0 || event.width == 0 || !bmc::memory_extent(event, size) ||
+                  event.const_off < 0 || event.const_off + event.width > size) {supported = false; break;}
+            }
+          }
+          if (supported && held.empty() && spawns == required && bmc::prefix_values_defined(path)) {
+            alternatives.push_back(std::move(path));
+            if (alternatives.size() == 8) return true;
+          }
+        }
+      }
+    }
+    return !alternatives.empty();
+  };
+  std::map< std::pair< std::string, std::string >, bool > instance_proofs;
 
   // Emit one aggregated report per group.
   for (auto& kv : groups) {
@@ -1114,8 +1301,8 @@ DataRaceChecker::~DataRaceChecker() {
 
     // Anchor on the FIRST pair (Write of A or B).
     const PendingRacePair& first = all_pairs[pair_indices.front()];
-    const AccessRecord& a0 = this->_accesses[first.i];
-    const AccessRecord& b0 = this->_accesses[first.j];
+    const PendingRacePair* selected = &first;
+    int confirmed_pair_id = -1;
 
     // A group is "unknown" only when EVERY pair in it is a model boundary
     // (⊤ points-to). If any pair is a proven (concrete) race, the group stays
@@ -1146,151 +1333,229 @@ DataRaceChecker::~DataRaceChecker() {
       ++pair_id;
     }
 
-    // The aggregated info dict. Keeps the legacy flat top-level
-    // `access_a`/`access_b` pointing at the first pair so any
-    // downstream parser that reads `info.access_a` keeps working; the
-    // new `conflicting_accesses` carries the full list for consumers
-    // that want the complete picture.
-    JsonDict info{
-        {"memory_location",
-         first.first_conflict_loc.empty() ? std::string("unknown")
-                                          : first.first_conflict_loc},
-        {"access_a", side_info(a0, first.conflicting_pts,
-                               joined_names[first.i])},
-        {"access_b", side_info(b0, first.conflicting_pts,
-                               joined_names[first.j])},
-        {"conflicting_accesses", conflicting_accesses},
-        {"num_pairs", static_cast< int >(pair_indices.size())},
-        {"unique_lockset_intersection", "empty"},
-    };
-    info.put("thread_creations", thread_creations);
-
-    if (group_is_unknown) {
-      info.put("verdict", std::string("unknown"));
-      info.put("unknown_reason",
-               std::string("model boundary (atomic mixed or unknown-object ⊤ provenance)"));
-      info.put("ref_doc",
-               std::string("ikos-race-theory-mapping.md §2.1.2/§2.1.9 / §3.2 (缺口 #3 与 provenance 原型)"));
-    }
-
-    // BMC confirmation (recover TPs from demoted races): for a concrete race
-    // group under --demote-race-to-unknown, run the bounded checker on the
-    // anchor pair. Sound gates: whole program uses only mutex sync (checked
-    // once above), the conflict is on the SAME global variable (singleton
-    // points-to + singleton offset + same GlobalMemoryLocation), and the
-    // thread paths have balanced locks (checked inside confirm_race).
     bool bmc_confirmed = false;
-    // BMC is EXPERIMENTAL and gated behind IKOS_BMC_RECOVER (default OFF). With
-    // it off, --demote-race-to-unknown alone stays FN=0/FP=0 (1412 points).
-    if (!group_is_unknown && this->_ctx.opts.demote_race_to_unknown &&
-        bmc_program_sound && getenv("IKOS_BMC_RECOVER")) {
+    std::vector< ar::Statement* > confirmed_creations;
+    JsonList candidate_diagnostics;
+    std::map< std::string, std::size_t > reason_counts;
+    std::size_t candidate_id = 0;
+    std::size_t group_attempts = 0;
+    for (std::size_t pk : pair_indices) {
+      if (!bmc_enabled && !diagnostics_enabled) {
+        break;
+      }
+      const PendingRacePair& pr = all_pairs[pk];
+      const AccessRecord& a = this->_accesses[pr.i];
+      const AccessRecord& b = this->_accesses[pr.j];
+      bmc::Diagnostics diagnostics;
+      bmc::Diagnostics* trace = diagnostics_enabled ? &diagnostics : nullptr;
+      bool eligible = true;
+      auto gate = [&](bool blocked, const char* reason, ar::Statement* stmt = nullptr) {
+        if (blocked) {
+          eligible = false;
+          bmc::record(trace, reason, stmt);
+        }
+      };
+      // Evaluate independent eligibility gates even when another one fails.
+      if (a.thread_id != "main" && b.thread_id != "main") {
+        auto key = std::minmax(a.thread_id, b.thread_id);
+        auto proof = instance_proofs.find(key);
+        if (proof == instance_proofs.end()) {
+          proof = instance_proofs.emplace(key, two_live_threads(a.thread_id, b.thread_id) ||
+                                               conditional_live_threads(a.thread_id, b.thread_id)).first;
+        }
+        gate(!proof->second, "thread_activation_unproven");
+      }
+      gate(pr.is_unknown, "mixed_atomic");
+      // Unsupported synchronization is checked on each executed prefix.
+      // Unused functions and operations after the target cannot order a race
+      // already present in that finite execution.
+      gate(!bmc_enabled, "recovery_disabled");
+
       bool same_global = false;
-      // 别名门：offset 用「有效区间相交」判同址——非 ⊤ 用抽象区间（覆盖常量/变量
-      // 下标，如 data[4] vs data[i] i∈[0,9]），⊤ 退回结构常量偏移（struct 字段）。
-      // 抽象区间是 sound 过近似，相交 ⇒ 实际偏移可能相等 ⇒ 竞争可达。
-      auto eff_interval = [&](const AccessRecord& a, std::int64_t& lo,
-                              std::int64_t& hi) -> bool {
-        if (a.offset.is_bottom()) {
+      bool singleton = a.pts.is_set() && a.pts.size() == 1 &&
+                       b.pts.is_set() && b.pts.size() == 1;
+      gate(!singleton, "points_to_not_singleton");
+      if (singleton) {
+        MemoryLocation* ma = *a.pts.begin();
+        MemoryLocation* mb = *b.pts.begin();
+        bool global = isa< GlobalMemoryLocation >(ma) &&
+                      isa< GlobalMemoryLocation >(mb);
+        gate(!global, "non_global_object");
+        same_global = global &&
+                      core::IndexableTraits< MemoryLocation* >::index(ma) ==
+                          core::IndexableTraits< MemoryLocation* >::index(mb);
+        gate(global && !same_global, "different_global_objects");
+      }
+      // This is only a may-overlap prefilter; SMT must establish actual overlap.
+      auto eff_interval = [](const AccessRecord& access, ZNumber& lo,
+                             ZNumber& hi) {
+        if (access.offset.is_bottom()) {
           return false;
         }
-        if (!a.offset.is_top()) {
-          lo = a.offset.lb().to_z_number().to< std::int64_t >();
-          hi = a.offset.ub().to_z_number().to< std::int64_t >();
+        if (!access.offset.is_top()) {
+          lo = access.offset.lb().to_z_number();
+          hi = access.offset.ub().to_z_number();
           return true;
         }
-        if (a.structural_type == nullptr) {
-          return false;  // ⊤ 且无常量结构偏移（真变量下标）
+        if (access.structural_type == nullptr) {
+          return false;
         }
-        lo = hi = a.structural_offset;
+        lo = hi = ZNumber(access.structural_offset);
         return true;
       };
-      std::int64_t lo_a = 0, hi_a = 0, lo_b = 0, hi_b = 0;
+      ZNumber lo_a, hi_a, lo_b, hi_b;
       bool off_overlap = false;
-      if (eff_interval(a0, lo_a, hi_a) && eff_interval(b0, lo_b, hi_b)) {
-        // 宽度感知的字节范围重叠（offset/width 都很小，int64 加法不回绕）。
-        // width==0（未知）退回起始区间重叠（保守，仍只丢 TP 不引 FP）。
-        if (a0.width != 0 && b0.width != 0) {
-          off_overlap = hi_a + static_cast< std::int64_t >(a0.width) > lo_b &&
-                        hi_b + static_cast< std::int64_t >(b0.width) > lo_a;
+      if (eff_interval(a, lo_a, hi_a) && eff_interval(b, lo_b, hi_b)) {
+        if (a.width != 0 && b.width != 0) {
+          off_overlap = hi_a + ZNumber(a.width) > lo_b &&
+                        hi_b + ZNumber(b.width) > lo_a;
         } else {
           off_overlap = lo_a <= hi_b && lo_b <= hi_a;
         }
       }
-      // 裸变量下标（⊤ offset 且无常量结构偏移，如 data[i]）：抽象区间判不了同址，
-      // 交给 BMC 的 SMT 同址门（const_off + coeff*var）。sound：⊤ 可能同址，BMC
-      // 只对「证明同址」报 FALSE，仍不破 FP=0。
-      bool var_index = (a0.offset.is_top() && a0.structural_type == nullptr) ||
-                       (b0.offset.is_top() && b0.structural_type == nullptr);
-      if (a0.pts.is_set() && a0.pts.size() == 1 && b0.pts.is_set() &&
-          b0.pts.size() == 1 && (off_overlap || var_index)) {
-        MemoryLocation* ma = *a0.pts.begin();
-        MemoryLocation* mb = *b0.pts.begin();
-        // 别名门：两访问的 points-to 都是 singleton（精确到单一对象）且是同一个
-        // GlobalMemoryLocation（全局变量）。堆对象（DynAlloc）暂不放开——per-thread
-        // malloc 的 cell 按 call+context 建，但同一线程入口内的多实例会坍缩成同一
-        // cell，放开会导致 per-thread-struct 类误报（见 02/03 探针）。
-        same_global = isa< GlobalMemoryLocation >(ma) &&
-                      isa< GlobalMemoryLocation >(mb) &&
-                      core::IndexableTraits< MemoryLocation* >::index(ma) ==
-                          core::IndexableTraits< MemoryLocation* >::index(mb);
-      }
-      if (same_global) {
-        // helper 内联：展开器会跟进调用链，访问在 helper 里也能收集到——线程入口
-        // 函数按 thread_id 名解析（不再要求访问语句直接在线程入口里）。
-        ar::Function* fa = this->_ctx.bundle->function_or_null(a0.thread_id);
-        ar::Function* fb = this->_ctx.bundle->function_or_null(b0.thread_id);
-        // 隔代 create/join HB 门：一方是另一方「传递但非直接」的祖先（A→C→B）时，
-        // 两者可能被跨线程 create/join 链排序（race-4_1：main→thread_usb→
-        // thread_ath9k），而 BMC 的两线程 po+mutex 编码看不到中间线程 C 的 join →
-        // 保守不确认（UNKNOWN）。直接父子（经典竞争，访问在 create 与 join 之间）
-        // 不受影响，仍可确认。
-        auto direct_creator = [&](const std::string& x, const std::string& y) {
-          auto it = this->_thread_creators.find(y);
-          return it != this->_thread_creators.end() && it->second.count(x) != 0;
-        };
-        auto transitive_ancestor = [&](const std::string& x,
-                                       const std::string& y) {
-          auto it = this->_thread_ancestors.find(y);
-          return it != this->_thread_ancestors.end() && it->second.count(x) != 0;
-        };
-        bool transitive_ordered =
-            (transitive_ancestor(a0.thread_id, b0.thread_id) &&
-             !direct_creator(a0.thread_id, b0.thread_id)) ||
-            (transitive_ancestor(b0.thread_id, a0.thread_id) &&
-             !direct_creator(b0.thread_id, a0.thread_id));
-        if (fa != nullptr && fb != nullptr && !transitive_ordered) {
-          // 间接调用解析：用 FunctionPointerAnalysis（流不敏感 Andersen）把
-          // `call %fp()` 的 fp 解析成候选目标集合（04-mutex_27 的 g()→{good,bad}，
-          // 找回 bad() 里 global++ 与 main printf 的竞态）。找不到/⊤ → 空集 →
-          // 不内联 → 对应访问看不到 → UNKNOWN（保守，只丢 TP）。
-          bmc::IndirectCalleeResolver resolve_indirect;
-          if (this->_ctx.function_pointer != nullptr) {
-            FunctionPointerAnalysis* fpa = this->_ctx.function_pointer;
-            VariableFactory* vf = this->_ctx.var_factory;
-            resolve_indirect = [fpa, vf](ar::CallBase* call) {
-              std::vector< ar::Function* > out;
-              auto* iv = dyn_cast< ar::InternalVariable >(call->called());
-              if (iv == nullptr) {
-                return out;
+      bool var_index = (a.offset.is_top() && a.structural_type == nullptr) ||
+                       (b.offset.is_top() && b.structural_type == nullptr);
+      gate(!off_overlap && !var_index, "offset_prefilter");
+      ar::Function* fa = this->_ctx.bundle->function_or_null(a.thread_id);
+      ar::Function* fb = this->_ctx.bundle->function_or_null(b.thread_id);
+      gate(fa == nullptr || fb == nullptr, "thread_entry_missing");
+      auto direct_creator = [&](const std::string& x, const std::string& y) {
+        auto it = this->_thread_creators.find(y);
+        return it != this->_thread_creators.end() && it->second.count(x) != 0;
+      };
+      auto transitive_ancestor = [&](const std::string& x, const std::string& y) {
+        auto it = this->_thread_ancestors.find(y);
+        return it != this->_thread_ancestors.end() && it->second.count(x) != 0;
+      };
+      gate((transitive_ancestor(a.thread_id, b.thread_id) &&
+            !direct_creator(a.thread_id, b.thread_id)) ||
+               (transitive_ancestor(b.thread_id, a.thread_id) &&
+                !direct_creator(b.thread_id, a.thread_id)),
+           "transitive_thread_order");
+      if (eligible) {
+        if (bmc_confirmed) {
+          bmc::record(trace, "not_searched_after_confirmation");
+        } else if (group_attempts >= 32) {
+          bmc::record(trace, "group_search_budget");
+        } else if (search_budget.candidates == 0 || search_budget.expired()) {
+          bmc::record(trace, "search_budget");
+        } else {
+          ++group_attempts;
+          --search_budget.candidates;
+          bmc::CandidateFacts facts;
+          facts.no_wrap = &this->_bmc_no_wrap;
+          facts.bounded_a = eff_interval(a, facts.lo_a, facts.hi_a);
+          facts.bounded_b = eff_interval(b, facts.lo_b, facts.hi_b);
+          auto confirm = [&] {
+            return bmc::confirm_race(fa, a.stmt, a.width,
+                                          fb, b.stmt, b.width,
+                                          trace, &search_budget, &confirmed_creations, &facts);
+          };
+          if (a.thread_id != "main" && b.thread_id != "main") {
+            for (const auto& startup : activation_prefixes.at(std::minmax(a.thread_id, b.thread_id))) {
+              facts.startup = startup;
+              if ((bmc_confirmed = confirm())) {
+                confirmed_creations.clear();
+                for (const auto& event : startup)
+                  if (event.kind == bmc::EvKind::Create) confirmed_creations.push_back(event.stmt);
+                break;
               }
-              PointsToSet pts =
-                  fpa->results().get(vf->get_internal(iv)).points_to();
-              if (pts.is_bottom() || pts.is_top()) {
-                return out;
-              }
-              for (MemoryLocation* ml : pts) {
-                if (auto* fm = dyn_cast< FunctionMemoryLocation >(ml)) {
-                  out.push_back(fm->function());
-                }
-              }
-              return out;
-            };
+            }
+          } else bmc_confirmed = confirm();
+          if (bmc_confirmed) {
+            selected = &pr;
+            confirmed_pair_id = static_cast< int >(candidate_id);
           }
-          bmc_confirmed =
-              bmc::confirm_race(fa, a0.stmt, a0.width, fb, b0.stmt, b0.width,
-                                resolve_indirect);
         }
       }
+      if (diagnostics_enabled) {
+        JsonDict counts;
+        for (const auto& entry : diagnostics.counts) {
+          counts.put(entry.first, entry.second);
+          reason_counts[entry.first] += entry.second;
+        }
+        // Keep examples bounded; aggregate counters still cover every pair.
+        if (candidate_id < 256) {
+          JsonList examples;
+          for (const auto& example : diagnostics.examples) {
+            JsonDict d;
+            d.put("reason", example.reason);
+            std::ostringstream ar_statement;
+            example.stmt->dump(ar_statement);
+            d.put("ar", ar_statement.str());
+            if (auto loc = source_location(example.stmt)) {
+              d.put("file", loc.path().string());
+              d.put("line", static_cast< int >(loc.line()));
+              d.put("column", static_cast< int >(loc.column()));
+            }
+            examples.add(d);
+          }
+          JsonDict d;
+          d.put("pair_id", candidate_id);
+          d.put("first_blocker", diagnostics.first_blocker);
+          d.put("counts", counts);
+          d.put("paths_a", diagnostics.paths_a);
+          d.put("paths_b", diagnostics.paths_b);
+          d.put("path_pairs", diagnostics.path_pairs);
+          d.put("examples", examples);
+          if (!diagnostics.model.empty()) {
+            auto path_info = [](const std::vector< bmc::Diagnostics::Step >& steps) {
+              JsonList path;
+              for (const auto& step : steps) {
+                JsonDict item;
+                std::ostringstream statement;
+                step.stmt->dump(statement);
+                item.put("ar", statement.str());
+                item.put("clock", step.clock);
+                if (auto loc = source_location(step.stmt)) {
+                  item.put("file", loc.path().string());
+                  item.put("line", static_cast< int >(loc.line()));
+                  item.put("column", static_cast< int >(loc.column()));
+                }
+                path.add(item);
+              }
+              return path;
+            };
+            d.put("confirmed_path_a", path_info(diagnostics.confirmed_a));
+            d.put("confirmed_path_b", path_info(diagnostics.confirmed_b));
+            d.put("confirmed_startup", path_info(diagnostics.confirmed_startup));
+            d.put("smt_model", diagnostics.model);
+          }
+          candidate_diagnostics.add(d);
+        }
+      }
+      ++candidate_id;
+    }
+
+    // Flat targets and the report anchor must refer to the confirmed pair.
+    JsonDict info{
+        {"memory_location", first.first_conflict_loc.empty()
+                                ? std::string("unknown") : first.first_conflict_loc},
+        {"access_a", side_info(this->_accesses[selected->i],
+                               selected->conflicting_pts, joined_names[selected->i])},
+        {"access_b", side_info(this->_accesses[selected->j],
+                               selected->conflicting_pts, joined_names[selected->j])},
+        {"conflicting_accesses", conflicting_accesses},
+        {"num_pairs", static_cast< int >(pair_indices.size())},
+        {"unique_lockset_intersection", "empty"},
+    };
+    info.put("thread_creations", creation_info(bmc_confirmed ? &confirmed_creations : nullptr));
+    if (bmc_confirmed) {
+      info.put("confirmed_pair_id", confirmed_pair_id);
+    }
+    if (group_is_unknown) {
+      info.put("verdict", std::string("unknown"));
+      info.put("unknown_reason", std::string("mixed atomic/non-atomic accesses"));
+    }
+    if (diagnostics_enabled) {
+      JsonDict diagnostics, counts;
+      for (const auto& entry : reason_counts) {
+        counts.put(entry.first, entry.second);
+      }
+      diagnostics.put("counts", counts);
+      diagnostics.put("candidates", candidate_diagnostics);
+      diagnostics.put("omitted_candidates", candidate_id > 256 ? candidate_id - 256 : 0);
+      info.put("bmc", diagnostics);
     }
 
     this->_checks.insert(CheckKind::DataRace,
@@ -1300,8 +1565,8 @@ DataRaceChecker::~DataRaceChecker() {
                            !bmc_confirmed))
                              ? Result::Warning
                              : Result::Error,
-                         first.report_stmt,
-                         first.report_cc,
+                         selected->report_stmt,
+                         selected->report_cc,
                          /* operands = */ {},
                          /* info = */ info);
     // No terminal output: the aggregated info is the report. Downstream
@@ -1323,6 +1588,41 @@ void DataRaceChecker::check(ar::Statement* stmt,
   if (inv.first().is_normal_flow_bottom()) {
     // Statement is unreachable
     return;
+  }
+
+  if (auto* operation = dyn_cast< ar::BinaryOperation >(stmt)) {
+    if (this->_ctx.opts.demote_race_to_unknown && getenv("IKOS_BMC_RECOVER") != nullptr && operation->has_no_wrap()) {
+      using IntInterval = core::machine_int::Interval;
+      using ZInterval = core::numeric::Interval< core::ZNumber >;
+      using ZBound = core::ZBound;
+      bool proven = false;
+      auto* type = dyn_cast< ar::IntegerType >(operation->result()->type());
+      auto code = stmt->code();
+      auto inserted = this->_bmc_local_control.emplace(code, false);
+      if (inserted.second) inserted.first->second = bmc_shared_independent_control(code);
+      if (type != nullptr && inserted.first->second && bmc_local_integer(operation->left()) && bmc_local_integer(operation->right())) {
+        auto interval = [&](ar::Value* value) {
+          const auto& literal = this->_lit_factory.get_scalar(value);
+          if (literal.is_machine_int()) return IntInterval(literal.machine_int()).to_z_interval();
+          if (literal.is_machine_int_var() && !inv.first().normal().uninit_is_uninitialized(literal.var()))
+            return inv.first().normal().int_to_interval(literal.var()).to_z_interval();
+          return ZInterval::bottom();
+        };
+        auto left = interval(operation->left()), right = interval(operation->right());
+        auto result = ZInterval::bottom();
+        switch (operation->op()) {
+          case ar::BinaryOperation::SAdd: case ar::BinaryOperation::UAdd: result = left + right; break;
+          case ar::BinaryOperation::SSub: case ar::BinaryOperation::USub: result = left - right; break;
+          case ar::BinaryOperation::SMul: case ar::BinaryOperation::UMul: result = left * right; break;
+          default: break;
+        }
+        proven = !result.is_bottom() &&
+                 result.lb() >= ZBound(MachineInt::min(type->bit_width(), type->sign()).to_z_number()) &&
+                 result.ub() <= ZBound(MachineInt::max(type->bit_width(), type->sign()).to_z_number());
+      }
+      auto proof = this->_bmc_no_wrap.emplace(operation, proven);
+      if (!proof.second) proof.first->second = proof.first->second && proven;
+    }
   }
 
   if (auto load = dyn_cast< ar::Load >(stmt)) {
