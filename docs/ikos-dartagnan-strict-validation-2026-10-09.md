@@ -46,3 +46,26 @@ CAT hb 不是 POSIX hb，也不是 IKOS 的总调度 clock；不能直接把 clo
 
 下一步：从真实 IKOS 记录建立可审计的线程/创建/事件映射，逐项报告绑定和遗漏内容；
 固定值、相对对象地址和同步历史齐全后才把结果提升为对应反例的独立验证。
+
+## 第二个增量：相对对象地址与真实 IKOS 记录
+
+地址证书新增静态对象名、byte offset、width，参考端检查唯一静态对象、已知大小、
+有效范围和实际访问宽度，再约束地址等于对象 base + offset。不同工具的绝对地址不作比较。
+新增错误对象/宽度/不存在对象对照，双架构校准扩展至 **32 项全部通过**。
+
+`map_ikos.py` 接入真实 `04-mutex_01-simple_rc` 的已保存 AR 记录。只在源码、
+动态创建事件和访问映射唯一时生成约束；歧义/重复执行映射失败不选择一个猜测结果。
+固定 main load、worker load/store 三个事件的对象/偏移/宽度，worker load=0、store=1，
+参考查询 SAT；改变 store 为2且保留 load=0 得到 UNSAT_AT_BOUND。
+六项映射断言检查正常映射、损坏创建、无效目标位置、源位置损坏、歧义和动态事件塌缩。
+[真实 IKOS 实验](artifacts/dartagnan-strict-2026-10-09/ikos-simple-fixed-memory.json) 和
+[32 项校准](artifacts/dartagnan-strict-2026-10-09/relative-address-calibration.json) 已保留。
+
+结果仍标记 `PARTIAL_FIXED_MEMORY_MODEL`：局部值、CFG/调用实例、同步历史以及 IKOS
+完整调度/rf 选择未全部映射。Dartagnan 自身继续编码完整程序及同步，但允许它选择
+未绑定部分，因此不宣称严格验证了整个原反例，也不增加独立验证 TP 计数。
+
+映射负例曾发现同源码行的普通调用被误匹配为创建事件；现已要求 AR 语句确为
+直接 pthread_create、参数数目正确且入口参数匹配子线程，再进行参考创建匹配。
+修复后六项映射断言及真实用例正反实验重新通过，原始复测在
+`/tmp/ikos-dartagnan-map-2026-10-09-b/`。

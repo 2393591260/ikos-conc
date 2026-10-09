@@ -2,6 +2,7 @@ package com.dat3m.dartagnan.verification.solving;
 
 import com.dat3m.dartagnan.encoding.EncodingContext;
 import com.dat3m.dartagnan.encoding.ProverWithTracker;
+import com.dat3m.dartagnan.expression.type.TypeFactory;
 import com.dat3m.dartagnan.program.event.Event;
 import com.dat3m.dartagnan.program.event.Tag;
 import com.dat3m.dartagnan.program.event.core.MemoryCoreEvent;
@@ -44,6 +45,30 @@ public final class StrictWitness {
             return m.equal(i, m.makeNumber(n));
         }
         throw new IllegalArgumentException("unsupported value representation: " + f.getClass());
+    }
+    private static BooleanFormula objectAddress(EncodingContext c, MemoryCoreEvent e, String name, String offset, String width) {
+        var matches = c.getTask().getProgram().getMemory().getObjects().stream()
+            .filter(o -> o.isStaticallyAllocated() && name.equals(o.getName())).toList();
+        if (matches.size() != 1) throw new IllegalArgumentException("ambiguous/unknown static object: " + name);
+        var o = matches.get(0);
+        int off = new BigInteger(offset).intValueExact(), bytes = Integer.parseInt(width);
+        var accesses = e.getMemoryAccesses();
+        if (accesses.size() != 1 || bytes <= 0 || off < 0 || !o.hasKnownSize()
+            || (long) off + bytes > o.getKnownSize()
+            || TypeFactory.getInstance().getMemorySizeInBytes(accesses.get(0).accessType()) != bytes)
+            throw new IllegalArgumentException("unsupported offset/width/lifetime");
+        Formula address = c.address(e).formula(), base = c.address(o).formula();
+        var fm = c.getFormulaManager();
+        if (address instanceof BitvectorFormula a && base instanceof BitvectorFormula b) {
+            var m = fm.getBitvectorFormulaManager();
+            if (m.getLength(a) != m.getLength(b)) throw new IllegalArgumentException("address widths differ");
+            return m.equal(a, m.add(b, m.makeBitvector(m.getLength(b), off)));
+        }
+        if (address instanceof NumeralFormula.IntegerFormula a && base instanceof NumeralFormula.IntegerFormula b) {
+            var m = fm.getIntegerFormulaManager();
+            return m.equal(a, m.add(b, m.makeNumber(off)));
+        }
+        throw new IllegalArgumentException("unsupported pointer representation");
     }
     private static Event event(Properties p, String key, Map<Integer, Event> events) {
         String id = p.getProperty(key);
@@ -92,7 +117,7 @@ public final class StrictWitness {
             var boundIds = new HashSet<Integer>();
             for (int i = 0; i < count; ++i) {
                 String k = "event." + i + ".";
-                used.addAll(List.of(k + "id", k + "thread", k + "creator", k + "descriptor", k + "value", k + "address"));
+                used.addAll(List.of(k + "id", k + "thread", k + "creator", k + "descriptor", k + "value", k + "address", k + "object", k + "offset", k + "width"));
                 Event e = event(p, k + "id", events);
                 if (!boundIds.add(e.getGlobalId())) throw new IllegalArgumentException("duplicate event");
                 var creator = e.getThread().getEntry().getCreator();
@@ -101,10 +126,12 @@ public final class StrictWitness {
                     || !b64(descriptor(e)).equals(p.getProperty(k + "descriptor")))
                     throw new IllegalArgumentException("event/instance/creation mismatch");
                 prover.addConstraint(c.execution(e));
-                if (p.containsKey(k + "value") || p.containsKey(k + "address")) {
+                if (p.containsKey(k + "value") || p.containsKey(k + "address") || p.containsKey(k + "object") || p.containsKey(k + "offset") || p.containsKey(k + "width")) {
                     if (!(e instanceof MemoryCoreEvent m)) throw new IllegalArgumentException("not a memory event");
                     if (p.containsKey(k + "value")) prover.addConstraint(number(c, c.value(m).formula(), p.getProperty(k + "value")));
                     if (p.containsKey(k + "address")) prover.addConstraint(number(c, c.address(m).formula(), p.getProperty(k + "address")));
+                    if (p.containsKey(k + "object") || p.containsKey(k + "offset") || p.containsKey(k + "width"))
+                        prover.addConstraint(objectAddress(c, m, p.getProperty(k + "object"), p.getProperty(k + "offset"), p.getProperty(k + "width")));
                 }
             }
             Event a = event(p, "target_a", events), b = event(p, "target_b", events);

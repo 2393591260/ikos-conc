@@ -147,9 +147,14 @@ def calibrate(args):
             raise AssertionError('expected two exact worker instances: ' + repr(stores))
         cert = certificate(h, stores)
         cert['event.0.value'] = cert['event.1.value'] = 7
+        for i in (0, 1):
+            cert.update({f'event.{i}.object': 'data', f'event.{i}.offset': 0, f'event.{i}.width': 4})
         cases = [('valid', cert, 'SAT')]
         def change(name, updates, expected='UNSUPPORTED'):
             c = copy.deepcopy(cert); c.update(updates); cases.append((name, c, expected))
+        change('wrong-object', {'event.0.object': 'other'}, 'UNSAT_AT_BOUND')
+        change('wrong-width', {'event.0.width': 1})
+        change('unknown-object', {'event.0.object': 'nonexistent'})
         change('out-of-range-value', {'event.0.value': 2**32})
         change('wrong-descriptor', {'event.0.descriptor': 'bm90LWFuLWV2ZW50'})
         change('wrong-thread', {'event.0.thread': 999})
