@@ -96,22 +96,6 @@ bool bmc_shared_independent_control(ar::Code* code) {
   return true;
 }
 
-/// \brief True iff the (possibly `ar.libc.`-prefixed) callee is a stdio OUTPUT
-/// function (printf/fprintf/sprintf/snprintf/puts/fputs/…). Their pointer
-/// arguments are the stream / format string / values-to-print, none of which
-/// the library writes through, so the extern-call Write synthesis must skip
-/// them (see check_extern_call_effects).
-bool is_stdio_output(const std::string& name) {
-  const std::string n =
-      (name.rfind("ar.libc.", 0) == 0) ? name.substr(8) : name;
-  static const std::unordered_set< std::string > kStdio = {
-      "printf",     "fprintf",   "sprintf", "snprintf", "vprintf",
-      "vfprintf",   "vsprintf",  "vsnprintf",
-      "puts",       "fputs",     "putchar", "fputc",    "perror",
-  };
-  return kStdio.count(n) != 0;
-}
-
 /// \brief Canonical branch guard of a statement directly guarded by an
 /// `if (guard)` branch: the base AR variable pointer (affine-peeled), or 0
 /// when the statement is not guarded this way. Mirrors the lock-side branch
@@ -2334,6 +2318,9 @@ void DataRaceChecker::check_extern_call_effects(
   if (!extern_call) {
     return;
   }
+  // Reuse the verified literal/integer-only summary, not a stdio name family:
+  // buffer destinations, %n and pointer conversions can access shared data.
+  if (bmc::constant_output_call(call)) return;
 
   // Exclude the pthread lock primitives: their pointer argument is the
   // MUTEX ITSELF, not shared data — synthesizing a Write on it (with an
@@ -2407,16 +2394,7 @@ void DataRaceChecker::check_extern_call_effects(
       // EVERY concurrent access (reorder_5.c: main's VLA cleanup "races"
       // setThread/checkThread's atomic `a`/`b`).
       callee_nm.find("stacksave") != std::string::npos ||
-      callee_nm.find("stackrestore") != std::string::npos ||
-      // stdio output family (printf/fprintf/sprintf/snprintf/puts/fputs/…):
-      // their pointer arguments are the output stream (FILE*), the read-only
-      // format string, or the VALUES being printed — none of which the library
-      // WRITES THROUGH (the rare `%n` writes an int*, not exercised here).
-      // Synthesizing a Write through them fabricates a ⊤ Write (e.g. the
-      // `strerror(status)` vararg is ⊤) that pairs with EVERY concurrent
-      // access — 04-mutex_36-trylock_nr.c's create-error `fprintf(stderr,…)`
-      // synthesizes a ⊤ Write racing counter_thread's counter/end_time reads.
-      is_stdio_output(callee_nm)) {
+      callee_nm.find("stackrestore") != std::string::npos) {
     return; // modeled sync primitive: args are lock/thread ids, not data
   }
 
@@ -2461,16 +2439,10 @@ void DataRaceChecker::check_extern_call_effects(
       for (MemoryLocation* ml : pts) {
         if (auto* gml = dyn_cast< GlobalMemoryLocation >(ml)) {
           any = true;
-          const std::string& n = gml->global_var()->name();
-          // Compiler-generated read-only constant? LLVM string literals are
-          // `.str` / `.str.N`; clang names `__PRETTY_FUNCTION__` and `__func__`
-          // string literals as `__PRETTY_FUNCTION__.<fn>` / `__func__.<fn>`
-          // (observed as `__PRETTY_FUNCTION__.reach_error`). These are all
-          // immutable — a library call cannot write through them.
-          bool is_const =
-              (!n.empty() && n[0] == '.') ||
-              n.rfind("__PRETTY_FUNCTION__.", 0) == 0 ||
-              n.rfind("__func__.", 0) == 0;
+          auto* global = gml->global_var();
+          // Symbol spelling is not an immutability proof (C asm aliases).
+          bool is_const = global->has_frontend() &&
+                          global->frontend< llvm::GlobalVariable >()->isConstant();
           if (!is_const) {
             all_const = false; // user global: writable
           }
