@@ -22,7 +22,7 @@ namespace ikos {
 namespace analyzer {
 namespace bmc {
 
-/// 判断两个访问（各线程路径的最后一个事件）是否真竞争。
+/// Check the selected accesses, including any necessary atomic completion.
 /// 返回 true = 确认；false = 未确认（含 UNSAT / unsupported），不是无竞争证明。
 inline bool check_race(const std::vector< BmcEvent >& inputA,
                        const std::vector< BmcEvent >& inputB,
@@ -98,6 +98,8 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
 
   const std::size_t nA = pathA.size();
   const std::size_t nB = pathB.size();
+  const std::size_t targetA = candidate_index(pathA), targetB = candidate_index(pathB);
+  if (targetA == nA || targetB == nB) {record(diagnostics, "candidate_missing"); return false;}
 
   // clock 变量：A 的 nA 个 + B 的 nB 个。
   std::vector< z3::expr > clock;
@@ -186,6 +188,13 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   };
   std::vector< Section > sections_a, sections_b;
   if (!sections(pathA, sections_a) || !sections(pathB, sections_b)) return false;
+  auto atomic_target = [](const std::vector< Section >& sections, std::size_t target) {
+    return std::any_of(sections.begin(), sections.end(), [&](const Section& section) {
+      return section.mutex == PSEUDO_ATOMIC_LOCK && section.begin < target && target < section.end;
+    });
+  };
+  const bool atomicA = atomic_target(sections_a, targetA), atomicB = atomic_target(sections_b, targetB);
+  if (atomicA && atomicB) {record(diagnostics, "atomic_pair"); return false;}
   // Verifier atomic blocks exclude all other threads, including accesses
   // outside atomic blocks. A mutex-only exclusion does not express this.
   for (const auto& section : sections_a) {
@@ -743,8 +752,8 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   // same_global 门保证，这里判范围重叠；base 不同或提取失败（base==0）则不确认
   // （保持 UNKNOWN）。
   {
-    const BmcEvent& ea = pathA.back();
-    const BmcEvent& eb = pathB.back();
+    const BmcEvent& ea = pathA[targetA];
+    const BmcEvent& eb = pathB[targetB];
     // 同址必须可证：base 提取失败（0）或 base 不同 → 缺失同址约束会让两访问被
     // 「假相邻」确认 → FP。保守不确认（UNKNOWN）。
     if (ea.base == 0 || eb.base == 0 || ea.base != eb.base) {
@@ -805,7 +814,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       s.add(address_a != address_b || a_first || b_first);
     }
     z3::expr off_a(ctx), off_b(ctx);
-    if (!encode_offset(ea, off_a, cache_a, "value_a_", nA - 1) || !encode_offset(eb, off_b, cache_b, "value_b_", nB - 1)) return false;
+    if (!encode_offset(ea, off_a, cache_a, "value_a_", targetA) || !encode_offset(eb, off_b, cache_b, "value_b_", targetB)) return false;
     if (facts != nullptr) {
       if (facts->bounded_a) s.add(off_a >= ctx.int_val(facts->lo_a.str().c_str()) && off_a <= ctx.int_val(facts->hi_a.str().c_str()));
       if (facts->bounded_b) s.add(off_b >= ctx.int_val(facts->lo_b.str().c_str()) && off_b <= ctx.int_val(facts->hi_b.str().c_str()));
@@ -831,7 +840,9 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
     return false;
   }
 
-  // 竞争查询：两个访问（各自路径最后一个事件）能否相邻。
+  // Preserve the old query for ordinary targets. Atomic targets may have a
+  // completion suffix: pure local operations and atomic markers are not hb
+  // barriers. Keep memory and real synchronization between them excluded.
   bool any = false;
   for (int dir = 0; dir < 2; ++dir) {
     // Each query is independent. push/pop switches Z3 to incremental solving,
@@ -839,10 +850,21 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
     z3::solver query(ctx);
     query.set("timeout", 1000u);
     query.add(s.assertions());
-    if (dir == 0) {
-      query.add(clock[nA - 1] == clock[nA + nB - 1] + 1);
-    } else {
-      query.add(clock[nA + nB - 1] == clock[nA - 1] + 1);
+    auto first = dir == 0 ? nA + targetB : targetA;
+    auto last = dir == 0 ? targetA : nA + targetB;
+    if (!atomicA && !atomicB) query.add(clock[last] == clock[first] + 1);
+    else {
+      query.add(clock[first] < clock[last]);
+      auto exclude_between = [&](const std::vector< BmcEvent >& path, std::size_t start) {
+        for (std::size_t i = 0; i < path.size(); ++i) {
+          if (start + i == first || start + i == last) continue;
+          const auto& event = path[i];
+          if (event.kind == EvKind::Local || event.kind == EvKind::Assume ||
+              ((event.kind == EvKind::Lock || event.kind == EvKind::Unlock) && event.mutex == PSEUDO_ATOMIC_LOCK)) continue;
+          query.add(clock[start + i] < clock[first] || clock[last] < clock[start + i]);
+        }
+      };
+      exclude_between(pathA, 0); exclude_between(pathB, nA);
     }
     z3::check_result result = query.check();
     record(diagnostics, result == z3::sat ? "sat" :
@@ -898,8 +920,8 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
         export_trace(pathA, cache_a, "a", funcA, 0);
         export_trace(pathB, cache_b, "b", funcB, nA);
         diagnostics->replay.put("traces", traces);
-        diagnostics->replay.put("targets", JsonList(JsonDict{{"trace", "a"}, {"step", nA - 1}},
-                                                   JsonDict{{"trace", "b"}, {"step", nB - 1}}));
+        diagnostics->replay.put("targets", JsonList(JsonDict{{"trace", "a"}, {"step", targetA}},
+                                                   JsonDict{{"trace", "b"}, {"step", targetB}}));
         for (std::size_t i = 0; i < startup.size(); ++i)
           diagnostics->confirmed_startup.push_back({startup[i].stmt, "startup_" + std::to_string(i)});
         for (std::size_t i = 0; i < nA; ++i)

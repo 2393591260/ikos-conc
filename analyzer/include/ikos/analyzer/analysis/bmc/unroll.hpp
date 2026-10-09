@@ -37,6 +37,7 @@ struct BmcEvent {
   ar::Statement* stmt = nullptr;  // 对应的 AR 语句
   ar::Function* called_function = nullptr; // Callee proven on this executed call.
   bool synthetic_atomic = false; // Boundary marker, not another source call.
+  bool candidate = false; // Selected dynamic access; atomic closure may follow.
   EvKind kind = EvKind::Read;
   std::uint64_t mutex = 0;  // Lock/Unlock 的锁对象语法同一性（arg0 指针）；内存事件为 0
   bool reader = false; // Two rwlock read acquisitions do not exclude each other.
@@ -939,8 +940,8 @@ inline bool inline_ok(ar::Function* f) {
 }
 
 /// 路径敏感的 DFS：从 `bb` 出发，沿 CFG 后继枚举到 `target` 的所有路径。
-/// `current` 是当前路径上的事件前缀；到达 `target` 时把路径记入 `out` 并停止
-/// （target 之后的语句/后继与本次访问的竞争判定无关）。
+/// `current` retains the executed prefix. A selected atomic access continues
+/// through its real closing boundary; Return searches retain the actual suffix.
 /// `in_stack` 记录当前 DFS 栈上的基本块，用于检测回边（循环）并跳过——
 /// Backedges are cut; retained prefixes must still satisfy their actual guards.
 constexpr std::size_t MAX_PATHS = 256;
@@ -950,10 +951,27 @@ struct UnrollBudget {
   unsigned loop_bound = 1;
   unsigned target_occurrence = 1;
   ar::Statement* root_target = nullptr;
+  bool completed = false;
   const char* exhausted = nullptr;
   const char* rejected_reason = nullptr;
   ar::Statement* rejected_statement = nullptr;
 };
+
+inline bool open_atomic_prefix(const std::vector< BmcEvent >& path) {
+  int active = 0;
+  for (const auto& event : path) {
+    if (event.mutex != PSEUDO_ATOMIC_LOCK) continue;
+    if (event.kind == EvKind::Lock) ++active;
+    if (event.kind == EvKind::Unlock) --active;
+  }
+  return active != 0;
+}
+
+inline std::size_t candidate_index(const std::vector< BmcEvent >& path) {
+  for (std::size_t i = 0; i < path.size(); ++i)
+    if (path[i].candidate) return i;
+  return path.size();
+}
 
 void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
                std::vector< BmcEvent >& current,
@@ -1052,12 +1070,27 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
       }
       if (s == target) {
         auto occurrences = std::count_if(current.begin(), current.end(),
-                                          [&](const BmcEvent& event) {return event.stmt == target;});
+                                          [&](const BmcEvent& event) {return !event.synthetic_atomic && event.stmt == target;});
         if (occurrences >= (target == budget.root_target ? budget.target_occurrence : 1)) {
-          out.push_back(current);
-          in_stack.pop_back();
-          return;
+          if (target != budget.root_target) {
+            out.push_back(current);
+            in_stack.pop_back();
+            return;
+          }
         }
+      }
+      if (s == budget.root_target && candidate_index(current) == current.size() &&
+          (target == budget.root_target || budget.completed || open_atomic_prefix(current))) {
+        auto occurrences = std::count_if(current.begin(), current.end(),
+            [&](const BmcEvent& event) {return !event.synthetic_atomic && event.stmt == budget.root_target;});
+        if (occurrences >= budget.target_occurrence) current.back().candidate = true;
+      }
+      // Continue the real CFG until the selected atomic region is closed.
+      if (target == budget.root_target && candidate_index(current) < current.size() &&
+          !open_atomic_prefix(current)) {
+        out.push_back(current);
+        in_stack.pop_back();
+        return;
       }
       if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
         BmcEvent classified;
@@ -1096,6 +1129,15 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
             BmcEvent end(s, EvKind::Unlock, PSEUDO_ATOMIC_LOCK);
             end.synthetic_atomic = true;
             returned.push_back(end);
+          }
+          if (returned.size() > MAX_PATH_EVENTS) {
+            budget.exhausted = "unroll_event_budget";
+            return;
+          }
+          if (atomic && target == budget.root_target && candidate_index(returned) < returned.size() &&
+              !open_atomic_prefix(returned)) {
+            out.push_back(returned);
+            continue;
           }
           dfs_paths(bb, target, returned, out, in_stack, budget, depth, s);
         }
@@ -1159,6 +1201,33 @@ inline UnrollResult unroll_to(
 
   // Every retained prefix follows actual CFG guards. Backedges are cut,
   // so this is bounded search, never a proof of safety. No guessed loop exits.
+  return result;
+}
+
+// Atomic-target queries need both completed worker paths, including assumptions
+// following the opposite access. Do not replace them with arbitrary stop points.
+inline UnrollResult unroll_completed(ar::Function* func, ar::Statement* target,
+                                     unsigned loop_bound) {
+  UnrollResult result;
+  auto* body = func->body_or_null();
+  if (named_verifier_atomic(func) || body == nullptr || !body->has_entry_block()) return result;
+  UnrollBudget budget;
+  budget.root_target = target;
+  budget.completed = true;
+  budget.loop_bound = loop_bound;
+  for (auto* block : *body) for (auto* statement : *block) {
+    if (!core::isa< ar::ReturnValue >(statement)) continue;
+    std::vector< BmcEvent > current;
+    dfs_paths(body->entry_block(), statement, current, result.paths, {}, budget);
+  }
+  result.rejected_reason = budget.rejected_reason;
+  result.rejected_statement = budget.rejected_statement;
+  if (budget.exhausted != nullptr) {
+    result.paths.clear(); result.incomplete = true; result.reason = budget.exhausted;
+  } else {
+    result.paths.erase(std::remove_if(result.paths.begin(), result.paths.end(),
+        [](const auto& path) {return candidate_index(path) == path.size();}), result.paths.end());
+  }
   return result;
 }
 

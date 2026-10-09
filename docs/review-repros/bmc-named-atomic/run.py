@@ -27,11 +27,12 @@ def main(args):
             verdict = next((s for s in result.stdout.splitlines()
                             if s.startswith('The program is')), 'NONE')
             assert result.returncode == 0 and verdict != 'NONE', (tag, result.returncode)
-            if source.stem.endswith('-race'):
+            recovered = source.stem.endswith('-race') or source.stem == 'open-target-boundary'
+            if recovered:
                 assert 'definitely UNSAFE' in verdict, (tag, verdict)
             else:
                 assert 'definitely UNSAFE' not in verdict, (tag, verdict)
-            if source.stem.endswith('-boundary'):
+            if source.stem.endswith('-boundary') and not recovered:
                 assert verdict == 'The program is potentially UNSAFE', (tag, verdict)
             counts = {}
             for group in json.loads(report.read_text())['reports']:

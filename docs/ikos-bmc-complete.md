@@ -2,7 +2,8 @@
 
 > 本文描述当前实现、证据前提和能力边界；读过源码或测试通过不等于获得完整 soundness 证明。
 > 最新 UNKNOWN 全量遍历及基线见 [逐任务恢复报告](ikos-bmc-unknown-sweep-2026-10-09.md)。
-> 当前冻结集回归：TP=67（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=265 / 错误=0。
+> 当前冻结集回归：TP=77（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=255 / 错误=0。
+> atomic内部目标可保留真实尾部，要求双方完成路径并提前排除atomic/atomic候选，见[目标闭包报告](ikos-bmc-atomic-target-2026-10-09.md)（67→77）；完整独立验证仍未闭环。
 > 完整命名atomic helper前缀已保留不可分割区间，六项UNKNOWN恢复FALSE，见[命名atomic报告](ikos-bmc-named-atomic-2026-10-09.md)（61→67）。
 > 动态仿射守卫减少无溢出循环的不可行路径，唯一恢复 fmaxsymopt，见[守卫报告](ikos-bmc-affine-guards-2026-10-09.md)（60→61）。
 > 独立方向query恢复回绕最小竞争、定向减轻求解超时，冻结集逐项不变，见[求解方式报告](ikos-bmc-fresh-solver-2026-10-09.md)。
@@ -105,7 +106,7 @@ acyclic hb as sc
 
 `confirm_race` 接收两个实际访问、宽度、诊断/预算、创建记录及 `CandidateFacts`，依次：
 
-1. 展开实际执行前缀；其中 atomic memory 成为 Unsupported，未知 API / atomic helper 缺少摘要时拒绝确认。
+1. 展开实际执行前缀；其中 atomic memory 成为 Unsupported，未知 API / bodyless atomic helper 缺少摘要时拒绝确认；内部atomic目标还须真实完成路径。
 2. `unroll_to(funcA, stmtA)`、`unroll_to(funcB, stmtB)` → 两条路径展开。
 3. `rA.incomplete || rB.incomplete` → 构造预算耗尽则不确认。回边截断不制造循环退出。
 4. 每条路径对进入 `check_race`，沿实际参数绑定精确锁身份；旧 function-level/held 提前门已删除。
@@ -200,7 +201,7 @@ assume 调用收集实际实参；有定义的普通 wrapper 展开实际函数�
 8. **IKOS 事实**：`CandidateFacts` 提供候选 may-offset bounds、真实 main 创建前缀及受限局部 no-wrap 证书。
    offset bounds 只限制已有真实值来源的地址，不替代来源；不能把可能 stale 的共享读区间当具体值。
    startup 的实际 guards 与两 worker 条件一起求解。证书只省去重复定义性检查，demanded 结果仍精确编码。
-9. **竞争查询**：两访问能否相邻（`clock 差 1`，两方向各查一次）。SAT 只有在执行、值、地址、同步和线程实例前提成立时才可用于确认。每次 SMT 检查限时 1000 ms；UNSAT/UNKNOWN 均不证明 SAFE。
+9. **竞争查询**：普通目标是否满足`clock 差 1`；单侧atomic目标在完整路径中查询无其它内存/真实同步夹入（两方向）。SAT 只有在执行、值、地址、同步和线程实例前提成立时才可用于确认。每次 SMT 检查限时 1000 ms；UNSAT/UNKNOWN 均不证明 SAFE。
 
 ---
 
@@ -302,7 +303,7 @@ BMC 不是从零扫 AR，而是接管抽象解释判为「潜在竞争」的那�
 
 | FP 机制 | 代表文件 | 对应 gate |
 |---|---|---|
-| 命名atomic内部目标/未知硬件原子 | pthread-atomic | 完整命名helper已包装；内部目标仍需尾部闭包 |
+| 命名atomic内部目标/未知硬件原子 | pthread-atomic | 完整命名helper及有限目标闭包已支持；未知原子/不可完成上下文仍拒绝 |
 | helper 带循环（历史 DAG 展开不精确） | — | 已替换为保留 guard/动态定义的有界展开和预算检查 |
 | 无锁协议（线性化非 hb） | elimination_backoff_stack | `function_has_atomic_section` |
 | 隔代 create/join（2 线程看不到中间线程） | race-4_1 | 隔代祖先门（`_thread_ancestors`−`_thread_creators`）|

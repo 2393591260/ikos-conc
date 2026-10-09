@@ -136,22 +136,46 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   // events/calls. Synchronization outside them need not be executable here.
   UnrollResult rA = unroll_to(funcA, stmtA, 1, loop_bound);
   UnrollResult rB = unroll_to(funcB, stmtB, 1, loop_bound);
+  auto atomic_access = [](const std::vector< BmcEvent >& path) {
+      int active = 0;
+      for (const auto& event : path) {
+        if (event.candidate) return active > 0;
+        if (event.mutex != PSEUDO_ATOMIC_LOCK) continue;
+        if (event.kind == EvKind::Lock) ++active;
+        if (event.kind == EvKind::Unlock) --active;
+      }
+      return false;
+  };
+  // Both accesses are RMW-tagged in the verifier atomic contract. Discard this
+  // non-racing pair before full completion can exhaust the query budget.
+  if (!rA.paths.empty() && !rB.paths.empty() &&
+      std::all_of(rA.paths.begin(), rA.paths.end(), atomic_access) &&
+      std::all_of(rB.paths.begin(), rB.paths.end(), atomic_access)) {
+    record(diagnostics, "atomic_pair");
+    return false;
+  }
+  auto needs_completion = [&](const UnrollResult& unrolled) {
+    return std::any_of(unrolled.paths.begin(), unrolled.paths.end(), atomic_access);
+  };
+  if (needs_completion(rA) || needs_completion(rB)) {
+    rA = unroll_completed(funcA, stmtA, loop_bound);
+    rB = unroll_completed(funcB, stmtB, loop_bound);
+    record(diagnostics, "atomic_completed_paths");
+  }
   if (rA.rejected_reason != nullptr) record(diagnostics, rA.rejected_reason, rA.rejected_statement);
   if (rB.rejected_reason != nullptr) record(diagnostics, rB.rejected_reason, rB.rejected_statement);
   if (diagnostics != nullptr) {
     diagnostics->paths_a = rA.paths.size();
     diagnostics->paths_b = rB.paths.size();
   }
-  // 目标访问的字节宽度（路径最后一个事件即目标访问），encode 阶段判范围重叠。
+  // Atomic closure can follow the selected dynamic access.
   for (auto& p : rA.paths) {
-    if (!p.empty()) {
-      p.back().width = widthA;
-    }
+    auto index = candidate_index(p);
+    if (index < p.size()) p[index].width = widthA;
   }
   for (auto& p : rB.paths) {
-    if (!p.empty()) {
-      p.back().width = widthB;
-    }
+    auto index = candidate_index(p);
+    if (index < p.size()) p[index].width = widthB;
   }
   // Construction exhaustion discards partial enumerations. Cutting a CFG
   // backedge alone is bounded search; it never justifies a guessed loop exit.
