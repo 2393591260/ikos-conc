@@ -69,3 +69,25 @@ CAT hb 不是 POSIX hb，也不是 IKOS 的总调度 clock；不能直接把 clo
 直接 pthread_create、参数数目正确且入口参数匹配子线程，再进行参考创建匹配。
 修复后六项映射断言及真实用例正反实验重新通过，原始复测在
 `/tmp/ikos-dartagnan-map-2026-10-09-b/`。
+
+## 全部保存候选的部分约束遍历
+
+对既有58任务/71候选逐项检查输入 hash，再按同一接口遍历。bound=2、每进程 JVM
+-Xmx2g、墙钟60秒、并发2；这些是研究设置，不是官方比赛配置。
+38候选得到部分约束 SAT，31候选 UNMAPPED，2候选 UNSUPPORTED。
+31项映射失败包括17项动态创建匹配、12项目标匹配、2项动态执行塌缩；
+2项不支持是参考对象范围/访问宽度不满足契约，不能绕过宽度校验。
+没有把任何记录升级为完整独立验证；也没有根据这些结果修改 IKOS verdict。
+
+[逐项结果](artifacts/dartagnan-strict-2026-10-09/fixed-memory-sweep.json) 保存每个候选的
+绑定、遗漏和参考结果。原始日志在 `/tmp/ikos-dartagnan-fixed-memory-batch-2026-10-09/`。
+复用入口：
+
+```bash
+python3 -B scripts/dartagnan_strict/sweep_ikos.py \
+  --reports /tmp/ikos-p0-replay-2026-10-09/confirmed-reports \
+  --output /tmp/ikos-dartagnan-fixed-memory-NEW
+```
+
+输入摘要通过 `--export-summary` 指定；参考包、源码和JDK路径可覆盖。
+映射失败/有界不满足均需进一步分析，不能据此撤回任务标签或判断程序安全。
