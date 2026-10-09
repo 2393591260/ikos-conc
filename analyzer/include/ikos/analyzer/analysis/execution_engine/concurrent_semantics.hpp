@@ -1689,7 +1689,7 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
         thread_func_name = fpc->function()->name();
         spawn_resolved = true;
         eng.ctx().concurrent_env.register_thread_func(
-            fpc->function(), create_site);
+            fpc->function(), create_site, call);
       } else {
         log::msg() << "[Concurrency] Discovered pthread_create with dynamic thread function"
                    << "\n";

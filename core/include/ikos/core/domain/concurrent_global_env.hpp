@@ -55,6 +55,7 @@
 #include <iostream>
 
 #include <ikos/ar/semantic/function.hpp>
+#include <ikos/ar/semantic/bundle.hpp>
 #include <ikos/core/domain/machine_int/interval.hpp>
 #include <ikos/core/domain/numeric/dbm.hpp>
 #include <ikos/core/linear_expression.hpp>
@@ -125,6 +126,71 @@ public:
   };
 
 private:
+  // A direct, acyclic, single-call chain from the implicit main invocation.
+  // Escaped addresses and explicit main calls invalidate that certificate.
+  bool function_executes_once_locked(ar::Function* entry) {
+    auto cached = _single_execution_cache.find(entry);
+    if (cached != _single_execution_cache.end()) return cached->second;
+    auto prove = [&] {
+      std::unordered_set< ar::Function* > seen;
+      for (auto* function = entry; seen.size() < 32;) {
+        if (!seen.insert(function).second) return false;
+        ar::CallBase* caller = nullptr;
+        auto mentions = [&](auto&& self, ar::Value* value, unsigned depth) -> bool {
+          if (depth >= 32) return true;
+          if (auto* constant = dyn_cast< ar::FunctionPointerConstant >(value))
+            return constant->function() == function;
+          if (auto* aggregate = dyn_cast< ar::StructConstant >(value)) {
+            for (const auto& field : aggregate->values())
+              if (self(self, field.value, depth + 1)) return true;
+          } else if (auto* aggregate = dyn_cast< ar::SequentialConstant >(value)) {
+            for (auto* element : aggregate->values())
+              if (self(self, element, depth + 1)) return true;
+          }
+          return false;
+        };
+        auto scan = [&](ar::Code* body) {
+          if (body == nullptr) return true;
+          for (auto* block : *body) for (auto* statement : *block) {
+            if (auto* call = dyn_cast< ar::CallBase >(statement)) {
+              if (mentions(mentions, call->called(), 0)) {
+                if (caller != nullptr || !isa< ar::FunctionPointerConstant >(call->called())) return false;
+                caller = call;
+              }
+              for (auto it = call->arg_begin(); it != call->arg_end(); ++it)
+                if (mentions(mentions, *it, 0)) return false;
+            } else {
+              for (auto it = statement->op_begin(); it != statement->op_end(); ++it)
+                if (mentions(mentions, *it, 0)) return false;
+            }
+          }
+          return true;
+        };
+        auto* bundle = function->bundle();
+        for (auto it = bundle->function_begin(); it != bundle->function_end(); ++it)
+          if (!scan((*it)->body_or_null())) return false;
+        for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it)
+          if (!scan((*it)->initializer_or_null())) return false;
+        if (function->name() == "main") return caller == nullptr;
+        if (caller == nullptr || !caller->code()->is_function_body()) return false;
+        auto* block = caller->parent();
+        std::unordered_set< ar::BasicBlock* > visited;
+        std::vector< ar::BasicBlock* > pending(block->successor_begin(), block->successor_end());
+        while (!pending.empty()) {
+          auto* next = pending.back(); pending.pop_back();
+          if (next == block) return false;
+          if (!visited.insert(next).second) continue;
+          pending.insert(pending.end(), next->successor_begin(), next->successor_end());
+        }
+        function = caller->code()->function();
+      }
+      return false;
+    };
+    bool result = prove();
+    _single_execution_cache.emplace(entry, result);
+    return result;
+  }
+
   /// \brief Global blackboard: address -> machine integer interval
   std::map< std::uint64_t, machine_int::Interval > _global_board;
 
@@ -193,6 +259,7 @@ private:
   /// conservatively models concurrent instances. A function never spawned
   /// is treated as unique (cannot race against itself).
   std::unordered_map< std::string, unsigned > _spawn_counts_by_name;
+  std::unordered_map< ar::Function*, bool > _single_execution_cache;
 
   /// \brief Distinct pthread_create call SITES per thread-function name.
   /// The spawn count is the STATIC number of call sites, not the execution
@@ -230,8 +297,8 @@ private:
   std::uint64_t _next_site_id = 1;
 
   /// \brief Thread instances per entry-function name: name → set of create-site
-  /// ids. A STATIC program property — NOT reset at iteration boundaries (unlike
-  /// `_spawn_sites_by_name`). Consulted by the race checker to decide "all
+  /// ids. A STATIC program property retained with `_spawn_sites_by_name`
+  /// across iterations. Consulted by the race checker to decide "all
   /// instances of F have been joined" (instance-aware join HB).
   std::unordered_map< std::string, std::unordered_set< std::uint64_t > >
       _func_instances;
@@ -1052,7 +1119,8 @@ public:
   ///
   /// \param func Pointer to the thread function
   /// \param call_site The pthread_create statement (nullptr when unknown)
-  void register_thread_func(ar::Function* func, ar::CallBase* call_site = nullptr) {
+  void register_thread_func(ar::Function* func, ar::CallBase* call_site = nullptr,
+                            ar::CallBase* creation = nullptr) {
     std::lock_guard< std::mutex > lock(_mutex);
     bool is_new = true;
     for (ar::Function* existing : _discovered_thread_functions) {
@@ -1077,8 +1145,10 @@ public:
     if (func != nullptr && call_site != nullptr) {
       auto& sites = _spawn_sites_by_name[func->name()];
       if (sites.insert(call_site).second) {
+        _sequential_cache.erase(func->name());
         bool in_loop = false;
-        if (ar::BasicBlock* bb = call_site->parent()) {
+        auto* executed_site = creation != nullptr ? creation : call_site;
+        if (ar::BasicBlock* bb = executed_site->parent()) {
           std::unordered_set< ar::BasicBlock* > visited;
           std::vector< ar::BasicBlock* > stack;
           for (auto it = bb->successor_begin(), et = bb->successor_end();
@@ -1101,11 +1171,12 @@ public:
             }
           }
         }
-        auto* code = call_site->code();
-        bool main_site = code != nullptr && code->is_function_body() && code->function()->name() == "main";
+        auto* code = executed_site->code();
+        bool single_call = creation != nullptr && code != nullptr && code->is_function_body() &&
+                           this->function_executes_once_locked(code->function());
         // A helper/worker invocation can repeat even when its own CFG is
         // acyclic. One static create site is then not one concrete instance.
-        _spawn_counts_by_name[func->name()] += (in_loop || !main_site ? 2u : 1u);
+        _spawn_counts_by_name[func->name()] += (in_loop || !single_call ? 2u : 1u);
       }
     }
     // Thread-instance registry: assign this create site a stable id (once) and
@@ -1214,8 +1285,7 @@ public:
       // Never spawned via pthread_create. It may still be a pthread_once
       // callback registered under 2+ DISTINCT controls, which runs once per
       // control and therefore races itself (87-once/07-different-onces.c).
-      // _func_instances is a STATIC property (unlike _spawn_counts_by_name,
-      // reset each iteration), so its size is the true distinct-instance count.
+      // Once-control IDs are static and distinct from create-site cardinality.
       auto fi = _func_instances.find(thread_id);
       if (fi != _func_instances.end()) {
         return fi->second.size() <= 1;
@@ -1327,22 +1397,11 @@ public:
     return _discovered_thread_functions;
   }
 
-  /// \brief Reset the per-name spawn counters.
-  ///
-  /// The worklist driver re-analyzes the entry function every global
-  /// iteration, and each replay re-executes pthread_create — with a
-  /// naive `+1` the counter accumulates across iterations (t_fun
-  /// spawned once reads as 3 after three iterations), poisoning the
-  /// Thread Uniqueness abstraction and triggering spurious
-  /// instance-duplication in DataRaceChecker. Reset at each iteration
-  /// boundary: within ONE iteration the counter is the true static
-  /// spawn count.
+  /// \brief Reset iteration-local synchronization state.
+  /// Static may-create sites survive iterations: a later imprecise replay
+  /// must not forget earlier discovered threads. Site insertion is idempotent.
   void reset_spawn_counts() {
     std::lock_guard< std::mutex > lock(_mutex);
-    for (auto& kv : _spawn_counts_by_name) {
-      kv.second = 0;
-    }
-    _spawn_sites_by_name.clear();
     _sequential_cache.clear();
     // Cond-var global state is re-populated each iteration (wait/signal calls
     // replay); clear it here so it does not accumulate across the worklist
@@ -1798,6 +1857,7 @@ public:
     _lock_partition.clear();
     _discovered_thread_functions.clear();
     _spawn_counts_by_name.clear();
+    _single_execution_cache.clear();
     _spawn_sites_by_name.clear();
     _sequential_cache.clear();
     _pending_cond_locks.clear();
