@@ -58,11 +58,11 @@ build通过，install同步后cmp一致；P0三反例及控制在32/64位各10�
 | 30_Function_Pointer3_vs.i | thr1读res / thr2写res | FAIL |
 | 32_pthread5_vs.i | thr1写lock / thr3写lock | FAIL |
 | 41_FreeBSD_abd_kbd_sliced.i | 两个thr1实例，对COND的清零/读取 | FAIL |
-| 43_NetBSD_sysmon_power_sliced_2.i | 两个thr1实例，对COND的清零/读取 | 本次60秒超时；历史FAIL待重核 |
+| 43_NetBSD_sysmon_power_sliced_2.i | 两个thr1实例，对COND的清零/读取 | 60秒超时；180秒重试FAIL（113.8秒） |
 | 47_ticket_lock_hc_backoff_vs.i | main中的thr1读取s / 创建的thr1递增s | FAIL |
 
 六项均重新跑native DATARACEFREEDOM、bound2、ILP32、固定参考版本：五项FAIL，
-NetBSD项本次60秒超时，不能记成新FAIL。源哈希及命令
+NetBSD项首轮60秒超时，180秒上限重试在113.8秒得到FAIL；首轮超时记录保留。源哈希及命令
 在证据中。全量配对没有只比较计数，也没有用名字指定某项能否确认。
 
 ## 剩余问题

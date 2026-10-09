@@ -749,5 +749,25 @@
         "full_counterexample_validated": false
       }
     ]
+  },
+  "reference_netbsd_retry": {
+    "status": "SOURCE_RACE",
+    "returncode": 13,
+    "seconds": 113.79408793100447,
+    "command": [
+      "java",
+      "-Xmx2g",
+      "-cp",
+      "/tmp/ikos-named-atomic-2026-10-09/reference-before/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-ext/43_NetBSD_sysmon_power_sliced_2.i",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=2",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "source_sha256": "58b504e0f9c99c4dab9903d0572a1a6fc9dccc97093dedf55f23b393d189b988",
+    "data_model": "32"
   }
 }
