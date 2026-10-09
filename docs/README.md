@@ -26,7 +26,8 @@
 |---|---|---|---|
 | [ikos-race-theory-mapping.md](ikos-race-theory-mapping.md) | ⭐⭐ | 开头「红线」→ §2.0 总览表（16 个语义能力一眼扫）→ §2.4 两层判定架构 → §3.1 能力边界 | §2.1.x 各模块细节、§3.2 缺口、参考文献 |
 
-读完你会：知道 IKOS 靠「抽象过近似（证 SAFE）+ BMC 欠近似（证 FALSE）+ 中间 UNKNOWN 兜底」两层架构同时做到 FN=0 和 FP=0，以及当前分数 1503 怎么来的。
+读完你会：理解抽象解释判 SAFE、BMC 确认竞争、UNKNOWN 表达能力边界的两层架构。
+有限测试中的 FN/FP 为零不等于普遍 soundness 证明；当前基线和证据范围见精度恢复与见证验证报告。
 
 ### 阶段 2 —— 代码怎么组织（要动手必读）
 
@@ -60,6 +61,9 @@
 | 改竞态判定逻辑（为什么报/不报） | `concurrency-architecture.md` §4 闸门 + `theory-mapping.md` §2.1.x 对应模块 |
 | 加/改一个同步语义（锁/原子/cond/sem） | `theory-mapping.md` §2.1.x 对应小节 + 对应模块的 soundness 核验点 |
 | 找回更多 TP（BMC 方向） | `ikos-bmc-complete.md` §9「待验证设计」 |
+| 按 Dartagnan 的具体差异用例逐步扩展 BMC | [ikos-bmc-reference-guided-plan.md](ikos-bmc-reference-guided-plan.md) |
+| 查询全部 UNKNOWN 的参考结论、恢复情况及剩余语义 | [ikos-bmc-unknown-sweep-2026-10-09.md](ikos-bmc-unknown-sweep-2026-10-09.md) |
+| 验证 BMC 反例并查看下一步方案 | [ikos-bmc-witness-validation-2026-10-09.md](ikos-bmc-witness-validation-2026-10-09.md) |
 | 回收 lost-TN（SAFE 方向） | `theory-mapping.md` §3.2 的 235 UNKNOWN 拆桶 |
 | 查某个 FP/FN 的历史根因 | `archive/`（fn-root-cause / fp-classification 的原始快照） |
 | 准备 SV-COMP 提交 | `SVCOMP2027-最终核验清单.md`（打勾）+ `SVCOMP2027-干净环境检测流程.md` |

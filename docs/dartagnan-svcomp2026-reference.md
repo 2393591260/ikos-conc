@@ -1,14 +1,23 @@
 # Dartagnan SV-COMP 2026 权威参照（版本 + no-data-race 原理）
 
-> **本文档是 IKOS no-data-race 工作的唯一 Dartagnan 参照，务必以 SV-COMP 2026 官方版为准，
-> 不要被本地 HEAD（SV-COMP 2027 开发版）带偏。**
+> 本文固定历史版本，便于复核 2026 实现。源码机制、IKOS 对照和实验分数须分别核实；
+> 不能将旧版机制或未配对的分数直接用于 2027。2026-10-09 修正下文“相邻”和“等价”误述。
+> 本轮 IKOS 已加入受限 SC 值流及事实接口，验证见 [精度恢复报告](ikos-bmc-precision-2026-10-09.md)。
 
 ## 0. 版本（⚠️ 关键，之前踩过坑）
 
 | 版本 | commit | 日期 | 身份 |
 |---|---|---|---|
-| **SV-COMP 2026 官方（176 TP）** | `7caef5c850dc2dbf81c5554dcf41e402007f7a19`（`Fix free intrinsic`），标签 `4.3.1` 附近 | 2025-11-26 | ✅ **权威，本文档的对象** |
-| 本地 HEAD（SV-COMP 2027 开发） | `b81ec6c55503e824bb0ddc4ebac6c6f0a63d56d8`（`Reorganize unit tests`） | 2026-09-24 | ❌ 勿当参照 |
+| **固定 2026 源码参照** | `7caef5c850dc2dbf81c5554dcf41e402007f7a19`（`Fix free intrinsic`），标签 `4.3.1` 附近 | 2025-11-26 | 本文机制参照；版本不自动证明任何分数 |
+| 此前记录的 2027 开发 HEAD | `b81ec6c55503e824bb0ddc4ebac6c6f0a63d56d8`（`Reorganize unit tests`） | 2026-09-24 | 历史记录，不代表当前本地 HEAD |
+| 本地实际运行的 launcher + library JAR | 两个 JAR 内嵌 `git.properties` 均为 `7caef5c…`，4.3.1 | 2026 版 | 2026-10-09 重新核对；指纹见下述材料 |
+
+此前以 `svcomp/target/classes/git.properties` 的 4.1.0 / `5789d532…` 判断实际运行版本有误。
+该文件是遗留构建产物；`java -jar svcomp/target/svcomp.jar` 使用的是 launcher
+及其 manifest 指定的 library JAR。本轮核对两个 JAR 的内嵌版本及 SHA256，
+并重新运行一个差异任务，依据见
+[参考迁移材料](artifacts/bmc-reference-guided-2026-10-09/manifest.json)。
+旧 README 或目录名仍不能作为实际运行版本的证据。
 
 **证据**：`git log --oneline 7caef5c..HEAD -- cat/svcomp.cat` 只有一个 commit
 `c802dc442 "SVCOMP races in cat (#1048)"`（**2026-06-25**）把 `dr/conflict/sw/hb-race`
@@ -30,7 +39,7 @@ acyclic hb as sc
 ```
 
 - `com = rf | fr | co`：rf = read-from（读从某写取值）、fr = from-read、co = coherence（同址写全序）。
-- `com & int`：线程**内**通信（数据依赖）；`com & ext`：**跨线程**通信。
+- `com & int`：线程**内**通信；`com & ext`：**跨线程**通信。通信关系不是一般的寄存器数据依赖。
 - `rmw^-1? ; (com & ext)`：RMW 相关的跨线程通信（`rmw^-1?` 是可选的 rmw 反边前缀）。
 - `acyclic hb as sc`：hb 无环 = 顺序一致性。
 
@@ -58,7 +67,7 @@ for (Thread t1 != t2) {
 // 判定 = 是否存在 hasRace 的可满足赋值；无 → SAFE，有 → 报 race
 ```
 
-**race 的充要条件（权威定义）**：
+**该版本完整执行模型中的竞争查询**：
 1. 两个访问来自**不同线程**；
 2. 至少一方是 **Write**（w 必须是 WRITE，m 是任意 memory 访问）；
 3. 双方都 **非原子**（`mo == null || NONATOMIC`）——原子/RMW 访问直接不参与竞态；
@@ -66,25 +75,32 @@ for (Thread t1 != t2) {
 5. 双方都**执行**（`execution`）；
 6. 在 **hb 线性化里相邻**（`clock_hb(w) == clock_hb(m) + 1`）。
 
-关键：**「相邻 ⟺ 无 hb 排序 ⟺ 竞态」**。IKOS 的 `check_race` 正是这个「相邻」判定的两线程版。
+这里还有显式 `hb(m,w)` 条件。“相邻”不等于“没有 hb 排序”，也不是脱离完整执行模型的竞争定理。
+IKOS 的相邻查询缺少同等的执行、值流和实例约束，不能单凭查询形式证明等价或 sound。
 
 ## 3. 与 IKOS BMC 的对照（原理级）
 
 | Dartagnan 机制 | IKOS BMC 现状 | 缺口 |
 |---|---|---|
-| `hb = po \| com \| rmw`，`com=rf\|fr\|co`（**值流**） | `po + mutex + spawn/join`（**无 com/rmw**） | ❌ 缺 `com`（rf/co 值流）= 标志式 HB / lock-free 桶 |
+| §1 的 CAT 精确 hb 表达式，`com=rf\|fr\|co` | po+同步、按需有界 SC 读来源、完整 verifier 原子段 | 未实现完整 CAT/一般 K 线程 rf/co；load 仍不能自由化 |
 | 精确全程序 SMT，N 线程全展开 | 2 线程路径展开（anchor 或全对） | ❌ 缺 N 线程 |
 | `alias.mayAlias` + `sameAddress` SMT | `same_global`(singleton pts) + `offset` + SMT 同址门 | 部分（堆对象未放开） |
-| `canRace` = 非原子（原子直接不参与） | `has_unmodeled_sync` 整体挡 UNKNOWN | 等价但更粗（整程序挡，非逐访问） |
-| LLVM `-loop-unroll` + bound | `constant_loop_bound`(≤8) + `incomplete` | 等价 |
-| Andersen 精确地址 | FunctionPointerAnalysis（流不敏感 Andersen） | 等价 |
-| 时钟变量 `clock_hb` | `clock` 整数变量 | 等价 |
+| `canRace` = 非原子（原子直接不参与） | `has_unmodeled_sync` 挡 UNKNOWN | 支持边界不同，未证明等价 |
+| LoopUnrolling + bound，保留实际条件及边界终止 | 当前保留真实条件、截断回边；已删除猜测循环界 | 缺动态迭代及一般展开，未证明等价 |
+| may-alias 预筛与 SMT 地址约束 | singleton points-to、字节宽度/范围及受支持符号下标 | 地址抽象不同，未证明等价 |
+| 完整执行模型上的 `clock_hb` | 支持前缀上的整数 `clock` | 同类变量不证明关系或查询等价 |
 
-**核心差距一句话**：Dartagnan 的 `hb` 含 `com`（rf/fr/co 值流），IKOS 的 `hb` 只有 po+mutex。
-标志式 HB（`assume(MTX==0);MTX=1`）的互斥正是靠 `co`（写全序）+ `rf`（读从某写取值）提供的——
-这是「标志式 HB 桶」和「lock-free 桶」的共同根因，也是 rf/co 值流建模要补的。
+**当前差距**：Dartagnan 有完整程序执行/关系模型；IKOS 已把所需整数 load 绑定到初值、实际 main 创建前缀或
+两条选中路径的最近先行写，但仍受地址、循环、对象及线程数边界限制。写值与读值须兼容同一个执行顺序；
+不能只看到 `assume(MTX==0);MTX=1` 就推导互斥，这个检查与写入本身未必原子。
 
-## 4. 176 TP 与 IKOS 的精确交集（2026-10-07 实测）
+IKOS 还用 `CandidateFacts` 接收 checker 的 may-offset、实际创建前缀和受限局部 no-wrap 证书；
+可参考 Dartagnan 的关系分析与外部 filters 接口进一步压缩候选，而非照搬完整程序编码。
+
+## 4. 历史交集记录（不作为当前配对结论）
+
+下表保留此前 2026-10-07 的记录，本轮没有重跑并核实其 Dartagnan 二进制、任务清单和资源配置。
+IKOS 的 80 TP 是旧实现，其中存在已复现的缺陷；当前 35 TP 与该表不能直接相减估计收益。
 
 | 集合 | 数量 |
 |---|---|
@@ -94,13 +110,14 @@ for (Thread t1 != t2) {
 | IKOS 独有（IKOS=FALSE，Dartagnan≠FALSE） | 23 |
 | Dartagnan 独有（lost target） | 119 |
 
-- 23 个 IKOS 独有清单：`docs/artifacts/ikos_unique_23.txt`（已验证，根因见 `ikos-vs-dartagnan-gap.md`）。
+- 23 个 IKOS 独有清单：此前指向 `docs/artifacts/ikos_unique_23.txt`，本轮未重新验证其有效性。
 - 119 个 lost target 清单：`docs/artifacts/dartagnan_real_target_110.txt` 是旧版（IKOS 更高 TP 时算的），
   当前以本表 119 为准。
 
 ## 5. 关键 commits（5789d53→7caef5c 的 151 个里，机制类）→ IKOS 缺口映射
 
-`git log 5789d53..7caef5c` 过滤机制关键字，能跑出 176 TP 的原理增量（即 IKOS 还没实现的）：
+此前 `git log 5789d53..7caef5c` 记录了以下机制线索。提交差异不能独立证明分数增量，
+也不能从标题断言 IKOS 完全缺少对应机制；引入时须重新读所需源码。
 
 | commit | 机制 | 对应 IKOS 缺口 |
 |---|---|---|
@@ -108,10 +125,10 @@ for (Thread t1 != t2) {
 | `55590d7c7` (#892) | **跨线程 SCCP + thread-local 分配** | thread-id 桶（IKOS 抽象解释的 thread-id 坍缩）|
 | `95224e40c` (#820) | **rf 边上的数据类型自动转换** | **rf/co 值流桶（IKOS 的核心缺口）**|
 | `ee5a58ae9` (#904) | MemToReg + 指针分析修复 | 别名精度桶（malloc/container_of）|
-| `24a65b237` (#944) | 带地址的 devirtualization | 函数指针（IKOS 已用 Andersen FPA，基本对齐）|
+| `24a65b237` (#944) | 带地址的 devirtualization | 函数指针；IKOS FPA may 集不能直接证明实际被调用者，不宣称对齐 |
 | `e45ac070e` (#840) | 混合字长访问 | 精度（次要）|
-| `e8622b751` `d8e6066d6` `7950dd782` `81da44f69` (#786/#877/#797/#827) | spinloop 检测 / 控制屏障 / 循环展开 + bound | 循环桶（IKOS 已有 constant_loop_bound ≤8，基本对齐）|
-| `5fc2bcb78` | no-data-race witness 生成 | witness（IKOS 已有 GraphML 见证，见 dartagnan-witness-graphml-validation）|
+| `e8622b751` `d8e6066d6` `7950dd782` `81da44f69` (#786/#877/#797/#827) | spinloop 检测 / 控制屏障 / 循环展开 + bound | 历史线索；IKOS 当前截断回边，不能称基本对齐 |
+| `5fc2bcb78` | no-data-race witness 生成 | 当前 adapter 为 YAML 2.2，独立验证未完成；2026 race 格式契约及 2027 支持须核实 |
 
-**结论**：这 151 个 commit 里对 IKOS 最有价值的 3 个 = **rf 边数据类型转换(#820)、跨线程 SCCP/thread-local(#892)、指针分析修复(#904)**，
-正好对应 IKOS 的三个缺口桶：**rf/co 值流、thread-id、别名精度**。和 §3 的对照表一致。
+优先研究线索包括 rf 边类型转换、跨线程分析/thread-local、指针分析修复；具体优先级要结合
+当前诊断和实现前提确定，不能用历史提交数量或任务桶直接估计可恢复 TP。
