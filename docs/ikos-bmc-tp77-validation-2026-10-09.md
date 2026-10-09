@@ -68,6 +68,21 @@ UNSAT_AT_BOUND，而不只是改动内存值。最小用例的两组IKOS候选�
 这是研究接口的部分约束进展，完整验证数量仍没有升格。分析器及前端未改，
 未重复1029项行为测试；TP77基线引用既有全量结果。
 
+### 增量后的全部候选重查
+
+以 `f853901` 的适配器、界限2/60秒/2并发重新运行全部77项95候选：
+SAT80、UNMAPPED8、UNSUPPORTED2、UNSAT_AT_BOUND2、TIMEOUT3，
+共绑定14次局部nondet结果。相对首次68个SAT，多出的12个主要来自重复内存映射；
+不能把该差值当作完整验证数量或分析器TP增量。
+[逐候选新记录](artifacts/bmc-tp77-validation-2026-10-09/nondet-fixed-memory.json)。
+
+fmaxsymopt保留15个访问及两个局部值，界限6查询SAT、改固定内存值后UNSAT。
+新增界限2不满足的thread-join-counter-inner-race，固定threads_total=15，
+IKOS实际前缀也执行15次创建；参考界限2无法越过该创建循环到达指定main访问。
+界限15/60秒重试超时、未导出IR，保持未验证。outer-race本轮也因参考超时
+未映射；首次有界不满足和所有重试仍保留，未据此撤回标签或声称已查明假反例。
+[界限重试](artifacts/bmc-tp77-validation-2026-10-09/nondet-bound-retries.json)。
+
 局部nondet取值、全部CFG/调用实例、同步历史和IKOS总调度/rf仍未全部绑定。
 独立验证数量没有升格。接下来补这些证据、扩大无法覆盖的参考界限并检查剩余映射失败，
 随后继续UNKNOWN的对象/指针、线程依赖闭包、join和公平搜索；本次提交不是结束节点。
