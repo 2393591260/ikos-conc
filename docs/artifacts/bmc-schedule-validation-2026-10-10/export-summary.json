@@ -1,0 +1,547 @@
+{
+  "observations": [
+    {
+      "task": "c/goblint-regression/00-sanity_09-include.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/00-sanity_09-include.c",
+      "input_sha256": "9d688e86e7e4087606ab9d08173c4c227b663da7e997bbf86bcc599e41d5985e",
+      "report_sha256": "f52b4acedd950a253efff9348ff0df2a30350f4dba8f51c2af257728ea845421",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/03-practical_07-nonterm.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/03-practical_07-nonterm.c",
+      "input_sha256": "1a5c45a44223147f393b74702a24905a50f014553bda5f1e486b1b813907bad6",
+      "report_sha256": "db0af5157abfa1bcbc44f35d7ac9f82bfe27f301cc5a37bfbb338d81e9a69b14",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/03-practical_08-nonterm1.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/03-practical_08-nonterm1.c",
+      "input_sha256": "3e969e32a88a5e156b51cffed83cf3d4aa28237f70c2f7ecca29f3fc87e23114",
+      "report_sha256": "a354e2c7c6da028cf2ab3644afe42f9d8b9a3c7b3fd4e43b13db4cfeebc41e66",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/03-practical_15-exit_problems.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/03-practical_15-exit_problems.c",
+      "input_sha256": "5a6f58d33d2b81528ca8565b89a520d0b28390552fc2b179422de5d107efa015",
+      "report_sha256": "0886555e7f6e6de4aaf019ab63109e1a545a2c44f5eb8dd7ba46a3bca79eba7f",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_01-simple_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_01-simple_rc.c",
+      "input_sha256": "f386a8eced027f444b288d0e2b86adb39ba6177e302e8e8c075532cb09ebacc4",
+      "report_sha256": "256458c0359f7593cfc5bb5429868d4b8bb415ae303d3626e215baa754124830",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_03-munge_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_03-munge_rc.c",
+      "input_sha256": "aab2115ad2e925c4213b3ce20b28f5d1793c3c4d4ff2243b939094d903ee91f0",
+      "report_sha256": "b11181b765317ed0f03554cdc8d6a3cdb7da3ecd6c450f6e4d846b4bab4fbe75",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_06-ps_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_06-ps_rc.c",
+      "input_sha256": "6ff62bc1009e856ebfdbcc1756ddab571d8672e93ee6d6eb2d652f5f205a6980",
+      "report_sha256": "369e2dbed005cb49c938f210272f37957e7d5ca1d7859aede70a297a3b537a9c",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_09-ptrmunge_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_09-ptrmunge_rc.c",
+      "input_sha256": "98ade1545a6507815c327cd3fc492f66b7c6ddf31c82d9f9cf04be524a97482e",
+      "report_sha256": "18ca247875d568e6dc495c9fe5edf77e1243440f0d9f1bf48e6937ffb7532eb8",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_11-ptr_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_11-ptr_rc.c",
+      "input_sha256": "71ba38fd5ed66bb007d5bb9846445fbaefd63ff00f3378443bfa6be6d343bab6",
+      "report_sha256": "f42062c5c4bf4053ef402cc15bf7d9e7a626b6c88602fe7caaeae658b168db32",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_14-funarg_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_14-funarg_rc.c",
+      "input_sha256": "c5b7dc0e540e307a6b72f1c856de4e5efd074e26d20a9cb66b738ee1a80b8921",
+      "report_sha256": "78d8c83dfde7343c54ed0e045063aad76bc05e86ec144d584ecdf6f11533a9fc",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_16-ps_add1_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_16-ps_add1_rc.c",
+      "input_sha256": "f14ae10b41ae5d21e4843c4d2c5b0585a53e06611a0f2164ba4ebd070e3a3e0d",
+      "report_sha256": "136a772c1b83caa7f3dc3080bedd4e19c565f50da0f901ff06233d44a52f81bb",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_19-call_by_ptr_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_19-call_by_ptr_rc.c",
+      "input_sha256": "09bd5495e14a3740024968451b998f3083d63bdb3b7ff8a79710ef998155339e",
+      "report_sha256": "a042841168f2e1d5420e4a59d5eb1339d821497c64a054987142e8d9de617d59",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_21-sound_base.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_21-sound_base.c",
+      "input_sha256": "68c0c5000c21f9e9ce587210ecf523aa294fc1749c89b05b6201f4ee47346a2b",
+      "report_sha256": "f9f8b2663828547333a8806a3507f8b2f8aa95c8e6bb85c88f35ffe6d52c49c4",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_24-sound_lock.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_24-sound_lock.c",
+      "input_sha256": "00547e36d203d351ce109def1a1c049ccdf8634fc105a04d7e326eea727b86e1",
+      "report_sha256": "9edfaac8ccb62882b5abf2dc7d374e0e631b8e5016a9be9d27c47bcfa5a4886a",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_25-single_acc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_25-single_acc.c",
+      "input_sha256": "d750445530daa57cef2f441377464e89f7d2e9f88f73166de8896066b4af753c",
+      "report_sha256": "00139f4675ee6c15bca8f5b8b77350089c2063c7fe60ba9a99f876e4fc1f7f29",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_47-fun_write.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_47-fun_write.c",
+      "input_sha256": "5b0292c738c94357f593ff6c55dd0d3ce5b536c491ec9ddb366c9e0619302adc",
+      "report_sha256": "a5ab505b96228695878905178ccce7504b0c748d4da334005fa497a36792df7c",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_50-funptr_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_50-funptr_rc.c",
+      "input_sha256": "ee142d20666d60ac4fd7f821852d0a9e3e7678fb9031d4a65233e7f955d8ec95",
+      "report_sha256": "0f976d1ba6ad42cc58a60200149d7cbdc533f41c3c87cf9edb78c3d5eeed7ed7",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/04-mutex_55-pt_rwlock_rr.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_55-pt_rwlock_rr.c",
+      "input_sha256": "3bc4e24382ea60332625fc43697e18a0341207a28648f6b22b09d36670c74715",
+      "report_sha256": "0236992c8ea7db260a665732727006488431fcb4df4784e43aeddade46ddc275",
+      "candidates": 2
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_01-idx_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_01-idx_rc.c",
+      "input_sha256": "56a6e25282b29868c16664dd03b49f4664ee7d481a2f71d72d1017e2ed35171a",
+      "report_sha256": "05002a3a8fde9e6f3e97558ef9617471e775371c713c7f25c06dac7576996e2f",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_03-fld_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_03-fld_rc.c",
+      "input_sha256": "10228ef7c40ddc635535d704f043727867d6dccb8dd54aab36d2ec6c768346d1",
+      "report_sha256": "e56337658fb12ab9ca8fe45a76182031c330c582566456283b25fe3f0dbe6926",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_05-glob_idx_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_05-glob_idx_rc.c",
+      "input_sha256": "d685ff0dbd621781bc284ec18b9cefcdab391a7cba0994455a59081cf8a12788",
+      "report_sha256": "c4c302016c3207e3f6c88bc1ccbb80758244bed145c4c1ea640d56f7e5f781ef",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_07-glob_fld_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_07-glob_fld_rc.c",
+      "input_sha256": "051e9de902f5f925b76552326852b754e8794c3d6efac87d73f390ecaab1f793",
+      "report_sha256": "1bf2bccc7d5e5864384d95bee6b3f92cb2576b65dcdd7b2879df651737c2d4d7",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_08-glob_fld_2_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_08-glob_fld_2_rc.c",
+      "input_sha256": "f42aa68b87f2b35193e6ff5d46d2fe0f91ded9a814a1ef0270a9838c89e0ea48",
+      "report_sha256": "e4585b42c792f807a0be124435129b79d1b2e876730bd4156d21175546fb3374",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_09-idxsense_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_09-idxsense_rc.c",
+      "input_sha256": "8c1781f4276fb7477e65ff70325038ade597aa15f5765b1b35bb643b25a9eda4",
+      "report_sha256": "8a66552a5bfe65a7ea83064c7f5cb832d7831308a030ab1e37b73e79ec870d1b",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_11-fldsense_rc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_11-fldsense_rc.c",
+      "input_sha256": "4aad48867934589e3a01ca7f74518ea1c168c8ea92dc1c011e0828ba06fbf654",
+      "report_sha256": "f9758315129cbbfd5c64a0ab994124e3bc084c86a4b4d0cb2ed3ba1883814f29",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_13-idxunknown_lock.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_13-idxunknown_lock.c",
+      "input_sha256": "7688aff6d5d22cc8ccec6097e1f98cf9f4c3da7a9a8bbabab449855d0421cf17",
+      "report_sha256": "74a500df35c439ad8d269818f5289b8830b1fdbc866988d9191a5fa8bf839531",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_14-idxunknown_access.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_14-idxunknown_access.c",
+      "input_sha256": "604d6f32ad556c32a6b07f3bb57d696511cb4f2a0c5078b65ceef78243de6f21",
+      "report_sha256": "72bc1f5f590f6cff17438139ac9a8e7040121d411df8558483b5b5738f95c4d7",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/05-lval_ls_15-fldunknown_access.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_15-fldunknown_access.c",
+      "input_sha256": "822e3cbe8154a40a0b16b4ed770984d9583e88fef936bc78ca0b018dfdbef072",
+      "report_sha256": "edb8987f470340a57ddf42114a98e9c6dfd3d5e8d205bce4dc3514d88f37f4e1",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/06-symbeq_03-funloop_simple.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_03-funloop_simple.c",
+      "input_sha256": "ef37663658139b358a9f093f3b929c9ceece424d125426dc196af43d94bde65c",
+      "report_sha256": "63507334428500b765305244b317ed8f470a359f2d2a796aa4593ff36ad4763d",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/06-symbeq_04-funloop_hard1.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_04-funloop_hard1.c",
+      "input_sha256": "24244265f01939585dcad60d79e24558b858e5e4c04744e3239e6582f5d25cc4",
+      "report_sha256": "3e29a42d25c97511575feed5b3f538a8207628d26cfe923a0d66f8f7f4704e86",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/06-symbeq_09-tricky_address4.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_09-tricky_address4.c",
+      "input_sha256": "1f3bfcbefa47ffbbca39d8d8566e5ce2761e25d53033962fa4c6edf41ef0c3ed",
+      "report_sha256": "5dd4d9d4f29a8c4e9e33d91ec4b01ed79f23fcd328dae50334cba5731dd38397",
+      "candidates": 1
+    },
+    {
+      "task": "c/goblint-regression/10-synch_02-thread_nonunique.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/10-synch_02-thread_nonunique.c",
+      "input_sha256": "bc78788d98da2638169fe03657250fbf876e72c9f507aa825539bd8508a72f4d",
+      "report_sha256": "008e8acfe6a777bd2624a83ac732697a9d09d3c6e8137ede2835757dcd35bdcb",
+      "candidates": 1
+    },
+    {
+      "task": "c/ldv-races/race-1_2b-join.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-1_2b-join.i",
+      "input_sha256": "475c64db2a2029c09985266553634853aa5ae7653363254bdcc8a56a9d27dc04",
+      "report_sha256": "c3048c7a7d8e304f9188be0b19885d67b1190761132476b7682a346fe53bf0ef",
+      "candidates": 1
+    },
+    {
+      "task": "c/ldv-races/race-1_3b-join.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-1_3b-join.i",
+      "input_sha256": "c73b137d4d055d601e6891c370b9da4780621da8a7fc8a5ca4886c6b3b685d8b",
+      "report_sha256": "02da14ccec118b572b991d8297035d4478a0fb889c3c2566089893143f53c087",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-C-DAC/pthread-demo-datarace-2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-C-DAC/pthread-demo-datarace-2.i",
+      "input_sha256": "8dedc3ea8e96f333d418860556906c8618bbf50be75cff10b45de6d34fe23444",
+      "report_sha256": "c10b181193e0e573ccfd405917b32a14953c7079d43bafc71137c852d2de92d8",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-atomic/dekker-b-unfair.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/dekker-b-unfair.i",
+      "input_sha256": "00eedb63fb9d62a729cbdbbc78c20dc2306cd626b581321e129d31c09fc5db8e",
+      "report_sha256": "3296a76d8106c11238726468ebf5e8a15ea95bc21d1a1952f482d9f4860d4fba",
+      "candidates": 2
+    },
+    {
+      "task": "c/pthread-atomic/dekker-b.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/dekker-b.i",
+      "input_sha256": "ee2c91df2652a75c113f2667be77b799d83dae8d01b1c36baa45b8c25ceec25f",
+      "report_sha256": "0aa736a8a4b49e7636e57ea1a396008c5810a749a6a1ba61d3a740b09b9de7f2",
+      "candidates": 2
+    },
+    {
+      "task": "c/pthread-atomic/lamport-b.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/lamport-b.i",
+      "input_sha256": "9bb446a7af732154870b2839e66288d9133e28dfbbe8fe81423789728796a44c",
+      "report_sha256": "8f18b6eceb718940b6548417b1e758893a9b12e6e09c8bceccd31e5cc259d17d",
+      "candidates": 2
+    },
+    {
+      "task": "c/pthread-atomic/peterson-b.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/peterson-b.i",
+      "input_sha256": "13ba0c0f12adccd3d0e8bef05c1f05e632aaa49018b022a8b148494f09e3ffe5",
+      "report_sha256": "d4b4049934e93552a17c8d46290d3b49cc20048ac4e32722a77daaf87fc5f7e0",
+      "candidates": 3
+    },
+    {
+      "task": "c/pthread-atomic/read_write_lock-1b.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/read_write_lock-1b.i",
+      "input_sha256": "d6a3f8c57ab77e58af8013fe9ddd1fa7c1d656ac7e087660662f74a34f2abc91",
+      "report_sha256": "61c053a43f8af5c242fc1cc02c8c8a6bd57f14723e438022b7bcae6738fb9639",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-atomic/read_write_lock-2b.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/read_write_lock-2b.i",
+      "input_sha256": "7b71c781c26c072fdf5838e0877462128517513c3df1f3bde9f2474cb4533ecb",
+      "report_sha256": "7582df81d1392a9ecf5c1ee20406e3d52d4255a3b3b8fbf80f4974f961cb1249",
+      "candidates": 3
+    },
+    {
+      "task": "c/pthread-atomic/scull.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/scull.i",
+      "input_sha256": "aa00f20131f5095ed14e7a46332bb5342dc26be5a17ecfa68bf5b51120e1579b",
+      "report_sha256": "e16981cd7844feae75af6720f9c745811b8f1bb9a4bbefb98d886208d267249f",
+      "candidates": 4
+    },
+    {
+      "task": "c/pthread-atomic/szymanski-b.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/szymanski-b.i",
+      "input_sha256": "85c07d53d6385c45c48e29a19b83e4c86409a0ffe74e084bb9e5c8a5937c23fb",
+      "report_sha256": "40a3658acc288150de6dde52c695dc733824a25b51a334079b860c3b2d621a91",
+      "candidates": 2
+    },
+    {
+      "task": "c/pthread-deagle/airline-10.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/airline-10.i",
+      "input_sha256": "8e894693d2d051395e42cf40effac907db7b5be7a8f5722374b3e5b36cc0228a",
+      "report_sha256": "ab88184fbc67d6837836f5291af4a565ab2de09e0f1195206c12bec61bd884ac",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-deagle/airline-15.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/airline-15.i",
+      "input_sha256": "c250d04a54594f141e4a6230ba64a939d316d8b15028517201aca3da084476d7",
+      "report_sha256": "bf691a54b5b0d4d8747f7c46fecb4db9ea795abfb2a50b79200bd9275932e844",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-deagle/airline-20.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/airline-20.i",
+      "input_sha256": "012c46975e61d3a8df350de2a682cb9d47f59406509497c2ea72a562542ce55a",
+      "report_sha256": "301157eff02cfd62e7d43f640f82a7a14cafa6d0dc6939ec3f9b357121a37ce9",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-deagle/airline-25.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/airline-25.i",
+      "input_sha256": "a0d81069750f24e52e04bdb7efecd6d77b64aec41e058c154f75fbba11e6c11d",
+      "report_sha256": "ad86d88ecd778eac34c0d64efe46bdb34c1aadf556db5957b7330eff73dae718",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-deagle/airline-5.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/airline-5.i",
+      "input_sha256": "b3375d634339bd0477387b7559c4eae5ae554f112c0f1d9d1b21e4edc4514353",
+      "report_sha256": "d4821561a11c25979eca6fc00c38b69491e90f00d4184a619567502f759fa864",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-ext/01_inc.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/01_inc.i",
+      "input_sha256": "dc44c09c63836e77e2249e5abf8328354015a2494c028ff1b2e04f58fa741976",
+      "report_sha256": "780935b3fb600ed4687558cdfaacd7a2f2d6b1d5c1f7af5e8090ab878c6b6a40",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-ext/09_fmaxsym-race.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/09_fmaxsym-race.i",
+      "input_sha256": "f225ad0ddd29038af28d51fbbac3525492e9437e240dca78f58919375937976a",
+      "report_sha256": "7ef9d63d3d4a747ffde3016179c5fc37cabd4b86519199ff557dca022b61f424",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-ext/11_fmaxsymopt-race.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/11_fmaxsymopt-race.i",
+      "input_sha256": "c885fc256284ed3b5456c69b30daa307e14001acfa6c144983451f9519cbd1fd",
+      "report_sha256": "2180efd768f496afd296f662b82544bc7cdcf6f59d73f849eed5dd24ee6dcabf",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-ext/13_unverif.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/13_unverif.i",
+      "input_sha256": "ea403ebfe777a86c8f08ec54b02dc30e546c8fae743fed5fb0e88129df40ac76",
+      "report_sha256": "f0eaca562ef20310af996346bef1e172097ade9cda6e911bd2e18e698e13c47c",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-ext/17_szymanski.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/17_szymanski.i",
+      "input_sha256": "9d000bd3a81a7401f4ccb21c2696e2644e9236d2ccbd2094291c987ec91aaa92",
+      "report_sha256": "daa32099949eea1f7fe185ca342fde48b44f215367b6690c620a458d2e514212",
+      "candidates": 2
+    },
+    {
+      "task": "c/pthread-ext/27_Boop_simple_vf.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/27_Boop_simple_vf.i",
+      "input_sha256": "ce64fcfa63b9df647c320ea90e20b624e2dad5b9ca256083b6d2f56c3177560a",
+      "report_sha256": "9f05670144bd998653836bdbc7c06800cdc535789e4df6e9da1de129ff13501d",
+      "candidates": 2
+    },
+    {
+      "task": "c/pthread-ext/30_Function_Pointer3_vs.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/30_Function_Pointer3_vs.i",
+      "input_sha256": "c8b500e58ad9de43c2267c6cdc33609b02abfe24fc1cf283e17f14a4a70ea61c",
+      "report_sha256": "5bd036b31d39e36026c21c0e20894220dd2b03354a4d8f3dc71ff79c64ac1af4",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-ext/32_pthread5_vs.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/32_pthread5_vs.i",
+      "input_sha256": "a1dca423de1ee0965d72c4be0ada5e821e4dbfc023ab1c498b90df0e18b4c1f3",
+      "report_sha256": "d75523075c302f3fefdf36405eb62f6f18926b73d970e52f92f2a08bc3bd139c",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-ext/39_rand_lock_p0_vs-b.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/39_rand_lock_p0_vs-b.i",
+      "input_sha256": "963fe2b49296fadf7c892a862a5472be95dcc4e457bf5d1be114d7bd124d5424",
+      "report_sha256": "ed0a9a3c7e75c0e4bffbda346424305367c2d0886ad219a36fb5a2286f522b3b",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-ext/41_FreeBSD_abd_kbd_sliced.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/41_FreeBSD_abd_kbd_sliced.i",
+      "input_sha256": "a7b1b4de6077c19ce6e7b3206b7aec935b2c49ded10f81f01daddf9a689038c1",
+      "report_sha256": "b7066737e5cda43b510aabfc1ed45828102860f21e26d923065c36506ddf7eac",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-ext/43_NetBSD_sysmon_power_sliced_2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/43_NetBSD_sysmon_power_sliced_2.i",
+      "input_sha256": "58b504e0f9c99c4dab9903d0572a1a6fc9dccc97093dedf55f23b393d189b988",
+      "report_sha256": "1235ee5f1a0cb093feb743b9df54246592b3bcf9df59e37a17d1e624d559af75",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-ext/45_monabsex1_vs-b.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/45_monabsex1_vs-b.i",
+      "input_sha256": "8f6daa714ad29a28643c70bea2be7f060091d3c3adf6e85890e4056205fd8d77",
+      "report_sha256": "b0f7a6a30639df560105e3b412b126dbcc325b89c08518192c32024ed1e12597",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-ext/46_monabsex2_vs-b.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/46_monabsex2_vs-b.i",
+      "input_sha256": "cb0da49952f084f4179c44b957c91689c392bf769782a6b0853667237fdff1db",
+      "report_sha256": "c1e90e8d884256db4148c18d81505183313c2a1efbbbd7c2bdc1ade4ce9a47c1",
+      "candidates": 2
+    },
+    {
+      "task": "c/pthread-ext/47_ticket_lock_hc_backoff_vs.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/47_ticket_lock_hc_backoff_vs.i",
+      "input_sha256": "22ccde2ce516925ebfe813d783d47f1167b5115e5910734aa9e1bf526ce8c733",
+      "report_sha256": "b75c3487fffcbf38c4ebeda490279c6d3c604c7bcacd1c99c373458ae683f07c",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-lit/fkp2013-1.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2013-1.i",
+      "input_sha256": "ac100ce7c66b3266dc643fb77471441d693f59fe8c56e13ccaa684a73cdda8b0",
+      "report_sha256": "e561e1a5639707372757a7d1c4bc3b8ad0b2526edeb25c6b30c7cd17974ce88a",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-lit/fkp2013-2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2013-2.i",
+      "input_sha256": "e812004a84a4494a04d3a026bee09dbf1dbf7d202520f02258b12ac817a7a74e",
+      "report_sha256": "04fbba69a48c5d61cf47d47e626cf174990bf43177ad76e65ebe5941555a3d15",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-lit/fkp2013_variant-1.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2013_variant-1.i",
+      "input_sha256": "6f1a33edf94ce8e584ad249b95ad5bb2102c6ab4d820eebd8874b39ecbf22785",
+      "report_sha256": "64822283c1ac117ddb4624359c92f9b166dee7d180ad9d9142145ef26754f867",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-lit/fkp2013_variant-2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2013_variant-2.i",
+      "input_sha256": "37f99419c791b8329e91533415d896c367c9197a331e0ac4d97f5b27dc6c2be9",
+      "report_sha256": "4061fbd0a5a1219378bce24e737ed7568786cea816d654a9f53ee82ec07cbf5e",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-lit/fkp2014.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fkp2014.i",
+      "input_sha256": "f24d9db33c7d5aecb89ac12017849974773f5d17a3292112bf25190c4dfae9f0",
+      "report_sha256": "3ea4b31f10e3fafa6618dc3c8217251f50e5ec26ffe0f1ef85b9d3755bdd7b11",
+      "candidates": 2
+    },
+    {
+      "task": "c/pthread-lit/qw2004-1.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/qw2004-1.i",
+      "input_sha256": "3fb83c29fe591f537beeb8acce355ea986d79a29cfcecdcee0a9fb1725d601d1",
+      "report_sha256": "49a41dbde0e1ad8e7f0d972be5cf067ffad6539cd6b5757ebee00dfdfbf65094",
+      "candidates": 2
+    },
+    {
+      "task": "c/pthread-lit/qw2004-2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/qw2004-2.i",
+      "input_sha256": "a0f042164bf78d3595348b117153fa7346585efa21c060e488a9879023a64e1b",
+      "report_sha256": "0921db31f43805b8901d935801a21ed2a5e6d0952f855c491fea7bc260b76269",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-lit/qw2004_variant.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/qw2004_variant.i",
+      "input_sha256": "1ad14026eba5b252f16e1e7c5b06294a08c72d8fedf1d2cbda596d8ea988add3",
+      "report_sha256": "4c0c84e3cb17e74514f6b50762365ead84b0b79bb33e3159458b43529b54d2d2",
+      "candidates": 2
+    },
+    {
+      "task": "c/pthread-nondet/nondet-loop-bound-1.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-loop-bound-1.i",
+      "input_sha256": "cdf629ba70521b99830442583c87012a34d164ca28f01f7e59d76ae2f1e525ff",
+      "report_sha256": "6bd824373a912195b75c18aa8483213608909ad04d60d3d7829a90d954492816",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-nondet/nondet-loop-bound-2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-loop-bound-2.i",
+      "input_sha256": "9d7936e5b6ec9509cab6289f8b3da6dd07c923c681ccf9d629892aaea9fa54f9",
+      "report_sha256": "f99d2f395cb192dabb49c1fb730abd85d42d1e7a5ad318b7bc59fdfc430d1ffc",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-nondet/nondet-loop-bound-variant-1.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-loop-bound-variant-1.i",
+      "input_sha256": "645ee85d2a671dd1acf511bbf13e9e3bda7e0b5cc29e8abc16fb4ed3af500077",
+      "report_sha256": "bb7b58f2c731abd428a5fb7727959cd5fd4860270f5041d990f677fada900f08",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-nondet/nondet-loop-bound-variant-2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-loop-bound-variant-2.i",
+      "input_sha256": "dc1a8bd7c922f93873ec39bdce92396c491017d4a5984ae9a59a0e03f4bb08ec",
+      "report_sha256": "6c68a9d2d535d2f202785745b61a869470e4ccc52aa376eb320d6f9edf572821",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-race-challenges/thread-join-counter-inner-race.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race.i",
+      "input_sha256": "490e43bb8ca19cea87b27390f3d2ab0cf6fc9da6355c682d1c6272a9c3d813c1",
+      "report_sha256": "c42a40676b821d2aa86f171b898712b9d41104f6d7825c9541096ce6b92bf88b",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-race-challenges/thread-join-counter-outer-race-3.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-outer-race-3.i",
+      "input_sha256": "a77d68c8e15036e88d70009e5342d88dd2f93f021b72148028da08073ac36a38",
+      "report_sha256": "6319d28d9e80545f63e5474275a466d50665b67925f0bcdf3763077d4ec69fcb",
+      "candidates": 1
+    },
+    {
+      "task": "c/pthread-race-challenges/thread-join-counter-outer-race.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-outer-race.i",
+      "input_sha256": "47827fdca8ccc83dae99015d656cdcf2872ea585121905304e5ffb2ef40b4eac",
+      "report_sha256": "bfdc312a5c82a08dcb651df84b516a611a7c2f5300e6c6314834f08cdd66b856",
+      "candidates": 1
+    }
+  ],
+  "analyzer_sha256": "ee73d3d65be88b75e53d0e045247761cabb32a47115324ffc093b020078ac696",
+  "task_count": 77,
+  "candidate_count": 95,
+  "full_counterexample_validated": false
+}
