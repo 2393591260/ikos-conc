@@ -1251,7 +1251,7 @@ DataRaceChecker::~DataRaceChecker() {
           std::set< std::pair< std::uint64_t, core::ZNumber > > held;
           bool supported = true;
           for (std::size_t step = 0; step < path.size(); ++step) {
-            const auto& event = path[step];
+            auto& event = path[step];
             if (event.kind == bmc::EvKind::Unsupported || event.kind == bmc::EvKind::Join) {supported = false; break;}
             if (event.kind == bmc::EvKind::Lock || event.kind == bmc::EvKind::Unlock) {
               bmc::BmcEvent address;
@@ -1276,8 +1276,15 @@ DataRaceChecker::~DataRaceChecker() {
               if (required.count(child->name())) ++spawns[child->name()];
             }
             if (event.kind == bmc::EvKind::Read || event.kind == bmc::EvKind::Write) {
+              auto* pointer = event.kind == bmc::EvKind::Read
+                                  ? cast< ar::Load >(event.stmt)->operand()
+                                  : cast< ar::Store >(event.stmt)->pointer();
+              // Resolve each executed iteration, not the static index variable.
+              event.base = 0; event.local_base = nullptr; event.const_off = 0;
+              event.var_id = 0; event.var_before = 0; event.coeff = 0;
               core::ZNumber size;
-              if (event.var_id != 0 || event.width == 0 || !bmc::memory_extent(event, size) ||
+              if (!bmc::pointer_on_path(pointer, path, step, main, nullptr, event) ||
+                  event.var_id != 0 || event.width == 0 || !bmc::memory_extent(event, size) ||
                   event.const_off < 0 || event.const_off + event.width > size) {supported = false; break;}
             }
           }
