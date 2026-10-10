@@ -1,0 +1,19 @@
+{
+  "svcomp_rules": {
+    "url": "https://sv-comp.sosy-lab.org/2026/rules.php",
+    "sha256": "ae225608e5f8636b2efdbc354d396c38732c65de109733fa6d8df084bec506c7",
+    "excerpt": "  <strong>__VERIFIER_nondet_X(): </strong>\n  In order to model nondeterministic values, the following functions can be assumed to return\n  an arbitrary value of the indicated type:\n  <tt>__VERIFIER_nondet_X()</tt>\n  with <tt>X</tt> in {<tt>bool</tt>, <tt>char</tt>, <tt>int</tt>, <tt>int128</tt>, <tt>float</tt>, <tt>double</tt>, <tt>loff_t</tt>, <tt>long</tt>, <tt>longlong</tt>,\n  <tt>pchar</tt>, <tt>pthread_t</tt>, <tt>sector_t</tt>, <tt>short</tt>, <tt>size_t</tt>, <tt>u32</tt>,\n  <tt>uchar</tt>, <tt>uint</tt>, <tt>uint128</tt>, <tt>ulong</tt>, <tt>ulonglong</tt>, <tt>unsigned</tt>, <tt>ushort</tt>}\n  (no side effects, <tt>pointer</tt> for <tt>void *</tt>, etc.).\n  The verification tool can assume that the functions are implemented according to the following template:<br />\n  <tt>X __VERIFIER_nondet_X() { X val; return val; }</tt>\n</p>\n\n"
+  },
+  "glibc": {
+    "version": "glibc 2.39",
+    "header": "/usr/include/assert.h",
+    "sha256": "538cc7466f2e7b6d34f716f4f4ef601fc6ce940098668c207b1a0d30c8e2341a",
+    "excerpt": "/* This prints an \"Assertion failed\" message and aborts.  */\nextern void __assert_fail (const char *__assertion, const char *__file,\n\t\t\t   unsigned int __line, const char *__function)\n     __THROW __attribute__ ((__noreturn__));\n\n/* Likewise, but prints the error text for ERRNUM.  */\nextern void __assert_perror_fail (int __errnum, const char *__file,\n\t\t\t\t  unsigned int __line, const char *__function)\n     __THROW __attribute__ ((__noreturn__));\n\n\n/* The following is not at all used here but needed for standard\n   compliance.  */\nextern void __assert (const char *__assertion, const char *__file, int __line)\n     __THROW __attribute__ ((__noreturn__));\n"
+  },
+  "limitations": [
+    "The terminating hooks reuse the existing abort model; registered unsupported signal handlers still cause UNKNOWN.",
+    "The checker continues to over-approximate pointer-argument buffer accesses.",
+    "Default synchronization init/destroy requires valid opaque runtime objects; nondefault attributes remain unsupported.",
+    "LLVM may erase signedness of the physical 32-bit assertion line argument."
+  ]
+}

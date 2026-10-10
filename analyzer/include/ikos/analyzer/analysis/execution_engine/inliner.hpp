@@ -284,8 +284,8 @@ private:
       if (callee->is_declaration()) {
         // Call to an extern function
         //
-        // ASSUMPTION: if this is a call to an extern non-intrinsic function,
-        // treat it as a function call that has no side effects.
+        // Dispatch to a library model or, in concurrency mode, an explicit
+        // coverage boundary for unavailable effects.
         NumericalExecutionEngineT engine = this->_engine.fork();
         NumericalExecutionEngineT::data_of(engine.inv()).ignore_exceptions();
         engine.exec_extern_call(call, callee);

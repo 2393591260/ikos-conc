@@ -1,0 +1,51 @@
+{
+  "analyzer_sha256": "ee0671ea253fe221eed845652a566bf0fb007c63da156278f76b926265b2ee88",
+  "baseline_analyzer_sha256": "7e9ffab4a46f49f389d489e488ca5d1ac1ea4eb1499da1feb98115d36f89dfef",
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/numerical.hpp": "59f310007a6e0c1ccbf162162498b65d4b7bc6825565123c04035693a48712e9",
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/inliner.hpp": "dbb41412af7ecd60bf7a52b5ab6c82eef01c1aa6fd6d64b495e18acf60513cfe"
+  },
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 662,
+      "FN": 0,
+      "error": 1,
+      "unknown": 366
+    },
+    "after_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 647,
+      "FN": 0,
+      "error": 1,
+      "unknown": 381
+    },
+    "before_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 662,
+      "FN": 0,
+      "error": 1,
+      "unknown": 262
+    },
+    "after_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 647,
+      "FN": 0,
+      "error": 1,
+      "unknown": 277
+    }
+  },
+  "tasks": 1029,
+  "jobs": 4,
+  "timeout_seconds": 30,
+  "data_model": "ILP32",
+  "known_audit_misses_pending": 0,
+  "old_bmc_cases": 20,
+  "build_and_install_equal": true,
+  "manifest": "docs/artifacts/ai-p0-2026-10-10/f1/paired.json",
+  "manifest_sha256": "9a6a9d81d2f8599d66d2a38574bb05d6c00e3a662048e096d634e027af6d9a8c"
+}

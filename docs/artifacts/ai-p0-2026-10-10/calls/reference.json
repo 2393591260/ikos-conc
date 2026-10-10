@@ -1,0 +1,86 @@
+[
+  {
+    "bits": 32,
+    "case": 1,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-call-effects/calls.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "CFLAGS": "-fgnu89-inline -m32 -DCASE=1",
+    "returncode": 13,
+    "output": "Test: /home/ruan/ikos-conc/docs/review-repros/ai-call-effects/calls.c\nResult: FAIL\nReason: SVCOMP data race found\nTime: 0.443 secs\n",
+    "source_sha256": "34ecb569cd6bc6d47f68e8287e3e7015415074b860f0a9c3051aee5677f31cf9"
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-call-effects/calls.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "CFLAGS": "-fgnu89-inline -m32 -DCASE=2",
+    "returncode": 13,
+    "output": "Test: /home/ruan/ikos-conc/docs/review-repros/ai-call-effects/calls.c\nResult: FAIL\nReason: SVCOMP data race found\nTime: 0.431 secs\n",
+    "source_sha256": "34ecb569cd6bc6d47f68e8287e3e7015415074b860f0a9c3051aee5677f31cf9"
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-call-effects/calls.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "CFLAGS": "-fgnu89-inline -m64 -DCASE=1",
+    "returncode": 13,
+    "output": "Test: /home/ruan/ikos-conc/docs/review-repros/ai-call-effects/calls.c\nResult: FAIL\nReason: SVCOMP data race found\nTime: 0.419 secs\n",
+    "source_sha256": "34ecb569cd6bc6d47f68e8287e3e7015415074b860f0a9c3051aee5677f31cf9"
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-call-effects/calls.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "CFLAGS": "-fgnu89-inline -m64 -DCASE=2",
+    "returncode": 13,
+    "output": "Test: /home/ruan/ikos-conc/docs/review-repros/ai-call-effects/calls.c\nResult: FAIL\nReason: SVCOMP data race found\nTime: 0.418 secs\n",
+    "source_sha256": "34ecb569cd6bc6d47f68e8287e3e7015415074b860f0a9c3051aee5677f31cf9"
+  }
+]

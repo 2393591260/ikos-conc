@@ -712,3 +712,36 @@ BMC TP104/TN662/UNKNOWN262/error1，FP/FN0。未知调用和剩余效果覆盖�
 [前后输入结果](artifacts/ai-p0-2026-10-10/locks/fixtures-after.json)、
 [参考限制与本机检查](artifacts/ai-p0-2026-10-10/locks/reference.json)、
 [1029配对](artifacts/ai-p0-2026-10-10/locks/paired.json)。
+
+
+### 9.13 P0：未知调用体的访问覆盖与经过核实的声明合同
+
+未知extern及递归/未展开internal调用即使havoc数值，也不能覆盖被省略的访问事件，
+现记录显式unmodeled-effect Warning。已复现递归update最终写data与worker竞争，
+旧版双ABI均SAFE，新版UNKNOWN；同锁递归对照亦UNKNOWN，属于能力边界。
+声明extern用例只证明缺失代码覆盖边界，不把它当作已独立确认的具体FN。
+已定义的写函数及官方nondet守卫竞争对照由原生Dartagnan双ABIFAIL佐证。
+
+保留的声明合同有：SV-COMP2026规则列出的精确零参无副作用nondet API（不含lookalike、
+nondet_memory、错误返回类别）；有效opaque pthread对象的NULL属性init/destroy；
+glibc2.39 assert.h中三个精确ABI的终止hook，复用abort，checker仍记录buffer访问。
+NULL可经helper/分支nullity证明；非默认属性仍回退。LLVM不保留C unsigned拼写，
+assert行号合同检查实际32bit ABI而非源语言signedness。没有frontend行为改动。
+
+build/install一致；108次双ABI/双模式/改名/helper配置、原审查76次、旧BMC20次通过。
+1029完整顺序AI/BMC扫描：AI TN662→647、UNKNOWN366→381；
+BMC TP104→104、TN662→647、UNKNOWN262→277，FP/FN0、error1（nsc-ircc超时）不变。
+15个SAFE→UNKNOWN逐个按调用点归因：sleep4项、mutexattr/非默认init2项、
+pthread TLS key3项（其中析构callback确需覆盖）、pthread_exit6项。
+这些是待补合同/效果模型的精度损失，不宣称标签安全输入是实际漏报。
+第一轮未经assert ABI校正的临时试验曾TN28，未提交，最终647来自重新完整扫描，未拼接结果。
+
+未证明所有SAFE规则。另已发现LP64外部libatomic store值未发布导致守卫路径消失，
+ILP32的__int128原输入编译失败，必须另建有效双ABI版本才作双架构结论；下一阶段独立处理。
+证据：[汇总](artifacts/ai-p0-2026-10-10/calls/summary.json)、
+[修复前](artifacts/ai-p0-2026-10-10/calls/fixtures-before.json)、
+[修复后](artifacts/ai-p0-2026-10-10/calls/fixtures-after.json)、
+[官方/库合同](artifacts/ai-p0-2026-10-10/calls/contracts.json)、
+[参考](artifacts/ai-p0-2026-10-10/calls/reference.json)、
+[15项归因](artifacts/ai-p0-2026-10-10/calls/regression-causes.json)、
+[全量配对](artifacts/ai-p0-2026-10-10/calls/paired.json)。

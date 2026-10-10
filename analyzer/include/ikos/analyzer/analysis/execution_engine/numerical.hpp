@@ -2054,18 +2054,8 @@ public:
 
     // === POSIX lock API routing (rwlock / trylock) =====================
     //
-    // ikos-pp only converts the plain mutex pair into
-    // ar.pthread.mutex.lock/unlock intrinsics. The rwlock family and
-    // trylock stay as plain extern calls and would fall through to the
-    // "no side effects" assumption — losing the lock from the
-    // Must-Lockset (04-mutex_41-pt_rwlock.c / 04-mutex_36-trylock_nr.c
-    // FPs: both sides' locksets came out empty). Route them through
-    // the same lock operators by NAME. Modeling: a successful
-    // rwlock_wrlock/rdlock or mutex_trylock holds the lock exactly
-    // like mutex_lock; the failure return path (EBUSY etc.) is
-    // conservatively treated as success — for RACE detection this is
-    // the sound direction only when the program guards accesses with
-    // the return value, which the safe benchmarks do.
+    // ikos-pp maps the plain mutex pair; route rwlocks and conditional
+    // acquisitions through their matching transfer functions.
     {
       std::string fname = fun->name();
       // trylock / timedlock can FAIL (EBUSY / ETIMEDOUT): the lock is NOT
@@ -2166,6 +2156,88 @@ public:
     if (this->_ctx.opts.enable_thread_modular &&
         exec_atomic_extern_call(*this, call, func_name)) {
       return;
+    }
+    // glibc assert.h specifies these exact signatures as terminating via
+    // abort. The checker still records reads of caller-owned string buffers.
+    if (this->_ctx.opts.enable_thread_modular &&
+        fun->type()->return_type()->is_void() &&
+        fun->num_parameters() == call->num_arguments()) {
+      auto text_arg = [&](std::size_t i) {
+        auto* pointer = dyn_cast< ar::PointerType >(call->argument(i)->type());
+        auto* byte = pointer ? dyn_cast< ar::IntegerType >(pointer->pointee()) : nullptr;
+        return byte && byte->bit_width() == 8;
+      };
+      // LLVM erases the C unsigned spelling here; the ABI width is preserved.
+      auto int_arg = [&](std::size_t i) {
+        auto* type = dyn_cast< ar::IntegerType >(call->argument(i)->type());
+        return type && type->bit_width() == 32;
+      };
+      bool assertion =
+          (func_name == "__assert_fail" && call->num_arguments() == 4 &&
+           text_arg(0) && text_arg(1) && int_arg(2) && text_arg(3)) ||
+          (func_name == "__assert_perror_fail" && call->num_arguments() == 4 &&
+           int_arg(0) && text_arg(1) && int_arg(2) && text_arg(3)) ||
+          (func_name == "__assert" && call->num_arguments() == 3 &&
+           text_arg(0) && text_arg(1) && int_arg(2));
+      if (assertion) {
+        this->exec_abort(call);
+        return;
+      }
+    }
+
+    // SV-COMP 2026 rules give these exact declarations a no-side-effect
+    // contract. In particular nondet_memory and lookalike names are excluded.
+    if (this->_ctx.opts.enable_thread_modular &&
+        fun->num_parameters() == 0 && call->num_arguments() == 0) {
+      static const std::unordered_set< std::string > integer_sources{
+          "__VERIFIER_nondet_bool", "__VERIFIER_nondet_char",
+          "__VERIFIER_nondet_int", "__VERIFIER_nondet_int128",
+          "__VERIFIER_nondet_loff_t", "__VERIFIER_nondet_long",
+          "__VERIFIER_nondet_longlong", "__VERIFIER_nondet_pthread_t",
+          "__VERIFIER_nondet_sector_t", "__VERIFIER_nondet_short",
+          "__VERIFIER_nondet_size_t", "__VERIFIER_nondet_u32",
+          "__VERIFIER_nondet_uchar", "__VERIFIER_nondet_uint",
+          "__VERIFIER_nondet_uint128", "__VERIFIER_nondet_ulong",
+          "__VERIFIER_nondet_ulonglong", "__VERIFIER_nondet_unsigned",
+          "__VERIFIER_nondet_ushort"};
+      auto* result_type = fun->type()->return_type();
+      bool pure = (result_type->is_integer() && integer_sources.count(func_name)) ||
+                  (result_type->is_float() &&
+                   (func_name == "__VERIFIER_nondet_float" ||
+                    func_name == "__VERIFIER_nondet_double")) ||
+                  (result_type->is_pointer() &&
+                   (func_name == "__VERIFIER_nondet_pointer" ||
+                    func_name == "__VERIFIER_nondet_pchar"));
+      if (pure) {
+        this->exec_unknown_call(call, false, false, false, false);
+        return;
+      }
+    }
+
+    // Default initialization and destruction touch only the runtime object,
+    // under the valid opaque-pthread-object contract used by lock transfer.
+    if (this->_ctx.opts.enable_thread_modular &&
+        fun->type()->return_type()->is_integer() &&
+        fun->num_parameters() == call->num_arguments()) {
+      bool init = func_name == "pthread_mutex_init" ||
+                  func_name == "pthread_rwlock_init" ||
+                  func_name == "pthread_cond_init";
+      bool destroy = func_name == "pthread_mutex_destroy" ||
+                     func_name == "pthread_rwlock_destroy" ||
+                     func_name == "pthread_cond_destroy";
+      bool default_attributes = false;
+      if (init && call->num_arguments() == 2 &&
+          call->argument(1)->type()->is_pointer()) {
+        const auto& attr = this->_lit_factory.get_scalar(call->argument(1));
+        default_attributes = attr.is_null() ||
+            (attr.is_pointer_var() && this->data().normal().nullity_is_null(attr.var()));
+      }
+      if (((init && default_attributes) ||
+           (destroy && call->num_arguments() == 1)) &&
+          call->argument(0)->type()->is_pointer()) {
+        this->exec_unknown_call(call, true, false, false, false);
+        return;
+      }
     }
     // === End Concurrency Probe ===
 
@@ -2679,6 +2751,11 @@ public:
       }
     }
 
+    if (this->_ctx.opts.enable_thread_modular) {
+      this->_ctx.concurrent_env.record_unmodeled_effect(
+          call, "external call effects not covered");
+    }
+
     // An unknown extern function may invoke its function-pointer arguments
     // (e.g. `foo(reset_glob)` — `foo` has no body but MAY call its argument,
     // 04-mutex_26-ptrrace_default.c). Register any DEFINED callee passed by
@@ -2740,6 +2817,10 @@ public:
 
   /// \brief Execute a call to an unknown internal function
   void exec_unknown_intern_call(ar::CallBase* call) override {
+    if (this->_ctx.opts.enable_thread_modular) {
+      this->_ctx.concurrent_env.record_unmodeled_effect(
+          call, "internal call effects not covered");
+    }
     this->exec_unknown_call(call,
                             /* may_write_params = */ true,
                             /* ignore_unknown_write = */ false,
@@ -2842,12 +2923,9 @@ public:
       this->throw_unknown_exceptions();
     }
 
-    // ASSUMPTION:
-    // The claim about the correctness of the program under analysis can be
-    // made only if all calls to unavailable code are assumed to be correct
-    // and without side-effects. We will assume that the lhs of an external
-    // call site is always initialized. However, in case of a pointer, we do
-    // not assume that a non-null pointer is returned.
+    // Initialize the abstract scalar result without assuming a non-null
+    // pointer. This return abstraction does not cover missing body effects;
+    // concurrency fallbacks record those gaps separately.
     if (call->has_result()) {
       // Forget the result
       const Literal& ret = this->_lit_factory.get(call->result());
