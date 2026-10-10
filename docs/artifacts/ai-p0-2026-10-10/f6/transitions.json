@@ -1,0 +1,9 @@
+[
+  {
+    "task": "c/goblint-regression/13-privatized_03-priv_inv.c",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  }
+]

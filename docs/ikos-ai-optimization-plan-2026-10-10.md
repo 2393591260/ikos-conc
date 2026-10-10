@@ -452,3 +452,25 @@ UNKNOWN245→248，FP/FN/error0。三个回退均为 `race-1_1/1_2/1_3-join`，�
 [变化](artifacts/ai-p0-2026-10-10/f5/transitions.json)、
 [双位宽用例](artifacts/ai-p0-2026-10-10/f5/fixtures-after.json)、
 [审查回归](artifacts/ai-p0-2026-10-10/f5/audit.json)。
+
+### 9.4 P0-F6：共享写队列按可能效果取并集
+
+共享队列混合线程与路径，分析器最后访问的 store 不能作为程序最后执行的 store。
+flat/sentinel 与锁分区 flush 都按地址 join 所有待发布值；本地内存强更新保持原有行为。
+混合宽度先确定共同类型，再逐个转换原值，避免渐进 signed cast 丢掉窄 unsigned 值。
+这不是完整 PBR；在没有路径/写者归属证据的队列中，不能以终态强写覆盖其他贡献。
+
+build/install 一致。独立摘要测试有 59 条断言，覆盖双宽度、双分区、写序颠倒、多地址、
+空 flush/dirty 和混合 signedness。最后一项是在旧版采样后补充，只在修复版执行，
+不伪称做过旧版混合类型 A/B。16 个双位宽/双模式程序运行中，竞争变体从 SAFE 或 UNKNOWN
+统一回退 UNKNOWN，共同锁对照保持 SAFE。C11 原子操作仍不受 BMC 支持，不把回退称作 TP。
+76 次原审查与旧 BMC 20 次回归通过阶段约束；F2/F4 尚有 8 次已知漏报。
+
+1029 配对：AI-only TN677→676/UNKNOWN352→353；BMC TP104→104、TN677→676、
+UNKNOWN248→249，FP/FN/error0。唯一回退是 `13-privatized_03-priv_inv.c`，已登记为
+需要本地路径终态及真实保护集合证明的恢复目标；不能恢复全局队列 last-write 捷径。
+
+证据：[汇总](artifacts/ai-p0-2026-10-10/f6/summary.json)、
+[变化](artifacts/ai-p0-2026-10-10/f6/transitions.json)、
+[新用例](artifacts/ai-p0-2026-10-10/f6/fixtures-after.json)、
+[原审查](artifacts/ai-p0-2026-10-10/f6/audit.json)。

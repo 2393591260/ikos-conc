@@ -1,0 +1,102 @@
+{
+  "unit_returncode": 0,
+  "unit_stderr": "",
+  "cases": [
+    {
+      "bits": 32,
+      "case": 0,
+      "mode": "ai",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 32,
+      "case": 0,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 32,
+      "case": 1,
+      "mode": "ai",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 32,
+      "case": 1,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 32,
+      "case": 2,
+      "mode": "ai",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 32,
+      "case": 2,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 32,
+      "case": 3,
+      "mode": "ai",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "bits": 32,
+      "case": 3,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "bits": 64,
+      "case": 0,
+      "mode": "ai",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 64,
+      "case": 0,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 64,
+      "case": 1,
+      "mode": "ai",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 64,
+      "case": 1,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 64,
+      "case": 2,
+      "mode": "ai",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 64,
+      "case": 2,
+      "mode": "bmc",
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 64,
+      "case": 3,
+      "mode": "ai",
+      "verdict": "The program is SAFE"
+    },
+    {
+      "bits": 64,
+      "case": 3,
+      "mode": "bmc",
+      "verdict": "The program is SAFE"
+    }
+  ]
+}

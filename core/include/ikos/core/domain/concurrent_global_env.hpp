@@ -591,17 +591,7 @@ public:
         sources[cell.first].push_back(cell.second);
     std::unordered_map< std::uint64_t, machine_int::Interval > result;
     for (const auto& cell : sources) {
-      std::uint64_t width = 0;
-      Signedness sign = Unsigned;
-      for (const auto& value : cell.second) {
-        width = std::max(width, value.bit_width());
-        if (value.sign() == Signed) sign = Signed;
-      }
-      // Pick the common type before casting any source. Progressive casts
-      // could sign-extend an earlier unsigned narrow value incorrectly.
-      auto joined = machine_int::Interval::bottom(width, sign);
-      for (const auto& value : cell.second) joined.join_with(value.cast(width, sign));
-      result.emplace(cell.first, std::move(joined));
+      result.emplace(cell.first, join_interference_values(cell.second));
     }
     return result;
   }
@@ -880,22 +870,31 @@ public:
   }
 
 private:
-  /// \brief Publish the last queued value per address; caller holds _mutex.
-  /// TODO: shared queue order is not program order; effects must be joined.
+  static machine_int::Interval join_interference_values(
+      const std::vector< machine_int::Interval >& values) {
+    ikos_assert(!values.empty());
+    std::uint64_t width = 0;
+    Signedness sign = Unsigned;
+    for (const auto& value : values) {
+      width = std::max(width, value.bit_width());
+      if (value.sign() == Signed) sign = Signed;
+    }
+    // Choose the common type first; progressive signed casts can lose values.
+    auto joined = machine_int::Interval::bottom(width, sign);
+    for (const auto& value : values) joined.join_with(value.cast(width, sign));
+    return joined;
+  }
+
+  /// \brief Publish all queued may-writes per address; caller holds _mutex.
   bool flush_nolock(std::uint64_t lock_addr) {
     auto it = _privatized_writes.find(lock_addr);
     if (it == _privatized_writes.end() || it->second.empty()) {
       return false;
     }
-    // Keep the last queue entry per address (not a per-thread final state).
-    std::unordered_map< std::uint64_t, machine_int::Interval > latest;
+    // The queue mixes threads and paths, so visit order is not program order.
+    std::map< std::uint64_t, std::vector< machine_int::Interval > > sources;
     for (const PrivatizedWrite& pw : it->second) {
-      auto lit = latest.find(pw.addr);
-      if (lit == latest.end()) {
-        latest.emplace(pw.addr, pw.val);
-      } else {
-        lit->second = pw.val; // overwrite, never join
-      }
+      sources[pw.addr].push_back(pw.val);
     }
     // Clear the entry BEFORE publishing: avoids infinite recursion if a
     // partition join triggers a side-effect that re-enters this method
@@ -907,8 +906,9 @@ private:
       // Strict unlock-flushing path: drain the sentinel "no_lock"
       // bucket into the FLAT blackboard. join_global_nolock sets
       // `_is_dirty` if any cell expands.
-      for (const auto& kv : latest) {
-        bool c = this->join_global_nolock(kv.first, kv.second);
+      for (const auto& kv : sources) {
+        bool c = this->join_global_nolock(kv.first,
+                                         join_interference_values(kv.second));
         changed = changed || c;
       }
     } else {
@@ -917,9 +917,10 @@ private:
       // join_global_nolock via join_into_cell_nolock. We already
       // hold `_mutex`, so the nolock variant is required —
       // re-acquiring a non-recursive std::mutex would deadlock.
-      for (const auto& kv : latest) {
+      for (const auto& kv : sources) {
         bool c =
-            this->join_partition_nolock(lock_addr, kv.first, kv.second);
+            this->join_partition_nolock(lock_addr, kv.first,
+                                       join_interference_values(kv.second));
         changed = changed || c;
       }
     }
