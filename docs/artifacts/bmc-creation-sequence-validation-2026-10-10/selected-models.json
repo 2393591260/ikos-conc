@@ -1,0 +1,1430 @@
+{
+  "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+  "rows": [
+    {
+      "bits": 32,
+      "report_index": 0,
+      "pair_id": 2,
+      "source": {
+        "status": "SOURCE_RACE",
+        "returncode": 13,
+        "seconds": 3.9831312129972503,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fk2012.i",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=4",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "25a65bfeb78eff83ae0d8a23f733f9dc95190d8c8aa20c7c495d09a2bd7eb6f0",
+        "data_model": "32"
+      },
+      "coverage": {
+        "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+        "threads": {
+          "startup": 0,
+          "a": 2,
+          "b": 3
+        },
+        "mapped_memory_events": 12,
+        "omitted_steps": [
+          {
+            "trace": "startup",
+            "step": 0,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 1,
+            "kind": "allocate",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 2,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 3,
+            "kind": "store",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 4,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 8,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 9,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 10,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 11,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 12,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 13,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 0,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 1,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 3,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 4,
+            "kind": "assign",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 5,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 6,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 7,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 8,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 9,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 10,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 12,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 13,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 0,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 1,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 2,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 3,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 5,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 6,
+            "kind": "assign",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 7,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 8,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 9,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 10,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 11,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 12,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 14,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 15,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 16,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 17,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 19,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 20,
+            "kind": "assign",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 21,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 22,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 23,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 24,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 25,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 26,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 28,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 29,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 31,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 32,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 33,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 34,
+            "kind": "load",
+            "reason": "distinct/unknown static memory origins"
+          },
+          {
+            "trace": "b",
+            "step": 35,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 36,
+            "kind": "assign",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 37,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 38,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 39,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 40,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 41,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 42,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 43,
+            "kind": "store",
+            "reason": "distinct/unknown static memory origins"
+          },
+          {
+            "trace": "b",
+            "step": 44,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 45,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          }
+        ],
+        "creation_bindings": [
+          {
+            "trace": "a",
+            "parent_trace": "startup",
+            "creator_step": 10,
+            "reference_event": 22,
+            "occurrence": 1,
+            "prefix_count": 1,
+            "pre_unroll_id": 351
+          },
+          {
+            "trace": "b",
+            "parent_trace": "startup",
+            "creator_step": 13,
+            "reference_event": 38,
+            "occurrence": 1,
+            "prefix_count": 2,
+            "pre_unroll_id": 341
+          }
+        ],
+        "heap_bindings": [],
+        "memory_bindings": [
+          {
+            "trace": "startup",
+            "step": 5,
+            "reference_event": 1,
+            "occurrence": null,
+            "pre_unroll_id": 320
+          },
+          {
+            "trace": "startup",
+            "step": 6,
+            "reference_event": 2,
+            "occurrence": null,
+            "pre_unroll_id": 321
+          },
+          {
+            "trace": "startup",
+            "step": 7,
+            "reference_event": 3,
+            "occurrence": null,
+            "pre_unroll_id": 322
+          },
+          {
+            "trace": "a",
+            "step": 2,
+            "reference_event": 301,
+            "occurrence": 1,
+            "pre_unroll_id": 215
+          },
+          {
+            "trace": "a",
+            "step": 11,
+            "reference_event": 307,
+            "occurrence": 1,
+            "pre_unroll_id": 228
+          },
+          {
+            "trace": "a",
+            "step": 14,
+            "reference_event": 312,
+            "occurrence": 1,
+            "pre_unroll_id": 233
+          },
+          {
+            "trace": "b",
+            "step": 4,
+            "reference_event": 494,
+            "occurrence": null,
+            "pre_unroll_id": 12
+          },
+          {
+            "trace": "b",
+            "step": 13,
+            "reference_event": 505,
+            "occurrence": null,
+            "pre_unroll_id": 29
+          },
+          {
+            "trace": "b",
+            "step": 18,
+            "reference_event": 514,
+            "occurrence": null,
+            "pre_unroll_id": 38
+          },
+          {
+            "trace": "b",
+            "step": 27,
+            "reference_event": 525,
+            "occurrence": null,
+            "pre_unroll_id": 55
+          },
+          {
+            "trace": "b",
+            "step": 30,
+            "reference_event": 530,
+            "occurrence": null,
+            "pre_unroll_id": 60
+          },
+          {
+            "trace": "b",
+            "step": 46,
+            "reference_event": 603,
+            "occurrence": null,
+            "pre_unroll_id": 153
+          }
+        ],
+        "nondet_bindings": [],
+        "initial_bindings": [],
+        "communication_bindings": [
+          {
+            "relation": "co",
+            "from": 1,
+            "to": 603
+          },
+          {
+            "relation": "rf",
+            "from": 603,
+            "to": 312
+          },
+          {
+            "relation": "rf",
+            "from": 1,
+            "to": 530
+          },
+          {
+            "relation": "co",
+            "from": 2,
+            "to": 525
+          },
+          {
+            "relation": "co",
+            "from": 525,
+            "to": 307
+          },
+          {
+            "relation": "co",
+            "from": 3,
+            "to": 505
+          },
+          {
+            "relation": "rf",
+            "from": 3,
+            "to": 494
+          }
+        ],
+        "communication_omissions": [
+          {
+            "trace": "a",
+            "step": 2,
+            "reason": "unmapped/unknown write source"
+          },
+          {
+            "trace": "b",
+            "step": 18,
+            "reason": "unmapped/unknown write source"
+          }
+        ],
+        "memory_orderings": [
+          {
+            "before": 1,
+            "after": 2
+          },
+          {
+            "before": 2,
+            "after": 3
+          },
+          {
+            "before": 3,
+            "after": 494
+          },
+          {
+            "before": 494,
+            "after": 505
+          },
+          {
+            "before": 505,
+            "after": 514
+          },
+          {
+            "before": 514,
+            "after": 525
+          },
+          {
+            "before": 525,
+            "after": 530
+          },
+          {
+            "before": 530,
+            "after": 301
+          },
+          {
+            "before": 301,
+            "after": 307
+          },
+          {
+            "before": 307,
+            "after": 603
+          },
+          {
+            "before": 603,
+            "after": 312
+          }
+        ],
+        "memory_order_omissions": [],
+        "unbound_claims": [
+          "CFG and call occurrence mapping",
+          "local values and nondet occurrences",
+          "synchronization history and identities",
+          "IKOS total schedule and rf choices"
+        ],
+        "full_counterexample_validated": false
+      },
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 4.0261771109981055,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fk2012.i",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=4",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "25a65bfeb78eff83ae0d8a23f733f9dc95190d8c8aa20c7c495d09a2bd7eb6f0",
+        "data_model": "32"
+      },
+      "changed_value_probe": {
+        "status": "UNSAT_AT_BOUND",
+        "returncode": 0,
+        "seconds": 2.861898719002056,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fk2012.i",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=4",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "25a65bfeb78eff83ae0d8a23f733f9dc95190d8c8aa20c7c495d09a2bd7eb6f0",
+        "data_model": "32"
+      },
+      "changed_prefix_probe": {
+        "status": "UNSAT_AT_BOUND",
+        "returncode": 0,
+        "seconds": 2.96166379600254,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fk2012.i",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=4",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "25a65bfeb78eff83ae0d8a23f733f9dc95190d8c8aa20c7c495d09a2bd7eb6f0",
+        "data_model": "32"
+      },
+      "changed_creator_probe": {
+        "status": "UNSUPPORTED",
+        "returncode": 30,
+        "seconds": 2.7783175639997353,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fk2012.i",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=4",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "25a65bfeb78eff83ae0d8a23f733f9dc95190d8c8aa20c7c495d09a2bd7eb6f0",
+        "data_model": "32"
+      }
+    },
+    {
+      "bits": 64,
+      "report_index": 0,
+      "pair_id": 2,
+      "source": {
+        "status": "SOURCE_RACE",
+        "returncode": 13,
+        "seconds": 3.3294960250022996,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fk2012.i",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=4",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "25a65bfeb78eff83ae0d8a23f733f9dc95190d8c8aa20c7c495d09a2bd7eb6f0",
+        "data_model": "64"
+      },
+      "coverage": {
+        "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+        "threads": {
+          "startup": 0,
+          "a": 2,
+          "b": 3
+        },
+        "mapped_memory_events": 12,
+        "omitted_steps": [
+          {
+            "trace": "startup",
+            "step": 0,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 1,
+            "kind": "allocate",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 2,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 3,
+            "kind": "store",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 4,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 8,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 9,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 10,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 11,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 12,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "startup",
+            "step": 13,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 0,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 1,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 3,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 4,
+            "kind": "assign",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 5,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 6,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 7,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 8,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 9,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 10,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 12,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "a",
+            "step": 13,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 0,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 1,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 2,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 3,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 5,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 6,
+            "kind": "assign",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 7,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 8,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 9,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 10,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 11,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 12,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 14,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 15,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 16,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 17,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 19,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 20,
+            "kind": "assign",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 21,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 22,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 23,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 24,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 25,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 26,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 28,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 29,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 31,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 32,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 33,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 34,
+            "kind": "load",
+            "reason": "distinct/unknown static memory origins"
+          },
+          {
+            "trace": "b",
+            "step": 35,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 36,
+            "kind": "assign",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 37,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 38,
+            "kind": "unary",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 39,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 40,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 41,
+            "kind": "compare",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 42,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 43,
+            "kind": "store",
+            "reason": "distinct/unknown static memory origins"
+          },
+          {
+            "trace": "b",
+            "step": 44,
+            "kind": "call",
+            "reason": "not a mapped global/heap memory access"
+          },
+          {
+            "trace": "b",
+            "step": 45,
+            "kind": "return",
+            "reason": "not a mapped global/heap memory access"
+          }
+        ],
+        "creation_bindings": [
+          {
+            "trace": "a",
+            "parent_trace": "startup",
+            "creator_step": 10,
+            "reference_event": 22,
+            "occurrence": 1,
+            "prefix_count": 1,
+            "pre_unroll_id": 351
+          },
+          {
+            "trace": "b",
+            "parent_trace": "startup",
+            "creator_step": 13,
+            "reference_event": 38,
+            "occurrence": 1,
+            "prefix_count": 2,
+            "pre_unroll_id": 341
+          }
+        ],
+        "heap_bindings": [],
+        "memory_bindings": [
+          {
+            "trace": "startup",
+            "step": 5,
+            "reference_event": 1,
+            "occurrence": null,
+            "pre_unroll_id": 320
+          },
+          {
+            "trace": "startup",
+            "step": 6,
+            "reference_event": 2,
+            "occurrence": null,
+            "pre_unroll_id": 321
+          },
+          {
+            "trace": "startup",
+            "step": 7,
+            "reference_event": 3,
+            "occurrence": null,
+            "pre_unroll_id": 322
+          },
+          {
+            "trace": "a",
+            "step": 2,
+            "reference_event": 301,
+            "occurrence": 1,
+            "pre_unroll_id": 215
+          },
+          {
+            "trace": "a",
+            "step": 11,
+            "reference_event": 307,
+            "occurrence": 1,
+            "pre_unroll_id": 228
+          },
+          {
+            "trace": "a",
+            "step": 14,
+            "reference_event": 312,
+            "occurrence": 1,
+            "pre_unroll_id": 233
+          },
+          {
+            "trace": "b",
+            "step": 4,
+            "reference_event": 494,
+            "occurrence": null,
+            "pre_unroll_id": 12
+          },
+          {
+            "trace": "b",
+            "step": 13,
+            "reference_event": 505,
+            "occurrence": null,
+            "pre_unroll_id": 29
+          },
+          {
+            "trace": "b",
+            "step": 18,
+            "reference_event": 514,
+            "occurrence": null,
+            "pre_unroll_id": 38
+          },
+          {
+            "trace": "b",
+            "step": 27,
+            "reference_event": 525,
+            "occurrence": null,
+            "pre_unroll_id": 55
+          },
+          {
+            "trace": "b",
+            "step": 30,
+            "reference_event": 530,
+            "occurrence": null,
+            "pre_unroll_id": 60
+          },
+          {
+            "trace": "b",
+            "step": 46,
+            "reference_event": 603,
+            "occurrence": null,
+            "pre_unroll_id": 153
+          }
+        ],
+        "nondet_bindings": [],
+        "initial_bindings": [],
+        "communication_bindings": [
+          {
+            "relation": "co",
+            "from": 1,
+            "to": 603
+          },
+          {
+            "relation": "rf",
+            "from": 603,
+            "to": 312
+          },
+          {
+            "relation": "rf",
+            "from": 1,
+            "to": 530
+          },
+          {
+            "relation": "co",
+            "from": 2,
+            "to": 525
+          },
+          {
+            "relation": "co",
+            "from": 525,
+            "to": 307
+          },
+          {
+            "relation": "co",
+            "from": 3,
+            "to": 505
+          },
+          {
+            "relation": "rf",
+            "from": 3,
+            "to": 494
+          }
+        ],
+        "communication_omissions": [
+          {
+            "trace": "a",
+            "step": 2,
+            "reason": "unmapped/unknown write source"
+          },
+          {
+            "trace": "b",
+            "step": 18,
+            "reason": "unmapped/unknown write source"
+          }
+        ],
+        "memory_orderings": [
+          {
+            "before": 1,
+            "after": 2
+          },
+          {
+            "before": 2,
+            "after": 3
+          },
+          {
+            "before": 3,
+            "after": 494
+          },
+          {
+            "before": 494,
+            "after": 505
+          },
+          {
+            "before": 505,
+            "after": 514
+          },
+          {
+            "before": 514,
+            "after": 525
+          },
+          {
+            "before": 525,
+            "after": 530
+          },
+          {
+            "before": 530,
+            "after": 301
+          },
+          {
+            "before": 301,
+            "after": 307
+          },
+          {
+            "before": 307,
+            "after": 603
+          },
+          {
+            "before": 603,
+            "after": 312
+          }
+        ],
+        "memory_order_omissions": [],
+        "unbound_claims": [
+          "CFG and call occurrence mapping",
+          "local values and nondet occurrences",
+          "synchronization history and identities",
+          "IKOS total schedule and rf choices"
+        ],
+        "full_counterexample_validated": false
+      },
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 3.534471510000003,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fk2012.i",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=4",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "25a65bfeb78eff83ae0d8a23f733f9dc95190d8c8aa20c7c495d09a2bd7eb6f0",
+        "data_model": "64"
+      },
+      "changed_value_probe": {
+        "status": "UNSAT_AT_BOUND",
+        "returncode": 0,
+        "seconds": 2.77208738400077,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fk2012.i",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=4",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "25a65bfeb78eff83ae0d8a23f733f9dc95190d8c8aa20c7c495d09a2bd7eb6f0",
+        "data_model": "64"
+      },
+      "changed_prefix_probe": {
+        "status": "UNSAT_AT_BOUND",
+        "returncode": 0,
+        "seconds": 3.013519764001103,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fk2012.i",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=4",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "25a65bfeb78eff83ae0d8a23f733f9dc95190d8c8aa20c7c495d09a2bd7eb6f0",
+        "data_model": "64"
+      },
+      "changed_creator_probe": {
+        "status": "UNSUPPORTED",
+        "returncode": 30,
+        "seconds": 2.897583185000258,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fk2012.i",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=4",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "25a65bfeb78eff83ae0d8a23f733f9dc95190d8c8aa20c7c495d09a2bd7eb6f0",
+        "data_model": "64"
+      }
+    }
+  ],
+  "full_counterexample_validated": false
+}

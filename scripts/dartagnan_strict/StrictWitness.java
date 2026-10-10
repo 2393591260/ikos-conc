@@ -67,8 +67,8 @@ public final class StrictWitness {
         var origin = e.getMetadata(UnrollingId.class);
         if ((creation ? !(e instanceof ThreadCreate) : !(e instanceof MemoryCoreEvent)) || source == null || origin == null)
             throw new IllegalArgumentException("occurrence requires matching event kind, source and pre-unroll identity");
-        // In a forward-only bounded CFG, executing every earlier clone makes this
-        // the requested dynamic occurrence. Skipped clones are deliberately unsupported.
+        // A branch may skip clones of a creation site. Count executed creations,
+        // while retaining the older all-clones rule for memory occurrence mapping.
         var parentEvents = e.getThread().getEvents();
         if (parentEvents.stream().anyMatch(x -> x instanceof CondJump j
                 && j.getLabel().getGlobalId() <= j.getGlobalId()))
@@ -80,6 +80,18 @@ public final class StrictWitness {
         if (clones.stream().anyMatch(x -> !origin.equals(x.getMetadata(UnrollingId.class))))
             throw new IllegalArgumentException("source location contains distinct creation sites");
         int occurrence = Integer.parseInt(ordinal);
+        if (creation) {
+            int index = clones.indexOf(e);
+            if (occurrence < 1 || index < occurrence - 1)
+                throw new IllegalArgumentException("creation occurrence mismatch");
+            var im = c.getFormulaManager().getIntegerFormulaManager();
+            var bm = c.getBooleanFormulaManager();
+            var count = im.makeNumber(0);
+            for (int i = 0; i < index; ++i)
+                count = im.add(count, bm.ifThenElse(c.execution(clones.get(i)), im.makeNumber(1), im.makeNumber(0)));
+            prover.addConstraint(im.equal(count, im.makeNumber(occurrence - 1)));
+            return;
+        }
         if (occurrence < 1 || occurrence > clones.size() || clones.get(occurrence - 1) != e)
             throw new IllegalArgumentException("creation occurrence mismatch");
         for (int i = 0; i < occurrence; ++i) prover.addConstraint(c.execution(clones.get(i)));
@@ -192,7 +204,7 @@ public final class StrictWitness {
             var heapIds = new HashSet<Integer>();
             for (int i = 0; i < count; ++i) {
                 String k = "event." + i + ".";
-                used.addAll(List.of(k + "id", k + "thread", k + "creator", k + "descriptor", k + "value", k + "address", k + "object", k + "offset", k + "width", k + "creation_occurrence", k + "memory_occurrence", k + "nondet_value", k + "nondet_width", k + "heap_allocation", k + "heap_extent", k + "allocation_extent"));
+                used.addAll(List.of(k + "id", k + "thread", k + "creator", k + "descriptor", k + "value", k + "address", k + "object", k + "offset", k + "width", k + "creation_occurrence", k + "creation_prefix_count", k + "memory_occurrence", k + "nondet_value", k + "nondet_width", k + "heap_allocation", k + "heap_extent", k + "allocation_extent"));
                 Event e = event(p, k + "id", events);
                 if (!boundIds.add(e.getGlobalId())) throw new IllegalArgumentException("duplicate event");
                 var creator = e.getThread().getEntry().getCreator();
@@ -204,6 +216,17 @@ public final class StrictWitness {
                 if (p.containsKey(k + "allocation_extent")) heapObject(e, p.getProperty(k + "allocation_extent"));
                 if (p.containsKey(k + "creation_occurrence"))
                     creationOccurrence(c, prover, e, p.getProperty(k + "creation_occurrence"));
+                if (p.containsKey(k + "creation_prefix_count")) {
+                    if (!(e instanceof ThreadCreate)) throw new IllegalArgumentException("creation prefix requires ThreadCreate");
+                    int expected = Integer.parseInt(p.getProperty(k + "creation_prefix_count"));
+                    if (expected < 1) throw new IllegalArgumentException("invalid creation prefix count");
+                    var im = c.getFormulaManager().getIntegerFormulaManager();
+                    var countBefore = im.makeNumber(0);
+                    for (var candidate : e.getThread().getEvents())
+                        if (candidate instanceof ThreadCreate && candidate.getGlobalId() <= e.getGlobalId())
+                            countBefore = im.add(countBefore, bm.ifThenElse(c.execution(candidate), im.makeNumber(1), im.makeNumber(0)));
+                    prover.addConstraint(im.equal(countBefore, im.makeNumber(expected)));
+                }
                 if (p.containsKey(k + "memory_occurrence"))
                     occurrence(c, prover, e, p.getProperty(k + "memory_occurrence"), false);
                 if (p.containsKey(k + "nondet_value") || p.containsKey(k + "nondet_width")) {

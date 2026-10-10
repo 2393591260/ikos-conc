@@ -182,7 +182,7 @@ def translate(replay, ir_hash, ir_events):
     if len(traces) != len(replay['traces']):
         raise ValueError('duplicate trace identity')
     threads = {}
-    creators, creation_bindings = {}, []
+    creators, creation_bindings, creation_maps = {}, [], {}
     remaining = dict(traces)
     for _ in range(len(traces)):
         progress = False
@@ -200,38 +200,51 @@ def translate(replay, ir_hash, ir_events):
                         or operands[3].get('kind') != 'function'
                         or operands[3].get('id') != trace['entry']):
                     raise ValueError('creator step is not a matching direct thread creation')
-                matches = [e for e in ir_events if e['thread'] == threads[parent['id']]
-                           and same_source(ar, e) and 'ThreadCreate(' in e['code']
-                           and not e['code'].startswith('ThreadStart')]
-                if not matches:
-                    raise ValueError('ambiguous/unmapped dynamic creator: ' + name)
-                matches.sort(key=lambda e: e['id'])
-                sites = [sid for sid, stmt in instructions.items()
-                         if is_creation(stmt) and same_source(stmt, matches[0])]
-                statement = parent['steps'][trace['creator_step']]['statement']
-                if sites != [statement]:
-                    raise ValueError('ambiguous AR creation site: ' + name)
-                ordinal = sum(step['statement'] == statement and 'synthetic_event' not in step
-                              for step in parent['steps'][:trace['creator_step'] + 1])
-                if not 1 <= ordinal <= len(matches):
-                    raise ValueError('creation occurrence exceeds reference bound: ' + name)
-                occurrence = None
-                if len(matches) > 1:
-                    origins = {e.get('unrolling_id', -1) for e in matches}
-                    if len(origins) != 1 or -1 in origins:
-                        raise ValueError('ambiguous/unmapped dynamic creator: ' + name)
-                    occurrence = ordinal
-                creator = matches[(occurrence or 1) - 1]
-                if not re.match(r'ThreadCreate\(T\d+:' + re.escape(trace['entry']) + r',', creator['code']):
-                    raise ValueError('reference creation entry mismatch: ' + name)
+                if parent['id'] not in creation_maps:
+                    # Preserve the actual parent creation sequence across sites.
+                    # Per-site clone #1 can lie on mutually exclusive branches.
+                    mapping, ordinals, previous, prefix_count = {}, {}, -1, 0
+                    for step_index, step in enumerate(parent['steps']):
+                        stmt = instructions[step['statement']]
+                        if 'synthetic_event' in step or not is_creation(stmt):
+                            continue
+                        actual = stmt['operands'][3]
+                        if actual.get('kind') != 'function':
+                            raise ValueError('unmapped indirect creation entry')
+                        matches = sorted((e for e in ir_events
+                                          if e['thread'] == threads[parent['id']]
+                                          and same_source(stmt, e) and 'ThreadCreate(' in e['code']),
+                                         key=lambda e: e['id'])
+                        sites = [sid for sid, candidate in instructions.items()
+                                 if is_creation(candidate) and matches and same_source(candidate, matches[0])]
+                        if not matches or sites != [step['statement']]:
+                            raise ValueError('ambiguous/unmapped AR creation site')
+                        origins = {e.get('unrolling_id', -1) for e in matches}
+                        if len(matches) > 1 and (len(origins) != 1 or -1 in origins):
+                            raise ValueError('ambiguous/unmapped creation clones')
+                        creator = next((e for e in matches if e['id'] > previous), None)
+                        if creator is None:
+                            raise ValueError('creation sequence exceeds reference bound')
+                        if not re.match(r'ThreadCreate\(T\d+:' + re.escape(actual['id']) + r',', creator['code']):
+                            raise ValueError('reference creation entry mismatch')
+                        statement = step['statement']
+                        ordinal = ordinals.get(statement, 0) + 1
+                        ordinals[statement] = ordinal
+                        occurrence = ordinal if len(matches) > 1 else None
+                        prefix_count += 1
+                        previous = creator['id']
+                        mapping[step_index] = creator, occurrence, prefix_count
+                        creators[creator['id']] = creator, occurrence, prefix_count
+                    creation_maps[parent['id']] = mapping
+                creator, occurrence, prefix_count = creation_maps[parent['id']][index]
                 children = {e['thread'] for e in ir_events if e['creator'] == creator['id']}
                 if len(children) != 1:
                     raise ValueError('ambiguous/unmapped created thread: ' + name)
                 threads[name] = children.pop()
-                creators[creator['id']] = creator, occurrence
                 creation_bindings.append(dict(trace=name, parent_trace=parent['id'],
                                               creator_step=trace['creator_step'], reference_event=creator['id'],
-                                              occurrence=occurrence, pre_unroll_id=creator.get('unrolling_id', -1)))
+                                              occurrence=occurrence, prefix_count=prefix_count,
+                                              pre_unroll_id=creator.get('unrolling_id', -1)))
             else:
                 continue
             if threads[name] in (t for n, t in threads.items() if n != name):
@@ -412,7 +425,7 @@ def translate(replay, ir_hash, ir_events):
         claims[e['id']] = dict(object=init['object'], offset=init['offset'], width=(init['bits'] + 7) // 8)
         initial_bindings.append(dict(reference_event=e['id'], **init))
     selected = ([bound[i] for i in target_ids] + [e for i, e in bound.items() if i not in target_ids]
-                + [e for e, _ in creators.values()])
+                + [e for e, _, _ in creators.values()])
     if target_ids[0] == target_ids[1]:
         raise ValueError('targets collapse to one dynamic event')
     cert = certificate(ir_hash, selected)
@@ -420,6 +433,8 @@ def translate(replay, ir_hash, ir_events):
         cert.update({f'event.{i}.{k}': v for k, v in claims.get(e['id'], {}).items()})
         if e['id'] in creators and creators[e['id']][1] is not None:
             cert[f'event.{i}.creation_occurrence'] = creators[e['id']][1]
+        if e['id'] in creators:
+            cert[f'event.{i}.creation_prefix_count'] = creators[e['id']][2]
     cert['edge_count'] = len(edges)
     for i, edge in enumerate(edges):
         for key, value in edge.items():

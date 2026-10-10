@@ -1,0 +1,97 @@
+{
+  "script_sha256": "c430b1d07824db796008688f5d768bb04b7086a33c468ee7630a5e9a8d6422ec",
+  "rows": [
+    {
+      "bits": 32,
+      "result": {
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:counter",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 11,
+              "1": 15
+            }
+          },
+          {
+            "instance": 2,
+            "object": "global:counter",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 47
+            }
+          }
+        ],
+        "steps": 76
+      },
+      "changed_read_probe": {
+        "status": "REJECT",
+        "reason": "SMT value differs from concrete replay"
+      },
+      "changed_creator_probe": {
+        "status": "REJECT",
+        "reason": "thread executes before actual create"
+      }
+    },
+    {
+      "bits": 64,
+      "result": {
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:counter",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 11,
+              "1": 15
+            }
+          },
+          {
+            "instance": 2,
+            "object": "global:counter",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 47
+            }
+          }
+        ],
+        "steps": 76
+      },
+      "changed_read_probe": {
+        "status": "REJECT",
+        "reason": "SMT value differs from concrete replay"
+      },
+      "changed_creator_probe": {
+        "status": "REJECT",
+        "reason": "thread executes before actual create"
+      }
+    }
+  ],
+  "scope": "CONDITIONAL_ON_IKOS_PROGRAM_SNAPSHOT",
+  "full_counterexample_validated": false
+}
