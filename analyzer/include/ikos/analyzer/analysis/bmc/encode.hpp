@@ -589,6 +589,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       std::vector< z3::expr > sources;
       struct Write {z3::expr time; z3::expr value; z3::expr matches;};
       std::vector< Write > writes;
+      bool same_path_sources = access.base != 0 && access.var_id == 0;
       auto collect = [&](const std::vector< BmcEvent >& events, ValueCache& values,
                          const std::string& label, std::size_t clock_start) {
         std::size_t begin = 0;
@@ -613,6 +614,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
           z3::expr encoded(ctx);
           if (stored_type == nullptr || stored_type->bit_width() != type->bit_width() ||
               !encode_value(value, encoded, values, label, depth + 1, j)) return false;
+          same_path_sources &= &events == &path && e.var_id == 0 && e.const_off == access.const_off;
           writes.push_back({clock[clock_start + j], stored_type->is_signed() == type->is_signed() ? encoded : convert(encoded),
                             write_offset == read_offset});
         }
@@ -628,6 +630,13 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
         return true;
       }
       if (!collect(pathA, cache_a, "value_a_", 0) || !collect(pathB, cache_b, "value_b_", nA)) return false;
+      // In these two prefixes, po fixes the latest exact-region write. Keep
+      // collect's full source validation; this does not prove program privacy.
+      if (same_path_sources && (!writes.empty() || known)) {
+        s.add(out == (writes.empty() ? initial : writes.back().value));
+        record(diagnostics, "sc_same_path_read_from", load);
+        return true;
+      }
       z3::expr read_time = clock[(prefix == "value_a_" ? 0 : nA) + definition_index];
       for (std::size_t j = 0; j < writes.size(); ++j) {
         z3::expr latest = writes[j].matches && writes[j].time < read_time;
