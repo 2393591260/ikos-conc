@@ -1,0 +1,32 @@
+[
+  {
+    "bits": 32,
+    "build_command": [
+      "gcc",
+      "-m32",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/libatomic-abi.c",
+      "-latomic",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/libatomic-abi-32"
+    ],
+    "build_returncode": 0,
+    "build_output": "",
+    "run_returncode": 0,
+    "run_output": "8-byte generic atomic store publishes 1\n"
+  },
+  {
+    "bits": 64,
+    "build_command": [
+      "gcc",
+      "-m64",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/libatomic-abi.c",
+      "-latomic",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/libatomic-abi-64"
+    ],
+    "build_returncode": 0,
+    "build_output": "",
+    "run_returncode": 0,
+    "run_output": "8-byte generic atomic store publishes 1\n16-byte generic atomic store publishes 1\n"
+  }
+]

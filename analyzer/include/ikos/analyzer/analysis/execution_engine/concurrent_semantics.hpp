@@ -157,13 +157,9 @@ inline AtomicKind classify_atomic_intrinsic(const std::string& fname) {
   if (fname == "__VERIFIER_atomic_end") {
     return AtomicKind::SectionEnd;
   }
-  // GCC __sync_* and __atomic_* families are single-call hardware atomics.
-  if (fname.size() >= 7 && fname.compare(0, 7, "__sync_") == 0) {
-    return AtomicKind::SingleCall;
-  }
-  if (fname.size() >= 9 && fname.compare(0, 9, "__atomic_") == 0) {
-    return AtomicKind::SingleCall;
-  }
+  // GCC lowers supported builtins to atomic AR accesses. An arbitrary
+  // __sync_*/__atomic_* name establishes neither an atomicity nor an effect
+  // contract: analyze definitions normally and gate uncovered declarations.
   // SV-COMP single-call primitives. __VERIFIER_atomic_w is treated as a
   // single-call atomic (no companion end-marker; it just flips a flag).
   if (fname == "__VERIFIER_atomic_CAS" ||
@@ -1120,6 +1116,9 @@ bool exec_atomic_extern_call(E& eng,
       eng.lockset().remove_lock(PSEUDO_ATOMIC_LOCK);
       return true;
     case AtomicKind::SingleCall:
+      // Atomicity does not cover an omitted body's values or memory effects.
+      eng.ctx().concurrent_env.record_unmodeled_effect(
+          call, "atomic call effects not covered");
       eng.lockset().add_lock(PSEUDO_ATOMIC_LOCK);
       eng.exec_unknown_call(call,
                             /* may_write_params = */ true,

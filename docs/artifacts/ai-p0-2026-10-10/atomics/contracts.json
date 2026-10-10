@@ -1,0 +1,11 @@
+{
+  "url": "https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html",
+  "sha256": "163dd4120227973440c3d0a2cde6b91fc6c91d3edb17fd05d87aecacf31238c3",
+  "excerpt": "-arithmetic functions (load, store, exchange, and \ncompare_exchange) all have a generic version as well.  This generic\nversion works on any data type.  It uses the lock-free built-in function\nif the specific data type size makes that possible; otherwise, an\nexternal call is left to be resolved at run time.  This external call is\nthe same format with the addition of a &lsquo;<samp class=\"samp\">size_t</samp>&rsquo; parameter inserted\nas the first parameter indicating the size of the object being pointed to.\nAll objects must be the same size.\n</p>\n<p>There are 6 different memory orders that can be specified.  These map\nto the C++11 memory orders with the same names, see the C++11 standard\nor the <a class=\"uref\" href=\"https://gcc.gnu.org/wiki/Atomic/GCCM",
+  "limitations": [
+    "Generic external atomic memory/value effects remain unsupported; fallback UNKNOWN.",
+    "Dartagnan generic atomic PASS accompanied by unknown-intrinsic warning is not confirmation.",
+    "Native probe checks ABI value effects only, not a concurrent witness.",
+    "Ordinary definitions with GCC-looking symbol names are analyzed without invented atomicity; BMC still conservatively refuses to inline these names."
+  ]
+}

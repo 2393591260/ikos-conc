@@ -745,3 +745,38 @@ ILP32的__int128原输入编译失败，必须另建有效双ABI版本才作双�
 [参考](artifacts/ai-p0-2026-10-10/calls/reference.json)、
 [15项归因](artifacts/ai-p0-2026-10-10/calls/regression-causes.json)、
 [全量配对](artifacts/ai-p0-2026-10-10/calls/paired.json)。
+
+
+### 9.14 P0：外部原子库效果覆盖与函数名前缀
+
+GCC generic libatomic store的运行时ABI为(size_t,void*,void*,int)。新8byte版本在
+ILP32/LP64均可编译，mutex下writer写flag=1而reader先重设0再读取，锁外payload
+访问真实无序；旧版双模式SAFE。它经过SingleCall路由只havoc本地内存，未发布值摘要。
+原16byte版本只在LP64可用，结论不外推到ILP32。
+另外普通定义的ELF符号带__atomic_/__sync_前缀时旧版注入共同伪锁，
+两个线程调用同一写函数也SAFE。输入用普通C标识符加asm符号指定，避免仅凭保留C名字论证。
+
+移除GCC名字家族的伪锁分类；已定义函数正常分析，未覆盖声明走已有extern边界。
+SV-COMP规定的verifier atomic定义仍按真实函数体分析；仅有声明的single-call atomic
+另记录atomic-call-effects UNKNOWN，原子性不能代替被省略函数体的值/内存效果。
+GCC实际降为AR atomic Load/Store的路径不变。此阶段没有实现新的libatomic值模型，
+BMC对GCC-looking helper仍保守拒绝展开，不因此承诺这些新例变成TP。
+
+build/install一致；46次双ABI/双模式/改名/typed对照、原审查76次及旧BMC20次通过。
+竞争的generic store、普通前缀定义与未知声明均不再SAFE；安全的atomic写0/同锁payload
+对照也UNKNOWN，明确是能力边界。原生Dartagnan对typed对照及前缀定义双ABI均FAIL，
+对generic store却警告unknown intrinsic后PASS，后者无效，不能作为安全依据。
+GCC官方说明核实ABI，本机32/64bit运行核实8/16byte写入值，只证明库效果前提，不是witness验收。
+
+1029完整顺序AI/BMC扫描逐任务与calls阶段一致：AI TN647/UNKNOWN381/error1；
+BMC TP104/TN647/UNKNOWN277/error1，FP/FN0。nsc-ircc超时保留。
+效果旁路审查另复现read、printf的%n和strncpy的共享值未发布，以及read(NULL,0)
+错误终止有效后续路径，双ABI/双模式均SAFE；这些作为下一项独立机制处理。
+原生Dartagnan在库操作上未正确覆盖，校准Goblint也遗漏%n，参考PASS不当作真值。
+证据：[汇总](artifacts/ai-p0-2026-10-10/atomics/summary.json)、
+[前](artifacts/ai-p0-2026-10-10/atomics/fixtures-before.json)、
+[后](artifacts/ai-p0-2026-10-10/atomics/fixtures-after.json)、
+[合同](artifacts/ai-p0-2026-10-10/atomics/contracts.json)、
+[原生参考](artifacts/ai-p0-2026-10-10/atomics/reference.json)、
+[本机ABI](artifacts/ai-p0-2026-10-10/atomics/native.json)、
+[全量配对](artifacts/ai-p0-2026-10-10/atomics/paired.json)。
