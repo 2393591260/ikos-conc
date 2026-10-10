@@ -1,0 +1,149 @@
+{
+  "tasks": 1029,
+  "matrix": {
+    "TP": 106,
+    "FP": 0,
+    "TN": 696,
+    "FN": 0,
+    "error": 0,
+    "unknown": 227
+  },
+  "unknown_tasks_by_observed_reason": {
+    "ai_candidate_bounds": {
+      "racy": 13,
+      "safe": 10
+    },
+    "sc_read_from": {
+      "racy": 26,
+      "safe": 20
+    },
+    "smt_unsat": {
+      "racy": 16,
+      "safe": 17
+    },
+    "address_base": {
+      "racy": 1
+    },
+    "integer_operation": {
+      "racy": 24,
+      "safe": 21
+    },
+    "sc_same_path_read_from": {
+      "racy": 26,
+      "safe": 22
+    },
+    "non_global_object": {
+      "racy": 30,
+      "safe": 20
+    },
+    "points_to_not_singleton": {
+      "racy": 19,
+      "safe": 13
+    },
+    "thread_activation_unproven": {
+      "racy": 80,
+      "safe": 69
+    },
+    "mutex_identity": {
+      "racy": 1
+    },
+    "target_not_reached": {
+      "racy": 52,
+      "safe": 28
+    },
+    "prefix_statement": {
+      "safe": 16,
+      "racy": 18
+    },
+    "call_summary": {
+      "racy": 49,
+      "safe": 31
+    },
+    "prefix_address": {
+      "racy": 1
+    },
+    "activation_deferred": {
+      "safe": 25,
+      "racy": 35
+    },
+    "activation_small_bound": {
+      "safe": 25,
+      "racy": 35
+    },
+    "constant_guard_unsat": {
+      "safe": 23,
+      "racy": 24
+    },
+    "offset_prefilter": {
+      "safe": 5
+    },
+    "transitive_thread_order": {
+      "safe": 11,
+      "racy": 3
+    },
+    "mixed_atomic": {
+      "safe": 2
+    },
+    "unroll_path_budget": {
+      "safe": 11,
+      "racy": 13
+    },
+    "atomic_completed_paths": {
+      "racy": 12,
+      "safe": 3
+    },
+    "interrupted_small_bound": {
+      "racy": 13,
+      "safe": 16
+    },
+    "search_budget": {
+      "racy": 37,
+      "safe": 23
+    },
+    "smt_unknown": {
+      "racy": 2
+    },
+    "unmodeled_sync": {
+      "safe": 3
+    },
+    "unroll_work_budget": {
+      "racy": 25,
+      "safe": 15
+    },
+    "startup_read_from": {
+      "safe": 1
+    },
+    "literal_loop_search_hint": {
+      "racy": 4
+    },
+    "atomic_interior_unsat": {
+      "racy": 2
+    },
+    "prefix_value_origin": {
+      "racy": 2,
+      "safe": 1
+    },
+    "atomic_pair": {
+      "racy": 15,
+      "safe": 7
+    },
+    "group_search_budget": {
+      "racy": 5,
+      "safe": 1
+    },
+    "cached_guard_rejection": {
+      "safe": 1
+    },
+    "join_completion_unproven": {
+      "racy": 8,
+      "safe": 2
+    }
+  },
+  "note": "Reasons overlap; counts are observed blockers, not recoverable TP estimates. First blockers describe recorded traversal order; later stages behind failed gates were not explored.",
+  "timeout": 30,
+  "jobs": 4,
+  "environment": {
+    "IKOS_BMC_RECOVER": "1",
+    "IKOS_BMC_DIAGNOSTICS": "1"
+  }
+}

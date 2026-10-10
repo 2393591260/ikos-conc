@@ -23,32 +23,42 @@
 双架构最小回归不等于做过 LP64 全量；这 1029 项也不自动等于官方 2027 类别全集。
 仓库技能此前递归扫描还发现 `todo/` 下额外一个 YAML，是否属于比赛任务须由官方清单确定。
 
-最近分析器行为提交为 `48d36a2`；其后 `ea00a07` 更新台账、`7daab30` 记录共享回调方案，
-没有增加分析能力。安装二进制 SHA256：
-`0a741e12b80f9984b7b52c4f16d703bf126cc0ba7a654f7ffc3f779a8fbed6ff`。
+**第一版已完成本节约定的工程验收**。最近分析器行为提交为 `8c0ec5a`；
+最后的发布提交仅更新文档和小型证据。安装二进制 SHA256：
+`a88dc47be73510ddb380bbb9b842d2ce448f96755d99a29a72192732900f90ff`。
 这些指纹用于复核已保存实验，不代表以后构建的二进制必须具有同一 hash。
 
 | 2026 冻结集，BMC + demote | TP | FP | TN | FN | UNKNOWN | error |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 当前已保存全量 | **104** | **0** | **696** | **0** | **229** | **0** |
+| 第一版开始 | 104 | 0 | 696 | 0 | 229 | 0 |
+| 第一版完成 | **106** | **0** | **696** | **0** | **227** | **0** |
 
-**TP 指与 YAML 标签一致的 FALSE，尚未全部独立验证所选反例。**
-竞争标签程序中仍可能存在假 SMT 执行，标签命中不能检出这种问题。
-FP/FN 为零仅是此集合的实测观察；完整源程序/witness 验证、全部 SAFE 过滤规则证明、
-完整 C/LLVM definedness 论证和公平的全局性能比较仍未完成。
+最终普通/诊断运行各1029项，jobs4、每项30秒，逐任务判定完全一致。
+**TP仍指与YAML标签一致的FALSE；106项的132组所选执行另外全部获独立AR检查ACCEPT。**
+两种证据分别记录，标签命中不能验证模型。AR检查独立执行CFG、动态实例、值/地址、
+字节读源和同步，但以可信前端/快照和明确API合同为前提，**不是官方C/witness2.2验收**，
+也不证明所有可能SAT模型、全部SAFE过滤或完整C/LLVM definedness。
+正常分析器仍将导出证据标为UNVALIDATED，离线验收结果单独存储。
 
-[最新逐任务记录](artifacts/bmc-tp104-ledger-2026-10-10/results.json)与
-[汇总](artifacts/bmc-tp104-ledger-2026-10-10/summary.json)共 **301 条历史任务**：
-229 个当前 UNKNOWN、69 个后来恢复的标签 TP、3 个抽象 SAFE。
-它不是 104 个当前 TP 的完整验证清单。229 项已用最终安装二进制重新诊断，全部仍 UNKNOWN。
+最新发布证据：[全量诊断配对](artifacts/bmc-v1-final-2026-10-10/diagnostic-paired.json)、
+[132组执行验收](artifacts/bmc-v1-final-2026-10-10/execution-results.json)、
+[执行汇总](artifacts/bmc-v1-final-2026-10-10/execution-summary.json)。
+剩余[227项UNKNOWN台账](artifacts/bmc-v1-final-2026-10-10/unknown-results.json)与
+[汇总](artifacts/bmc-v1-final-2026-10-10/unknown-summary.json)保存当前诊断、
+结构化结果/度量、源代码位置、历史参考与尝试记录、下一步语义义务。
+成功使用的bounds、rf、整数编码等观测不直接当作失败原因；阻塞/预算类别可以重叠。
+本轮没有重新逐源码人工研究227项；台账是新诊断与已核实历史研究的衔接，
+后续实施仍须按§11.1选具体文件核实实际前提。
 
-| 当前 UNKNOWN 的固定参考历史结果 | FAIL | TIMEOUT | ERROR | PASS | UNKNOWN |
+| 当前UNKNOWN的固定参考历史结果 | FAIL | TIMEOUT | ERROR | PASS | UNKNOWN |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| 数量 | 101 | 73 | 25 | 29 | 1 |
+| 数量 | 99 | 73 | 25 | 29 | 1 |
 
-参考记录仅在输入 hash 一致时沿用；属性用例、malloc_struct、共享回调另有新运行。
-不能称为 229 次新的 Dartagnan 分析。FAIL 是参考找到竞争，不能证明 IKOS 所选模型；
-PASS、界限不足 UNKNOWN、TIMEOUT 和 ERROR 必须分开。101 个 FAIL 也不是可承诺恢复的 TP 数。
+全部参考记录沿用前先核对输入SHA256；**不是227次新的Dartagnan分析**。
+FAIL是参考找到竞争，不能证明IKOS所选模型；99个FAIL也不是可承诺恢复的TP数。
+旧[TP104阶段台账](artifacts/bmc-tp104-ledger-2026-10-10/results.json)301条是历史集合，
+包含当时229项UNKNOWN、69项后来恢复的标签TP和3项抽象SAFE，不再代表当前状态。
+第一版停止于有限语义、独立检查、AI契约/实测及可追踪能力边界，详见§12.1。
 
 <a id="contract"></a>
 ## 2. 判定契约与参考理论
@@ -724,7 +734,7 @@ FK旧mapper把首次consumer和producer映射到同一循环互斥分支，导�
 修复沿实际consumer22→producer38而非producer16，部分SAT，坏值/创建数UNSAT、坏creator拒绝。
 这项修改属于研究adapter，不能算分析器能力或额外TP。
 
-### 10.5 已保存覆盖与未闭环内容
+### 10.5 历史部分模型覆盖与当时缺口
 
 | 历史模型集合/检查阶段 | 结果 | 解释 |
 | --- | --- | --- |
@@ -745,7 +755,7 @@ fib5早先bound16超时，后来新模型bound13双架构部分SAT；fib10/12指
 **坏模型被拒绝不能把原模型超时算成验证通过。**
 状态继续为`PARTIAL_FIXED_MEMORY_MODEL`，`full_counterexample_validated:false`。
 
-已有未跟踪 `scripts/replay_bmc.py` 只读条件试验：9个ILP32 byte模型及FK可ACCEPT，
+第一版前已有未跟踪 `scripts/replay_bmc.py` 只读条件试验：9个ILP32 byte模型及FK可ACCEPT，
 改读值/creator均REJECT；byte的LP64因NULL pointer-byte tuple与整数零检查不一致UNSUPPORTED。
 创建数组曾因main(argc,argv)零实参初始化失败，尚未执行事件。
 它依赖同IKOS AR快照与glibc合同，没有独立C导入；脚本未提交，证据以本地hash为条件，
@@ -767,11 +777,16 @@ join 和 stdio stream 同步；命名/verifier atomic 检查完整边界与不�
 **不是官方 C-source / witness2.2 验收或普遍 soundness 证明**。正常分析器仍输出 UNVALIDATED，
 离线 sweep 单独保存验收结论，不能把未运行过的证据升级为已验证。
 
-结果：[129组逐执行记录](artifacts/bmc-v1-execution-2026-10-10/results.json)、
+第一版执行检查初始阶段结果：[129组逐执行记录](artifacts/bmc-v1-execution-2026-10-10/results.json)、
 [汇总](artifacts/bmc-v1-execution-2026-10-10/summary.json)、
 [全量配对](artifacts/bmc-v1-execution-2026-10-10/paired.json)。104项标签TP共129组：
 128 ACCEPT、1 UNSUPPORTED、0 REJECT；103项全部所选组通过，另1项的函数指针
 非简单初值尚未导入。没有将这一项计为假反例，也没有把它计为已验证。
+
+**最终发布重新导出并检查当前106项的全部132组：132 ACCEPT、0 REJECT、0 UNSUPPORTED。**
+共享函数初值/真实callee、stdio目标顺序等后续机制都已包含在这次最终证据中；
+不是沿用初始128组验收来覆盖新增模型。见[最终汇总](artifacts/bmc-v1-final-2026-10-10/execution-summary.json)
+和[逐组记录](artifacts/bmc-v1-final-2026-10-10/execution-results.json)。
 
 242条双架构断言使用真实分析器输出，篡改创建步骤、目标实例、值、偏移、宽度、
 read_from、重复trace、synthetic边界和快照hash必须REJECT。命名atomic的调用事件
@@ -788,7 +803,7 @@ AR调用/atomic边界更正，不能据此撤回6个TP。stdio保留POSIX stream
 
 ```bash
 python3 scripts/test_bmc_execution.py
-python3 scripts/sweep_bmc_execution.py --reports <本轮104项报告目录> --output /tmp/NEW
+python3 scripts/sweep_bmc_execution.py --reports <本轮确认任务报告目录> --output /tmp/NEW
 ```
 
 <a id="workflow"></a>
@@ -900,7 +915,7 @@ python3 scripts/dartagnan_strict/test_indirect_addresses.py
 不再新建一篇平行BMC报告。跨模块SAFE理论仍放专门架构文档，本文记录影响和链接。
 
 <a id="roadmap"></a>
-## 12. 下一阶段、小目标与结束条件
+## 12. 第一版验收、后续范围与结束条件
 
 当前没有必须用户补源码/安装工具才能推进的阻塞。
 官方2027任务清单、validator版本及实际BenchExec参数需要组织者明确；暂不阻塞2026回归。
@@ -909,7 +924,7 @@ python3 scripts/dartagnan_strict/test_indirect_addresses.py
 | 阶段 | 小目标/实施落点 | 验收与暂时停止条件 |
 | --- | --- | --- |
 | P0持续正确性/证据 | 审查新规则与SAFE覆盖；完善指定实例/值/地址/同步/CFG绑定 | 发现假模型或FN先修；部分SAT不升级完整验证 |
-| 近期精度：共享回调 | 有来源function-pointer SC + 实际callee等式 + 动态调用/导出 | 最小正反变体、参考probe、所选证据、全量旧TP/TN变化明确后提交 |
+| 第一版已完成：共享回调 | 有来源function-pointer SC + 实际callee等式 + 动态调用/导出 | 最小正反变体、参考probe、所选证据、全量旧TP/TN变化明确后提交 |
 | 对象/句柄/依赖闭包 | 动态allocation/lifetime、join实例、必要第三线程 | 每次只补当前具体任务所需通用子集；来源/副作用不可证继续UNKNOWN |
 | 同步/搜索 | 有限属性/失败API、atomic闭包、公平调度与公式规模 | 先合同和保持性；预算实验逐项A/B，不能替换旧成功任务却称提升 |
 | IKOS协同与TN恢复 | 字段化interference、嵌套保护、条件化may/must证书 | 不恢复旧漏报；消融测候选/依赖规模、结果、时间/内存 |
@@ -922,12 +937,12 @@ python3 scripts/dartagnan_strict/test_indirect_addresses.py
 不因单次超时或TP平台期宣称达到数学能力上限。
 不能实现的边界可以暂放过，但须写需要哪类语义/证明/官方信息，而不是归因“大模型能力不足”。
 
-### 12.1 第一版实施与验收（用户已授权）
+### 12.1 第一版已完成：实施与验收
 
 第一版是候选驱动的 SC 有界确认器：保留 IKOS 抽象解释负责 SAFE、may 候选、
 范围与局部无溢出事实的分工；不以清空 UNKNOWN 或复刻 Dartagnan 为结束条件。
 
-验收分阶段：
+第一版范围与验收要求：
 
 1. **结果/证据接口**：普通运行也返回所选模型的程序快照、动态前缀、创建绑定、
    值/地址与目标；诊断仅追加计数与示例。未确认结果显式分类，不宣称 SAFE。
@@ -940,7 +955,34 @@ python3 scripts/dartagnan_strict/test_indirect_addresses.py
 5. **发布状态**：每阶段 build/install、双架构 P0、相应语义回归、1029 配对后立即独立
    commit。剩余 UNKNOWN 均有参考状态、具体阻塞与后续所需语义。
 
-以上验收结果分别更新本文及小型 artifacts；未完成项目不能被“第一版已完成”覆盖。
+第一版验收结论如下；行为阶段分别build/install、双架构P0、相关回归和全量配对后提交，
+未改frontend。最终发布只补证据/文档，不改变已验证二进制。
+
+| 完成项 | 实现/验收 | 独立提交 |
+| --- | --- | --- |
+| 结果/证据接口 | 普通运行保留counterexample，诊断开关同证据；全量104→104 | `71599ad` |
+| 独立AR执行检查 | 原CFG/调用/实例/字节值/地址/rf/同步逐事件检查，242条双架构断言及损坏校准 | `5ad8814` |
+| 有限共享回调 | 实际SC函数指针值绑定实际callee；28个双架构语义案例，比赛104→106 | `e40db83` |
+| 受限join完成 | 实际创建句柄匹配无副作用return-NULL子线程；20个双架构案例，比赛106→106 | `539a0b4` |
+| stdio查询正确性 | 排除会建立目标HB的stream顺序，保留合法其他顺序；8个双架构案例和串行坏证据拒绝 | `b8a2762` |
+| AI契约与可测协同 | 依赖覆盖、数值证书适用条件；普通metrics/跨轮累积；10输入60次消融 | `8c0ec5a` |
+| 最终发布 | 1029普通/诊断逐项相同；106项132组AR ACCEPT；227项UNKNOWN有记录 | 本次文档/小型JSON提交 |
+
+本版只新增两个比赛TP：`04-mutex_27-base_rc.c`与
+`char_generic_nvram_read_nvram_write_nvram-race.i`，均有固定版Dartagnan竞争依据。
+join改善最小反例，不冒称比赛TP增益；stdio修模型可行性，不冒称发现了新的冻结集FP。
+阶段TP/TN数字、前后任务与测试限制均保留在各阶段JSON。
+
+**可以进一步完善IKOS向BMC供信息的架构，且第一版已做有限实证。**
+AI提供may候选/对象范围、AR布局/精确初值、受限局部no-wrap证书；BMC负责实际值源/实例执行，
+不把抽象事实充作真实store。no-wrap正例总时间开/关为0.184/0.464秒，solver为
+3379/279123微秒，证明这类证书可以减少重复求解。其他比赛样本基本持平，
+尚无全局大幅加速、更快于Dartagnan或显著减少依赖规模的证据（§3.1）。
+字段化干扰、嵌套保护、条件化may/must摘要仍是后续工作，未混入第一版成果。
+
+**本版在这里结束**：具备有限候选确认、可独立核对的所选执行、AI使用契约/受控测量、
+可复现基线和完整当前UNKNOWN记录。这个停止点是已授权工程范围完成，
+不意味着全部UNKNOWN不可恢复、所有正确性问题已证明不存在或普遍分析能力到达上限。
 一般 K 线程/堆图/寿命、弱内存、公平性、CAT 引擎和官方 witness2.2 验收可留到后续版本。
 
 **结果接口阶段**：本阶段1029项固定jobs4/30秒A/B为 TP104→104、TN696→696、UNKNOWN229→229、
@@ -1002,6 +1044,26 @@ NVRAM第一次被检查器拒绝是快照遗漏合法variadic元数据，补足�
 [执行检查](artifacts/bmc-v1-shared-callback-2026-10-10/summary.json)，
 [变体](artifacts/bmc-v1-shared-callback-2026-10-10/fixtures.json)。
 
+### 12.3 第一版后仍需哪些语义
+
+当前227项全部有记录，下一版按具体参考竞争及其实际缺口选择任务，而非统一扩大BMC。
+以下是台账里需核实的义务类别，**可重叠，也不是预计新增TP**：
+
+| 义务类别 | 涉及当前UNKNOWN项 | 实施前提/边界 |
+| --- | ---: | --- |
+| 动态创建/激活 | 167 | 真实entry、实参、创建occurrence及祖先前缀；deferred试验不等于已建模 |
+| 搜索预算/展开 | 83 | 保留旧成功路径，测query/event成本；不把超时解释为语义不可实现 |
+| 对象/地址身份 | 52 | 实际allocation/stack/TLS实例、偏移、extent及寿命，不能用may别名替代 |
+| API字节效果 | 9 | calloc/memset/memcpy等的初始化、复制、大小/重叠及定义性合同 |
+| 动态allocation | 8 | 超出pre-spawn main单次分配的具体发生次数、失败、发布与寿命 |
+| 非惰性子线程join | 10 | 实际句柄和第三线程完整终止/副作用，不能把join绑定任意另一端 |
+
+另有63项含未支持调用效果、34项含AR操作/定义性、35项涉及atomic查询覆盖等义务；
+它们和上述类别重叠。67项记录了有界UNSAT/guard/实例顺序等查询义务，
+不能据此承诺有竞争，也不能将已有正确约束放松。明细/例句见当前台账。
+字段化干扰与嵌套保护的SAFE精度需单独A/B，历史TN退步仍保留在§9.3。
+官方任务清单、正式validator与BenchExec合同确定后再做比赛外部验收。
+
 <a id="history"></a>
 ## 13. 阶段历史与不再采用的判断
 
@@ -1034,6 +1096,10 @@ NVRAM第一次被检查器拒绝是快照遗漏合法variadic元数据，补足�
 | 同步真实控制宽度 | 102→102 | 696 | 231 | owner字段假反例收紧，冻结集不变 |
 | ERRORCHECK生命周期 | 102→104 | 696 | 229 | 两合法owned-unlock任务 |
 | pointer-slot纯cast、最终台账/回调probe | 104→104 | 696 | 229 | 通用cast恢复最小正例；回调仍方案 |
+| 第一版结构化结果、独立AR检查 | 104→104 | 696 | 229 | 分阶段提交；初始129组选中128 ACCEPT、1 UNSUPPORTED |
+| 第一版有限共享回调 | 104→106 | 696 | 227 | 实际指针值/SC来源/callee绑定；新增两比赛任务 |
+| 第一版受限join、stdio顺序、AI契约 | 106→106 | 696 | 227 | 通用最小反例/正确性/测量；无额外比赛TP增益 |
+| 第一版最终验收与UNKNOWN记录 | 106→106 | 696 | 227 | 最终132组AR ACCEPT；227项诊断/义务更新 |
 
 历史审查参考头10beda2、A1/早期阶段51b795c，最初多轮未提交diff后由用户分8个commit
 整理e8bab77…3e36320。后续独立阶段立即提交，不再以巨型diff交付。
@@ -1063,6 +1129,16 @@ TP35→58原285处置为23恢复、135参考竞争仍未确认、23PASS、78TIME
 probe/校准/所选模型与hash；它们的日期/数字是**历史阶段**，不是当前基线。
 原报告正文可从本次合并提交的父提交查看；不再维护平行Markdown。
 JSON中旧报告路径是不可改写的实验来源元数据，查结论请按本文章节和以下索引定位。
+
+### 第一版实现与发布
+
+- **结构化结果**：[summary](artifacts/bmc-v1-results-2026-10-10/summary.json)。
+- **独立执行检查初始阶段**：[summary](artifacts/bmc-v1-execution-2026-10-10/summary.json)。
+- **第一版共享回调（2026-10-10）**：[paired.json](artifacts/bmc-v1-shared-callback-2026-10-10/paired.json)；[summary.json](artifacts/bmc-v1-shared-callback-2026-10-10/summary.json)；[results.json](artifacts/bmc-v1-shared-callback-2026-10-10/results.json)；[fixtures.json](artifacts/bmc-v1-shared-callback-2026-10-10/fixtures.json)。
+- **受限join**：[paired](artifacts/bmc-v1-join-2026-10-10/paired.json)、[fixtures](artifacts/bmc-v1-join-2026-10-10/fixtures.json)、[reference](artifacts/bmc-v1-join-2026-10-10/reference.json)。
+- **stdio目标顺序**：[paired](artifacts/bmc-v1-stdio-order-2026-10-10/paired.json)、[calibration](artifacts/bmc-v1-stdio-order-2026-10-10/calibration.json)。
+- **AI事实/度量消融**：[paired](artifacts/bmc-v1-ai-facts-2026-10-10/paired.json)、[ablation-summary](artifacts/bmc-v1-ai-facts-2026-10-10/ablation-summary.json)、[ablation-results](artifacts/bmc-v1-ai-facts-2026-10-10/ablation-results.json)。
+- **最终发布**：[diagnostic-paired](artifacts/bmc-v1-final-2026-10-10/diagnostic-paired.json)、[execution-summary](artifacts/bmc-v1-final-2026-10-10/execution-summary.json)、[execution-results](artifacts/bmc-v1-final-2026-10-10/execution-results.json)、[unknown-summary](artifacts/bmc-v1-final-2026-10-10/unknown-summary.json)、[unknown-results](artifacts/bmc-v1-final-2026-10-10/unknown-results.json)。
 
 ### 架构、审查与参考驱动
 
@@ -1190,5 +1266,3 @@ JSON中旧报告路径是不可改写的实验来源元数据，查结论请按�
 `55590d7c7`、rf类型转换`95224e40c`、指针修复`ee5a58ae9`、devirtualization
 `24a65b237`、混合字长`e45ac070e`、spinloop/bound相关`e8622b751/d8e6066d6/7950dd782/81da44f69`、
 witness `5fc2bcb78`。这些是源码研究入口，不是各机制的当前IKOS缺口证明或收益预测。
-
-- **第一版共享回调（2026-10-10）**：[paired.json](artifacts/bmc-v1-shared-callback-2026-10-10/paired.json)；[summary.json](artifacts/bmc-v1-shared-callback-2026-10-10/summary.json)；[results.json](artifacts/bmc-v1-shared-callback-2026-10-10/results.json)；[fixtures.json](artifacts/bmc-v1-shared-callback-2026-10-10/fixtures.json)。
