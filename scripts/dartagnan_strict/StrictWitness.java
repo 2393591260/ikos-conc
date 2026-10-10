@@ -55,7 +55,9 @@ public final class StrictWitness {
                     ? "heap:" + a.getAllocatedObject().getKnownSize()
                 : e instanceof Init i && i.getBase().isStaticallyAllocated()
                     && i.getBase().getName() != null && i.getValue().getType() instanceof IntegerType t
-                    ? "init:" + b64(i.getBase().getName()) + ":" + i.getOffset() + ":" + t.getBitWidth() : "");
+                    ? "init:" + b64(i.getBase().getName()) + ":" + i.getOffset() + ":" + t.getBitWidth()
+                : e instanceof MemoryCoreEvent m && m.getAccessType() instanceof IntegerType t
+                    ? "memory:" + t.getBitWidth() : "");
     }
     private static void creationOccurrence(EncodingContext c, ProverWithTracker prover, Event e, String ordinal) throws InterruptedException {
         occurrence(c, prover, e, ordinal, true);
@@ -72,7 +74,8 @@ public final class StrictWitness {
                 && j.getLabel().getGlobalId() <= j.getGlobalId()))
             throw new IllegalArgumentException("creation occurrence requires forward-only CFG");
         var clones = parentEvents.stream().filter(x -> (creation ? x instanceof ThreadCreate : x instanceof MemoryCoreEvent
-                && x.hasTag(Tag.READ) == e.hasTag(Tag.READ) && x.hasTag(Tag.WRITE) == e.hasTag(Tag.WRITE))
+                && x.hasTag(Tag.READ) == e.hasTag(Tag.READ) && x.hasTag(Tag.WRITE) == e.hasTag(Tag.WRITE)
+                && ((MemoryCoreEvent) x).getAccessType().equals(((MemoryCoreEvent) e).getAccessType()))
                 && source.equals(x.getMetadata(SourceLocation.class))).toList();
         if (clones.stream().anyMatch(x -> !origin.equals(x.getMetadata(UnrollingId.class))))
             throw new IllegalArgumentException("source location contains distinct creation sites");

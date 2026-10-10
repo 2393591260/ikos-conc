@@ -1,0 +1,20 @@
+{
+  "analyzer_commit": "8baf02b",
+  "analyzer_sha256": "afead1ba60420075aaced9a9b1d8cd0b3ad61ed6c98f034b850391c39cd4a922",
+  "analyzer_behavior_changed": false,
+  "matrix": {
+    "TP": 92,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 240,
+    "error": 0
+  },
+  "validation": {
+    "reference_calibration_assertions": 88,
+    "heap_assertions": 26,
+    "typed_mapping_assertions": 16,
+    "existing_mapping_assertions": 8
+  },
+  "full_counterexample_validated": false
+}

@@ -1,0 +1,212 @@
+{
+  "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+  "report_sha256": "a6afd68f17faf95bfb086120f48acd3e1e0fba36a61400f96677cf61a53cd968",
+  "input_sha256": "2076b13c59b7d49779b8c352bd775e6bfc3c974320821f52074d18209bb5536d",
+  "rows": [
+    {
+      "report_index": 0,
+      "pair_id": 0,
+      "full_counterexample_validated": false,
+      "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+      "threads": {
+        "a": 0,
+        "b": 1
+      },
+      "mapped_memory_events": 3,
+      "omitted_steps": [
+        {
+          "trace": "a",
+          "step": 0,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 1,
+          "kind": "allocate",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 2,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 3,
+          "kind": "store",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 4,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 5,
+          "kind": "store",
+          "reason": "pointer storage/value binding omitted for heap or incompatible reference pointer ABI"
+        },
+        {
+          "trace": "a",
+          "step": 6,
+          "kind": "store",
+          "reason": "pointer storage/value binding omitted for heap or incompatible reference pointer ABI"
+        },
+        {
+          "trace": "a",
+          "step": 7,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 8,
+          "kind": "load",
+          "reason": "pointer storage/value binding omitted for heap or incompatible reference pointer ABI"
+        },
+        {
+          "trace": "b",
+          "step": 0,
+          "kind": "unary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 1,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 2,
+          "kind": "load",
+          "reason": "pointer storage/value binding omitted for heap or incompatible reference pointer ABI"
+        },
+        {
+          "trace": "b",
+          "step": 4,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        }
+      ],
+      "creation_bindings": [
+        {
+          "trace": "b",
+          "parent_trace": "a",
+          "creator_step": 7,
+          "reference_event": 5,
+          "occurrence": null,
+          "pre_unroll_id": 33
+        }
+      ],
+      "heap_bindings": [],
+      "memory_bindings": [
+        {
+          "trace": "a",
+          "step": 9,
+          "reference_event": 8,
+          "occurrence": null,
+          "pre_unroll_id": 41
+        },
+        {
+          "trace": "b",
+          "step": 3,
+          "reference_event": 60,
+          "occurrence": null,
+          "pre_unroll_id": 20
+        },
+        {
+          "trace": "b",
+          "step": 5,
+          "reference_event": 61,
+          "occurrence": null,
+          "pre_unroll_id": 22
+        }
+      ],
+      "nondet_bindings": [],
+      "initial_bindings": [
+        {
+          "reference_event": 94,
+          "object": "g",
+          "offset": 0,
+          "bits": 32
+        }
+      ],
+      "communication_bindings": [
+        {
+          "relation": "rf",
+          "from": 61,
+          "to": 8
+        },
+        {
+          "relation": "rf",
+          "from": 94,
+          "to": 60
+        }
+      ],
+      "communication_omissions": [],
+      "memory_orderings": [
+        {
+          "before": 60,
+          "after": 61
+        },
+        {
+          "before": 61,
+          "after": 8
+        }
+      ],
+      "memory_order_omissions": [],
+      "unbound_claims": [
+        "CFG and call occurrence mapping",
+        "local values and nondet occurrences",
+        "synchronization history and identities",
+        "IKOS total schedule and rf choices"
+      ],
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 1.7516425360008725,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/typed-mapping-37-32/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_37-indirect_rc.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "2076b13c59b7d49779b8c352bd775e6bfc3c974320821f52074d18209bb5536d",
+        "data_model": "32"
+      },
+      "corruption_probe": {
+        "status": "UNSAT_AT_BOUND",
+        "returncode": 0,
+        "seconds": 1.8953159269985917,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/typed-mapping-37-32/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_37-indirect_rc.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "2076b13c59b7d49779b8c352bd775e6bfc3c974320821f52074d18209bb5536d",
+        "data_model": "32"
+      }
+    }
+  ],
+  "warning": "Partial fixed-memory evidence; no full-counterexample verification claim"
+}

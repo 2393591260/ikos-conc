@@ -49,6 +49,14 @@ def same_source(ar, event):
     return event['line'] == ar.get('line') and Path(event['file']).resolve() == Path(ar.get('file', '')).resolve()
 
 
+def memory_type(ar):
+    if ar.get('kind') == 'load':
+        return ar.get('result', {}).get('type', {})
+    if ar.get('kind') == 'store':
+        return ar['operands'][1]['type']
+    return {}
+
+
 def is_creation(ar):
     operands = ar.get('operands', [])
     return (ar.get('kind') == 'call' and len(operands) == 5
@@ -326,14 +334,17 @@ def translate(replay, ir_hash, ir_events):
             if kind not in ('load', 'store') or obj.get('kind') not in ('global', 'heap'):
                 omitted.append(dict(trace=name, step=index, kind=kind, reason='not a mapped global/heap memory access'))
                 continue
-            access_type = ar.get('result', {}).get('type', {}) if kind == 'load' else ar['operands'][1]['type']
-            if heaps and access_type.get('kind') == 'pointer':
+            access_type = memory_type(ar)
+            if access_type.get('kind') == 'integer' and (access_type['bits'] + 7) // 8 != int(address['width']):
+                raise ValueError('AR integer type/access width mismatch')
+            if access_type.get('kind') == 'pointer' and (heaps or replay['program']['pointer_bits'] != 64):
                 # Dat3M's pointer storage is 64-bit even for C ILP32.
-                omitted.append(dict(trace=name, step=index, kind=kind, reason='pointer storage/value binding omitted in heap partial validation'))
+                omitted.append(dict(trace=name, step=index, kind=kind, reason='pointer storage/value binding omitted for heap or incompatible reference pointer ABI'))
                 continue
             token = 'load(' if kind == 'load' else 'store('
             matches = [e for e in ir_events if e['thread'] == threads[name] and same_source(ar, e)
-                       and token in e['code']]
+                       and token in e['code'] and (access_type.get('kind') != 'integer'
+                           or 'memory_bits' not in e or e['memory_bits'] == access_type['bits'])]
             named = ([e for e in matches if re.search(r'\b' + re.escape(obj['id']) + r'\b', e['code'])]
                      if obj['kind'] == 'global' else [])
             if named:
@@ -342,7 +353,7 @@ def translate(replay, ir_hash, ir_events):
                 # Indirect addresses need not print the object's name. Only a
                 # unique static source site may fall back to the SMT address claim.
                 sites = [sid for sid, stmt in instructions.items()
-                         if stmt['kind'] == kind and same_source(stmt, ar)]
+                         if stmt['kind'] == kind and same_source(stmt, ar) and memory_type(stmt) == access_type]
                 if sites != [step['statement']]:
                     matches = []
             if not matches:
@@ -355,7 +366,7 @@ def translate(replay, ir_hash, ir_events):
             if len(matches) > 1:
                 origins = {e.get('unrolling_id', -1) for e in matches}
                 sites = [sid for sid, stmt in instructions.items()
-                         if stmt['kind'] == kind and same_source(stmt, matches[0])]
+                         if stmt['kind'] == kind and same_source(stmt, matches[0]) and memory_type(stmt) == access_type]
                 if len(origins) != 1 or -1 in origins or sites != [step['statement']]:
                     omitted.append(dict(trace=name, step=index, kind=kind, reason='distinct/unknown static memory origins'))
                     continue
