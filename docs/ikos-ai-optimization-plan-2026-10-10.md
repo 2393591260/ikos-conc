@@ -780,3 +780,48 @@ BMC TP104/TN647/UNKNOWN277/error1，FP/FN0。nsc-ircc超时保留。
 [原生参考](artifacts/ai-p0-2026-10-10/atomics/reference.json)、
 [本机ABI](artifacts/ai-p0-2026-10-10/atomics/native.json)、
 [全量配对](artifacts/ai-p0-2026-10-10/atomics/paired.json)。
+
+
+### 9.15 P0：库buffer效果与零字节read续行
+
+三个独立共享值旁路已复现：read向int flag写1、printf("x%n",&flag)写1、
+strncpy向byte flag写1；reader先在mutex下重设0后再读，缺少writer摘要时守卫死掉，
+旧版双ABI/双模式SAFE。另有read(NULL,0)被prepare_mem_access错误bottom，
+其后main与worker的两个data写被漏掉。局部count被printf/sprintf/snprintf的%n修改也被漏掉，
+四种局部守卫例（含snprintf(NULL,0,...)）旧版均SAFE。
+
+新增intrinsic库效果检查复用现有points-to/escape共享判定：可能共享的输出buffer
+留下明确library-memory-effects边界，未引入库内值流的假精度。printf/scanf家族的
+variadic pointer无格式证明时都按可能输出处理；局部输出也havoc，防止保留过期guard值。
+零长度read不解引用buffer，返回值保持保守，合法NULL续行保留；snprintf的size0
+仅免目标buffer检查，%n仍有其自身写效果。strncat即n0也可能写terminator，未作为no-op。
+这些是通用调用/布局规则，无filename/标签分支；未修改frontend或BMC公式。
+
+build/install一致；100次双ABI/双模式/改名/共享及私有/共同锁/typed对照通过，
+原审查76次、atomic46次、旧BMC20次通过。八类竞争例不再SAFE；私有buffer和typed同锁对照SAFE，
+库模型缺失的shared同锁安全对照UNKNOWN。raw sscanf符号版本也加覆盖边界，
+glibc __isoc99_sscanf版本本来已由unknown-extern gate挡住，不混称同一个新FN。
+POSIX2024 read/printf合同及本机两ABI核实read1、%n、strncpy和零字节效果，只证明库效果，
+不是竞争witness验收。Dartagnan对read/strncpy/sscanf有unknown-intrinsic却PASS，
+对%n不正确覆盖且PASS；Goblint对read/strncpy给may-race UNKNOWN，但%n给TRUE。
+这些参考结果不能推翻规范及实际效果；asm别名sscanf在Goblint又有Unsound，明确排除。
+
+1029完整顺序AI/BMC扫描：AI TN647→645、UNKNOWN381→383；
+BMC TP104→104、TN647→645、UNKNOWN277→279，FP/FN0、error1不变。
+仅bigshot_s/s2的strcpy SAFE→UNKNOWN：缺少足够逃逸/时序证明时保守覆盖heap写，
+不把安全标签回退算作具体FN。nsc-ircc超时未用局部重跑替换。
+
+重新建立当前safe-label UNKNOWN池148项，校准Goblint32bit参考：TRUE26、UNKNOWN59、
+不支持/Unsound60、ERROR2、TIMEOUT1。TRUE也不是自动真值；需源码证明和首次精度损失诊断。
+此前98项seed台账已过时。原始日志留/tmp，保存逐文件命令、输入/二进制hash和摘要。
+P0仍有句柄表示及未完成的SAFE前提审查，不能宣称普遍零FN；precision恢复计划不取消。
+证据：[汇总](artifacts/ai-p0-2026-10-10/library/summary.json)、
+[前](artifacts/ai-p0-2026-10-10/library/fixtures-before.json)、
+[后](artifacts/ai-p0-2026-10-10/library/fixtures-after.json)、
+[合同](artifacts/ai-p0-2026-10-10/library/contracts.json)、
+[本机效果](artifacts/ai-p0-2026-10-10/library/native.json)、
+[参考局限](artifacts/ai-p0-2026-10-10/library/reference.json)、
+[Goblint](artifacts/ai-p0-2026-10-10/library/goblint-reference.json)、
+[2项归因](artifacts/ai-p0-2026-10-10/library/regression-causes.json)、
+[全量](artifacts/ai-p0-2026-10-10/library/paired.json)、
+[当前参考池](artifacts/ai-p0-2026-10-10/library/goblint-safe-unknown-pool.json)。

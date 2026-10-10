@@ -1,0 +1,22 @@
+[
+  {
+    "task": "c/pthread/bigshot_s.i",
+    "effects": [
+      {
+        "line": 1116,
+        "source": "if (v) strcpy(v, \"Bigshot\");",
+        "reason": "library memory effects not covered"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/bigshot_s2.i",
+    "effects": [
+      {
+        "line": 1116,
+        "source": "if (v) strcpy(v, \"Bigshot\");",
+        "reason": "library memory effects not covered"
+      }
+    ]
+  }
+]

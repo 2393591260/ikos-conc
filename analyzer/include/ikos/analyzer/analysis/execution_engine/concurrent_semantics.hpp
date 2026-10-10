@@ -1073,16 +1073,12 @@ void exec_pthread_self(E& eng, ar::CallBase* call) {
 /// @}
 
 
-/// \brief Handle a hardware-atomic / pseudo-lock extern call (__sync_*,
-/// __atomic_*, __VERIFIER_atomic_*).
+/// \brief Handle SV-COMP verifier atomic-section declarations.
 ///
-/// Sound model: when a thread executes a hardware-atomic operation, the CPU
-/// itself acts as a lock for the duration of the call. We approximate this by
-/// injecting a synthetic pseudo-lock (a reserved, fixed address) into the
-/// lockset so that any Load/Store happening during (or in the section
-/// delimited by) the atomic region shares the same lock and is therefore never
-/// reported as a race. The pseudo-lock address is constant (0xA7E0AD1C) so all
-/// atomic sites collapse onto the same lock.
+/// Their indivisibility contract uses a common synthetic lock. Declarations
+/// with an omitted body still need a separate memory/value coverage boundary.
+/// GCC builtins lowered to atomic AR accesses use their Load/Store semantics;
+/// other declarations require effect summaries and go through the unknown gate.
 ///
 /// Distinguish three sub-cases (see `classify_atomic_intrinsic`):
 ///   1. SingleCall atomics: pseudo-lock wraps just the call.

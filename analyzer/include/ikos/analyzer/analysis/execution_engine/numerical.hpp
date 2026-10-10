@@ -2304,6 +2304,10 @@ public:
       return;
     }
 
+    if (this->_ctx.opts.enable_thread_modular) {
+      this->check_library_effect_coverage(call, id);
+    }
+
     switch (id) {
       case ar::Intrinsic::MemoryCopy:
       case ar::Intrinsic::MemoryMove: {
@@ -2949,6 +2953,71 @@ private:
   /// @}
   /// \name Execution of intrinsic functions
   /// @{
+
+  // Local memory havoc does not publish cross-thread buffer writes. Until
+  // those summaries exist, an affected shared destination blocks SAFE.
+  void check_library_effect_coverage(ar::CallBase* call, ar::Intrinsic::ID id) {
+    auto may_write = [&](std::size_t i) {
+      this->init_global_operand(call->argument(i));
+      const auto& pointer = this->_lit_factory.get_scalar(call->argument(i));
+      if (pointer.is_pointer_var()) {
+        if (byte_source_is_shared(*this, pointer)) {
+          this->_ctx.concurrent_env.record_unmodeled_effect(
+              call, "library memory effects not covered");
+        }
+        // In particular %n may change even a private guard variable.
+        this->data().normal().mem_forget_reachable(pointer.var());
+      }
+    };
+    auto nonzero_size = [&](std::size_t i) {
+      const auto& size = this->_lit_factory.get_scalar(call->argument(i));
+      auto interval = size.is_machine_int() ? IntInterval(size.machine_int())
+          : this->data().normal().int_to_interval(size.var());
+      return !interval.is_bottom() && !interval.ub().is_zero();
+    };
+    std::size_t variadic_begin = call->num_arguments();
+    switch (id) {
+      case ar::Intrinsic::LibcRead:
+        if (nonzero_size(2)) may_write(1);
+        break;
+      case ar::Intrinsic::LibcGets:
+      case ar::Intrinsic::LibcStrcpy:
+      case ar::Intrinsic::LibcStrcpyCheck:
+      case ar::Intrinsic::LibcStrcat:
+      case ar::Intrinsic::LibcStrcatCheck:
+      case ar::Intrinsic::LibcStrncat:
+        may_write(0);
+        break;
+      case ar::Intrinsic::LibcFgets:
+      case ar::Intrinsic::LibcSnprintf:
+        if (nonzero_size(1)) may_write(0);
+        if (id == ar::Intrinsic::LibcSnprintf) variadic_begin = 3;
+        break;
+      case ar::Intrinsic::LibcStrncpy:
+        if (nonzero_size(2)) may_write(0);
+        break;
+      case ar::Intrinsic::LibcSprintf:
+        may_write(0);
+        variadic_begin = 2;
+        break;
+      case ar::Intrinsic::LibcPrintf:
+      case ar::Intrinsic::LibcScanf:
+        variadic_begin = 1;
+        break;
+      case ar::Intrinsic::LibcFprintf:
+      case ar::Intrinsic::LibcFscanf:
+      case ar::Intrinsic::LibcSscanf:
+        variadic_begin = 2;
+        break;
+      default:
+        break;
+    }
+    // Any pointer conversion can be %n or a scanf output. A format proof
+    // could remove this gate later; a zero-sized snprintf still executes %n.
+    for (std::size_t i = variadic_begin; i < call->num_arguments(); ++i) {
+      if (call->argument(i)->type()->is_pointer()) may_write(i);
+    }
+  }
 
   /// \brief Execute a call to memcpy(dest, src, len) or memmove(dest, src, len)
   void exec_memcpy_or_memmove(ar::CallBase* call) {
@@ -3612,6 +3681,15 @@ private:
 
     const ScalarLit& ptr = this->_lit_factory.get_scalar(call->argument(1));
     const ScalarLit& size = this->_lit_factory.get_scalar(call->argument(2));
+
+    auto length = size.is_machine_int() ? IntInterval(size.machine_int())
+        : this->data().normal().int_to_interval(size.var());
+    // POSIX permits a zero-byte read to return (possibly with an error)
+    // without dereferencing buffer. Preserve that continuation for NULL too.
+    if (!length.is_bottom() && length.ub().is_zero()) {
+      this->exec_unknown_call(call, false, false, false, false);
+      return;
+    }
 
     if (!this->prepare_mem_access(ptr)) {
       return;

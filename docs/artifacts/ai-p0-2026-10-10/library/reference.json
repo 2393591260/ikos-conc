@@ -1,0 +1,222 @@
+[
+  {
+    "bits": 32,
+    "source": "buffer.c",
+    "case": 0,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "CFLAGS": "-fgnu89-inline -m32 -DCASE=0",
+    "returncode": 0,
+    "output": "[11.10.2026] 03:21:07 \u001b[33m[WARN]\u001b[m Intrinsics.markIntrinsics - Unknown intrinsics read. Detecting calls to unknown functions requires --property=program_spec.\nTest: /home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c\nResult: PASS\nTime: 0.651 secs\n",
+    "source_sha256": "cd5f0e539af84ec3d336d7bc312e466d9d103c7ef880efc22c49bfcb49f42445"
+  },
+  {
+    "bits": 32,
+    "source": "buffer.c",
+    "case": 1,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "CFLAGS": "-fgnu89-inline -m32 -DCASE=1",
+    "returncode": 0,
+    "output": "[11.10.2026] 03:21:08 \u001b[33m[WARN]\u001b[m Intrinsics.markIntrinsics - Unknown intrinsics sscanf. Detecting calls to unknown functions requires --property=program_spec.\nTest: /home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c\nResult: PASS\nTime: 0.640 secs\n",
+    "source_sha256": "cd5f0e539af84ec3d336d7bc312e466d9d103c7ef880efc22c49bfcb49f42445"
+  },
+  {
+    "bits": 32,
+    "source": "buffer.c",
+    "case": 2,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "CFLAGS": "-fgnu89-inline -m32 -DCASE=2",
+    "returncode": 0,
+    "output": "Test: /home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c\nResult: PASS\nTime: 0.670 secs\n",
+    "source_sha256": "cd5f0e539af84ec3d336d7bc312e466d9d103c7ef880efc22c49bfcb49f42445"
+  },
+  {
+    "bits": 32,
+    "source": "buffer.c",
+    "case": 3,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "CFLAGS": "-fgnu89-inline -m32 -DCASE=3",
+    "returncode": 0,
+    "output": "[11.10.2026] 03:21:12 \u001b[33m[WARN]\u001b[m Intrinsics.markIntrinsics - Unknown intrinsics strncpy. Detecting calls to unknown functions requires --property=program_spec.\nTest: /home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c\nResult: PASS\nTime: 0.674 secs\n",
+    "source_sha256": "cd5f0e539af84ec3d336d7bc312e466d9d103c7ef880efc22c49bfcb49f42445"
+  },
+  {
+    "bits": 32,
+    "source": "zero.c",
+    "case": 0,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/zero.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "CFLAGS": "-fgnu89-inline -m32 -DCASE=0",
+    "returncode": 0,
+    "output": "[11.10.2026] 03:21:13 \u001b[33m[WARN]\u001b[m Intrinsics.markIntrinsics - Unknown intrinsics read. Detecting calls to unknown functions requires --property=program_spec.\nTest: /home/ruan/ikos-conc/docs/review-repros/ai-library-effects/zero.c\nResult: PASS\nTime: 0.417 secs\n",
+    "source_sha256": "5e8aacf1996d4dd0883472b25106be45e8ab00b0c341ab2c8fe070e0eba55042"
+  },
+  {
+    "bits": 64,
+    "source": "buffer.c",
+    "case": 0,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "CFLAGS": "-fgnu89-inline -m64 -DCASE=0",
+    "returncode": 0,
+    "output": "[11.10.2026] 03:21:15 \u001b[33m[WARN]\u001b[m Intrinsics.markIntrinsics - Unknown intrinsics read. Detecting calls to unknown functions requires --property=program_spec.\nTest: /home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c\nResult: PASS\nTime: 0.662 secs\n",
+    "source_sha256": "cd5f0e539af84ec3d336d7bc312e466d9d103c7ef880efc22c49bfcb49f42445"
+  },
+  {
+    "bits": 64,
+    "source": "buffer.c",
+    "case": 1,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "CFLAGS": "-fgnu89-inline -m64 -DCASE=1",
+    "returncode": 0,
+    "output": "[11.10.2026] 03:21:16 \u001b[33m[WARN]\u001b[m Intrinsics.markIntrinsics - Unknown intrinsics sscanf. Detecting calls to unknown functions requires --property=program_spec.\nTest: /home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c\nResult: PASS\nTime: 0.679 secs\n",
+    "source_sha256": "cd5f0e539af84ec3d336d7bc312e466d9d103c7ef880efc22c49bfcb49f42445"
+  },
+  {
+    "bits": 64,
+    "source": "buffer.c",
+    "case": 2,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "CFLAGS": "-fgnu89-inline -m64 -DCASE=2",
+    "returncode": 0,
+    "output": "Test: /home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c\nResult: PASS\nTime: 0.610 secs\n",
+    "source_sha256": "cd5f0e539af84ec3d336d7bc312e466d9d103c7ef880efc22c49bfcb49f42445"
+  },
+  {
+    "bits": 64,
+    "source": "buffer.c",
+    "case": 3,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "CFLAGS": "-fgnu89-inline -m64 -DCASE=3",
+    "returncode": 0,
+    "output": "[11.10.2026] 03:21:19 \u001b[33m[WARN]\u001b[m Intrinsics.markIntrinsics - Unknown intrinsics strncpy. Detecting calls to unknown functions requires --property=program_spec.\nTest: /home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c\nResult: PASS\nTime: 0.632 secs\n",
+    "source_sha256": "cd5f0e539af84ec3d336d7bc312e466d9d103c7ef880efc22c49bfcb49f42445"
+  },
+  {
+    "bits": 64,
+    "source": "zero.c",
+    "case": 0,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/zero.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "CFLAGS": "-fgnu89-inline -m64 -DCASE=0",
+    "returncode": 0,
+    "output": "[11.10.2026] 03:21:21 \u001b[33m[WARN]\u001b[m Intrinsics.markIntrinsics - Unknown intrinsics read. Detecting calls to unknown functions requires --property=program_spec.\nTest: /home/ruan/ikos-conc/docs/review-repros/ai-library-effects/zero.c\nResult: PASS\nTime: 0.532 secs\n",
+    "source_sha256": "5e8aacf1996d4dd0883472b25106be45e8ab00b0c341ab2c8fe070e0eba55042"
+  }
+]

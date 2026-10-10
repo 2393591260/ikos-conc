@@ -1,0 +1,74 @@
+[
+  {
+    "case": 0,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/library-goblint-0.c"
+    ],
+    "returncode": 0,
+    "output": "[Info][Imprecise] Invalidating expressions: target (/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:55:3-55:29)\n[Info][Deadcode] Logical lines of code (LLoC) summary:\n  live: 23\n  dead: 0\n  total lines: 23\n[Warning][Race] Memory location payload (race with conf. 110): (/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:23:12-23:19)\n  write with thread:[main, reader@/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:78:3-78:32] (conf. 110)  (exp: & payload) (/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:37:12-37:21)\n  write with thread:[main, writer@/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:79:3-79:32] (conf. 110)  (exp: & payload) (/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:72:3-72:12)\nSV-COMP result: unknown\n[Info][Race] Memory locations race summary:\n  safe: 1\n  vulnerable: 0\n  unsafe: 1\n  total memory locations: 2\n[Info] Specification: CHECK( init(main()), LTL(G ! data-race) ) -> enabling soundness analyses: \"access, race\"\n[Info] SV-COMP specification: CHECK( init(main()), LTL(G ! data-race) )\n",
+    "included_source_sha256": "cd5f0e539af84ec3d336d7bc312e466d9d103c7ef880efc22c49bfcb49f42445"
+  },
+  {
+    "case": 1,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/library-goblint-1.c"
+    ],
+    "returncode": 0,
+    "output": "[Error][Imprecise][Unsound] Function definition missing for raw_sscanf (/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:57:3-57:37)\n[Info][Imprecise] INVALIDATING ALL GLOBALS! (/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:57:3-57:37)\n[Info][Imprecise] Invalidating expressions: (char const   *)\"1\", (char const   *)\"%d\", (int *)target (/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:57:3-57:37)\n[Info][Deadcode] Logical lines of code (LLoC) summary:\n  live: 23\n  dead: 0\n  total lines: 23\n[Warning][Race] Memory location payload (race with conf. 110): (/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:23:12-23:19)\n  write with thread:[main, reader@/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:78:3-78:32] (conf. 110)  (exp: & payload) (/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:37:12-37:21)\n  write with thread:[main, writer@/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:79:3-79:32] (conf. 110)  (exp: & payload) (/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:72:3-72:12)\nSV-COMP result: unknown\n[Info][Race] Memory locations race summary:\n  safe: 1\n  vulnerable: 0\n  unsafe: 1\n  total memory locations: 2\n[Error][Imprecise][Unsound] Function definition missing\n[Info] Specification: CHECK( init(main()), LTL(G ! data-race) ) -> enabling soundness analyses: \"access, race\"\n[Info] SV-COMP specification: CHECK( init(main()), LTL(G ! data-race) )\n",
+    "included_source_sha256": "cd5f0e539af84ec3d336d7bc312e466d9d103c7ef880efc22c49bfcb49f42445"
+  },
+  {
+    "case": 2,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/library-goblint-2.c"
+    ],
+    "returncode": 0,
+    "output": "[Info][Deadcode] Logical lines of code (LLoC) summary:\n  live: 23\n  dead: 0\n  total lines: 23\n[Warning][Deadcode][CWE-570] condition 'x == 1' is always false (/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:37:6-37:10)\nSV-COMP result: true\n[Info][Race] Memory locations race summary:\n  safe: 2\n  vulnerable: 0\n  unsafe: 0\n  total memory locations: 2\n[Info] Specification: CHECK( init(main()), LTL(G ! data-race) ) -> enabling soundness analyses: \"access, race\"\n[Info] SV-COMP specification: CHECK( init(main()), LTL(G ! data-race) )\n",
+    "included_source_sha256": "cd5f0e539af84ec3d336d7bc312e466d9d103c7ef880efc22c49bfcb49f42445"
+  },
+  {
+    "case": 3,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/library-goblint-3.c"
+    ],
+    "returncode": 0,
+    "output": "[Info][Deadcode] Logical lines of code (LLoC) summary:\n  live: 23\n  dead: 0\n  total lines: 23\n[Warning][Race] Memory location payload (race with conf. 110): (/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:23:12-23:19)\n  write with thread:[main, reader@/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:78:3-78:32] (conf. 110)  (exp: & payload) (/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:37:12-37:21)\n  write with thread:[main, writer@/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:79:3-79:32] (conf. 110)  (exp: & payload) (/home/ruan/ikos-conc/docs/review-repros/ai-library-effects/buffer.c:72:3-72:12)\nSV-COMP result: unknown\n[Info][Race] Memory locations race summary:\n  safe: 1\n  vulnerable: 0\n  unsafe: 1\n  total memory locations: 2\n[Info] Specification: CHECK( init(main()), LTL(G ! data-race) ) -> enabling soundness analyses: \"access, race\"\n[Info] SV-COMP specification: CHECK( init(main()), LTL(G ! data-race) )\n",
+    "included_source_sha256": "cd5f0e539af84ec3d336d7bc312e466d9d103c7ef880efc22c49bfcb49f42445"
+  }
+]
