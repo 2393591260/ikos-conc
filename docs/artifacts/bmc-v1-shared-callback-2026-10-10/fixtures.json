@@ -1,0 +1,206 @@
+[
+  {
+    "bits": 32,
+    "case": 0,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "confirmed": false,
+    "validations": []
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "confirmed": false,
+    "validations": []
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "confirmed": false,
+    "validations": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "confirmed": false,
+    "validations": []
+  },
+  {
+    "bits": 32,
+    "case": 9,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 10,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 11,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 12,
+    "confirmed": false,
+    "validations": []
+  },
+  {
+    "bits": 32,
+    "case": 13,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "confirmed": false,
+    "validations": []
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "confirmed": false,
+    "validations": []
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "confirmed": false,
+    "validations": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "confirmed": false,
+    "validations": []
+  },
+  {
+    "bits": 64,
+    "case": 9,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 10,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 11,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 12,
+    "confirmed": false,
+    "validations": []
+  },
+  {
+    "bits": 64,
+    "case": 13,
+    "confirmed": true,
+    "validations": [
+      "ACCEPT"
+    ]
+  }
+]

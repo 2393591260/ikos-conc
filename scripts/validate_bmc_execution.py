@@ -102,6 +102,10 @@ class Replay:
             self.memory[obj] = [None] * min(self.objects[obj]['size'], 1_000_000)
             if self.objects[obj]['size'] > 1_000_000:
                 self.memory[obj] = []
+            elif glob.get('frontend_function_initializer') is not None and glob['type']['kind']=='pointer':
+                name=glob['frontend_function_initializer']
+                require(name in self.functions, 'unknown function initializer')
+                self.store((obj,0), ('function',name), glob['type'])
             elif glob['simple_initializer'] and len(glob['initializers']) == 1:
                 self.initialize((obj, 0), glob['initializers'][0])
 
@@ -109,7 +113,8 @@ class Replay:
         fn = self.functions[name]
         if fn['declaration']:
             raise Unsupported('entry function declaration')
-        require(len(fn['parameters']) == len(args), 'actual/formal argument count')
+        require(len(args) >= len(fn['parameters']) if fn.get('variadic', False) else
+                len(fn['parameters']) == len(args), 'actual/formal argument count')
         self.next_frame += 1
         f = Frame(name, fn['entry'], self.next_frame)
         for parameter, argument in zip(fn['parameters'], args):
@@ -223,6 +228,11 @@ class Replay:
         if 'result' not in instruction: return
         if 'encoded_result' in step:
             require(isinstance(result, int) and result == int(step['encoded_result']), 'SMT value differs from concrete replay')
+        if 'encoded_pointer' in step:
+            pointer = step['encoded_pointer']
+            require(pointer.get('kind') in ('function','null'), 'malformed SMT pointer identity')
+            expected = ('function', pointer['id']) if pointer['kind']=='function' else ('null',0)
+            require(result == expected, 'SMT pointer identity differs from concrete replay')
         if 'encoded_function' in step:
             require(result == ('function', step['encoded_function']), 'SMT function identity differs from concrete replay')
         frame.env[instruction['result']['id']] = result
@@ -515,9 +525,14 @@ class Replay:
             else: raise Unsupported('cast')
         elif kind=='binary': result=self.arithmetic(inst,values)
         elif kind=='compare':
-            a,b=values; op=CMP.get(inst['predicate'])
-            if op is None or not all(isinstance(v,int) for v in values): raise Unsupported('comparison')
-            require({'eq':a==b,'ne':a!=b,'gt':a>b,'ge':a>=b,'lt':a<b,'le':a<=b}[op], 'false CFG guard')
+            a,b=values; predicate=inst['predicate']; op=CMP.get(predicate)
+            if predicate in (35,36):
+                if not all(isinstance(v,tuple) and v[0] in ('function','null') for v in values):
+                    raise Unsupported('pointer comparison')
+                require((a==b) if predicate==35 else (a!=b), 'false pointer CFG guard')
+            else:
+                if op is None or not all(isinstance(v,int) for v in values): raise Unsupported('comparison')
+                require({'eq':a==b,'ne':a!=b,'gt':a>b,'ge':a>=b,'lt':a<b,'le':a<=b}[op], 'false CFG guard')
         elif kind=='pointer_shift':
             pointer=values[0]; require(isinstance(pointer,tuple) and pointer[0] not in ('null','function'), 'pointer shift base')
             require(all(isinstance(v,int) for v in values[1:]), 'pointer shift index')

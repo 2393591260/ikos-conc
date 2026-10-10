@@ -581,6 +581,8 @@ inline ar::Function* callee_on_path(ar::CallBase* call,
                                     const std::vector< BmcEvent >& path,
                                     std::size_t before) {
   if (auto* function = exact_callee(call)) return function;
+  if (before < path.size() && path[before].stmt == call && path[before].called_function != nullptr)
+    return path[before].called_function;
   ar::Value* value = call->called();
   for (unsigned depth = 0; depth < 32; ++depth) {
     if (auto* pointer = core::dyn_cast< ar::FunctionPointerConstant >(value)) return pointer->function();
@@ -1143,6 +1145,35 @@ inline bool inline_ok(ar::Function* f) {
   return true;
 }
 
+// The original LLVM signature/ABI, not an AR opaque-pointer type, establishes
+// whether the selected body can implement this indirect invocation.
+inline bool compatible_indirect_callee(ar::CallBase* call, ar::Function* target) {
+  if (!call->has_frontend() || target == nullptr || !target->has_frontend() || !inline_ok(target)) return false;
+  auto* source = llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >());
+  auto* function = target->frontend< llvm::Function >();
+  return source != nullptr && source->getCallingConv() == llvm::CallingConv::C &&
+         function->getCallingConv() == llvm::CallingConv::C && !function->isVarArg() &&
+         source->getFunctionType() == function->getFunctionType() &&
+         source->arg_size() == call->num_arguments() && target->num_parameters() == call->num_arguments();
+}
+
+inline std::vector< ar::Function* > indirect_targets(ar::CallBase* call) {
+  std::vector< ar::Function* > targets;
+  for (auto i = call->bundle()->function_begin(); i != call->bundle()->function_end(); ++i) {
+    auto* target = *i;
+    if (!compatible_indirect_callee(call, target)) continue;
+    auto* source = target->frontend< llvm::Function >();
+    bool addressed = false;
+    for (auto* user : source->users()) {
+      auto* direct = llvm::dyn_cast< llvm::CallBase >(user);
+      addressed |= direct == nullptr || direct->getCalledOperand()->stripPointerCasts() != source;
+    }
+    if (addressed) targets.push_back(target);
+  }
+  std::sort(targets.begin(), targets.end(), [](auto* a, auto* b) {return a->name() < b->name();});
+  return targets;
+}
+
 /// 路径敏感的 DFS：从 `bb` 出发，沿 CFG 后继枚举到 `target` 的所有路径。
 /// `current` retains the executed prefix. A selected atomic access continues
 /// through its real closing boundary; Return searches retain the actual suffix.
@@ -1310,50 +1341,63 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
         BmcEvent classified;
         if (classify_event(s, classified, &in_stack) || is_assume_call(call) ||
             supported_leaf_call(call)) continue;
-        ar::Function* callee = callee_on_path(call, current, current.size() - 1);
-        if (depth >= MAX_INLINE_DEPTH || !inline_ok(callee)) {
-          budget.rejected_reason = "call_summary";
-          budget.rejected_statement = s;
-          return;
+        auto* known = callee_on_path(call, current, current.size() - 1);
+        auto alternatives = known != nullptr ? std::vector< ar::Function* >{known} : indirect_targets(call);
+        if (alternatives.empty()) {
+          budget.rejected_reason = "call_summary"; budget.rejected_statement = s; return;
         }
-        current.back().called_function = callee;
-        const bool atomic = named_verifier_atomic(callee);
-        if (atomic) {
-          BmcEvent begin(s, EvKind::Lock, PSEUDO_ATOMIC_LOCK);
-          begin.synthetic_atomic = true;
-          current.push_back(begin);
-        }
-        // First search for a target inside the callee. Then compose every
-        // concrete return prefix with the rest of the caller; never discard it.
-        auto callee_path = current;
-        dfs_paths(callee->body_or_null()->entry_block(), target, callee_path,
-                  out, in_stack, budget, depth + 1);
-        std::vector< std::vector< BmcEvent > > returns;
-        for (ar::BasicBlock* block : *callee->body_or_null()) {
-          for (ar::Statement* ret : *block) {
-            if (!core::isa< ar::ReturnValue >(ret)) continue;
-            auto return_path = current;
-            dfs_paths(callee->body_or_null()->entry_block(), ret, return_path,
-                      returns, in_stack, budget, depth + 1);
+        for (auto* callee : alternatives) {
+          auto prefix = current;
+          auto frames = in_stack;
+          if (known == nullptr && std::any_of(frames.begin(), frames.end(), [&](auto* block) {
+                return block->code() == callee->body_or_null();
+              })) {
+            budget.rejected_reason = "recursive_callback"; budget.rejected_statement = s; continue;
           }
-        }
-        in_stack.pop_back(); // resuming the same caller block is not a backedge
-        for (auto& returned : returns) {
-          if (atomic) {
-            BmcEvent end(s, EvKind::Unlock, PSEUDO_ATOMIC_LOCK);
-            end.synthetic_atomic = true;
-            returned.push_back(end);
-          }
-          if (returned.size() > MAX_PATH_EVENTS) {
-            budget.exhausted = "unroll_event_budget";
-            return;
-          }
-          if (atomic && target == budget.root_target && candidate_index(returned) < returned.size() &&
-              !open_atomic_prefix(returned)) {
-            out.push_back(returned);
+          if (depth >= MAX_INLINE_DEPTH || !inline_ok(callee)) {
+            budget.rejected_reason = "call_summary";
+            budget.rejected_statement = s;
             continue;
           }
-          dfs_paths(bb, target, returned, out, in_stack, budget, depth, s);
+          prefix.back().called_function = callee;
+          const bool atomic = named_verifier_atomic(callee);
+          if (atomic) {
+            BmcEvent begin(s, EvKind::Lock, PSEUDO_ATOMIC_LOCK);
+            begin.synthetic_atomic = true;
+            prefix.push_back(begin);
+          }
+          // First search for a target inside the callee. Then compose every
+          // concrete return prefix with the rest of the caller; never discard it.
+          auto callee_path = prefix;
+          dfs_paths(callee->body_or_null()->entry_block(), target, callee_path,
+                    out, frames, budget, depth + 1);
+          std::vector< std::vector< BmcEvent > > returns;
+          for (ar::BasicBlock* block : *callee->body_or_null()) {
+            for (ar::Statement* ret : *block) {
+              if (!core::isa< ar::ReturnValue >(ret)) continue;
+              auto return_path = prefix;
+              dfs_paths(callee->body_or_null()->entry_block(), ret, return_path,
+                        returns, frames, budget, depth + 1);
+            }
+          }
+          frames.pop_back(); // resuming the same caller block is not a backedge
+          for (auto& returned : returns) {
+            if (atomic) {
+              BmcEvent end(s, EvKind::Unlock, PSEUDO_ATOMIC_LOCK);
+              end.synthetic_atomic = true;
+              returned.push_back(end);
+            }
+            if (returned.size() > MAX_PATH_EVENTS) {
+              budget.exhausted = "unroll_event_budget";
+              return;
+            }
+            if (atomic && target == budget.root_target && candidate_index(returned) < returned.size() &&
+                !open_atomic_prefix(returned)) {
+              out.push_back(returned);
+              continue;
+            }
+            dfs_paths(bb, target, returned, out, frames, budget, depth, s);
+          }
         }
         return;
       }

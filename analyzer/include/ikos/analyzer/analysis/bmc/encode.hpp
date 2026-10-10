@@ -17,6 +17,7 @@
 #include "facts.hpp"
 #include "initial.hpp"
 #include "evidence.hpp"
+#include "function_values.hpp"
 #include "result.hpp"
 
 namespace ikos {
@@ -56,7 +57,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     return Result(Status::Unsupported);
   }
   const std::vector< BmcEvent > empty_startup;
-  const auto& startup = facts != nullptr ? facts->startup : empty_startup;
+  auto startup = facts != nullptr ? facts->startup : empty_startup;
   auto* argumentA = created_argument(funcA, funcB->name() == "main" ? pathB : startup);
   auto* argumentB = created_argument(funcB, funcA->name() == "main" ? pathA : startup, funcA == funcB ? 1 : 0);
   const auto& allocation_origin = funcA->name() == "main" ? pathA : funcB->name() == "main" ? pathB : startup;
@@ -370,7 +371,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     }
     return true;
   };
-  if (!prepare(pathA, funcA, argumentA) || !prepare(pathB, funcB, argumentB) ||
+  if (!prepare(startup, main, nullptr) || !prepare(pathA, funcA, argumentA) || !prepare(pathB, funcB, argumentB) ||
       !prefix_values_defined(startup, diagnostics) ||
       !prefix_values_defined(pathA, diagnostics, funcA, argumentA) ||
       !prefix_values_defined(pathB, diagnostics, funcB, argumentB)) return Result(Status::Unsupported);
@@ -568,6 +569,20 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   // on each side of this target prevents both adjacent orientations in our query.
   if (interior(sections_a, pathA, targetA) || interior(sections_b, pathB, targetB)) {
     record(diagnostics, "atomic_interior_unsat"); return Result(Status::BoundedUnsat);
+  }
+  FunctionValues functions(ctx, s, funcA->bundle(), startup, pathA, pathB, clock,
+      [&](const BmcEvent& access, const void* path) {return aliases_library(access, path, false);});
+  for (unsigned id = 0; id < 3; ++id) {
+    const auto& path = id == 0 ? startup : id == 1 ? pathA : pathB;
+    for (std::size_t i = 0; i < path.size(); ++i) {
+      if (path[i].synthetic_atomic || path[i].synthetic_condition) continue;
+      auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt);
+      if (call == nullptr || exact_callee(call) != nullptr || path[i].called_function == nullptr) continue;
+      if (!functions.bind(call, path[i].called_function, id, i)) {
+        record(diagnostics, "function_pointer_source", call); return Result(Status::Unsupported);
+      }
+      record(diagnostics, "function_pointer_read_from", call);
+    }
   }
   // Only source nondet is free. Other demanded values need an executed dynamic
   // definition, exact machine arithmetic, actual arguments/returns or SC rf.
@@ -1177,11 +1192,19 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                            const std::string& prefix, std::size_t before) -> z3::expr {
     ar::Value* l = cmp->left();
     ar::Value* r = cmp->right();
-    // 指针比较（PEQ/PNE/…）或浮点比较：BMC 一期建不了模（pthread_getspecific 等
-    // 未建模函数的指针结果），置 unencodable → 不确认（sound，只丢 TP 不引 FP）。
+    // Only equality of proven function/null identities is modeled for pointers.
+    if (cmp->predicate() == ar::Comparison::PEQ || cmp->predicate() == ar::Comparison::PNE) {
+      z3::expr x(ctx), y(ctx);
+      unsigned id = prefix == "value_a_" ? 1 : prefix == "value_b_" ? 2 : 0;
+      if (functions.encode(l, id, before, x) && functions.encode(r, id, before, y)) {
+        guard_reusable = false;
+        return cmp->predicate() == ar::Comparison::PEQ ? x == y : x != y;
+      }
+      record(diagnostics, "assume_pointer_source", cmp);
+      unencodable = true;
+      return ctx.bool_val(true);
+    }
     switch (cmp->predicate()) {
-      case ar::Comparison::PEQ:
-      case ar::Comparison::PNE:
       case ar::Comparison::PGT:
       case ar::Comparison::PGE:
       case ar::Comparison::PLT:
@@ -1431,7 +1454,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       Result outcome(Status::Confirmed);
       auto model = query.get_model();
       outcome.evidence = export_counterexample(funcA, funcB, startup, pathA, pathB,
-          cache_init, cache_a, cache_b, clock, replay_offsets, model);
+          cache_init, cache_a, cache_b, clock, replay_offsets, model, &functions);
       return outcome;
     }
     solver_unknown |= result == z3::unknown;

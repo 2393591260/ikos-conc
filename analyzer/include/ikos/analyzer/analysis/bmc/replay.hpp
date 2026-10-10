@@ -157,6 +157,7 @@ public:
         if (auto* source = f->frontend< llvm::Function >())
           { out.put("target_triple", source->getParent()->getTargetTriple()); target_exported = true; }
       fn.put("declaration", f->is_declaration()); fn.put("return_type", type(f->type()->return_type()));
+      fn.put("variadic", f->type()->is_var_arg());
       fn.put("intrinsic_nondet", f->intrinsic_id() == ar::Intrinsic::IkosNonDet);
       fn.put("intrinsic_assume", f->intrinsic_id() == ar::Intrinsic::IkosAssume);
       JsonList parameter_types;
@@ -180,6 +181,12 @@ public:
       auto* global = *it; JsonDict object;
       object.put("type", type(global->type()->pointee())); object.put("thread_local", global->is_thread_local());
       object.put("declaration", global->is_declaration()); JsonList stores;
+      if (global->has_frontend() && global->type()->pointee()->is_pointer()) {
+        auto* source = global->frontend< llvm::GlobalVariable >();
+        if (source->hasInitializer())
+          if (auto* target = llvm::dyn_cast< llvm::Function >(source->getInitializer()->stripPointerCasts()))
+            object.put("frontend_function_initializer", target->getName().str());
+      }
       bool simple = true;
       if (global->is_definition()) for (auto* bb : *global->initializer()) for (auto* stmt : *bb) {
         auto* store = core::dyn_cast< ar::Store >(stmt);

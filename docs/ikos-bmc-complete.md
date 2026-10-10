@@ -897,11 +897,11 @@ FP/FN/error0，无逐任务判定变化；见 [results证据](artifacts/bmc-v1-r
 AR 展示字符串含 ASLR 名称，比较时只排除这一展示字段，保留全部语义内容。
 
 <a id="callback-plan"></a>
-### 12.2 已有探针、尚未实现的共享回调方案
+### 12.2 共享回调的已实现子集与参考依据
 
 目标 `04-mutex_27-base_rc`：f初始good，main创建后持fm写bad；worker持fm读f再调用，
 main持gm读global。读bad后调用的写不持gm，能够竞争；读good后的写仍受共同gm保护。
-IKOS目前卡call_summary，不能任选may-callee。
+此前IKOS卡call_summary；现已展开兼容的有限addressed targets，并在查询中绑定实际函数值，不能任选may-callee。
 
 固定7caef5c、bound2双架构新跑SOURCE_RACE；参考原生探针结果：
 
@@ -914,9 +914,9 @@ IKOS目前卡call_summary，不能任选may-callee。
 `NaiveDevirtualisation`枚举addressed functions并加`funcPtr==target`分支，
 `Inlining`复制动态register scope，WmmEncoder的rf/co约束读值。
 该参考还删除自递归候选并打印“unsoundly assumes”，不迁移这一限制。
-这些是参考探针，不是尚未实现的IKOS模型验证。
+这些是固定参考探针；本轮IKOS模型另由独立AR执行检查验收。
 
-最小完整实施范围：
+本轮已实现的通用范围：
 
 1. IKOS may-callee只排候选/搜索，旧查询优先；先支持精确global固定offset函数指针槽。
 2. 来源仅真实function/null静态初值和startup/A/B完整宽度function-store；
@@ -928,7 +928,21 @@ IKOS目前卡call_summary，不能任选may-callee。
 6. 正例、初始good、不可执行bad-store、签名不兼容、未写pointer、helper/改名/多实例，
    然后build/install、P0、相关回归、1029配对、独立commit。
 
-不能把它缩成放行call_summary的补丁。实施后才评估TP与性能收益，不承诺整桶恢复。
+`function_values.hpp` 单独管理 startup/A/B 的动态函数值缓存和SC读源；
+`unroll.hpp` 枚举原LLVM签名/ABI兼容的被取址函数，`encode.hpp` 绑定本次实际调用。
+startup也重新解析实际地址，避免helper中的初始写被遗漏。函数/null相等/不等守卫
+复用同一缓存；函数指针返回值、递归、TLS及部分字节写尚不支持。
+快照补充变参标记；只在实际定义为variadic且没有执行va_arg等未支持语句时允许额外实参。
+
+本阶段1029配对为 **TP104→106 / TN696→696 / UNKNOWN229→227 / FP0 / FN0 / error0**，
+两个新增项为`04-mutex_27-base_rc`和`char_generic_nvram_read_nvram_write_nvram-race`，
+均有固定Dartagnan竞争记录；全部旧TP保留。14类改名正/反例与helper、startup、守卫、
+变参、多实例变体在双架构通过，所有确认的callees/pointer身份篡改均被拒绝。
+106任务132组所选执行全部AR ACCEPT；该结论不冒称官方C/witness验证。
+NVRAM第一次被检查器拒绝是快照遗漏合法variadic元数据，补足后重新导出并验收，
+不是忽略拒绝或根据标签放行。行为数字见[配对](artifacts/bmc-v1-shared-callback-2026-10-10/paired.json)，
+[执行检查](artifacts/bmc-v1-shared-callback-2026-10-10/summary.json)，
+[变体](artifacts/bmc-v1-shared-callback-2026-10-10/fixtures.json)。
 
 <a id="history"></a>
 ## 13. 阶段历史与不再采用的判断
@@ -1118,3 +1132,5 @@ JSON中旧报告路径是不可改写的实验来源元数据，查结论请按�
 `55590d7c7`、rf类型转换`95224e40c`、指针修复`ee5a58ae9`、devirtualization
 `24a65b237`、混合字长`e45ac070e`、spinloop/bound相关`e8622b751/d8e6066d6/7950dd782/81da44f69`、
 witness `5fc2bcb78`。这些是源码研究入口，不是各机制的当前IKOS缺口证明或收益预测。
+
+- **第一版共享回调（2026-10-10）**：[paired.json](artifacts/bmc-v1-shared-callback-2026-10-10/paired.json)；[summary.json](artifacts/bmc-v1-shared-callback-2026-10-10/summary.json)；[results.json](artifacts/bmc-v1-shared-callback-2026-10-10/results.json)；[fixtures.json](artifacts/bmc-v1-shared-callback-2026-10-10/fixtures.json)。

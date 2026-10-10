@@ -1,6 +1,7 @@
 #pragma once
 
 #include "result.hpp"
+#include "function_values.hpp"
 #include "replay.hpp"
 
 namespace ikos { namespace analyzer { namespace bmc {
@@ -13,7 +14,7 @@ Counterexample export_counterexample(ar::Function* funcA, ar::Function* funcB,
     const std::vector< BmcEvent >& pathB, const ValueCache& cache_init,
     const ValueCache& cache_a, const ValueCache& cache_b,
     const std::vector< z3::expr >& clock,
-    const std::map< const BmcEvent*, z3::expr >& replay_offsets, z3::model& model) {
+    const std::map< const BmcEvent*, z3::expr >& replay_offsets, z3::model& model, const FunctionValues* functions = nullptr) {
   Counterexample evidence;
   auto& ctx = model.ctx();
   const auto nA = pathA.size(), nB = pathB.size();
@@ -94,6 +95,11 @@ Counterexample export_counterexample(ar::Function* funcA, ar::Function* funcB,
       if (result != nullptr) {
         auto cached = values.find({result, i});
         if (cached != values.end()) step.put("encoded_result", Z3_get_numeral_string(ctx, model.eval(cached->second, true)));
+      }
+      if (result != nullptr && functions != nullptr) {
+        const auto& values = functions->caches[id == "startup" ? 0 : id == "a" ? 1 : 2];
+        auto found = values.find({result, i});
+        if (found != values.end()) step.put("encoded_pointer", functions->identity(found->second, model));
       }
       const auto& e = path[i];
       if (e.kind == EvKind::Read && e.base != 0 && e.width <= 256 &&
