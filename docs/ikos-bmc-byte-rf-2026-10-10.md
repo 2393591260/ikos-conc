@@ -62,3 +62,17 @@ FALSE，更名mixed-width-race.c，移除过时unsupported要求，没有放宽�
 同一模型改值各得UNSAT_AT_BOUND，见[部分检查](artifacts/bmc-byte-rf-2026-10-10/partial-validation.json)。
 没有新增完整独立验证计数；其余混合宽度正例的固定参考模型分歧仍保留。
 未做全局性能收益声称，LP64只做定向验证，尚无全量LP64运行。
+
+对已有未提交 `scripts/replay_bmc.py` 做了只读补充检查（未修改/提交脚本）：
+18个所选模型中，9个ILP32在独立于Z3的Python逐事件AR解释下ACCEPT，
+确切读值、物理字节、创建实例、同步vector clock及目标竞争均通过。
+各改一个实际load值、各改一次creator绑定，18个损坏模型均REJECT。
+[结果和脚本hash](artifacts/bmc-byte-rf-2026-10-10/conditional-replay-probes.json)。
+
+9个LP64则因重放器默认mutex初始化检查UNSUPPORTED：零初始化的NULL
+链表指针被内部表示为pointer-byte tuple，不等于整数0，现有检查因此
+误认nondefault。不是已证的假见证；没有改脚本或绕过该检查。
+[全部结果](artifacts/bmc-byte-rf-2026-10-10/conditional-replay.json)。
+这些ACCEPT以同一IKOS导出的AR program snapshot及glibc合同为前提，
+没有独立C frontend import，不等同于SV-COMP witness-2.2验证成功。
+脚本仍未进入git，证据由对应本地hash约束，不能声称全新checkout可直接复现。
