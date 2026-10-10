@@ -1,0 +1,31 @@
+{
+  "analyzer_commit": "79d9476",
+  "analyzer_sha256": "da23597e0567a09071fe897e2530cf6fc868de31b3de330e1e3ee020a309739d",
+  "tasks": 300,
+  "current_unknown": 242,
+  "reference_counts": {
+    "FAIL": 107,
+    "TIMEOUT": 80,
+    "ERROR": 25,
+    "PASS": 29,
+    "UNKNOWN": 1
+  },
+  "matrix": {
+    "TP": 90,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 242,
+    "error": 0
+  },
+  "diagnostic_matrix": {
+    "TP": 0,
+    "FP": 0,
+    "TN": 0,
+    "FN": 0,
+    "error": 0,
+    "unknown": 242
+  },
+  "reference_pin": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+  "note": "All 242 remaining cases rediagnosed. Historical reference results reused only with identical source hash. Stage counts overlap and do not establish impossibility; complete witness verification remains open."
+}
