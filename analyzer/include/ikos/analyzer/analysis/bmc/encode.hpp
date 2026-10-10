@@ -341,19 +341,6 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   if (interior(sections_a, pathA, targetA) || interior(sections_b, pathB, targetB)) {
     record(diagnostics, "atomic_interior_unsat"); return false;
   }
-  // Verifier atomic blocks exclude all other threads, including accesses
-  // outside atomic blocks. A mutex-only exclusion does not express this.
-  for (const auto& section : sections_a) {
-    if (section.mutex == PSEUDO_ATOMIC_LOCK)
-      for (std::size_t j = 0; j < nB; ++j)
-        s.add(clock[nA + j] < clock[section.begin] || clock[section.end] < clock[nA + j]);
-  }
-  for (const auto& section : sections_b) {
-    if (section.mutex == PSEUDO_ATOMIC_LOCK)
-      for (std::size_t i = 0; i < nA; ++i)
-        s.add(clock[i] < clock[nA + section.begin] || clock[nA + section.end] < clock[i]);
-  }
-
   // Only source nondet is free. Other demanded values need an executed dynamic
   // definition, exact machine arithmetic, actual arguments/returns or SC rf.
   // Unsupported and uninitialized origins never become fresh SMT inputs.
@@ -914,6 +901,19 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   if (unencodable || !arithmetic_prefix(startup, cache_init, "value_init_") ||
       !arithmetic_prefix(pathA, cache_a, "value_a_") ||
       !arithmetic_prefix(pathB, cache_b, "value_b_")) return false;
+
+  // Verifier atomic blocks exclude all other threads, including accesses
+  // outside atomic blocks. A mutex-only exclusion does not express this.
+  for (const auto& section : sections_a) {
+    if (section.mutex == PSEUDO_ATOMIC_LOCK)
+      for (std::size_t j = 0; j < nB; ++j)
+        s.add(clock[nA + j] < clock[section.begin] || clock[section.end] < clock[nA + j]);
+  }
+  for (const auto& section : sections_b) {
+    if (section.mutex == PSEUDO_ATOMIC_LOCK)
+      for (std::size_t i = 0; i < nA; ++i)
+        s.add(clock[i] < clock[nA + section.begin] || clock[nA + section.end] < clock[i]);
+  }
 
   // Executed pointer definitions must select the same global object, even
   // when the checker's may-points-to sets contain several objects.
