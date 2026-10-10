@@ -1,0 +1,19 @@
+{
+  "bits": 64,
+  "verdict": "The program is definitely UNSAFE",
+  "seconds": 1.3743083090012078,
+  "returncode": 0,
+  "command": [
+    "/home/ruan/ikos-conc/install/bin/ikos",
+    "--analyses=race",
+    "--concurrency=auto",
+    "--demote-race-to-unknown",
+    "-m",
+    "64",
+    "--format=json",
+    "--report-file=/tmp/ikos-recovery-2026-10-10/fk-scheduling/fk64/report.json",
+    "-o",
+    "/tmp/ikos-recovery-2026-10-10/fk-scheduling/fk64/output.db",
+    "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fk2012.i"
+  ]
+}

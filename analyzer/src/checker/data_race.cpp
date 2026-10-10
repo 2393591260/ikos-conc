@@ -1361,13 +1361,20 @@ DataRaceChecker::~DataRaceChecker() {
     for (std::size_t i = 0; i < pair_indices.size(); ++i) query_order.push_back(i);
     // Legacy confirmations precede newly enabled activation alternatives
     // within the same file deadline. Preserve the report's original pair IDs.
-    if (pass == 1 && !small_activation.empty())
-      std::stable_partition(query_order.begin(), query_order.end(), [&](std::size_t i) {
+    if (pass == 1 && !small_activation.empty()) {
+      auto priority = [&](std::size_t i) {
         const auto& pair = all_pairs[pair_indices[i]];
         const auto& a = this->_accesses[pair.i].thread_id;
         const auto& b = this->_accesses[pair.j].thread_id;
-        return a == "main" || b == "main" || small_activation.count(std::minmax(a, b)) == 0;
+        if (a == "main" || b == "main" || small_activation.count(std::minmax(a, b)) == 0) return 0;
+        // Different entries may expose a protocol mismatch before spending
+        // the deadline on repeated instances of one entry. This only ranks work.
+        return a == b ? 2 : 1;
+      };
+      std::stable_sort(query_order.begin(), query_order.end(), [&](std::size_t i, std::size_t j) {
+        return priority(i) < priority(j);
       });
+    }
     std::size_t group_attempts = 0;
     for (std::size_t candidate_id : query_order) {
       if (!bmc_enabled && !diagnostics_enabled) {

@@ -1,0 +1,8 @@
+[
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fk2012.i",
+    "expected": "Race Found",
+    "before": "Unknown",
+    "after": "Race Found"
+  }
+]

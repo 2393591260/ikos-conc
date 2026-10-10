@@ -1,0 +1,207 @@
+[
+  {
+    "task": "c/pthread-ext/47_ticket_lock_hc_backoff_vs.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/47_ticket_lock_hc_backoff_vs.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Race Found",
+    "seconds": 2.242630132997874,
+    "returncode": 0,
+    "counts": {
+      "activation_deferred": 15,
+      "activation_small_bound": 25,
+      "ai_candidate_bounds": 1,
+      "call_summary": 24,
+      "integer_operation": 4,
+      "not_searched_after_confirmation": 31,
+      "sat": 1,
+      "sc_read_from": 6,
+      "sc_same_path_read_from": 3,
+      "thread_activation_unproven": 124,
+      "unroll_path_budget": 14
+    },
+    "first_blockers": {
+      "call_summary": 10,
+      "not_searched_after_confirmation": 21,
+      "activation_small_bound": 25,
+      "thread_activation_unproven": 5
+    },
+    "candidates": 37,
+    "artifacts": "47_ticket_lock_hc_backoff_vs-2c8a87ca9117",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-recovery-2026-10-10/fk-scheduling/targets-after/47_ticket_lock_hc_backoff_vs-2c8a87ca9117/report.json",
+      "-o",
+      "/tmp/ikos-recovery-2026-10-10/fk-scheduling/targets-after/47_ticket_lock_hc_backoff_vs-2c8a87ca9117/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-ext/47_ticket_lock_hc_backoff_vs.i"
+    ]
+  },
+  {
+    "task": "c/pthread-ext/48_ticket_lock_low_contention_vs-b.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/48_ticket_lock_low_contention_vs-b.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Race Found",
+    "seconds": 4.549074122001912,
+    "returncode": 0,
+    "counts": {
+      "activation_deferred": 15,
+      "activation_small_bound": 25,
+      "ai_candidate_bounds": 1,
+      "call_summary": 44,
+      "integer_operation": 4,
+      "not_searched_after_confirmation": 31,
+      "sat": 1,
+      "sc_read_from": 6,
+      "sc_same_path_read_from": 3,
+      "thread_activation_unproven": 124,
+      "unroll_path_budget": 14
+    },
+    "first_blockers": {
+      "call_summary": 15,
+      "not_searched_after_confirmation": 21,
+      "activation_small_bound": 25
+    },
+    "candidates": 37,
+    "artifacts": "48_ticket_lock_low_contention_vs-b-7423bef391be",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-recovery-2026-10-10/fk-scheduling/targets-after/48_ticket_lock_low_contention_vs-b-7423bef391be/report.json",
+      "-o",
+      "/tmp/ikos-recovery-2026-10-10/fk-scheduling/targets-after/48_ticket_lock_low_contention_vs-b-7423bef391be/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-ext/48_ticket_lock_low_contention_vs-b.i"
+    ]
+  },
+  {
+    "task": "c/pthread-lit/fk2012.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fk2012.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Race Found",
+    "seconds": 1.4125448650011094,
+    "returncode": 0,
+    "counts": {
+      "activation_deferred": 84,
+      "activation_small_bound": 168,
+      "ai_candidate_bounds": 1,
+      "cached_guard_rejection": 8,
+      "constant_guard_unsat": 24,
+      "not_searched_after_confirmation": 82,
+      "sat": 1,
+      "sc_read_from": 35,
+      "sc_same_path_read_from": 22
+    },
+    "first_blockers": {
+      "activation_small_bound": 168
+    },
+    "candidates": 84,
+    "artifacts": "fk2012-edd0f59e5617",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-recovery-2026-10-10/fk-scheduling/targets-after/fk2012-edd0f59e5617/report.json",
+      "-o",
+      "/tmp/ikos-recovery-2026-10-10/fk-scheduling/targets-after/fk2012-edd0f59e5617/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-lit/fk2012.i"
+    ]
+  },
+  {
+    "task": "c/pthread-nondet/nondet-array-1.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-array-1.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Race Found",
+    "seconds": 4.716439093997906,
+    "returncode": 0,
+    "counts": {
+      "activation_deferred": 4,
+      "activation_small_bound": 8,
+      "call_summary": 8,
+      "constant_guard_unsat": 80,
+      "create_arguments": 60,
+      "integer_operation": 221,
+      "sat": 1,
+      "sc_same_path_read_from": 42,
+      "smt_unsat": 80,
+      "thread_activation_unproven": 24,
+      "not_searched_after_confirmation": 3
+    },
+    "first_blockers": {
+      "call_summary": 4,
+      "activation_small_bound": 8
+    },
+    "candidates": 6,
+    "artifacts": "nondet-array-1-ca5e60f9edff",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-recovery-2026-10-10/fk-scheduling/targets-after/nondet-array-1-ca5e60f9edff/report.json",
+      "-o",
+      "/tmp/ikos-recovery-2026-10-10/fk-scheduling/targets-after/nondet-array-1-ca5e60f9edff/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-array-1.i"
+    ]
+  },
+  {
+    "task": "c/pthread-nondet/nondet-array-2.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-array-2.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Race Found",
+    "seconds": 4.5997387140014325,
+    "returncode": 0,
+    "counts": {
+      "activation_deferred": 4,
+      "activation_small_bound": 8,
+      "call_summary": 8,
+      "constant_guard_unsat": 80,
+      "create_arguments": 60,
+      "integer_operation": 221,
+      "sat": 1,
+      "sc_same_path_read_from": 42,
+      "smt_unsat": 80,
+      "thread_activation_unproven": 24,
+      "not_searched_after_confirmation": 3
+    },
+    "first_blockers": {
+      "call_summary": 4,
+      "activation_small_bound": 8
+    },
+    "candidates": 6,
+    "artifacts": "nondet-array-2-a80aba5c239a",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-recovery-2026-10-10/fk-scheduling/targets-after/nondet-array-2-a80aba5c239a/report.json",
+      "-o",
+      "/tmp/ikos-recovery-2026-10-10/fk-scheduling/targets-after/nondet-array-2-a80aba5c239a/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-nondet/nondet-array-2.i"
+    ]
+  }
+]
