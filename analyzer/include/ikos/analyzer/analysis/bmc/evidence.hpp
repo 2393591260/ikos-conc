@@ -90,6 +90,10 @@ Counterexample export_counterexample(ar::Function* funcA, ar::Function* funcB,
       if (path[i].synthetic_condition)
         step.put("synthetic_event", path[i].kind == EvKind::Lock ? "condition_reacquire" : "condition_release");
       if (id != "startup") step.put("clock", Z3_get_numeral_string(ctx, model.eval(clock[start + i], true)));
+      if (path[i].join_completion != nullptr)
+        step.put("joined_completion", JsonDict{{"creator_trace", id},
+            {"creator_step", path[i].join_creation},
+            {"statement", snapshot.statement_id(path[i].join_completion)}});
       if (path[i].called_function != nullptr) step.put("expanded_callee", path[i].called_function->name());
       auto* result = core::dyn_cast_or_null< ar::InternalVariable >(path[i].stmt->result_or_null());
       if (result != nullptr) {

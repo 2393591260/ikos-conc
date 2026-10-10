@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <iterator>
 #include <map>
 #include <set>
 #include <string>
@@ -39,6 +40,8 @@ struct BmcEvent {
   ar::Function* called_function = nullptr; // Callee proven on this executed call.
   bool synthetic_atomic = false; // Boundary marker, not another source call.
   bool synthetic_condition = false; // Wait's release/reacquire, not another call.
+  ar::ReturnValue* join_completion = nullptr; // Actual effect-free auxiliary return.
+  std::size_t join_creation = 0; // Creation occurrence in this same prefix.
   bool candidate = false; // Selected dynamic access; atomic closure may follow.
   EvKind kind = EvKind::Read;
   std::uint64_t mutex = 0;  // Lock/Unlock 的锁对象语法同一性（arg0 指针）；内存事件为 0
@@ -898,6 +901,16 @@ inline bool successful_condition_result(const BmcEvent& event) {
          result->is_signed() && returned->bit_width() == 32 && returned->is_signed();
 }
 
+// This chosen successful join has an actual inert completion and no return store.
+inline bool successful_join_result(const BmcEvent& event) {
+  if (event.kind != EvKind::Join || event.join_completion == nullptr) return false;
+  auto* call = core::cast< ar::CallBase >(event.stmt);
+  auto* type = core::dyn_cast_or_null< ar::IntegerType >(call->result_or_null() == nullptr ? nullptr : call->result_or_null()->type());
+  auto* returned = core::dyn_cast< ar::IntegerType >(exact_callee(call)->type()->return_type());
+  return type != nullptr && returned != nullptr && type->bit_width() == 32 && type->is_signed() &&
+         returned->bit_width() == 32 && returned->is_signed();
+}
+
 // Definedness is required even for values not used in guards/addresses.
 // This does not encode load values or establish read-from relations.
 inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
@@ -969,7 +982,7 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
       if (main_allocation(call, path, index, size)) return true;
       if (source_nondet(call)) return true;
       if (successful_create_result(path[index])) return true;
-      if (successful_condition_result(path[index])) return true;
+      if (successful_condition_result(path[index]) || successful_join_result(path[index])) return true;
       auto* f = callee_on_path(call, path, index);
       if (f == nullptr || f->body_or_null() == nullptr) return false;
       for (std::size_t j = index + 1; j < before; ++j) {
@@ -1083,6 +1096,105 @@ inline bool classify_event(
 
 /// 内联展开的最大调用深度（helper 内 helper 的递归上限，防爆炸）。
 constexpr int MAX_INLINE_DEPTH = 8;
+
+// The first supported auxiliary completion has no memory/sync effects: one
+// actual return NULL. More general completions need an explicit third prefix.
+inline ar::ReturnValue* inert_thread_return(ar::Function* function) {
+  if (function == nullptr || !function->is_definition() || !function->has_frontend() ||
+      function->num_parameters() != 1 || !function->param(0)->type()->is_pointer() ||
+      !function->type()->return_type()->is_pointer()) return nullptr;
+  auto* source = function->frontend< llvm::Function >();
+  auto* body = function->body_or_null();
+  if (source->isVarArg() || source->getCallingConv() != llvm::CallingConv::C ||
+      std::distance(body->begin(), body->end()) != 1) return nullptr;
+  auto* block = body->entry_block();
+  if (block->num_statements() != 1) return nullptr;
+  auto* ret = core::dyn_cast< ar::ReturnValue >(*block->begin());
+  return ret != nullptr && ret->has_operand() && core::isa< ar::NullConstant >(ret->operand()) ? ret : nullptr;
+}
+
+// Match a loaded, unescaped main-stack scalar handle to its actual creation
+// occurrence. Failed matching means unsupported, never "join the opponent".
+inline ar::ReturnValue* inert_join_source(ar::CallBase* join,
+    const std::vector< BmcEvent >& path, std::size_t before, std::size_t& creation) {
+  auto* api = join != nullptr ? exact_callee(join) : nullptr;
+  if (api == nullptr || !api->is_declaration() || join->num_arguments() != 2 ||
+      !(api->name() == "pthread_join" || api->intrinsic_id() == ar::Intrinsic::PthreadJoin) ||
+      !core::isa< ar::NullConstant >(join->argument(1))) return nullptr;
+  int atomic = 0;
+  for (std::size_t i = 0; i < before; ++i) {
+    if (path[i].called_function != nullptr && path[i].called_function->name() == "main") return nullptr;
+    if (path[i].mutex != PSEUDO_ATOMIC_LOCK) continue;
+    if (path[i].kind == EvKind::Lock) ++atomic;
+    if (path[i].kind == EvKind::Unlock) --atomic;
+  }
+  // A newly created child cannot run while a verifier atomic block owns execution.
+  if (atomic != 0) return nullptr;
+  ar::Value* value = join->argument(0);
+  ar::Load* load = nullptr;
+  std::size_t read = before;
+  for (unsigned depth = 0; depth < 32; ++depth) {
+    auto* variable = core::dyn_cast< ar::InternalVariable >(value);
+    if (variable == nullptr) return nullptr;
+    std::size_t index = 0;
+    auto* definition = reaching_definition(variable, path, read, index);
+    if ((load = core::dyn_cast_or_null< ar::Load >(definition))) {read = index; break;}
+    auto* assignment = core::dyn_cast_or_null< ar::Assignment >(definition);
+    if (assignment == nullptr || assignment->operand()->type() != value->type()) return nullptr;
+    value = assignment->operand(); read = index;
+  }
+  BmcEvent address;
+  if (load == nullptr || !load->result()->type()->is_integer() ||
+      !pointer_on_path(load->operand(), path, read, nullptr, nullptr, address) ||
+      address.local_base == nullptr || address.local_base->function()->name() != "main" ||
+      address.var_id != 0 || address.const_off != 0 ||
+      !address.local_base->type()->pointee()->is_integer()) return nullptr;
+  const auto width = join->bundle()->data_layout().pointers.bit_width / 8;
+  if (join->bundle()->data_layout().store_size_in_bytes(load->result()->type()) != core::ZNumber(width)) return nullptr;
+  for (std::size_t j = read; j-- > 0;) {
+    auto* statement = path[j].stmt;
+    if (statement->result_or_null() == address.local_base) {break;}
+    if (path[j].kind == EvKind::Write) {
+      BmcEvent write;
+      if (!pointer_on_path(core::cast< ar::Store >(statement)->pointer(), path, j, nullptr, nullptr, write)) return nullptr;
+      if (write.local_base == address.local_base) return nullptr;
+    }
+    auto* call = core::dyn_cast< ar::CallBase >(statement);
+    if (call == nullptr || path[j].kind != EvKind::Create) continue;
+    BmcEvent output;
+    if (!pointer_on_path(call->argument(0), path, j, nullptr, nullptr, output)) return nullptr;
+    if (output.local_base != address.local_base) continue;
+    if (output.var_id != 0 || output.const_off != 0 || !successful_create_result(path[j])) return nullptr;
+    creation = j;
+    auto* ret = inert_thread_return(reinterpret_cast< ar::Function* >(path[j].thread));
+    if (ret == nullptr) return nullptr;
+    // The handle cannot escape to another execution or be detached/rejoined.
+    for (std::size_t k = 0; k < before; ++k) {
+      auto* prior = path[k].stmt;
+      if (auto* store = core::dyn_cast< ar::Store >(prior)) {
+        BmcEvent stored;
+        if (store->value()->type()->is_pointer() &&
+            pointer_on_path(store->value(), path, k, nullptr, nullptr, stored) &&
+            stored.local_base == address.local_base) return nullptr;
+      }
+      if (auto* use = core::dyn_cast< ar::CallBase >(prior)) {
+        auto* f = exact_callee(use);
+        if (path[k].kind == EvKind::Join || (f != nullptr && f->name() == "pthread_detach")) return nullptr;
+        for (std::size_t arg = 0; arg < use->num_arguments(); ++arg) {
+          if (!use->argument(arg)->type()->is_pointer()) continue;
+          BmcEvent passed;
+          if (pointer_on_path(use->argument(arg), path, k, nullptr, nullptr, passed) &&
+              passed.local_base == address.local_base && !(k == j && arg == 0)) return nullptr;
+        }
+      }
+    }
+    // Also require an executed alloca from this invocation, not an older frame.
+    for (std::size_t k = j; k-- > 0;)
+      if (path[k].stmt->result_or_null() == address.local_base) return ret;
+    return nullptr;
+  }
+  return nullptr;
+}
 
 /// Hardware atomic builtins need summaries; verifier atomic definitions compose
 /// their actual CFG with explicit indivisible-region boundaries.
@@ -1283,14 +1395,15 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
       }
       BmcEvent ev;
       if (classify_event(s, ev, &in_stack)) {
-        // check_race currently orders the opponent's last event before every
-        // join. A join before our target therefore makes adjacency UNSAT.
-        // This is query pruning, not a claim about actual join handle identity.
-        if (budget.prune_join_prefix && ev.kind == EvKind::Join &&
-            candidate_index(current) == current.size()) {
-          budget.rejected_reason = "join_orders_target";
-          budget.rejected_statement = s;
-          return;
+        if (ev.kind == EvKind::Join) {
+          ev.join_completion = inert_join_source(core::cast< ar::CallBase >(s), current,
+                                                 current.size(), ev.join_creation);
+          if (budget.prune_join_prefix && ev.join_completion == nullptr &&
+              candidate_index(current) == current.size()) {
+            budget.rejected_reason = "join_completion_unproven";
+            budget.rejected_statement = s;
+            return;
+          }
         }
         current.push_back(ev);
       } else if (auto* call = core::dyn_cast< ar::CallBase >(s)) {

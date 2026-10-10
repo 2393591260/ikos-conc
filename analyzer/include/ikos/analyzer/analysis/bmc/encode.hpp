@@ -313,6 +313,11 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         path.insert(path.begin() + i + 1, {release, reacquire});
       }
       auto& event = path[i];
+      if (event.kind == EvKind::Join) {
+        // Condition expansion may have shifted earlier creation indices.
+        event.join_completion = inert_join_source(core::cast< ar::CallBase >(event.stmt),
+                                                  path, i, event.join_creation);
+      }
       ar::Value* pointer = nullptr;
       if (auto* load = core::dyn_cast< ar::Load >(event.stmt)) pointer = load->operand();
       if (auto* store = core::dyn_cast< ar::Store >(event.stmt)) pointer = store->pointer();
@@ -499,19 +504,14 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     }
   }
 
-  // join HB（svcomp.cat 的 po 跨线程边）：joined 线程末事件 < join。过近似——把
-  // A 路径里每个 Join 都约束成「B 末事件 < join」（假设 B 被 A join），B 路径同理。
-  // 过约束只丢 TP（unjoined 实例，2 线程抽象表达不了），不引 FP（sound）。
-  for (std::size_t i = 0; i < nA; ++i) {
-    if (pathA[i].kind == EvKind::Join) {
-      s.add(clock[nA + nB - 1] < clock[i]);  // B 末事件 < A 的 join
-    }
-  }
-  for (std::size_t i = 0; i < nB; ++i) {
-    if (pathB[i].kind == EvKind::Join) {
-      s.add(clock[nA - 1] < clock[nA + i]);  // A 末事件 < B 的 join
-    }
-  }
+  // An auxiliary's single actual return has no effects on either selected
+  // thread. Its concrete creation/handle/completion binding is exported.
+  for (const auto* path : {&startup, &pathA, &pathB})
+    for (const auto& event : *path)
+      if (event.kind == EvKind::Join && event.join_completion == nullptr) {
+        record(diagnostics, "join_completion_unproven", event.stmt);
+        return Result(Status::Unsupported);
+      }
 
   // Keep every critical section. Last-lock maps discard earlier exclusion and
   // permit infeasible prefixes. Unsupported ownership/recursion stays UNKNOWN.
@@ -1027,7 +1027,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       return true;
     }
     if (auto* call = core::dyn_cast_or_null< ar::CallBase >(def)) {
-      if (successful_create_result(path[definition_index]) || successful_condition_result(path[definition_index])) {
+      if (successful_create_result(path[definition_index]) || successful_condition_result(path[definition_index]) || successful_join_result(path[definition_index])) {
         out = ctx.int_val(0);
         cache.emplace(key, out);
         return true;

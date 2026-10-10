@@ -316,7 +316,7 @@ helper 在真实 Return 后接调用方续点；未知/bodyless 调用不是 no-
 事件保留实际 callee、call/return 位置及 invocation，参数、返回与局部值按这一上下文解析。
 同静态变量的两实例不能共享符号，后一次调用不能复用前一次 nondet/定义。
 
-**共享内存中的函数指针 load→间接调用尚未实现**，详见[共享回调方案](#callback-plan)。
+**有限global函数指针 load→间接调用已实现**，实际SC来源/签名/调用等式与边界见[共享回调实现](#callback-plan)。
 FPA may-callee 仅能安排候选，不能任选函数体来确认实际调用。
 
 ### 6.3 受限线程完成
@@ -326,13 +326,29 @@ FPA may-callee 仅能安排候选，不能任选函数体来确认实际调用�
 不能沿 exit 后继制造返回；helper/main exit、非 NULL payload、错误 ABI、未知 callback 注册继续拒绝。
 这是有限完成端点，不是一般线程生命周期模型。
 
-### 6.4 Join 仍是精度缺口
+### 6.4 受限 Join 实例/完成匹配
 
-当前每个 A.Join 对 B 添加 `B.last < Join`，缺少完整 handle→动态实例匹配。
-这可能过约束 join 其他线程的真实竞争，是已知能力边界，不是 POSIX 正确语义摘要。
-创建句柄的普通身份读取和具体值读取也必须区分；库输出不能随意供值。
-恢复 join 数组/多级线程需具体 handle、被 join 实例的真实完成及必要其他线程效果，
-不能只删除这条边或放开定义性 gate。
+已删除“每个Join都排序对侧last”的 blanket 边及对应剪枝。首版只支持从实际root-main
+未逃逸标量栈槽读取的句柄，反查此前真正执行的Create occurrence；句柄重写时取真实
+来源，不能按入口函数或静态槽名猜实例。辅助函数必须只有单块、单条实际`return NULL`，
+不含任何共享/同步副作用；Join返回存储须为NULL，选取合法成功返回0，可用于守卫。
+其完成可在Join前插入，与两条竞争前缀不产生额外共享效果；事件导出creator occurrence
+和return statement，独立检查器从实际句柄及原程序快照复核，并合并真实终止VC。
+这是可检查的极小完成摘要，不是一般第三线程执行器。
+
+其他完成、句柄逃逸/数组/未知来源、此前Join/detach、递归main与atomic内Join仍拒绝。
+特别是atomic内创建后立即Join，子线程不能运行，不能凭无副作用推定已经完成。
+Condition release/reacquire插入事件后重新计算创建索引，避免绑定到旧位置。
+创建句柄的普通身份读取和具体值读取仍须区分；库输出不能随意供值。
+恢复Join数组/多级线程需动态handle、真实完成、其他线程效果及寿命，不能只放行gate。
+
+十类对照/变体、双架构20次检查包括句柄copy/重用/逃逸、共享副作用、成功返回守卫、
+condition展开和atomic阻塞；确认执行均AR ACCEPT，损坏creator/return被拒绝。
+固定Dartagnan双架构对无关idle Join报FAIL，对真正等待worker及重用句柄对照报PASS。
+本阶段1029配对 TP106→106 / TN696→696 / UNKNOWN227→227 / FP/FN/error0，逐任务无变化。
+此特性在冻结集尚未增加TP，不能把最小例恢复数当比赛收益。
+证据：[fixtures](artifacts/bmc-v1-join-2026-10-10/fixtures.json)、
+[reference](artifacts/bmc-v1-join-2026-10-10/reference.json)。
 
 <a id="sync"></a>
 ## 7. 同步与库效果
@@ -444,7 +460,7 @@ Unreachable/abort/exit 终止对应前缀；不能猜循环次数、删除 guard
 | guard优先 | 可行路径仍检查全部unused算术/trap/poison，失败来源不复用cache | ticket恢复，禁止unused溢出/除零对照仍拒绝 |
 | atomic约束延后 | 仅拒绝路径省构造，可行路径原排斥约束完整添加 | 全量不变，四fib局部耗时改善 |
 | atomic中间结构UNSAT | 闭合段内target前后各有真实障碍，对侧只能段外，必违当前相邻公式 | lu恢复；不证明源程序无竞争 |
-| Join提前UNSAT | 当前过约束公式中Join位于target前必有对侧末端排序障碍 | 全量不变；未来精确join时须同步收窄剪枝 |
+| 历史Join提前UNSAT（已替换） | 旧过约束公式在Join前缀上剪枝 | 已随受限实例/完成匹配撤销；无法证完成仍Unsupported |
 
 同路径/main-source 简化证明针对当前有限编码，不能升级成全程序 private/K线程无干扰证明。
 fresh solver 之前试过 Int/BV 改整数模表达式，未恢复正例而撤回。

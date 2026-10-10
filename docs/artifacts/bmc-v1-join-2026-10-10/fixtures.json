@@ -1,0 +1,170 @@
+[
+  {
+    "case": "after-join-control",
+    "bits": 32,
+    "verdict": "The program is SAFE",
+    "counts": {}
+  },
+  {
+    "case": "after-join-control",
+    "bits": 64,
+    "verdict": "The program is SAFE",
+    "counts": {}
+  },
+  {
+    "case": "atomic-join-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "join_completion_unproven": 2,
+      "target_not_reached": 2
+    }
+  },
+  {
+    "case": "atomic-join-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "join_completion_unproven": 2,
+      "target_not_reached": 2
+    }
+  },
+  {
+    "case": "before-join-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1
+    }
+  },
+  {
+    "case": "before-join-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1
+    }
+  },
+  {
+    "case": "condition-before-join-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1
+    }
+  },
+  {
+    "case": "condition-before-join-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1
+    }
+  },
+  {
+    "case": "copied-handle-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1
+    }
+  },
+  {
+    "case": "copied-handle-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1
+    }
+  },
+  {
+    "case": "escaped-handle-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "join_completion_unproven": 2,
+      "target_not_reached": 2
+    }
+  },
+  {
+    "case": "escaped-handle-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "join_completion_unproven": 2,
+      "target_not_reached": 2
+    }
+  },
+  {
+    "case": "guarded-completion-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1
+    }
+  },
+  {
+    "case": "guarded-completion-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1
+    }
+  },
+  {
+    "case": "reused-handle-control",
+    "bits": 32,
+    "verdict": "The program is SAFE",
+    "counts": {}
+  },
+  {
+    "case": "reused-handle-control",
+    "bits": 64,
+    "verdict": "The program is SAFE",
+    "counts": {}
+  },
+  {
+    "case": "side-effect-join-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "join_completion_unproven": 2,
+      "target_not_reached": 2
+    }
+  },
+  {
+    "case": "side-effect-join-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "join_completion_unproven": 2,
+      "target_not_reached": 2
+    }
+  },
+  {
+    "case": "unrelated-join-unsupported",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1
+    }
+  },
+  {
+    "case": "unrelated-join-unsupported",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1
+    }
+  }
+]

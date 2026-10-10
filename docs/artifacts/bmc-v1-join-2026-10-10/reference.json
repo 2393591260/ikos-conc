@@ -1,0 +1,137 @@
+{
+  "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+  "rows": [
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.7949234230036382,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/join-query/unrelated-join-unsupported.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "61491d453b3d33275136ca1c04b6b94504c6d7df7d8bdb2953fa55e0b11a4d5e",
+      "data_model": "32",
+      "case": "unrelated-join-unsupported",
+      "native_verdict": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.2520847909981967,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/join-query/unrelated-join-unsupported.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "61491d453b3d33275136ca1c04b6b94504c6d7df7d8bdb2953fa55e0b11a4d5e",
+      "data_model": "64",
+      "case": "unrelated-join-unsupported",
+      "native_verdict": "FAIL"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.1629609459996573,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/join-query/after-join-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "206c887eaad3f25b61914e1e1aaaadc0c130a55b2718d92e2d7515c36748e4c0",
+      "data_model": "32",
+      "case": "after-join-control",
+      "native_verdict": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.1151751750003314,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/join-query/after-join-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "206c887eaad3f25b61914e1e1aaaadc0c130a55b2718d92e2d7515c36748e4c0",
+      "data_model": "64",
+      "case": "after-join-control",
+      "native_verdict": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.1688167259999318,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/join-query/reused-handle-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "9fdbc7a9795475f1bae2130a9b23736ba10895410c67227115b49e0a835a84f3",
+      "data_model": "32",
+      "case": "reused-handle-control",
+      "native_verdict": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.1468355960023473,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/join-query/reused-handle-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "9fdbc7a9795475f1bae2130a9b23736ba10895410c67227115b49e0a835a84f3",
+      "data_model": "64",
+      "case": "reused-handle-control",
+      "native_verdict": "PASS"
+    }
+  ]
+}

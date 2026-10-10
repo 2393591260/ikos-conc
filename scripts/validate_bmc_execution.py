@@ -319,7 +319,8 @@ class Replay:
             t = inst['operands'][1]['type'].get('pointee')
             if t is None or t['kind'] != 'integer': raise Unsupported('thread output handle type')
             self.store(args[0], instance, t)
-            self.created[instance] = dict(function=target, argument=args[3], vc=dict(thread.vc))
+            self.created[instance] = dict(function=target, argument=args[3], vc=dict(thread.vc),
+                                          creator_trace=trace_id, creator_step=index, joined=False)
             for child_id, child in self.traces.items():
                 if child.get('creator_trace') == trace_id and child.get('creator_step') == index:
                     require(child['entry'] == target and child_id not in self.threads, 'dynamic creation binding')
@@ -338,9 +339,31 @@ class Replay:
             require(len(args)==1 and args[0] in self.created, 'unknown detach handle'); return 0
         if name in ('pthread_join', 'ar.pthread.join'):
             require(len(args)==2 and args[0] in self.created, 'unknown join handle')
+            require(args[1] == ('null',0), 'join result storage unsupported')
+            created = self.created[args[0]]
+            require(not created['joined'], 'instance joined twice')
             matched = [t for t in self.threads.values() if t.instance == args[0]]
+            if not matched and 'joined_completion' in step:
+                require(self.atomic_owner is None, 'auxiliary completion inside verifier atomic')
+                completion = step['joined_completion']
+                require(completion['creator_trace'] == created['creator_trace'] and
+                        completion['creator_step'] == created['creator_step'], 'join creation occurrence')
+                fn = self.functions[created['function']]
+                require(not fn['declaration'] and len(fn['blocks']) == 1, 'auxiliary completion body')
+                block = fn['blocks'][fn['entry']]
+                require(not block['successors'] and block['statements'] == [completion['statement']],
+                        'auxiliary completion CFG')
+                ret = self.instructions[completion['statement']]
+                require(ret['kind'] == 'return' and len(ret['operands']) == 1 and
+                        ret['operands'][0]['kind'] == 'null', 'auxiliary actual return')
+                if len(fn['parameters']) != 1 or fn['return_type']['kind'] != 'pointer' or fn.get('variadic'):
+                    raise Unsupported('auxiliary entry signature')
+                child = Thread(args[0], [], dict(created['vc']), finished=True)
+                child.vc[args[0]] = child.vc.get(args[0],0) + 1
+                self.threads['joined:' + str(args[0])] = child
+                matched = [child]
             if not matched or not matched[0].finished: raise Unsupported('joined instance completion not replayed')
-            self.join_vc(thread.vc, matched[0].vc); return 0
+            self.join_vc(thread.vc, matched[0].vc); created['joined'] = True; return 0
         if name in LOCKS:
             rw = 'rwlock' in name
             width = (32 if self.program['pointer_bits']==32 else 56) if rw else (24 if self.program['pointer_bits']==32 else 40)

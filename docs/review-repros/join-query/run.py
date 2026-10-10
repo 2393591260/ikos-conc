@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-"""Prune only prefixes ordered by the current two-thread join query."""
+"""Check precise inert auxiliary completion; other joins remain unsupported."""
 import argparse
 from collections import Counter
 import json
 import os
 from pathlib import Path
 import subprocess
+import copy
+import sys
+
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT/'scripts'))
+from validate_bmc_execution import check, digest_json
 
 
 def main(args):
@@ -26,10 +32,23 @@ def main(args):
             assert proc.returncode == 0 and verdict != 'NONE', (source.name, bits, proc.returncode)
             if 'control' in source.stem:
                 assert 'definitely UNSAFE' not in verdict, (source.name, bits, verdict)
-            elif 'unsupported' in source.stem:
+            elif 'unsupported' in source.stem and source.stem != 'unrelated-join-unsupported':
                 assert verdict == 'The program is potentially UNSAFE', (source.name, bits, verdict)
             else:
                 assert verdict == 'The program is definitely UNSAFE', (source.name, bits, verdict)
+            data = json.loads((folder / 'report.json').read_text())
+            for group in data['reports']:
+                if 'counterexample' not in group['info']: continue
+                cert = copy.deepcopy(group['info']['counterexample']); program = cert.pop('program')
+                cert['program_sha256'] = digest_json(program)
+                result = check(program,cert); assert result['status']=='ACCEPT', (source.name,bits,result)
+                for trace in cert['traces']:
+                    for i,step in enumerate(trace['steps']):
+                        if 'joined_completion' in step:
+                            for field,value in (('creator_step',-1),('statement','missing-return')):
+                                corrupt=copy.deepcopy(cert)
+                                next(t for t in corrupt['traces'] if t['id']==trace['id'])['steps'][i]['joined_completion'][field]=value
+                                assert check(program,corrupt)['status']=='REJECT', (source.name,bits,field)
             counts = Counter()
             for group in json.loads((folder / 'report.json').read_text())['reports']:
                 counts.update(group.get('info', {}).get('bmc', {}).get('counts', {}))
