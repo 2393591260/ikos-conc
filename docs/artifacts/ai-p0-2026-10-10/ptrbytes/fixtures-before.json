@@ -1,0 +1,578 @@
+[
+  {
+    "bits": 32,
+    "case": 0,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 0,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 0,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 0,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "control": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "control": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "control": 1,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "control": 1,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  }
+]

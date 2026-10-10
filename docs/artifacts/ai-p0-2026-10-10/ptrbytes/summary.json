@@ -1,0 +1,68 @@
+{
+  "analyzer_sha256": "f85bb7584dbc61a5f962cb69b4f1448f2efe2059c4e274ec633ac745b996b49d",
+  "baseline_analyzer_sha256": "bc53216e70a24c7a1019208765a09af86996fe66791697a05741d72ee8bee25d",
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp": "735c456a8fb4b04d03dd9958232bcdc33ee84ea602da78a1f6bf8cd1c93399b7",
+    "core/include/ikos/core/domain/concurrent_global_env.hpp": "4aa8a3c9390d7aa6ce5b3c46137310c187570596a8c33f37ca9f04389b33fa88"
+  },
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 653,
+      "FN": 0,
+      "error": 1,
+      "unknown": 375
+    },
+    "after_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 653,
+      "FN": 0,
+      "error": 1,
+      "unknown": 375
+    },
+    "before_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 653,
+      "FN": 0,
+      "error": 1,
+      "unknown": 271
+    },
+    "after_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 653,
+      "FN": 0,
+      "error": 1,
+      "unknown": 271
+    }
+  },
+  "tasks": 1029,
+  "jobs": 4,
+  "timeout_seconds": 30,
+  "data_model": "ILP32",
+  "known_audit_misses_pending": 0,
+  "old_bmc_cases": 20,
+  "build_and_install_equal": true,
+  "manifest": "docs/artifacts/ai-p0-2026-10-10/f1/paired.json",
+  "manifest_sha256": "9a6a9d81d2f8599d66d2a38574bb05d6c00e3a662048e096d634e027af6d9a8c",
+  "targeted_cases": 72,
+  "pointer_regressions": 64,
+  "handle_regressions": 64,
+  "sleep_regressions": 48,
+  "exit_regressions": 52,
+  "baseline_commit": "f4b4f92",
+  "fixture_sha256": {
+    "docs/review-repros/ai-pointer-bytes/run.py": "dfa78a32c5d7497b159dae971079598d0bd47342248fa43f3d485c71b46756f5",
+    "docs/review-repros/ai-pointer-bytes/bytes.c": "60e62b4f115ee46975d4ea51bda01c582ada8e00bbe79d62f1765835925c2ee2",
+    "docs/review-repros/ai-pointer-bytes/overlap.c": "d0a075791a53da389da76ca5f612a160b2ea0d91e529fd450e87f147c9618317",
+    "docs/review-repros/ai-pointer-sources/summary.cpp": "cdfad318f005ec08588ab39247c33932c80fb35c7d453a5db1ea62fffa624cf0",
+    "docs/review-repros/ai-pointer-sources/run.py": "722f43960ec00a960a9513b2426b51334b9dcb043223b912c0a3dcb7d1a38f1d"
+  },
+  "goblint_sha256": "d6a54c5874ff4c06e053ab70166805ce98ad715efc3dac032af0e1e0c70c7426",
+  "dartagnan_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+  "independent_C_or_official_witness_validation": false,
+  "performance": "Not measured by this sweep; no acceleration claim."
+}

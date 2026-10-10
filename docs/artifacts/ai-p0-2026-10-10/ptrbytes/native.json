@@ -1,0 +1,610 @@
+[
+  {
+    "bits": 32,
+    "case": 0,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=0",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-0-0"
+    ],
+    "output": "pointer guard reached=1; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 0,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=0",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-0-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=1",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-1-0"
+    ],
+    "output": "pointer guard reached=1; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=1",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-1-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=2",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-2-0"
+    ],
+    "output": "pointer guard reached=1; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=2",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-2-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=3",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-3-0"
+    ],
+    "output": "pointer guard reached=0; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=3",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-3-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=4",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-4-0"
+    ],
+    "output": "pointer guard reached=1; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=4",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-4-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=5",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-5-0"
+    ],
+    "output": "pointer guard reached=1; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=5",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-5-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=6",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-6-0"
+    ],
+    "output": "pointer guard reached=1; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=6",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-6-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=8",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-8-0"
+    ],
+    "output": "pointer guard reached=0; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m32",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=8",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-32-8-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=4\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=0",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-0-0"
+    ],
+    "output": "pointer guard reached=1; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=0",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-0-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=1",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-1-0"
+    ],
+    "output": "pointer guard reached=1; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=1",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-1-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=2",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-2-0"
+    ],
+    "output": "pointer guard reached=1; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=2",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-2-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=3",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-3-0"
+    ],
+    "output": "pointer guard reached=0; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=3",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-3-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=4",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-4-0"
+    ],
+    "output": "pointer guard reached=1; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=4",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-4-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=5",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-5-0"
+    ],
+    "output": "pointer guard reached=1; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=5",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-5-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=6",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-6-0"
+    ],
+    "output": "pointer guard reached=1; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=6",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-6-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "control": 0,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=8",
+      "-DCONTROL=0",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-8-0"
+    ],
+    "output": "pointer guard reached=0; pointer width=8\n",
+    "returncode": 0
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "control": 1,
+    "command": [
+      "gcc",
+      "-m64",
+      "-pthread",
+      "-O0",
+      "-DNATIVE=1",
+      "-DCASE=8",
+      "-DCONTROL=1",
+      "docs/review-repros/ai-pointer-bytes/bytes.c",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/ptrbytes-native-64-8-1"
+    ],
+    "output": "pointer guard reached=0; pointer width=8\n",
+    "returncode": 0
+  }
+]

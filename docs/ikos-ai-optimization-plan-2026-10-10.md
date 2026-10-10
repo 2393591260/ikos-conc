@@ -953,3 +953,46 @@ BMC TP104不变、TN647→653、UNKNOWN277→271，FP/FN0、error1。未修改fr
 [参考边界](artifacts/ai-p0-2026-10-10/exit/goblint.json)、
 [六项源码前提](artifacts/ai-p0-2026-10-10/exit/corpus-proof.json)、
 [全量配对](artifacts/ai-p0-2026-10-10/exit/paired.json)。
+
+
+### 9.20 正确性：指针对象表示与重叠写入
+
+`ai-pointer-bytes/bytes.c`的scalar global字节复制及NULL表示复制，在此前已提交
+`f4b4f92`上两ABI、AI/BMC均SAFE。writer完整逐字节复制合法指针值后被main join；
+reader启动后读取的新指针使data=1可达，与main的data=2无同步。对象表示本身没有
+并发读写。C11 N1570 §6.2.6.1p4、§6.5p7支持该字符访问；不是任意字节都可解释成
+合法指针的假设。两ABI原生顺序化探针确认guard可达，但不把执行UB的数据竞争当
+原生证明。Dartagnan 4.3.1、bound12在两ABI分别FAIL，原值对照PASS，无未知intrinsic
+警告；Goblint有data竞争告警并返回UNKNOWN，对照字节复制也UNKNOWN。参考工具
+结果仅辅助核对，不替代源码和标准前提。
+
+根因是非pointer store只影响整数board，指针board仍保留旧有限may-value。
+新机制在ConcurrentGlobalEnv独立记录global/heap的写入范围及完整pointer值分类，
+不依赖“该指针摘要是否已被发现”。按实际read offset及pointer width检查相交：
+相交的raw写、部分/异位pointer写、不能证明位置的写均使该read取TOP；
+只有精确同slot、完整类型指针写可以继续用joined may-value。邻接字节字段不相交，
+可保留摘要。未知offset或超过64个footprint回退whole-object；端点算术用ZNumber。
+footprint增加通知dirty，跨普通分析轮次保留，完整clear同时清除；不按锁或线程名
+跳过原始写，也不把锁外写归入无效摘要。
+
+直接摘要断言覆盖写入先于/后于摘要发现、dirty/reset/clear、邻接字段、完整同位、
+错位typed pointer、未知offset及32/64bit。新增72次双ABI/双模式/正反例/改名/helper
+回归覆盖scalar、global struct、heap struct、邻接字段、typed赋值、memcpy、NULL、
+GNU packed overlap；后者仅为本地Linux/GNU布局变体，旧版本就UNKNOWN，未声称
+又发现独立FN。原指针64次、正确性76次、句柄64次、sleep48次、exit52次及旧BMC20次
+通过。旧指针control case11（不确定pointer-array slot）由SAFE回退UNKNOWN：当前
+没有表达“只可能两个对齐slot”的证书，不能用完整写类型替代字节重叠证明；这是
+明确保留的精度边界。
+
+1029完整顺序AI/BMC配对逐任务均无变化：AI TN653/UNKNOWN375；BMC TP104/TN653/
+UNKNOWN271，FP/FN0、error1（同一nsc-ircc timeout）。集合外两个已复现FN由SAFE回退
+UNKNOWN，未伪造竞争确认；有限集合零FN不是全部SAFE的证明。build/install一致，
+源码/安装/fixture指纹已保存；没有frontend改动，不宣称本轮测得加速。
+证据：[汇总](artifacts/ai-p0-2026-10-10/ptrbytes/summary.json)、
+[标准合同](artifacts/ai-p0-2026-10-10/ptrbytes/contracts.json)、
+[修复前](artifacts/ai-p0-2026-10-10/ptrbytes/fixtures-before.json)、
+[修复后](artifacts/ai-p0-2026-10-10/ptrbytes/fixtures-after.json)、
+[原生guard](artifacts/ai-p0-2026-10-10/ptrbytes/native.json)、
+[Dartagnan](artifacts/ai-p0-2026-10-10/ptrbytes/dartagnan.json)、
+[Goblint](artifacts/ai-p0-2026-10-10/ptrbytes/goblint.json)、
+[全量配对](artifacts/ai-p0-2026-10-10/ptrbytes/paired.json)。

@@ -1457,7 +1457,8 @@ void on_load_pointer_restore(E& eng,
     auto value = core::ConcurrentGlobalEnv::PointerValue::top(size.bit_width(), core::Unsigned);
     bool found = false;
     if (isa< GlobalMemoryLocation >(source)) {
-      found = env.get_global_pointer(source, value);
+      found = env.get_global_pointer(
+          source, value, eng.data().normal().pointer_to_pointer(ptr.var()).offset());
     } else if (isa< DynAllocMemoryLocation >(source)) {
       auto offset = eng.data().normal().pointer_to_pointer(ptr.var()).offset();
       found = env.get_heap_pointer(heap_pointer_key(
@@ -1545,6 +1546,14 @@ void on_store_privatize(E& eng,
     const bool has_locks = !held_mutexes.empty();
 
     for (MemoryLocation* loc : points_to) {
+      if (isa< GlobalMemoryLocation >(loc) || isa< DynAllocMemoryLocation >(loc)) {
+        const bool complete_pointer = written_type->is_pointer() && val.is_scalar() &&
+            (val.scalar().is_pointer_var() || val.scalar().is_null());
+        env.record_pointer_write(
+            core::IndexableTraits< MemoryLocation* >::index(loc),
+            eng.data().normal().pointer_to_pointer(ptr.var()).offset(),
+            eng.data_layout().store_size_in_bytes(written_type), complete_pointer);
+      }
       // Heap-field pointer propagation (09-regions_03-list2_rc.c FN):
       // a DynAlloc field (`A->next = p`) is invisible to the global-only
       // boards, so a cross-thread deref through it loses the datum

@@ -46,6 +46,7 @@
 #include <array>
 #include <tuple>
 #include <map>
+#include <set>
 #include <memory>
 #include <mutex>
 #include <unordered_set>
@@ -400,6 +401,11 @@ private:
   /// offset (structural key) so distinct allocation sites / fields do not collide,
   /// and the per-key set stays bounded by `kPtrBoardWidenThreshold`.
   std::map< HeapPointerKey, PointerValue > _heap_pointer_board;
+
+  // Write footprints outlive summary discovery and individual analysis rounds.
+  // Bounded offset, lower/upper start, byte width, complete typed pointer value.
+  using PointerWrite = std::tuple< bool, ZNumber, ZNumber, ZNumber, bool >;
+  std::unordered_map< std::uint64_t, std::set< PointerWrite > > _pointer_writes;
 
   /// \brief Dirty flag for the global-fixpoint driver
   /// (`analysis/value/interprocedural/sequential/analysis.cpp`).
@@ -1661,6 +1667,26 @@ public:
   /// `get_global_pointer` copies stay O(1).
   static constexpr std::size_t kPtrBoardWidenThreshold = 16;
 
+  void record_pointer_write(std::uint64_t base,
+                            const machine_int::Interval& offset,
+                            const ZNumber& size,
+                            bool complete_pointer) {
+    if (offset.is_bottom() || size <= 0) return;
+    std::lock_guard< std::mutex > lock(_mutex);
+    const PointerWrite unknown{false, ZNumber(0), ZNumber(0), ZNumber(0), false};
+    auto& writes = _pointer_writes[base];
+    if (writes.count(unknown)) return;
+    PointerWrite write = offset.is_top()
+        ? unknown
+        : PointerWrite{true, offset.lb().to_z_number(), offset.ub().to_z_number(),
+                       size, complete_pointer};
+    if (writes.insert(write).second) _is_dirty = true;
+    if (writes.size() > 64 || write == unknown) {
+      writes.clear();
+      writes.insert(unknown);
+    }
+  }
+
   /// Join a complete pointer may-value, including NULL/TOP and offset changes.
   void join_global_pointer(analyzer::MemoryLocation* glob,
                            const PointerValue& value) {
@@ -1677,6 +1703,28 @@ public:
   }
 
 private:
+  bool pointer_write_invalidates_nolock(std::uint64_t base,
+                                        bool bounded_read,
+                                        const ZNumber& read_lo,
+                                        const ZNumber& read_hi,
+                                        const ZNumber& size) const {
+    auto it = _pointer_writes.find(base);
+    if (it == _pointer_writes.end()) return false;
+    for (const auto& write : it->second) {
+      const auto& bounded = std::get<0>(write);
+      const auto& lo = std::get<1>(write);
+      const auto& hi = std::get<2>(write);
+      const auto& width = std::get<3>(write);
+      const auto& pointer = std::get<4>(write);
+      if (!bounded || !bounded_read) return true;
+      if (hi + width <= read_lo || read_hi + size <= lo) continue;
+      // Only a whole pointer at precisely the read slot has a usable value.
+      if (!pointer || lo != hi || read_lo != read_hi || lo != read_lo ||
+          width != size) return true;
+    }
+    return false;
+  }
+
   template < typename Board >
   void join_pointer_summary_nolock(Board& board,
                                    const typename Board::key_type& key,
@@ -1718,8 +1766,24 @@ public:
   /// \return true iff `loc` is present in the board.
   bool get_global_pointer(analyzer::MemoryLocation* loc,
                           PointerValue& value) const {
+    return get_global_pointer(loc, value, machine_int::Interval(
+        MachineInt(0, value.offset().bit_width(), Unsigned)));
+  }
+
+  bool get_global_pointer(analyzer::MemoryLocation* loc,
+                          PointerValue& value,
+                          const machine_int::Interval& offset) const {
     if (loc == nullptr) return false;
     std::lock_guard< std::mutex > lock(_mutex);
+    if (pointer_write_invalidates_nolock(
+            IndexableTraits< analyzer::MemoryLocation* >::index(loc),
+            !offset.is_top() && !offset.is_bottom(),
+            offset.is_top() || offset.is_bottom() ? ZNumber(0) : offset.lb().to_z_number(),
+            offset.is_top() || offset.is_bottom() ? ZNumber(0) : offset.ub().to_z_number(),
+            ZNumber(value.offset().bit_width() / 8))) {
+      value.set_to_top();
+      return true;
+    }
     auto it = _global_pointer_board.find(loc);
     if (it == _global_pointer_board.end()) return false;
     value = it->second;
@@ -1739,6 +1803,12 @@ public:
 
   bool get_heap_pointer(const HeapPointerKey& key, PointerValue& value) const {
     std::lock_guard< std::mutex > lock(_mutex);
+    if (pointer_write_invalidates_nolock(std::get<0>(key), std::get<1>(key),
+                                        std::get<2>(key), std::get<2>(key),
+                                        ZNumber(value.offset().bit_width() / 8))) {
+      value.set_to_top();
+      return true;
+    }
     bool found = false;
     auto include = [&](const PointerValue& incoming) {
       if (found) value.join_with(incoming);
@@ -1830,6 +1900,7 @@ public:
     _global_pointer_board.clear();
     _global_pointer_targets.clear();
     _heap_pointer_board.clear();
+    _pointer_writes.clear();
     _lock_symbolic_index.clear();
     _is_dirty = false;
   }

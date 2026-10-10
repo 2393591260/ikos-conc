@@ -87,5 +87,51 @@ int main() {
     assert(get({18, true, ZNumber(0)}).points_to().size() == 1);
     env.join_heap_pointer({4294967313ULL, true, ZNumber(0)}, p(&first));
     assert(get({4294967313ULL, true, ZNumber(0)}).points_to().size() == 1);
+    for (bool raw_first : {false, true}) {
+      ConcurrentGlobalEnv bytes;
+      auto raw = [&] {
+        bytes.record_pointer_write(17, machine_int::Interval(MachineInt(1, width, Unsigned)),
+                                   ZNumber(1), false);
+      };
+      if (raw_first) raw();
+      bytes.join_heap_pointer({17, true, ZNumber(0)}, p(&first));
+      if (!raw_first) raw();
+      auto value = Value::bottom(width, Unsigned);
+      assert(bytes.get_heap_pointer({17, true, ZNumber(0)}, value) && value.is_top());
+      bytes.clear_dirty(); raw();
+      assert(!bytes.is_dirty());
+      bytes.reset_spawn_counts();
+      assert(bytes.get_heap_pointer({17, true, ZNumber(0)}, value) && value.is_top());
+      bytes.clear();
+      assert(!bytes.get_heap_pointer({17, true, ZNumber(0)}, value));
+    }
+    {
+      ConcurrentGlobalEnv bytes;
+      auto value = Value::bottom(width, Unsigned);
+      bytes.join_heap_pointer({17, true, ZNumber(0)}, p(&first));
+      // Adjacent raw fields retain the pointer; shifted full pointer stores do not.
+      bytes.record_pointer_write(17, machine_int::Interval(MachineInt(width / 8, width, Unsigned)),
+                                 ZNumber(1), false);
+      assert(bytes.get_heap_pointer({17, true, ZNumber(0)}, value) && !value.is_top());
+      bytes.record_pointer_write(17, machine_int::Interval(MachineInt(0, width, Unsigned)),
+                                 ZNumber(width / 8), true);
+      assert(bytes.get_heap_pointer({17, true, ZNumber(0)}, value) && !value.is_top());
+      bytes.record_pointer_write(17, machine_int::Interval(MachineInt(1, width, Unsigned)),
+                                 ZNumber(width / 8), true);
+      assert(bytes.get_heap_pointer({17, true, ZNumber(0)}, value) && value.is_top());
+    }
+    {
+      ConcurrentGlobalEnv bytes;
+      const auto base = IndexableTraits<ikos::analyzer::MemoryLocation*>::index(&key);
+      bytes.record_pointer_write(base, machine_int::Interval(MachineInt(0, width, Unsigned)),
+                                 ZNumber(1), false);
+      bytes.join_global_pointer(&key, p(&first));
+      auto value = Value::bottom(width, Unsigned);
+      assert(bytes.get_global_pointer(&key, value) && value.is_top());
+      bytes.clear();
+      bytes.join_heap_pointer({17, true, ZNumber(0)}, p(&first));
+      bytes.record_pointer_write(17, machine_int::Interval::top(width, Unsigned), ZNumber(1), false);
+      assert(bytes.get_heap_pointer({17, true, ZNumber(0)}, value) && value.is_top());
+    }
   }
 }
