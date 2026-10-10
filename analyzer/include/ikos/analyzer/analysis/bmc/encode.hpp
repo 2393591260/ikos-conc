@@ -22,6 +22,12 @@ namespace ikos {
 namespace analyzer {
 namespace bmc {
 
+inline bool atomic_query_barrier(const BmcEvent& event) {
+  return event.kind != EvKind::Local && event.kind != EvKind::Assume &&
+         !((event.kind == EvKind::Lock || event.kind == EvKind::Unlock) &&
+           event.mutex == PSEUDO_ATOMIC_LOCK);
+}
+
 /// Check the selected accesses, including any necessary atomic completion.
 /// 返回 true = 确认；false = 未确认（含 UNSAT / unsupported），不是无竞争证明。
 inline bool check_race(const std::vector< BmcEvent >& inputA,
@@ -317,6 +323,24 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   };
   const bool atomicA = atomic_target(sections_a, targetA), atomicB = atomic_target(sections_b, targetB);
   if (atomicA && atomicB) {record(diagnostics, "atomic_pair"); return false;}
+  auto interior = [](const auto& sections, const auto& path, std::size_t target) {
+    for (const auto& section : sections) {
+      if (section.mutex != PSEUDO_ATOMIC_LOCK || !(section.begin < target && target < section.end)) continue;
+      bool before = false, after = false;
+      for (std::size_t i = section.begin + 1; i < section.end; ++i) {
+        if (!atomic_query_barrier(path[i])) continue;
+        before |= i < target;
+        after |= target < i;
+      }
+      if (before && after) return true;
+    }
+    return false;
+  };
+  // The other target is outside this indivisible interval. A mandatory barrier
+  // on each side of this target prevents both adjacent orientations in our query.
+  if (interior(sections_a, pathA, targetA) || interior(sections_b, pathB, targetB)) {
+    record(diagnostics, "atomic_interior_unsat"); return false;
+  }
   // Verifier atomic blocks exclude all other threads, including accesses
   // outside atomic blocks. A mutex-only exclusion does not express this.
   for (const auto& section : sections_a) {
@@ -982,8 +1006,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
         for (std::size_t i = 0; i < path.size(); ++i) {
           if (start + i == first || start + i == last) continue;
           const auto& event = path[i];
-          if (event.kind == EvKind::Local || event.kind == EvKind::Assume ||
-              ((event.kind == EvKind::Lock || event.kind == EvKind::Unlock) && event.mutex == PSEUDO_ATOMIC_LOCK)) continue;
+          if (!atomic_query_barrier(event)) continue;
           query.add(clock[start + i] < clock[first] || clock[last] < clock[start + i]);
         }
       };

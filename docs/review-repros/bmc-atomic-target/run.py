@@ -37,6 +37,8 @@ def main(args):
             for group in json.loads(report.read_text())['reports']:
                 for key, value in group.get('info', {}).get('bmc', {}).get('counts', {}).items():
                     counts[key] = counts.get(key, 0) + value
+            if source.stem == 'middle-memory-boundary':
+                assert counts.get('atomic_interior_unsat', 0) > 0, (tag, counts)
             rows.append(dict(case=source.stem, bits=bits, verdict=verdict, counts=counts))
             print(tag, verdict, counts, flush=True)
     (args.output / 'summary.json').write_text(json.dumps(rows, indent=2) + '\n')
