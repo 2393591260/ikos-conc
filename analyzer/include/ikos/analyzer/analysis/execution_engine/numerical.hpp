@@ -1805,7 +1805,9 @@ public:
       const ScalarLit& lhs = result.scalar();
       ikos_assert_msg(lhs.is_var(), "left hand side is not a variable");
 
-      // Reads local memory; integer summaries are currently joined at entry.
+      if (this->_ctx.opts.enable_thread_modular && !s->is_volatile()) {
+        on_load_integer_interference(*this, s, ptr, lhs, size);
+      }
       if (!s->is_volatile()) {
         // Perform memory read in the value domain
         this->data().normal().mem_read(lhs, ptr.var(), size);
@@ -1829,8 +1831,6 @@ public:
         }
       }
 
-      // (removed) the per-read int_set(lhs, injected) override was an unsound narrowing: it replaced the locally-widened
-      // value with a stale singleton peek and collapsed the loop exit to bottom (fib_*-racy.i FN).
     } else if (result.is_aggregate()) {
       const AggregateLit& lhs = result.aggregate();
       ikos_assert_msg(lhs.is_var(), "left hand side is not a variable");

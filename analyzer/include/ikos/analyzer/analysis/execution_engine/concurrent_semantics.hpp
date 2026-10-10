@@ -1227,6 +1227,59 @@ void on_comparison_cond_lock(E& eng, ar::Comparison* s) {
   }
 }
 
+/// Join integer interference through memory, retaining the local alternative.
+/// Flat summaries only describe full scalar globals; other shared layouts havoc.
+template < typename E >
+void on_load_integer_interference(E& eng,
+                                  ar::Load* s,
+                                  const ScalarLit& ptr,
+                                  const ScalarLit& lhs,
+                                  const core::MachineInt& size) {
+  if (!lhs.is_machine_int_var()) return;
+  auto& env = eng.ctx().concurrent_env;
+  auto points = eng.data().normal().pointer_to_points_to(ptr.var());
+  if (points.is_bottom()) return;
+  bool shared = points.is_top();
+  if (points.is_set()) {
+    for (MemoryLocation* loc : points) {
+      auto* global = dyn_cast< GlobalMemoryLocation >(loc);
+      if ((global && (!global->global_var()->is_thread_local() ||
+                      env.is_escaped(loc))) ||
+          isa< DynAllocMemoryLocation >(loc) || env.is_escaped(loc)) {
+        shared = true;
+      }
+    }
+  }
+  if (!shared) return;
+  auto* type = cast< ar::IntegerType >(s->result()->type());
+  auto external = core::machine_int::Interval::bottom(type->bit_width(), type->sign());
+  bool full_scalar = false;
+  if (points.is_set() && points.size() == 1) {
+    if (auto* global = dyn_cast< GlobalMemoryLocation >(*points.begin())) {
+      auto* declared = dyn_cast< ar::IntegerType >(global->global_var()->type()->pointee());
+      auto offset = eng.data().normal().pointer_to_pointer(ptr.var()).offset().singleton();
+      full_scalar = declared && declared->bit_width() == type->bit_width() &&
+                    offset && offset->is_zero();
+      if (full_scalar) {
+        external = env.read_global_interference(
+            core::IndexableTraits< MemoryLocation* >::index(global),
+            type->bit_width(), type->sign());
+      }
+    }
+  }
+  // Absence is not a readonly/coverage proof, nor a field-sensitive summary.
+  if (!full_scalar || external.is_bottom()) {
+    eng.data().normal().mem_forget_reachable(ptr.var(), size);
+    return;
+  }
+  auto alternative = eng.data();
+  alternative.normal().scalar_assign_nondet(lhs.var());
+  alternative.normal().int_set(lhs.var(), external);
+  alternative.normal().mem_write(ptr.var(), lhs, size);
+  alternative.normal().scalar_forget(lhs.var());
+  eng.data().join_with(alternative);
+}
+
 /// \brief Shared-read uninit decoupling (Load executor).
 ///
 /// A LOAD from SHARED memory may be initialized by another thread under a

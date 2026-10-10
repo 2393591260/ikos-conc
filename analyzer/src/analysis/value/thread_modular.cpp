@@ -135,7 +135,7 @@ void ThreadModularAnalysis::run() {
   };
 
   // Join published integer summaries into the function entry memory.
-  // TODO: later shared reads also need allowed interference after local writes.
+  // Integer loads also join interference after local writes in the executor.
   auto materialize_globals = [&](AbstractDomain& entry_inv) {
     auto& env = _ctx.concurrent_env;
     auto board = env.snapshot_global_interference();

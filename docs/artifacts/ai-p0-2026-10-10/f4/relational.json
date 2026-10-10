@@ -1,0 +1,74 @@
+[
+  {
+    "domain": "dbm",
+    "bits": 32,
+    "case": 0,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "domain": "dbm",
+    "bits": 32,
+    "case": 2,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "domain": "dbm",
+    "bits": 32,
+    "case": 6,
+    "verdict": "The program is SAFE"
+  },
+  {
+    "domain": "dbm",
+    "bits": 64,
+    "case": 0,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "domain": "dbm",
+    "bits": 64,
+    "case": 2,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "domain": "dbm",
+    "bits": 64,
+    "case": 6,
+    "verdict": "The program is SAFE"
+  },
+  {
+    "domain": "var-pack-dbm",
+    "bits": 32,
+    "case": 0,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "domain": "var-pack-dbm",
+    "bits": 32,
+    "case": 2,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "domain": "var-pack-dbm",
+    "bits": 32,
+    "case": 6,
+    "verdict": "The program is SAFE"
+  },
+  {
+    "domain": "var-pack-dbm",
+    "bits": 64,
+    "case": 0,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "domain": "var-pack-dbm",
+    "bits": 64,
+    "case": 2,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "domain": "var-pack-dbm",
+    "bits": 64,
+    "case": 6,
+    "verdict": "The program is SAFE"
+  }
+]

@@ -474,3 +474,29 @@ UNKNOWN248→249，FP/FN/error0。唯一回退是 `13-privatized_03-priv_inv.c`�
 [变化](artifacts/ai-p0-2026-10-10/f6/transitions.json)、
 [新用例](artifacts/ai-p0-2026-10-10/f6/fixtures-after.json)、
 [原审查](artifacts/ai-p0-2026-10-10/f6/audit.json)。
+
+### 9.5 P0-F4：整数共享读覆盖本地值与可能干扰
+
+整数 load 前，通过独立内存状态写入 external interval，再与原本地内存 join，最后执行原有
+mem_read。这样包含 local ∪ interference，并让内存/数值关系一同失效，不用旧 int_set
+覆盖读取结果。复用 load 的结果变量作临时值，写入后投影，不逐读创建永久 shadow。
+单个全宽、offset0 的整数 global 才消费该标量摘要；读取时包括 flat、所有锁分区及未 flush
+的队列，不能用 reader 持锁选择性丢弃其他写。其他共享布局或摘要缺失，对读取范围 havoc。
+未逃逸 TLS 和私有局部地址保留原转移；其逃逸前提仍受 F2 与后续覆盖审查约束。
+
+build/install 一致；32 个双位宽/双模式测试覆盖本地 store 后的新干扰、改名、struct/heap
+与私有 stack/TLS、无其他 flag 写、共同锁对照。12 条摘要查找断言验证 pending/flat/全部分区。
+另 12 个 DBM/var-pack-DBM 配置检查关系域，竞争 guard 不再消失、flag 仅写0对照仍 SAFE。
+旧 BMC 20 次、执行及损坏检查 242 条通过；原审查 76 次中剩 F2 的 4 次已知漏报。
+这些不能证明任意 API/指针/摘要收敛已完整；C11 用例回退 UNKNOWN，未伪称 BMC 支持原子值流。
+
+1029 全量 AI-only 保持 TN676/UNKNOWN353。首轮同时跑 AI/BMC 时 BMC 为
+TP104/TN676/UNKNOWN248/error1，唯一超时为 nsc-ircc 驱动；单独运行在26.3秒结束为 UNKNOWN。
+随后完整 BMC 复跑得到 TP104/TN676/UNKNOWN249/error0，FP/FN0，逐任务与 F6 基线完全一致。
+保留首轮与复跑证据，不把局部重跑拼成一轮全量。
+
+证据：[汇总](artifacts/ai-p0-2026-10-10/f4/summary.json)、
+[双位宽](artifacts/ai-p0-2026-10-10/f4/fixtures-after.json)、
+[关系域](artifacts/ai-p0-2026-10-10/f4/relational.json)、
+[首轮预算变化](artifacts/ai-p0-2026-10-10/f4/first-scan.json)、
+[1029 配对](artifacts/ai-p0-2026-10-10/f4/paired.json)。

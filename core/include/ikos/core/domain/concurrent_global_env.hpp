@@ -596,6 +596,27 @@ public:
     return result;
   }
 
+  /// All known may-writes, regardless of the reader's locks; no source is bottom.
+  machine_int::Interval read_global_interference(std::uint64_t addr,
+                                                 std::uint64_t width,
+                                                 Signedness sign) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    auto result = machine_int::Interval::bottom(width, sign);
+    auto add = [&](const machine_int::Interval& value) {
+      result.join_with(value.cast(width, sign));
+    };
+    auto flat = _global_board.find(addr);
+    if (flat != _global_board.end()) add(flat->second);
+    for (const auto& partition : _lock_partition) {
+      auto cell = partition.second.intervals.find(addr);
+      if (cell != partition.second.intervals.end()) add(cell->second);
+    }
+    for (const auto& queue : _privatized_writes)
+      for (const auto& write : queue.second)
+        if (write.addr == addr) add(write.val);
+    return result;
+  }
+
   /// \brief Join matching pending/partition values, then use the flat fallback.
   /// Sources are cast to the requested type before joining; no match is bottom.
   /// Currently not called by the numerical load executor.
