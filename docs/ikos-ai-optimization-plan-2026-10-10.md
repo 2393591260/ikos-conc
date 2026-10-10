@@ -996,3 +996,19 @@ UNKNOWN，未伪造竞争确认；有限集合零FN不是全部SAFE的证明。b
 [Dartagnan](artifacts/ai-p0-2026-10-10/ptrbytes/dartagnan.json)、
 [Goblint](artifacts/ai-p0-2026-10-10/ptrbytes/goblint.json)、
 [全量配对](artifacts/ai-p0-2026-10-10/ptrbytes/paired.json)。
+
+
+### 9.21 当前 Goblint 对照池更新
+
+`e440a19`基线实际有140个safe-label UNKNOWN，已全部重新运行固定Goblint校准二进制，
+没有复用旧结果。ILP32、每项30秒、4并发：TRUE18、UNKNOWN59、UNSUPPORTED60、ERROR2、
+TIMEOUT1；有Unsound诊断的结果明确不能作为SAFE证据。相对旧148项池，sleep/exit
+覆盖移除10项，句柄TOP别名新增2项；新两项均Goblint TRUE。source/config/binary
+指纹及每任务命令见[新池](artifacts/ai-p0-2026-10-10/ptrbytes/goblint-current-safe-unknown.json)。
+
+18个TRUE只表示后续核对入口，不保证移植后全部能成为TN。逐源码比较发现官方
+SV-COMP2026规则规定函数名以`__VERIFIER_atomic_`开始时整个body为原子执行，
+当前AI对acquire/release的额外排除与该合同不一致；BMC的named_verifier_atomic
+反而按通用前缀实现。`29_conditionals_vs`只有共享m位于这两个函数体内，
+与`40_barrier_vf-b`在函数体外仍有COND冲突不同；不能借后者的race标签排除前缀
+合同。此项还在独立核实/实施，不能据TRUE数量推断算法收益。
