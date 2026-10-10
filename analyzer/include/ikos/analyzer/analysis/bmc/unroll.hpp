@@ -46,6 +46,8 @@ struct BmcEvent {
   // var_id/coeff = 单个变量下标项 `coeff * var`（var_id==0 ⟹ 纯常量偏移）。
   // 提取失败时保持 base==0（调用方保守不确认）。
   ar::LocalVariable* local_base = nullptr;
+  ar::CallBase* heap_allocation = nullptr; // One executed allocation in implicit main.
+  core::ZNumber heap_extent{0};
   std::uint64_t base = 0;
   core::ZNumber const_off{0};
   std::uint64_t var_id = 0;
@@ -257,6 +259,10 @@ inline bool symbolic_byte_offset(ar::Value* ptr, BmcEvent& ev) {
 // Known object extent for prefix validity. Locals require one bounded stack
 // allocation; candidate objects still have to be globals.
 inline bool memory_extent(const BmcEvent& event, core::ZNumber& size) {
+  if (event.heap_allocation != nullptr) {
+    size = event.heap_extent;
+    return size > 0 && size <= 1048576;
+  }
   if (event.base != 0) {
     auto* g = reinterpret_cast< ar::GlobalVariable* >(event.base);
     auto* type = g->type()->pointee();
@@ -339,13 +345,32 @@ inline bool constant_output_call(ar::CallBase* call) {
   return argument == call->num_arguments();
 }
 
-// These summaries do not touch user memory or hide thread synchronization.
+inline bool malloc_call(ar::CallBase* call) {
+  auto* function = exact_callee(call);
+  auto* source = call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+  auto* declaration = source != nullptr
+      ? llvm::dyn_cast< llvm::Function >(source->getCalledOperand()->stripPointerCasts()) : nullptr;
+  const auto bits = call->bundle()->data_layout().pointers.bit_width;
+  return function != nullptr && function->is_declaration() &&
+         function->intrinsic_id() == ar::Intrinsic::LibcMalloc && call->num_arguments() == 1 &&
+         declaration != nullptr && declaration->isDeclaration() && declaration->getName() == "malloc" &&
+         !declaration->isVarArg() && declaration->arg_size() == 1 &&
+         declaration->getReturnType()->isPointerTy() && source->getType()->isPointerTy() &&
+         declaration->getFunctionType()->getParamType(0)->isIntegerTy(bits) &&
+         source->arg_size() == 1 && source->getArgOperand(0)->getType()->isIntegerTy(bits);
+}
+
+// These summaries do not touch existing user memory or hide synchronization.
 // Other memory-using libc calls and unknown externals have no such summary.
 inline bool supported_leaf_call(ar::CallBase* call) {
   auto* f = exact_callee(call);
   if (f == nullptr || !f->is_declaration()) return false;
   if (constant_output_call(call)) return true;
   if (f->intrinsic_id() == ar::Intrinsic::IkosNonDet) return true;
+  if (f->intrinsic_id() == ar::Intrinsic::LibcMalloc)
+    return malloc_call(call) && call->code()->is_function_body() &&
+           call->code()->function()->name() == "main";
   static const std::set< std::string > nondet{
       "__VERIFIER_nondet_bool", "__VERIFIER_nondet_char", "__VERIFIER_nondet_uchar",
       "__VERIFIER_nondet_short", "__VERIFIER_nondet_ushort", "__VERIFIER_nondet_int",
@@ -621,12 +646,64 @@ inline bool affine_integer_on_path(ar::Value* value,
   return true;
 }
 
+// A successful, bounded malloc choice is usable only at one executed site in
+// implicit main before any child starts. Repeated sites need dynamic identities.
+inline bool main_allocation(ar::CallBase* call, const std::vector< BmcEvent >& path,
+                            std::size_t index, core::ZNumber& size) {
+  auto* function = exact_callee(call);
+  if (function == nullptr || !malloc_call(call) ||
+      !call->code()->is_function_body() || call->code()->function()->name() != "main" ||
+      !call->has_result() || !call->result()->type()->is_pointer() ||
+      index >= path.size() || path[index].stmt != call ||
+      invocation_call(path, call->code(), index) != path.size() ||
+      std::count_if(path.begin(), path.end(), [&](const auto& event) {return event.stmt == call;}) != 1)
+    return false;
+  for (std::size_t i = 0; i < index; ++i)
+    if (path[i].kind == EvKind::Create) return false;
+  return constant_integer_on_path(call->argument(0), path, index, size) && size > 0 && size <= 1048576;
+}
+
+// A pointer slot may be followed outside a worker only if its address never
+// escapes and its sole source store actually ran in main before all creates.
+inline ar::Store* published_pointer(ar::GlobalVariable* global,
+                                    const std::vector< BmcEvent >& origin,
+                                    std::size_t& index) {
+  if (!global->is_definition() || global->is_thread_local() || !global->has_frontend()) return nullptr;
+  auto* source = global->frontend< llvm::GlobalVariable >();
+  llvm::StoreInst* initialization = nullptr;
+  for (auto* user : source->users()) {
+    if (auto* load = llvm::dyn_cast< llvm::LoadInst >(user)) {
+      if (load->getPointerOperand() != source || !load->getType()->isPointerTy()) return nullptr;
+    } else if (auto* store = llvm::dyn_cast< llvm::StoreInst >(user)) {
+      if (store->getPointerOperand() != source || initialization != nullptr ||
+          store->getFunction()->getName() != "main") return nullptr;
+      initialization = store;
+    } else return nullptr;
+  }
+  if (initialization == nullptr) return nullptr;
+  ar::Store* found = nullptr;
+  bool spawned = false;
+  for (std::size_t i = 0; i < origin.size(); ++i) {
+    spawned |= origin[i].kind == EvKind::Create;
+    auto* store = core::dyn_cast< ar::Store >(origin[i].stmt);
+    if (store == nullptr || !store->has_frontend() ||
+        store->frontend< llvm::Value >() != initialization) continue;
+    if (spawned || found != nullptr || store->pointer() != global ||
+        invocation_call(origin, store->code(), i) != origin.size()) return nullptr;
+    found = store; index = i;
+  }
+  return found;
+}
+
 // Resolve pointers from executed definitions and actual helper/thread args.
 // Root arguments were consumed on the already checked creation prefix; only
 // constant global address chains may be followed outside the selected path.
 inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& path,
                              std::size_t before, ar::Function* root,
-                             ar::Value* root_argument, BmcEvent& event) {
+                             ar::Value* root_argument, BmcEvent& event,
+                             const std::vector< BmcEvent >* origins = nullptr) {
+  if (origins == nullptr && root != nullptr && root->name() == "main") origins = &path;
+  const auto* definitions = &path;
   bool external = false;
   bool returned = false;
   for (unsigned depth = 0; depth < 32; ++depth) {
@@ -639,17 +716,20 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
     if (variable == nullptr) return false;
     std::size_t index = 0;
     std::size_t use = before;
-    auto* definition = external ? unique_def_bmc(variable) : reaching_definition(variable, path, before, index);
+    auto* definition = external && origins == nullptr ? unique_def_bmc(variable)
+        : reaching_definition(variable, *definitions, before, index);
     if (definition == nullptr && !external) {
       auto* argument = formal_argument(variable, path, before, index);
       if (argument != nullptr) {value = argument; before = index; continue;}
       if (root_parameter(variable, root) && root_argument != nullptr) {
-        value = root_argument; external = true; continue;
+        value = root_argument; external = true;
+        if (origins != nullptr) {definitions = origins; before = origins->size();}
+        continue;
       }
       return false;
     }
     if (definition == nullptr) return false;
-    if (!external) before = index;
+    if (!external || origins != nullptr) before = index;
     if (auto* shift = core::dyn_cast< ar::PointerShift >(definition)) {
       for (std::size_t i = 0; i < shift->num_terms(); ++i) {
         auto term = shift->term(i);
@@ -671,7 +751,18 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
       value = cast->operand();
     } else if (auto* assignment = core::dyn_cast< ar::Assignment >(definition)) {
       value = assignment->operand();
+    } else if (auto* load = core::dyn_cast< ar::Load >(definition)) {
+      auto* slot = core::dyn_cast< ar::GlobalVariable >(load->operand());
+      std::size_t store_index = 0;
+      auto* store = slot != nullptr && origins != nullptr ? published_pointer(slot, *origins, store_index) : nullptr;
+      if (store == nullptr || !load->result()->type()->is_pointer() ||
+          (definitions == origins && store_index >= index)) return false;
+      value = store->value(); external = true; definitions = origins; before = store_index;
     } else if (auto* call = core::dyn_cast< ar::CallBase >(definition)) {
+      core::ZNumber size;
+      if (main_allocation(call, *definitions, index, size)) {
+        event.heap_allocation = call; event.heap_extent = size; return true;
+      }
       if (external) return false;
       auto* callee = callee_on_path(call, path, index);
       if (callee == nullptr || callee->body_or_null() == nullptr) return false;
@@ -792,6 +883,8 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
       return false;
     }
     if (auto* call = core::dyn_cast< ar::CallBase >(def)) {
+      core::ZNumber size;
+      if (main_allocation(call, path, index, size)) return true;
       if (source_nondet(call)) return true;
       if (successful_create_result(path[index])) return true;
       if (successful_condition_result(path[index])) return true;

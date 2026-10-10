@@ -1,0 +1,826 @@
+{
+  "baseline_behavior_commit": "7fafd6a",
+  "before_sha256": "e0442c932af211b143ee8b64b28b24d74a33357165912c1fe6f4ecc81bd9bd64",
+  "after_sha256": "46453d765bb97f9d8de1808c5c82f671352458f822e09c0cb75cf1d343cdd254",
+  "matrix": {
+    "TP": 82,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 250,
+    "error": 0
+  },
+  "transitions": [
+    {
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_37-indirect_rc.c",
+      "expected": "Race Found",
+      "before": "Unknown",
+      "after": "Race Found"
+    },
+    {
+      "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_38-indexing_malloc.c",
+      "expected": "Race Found",
+      "before": "Unknown",
+      "after": "Race Found"
+    }
+  ],
+  "initial_run": {
+    "matrix": {
+      "TP": 80,
+      "FP": 0,
+      "TN": 697,
+      "FN": 0,
+      "unknown": 252,
+      "error": 0
+    },
+    "transitions": [
+      {
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_37-indirect_rc.c",
+        "expected": "Race Found",
+        "before": "Unknown",
+        "after": "Race Found"
+      },
+      {
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_38-indexing_malloc.c",
+        "expected": "Race Found",
+        "before": "Unknown",
+        "after": "Race Found"
+      },
+      {
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/11_fmaxsymopt-race.i",
+        "expected": "Race Found",
+        "before": "Race Found",
+        "after": "Unknown"
+      },
+      {
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/23_lu-fig2.fixed.i",
+        "expected": "Race Found",
+        "before": "Race Found",
+        "after": "Unknown"
+      }
+    ],
+    "note": "Earlier version before LLVM malloc signature gate; fmax/lu differ in full runs while final isolated runs confirm both. No evidence that API semantics explain their variation."
+  },
+  "before_fixtures": [
+    {
+      "case": "changed-slot-unsupported",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "changed-slot-unsupported",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "early-read-control",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "early-read-control",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "escape-slot-unsupported",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "escape-slot-unsupported",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "freed-unsupported",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "freed-unsupported",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "heap-read-unsupported",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "heap-read-unsupported",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "main-worker-race",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "main-worker-race",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "mutex-control",
+      "bits": 32,
+      "verdict": "The program is SAFE",
+      "returncode": 0
+    },
+    {
+      "case": "mutex-control",
+      "bits": 64,
+      "verdict": "The program is SAFE",
+      "returncode": 0
+    },
+    {
+      "case": "repeated-site-unsupported",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "repeated-site-unsupported",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "two-workers-race",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    },
+    {
+      "case": "two-workers-race",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE",
+      "returncode": 0
+    }
+  ],
+  "after_fixtures": [
+    {
+      "case": "changed-slot-unsupported",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "changed-slot-unsupported",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "disjoint-field-control",
+      "bits": 32,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "disjoint-field-control",
+      "bits": 64,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "early-read-control",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "early-read-control",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "escape-slot-unsupported",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "escape-slot-unsupported",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "field-helper-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "field-helper-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "freed-unsupported",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "freed-unsupported",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "heap-read-unsupported",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "heap-read-unsupported",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "main-worker-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "main-worker-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "malformed-api-unsupported",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "malformed-api-unsupported",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "mutex-control",
+      "bits": 32,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "mutex-control",
+      "bits": 64,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "repeated-site-unsupported",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "repeated-site-unsupported",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "separate-workers-control",
+      "bits": 32,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "separate-workers-control",
+      "bits": 64,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "two-workers-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "two-workers-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE"
+    }
+  ],
+  "reference": [
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.2366034620008577,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_38-indexing_malloc.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "a5d5458e3d8cf05130899060969ec8c39906a1485e870f571d92651debe03df7",
+      "data_model": "32"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.2732584469995345,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_38-indexing_malloc.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "a5d5458e3d8cf05130899060969ec8c39906a1485e870f571d92651debe03df7",
+      "data_model": "64"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.3103228300005867,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_05-ptra_rc.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "46239689c12c7235db8d54d70c9286a0a6cfbfdb9b84e19228da7467de46c8db",
+      "data_model": "32"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.3056028139999398,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_05-ptra_rc.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "46239689c12c7235db8d54d70c9286a0a6cfbfdb9b84e19228da7467de46c8db",
+      "data_model": "64"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.9342836430005264,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_10-arraylist_rc.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "9c310ca743e037dbc4fbe68f3a66f9551e82339d89bfe5780388869aac3fce99",
+      "data_model": "32"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.9448605050001788,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_10-arraylist_rc.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "9c310ca743e037dbc4fbe68f3a66f9551e82339d89bfe5780388869aac3fce99",
+      "data_model": "64"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 2.463969038999494,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_37-indirect_rc.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "2076b13c59b7d49779b8c352bd775e6bfc3c974320821f52074d18209bb5536d",
+      "data_model": "32"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.8261109340000985,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_37-indirect_rc.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "2076b13c59b7d49779b8c352bd775e6bfc3c974320821f52074d18209bb5536d",
+      "data_model": "64"
+    }
+  ],
+  "fixture_reference": [
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.8247501579999152,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/main-heap/main-worker-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "f8347366189af70fad80d34614e8a629cd033e9e8837740043fd95ffe424740b",
+      "data_model": "32",
+      "case": "main-worker-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.8934537160002947,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/main-heap/main-worker-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "f8347366189af70fad80d34614e8a629cd033e9e8837740043fd95ffe424740b",
+      "data_model": "64",
+      "case": "main-worker-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.741763233000711,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/main-heap/two-workers-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "2c62ef40b9007752660c52d95536e68bb27ca45214fb9a490dac16ddd8766877",
+      "data_model": "32",
+      "case": "two-workers-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.667748126999868,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/main-heap/two-workers-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "2c62ef40b9007752660c52d95536e68bb27ca45214fb9a490dac16ddd8766877",
+      "data_model": "64",
+      "case": "two-workers-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.6956922519993896,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/main-heap/field-helper-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "de4fe6b08bbc55cdbb210678d0ec088922b5c3045f2764a7e881170153208f4d",
+      "data_model": "32",
+      "case": "field-helper-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.6824921520001226,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/main-heap/field-helper-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "de4fe6b08bbc55cdbb210678d0ec088922b5c3045f2764a7e881170153208f4d",
+      "data_model": "64",
+      "case": "field-helper-race"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.9032780410007035,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/main-heap/mutex-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "bb3b6ec536df7004376039b6e4167117c9b06b13d500f40558d2e7ecb2104037",
+      "data_model": "32",
+      "case": "mutex-control"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.7438763390000531,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/main-heap/mutex-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "bb3b6ec536df7004376039b6e4167117c9b06b13d500f40558d2e7ecb2104037",
+      "data_model": "64",
+      "case": "mutex-control"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.7385142730008738,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/main-heap/disjoint-field-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "d6184c75346c3c97ea9f2ba0f5c75f66058b03d336192c0fb874b149b8fb20f6",
+      "data_model": "32",
+      "case": "disjoint-field-control"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.6730454959997587,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/main-heap/disjoint-field-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "d6184c75346c3c97ea9f2ba0f5c75f66058b03d336192c0fb874b149b8fb20f6",
+      "data_model": "64",
+      "case": "disjoint-field-control"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.6736457990000417,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/main-heap/early-read-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "b32355a90828727774d66c28d755a0413a10bca19075b7370a66708f7ae6d71f",
+      "data_model": "32",
+      "case": "early-read-control"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.5929513800001587,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/main-heap/early-read-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "b32355a90828727774d66c28d755a0413a10bca19075b7370a66708f7ae6d71f",
+      "data_model": "64",
+      "case": "early-read-control"
+    }
+  ],
+  "pointer_choice_reference": [
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.1980751549999695,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/shared-pointer-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "8f2891313a2b9888a22183d05d5073d218d995bb674e8c49cc5a830eb635bf24",
+      "data_model": "32"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.2267271849996177,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/shared-pointer-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "8f2891313a2b9888a22183d05d5073d218d995bb674e8c49cc5a830eb635bf24",
+      "data_model": "64"
+    }
+  ],
+  "partial_mapping": [
+    {
+      "case": "04-mutex_37-indirect_rc",
+      "reference": {
+        "status": "SOURCE_RACE",
+        "returncode": 13,
+        "seconds": 1.768557862000307,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_37-indirect_rc.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "2076b13c59b7d49779b8c352bd775e6bfc3c974320821f52074d18209bb5536d",
+        "data_model": "32"
+      },
+      "full_counterexample_validated": false,
+      "mapping_status": "UNMAPPED",
+      "reason": "chosen target is unmapped"
+    },
+    {
+      "case": "04-mutex_38-indexing_malloc",
+      "reference": {
+        "status": "SOURCE_RACE",
+        "returncode": 13,
+        "seconds": 1.7143260299999383,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_38-indexing_malloc.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "a5d5458e3d8cf05130899060969ec8c39906a1485e870f571d92651debe03df7",
+        "data_model": "32"
+      },
+      "full_counterexample_validated": false,
+      "mapping_status": "UNMAPPED",
+      "reason": "chosen target is unmapped"
+    }
+  ],
+  "regressions": {
+    "p0_observations": 20,
+    "allocation_lock_assertions": 20,
+    "global_choice_assertions": 16,
+    "atomic_target_assertions": 28,
+    "new_heap_assertions": 26
+  },
+  "full_counterexample_validated": false
+}

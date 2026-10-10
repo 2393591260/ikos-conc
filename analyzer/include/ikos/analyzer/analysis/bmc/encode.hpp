@@ -38,6 +38,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   const auto& startup = facts != nullptr ? facts->startup : empty_startup;
   auto* argumentA = created_argument(funcA, funcB->name() == "main" ? pathB : startup);
   auto* argumentB = created_argument(funcB, funcA->name() == "main" ? pathA : startup, funcA == funcB ? 1 : 0);
+  const auto& allocation_origin = funcA->name() == "main" ? pathA : funcB->name() == "main" ? pathB : startup;
   using ConditionId = std::pair< std::uint64_t, core::ZNumber >;
   std::map< ConditionId, std::uint64_t > conditions;
   std::map< ConditionId, std::pair< const void*, std::size_t > > condition_origins;
@@ -147,7 +148,13 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       if (auto* store = core::dyn_cast< ar::Store >(event.stmt)) pointer = store->pointer();
       if (pointer != nullptr) {
         event.base = 0; event.local_base = nullptr; event.const_off = 0; event.var_id = 0; event.coeff = 0;
-        if (!pointer_on_path(pointer, path, i, root, argument, event)) {record(diagnostics, "prefix_address", event.stmt); return false;}
+        event.heap_allocation = nullptr; event.heap_extent = 0;
+        if (!pointer_on_path(pointer, path, i, root, argument, event, &allocation_origin)) {record(diagnostics, "prefix_address", event.stmt); return false;}
+        // Heap loads need initialization and SC value/pointer sources. Do not
+        // promote malloc's indeterminate bytes into unconstrained input values.
+        if (event.heap_allocation != nullptr && event.kind == EvKind::Read) {
+          record(diagnostics, "heap_read_origin", event.stmt); return false;
+        }
       }
       if ((event.kind == EvKind::Lock || event.kind == EvKind::Unlock) &&
           !event.synthetic_atomic &&
@@ -866,7 +873,8 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
     const BmcEvent& eb = pathB[targetB];
     // 同址必须可证：base 提取失败（0）或 base 不同 → 缺失同址约束会让两访问被
     // 「假相邻」确认 → FP。保守不确认（UNKNOWN）。
-    if (ea.base == 0 || eb.base == 0 || ea.base != eb.base) {
+    const bool same_heap = ea.heap_allocation != nullptr && ea.heap_allocation == eb.heap_allocation;
+    if (!same_heap && (ea.base == 0 || eb.base == 0 || ea.base != eb.base)) {
       record(diagnostics, "address_base", ea.base == 0 ? ea.stmt : eb.stmt);
       return false;
     }
@@ -1015,11 +1023,15 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
               if (cached != values.end()) step.put("encoded_result", Z3_get_numeral_string(ctx, model.eval(cached->second, true)));
             }
             const auto& e = path[i];
-            if (e.base != 0 || e.local_base != nullptr) {
+            if (e.base != 0 || e.local_base != nullptr || e.heap_allocation != nullptr) {
               auto offset = replay_offsets.find(&e);
               if (offset != replay_offsets.end() || e.var_id == 0) {
+                JsonDict object = e.heap_allocation != nullptr
+                    ? JsonDict{{"kind", "heap"}, {"allocation", snapshot.statement_id(e.heap_allocation)},
+                               {"owner", "main"}, {"occurrence", 1}, {"extent", e.heap_extent.str()}}
+                    : snapshot.value(e.base != 0 ? static_cast< ar::Value* >(reinterpret_cast< ar::GlobalVariable* >(e.base)) : e.local_base);
                 step.put("encoded_address", JsonDict{
-                    {"object", snapshot.value(e.base != 0 ? static_cast< ar::Value* >(reinterpret_cast< ar::GlobalVariable* >(e.base)) : e.local_base)},
+                    {"object", object},
                     {"offset", offset != replay_offsets.end() ? std::string(Z3_get_numeral_string(ctx, model.eval(offset->second, true))) : e.const_off.str()},
                     {"width", e.width}});
               }
