@@ -1,5 +1,7 @@
 # 真实来源的堆整数读（2026-10-10）
 
+> 后续已支持已发布槽的结构体/unsigned AR 地址 cast，原 unsigned unsupported 正例已恢复；见[指针槽](ikos-bmc-pointer-slot-casts-2026-10-10.md)。本文统计保留为历史。
+
 冻结集1029项逐文件全相同：TP101/FP0/TN696/FN0/UNKNOWN232/error0。
 这是通用能力补齐，本阶段没有基准TP收益，不能把新正例计入比赛TP。
 

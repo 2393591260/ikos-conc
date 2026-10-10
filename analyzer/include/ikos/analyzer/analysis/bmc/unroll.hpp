@@ -736,6 +736,14 @@ inline bool main_allocation(ar::CallBase* call, const std::vector< BmcEvent >& p
 
 // A pointer slot may be followed outside a worker only if its address never
 // escapes and its sole source store actually ran in main before all creates.
+inline ar::GlobalVariable* global_pointer_slot(ar::Value* value) {
+  BmcEvent address;
+  if (!symbolic_byte_offset(value, address) || address.base == 0 ||
+      address.var_id != 0 || address.const_off != 0) return nullptr;
+  auto* global = reinterpret_cast< ar::GlobalVariable* >(address.base);
+  return global->type()->pointee()->is_pointer() ? global : nullptr;
+}
+
 inline ar::Store* published_pointer(ar::GlobalVariable* global,
                                     const std::vector< BmcEvent >& origin,
                                     std::size_t& index) {
@@ -759,7 +767,7 @@ inline ar::Store* published_pointer(ar::GlobalVariable* global,
     auto* store = core::dyn_cast< ar::Store >(origin[i].stmt);
     if (store == nullptr || !store->has_frontend() ||
         store->frontend< llvm::Value >() != initialization) continue;
-    if (spawned || found != nullptr || store->pointer() != global ||
+    if (spawned || found != nullptr || global_pointer_slot(store->pointer()) != global ||
         invocation_call(origin, store->code(), i) != origin.size()) return nullptr;
     found = store; index = i;
   }
@@ -823,7 +831,7 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
     } else if (auto* assignment = core::dyn_cast< ar::Assignment >(definition)) {
       value = assignment->operand();
     } else if (auto* load = core::dyn_cast< ar::Load >(definition)) {
-      auto* slot = core::dyn_cast< ar::GlobalVariable >(load->operand());
+      auto* slot = global_pointer_slot(load->operand());
       std::size_t store_index = 0;
       auto* store = slot != nullptr && origins != nullptr ? published_pointer(slot, *origins, store_index) : nullptr;
       if (store == nullptr || !load->result()->type()->is_pointer() ||

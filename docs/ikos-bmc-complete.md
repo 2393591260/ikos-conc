@@ -1,5 +1,7 @@
 # IKOS BMC 完整设计文档（从零到 sound gate 体系）
 
+> 已发布 pointer slot 的 AR 纯地址 cast 已归一化，结构体/unsigned 正例恢复；冻结集逐项不变，malloc_struct 的无来源值边界保留，见[指针槽](ikos-bmc-pointer-slot-casts-2026-10-10.md)。
+
 > 受限 ERRORCHECK 属性生命周期已接入，实际 owned unlock 两项恢复；冻结集 TP102→104，旧 TP/TN 全保留，见[属性前缀](ikos-bmc-mutex-attributes-2026-10-10.md)。
 
 > 新激活候选中不同入口优先，FK双架构恢复；冻结集TP101→102，旧TP/TN全保留。实际创建序列映射已修复，模型仍部分验证，见[查询排序](ikos-bmc-activation-query-order-2026-10-10.md)。

@@ -1,0 +1,173 @@
+{
+  "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+  "rows": [
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 2.1700294410038623,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/pointer-slot-casts/field-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "d48917eb71f5df9629d270cd77eac92bf5203a719e5f4905ffd2bac12ca4394d",
+      "data_model": "32",
+      "case": "field-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 2.156211906003591,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/pointer-slot-casts/field-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "d48917eb71f5df9629d270cd77eac92bf5203a719e5f4905ffd2bac12ca4394d",
+      "data_model": "64",
+      "case": "field-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 2.1471211630050675,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/pointer-slot-casts/renamed-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "acdd513a79ffb6d2add09e60c0ddd98eb1728a319a6d836f4e837d8670c49bd9",
+      "data_model": "32",
+      "case": "renamed-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 2.040966100001242,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/pointer-slot-casts/renamed-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "acdd513a79ffb6d2add09e60c0ddd98eb1728a319a6d836f4e837d8670c49bd9",
+      "data_model": "64",
+      "case": "renamed-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.912151538002945,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/pointer-slot-casts/helper-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "f2e0022abbfba3989e26d113f47174061242cd11a83e6ad1378e62c2ac1c9d8e",
+      "data_model": "32",
+      "case": "helper-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.9052460259990767,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/pointer-slot-casts/helper-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "f2e0022abbfba3989e26d113f47174061242cd11a83e6ad1378e62c2ac1c9d8e",
+      "data_model": "64",
+      "case": "helper-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.9060816450000857,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/pointer-slot-casts/actual-source-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "d2d71b4aa52645d261033b776d9b0929bdd40d4d75cf72e95a611532c3c4111a",
+      "data_model": "32",
+      "case": "actual-source-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.8053614410018781,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/fk-scheduling/partial-dynamic/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/pointer-slot-casts/actual-source-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "d2d71b4aa52645d261033b776d9b0929bdd40d4d75cf72e95a611532c3c4111a",
+      "data_model": "64",
+      "case": "actual-source-race"
+    }
+  ]
+}

@@ -1,0 +1,284 @@
+[
+  {
+    "case": "actual-source-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "not_searched_after_confirmation": 2,
+      "sat": 1,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "case": "actual-source-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "not_searched_after_confirmation": 2,
+      "sat": 1,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "case": "cyclic-origin-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 4,
+      "integer_operation": 8,
+      "sc_read_from": 8,
+      "smt_unsat": 8,
+      "heap_read_origin": 4
+    }
+  },
+  {
+    "case": "cyclic-origin-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 4,
+      "integer_operation": 8,
+      "sc_read_from": 8,
+      "smt_unsat": 8,
+      "heap_read_origin": 4
+    }
+  },
+  {
+    "case": "distinct-object-control",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "constant_guard_unsat": 2,
+      "sc_spawn_read_from": 2
+    }
+  },
+  {
+    "case": "distinct-object-control",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "constant_guard_unsat": 2,
+      "sc_spawn_read_from": 2
+    }
+  },
+  {
+    "case": "helper-renamed-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_spawn_read_from": 1
+    }
+  },
+  {
+    "case": "helper-renamed-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_spawn_read_from": 1
+    }
+  },
+  {
+    "case": "invalid-store-prefix-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 2,
+      "sc_read_from": 2,
+      "smt_unsat": 4
+    }
+  },
+  {
+    "case": "invalid-store-prefix-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 2,
+      "sc_read_from": 2,
+      "smt_unsat": 4
+    }
+  },
+  {
+    "case": "partial-source-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "assume_value": 2
+    }
+  },
+  {
+    "case": "partial-source-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "assume_value": 2
+    }
+  },
+  {
+    "case": "pointer-read-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "prefix_address": 2
+    }
+  },
+  {
+    "case": "pointer-read-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "prefix_address": 2
+    }
+  },
+  {
+    "case": "startup-initialized-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_spawn_read_from": 1
+    }
+  },
+  {
+    "case": "startup-initialized-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_spawn_read_from": 1
+    }
+  },
+  {
+    "case": "unaligned-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "assume_value": 2
+    }
+  },
+  {
+    "case": "unaligned-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "assume_value": 2
+    }
+  },
+  {
+    "case": "uninitialized-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "assume_value": 2
+    }
+  },
+  {
+    "case": "uninitialized-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "assume_value": 2
+    }
+  },
+  {
+    "case": "unsigned-slot-cast-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_spawn_read_from": 1
+    }
+  },
+  {
+    "case": "unsigned-slot-cast-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_spawn_read_from": 1
+    }
+  },
+  {
+    "case": "unused-initialized-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_spawn_read_from": 1
+    }
+  },
+  {
+    "case": "unused-initialized-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_spawn_read_from": 1
+    }
+  },
+  {
+    "case": "unused-uninitialized-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "heap_read_origin": 2
+    }
+  },
+  {
+    "case": "unused-uninitialized-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "heap_read_origin": 2
+    }
+  },
+  {
+    "case": "wide-signed-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_spawn_read_from": 1
+    }
+  },
+  {
+    "case": "wide-signed-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_spawn_read_from": 1
+    }
+  },
+  {
+    "case": "wrong-value-control",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "constant_guard_unsat": 2,
+      "sc_spawn_read_from": 2
+    }
+  },
+  {
+    "case": "wrong-value-control",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "constant_guard_unsat": 2,
+      "sc_spawn_read_from": 2
+    }
+  }
+]
