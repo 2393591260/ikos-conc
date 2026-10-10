@@ -1222,9 +1222,9 @@ inline UnrollResult unroll_to(
   result.rejected_reason = budget.rejected_reason;
   result.rejected_statement = budget.rejected_statement;
 
-  // A partial enumeration cannot bypass the existing completeness gate.
+  // Enumeration can stop after complete prefixes were emitted. Keep those;
+  // the interrupted DFS branch was never emitted and cannot become a witness.
   if (budget.exhausted != nullptr) {
-    result.paths.clear();
     result.incomplete = true;
     result.reason = budget.exhausted;
     return result;
@@ -1254,11 +1254,10 @@ inline UnrollResult unroll_completed(ar::Function* func, ar::Statement* target,
   result.rejected_reason = budget.rejected_reason;
   result.rejected_statement = budget.rejected_statement;
   if (budget.exhausted != nullptr) {
-    result.paths.clear(); result.incomplete = true; result.reason = budget.exhausted;
-  } else {
-    result.paths.erase(std::remove_if(result.paths.begin(), result.paths.end(),
-        [](const auto& path) {return candidate_index(path) == path.size();}), result.paths.end());
+    result.incomplete = true; result.reason = budget.exhausted;
   }
+  result.paths.erase(std::remove_if(result.paths.begin(), result.paths.end(),
+      [](const auto& path) {return candidate_index(path) == path.size();}), result.paths.end());
   return result;
 }
 

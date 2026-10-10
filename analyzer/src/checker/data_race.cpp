@@ -1285,8 +1285,19 @@ DataRaceChecker::~DataRaceChecker() {
   };
   std::map< std::pair< std::string, std::string >, bool > instance_proofs;
 
-  // Emit one aggregated report per group.
-  for (auto& kv : groups) {
+  // Preserve the original query pass before probing interrupted enumerations.
+  // Deferred groups emit once in pass two, under the same file deadline.
+  std::set< std::string > deferred_groups;
+  bool file_confirmed = false;
+  for (unsigned pass = 0; pass < 2; ++pass) {
+    if (pass == 1) {
+      search_budget.probe_interrupted = true;
+      search_budget.candidates = 256;
+      search_budget.queries = 1024;
+    }
+    for (auto& kv : groups) {
+    if (pass == 1 && deferred_groups.count(kv.first) == 0) continue;
+    search_budget.saw_interrupted = false;
     const std::vector< std::size_t >& pair_indices = kv.second;
     if (pair_indices.empty()) {
       continue;
@@ -1430,7 +1441,7 @@ DataRaceChecker::~DataRaceChecker() {
                 !direct_creator(b.thread_id, a.thread_id)),
            "transitive_thread_order");
       if (eligible) {
-        if (bmc_confirmed) {
+        if (bmc_confirmed || (pass == 1 && file_confirmed)) {
           bmc::record(trace, "not_searched_after_confirmation");
         } else if (group_attempts >= 32) {
           bmc::record(trace, "group_search_budget");
@@ -1525,6 +1536,11 @@ DataRaceChecker::~DataRaceChecker() {
       ++candidate_id;
     }
 
+    file_confirmed |= bmc_confirmed;
+    if (pass == 0 && !bmc_confirmed && search_budget.saw_interrupted) {
+      deferred_groups.insert(kv.first);
+      continue;
+    }
     // Flat targets and the report anchor must refer to the confirmed pair.
     JsonDict info{
         {"memory_location", first.first_conflict_loc.empty()
@@ -1569,6 +1585,7 @@ DataRaceChecker::~DataRaceChecker() {
                          /* info = */ info);
     // No terminal output: the aggregated info is the report. Downstream
     // tools (ikos-report, ikos-view) render it from the database.
+  }
   }
 }
 

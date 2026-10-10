@@ -111,6 +111,8 @@ inline bool has_unmodeled_sync(ar::Bundle* bundle,
 struct SearchBudget {
   std::size_t candidates = 256;
   std::size_t queries = 1024;
+  bool probe_interrupted = false;
+  bool saw_interrupted = false;
   std::chrono::steady_clock::time_point deadline =
       std::chrono::steady_clock::now() + std::chrono::seconds(10);
 
@@ -177,8 +179,8 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     auto index = candidate_index(p);
     if (index < p.size()) p[index].width = widthB;
   }
-  // Construction exhaustion discards partial enumerations. Cutting a CFG
-  // backedge alone is bounded search; it never justifies a guessed loop exit.
+  // Exhaustion leaves unexplored alternatives, not incomplete emitted prefixes.
+  // Retained targets/returns still follow actual guards and atomic completion.
   if (rA.incomplete || rB.incomplete) {
     if (rA.incomplete) {
       record(diagnostics, rA.reason != nullptr ? rA.reason : "unroll_incomplete", stmtA);
@@ -186,7 +188,10 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     if (rB.incomplete) {
       record(diagnostics, rB.reason != nullptr ? rB.reason : "unroll_incomplete", stmtB);
     }
-    return false;
+    if (budget == nullptr || !budget->probe_interrupted) {
+      if (budget != nullptr && !rA.paths.empty() && !rB.paths.empty()) budget->saw_interrupted = true;
+      return false;
+    }
   }
   if (rA.paths.empty() || rB.paths.empty()) {
     record(diagnostics, "target_not_reached", rA.paths.empty() ? stmtA : stmtB);

@@ -1,0 +1,20 @@
+#include <pthread.h>
+#include <stdio.h>
+extern int __VERIFIER_nondet_int(void);
+int data;
+void *worker(void *arg) {
+  for (int i = 0; i < 12; ++i) {
+    if (__VERIFIER_nondet_int()) puts("left");
+    else puts("right");
+  }
+  data = 1;
+  return 0;
+}
+int main(void) {
+  pthread_t a,b;
+  pthread_create(&a,0,worker,0);
+  pthread_create(&b,0,worker,0);
+  pthread_join(a,0);
+  pthread_join(b,0);
+  return 0;
+}
