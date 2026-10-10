@@ -1,0 +1,46 @@
+{
+  "dartagnan": {
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/lock-offset-large.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "returncode": 30,
+    "output": "Test: /tmp/ikos-ai-p0-20261010-ePqDG0/lock-offset-large.c\nResult: ERROR\nReason: ArithmeticException\nDetails:\n\tBigInteger out of int range\n"
+  },
+  "goblint": {
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/lock-offset-large.c"
+    ],
+    "returncode": 2,
+    "unsound": false,
+    "output": "[Error][Analyzer] About to crash at mark transfer function at /tmp/ikos-ai-p0-20261010-ePqDG0/lock-offset-large.c:7:41-7:99!\n[Info] Specification: CHECK( init(main()), LTL(G ! data-race) ) -> enabling soundness analyses: \"access, race\"\n[Info] SV-COMP specification: CHECK( init(main()), LTL(G ! data-race) )\n\n[Info] runtime: 00:00:00.055\n[Info] vars: 39, evals: 25\n\n[Info] |called|=9\n\nMemory statistics: total=32.20MB, max=7.06MB, minor=30.05MB, major=7.21MB, promoted=5.07MB\n    minor collections=15  major collections=2 compactions=0\n\n\nFatal error: exception Cilfacade.TypeOfError(typeOffset: Index on a non-array (4294967296, union __anonunion_pthread_mutex_t_335460617 ))\nMarked with transfer function at /tmp/ikos-ai-p0-20261010-ePqDG0/lock-offset-large.c:7:41-7:99\n"
+  },
+  "native": {
+    "data_model": "LP64",
+    "command": [
+      "cc -m64 -pthread large-lock-native.c -o large-lock-native",
+      "./large-lock-native"
+    ],
+    "exit_code": 0,
+    "output": "distance=4294967296 second_trylock=0\n",
+    "limitation": "Distinct mutex identities only; no data race or IKOS witness replay."
+  }
+}

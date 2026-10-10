@@ -687,3 +687,28 @@ BMC TP104/TN662/UNKNOWN262/error1，FP/FN0。nsc-ircc超时仍在。
 [修复后](artifacts/ai-p0-2026-10-10/heap/fixtures-after.json)、
 [原生参考](artifacts/ai-p0-2026-10-10/heap/reference.json)、
 [配对](artifacts/ai-p0-2026-10-10/heap/paired.json)。
+
+
+### 9.12 P0：锁偏移打包只对可表示身份建立MUST
+
+LP64单一malloc对象内，mutex offset0与offset2^32的打包键旧版相同，
+两个线程分别持不同mutex写同一data，误判SAFE。偏移16/2^32+16变体亦复现。
+现在仅允许非零base≤2^32-1、非负offset≤2^32-1；其他返回0（无确定身份），
+所有直接调用点已核对。获取不得加入key0，解锁不可表示地址按unknown release
+移除可能持锁并flush所有写分区，cond wait不得恢复key0为MUST。
+这是保守表示边界，没有把地址低32位相同解释为mutex相同；symbolic锁仍不参与SAFE共同锁排除。
+
+build/install一致；20次双ABI/双模式程序、12条打包边界断言、pointer64次与摘要92条、
+原审查76次、旧BMC20次通过。两个LP64竞争变体SAFE→UNKNOWN，
+ILP32采用256字节距离、原本已UNKNOWN，不能算作新增修复；共同锁、外层共同锁和join仍SAFE。
+原生Dartagnan因BigInteger范围报ERROR，校准Goblint因CIL typeOffset报错，均不作为竞争确认。
+另一本机LP64无竞争探针实际分配对象，持有第一个mutex时trylock第二个成功，
+确认4GB距离对应不同对象。它只核实身份前提，不是IKOS witness验证。
+
+1029完整顺序AI/BMC扫描逐任务与heap阶段一致：AI TN662/UNKNOWN366/error1；
+BMC TP104/TN662/UNKNOWN262/error1，FP/FN0。未知调用和剩余效果覆盖继续审查，
+仍不能据此宣称全项目SAFE已证明。nsc-ircc超时保留。
+证据：[汇总](artifacts/ai-p0-2026-10-10/locks/summary.json)、
+[前后输入结果](artifacts/ai-p0-2026-10-10/locks/fixtures-after.json)、
+[参考限制与本机检查](artifacts/ai-p0-2026-10-10/locks/reference.json)、
+[1029配对](artifacts/ai-p0-2026-10-10/locks/paired.json)。

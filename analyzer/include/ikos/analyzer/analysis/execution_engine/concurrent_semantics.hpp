@@ -47,26 +47,12 @@
 namespace ikos {
 namespace analyzer {
 
-/// \brief Combine a base MemoryLocation identity with a constant byte offset
-/// into a single lock key.
-///
-/// The memory model folds a whole global struct/array into one
-/// MemoryLocation, so two locks on distinct fields/elements (`&m.x` vs `&m.y`,
-/// `&m[3]` vs `&m[4]`) share the same base address and would collide if keyed
-/// by address alone. Encoding the offset restores field/element sensitivity.
-/// The combine is a hash — distinct (addr, offset) pairs collide only with
-/// probability 2^-64, matching the "trust object identity" assumption already
-/// used for `addr` itself (a raw pointer). Offset 0 short-circuits to `addr`
-/// so the common whole-object / first-field case keeps its historical key.
+/// Pack only representable identities. Zero means no definite lock; callers
+/// must not admit it to MUST state or retain locks across an unknown release.
 inline std::uint64_t offset_lock_key(std::uint64_t addr, const core::ZNumber& off) {
-  // Reversible packing of (base stable_id, instance byte offset): the high 32
-  // bits are the MemoryLocation stable_id, the low 32 bits are the offset.
-  // Injective for base < 2^32 and offset < 2^32 (stable ids are small monotonic
-  // counters; byte offsets are < 4GB), so distinct (base, offset) pairs never
-  // collide AND the checker can recover which struct-instance a lock protects
-  // (06-symbeq_14-list_entry_rc.c).
-  std::uint64_t i = off == core::ZNumber(0) ? 0 : off.to< std::uint64_t >();
-  return (addr << 32) | (i & 0xFFFFFFFFULL);
+  if (addr == 0 || addr > 0xFFFFFFFFULL || off < core::ZNumber(0) ||
+      off > core::ZNumber(0xFFFFFFFFULL)) return 0;
+  return (addr << 32) | off.to< std::uint64_t >();
 }
 
 inline std::uint64_t lock_key_base(std::uint64_t key) {
@@ -354,7 +340,7 @@ void exec_pthread_cond_wait(E& eng, ar::CallBase* call) {
           std::uint64_t base =
               ikos::core::IndexableTraits< MemoryLocation* >::index(loc);
           std::uint64_t key = offset_lock_key(base, off.lb().to_z_number());
-          if (eng.lockset().holds_lock(key)) {
+          if (key != 0 && eng.lockset().holds_lock(key)) {
             eng.lockset().remove_lock(key);
             eng.lockset().add_lock(key);
           }
@@ -445,8 +431,10 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
             // A[0].mutex protect A[1].datum (06-symbeq_14-list_entry_rc.c).
             std::uint64_t key =
                 offset_lock_key(base, poff.lb().to_z_number());
-            acquired_addrs.push_back(key);
-            env.record_lock_instance(key, instance_base_offset(eng, mutex_arg));
+            if (key != 0) {
+              acquired_addrs.push_back(key);
+              env.record_lock_instance(key, instance_base_offset(eng, mutex_arg));
+            }
           } else {
             // Variable offset (&mutex[i]): the flat offset cannot distinguish
             // mutex[j] from mutex[k], so key it SYMBOLICALLY. Bind
@@ -741,8 +729,9 @@ void exec_pthread_mutex_unlock(E& eng, ar::CallBase* call, bool also_read = fals
             for (MemoryLocation* loc : inner) {
               std::uint64_t base =
                   ikos::core::IndexableTraits<MemoryLocation*>::index(loc);
-              released_addrs.push_back(
-                  offset_lock_key(base, poff.lb().to_z_number()));
+              auto key = offset_lock_key(base, poff.lb().to_z_number());
+              if (key != 0) released_addrs.push_back(key);
+              else released_unknown = true;
             }
           }
         }
