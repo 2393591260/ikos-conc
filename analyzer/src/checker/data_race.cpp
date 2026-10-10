@@ -1220,7 +1220,8 @@ DataRaceChecker::~DataRaceChecker() {
   // Reuse the same bounded AR path engine for conditional creation. Static
   // site counts are not existence evidence; the retained guards are later
   // checked together with both workers' value/scheduling constraints.
-  auto conditional_live_threads = [&](const std::string& thread_a, const std::string& thread_b) {
+  auto conditional_live_threads = [&](const std::string& thread_a, const std::string& thread_b,
+                                      unsigned loop_bound) {
     auto* main = this->_ctx.bundle->function_or_null("main");
     if (main == nullptr || !main->is_definition()) return false;
     std::map< std::string, unsigned > required{{thread_a, 1}, {thread_b, 1}};
@@ -1230,9 +1231,11 @@ DataRaceChecker::~DataRaceChecker() {
       if (search_budget.expired()) break;
       if (!required.count(creation.child)) continue;
       for (unsigned occurrence = 1; occurrence <= 2; ++occurrence) {
-        auto result = bmc::unroll_to(main, creation.stmt, occurrence, 16);
-        if (result.incomplete) continue;
+        auto result = bmc::unroll_to(main, creation.stmt, occurrence, loop_bound);
+        // Exhaustion omits alternatives, not the complete prefixes already
+        // emitted. Keep their target/guard/definedness/activation obligations.
         for (auto& path : result.paths) {
+          if (bmc::candidate_index(path) == path.size()) continue;
           std::map< std::string, unsigned > spawns;
           std::set< std::pair< std::uint64_t, core::ZNumber > > held;
           bool supported = true;
@@ -1284,21 +1287,30 @@ DataRaceChecker::~DataRaceChecker() {
     return !alternatives.empty();
   };
   std::map< std::pair< std::string, std::string >, bool > instance_proofs;
+  std::set< std::pair< std::string, std::string > > small_activation;
 
   // Preserve the original query pass before probing interrupted enumerations.
-  // Deferred groups emit once in pass two, under the same file deadline.
+  // Deferred groups emit once after their last retry, under the same deadline.
   std::set< std::string > deferred_groups;
+  std::set< std::string > larger_activation_groups;
   std::map< std::string, JsonList > deferred_candidates;
   std::map< std::string, std::map< std::string, std::size_t > > deferred_counts;
   bool file_confirmed = false;
-  for (unsigned pass = 0; pass < 2; ++pass) {
-    if (pass == 1) {
+  for (unsigned pass = 0; pass < 3; ++pass) {
+    if (pass == 2) {
+      // A short startup is a search choice, not an activation/safety proof for
+      // other prefixes. Retry deferred groups with the original larger bound.
+      instance_proofs.clear();
+      activation_prefixes.clear();
+    }
+    if (pass != 0) {
       search_budget.probe_interrupted = true;
       search_budget.candidates = 256;
       search_budget.queries = 1024;
     }
     for (auto& kv : groups) {
-    if (pass == 1 && deferred_groups.count(kv.first) == 0) continue;
+    if ((pass == 1 && deferred_groups.count(kv.first) == 0) ||
+        (pass == 2 && larger_activation_groups.count(kv.first) == 0)) continue;
     search_budget.saw_interrupted = false;
     const std::vector< std::size_t >& pair_indices = kv.second;
     if (pair_indices.empty()) {
@@ -1343,13 +1355,25 @@ DataRaceChecker::~DataRaceChecker() {
     std::vector< ar::Statement* > confirmed_creations;
     JsonList candidate_diagnostics;
     std::map< std::string, std::size_t > reason_counts;
-    if (pass == 1 && diagnostics_enabled) reason_counts = deferred_counts.at(kv.first);
-    std::size_t candidate_id = 0;
+    if (pass != 0 && diagnostics_enabled) reason_counts = deferred_counts.at(kv.first);
+    bool group_small_activation = false;
+    std::vector< std::size_t > query_order;
+    for (std::size_t i = 0; i < pair_indices.size(); ++i) query_order.push_back(i);
+    // Legacy confirmations precede newly enabled activation alternatives
+    // within the same file deadline. Preserve the report's original pair IDs.
+    if (pass == 1 && !small_activation.empty())
+      std::stable_partition(query_order.begin(), query_order.end(), [&](std::size_t i) {
+        const auto& pair = all_pairs[pair_indices[i]];
+        const auto& a = this->_accesses[pair.i].thread_id;
+        const auto& b = this->_accesses[pair.j].thread_id;
+        return a == "main" || b == "main" || small_activation.count(std::minmax(a, b)) == 0;
+      });
     std::size_t group_attempts = 0;
-    for (std::size_t pk : pair_indices) {
+    for (std::size_t candidate_id : query_order) {
       if (!bmc_enabled && !diagnostics_enabled) {
         break;
       }
+      const std::size_t pk = pair_indices[candidate_id];
       const PendingRacePair& pr = all_pairs[pk];
       const AccessRecord& a = this->_accesses[pr.i];
       const AccessRecord& b = this->_accesses[pr.j];
@@ -1367,10 +1391,23 @@ DataRaceChecker::~DataRaceChecker() {
         auto key = std::minmax(a.thread_id, b.thread_id);
         auto proof = instance_proofs.find(key);
         if (proof == instance_proofs.end()) {
-          proof = instance_proofs.emplace(key, two_live_threads(a.thread_id, b.thread_id) ||
-                                               conditional_live_threads(a.thread_id, b.thread_id)).first;
+          bool live = two_live_threads(a.thread_id, b.thread_id);
+          if (!live && pass < 2 && conditional_live_threads(a.thread_id, b.thread_id, 2)) {
+            live = true;
+            small_activation.insert(key);
+          }
+          if (!live) live = conditional_live_threads(a.thread_id, b.thread_id, 16);
+          proof = instance_proofs.emplace(key, live).first;
         }
         gate(!proof->second, "thread_activation_unproven");
+        if (small_activation.count(key) != 0) {
+          group_small_activation = true;
+          bmc::record(trace, "activation_small_bound");
+          if (pass == 0) {
+            search_budget.saw_interrupted = true;
+            gate(true, "activation_deferred");
+          }
+        }
       }
       gate(pr.is_unknown, "mixed_atomic");
       // Unsupported synchronization is checked on each executed prefix.
@@ -1444,7 +1481,7 @@ DataRaceChecker::~DataRaceChecker() {
                 !direct_creator(b.thread_id, a.thread_id)),
            "transitive_thread_order");
       if (eligible) {
-        if (bmc_confirmed || (pass == 1 && file_confirmed)) {
+        if (bmc_confirmed || (pass != 0 && file_confirmed)) {
           bmc::record(trace, "not_searched_after_confirmation");
         } else if (group_attempts >= 32) {
           bmc::record(trace, "group_search_budget");
@@ -1536,15 +1573,16 @@ DataRaceChecker::~DataRaceChecker() {
           candidate_diagnostics.add(d);
         }
       }
-      ++candidate_id;
     }
 
     file_confirmed |= bmc_confirmed;
-    if (pass == 0 && !bmc_confirmed && search_budget.saw_interrupted) {
-      deferred_groups.insert(kv.first);
+    if (!bmc_confirmed && ((pass == 0 && search_budget.saw_interrupted) ||
+                          (pass == 1 && group_small_activation && !file_confirmed))) {
+      if (pass == 0) deferred_groups.insert(kv.first);
+      else larger_activation_groups.insert(kv.first);
       if (diagnostics_enabled) {
-        deferred_candidates.emplace(kv.first, candidate_diagnostics);
-        deferred_counts.emplace(kv.first, reason_counts);
+        if (pass == 0) deferred_candidates.emplace(kv.first, candidate_diagnostics);
+        deferred_counts[kv.first] = reason_counts;
       }
       continue;
     }
@@ -1575,8 +1613,8 @@ DataRaceChecker::~DataRaceChecker() {
       }
       diagnostics.put("counts", counts);
       diagnostics.put("candidates", candidate_diagnostics);
-      if (pass == 1) diagnostics.put("first_pass_candidates", deferred_candidates.at(kv.first));
-      diagnostics.put("omitted_candidates", candidate_id > 256 ? candidate_id - 256 : 0);
+      if (pass != 0) diagnostics.put("first_pass_candidates", deferred_candidates.at(kv.first));
+      diagnostics.put("omitted_candidates", pair_indices.size() > 256 ? pair_indices.size() - 256 : 0);
       info.put("bmc", diagnostics);
     }
 
