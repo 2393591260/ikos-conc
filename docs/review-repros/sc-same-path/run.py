@@ -43,6 +43,10 @@ def main(args):
                 assert counts['literal_loop_search_hint'] > 0, (source.name, bits, counts)
             if source.stem in ('larger-counter-race', 'longer-counter-race', 'renamed-helper-counter-race'):
                 assert counts['cached_guard_rejection'] > 0, (source.name, bits, counts)
+            if source.stem in ('parent-initialized-counter-race', 'parent-helper-counter-race', 'parent-nondet-race'):
+                assert counts['sc_spawn_read_from'] > 0, (source.name, bits, counts)
+            if source.stem in ('parent-postspawn-counter-race', 'parent-postspawn-reader-race'):
+                assert counts['sc_read_from'] > 0, (source.name, bits, counts)
             rows.append(dict(case=source.stem, bits=bits, verdict=verdict, counts=dict(counts)))
             print(source.stem, bits, verdict, flush=True)
     (args.output / 'summary.json').write_text(json.dumps(rows, indent=2)+'\n')

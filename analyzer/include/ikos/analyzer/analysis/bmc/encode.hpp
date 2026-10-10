@@ -589,7 +589,19 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       std::vector< z3::expr > sources;
       struct Write {z3::expr time; z3::expr value; z3::expr matches;};
       std::vector< Write > writes;
-      bool same_path_sources = access.base != 0 && access.var_id == 0;
+      bool ordered_sources = access.base != 0 && access.var_id == 0;
+      const auto& other_path = prefix == "value_a_" ? pathB : pathA;
+      auto* root = prefix == "value_a_" ? funcA : funcB;
+      auto* other_root = prefix == "value_a_" ? funcB : funcA;
+      std::size_t creator = 0;
+      if (root->name() != "main" && other_root->name() == "main")
+        for (std::size_t j = 0; j < other_path.size(); ++j)
+          if (other_path[j].kind == EvKind::Create &&
+              other_path[j].thread == reinterpret_cast< std::uint64_t >(root)) {
+            creator = j;
+            break;
+          }
+      z3::expr last_local(ctx), last_parent(ctx);
       auto collect = [&](const std::vector< BmcEvent >& events, ValueCache& values,
                          const std::string& label, std::size_t clock_start) {
         std::size_t begin = 0;
@@ -614,9 +626,13 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
           z3::expr encoded(ctx);
           if (stored_type == nullptr || stored_type->bit_width() != type->bit_width() ||
               !encode_value(value, encoded, values, label, depth + 1, j)) return false;
-          same_path_sources &= &events == &path && e.var_id == 0 && e.const_off == access.const_off;
-          writes.push_back({clock[clock_start + j], stored_type->is_signed() == type->is_signed() ? encoded : convert(encoded),
-                            write_offset == read_offset});
+          auto stored_value = stored_type->is_signed() == type->is_signed() ? encoded : convert(encoded);
+          const bool local = &events == &path;
+          const bool before_spawn = &events == &other_path && j < creator;
+          ordered_sources &= (local || before_spawn) && e.var_id == 0 && e.const_off == access.const_off;
+          if (local) last_local = stored_value;
+          else if (before_spawn) last_parent = stored_value;
+          writes.push_back({clock[clock_start + j], stored_value, write_offset == read_offset});
         }
         return true;
       };
@@ -630,14 +646,16 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
         return true;
       }
       if (!collect(pathA, cache_a, "value_a_", 0) || !collect(pathB, cache_b, "value_b_", nA)) return false;
-      // In these two prefixes, po fixes the latest exact-region write. Keep
-      // collect's full source validation; this does not prove program privacy.
-      if (same_path_sources && (!writes.empty() || known)) {
-        auto source = (writes.empty() ? initial : writes.back().value).simplify();
+      // po and create->child-start order pre-spawn parent writes before all
+      // child writes. Retain collect's checks; post-spawn/symbolic writers
+      // still need general SC rf. This is not a program-privacy proof.
+      if (ordered_sources && (!writes.empty() || known)) {
+        auto source = (static_cast< bool >(last_local) ? last_local :
+                       static_cast< bool >(last_parent) ? last_parent : initial).simplify();
         s.add(out == source);
         out = source;
         cache.find(key)->second = out;
-        record(diagnostics, "sc_same_path_read_from", load);
+        record(diagnostics, static_cast< bool >(last_parent) ? "sc_spawn_read_from" : "sc_same_path_read_from", load);
         return true;
       }
       z3::expr read_time = clock[(prefix == "value_a_" ? 0 : nA) + definition_index];

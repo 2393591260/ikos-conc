@@ -1,0 +1,42 @@
+[
+  {
+    "task": "c/pthread-ext/47_ticket_lock_hc_backoff_vs.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/47_ticket_lock_hc_backoff_vs.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Race Found",
+    "seconds": 8.254566372001136,
+    "returncode": 0,
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "call_summary": 24,
+      "integer_operation": 4,
+      "not_searched_after_confirmation": 21,
+      "sat": 1,
+      "sc_read_from": 6,
+      "sc_same_path_read_from": 3,
+      "thread_activation_unproven": 149,
+      "unroll_path_budget": 14
+    },
+    "first_blockers": {
+      "call_summary": 10,
+      "not_searched_after_confirmation": 21,
+      "thread_activation_unproven": 30
+    },
+    "candidates": 37,
+    "artifacts": "47_ticket_lock_hc_backoff_vs-2c8a87ca9117",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-recovery-2026-10-10/spawn-source-ticket-after/47_ticket_lock_hc_backoff_vs-2c8a87ca9117/report.json",
+      "-o",
+      "/tmp/ikos-recovery-2026-10-10/spawn-source-ticket-after/47_ticket_lock_hc_backoff_vs-2c8a87ca9117/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-ext/47_ticket_lock_hc_backoff_vs.i"
+    ]
+  }
+]
