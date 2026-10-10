@@ -1,0 +1,23 @@
+[
+  {
+    "task": "c/ldv-races/race-1_1-join.yml",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/ldv-races/race-1_2-join.yml",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/ldv-races/race-1_3-join.yml",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  }
+]

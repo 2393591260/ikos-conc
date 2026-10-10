@@ -435,3 +435,20 @@ AI-only/BMC，24 个竞争配置均不再 SAFE；共同锁及读写互斥对照�
 [配对](artifacts/ai-p0-2026-10-10/f3/paired.json)、
 [新用例](artifacts/ai-p0-2026-10-10/f3/fixtures-after.json)、
 [原审查输入](artifacts/ai-p0-2026-10-10/f3/audit.json)。
+
+### 9.3 P0-F5：join 只从确定句柄获得 MUST 完成信息
+
+移除 `[0,SID]` 和 `[0,main]` 的区间上界捷径，保留现有 singleton 身份及实例/HB 过滤。
+这不是完整 HandleSet，也没有扩大“join 总成功”的 API 合同；模糊身份不再生成 MUST 完成事实。
+24 个双位宽/双模式用例加入只选择有效 a/b 句柄的变体、直接 join writer、join 两线程和
+`{0,b}` 对照，竞争变体不再 SAFE，确定 writer/全部 join 对照保持 SAFE，不能用 `join(0)` 造 FALSE。
+原审查 76 次及旧 BMC 20 次回归通过阶段约束；F2/F4/F6 尚有 12 次已知漏报。
+
+1029 全量：AI-only TP0/TN680→677/UNKNOWN349→352；BMC TP104→104、TN680→677、
+UNKNOWN245→248，FP/FN/error0。三个回退均为 `race-1_1/1_2/1_3-join`，已登记为
+需要句柄来源/条件创建证明的精度任务，不能凭一个区间重新启用旧规则。
+
+证据：[汇总](artifacts/ai-p0-2026-10-10/f5/summary.json)、
+[变化](artifacts/ai-p0-2026-10-10/f5/transitions.json)、
+[双位宽用例](artifacts/ai-p0-2026-10-10/f5/fixtures-after.json)、
+[审查回归](artifacts/ai-p0-2026-10-10/f5/audit.json)。

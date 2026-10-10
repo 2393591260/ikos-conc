@@ -891,26 +891,13 @@ void exec_pthread_join(E& eng, ar::CallBase* call) {
     const auto& scalar_lit = handle_lit.scalar();
     if (scalar_lit.is_machine_int_var()) {
       auto iv = eng.data().normal().int_to_interval(scalar_lit.var());
-      // TODO: [0, main] is an interval hull, not a two-value handle set.
-      if (!iv.is_top() && !iv.is_bottom() &&
-          iv.ub().to_z_number().template to< std::uint64_t >() ==
-              core::kMainThreadSid &&
-          iv.lb().to_z_number() == core::ZNumber(0)) {
-        joined_sids.insert(core::kMainThreadSid);
-      } else if (auto single = iv.singleton()) {
+      // A hull's registered upper bound does not establish a MUST target.
+      if (auto single = iv.singleton()) {
         std::uint64_t sid =
             single->to_z_number().template to< std::uint64_t >();
         if (sid == core::kMainThreadSid ||
             (sid != 0 && env.site_func(sid) != nullptr)) {
           joined_sids.insert(sid);
-        }
-      } else if (!iv.is_top() && !iv.is_bottom() &&
-                 iv.lb().to_z_number() == core::ZNumber(0)) {
-        // TODO: a registered upper bound does not prove the join target.
-        std::uint64_t ub =
-            iv.ub().to_z_number().template to< std::uint64_t >();
-        if (ub != 0 && env.site_func(ub) != nullptr) {
-          joined_sids.insert(ub);
         }
       }
     } else if (scalar_lit.is_machine_int()) {
