@@ -105,7 +105,7 @@
 | + cast 包裹线程函数（resolve_thread_function） | **85** | **0** | **709** | **0** | **1503** |
 
 - 对比 SV-COMP 2026 no-data-race 官方榜：Goblint 1426（#1）、Goblint-Par 1422（#2）、**IKOS 1503**、Deagle 1352、UAutomizer 1295、Dartagnan 1186、CPAchecker 577。
-- 8 个 sound 修复（BMC 一期）：mutex 身份（`ac747e0`）、`__VERIFIER_atomic` 伪锁（`2f46dbc`）、both-held 锁门（`018715b`）、mutex 数组偏移 + 良性循环（`790df08`）、cond_wait=unlock+lock（`4278e6b`）、结构偏移回退（`1408afe`）、偏移区间相交别名门（`20d3a9e`）。详见 `ikos-bmc-complete.md` §7。
+- 8 个 sound 修复（BMC 一期）：mutex 身份（`ac747e0`）、`__VERIFIER_atomic` 伪锁（`2f46dbc`）、both-held 锁门（`018715b`）、mutex 数组偏移 + 良性循环（`790df08`）、cond_wait=unlock+lock（`4278e6b`）、结构偏移回退（`1408afe`）、偏移区间相交别名门（`20d3a9e`）。以上是历史阶段记录；当前前提、修复与验证边界见 [BMC 统一文档](ikos-bmc-complete.md#correctness)。
 - 剩余 235 UNKNOWN 的拆桶（~150 lost-TP + ~85 lost-TN）与回收杠杆见 `ikos-race-theory-mapping.md` §3.2。
 
 ### 独特优势（已用 Dartagnan 逐文件 verdict 交叉验证）

@@ -128,7 +128,7 @@
 | G1 | 计分：FALSE 错=−16、TRUE 错=−32、UNKNOWN=0 | 规则 §9 明确；`--demote-race-to-unknown` + BMC 重确认；**实测冻结集 TP=85/FP=0/TN=709/FN=0 = 1503 分** | ✅ |
 | G2 | ubuntu:24.04 干净容器跑通 smoketest | `required_ubuntu_packages` 已列（含 libz3-4），但未在干净容器实测 | 🚧 |
 | G3 | data_model ILP32/LP64 匹配 | `svcomp_witness.py`：`--data-model` → `-m 32/64`，witness 头部写 `data_model`；实测全量 ILP32 | ✅ |
-| G4 | witness 见证被 validator 验收 | 见证 2.2 已用 CPAchecker 复核：FALSE 见证被确认（正确调用见 `ikos-bmc-complete.md` §7/记忆） | ✅ |
+| G4 | witness 见证被 validator 验收 | 旧 GraphML 和指定模型的部分检查已完成，正式并发 YAML 2.2 与全部所选反例尚未严格验收；见 [BMC 验证边界](ikos-bmc-complete.md#validation) | 🚧 |
 | G5 | 归档/仓库公开可访问 | Zenodo 已上传（DOI `10.5281/zenodo.23122650`）；GitHub `github.com/2393591260/ikos-conc` | ⚠️ 归档需重传新版 |
 
 ---

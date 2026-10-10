@@ -1,395 +1,1045 @@
-# IKOS BMC 完整设计文档（从零到 sound gate 体系）
+# IKOS BMC：当前实现、语义契约、验证与扩展计划
 
-> 已发布 pointer slot 的 AR 纯地址 cast 已归一化，结构体/unsigned 正例恢复；冻结集逐项不变，malloc_struct 的无来源值边界保留，见[指针槽](ikos-bmc-pointer-slot-casts-2026-10-10.md)。
+更新：2026-10-10。本文是 BMC 的统一维护入口，合并原有设计、审查、精度恢复、
+参考工具、模型验证和 UNKNOWN 台账报告。实现事实、有限实验、历史记录和未实现方案
+分别说明；本文不是全项目 soundness 证明。原报告正文保留在 Git 历史，测试与小型证据仍在原路径。
 
-> 受限 ERRORCHECK 属性生命周期已接入，实际 owned unlock 两项恢复；冻结集 TP102→104，旧 TP/TN 全保留，见[属性前缀](ikos-bmc-mutex-attributes-2026-10-10.md)。
+阅读导航：
 
-> 新激活候选中不同入口优先，FK双架构恢复；冻结集TP101→102，旧TP/TN全保留。实际创建序列映射已修复，模型仍部分验证，见[查询排序](ikos-bmc-activation-query-order-2026-10-10.md)。
+- [当前状态与任务范围](#current)：先判断数字和能力是否适用于本次工作。
+- [判定契约与参考理论](#contract)、[架构与代码导航](#architecture)。
+- [值与 SC 来源](#values)、[地址与对象](#objects)、[线程与调用](#threads)、[同步](#sync)。
+- [搜索与性能](#search)、[正确性修复](#correctness)、[反例与 witness 验证](#validation)。
+- [逐用例实施和回归流程](#workflow)、[下一阶段与结束条件](#roadmap)。
+- [阶段历史](#history)、[证据索引](#evidence)、[文献与版本](#references)。
 
-> 单次main分配的同宽堆整数读已有真实SC来源，所有堆读均要求来源；冻结集逐项不变，参考uninit=0假设未照搬，见[堆读](ikos-bmc-heap-scalar-read-2026-10-10.md)。
+<a id="current"></a>
+## 1. 当前状态与任务范围
 
-> 保留完整创建前缀并分轮安排候选，冻结集TP98→101，旧TP/TN全保留；参考检查仍是部分模型验证，见[激活前缀](ikos-bmc-activation-prefix-2026-10-10.md)。
+目标是参加 SV-COMP 2027 的基础 no-data-race 类别。2027 官方目标清单尚未固定，
+目前使用 `/home/ruan/sv-benchmarks-2026` 的冻结版本
+`0a254fdddcfe24949be9edd47f8d609462eb52fb` 回归。
+`svcomp_race_test.py` 的现有扫描集合为 **1029 项，全部 ILP32**。
+双架构最小回归不等于做过 LP64 全量；这 1029 项也不自动等于官方 2027 类别全集。
+仓库技能此前递归扫描还发现 `todo/` 下额外一个 YAML，是否属于比赛任务须由官方清单确定。
 
-> 与当前两线程Join公式等价的提前UNSAT剪枝已落地，冻结集逐项不变；动态句柄匹配仍待实现，见[Join查询](ikos-bmc-join-query-prune-2026-10-10.md)。
+最近分析器行为提交为 `48d36a2`；其后 `ea00a07` 更新台账、`7daab30` 记录共享回调方案，
+没有增加分析能力。安装二进制 SHA256：
+`0a741e12b80f9984b7b52c4f16d703bf126cc0ba7a654f7ffc3f779a8fbed6ff`。
+这些指纹用于复核已保存实验，不代表以后构建的二进制必须具有同一 hash。
 
-> 原始整数global的真实字节来源可拼接混合宽度读，9类正例恢复确认；普通同宽快速路径保留，冻结集逐项不变，见[字节SC值流](ikos-bmc-byte-rf-2026-10-10.md)。
+| 2026 冻结集，BMC + demote | TP | FP | TN | FN | UNKNOWN | error |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 当前已保存全量 | **104** | **0** | **696** | **0** | **229** | **0** |
 
-> mutex 内部字段的库值来源门已进一步修正 AR opaque 指针造成的 1 字节 footprint；owner 字段假反例退回 UNKNOWN，见[完整控制宽度](ikos-bmc-sync-storage-width-2026-10-10.md)。历史初版见[库值来源](ikos-bmc-library-origin-2026-10-10.md)。
+**TP 指与 YAML 标签一致的 FALSE，尚未全部独立验证所选反例。**
+竞争标签程序中仍可能存在假 SMT 执行，标签命中不能检出这种问题。
+FP/FN 为零仅是此集合的实测观察；完整源程序/witness 验证、全部 SAFE 过滤规则证明、
+完整 C/LLVM definedness 论证和公平的全局性能比较仍未完成。
 
-> pre-main constructor遗漏造成的错误FALSE已收紧为UNKNOWN，冻结集逐项不变；固定参考也遗漏该初始化，见[构造函数审查](ikos-bmc-constructors-2026-10-10.md)。
+[最新逐任务记录](artifacts/bmc-tp104-ledger-2026-10-10/results.json)与
+[汇总](artifacts/bmc-tp104-ledger-2026-10-10/summary.json)共 **301 条历史任务**：
+229 个当前 UNKNOWN、69 个后来恢复的标签 TP、3 个抽象 SAFE。
+它不是 104 个当前 TP 的完整验证清单。229 项已用最终安装二进制重新诊断，全部仍 UNKNOWN。
 
-> 229 项剩余 UNKNOWN 已用 TP104 最终二进制逐项重新诊断，301 条历史记录及剩余义务见[TP104 台账](ikos-bmc-tp104-ledger-2026-10-10.md)；TP98 台账保留为历史。部分宽度干扰的 SAFE 漏报已单独修复，见[宽度审查](ikos-interference-width-audit-2026-10-10.md)。
+| 当前 UNKNOWN 的固定参考历史结果 | FAIL | TIMEOUT | ERROR | PASS | UNKNOWN |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 数量 | 101 | 73 | 25 | 29 | 1 |
 
-> po/create已确定的main初始化写与子线程写源顺序用于简化SC公式，新增六个fib；首轮ticket-lock波动与模型验证超时完整保留，见[创建前读源](ikos-bmc-spawn-source-2026-10-10.md)。
+参考记录仅在输入 hash 一致时沿用；属性用例、malloc_struct、共享回调另有新运行。
+不能称为 229 次新的 Dartagnan 分析。FAIL 是参考找到竞争，不能证明 IKOS 所选模型；
+PASS、界限不足 UNKNOWN、TIMEOUT 和 ERROR 必须分开。101 个 FAIL 也不是可承诺恢复的 TP 数。
 
-> 固定展开组内复用有来源不变性证明的false守卫，全量逐项不变；大循环已推进至SMT瓶颈，见[守卫复用](ikos-bmc-guard-cache-2026-10-10.md)。
+<a id="contract"></a>
+## 2. 判定契约与参考理论
 
-> 已发现并修复锁分区入口遗漏的SAFE漏报；全量TP92/FP0/TN696/FN0/UNKNOWN241，一项嵌套锁TN回退已记录，见[锁值覆盖](ikos-bmc-lock-interference-2026-10-10.md)。
+### 2.1 SAFE、FALSE、UNKNOWN 需要的证据
 
-> 本文描述当前实现、证据前提和能力边界；读过源码或测试通过不等于获得完整 soundness 证明。
-> 最新 UNKNOWN 全量遍历及基线见 [逐任务恢复报告](ikos-bmc-unknown-sweep-2026-10-09.md)。
-> 当前冻结集回归：TP=104（标签确认、未全部独立验证）/ FP=0 / TN=696 / FN=0 / UNKNOWN=229 / 错误=0。
-> 参考内存事件的实际类型消除同源码行pointer/int歧义，37双架构所选模型部分约束SAT；ILP32 pointer ABI边界仍明确遗漏，见[类型映射](ikos-bmc-typed-reference-2026-10-10.md)。
-> 实际循环守卫常量用于安排搜索，恢复两个fib7；原预算与确认前提保留，不把提示当循环次数证明，见[搜索提示](ikos-bmc-loop-hint-2026-10-10.md)。
-> 剩余242项已全部重新诊断且逐项UNKNOWN；300条历史任务与哈希一致的参考记录见[TP90台账](ikos-bmc-tp90-ledger-2026-10-10.md)。fib5双架构共四个所选模型部分约束SAT，仍非完整验证。
-> atomic排斥约束延后到可行守卫之后构造，全量逐项不变；四个fib定向约3.8/5.0/3.7/6.2秒，fib5两个ILP32模型部分约束SAT，见[构造优化](ikos-bmc-atomic-delay-2026-10-10.md)。
-> 守卫先于unused算术的完整检查保留所有原义务，ticket-lock恢复；相对TP86四个fib新增且旧TP/TN全保留，见[编码顺序](ikos-bmc-guard-first-2026-10-10.md)。
-> 确定读值传播及false守卫提前拒绝恢复四个fib任务，ticket-lock全量回退但隔离旧/新均FALSE；fib5部分模型验证超时，见[守卫优化](ikos-bmc-constant-guard-2026-10-10.md)。
-> 精确global读的同路径SC来源已由po简化，原来源检查保留，全量逐项不变；fib5查询吞吐改善但仍UNKNOWN，见[读源优化](ikos-bmc-sc-same-path-2026-10-10.md)。
-> 受限实际`pthread_exit(NULL)`已作为worker完成端点，全量逐项不变；fib5转为值流求解预算阻塞，见[终止端点](ikos-bmc-thread-exit-2026-10-10.md)。
-> atomic中间目标的结构UNSAT判定省去无效SMT，恢复lu；隔离7.7→2.6秒但无全局提速结论，见[查询优化](ikos-bmc-atomic-interior-2026-10-10.md)。
-> 暂缓组的小界限补充搜索恢复inner-race-2/3；全量lu回退但隔离旧/新同查询均FALSE，净增1，见[搜索报告](ikos-bmc-small-bound-2026-10-10.md)。
-> glibc x86静态condition初值证据恢复两个计数器任务，旧TP/TN全保留，见[静态条件变量](ikos-bmc-static-condition-2026-10-10.md)。
-> 不可变指针槽的实际发布及单次main分配身份恢复两项TP；heap读、一般动态分配仍有边界，见[地址与分配报告](ikos-bmc-main-heap-2026-10-10.md)。
-> 单次main堆对象已严格绑定参考Alloc，38的ILP32选中模型部分约束SAT且改值UNSAT；仍非完整验证，见[分配绑定](ikos-bmc-heap-binding-2026-10-10.md)。
-> 枚举中断时保留已完成前缀，在原第一轮之后利用同一10秒deadline的剩余预算查询；唯一恢复outer-race-3，见[完整前缀报告](ikos-bmc-completed-enumeration-2026-10-10.md)。
-> 默认初始化、实际持锁和有限虚假唤醒的condition前缀恢复一项TP，见[条件变量报告](ikos-bmc-condition-prefix-2026-10-10.md)；仍缺一般生命周期、属性及完整独立验证。
-> 有限global候选集交给实际地址编码，稳定恢复对象选择用例；全量77/78有波动，lu全量回退而隔离旧/新均FALSE，暂不声称净增长或速度收益，见[对象选择报告](ikos-bmc-global-choice-2026-10-10.md)。
-> 创建过滤的动态父实例漏报已修复，见[实例审查](ikos-creation-instance-audit-2026-10-10.md)；其中全量+1在隔离旧/新二进制都可复现，不归因于补丁。
-> TLS假对象FP及假共同锁FN已修复，见[TLS审查](ikos-tls-identity-audit-2026-10-10.md)。同入口线程的堆/栈锁摘要身份FN也已修复，见[分配身份审查](ikos-lock-allocation-identity-2026-10-10.md)；尚不能宣称全部正确性问题已清零。
-> 已映射顺序的全部95候选检查见[顺序报告](ikos-bmc-schedule-validation-2026-10-10.md)，隐式初始rf增量见[初始读源](ikos-bmc-initial-rf-2026-10-10.md)，仍是部分模型验证。
-> 优先查询较短的完整前缀，冻结集逐项不变，两个计数器模型的创建数15→1、参考局部约束SAT，见[短前缀报告](ikos-bmc-short-prefix-2026-10-09.md)。
-> 77项当前二进制复测和95个候选的部分检查已全覆盖；重复访问/初始化值约束的增量及未绑定内容见[验证覆盖](ikos-bmc-tp77-validation-2026-10-09.md)。
-> TP82时的250项已全部重新诊断且逐项UNKNOWN，300条历史记录见[台账](ikos-bmc-tp82-ledger-2026-10-10.md)；此后静态condition恢复其中两项。
-> atomic内部目标可保留真实尾部，要求双方完成路径并提前排除atomic/atomic候选，见[目标闭包报告](ikos-bmc-atomic-target-2026-10-09.md)（67→77）；完整独立验证仍未闭环。
-> 完整命名atomic helper前缀已保留不可分割区间，六项UNKNOWN恢复FALSE，见[命名atomic报告](ikos-bmc-named-atomic-2026-10-09.md)（61→67）。
-> 动态仿射守卫减少无溢出循环的不可行路径，唯一恢复 fmaxsymopt，见[守卫报告](ikos-bmc-affine-guards-2026-10-09.md)（60→61）。
-> 独立方向query恢复回绕最小竞争、定向减轻求解超时，冻结集逐项不变，见[求解方式报告](ikos-bmc-fresh-solver-2026-10-09.md)。
-> 此前271项UNKNOWN在3806ea4重新诊断，历史/新增参考结果分开保留，见[最新台账](ikos-bmc-current-ledger-2026-10-09.md)。
-> 同步API用户输出/超时输入及混合callee遗漏已修复，冻结集逐项不变，见[参数效果审查](ikos-sync-effects-2026-10-09.md)。
-> 未知基址的struct字段偏移不再替代对象地址证明，见[原点审查](ikos-structural-offset-2026-10-09.md)，冻结集逐项不变。
-> 已展开helper的实际返回全局地址进入BMC，重叠成员/重复调用变体恢复FALSE，见[返回指针](ikos-bmc-pointer-returns-2026-10-09.md)，冻结集逐项不变。
-> 创建基数审查修复递归/发现遗忘漏报，并恢复三项join SAFE，见[单次执行报告](ikos-single-execution-2026-10-09.md)。
-> SAFE 审查修复stdio访问遗漏，四项TN转UNKNOWN，见[库访问报告](ikos-stdio-effects-2026-10-09.md)。
-> sem_getvalue共享输出漏报另已修复，冻结集计数不变，见[输出槽报告](ikos-sem-value-2026-10-09.md)。
-> 中间循环界限实验因配对TP回退已撤回，见[搜索实验](ikos-bmc-loop-search-2026-10-09.md)。
-> 最新增量见[成功创建返回值](ikos-bmc-create-result-2026-10-09.md)（58→59）及
-> [启动数组地址](ikos-bmc-startup-address-2026-10-09.md)（59→60）。历史 23 项新 TP 有参考竞争确认。
-> 严格参考检查仍为部分约束验证，58任务/71候选的覆盖和缺口见
-> [独立约束报告](ikos-dartagnan-strict-validation-2026-10-09.md)；不得据此宣称全部反例已验证。
-> 结构化前缀导出与严格重放进展见 [P0 重放报告](ikos-bmc-replay-2026-10-09.md)。
-> 上一轮回归参考：TP=35 / FP=0 / TN=709 / FN=0 / UNKNOWN=285 / 错误=0；从 TP=7 恢复 28 项。
-> 实现、架构协同及验证边界见 [精度恢复报告](ikos-bmc-precision-2026-10-09.md)。此前 TP=27→7 的
-> 收紧依据保留在 [正确性审查报告](ikos-bmc-correctness-2026-10-09.md)；本轮恢复其中撤回的 23 项中的 19 项。
-> 历史 TP=80、53、27 是不同实现的有限实验；撤回 TP 不表示任务标签错误，也不表示每条旧反例都已证明虚假。
-> 任务范围是本地脚本扫描到的 2026 冻结集 1029 项，不能直接等同于已核实的 SV-COMP 2027 官方类别清单。
-> 本地 GraphML 验证及下一步方案见 [见证验证报告](ikos-bmc-witness-validation-2026-10-09.md)：
-> 35 项得到外部竞争结论支持，但旧 validator 不能严格绑定线程实例，原 SMT 模型仍未全部独立重放。
+| 结论 | 必要前提 | 前提不足时 |
+| --- | --- | --- |
+| TRUE / SAFE | 抽象解释覆盖所有相关具体执行；转移、不动点、干扰和每条候选过滤均保守 | 保留 may-warning / UNKNOWN，不能删掉候选冒称安全 |
+| FALSE / RACE | 所选模型能对应约定语义下真实有限执行；创建、控制流、值、对象、同步与目标冲突均成立 | 不确认，记录 unsupported、solver unknown 或预算不足 |
+| UNKNOWN | 当前能力或资源不能给出上述结论 | 保留具体原因；不解释成无竞争 |
 
----
+BMC 在本架构中只恢复 FALSE，**不从有界 UNSAT、候选为空、截断或超时推出 TRUE**。
+`confirm_race` / `check_race` 的 false 返回表示未确认，不能当作无竞争证明。
 
-## 0. 目标与红线（【铁证】，来自项目约定）
+有限展开限制了路径集合；省略值流、调用或实例约束却会增加虚假执行。
+所以“BMC 是欠近似，因此自动 FP=0”不成立。真实 nondet 可以是自由符号，
+共享 load 必须由真实来源供值；两者不能混同。
+每条过滤或确认规则都应写清语义前提、近似方向、建立前提的证据、失败回退和最小正反例。
+“只丢 TP”的注释不是证明。
 
-- **目标**：接在抽象解释（over-approx，保 FN=0）之后，对每个 demote 成 UNKNOWN 的候选竞争对，用 Z3 精确判定
-  「这两个访问是否真的能并发」。**SAT 且执行/值/地址/同步/实例前提满足 ⟹ 报 FALSE；UNSAT / 前提不可证 ⟹ 保持 UNKNOWN。永不报 TRUE**（证 SAFE 交给抽象解释）。
-- **红线 FN=0**：sound 优先于 precision，宁多报 FP 不漏报 FN（当前也守 FP=0，但见 §11：FP=0 是实测结果，
-  不是「欠近似」自动保证——BMC 数据上过近似，A0 只是必要边界，调用/锁/创建等前提也必须满足）。
-- **资源边界**：当前逐对搜索设预算，耗尽保持 UNKNOWN。未来可采用候选依赖闭包或更完整编码；这不是禁止全程序 SMT 的语义要求。
-- **内存模型**：目标 = SV-COMP no-data-race 的 pthread 程序，Dartagnan 官方以 `acyclic hb as sc`（SC）建模（§1.1），
-  IKOS 编码使用受限 SC 前缀。执行前缀中的未建模原子操作/API 必须拒绝；不因未调用函数或目标之后的同步直接拒绝所有候选。
+### 2.2 固定 Dartagnan 的实际竞争查询
 
----
+研究参照为 Dartagnan/Dat3M 4.3.1，提交
+`7caef5c850dc2dbf81c5554dcf41e402007f7a19`。
+这一版 `svcomp.cat` 的关系定义是：
 
-## 1. 理论依据：Dartagnan SV-COMP 2026 的 race 判定（【铁证】，读源码）
-
-Dartagnan 官方版 = `7caef5c`/标签 4.3.1（SV-COMP 2026），其 no-data-race 判定**不是** cat 文件里的
-`dr/conflict`（那是 2026-06 才加的 SV-COMP 2027 版），而是**内置 `PropertyEncoder.encodeDataRaces`**。
-
-### 1.1 svcomp.cat（6 行，【铁证】）
-
-```
+```text
+SVCOMP
 let com = (rf | fr | co)
 let hb = po | (com & int) | (rmw^-1? ; (com & ext))
 acyclic hb as sc
 ```
 
-- `rf` = read-from（读从某写取值）；`fr` = from-read；`co` = coherence（同址写全序）。
-- `com & int` = 线程内通信；`com & ext` = 跨线程通信；`rmw^-1?` = 可选 RMW 反边前缀。
-- `acyclic hb as sc` = hb 无环 = 顺序一致性。
+`rf` 为读来源，`co` 为同址写顺序，`fr` 为从读关系；`int/ext` 区分线程内外通信。
+这里的 CAT `hb` 不等于 POSIX/C11 happens-before，也不能简写为 `po | com | rmw`。
+assume/取值约束是执行条件，不是二元排序边。
 
-### 1.2 race 充要条件（【铁证】，PropertyEncoder.encodeDataRaces）
+固定版 no-data-race 查询在 `PropertyEncoder.encodeDataRaces`，不在 CAT 的 `dr/conflict`：
+枚举不同线程的非初始化、非原子写 `w` 与内存访问 `m`，先做 may-alias 预筛，
+排除双 RMW 候选，再要求真实 execution、sameAddress，以及
+`hb(m,w) && clock_hb(w) == clock_hb(m) + 1`。
+“相邻”是该完整模型中的时钟查询，**不等于没有 hb**，不能单独作为竞争定理。
+普通原子访问不满足 `canRace`；双 RMW 另有显式排除，不能把 RMW 与 MemoryOrder 混为一项。
 
-对每对线程 t1≠t2、t1 里每个非 init 非原子 WRITE `w`、t2 里每个非 init 非原子 MEMORY `m`：
+IKOS 的有限前缀、scheduler clock 和受限 SC 来源并未实现这个完整 CAT 模型。
+普通目标试两种 clock 相邻方向；atomic 目标使用受限的无中间内存/真实同步查询。
+查询形状相近不能证明等价。固定参考还按起始地址判同址，存在混合宽度重叠覆盖边界。
 
-1. `canRace` = `mo==null || mo==NONATOMIC`（**原子/RMW 访问根本不进竞态对**）。
-2. 跳过 `w.RMW && m.RMW`、`!alias.mayAlias(m,w)`（不同址）。
-3. `isConflictingPair = execution(m,w) && sameAddress(m,w)`。
-4. `isAdjacentInHb = hb(m,w) && clock_hb(w)==clock_hb(m)+1`（**hb 里相邻**）。
-5. `hasRace |= conflicting && adjacent`。
+2026-06-25 的 `c802dc442` 才引入 CAT `dr/conflict/sw/hb-race`。
+历史记录的 2027 开发提交 `b81ec6c…` 也不是本地当前版本或正式比赛配置。
+不能把不同版本的机制和分数拼成同一结论。
 
-**该版本完整模型内部的查询形式：conflicting ∧ hb-相邻**（`isAdjacentInHb = hb(m,w) ∧ clock_hb(w)==clock_hb(m)+1`）。
-「相邻」指在 hb 的某个线性扩展里两事件连续（中间无其他事件），**不是**「两事件之间没有 hb」——可比且无
-中间元素的两事件同样相邻。IKOS 使用类似的相邻查询，但缺少 Dartagnan 的完整执行、值流和实例约束；不能据此宣称两者等价，或把相邻当成无条件的竞争定理。
+### 2.3 C / LLVM / AR 与库契约
 
-> 注：这里的 hb 是上面 CAT 的精确表达式（含 rf/fr/co 值流），不能简写成 `po | com | rmw`，也不能直接等同于 POSIX/C11 的
-> happens-before；assume/值约束是执行约束、不是事件二元排序关系。IKOS 当前用 po+同步约束和按需 SC 读来源
-> 建模受支持的两路径前缀，不是该 CAT 的完整关系编码，见 §8。
+当前实现是受限 pthread / SC 有界前缀，不自动覆盖 C11 弱内存、硬件 RMW、所有 extern 或全部 C UB。
+机器整数位宽、signed/unsigned、LLVM exact/no-wrap/poison、对象范围、对齐、寿命、
+线程/函数 ABI 和初始化来源都可能影响反例存在性。
+`freeze_uninit` 的抽象初始化不是源程序的合法 nondet 输入。
 
-### 1.3 Dartagnan 为何慢（【铁证】+ 复杂度分析）
+有竞争的有限前缀通常不需要程序最终终止，但省略的行为必须不影响该前缀的合法性。
+pre-main constructor、必要创建、guard、未知调用或相关写不能随意省略。
+涉及 UB 的最小用例用于检查能力边界，不标作合法 race-free 程序的 FP 铁证。
 
-全程序 SMT 包含执行、控制流、内存/值流及线程依赖约束；竞争查询遍历跨线程事件对。
-公式规模和求解代价都可能较高，但不能只从一次超时或“全程序”推导指数复杂度，
-也不能把完整建模视为性能问题的唯一原因。当前没有同资源、同任务清单的性能归因实验。
+<a id="architecture"></a>
+## 3. 架构、信息流与代码导航
 
----
-
-## 2. 架构：两层判定（【铁证】，来自项目约定 + 代码）
-
-```
-抽象解释（over-approx，快）           BMC（有界候选搜索，确认须满足建模前提）
-  证明 SAFE（TN=+2）                   确认 RACE（TP=+1）
-  报「潜在竞争」→ demote 成 UNKNOWN     对每个候选对精确判定 SAT/UNSAT
-        └────────────── 候选对 ──────────────┘
-```
-
-- **SAFE 的证明前提**：抽象解释及每条过滤规则都必须覆盖具体行为。当前 FN=0 是有限测试观察；本轮没有完成所有 SAFE 过滤规则的证明。
-- **FALSE 方向需主动守 FP=0**：BMC 结构上欠近似（有界路径）、**数据上过近似**（未建模值建成自由 SMT 变量，
-  会凭空造出程序没有的执行）——所以「欠近似 ⇒ FP=0」**不成立**。FP=0 还需要创建、完整调用前缀、锁历史及地址等证据；
-  有限实验中的 FP=0 不是架构自动保证（见正确性审查报告）。
-- **完备性缺失的后果**：硬程序两头都「可能」→ UNKNOWN（0 分），**不是 FP/FN**。soundness 与完备性正交。
-
----
-
-## 3. BMC 全流程（【铁证】，读 bmc.hpp / data_race.cpp）
-
-`confirm_race` 接收两个实际访问、宽度、诊断/预算、创建记录及 `CandidateFacts`，依次：
-
-1. 展开实际执行前缀；其中 atomic memory 成为 Unsupported，未知 API / bodyless atomic helper 缺少摘要时拒绝确认；内部atomic目标还须真实完成路径。
-2. `unroll_to(funcA, stmtA)`、`unroll_to(funcB, stmtB)` → 两条路径展开。
-3. `rA.incomplete || rB.incomplete` → 第一轮暂缓有完整前缀的候选组；原查询完成后，第二轮在同一文件deadline内检查已完成前缀。中断的DFS分支不能作反例；回边截断不制造循环退出。
-4. 每条路径对进入 `check_race`，沿实际参数绑定精确锁身份；旧 function-level/held 提前门已删除。
-5. 检查前缀支持范围、完整锁历史、实际 assume、机器整数定义性和所需读来源后查询。
-
-上游（data_race.cpp）在预算内逐对重算程序同步、原子混合、有限global／heap候选对象、偏移、隔代排序及线程激活前提。
-非 main 的两个入口需要 main 的实际创建前缀；保留直线快路径，另展开最多 8 个 CFG 前缀，
-支持确切条件下的创建、bound=16 内的循环及 helper 创建。同入口两个实例仍须不同动态创建事件。
-未知调用、未支持的创建上下文仍保持 UNKNOWN；startup 的锁/atomic 区间必须完整释放。
-含 main 的路径对必须在 main 前缀中实际包含对方的 Create 事件。AI 的 may-multiplicity 不证明两个实例确实存在。
-确认后，报告锚点、`access_a/access_b` 和 `confirmed_pair_id` 均指向实际成功的候选，供 witness 使用。只透传选中的创建前缀，按执行顺序登记；目标位置不再把线程入口当作源码函数。
-
----
-
-## 4. 事件模型（【铁证】，读 unroll.hpp）
-
-```cpp
-enum class EvKind { Read, Write, Lock, Unlock, Assume, Create, Join, Local, Unsupported };
-struct BmcEvent {
-  ar::Statement* stmt;      // AR 语句
-  EvKind kind;
-  uint64_t mutex;           // 编码前沿实际参数重建精确锁身份
-  bool reader;              // rwlock reader 区间标记
-  uint64_t base; ZNumber const_off; uint64_t var_id; ZNumber coeff;  // 符号地址
-  ar::LocalVariable* local_base; // 可检查范围的前缀栈对象
-  uint64_t width;           // 每个内存访问的字节宽度，0=未知
-  uint64_t thread;          // Create=线程函数指针 / Join=句柄
-};
+```text
+C → LLVM → AR → 线程模块化抽象解释 → AccessRecord / may 候选
+                                      ├─ 保守规则证明 SAFE
+                                      └─ demote UNKNOWN → 候选前缀 BMC → 有依据的 FALSE / UNKNOWN
 ```
 
-`classify_event`：Load→Read、Store→Write、Comparison→Assume、mutex→Lock/Unlock（`__VERIFIER_atomic_begin/end`
-→ PSEUDO_ATOMIC_LOCK）、pthread_create→Create、pthread_join→Join。
-assume 调用收集实际实参；有定义的普通 wrapper 展开实际函数体。不能证明无阻塞/终止/副作用的调用标记 Unsupported。
-支持 rwlock rdlock/wrlock/unlock，Lock 事件另携带 reader 标记；condition支持受限显式/静态初始化及有限虚假唤醒，其他rwlock API仍有边界。
-极小常量 stdio 子集有摘要，`%n`、动态格式、返回值依赖等不当作 no-op。
-地址提取失败 / 锁身份提取失败 → 保持 base==0 → 上游保守不确认。
+BMC 复用 IKOS 的候选和 AR，不另建 C 前端。上游漏掉访问或删除候选时，更强的 SMT 无法补救。
+线程/内存语义尽量与 race 查询分开，后续死锁、可达性可复用已证明的执行机制；
+当前 race adapter 不自动支持这些性质。
 
----
+| 模块 | 文件及搜索锚点 |
+| --- | --- |
+| 访问记录、宽度、过滤、候选排序与报告 | `analyzer/include/ikos/analyzer/checker/data_race.hpp`；`analyzer/src/checker/data_race.cpp`：`AccessRecord`、`confirm_race`、`private_init` |
+| BMC 调度、预算、诊断 | `analyzer/include/ikos/analyzer/analysis/bmc/bmc.hpp` |
+| 事件分类、路径、动态定义和指针解析 | 同目录 `unroll.hpp`：`BmcEvent`、`classify_event`、`symbolic_byte_offset`、`unroll_to`、`unroll_completed` |
+| 值/地址/同步与竞争 SMT | 同目录 `encode.hpp`：`check_race`、`encode_value`、`prefix_values_defined` |
+| 抽象事实、类型初值、结构化导出 | 同目录 `facts.hpp`、`initial.hpp`、`replay.hpp` |
+| pthread 分派与抽象执行 | `analysis/execution_engine/numerical.hpp`、`concurrent_semantics.hpp`、`concurrent_inliner.hpp`，位于 analyzer include 下 |
+| 锁域、跨线程摘要与不动点 | `core/include/ikos/core/domain/lockset/lockset_domain.hpp`；`concurrent_global_env.hpp`；`analyzer/src/analysis/value/thread_modular.cpp` |
+| 前端、结果和 witness | `frontend/llvm/`；`analyzer/python/ikos/`；`benchexec/tools/ikos-conc.py` |
+| 研究验证与诊断 | `scripts/bmc_diagnostics.py`、`scripts/validate_bmc_witnesses.py`、`scripts/dartagnan_strict/` |
 
-## 5. 展开算法（源码与回归已核对）
+`BmcEvent` 记录 AR 语句、事件类别、对象/分配身份、offset 仿射项及定义上下文、
+访问 width、锁 reader 模式、线程创建信息和目标标记等。
+Read/Write、Lock/Unlock、Assume、Create/Join、Local/Unsupported 是基础事件类别；
+合成 atomic 和 condition 边界另带 synthetic 标记。
+静态语句或 `InternalVariable*` 不是动态执行身份，必须保留线程、调用、循环和定义上下文。
 
-- `dfs_paths` 保留实际 CFG 分支条件，到 target 截止；后继路径独立复制前缀和栈。
-- `Unreachable` 和 `LibcAbort/LibcExit` 终止当前前缀。
-- helper 内目标可直接命中；目标在调用之后时，将每条实际 return 路径拼接到调用方续点。
-  参数/返回值若无法编码，不能省略相关条件。未知或不可展开的调用不按 no-op 放行。
-- 调用支持确定函数常量、赋值/bitcast 链和本次已执行调用的实际 callback 参数，不用 FPA may 集证明 callee 执行。
-- 不删除循环比较。先尝试 bound=1，失败时在共享预算内尝试 bound=16；保留每次迭代的真实 guard 和动态定义。
-  已执行的纯常量运算可用于路径剪枝/地址折叠；无法编码循环值或退出时保持 UNKNOWN，不能证明无界安全。
-- 构造预算：路径 256、事件 1024、DFS 步数 16384、栈深 256、helper 深度 8；耗尽保留已发出的完整目标／return前缀，未完成分支不发出。
-- 即使操作结果不参与守卫，no-wrap 算术、除法/移位等也可能阻止后续访问。
-  当前检查全部 BinaryOperation 的机器整数定义性；无法编码时保持 UNKNOWN，不省略潜在陷阱。
-- 定义与参数按实际 invocation 查找；缓存区分动态定义，不把前一次 helper 调用的值用于本次调用。
+`confirm_race` 的关键流程：
 
----
+1. checker 重新检查所选候选的对象、范围、线程排序和可支持上下文，提供 `CandidateFacts`。
+2. 建立实际 main 创建前缀及独立动态线程实例，展开 A/B 的 CFG、调用和必要完成尾部。
+3. 保留已发出的完整前缀；枚举中断组在原 deadline 的后续轮次查询，未完成分支不发出。
+4. 检查调用、定义性、地址、初始化与库控制存储；编码 guard、机器值、SC 读源和同步。
+5. 在预算内查询实际冲突对，保存成功模型、目标索引、`confirmed_pair_id` 与创建序列。
+6. 报告和 witness 指向真正成功的候选，不能继续使用第一对访问或按入口名猜线程实例。
 
-## 6. SMT 编码（【铁证】，读 encode.hpp）
+### 3.1 IKOS 向 BMC 提供信息：已有贡献与尚未证明的收益
 
-`check_race(pathA, pathB)`：
+| 信息 | 允许的用途 | 限制 |
+| --- | --- | --- |
+| may-points-to、offset、width | 筛选潜在对象/访问、约束可能范围、安排依赖和查询 | may-alias 不证明实际同址；singleton heap cell 不证明同一次分配 |
+| 真实创建前缀 | 实例存在、共同初始化、实际 guard | may-spawn/multiplicity 不能代替执行证据 |
+| AR typed initializer / DataLayout | 精确初始化位图、对象 extent、访问宽度和字节序 | padding、undef、无来源 malloc 字节不能补成任意值或零 |
+| 受限局部 no-wrap 证书 | 省去重复定义性检查；使用的结果仍精确编码 | 要有 owner/控制上下文和来源前提，不适用于未知共享读 |
+| MUST 同步/局部关系、may-loop invariant | 未来的公式简化、依赖裁剪和搜索提示 | 必须先建立条件化契约及保持性，不能把 must-edge 当两端必执行 |
 
-1. **clock 变量**：每个事件一个整数 clock。
-2. **po**：路径内相邻事件 `clock[i] < clock[i+1]`。
-3. **spawn HB**：`Create(B) < B 首事件`。
-4. **join 的当前限制**：每个 Join 统一施加对方前缀末事件 `< Join` 的额外排序，尚无一般 handle/实例匹配。
-   目标在前缀末端，这种中间排序会阻止相邻查询；不能称已精确建模 joined 线程的真实完成。
-   后续必须补齐真实身份和完成路径，才能恢复含 join 的相关竞争。
-5. **mutex/rwlock 历史**：沿实际调用参数解析全局对象及偏移，每段完整/未闭合临界区分别记录。
-   单个 outstanding 符号锁支持地址表达式、unlock 同址和同址区间互斥；复杂符号锁嵌套仍不确认。
-   同锁区间互斥，但两个 reader 区间不互斥。未知锁身份、重入和无本路径持有证据的 unlock 不确认，不能只保留最后一次 lock/unlock。
-   `__VERIFIER_atomic_begin/end` 还排除另一线程的所有事件，即使它们不在原子段内。
-   若目标前缀仍处于未闭合原子段，当前缺少尾部执行闭包，保持 UNKNOWN。
-6. **assume 约束**：路径上每条 Comparison 编码。**A1 值来源 gate**：整数常量、明确识别的整数
-   `__VERIFIER_nondet_*` 声明 / `IkosNonDet` intrinsic（自由符号 + 类型范围）、实际实参/返回、整数转换及
-   受支持算术可编码。转换按位宽及 U/S 处理；no-wrap、除零、移位范围等有定义性约束。
-   demanded load 必须有受支持的 SC 读来源，不能自由化；未知调用、指针/浮点比较等仍不确认。
-   静态多定义按本次动态前缀的最近实际定义处理；定义须早于使用，缓存包含动态定义位置。
-   每路径独立 cache，guard 与地址共享 cache；值前缀 `value_a_` / `value_b_` 与时钟 `a` / `b` 分离。
-   nondet 识别不再使用名称子串；旧式 C `f()` 声明允许零实参调用，但须核对返回位宽及符号。
-   还编码 assume 的实际非零实参，不能用提取不到比较作为省略理由。`freeze_uninit` 产生的
-   `ikos.freeze_uninit` 标记不能成为真实自由值；无源码 DebugLoc 的旧式未标记来源也不确认。
-   此外，`prefix_values_defined` 检查所有语句实参（包括 store 值、return 值、调用参数及创建前缀），
-   拒绝真实消费 synthetic/undef 来源。合成 call/store 同时标记，二者本身是抽象 bookkeeping。
-   局部 load 的定义性只认可本次 allocation 之后真实覆盖的 store 或受支持的 create 句柄输出。
-   demanded 整数 load 的值另绑定本路径/另一选中路径/实际 startup 的写及精确 AR 初值；
-   内存 clocks 互异，取同一 SC 顺序中的最近先行写。同线程未来写不能供值，main nondet 初值共用一个符号。
-   单仿射符号地址供值已支持：rf 和最近写只考虑实际同址写；typed initializer 在小对象中按 stride 枚举。
-   startup 中 demanded 整数 load 只读初值或此前写。部分重叠供值、pointer load、一般对象/更复杂地址仍 UNKNOWN。
-   create 目前只确认默认属性、已知有效句柄输出对象的成功分支；未知属性/地址不证明激活。
-7. **同址门**：两访问 `base` 相同（否则提前返回不确认）+ **字节范围重叠**（`off_a < off_b+width_b ∧ off_b < off_a+width_a`）；
-   单个变量下标编码为 `const_off + coeff * encode_value(index)`；不支持的值来源仍不确认。
-   前缀中每个内存访问都须有已知对象、宽度和范围；允许已知有界栈对象作为前缀，竞争目标支持全局对象及已证明的单次main分配；heap整数读仅接受同对象同宽的真实写来源，未初始化／pointer来源仍拒绝。
-   偏移常量、系数及 SMT 整数常量使用精确整数，避免宿主 `int64_t` 溢出。
-8. **IKOS 事实**：`CandidateFacts` 提供候选 may-offset bounds、真实 main 创建前缀及受限局部 no-wrap 证书。
-   offset bounds 只限制已有真实值来源的地址，不替代来源；不能把可能 stale 的共享读区间当具体值。
-   startup 的实际 guards 与两 worker 条件一起求解。证书只省去重复定义性检查，demanded 结果仍精确编码。
-9. **竞争查询**：普通目标是否满足`clock 差 1`；单侧atomic目标在完整路径中查询无其它内存/真实同步夹入（两方向）。SAT 只有在执行、值、地址、同步和线程实例前提成立时才可用于确认。每次 SMT 检查限时 1000 ms；UNSAT/UNKNOWN 均不证明 SAFE。
+历史 TP35 全量曾观察到候选 bounds 256 次/49 任务、SC 来源 648 次/43 任务，
+no-wrap 证书消费为 0；这是信息流观测，不是因果收益。
+后来对所选 21 个恢复任务关闭 bounds/no-wrap 两项事实，TP **21→21**。
+此消融保留 typed initializer、创建和候选筛选，不能称为关闭全部 IKOS。
+尚无证据声称这两个数值证书增加 TP 或稳定加速。
 
----
+共享读 interval 可能 stale，历史递增例两个线程读区间都为 `[0,0]`。
+不能直接限制 BMC 具体读值；需要跨线程不动点、读时干扰及上下文契约。
+可靠 may 集合缩小待编码范围、可检查 must 证书简化公式，是可完善的架构方向；
+收益须用同语义、同界限的逐项消融与时间/内存/公式规模证明。
 
-## 7. sound gate 全清单（【铁证】，steps 1-4 之后）
+<a id="values"></a>
+## 4. 值编码、定义性与 SC 读来源
 
-每个 gate 都是**能力边界**（「BMC 建不了 X → UNKNOWN」），不是文件补丁：
+### 4.1 A0 → A1 的正确性前提
 
-| # | gate | 能力边界 |
-|---|---|---|
-| 1 | 执行前缀中的 Unsupported / call summary | C11 原子及无摘要的 API 不能按普通访问或 no-op 编码；未调用函数和目标后的同步不直接否决全部候选 |
-| 2 | `incomplete` | 枚举中断的完整前缀可在第二轮剩余预算内查询；未完成分支不作反例，穷举不完整或回边截断不证明安全 |
-| 3 | `transitive_ordered` | 隔代 create/join（2 线程模型看不到中间线程的 join）|
-| 4 | 实际对象身份 + offset | 有限global／heap may集合只供选候选；须证明同一global或同次main分配，偏移作可能重叠预筛，支持的变量下标交SMT |
-| 5 | 临界区历史 | 已取代旧 held 提前门；同锁及 reader/writer 模式在完整历史中编码 |
-| 6 | 资源上限 | 路径 256 / 事件 1024 / DFS 步数 16384 / 栈深 256；每组尝试 32 对；每轮 256 对 / 1024 次路径查询，两轮共享原10秒deadline，剩余预算不足则不确认 |
-| 7 | 地址/锁身份/所有权提取失败 | 未知别名不能创建不同假锁；重入及不平衡历史不确认 |
-| 8 | A1 值/地址来源 gate | 真实合法来源、本次 invocation 的最近定义；load 需受支持的 SC 供值；合成初始化不作真实 nondet |
-| 9 | 线程激活 / 实例存在性 | 需要具体创建前缀；may-multiplicity、FPA may 回调和条件/循环的站点数量不能证明实例存在 |
-| 10 | 调用和前缀可执行性 | 无摘要的调用和可能陷阱的操作不省略；helper 需实际返回前缀 |
-| 11 | 消费值的来源/定义性 | store/return/call/main 创建前缀也检查；合成初始化不证明真实赋值，局部 load 不复用前一次 allocation 的 store |
-| 12 | verifier 原子段 | 完整段排除所有其他线程事件；未闭合目标前缀缺尾部闭包，不确认 |
+A0 先封住未知值 guard、未知下标和失败的 base 提取。
+A1 仅开放有合法来源的值：整数常量、核实 API 的真实 nondet、实际参数/返回、
+受支持的转换和机器运算，再逐步开放有 SC 来源的 load。
+历史“函数名包含 nondet 就自由化”已经换成 `IkosNonDet` 或精确声明 API 集合，
+核对实参、返回类型与来源；用户定义函数不能凭名字跳过函数体。
+旧式 C `extern int f()` 可以实际零实参调用，不能只因 AR vararg 表示而一律拒绝。
 
-地址 A1 的实现、回归范围及全量 A/B 记录见 [本轮验证报告](ikos-bmc-a1-address-2026-10-08.md)。
+同一路径的 guard 和地址共用值 cache；不同线程/调用/迭代按动态定义区分。
+共同 startup nondet 只产生一个真实符号，供两个 worker 使用。
+值符号 `value_a_*` / `value_b_*` 与 `a*` / `b*` 时钟分离，避免错误相关。
+定义须在本次实际前缀中早于使用；先核对定义身份再命中 cache，不能复用前次调用的值。
+bitcast/assignment 剥层有界，失败保持 UNKNOWN。
 
-**去启发式史（steps 1-4）**：acquire/release 归入 unmodeled、`function_has_sync_recursive` 补查 mutex/cond_wait、
-`is_induction_var` 只留局部 SSA、held 锁门注释改写成边界。TP 96→80，FP=0/FN=0 全程保持。
+### 4.2 机器整数与所有消费点
 
-两轮暂缓组保留第一轮候选记录和合并计数，避免只显示第二轮预算耗尽；见[诊断修复](ikos-bmc-stage-diagnostics-2026-10-10.md)。
+按位宽和符号处理算术、比较、SExt/ZExt、截断、bitcast、位运算、除余和移位。
+signed MIN/-1、除零、移位范围、exact/no-wrap 等执行前提必须成立。
+结果不被 guard/address 使用的运算仍检查 trap/poison；不能省略 unused 算术。
+满足范围及 no-wrap 前提的加减乘可用数学整数，wrapping/位操作保留精确机器位模式。
+大常量、系数和 SMT 常量用 `ZNumber` / 十进制字符串，不截断到宿主 int64。
 
-**已实现诊断**：`IKOS_BMC_DIAGNOSTICS=1` 在组报告 `info.bmc` 中记录候选编号、观察到的原因计数、
-首次记录的阻塞、路径数量及有上限的 AR/源码示例。独立的 checker 前提可同时记录；被阻塞后未执行的阶段不推断原因。
-`python3 -B scripts/bmc_diagnostics.py --output <新目录>` 保留原始报告、日志和逐任务结果，统计所有 UNKNOWN（包括预期安全任务）。
-原因可重叠，候选层和任务层计数不可混用，拦截任务数不等于解除 gate 后能恢复的 TP 数。
-历史候选轮及本轮诊断与正常模式的 1029 个 verdict 全部一致。`confirmed_path_a/b`、
-`confirmed_startup`、`smt_model` 供复核；startup 的 clock 是前缀顺序标签，不是 solver clock。
-这些是本编码的证据，不是独立验证。详见 [精度恢复报告](ikos-bmc-precision-2026-10-09.md)。
+`prefix_values_defined` 覆盖 store、return、call 实参、startup 和局部读。
+合成 call/store 带 provenance，允许抽象 bookkeeping，但拒绝真实消费 synthetic/undef。
+局部 load 只认可本次 allocation 之后真实覆盖写或受支持 create 输出；
+有初始化的证明不意味着可以把读值自由化。
+普通 assume wrapper 展开实际函数体，按实参的非零条件编码，不能因提取不到 Comparison 而跳过。
+浮点、未知调用或不支持来源继续不确认。
 
----
+### 4.3 整数全局对象与符号地址的按需 SC 来源
 
-## 8. 与 Dartagnan 的对照（【铁证】机制映射 + 【待验证】缺口实现）
+所有建模内存事件使用共同 SC 全序和不同 clock。同线程 po、create 和同步约束同时成立。
+被 guard、地址或定义性消费的 load 绑定读前最新的兼容写，来源可为：
 
-| Dartagnan 原理 | IKOS 现状 | 缺口 |
-|---|---|---|
-| §1.1 的 CAT hb，`com=rf\|fr\|co` | po+同步与按需有界 SC 读来源 | 未实现完整 CAT/一般 K 线程 rf/co；两者不是等价编码 |
-| 全程序 SMT、N 线程 | 2 路径、有预算的多候选搜索 | 缺一般创建上下文、动态实例和 N 线程 |
-| Andersen + `sameAddress` | singleton pts + offset + SMT 同址门 | 部分（堆对象未放开）|
-| `canRace` 非原子 | 原子混合和未建模同步保守挡住确认 | 支持边界不同，未证明等价 |
-| loop-unroll + bound | 保留真实条件和动态定义，尝试 bound=1/16 | 预算受限且没有无界 SAFE 证明；不能称等价 |
-| violation witness | adapter 使用 YAML 2.2 `violation_sequence`；另有本地 GraphML 投影验证 | 2027 要求并发 violation witness 2.2 或以上；本地 4.2.2 不能解析 2.2，旧 GraphML 验证不能严格绑定实例/值/候选对，需现代 validator 与结构化反例 |
+- AR 的确切 typed initializer，包括可支持的嵌套 struct/array/aggregate zero。
+- 实际 startup 中此前的 main 写；startup load 不读未来写。
+- 所选 A/B 前缀的实际写，写值继续递归检查来源。
 
----
+单仿射地址的 rf 同址条件参与来源选择，“最近写”只考虑实际同一位置的写。
+小对象 typed initializer 可在至多 256 个 stride 位置枚举。
+`var_before` 固定保存指针时的下标定义，随后改变 i 不改变旧指针。
+未映射来源不能自由化；未知副作用或必要其他线程需要补摘要/依赖闭包。
+这仍是受限按需 SC 模型，不是完整 K 线程 CAT/rf/co 或弱内存实现。
 
-## 9. 当前未完成项与顺序（实测问题和设计建议分开）
+### 4.4 全局整数的混合宽度字节来源
 
-后续采用[参考工具驱动的逐用例实施方案](ikos-bmc-reference-guided-plan.md)：
-先预测具体执行，再观察固定版本 Dartagnan，迁移通用语义并验证正反例与全量结果。
-每次精度扩展同时补齐所需反例证据，不必等待完整通用验证框架全部完成。
-原来的 285 个 UNKNOWN 已全部参考分析，新增 UNKNOWN 也补齐记录；
-动态创建、符号地址/锁、startup load 和实际 callback 已按该流程扩展。
-逐任务结果、模型探针、两个新上游 FN 变体与后续范围见[本轮报告](ikos-bmc-unknown-sweep-2026-10-09.md)。
+支持原始整数 global、常量 offset、8 的倍数且不超过 64 位，读写位宽等于实际字节宽度×8。
+按目标 DataLayout 字节序，从真实初值位图/startup/A/B 的最近覆盖写为每个读字节供值，
+concat 后按 load 类型解释。整次 load 共享一个 clock，不为每字节选择不同读取时刻。
+缺初值字节只有被真实先行写覆盖才可读；不得自由补值。
 
-1. **先维持可复核的正确性基线**：按源码前缀和实际访问对复核每个确认 TP；增加安全对照与变体。
-   SAT、YAML 标签及得分一致都不能替代执行存在性证据。当前逐项记录见正确性审查报告。
-2. **完成源程序/前端契约与独立 witness 验证**：保留真实 nondet 与合成初始化的区别；
-   store/return/call 的 synthetic/undef 消费检查已补齐；仍须核对其他 undefined/poison、
-   内存有效性及库契约，并把实际所选访问对送入兼容格式的数据竞争验证器。
-   旧 GraphML 本地验证已落地，局限和严格反例记录方案见 [见证验证报告](ikos-bmc-witness-validation-2026-10-09.md)。
-   没有证明所有 C 未定义行为前提或所有 SAFE 过滤规则。
-3. **扩大 IKOS 事实协同**：候选 offset、真实创建前缀、AR 初值和受限局部无溢出证书已接入。
-   本轮关闭候选 bounds/no-wrap 数值证书的消融没有减少所选任务的 TP，尚无稳定性能收益证据；
-   共享读区间可能 stale，不能直接用作值证书。aggregate interference 暂通过 forget 保持覆盖，需字段化恢复精度。
-   下一步需为关系/别名/循环信息建立上下文明确的 may/must 契约及消融实验。
-4. **扩大创建/调用动态实例、锁属性与库摘要**：实际参数/返回、条件创建、锁指针和 reader/writer 模式已有受限支持；
-   受限 ERRORCHECK 生命周期已支持；共享间接回调的 rf/callee 探针及待实施范围见[可行性分析](ikos-bmc-shared-callback-feasibility-2026-10-10.md)。仍缺一般间接调用、失败行为/其他属性和更完整创建上下文。每次扩展须保留 FP 对照，不能用 may 信息证明实际存在。
-5. **扩大候选依赖闭包 + 有界 SC 值流**：机器整数、AR 初值、startup 及两前缀 demanded load 已有受限实现。
-   单仿射符号地址供值和有界迭代已实现；仍需混合宽度/指针供值、必要的其他线程、join 身份及 atomic 目标尾部闭包。
-   遗漏行为须证明无关或给出摘要。
-6. **再扩大堆对象、K 线程与搜索精度**：单次main分配的写与精确同宽整数读已支持，仍需一般读来源、动态对象/线程身份、生命周期；
-   诊断计数是阻塞观察，不能直接换算 TP 收益。
+普通同宽和符号数组保留整值快速路径，避免强制增加逐字节公式成本。
+aggregate 混合宽度、symbolic 部分写、pointer bytes、padding/undef、heap byte rf 和更大对象仍有边界。
+26 条双架构断言覆盖低/高字节、signed 扩展、双源拼接、main 部分初始化及不可能组合对照，
+冻结集逐项不变。固定参考对部分拼接正例给 PASS：其 word/rf 同址模型不支持一般字节拼接，
+不能把这类 PASS 当作 C 字节表示反证，也不能算独立验证通过。
+gcc 双架构 native assert 只验证表示；大端分支未在真实大端机器测试。
 
-多候选搜索和诊断已经实现。之前 53→27→7 属于正确性收紧，本轮 7→35 属于在保留检查前提下的精度恢复。
-不能把一次增加 `scull` 或总体 FP=0 当成 soundness 证明；完整配对和支持前提见本轮报告。
+### 4.5 堆整数读的实际来源
 
-此前 TP≈140、“约 35 个数学上追不到”及未经同配置配对的 Dartagnan 分数对比没有充分证据，已撤回。
-未知任务规模不是可恢复收益，也不能从有界架构直接推导某个固定任务集合不可处理。
+单次 main 分配支持对齐、精确 offset、1–8 字节整数 load 和同宽写，按真实 allocation 身份供值。
+静态初值只用于 global；malloc 没有默认值。
+**每个堆读都要编码来源，即使结果未使用**；整条前缀堆访问还检查 ABI 对齐。
+无来源、循环自供值、partial/pointer rf、复杂地址、不对齐仍拒绝；packed 合法低对齐访问尚未建契约。
 
----
+`02-base_24/25-malloc` 与 `26-malloc_struct` 的参考竞争依赖重要配置差异：
+固定版 `WmmEncoder.memoryIsZeroed=true`，允许无来源读取零；malloc 显式初始化选项另为 false。
+IKOS 没有导入这一默认假设。cast 修复后 malloc_struct 的 x/y 锁与真实来源公式仍 UNSAT。
+参考原生 y 竞争对探针在 x=0 时双架构 SAT、x=3 时双架构 UNSAT_AT_BOUND。
+这是具体模型差异，不说明标签错误、程序 SAFE 或 IKOS 永远无法支持；先核实 C/LLVM/比赛初始化契约。
 
-## 10. 设计决策史（从 ikos-bmc-design.md 并入，避免文档冗余）
+<a id="objects"></a>
+## 5. 地址、宽度与对象身份
 
-### 10.1 核心设计决策：不重写 checker，复用它的产物（【铁证】）
+### 5.1 范围重叠与符号下标
 
-BMC 不是从零扫 AR，而是接管抽象解释判为「潜在竞争」的那一对访问：
-- **用 checker 的**：访问事件 / 线程归属 / 竞争对语句（定位 load/store + 线程入口）。
-- **复用 may 信息但不作具体证据**：points-to/offset 可预筛及约束候选；同抽象 cell 不能证明同一动态堆对象。
-- **同步需具体身份和历史**：抽象锁集可以提供分析信息，但不能凭 may-held 宣称互斥；当前 SMT 重算实际前缀。
-- **已实现事实接口**：`CandidateFacts` 传入 offset bounds、实际创建前缀与受限 no-wrap 证书，
-  `initial_integer` 复用 AR 初值及 DataLayout。当前数值证书消融及进一步协同的依据见 UNKNOWN 全量报告。
+`AccessRecord.width` 独立于起始 offset 区间，load/store 来自 DataLayout store size；未知宽度不能判不相交。
+SMT 冲突要求同一真实对象且
+`off_a < off_b + width_b && off_b < off_a + width_a`。
+不同起点也可能重叠。符号 offset 为 `const_off + coeff * encode_value(index)`，
+与 guard 共用 cache，要求对象 extent、访问 width 和界内范围可证。
+字段 offset 不能替代未知基址证明；失败提取不得继续查缺少同址约束的 SAT。
 
-### 10.2 helper 内联暴露的 4 类 FP（gate 的历史根因）（【铁证】）
+有限非空 global/可支持 heap may 集合可以提供候选；实际路径解析 base 和动态 allocation。
+TOP、TLS、未知基址和复杂指针来源仍保守。
+`06-symbeq_10-equ_rc` 恢复来自 main 实际选 B、worker 锁 A 却写 B；
+不是因为 may-alias 就确认同对象。
 
-| FP 机制 | 代表文件 | 对应 gate |
-|---|---|---|
-| 命名atomic内部目标/未知硬件原子 | pthread-atomic | 完整命名helper及有限目标闭包已支持；未知原子/不可完成上下文仍拒绝 |
-| helper 带循环（历史 DAG 展开不精确） | — | 已替换为保留 guard/动态定义的有界展开和预算检查 |
-| 无锁协议（线性化非 hb） | elimination_backoff_stack | `function_has_atomic_section` |
-| 隔代 create/join（2 线程看不到中间线程） | race-4_1 | 隔代祖先门（`_thread_ancestors`−`_thread_creators`）|
+### 5.2 参数、实际返回和已发布指针槽
 
-### 10.3 可发展的架构机会（需要配对实验）
+指针沿本次实际调用参数、赋值/cast 和实际 Return 到达定义追踪；重复 helper 不能混用返回。
+解析到无寿命证明的局部返回地址时拒绝，调用者局部透传也尚有保守边界。
 
-| 方向 | IKOS 可利用的能力 | 需要建立的证据 |
-|---|---|---|
-| 数值关系及浮点 | 现有数值域、前端和不动点分析 | 域与机器/浮点语义契约、任务覆盖及候选查询；不能从 APRON 存在推导 race 能力 |
-| 数组及 join 句柄 | 地址/数组摘要、创建与 joined 信息 | 动态实例及句柄绑定证明，不能从数组摘要直接证明 join 哪个线程 |
-| 候选关系压缩 | points-to、offset、线程事实 | may/must 的适用条件、剪枝保持性与同配置消融 |
+global pointer slot 的读取只在不可变发布子集支持：原 LLVM 全部 users 证明没有逃逸/其他写者，
+唯一真实 store 位于所选 main 前缀且早于所有 create，读不早于发布。
+纯 AR 地址 cast 可归一化到 pointer global、offset0、无变量下标；
+局部/内部字段/非零偏移/未知来源不放行。这修复结构体和 unsigned slot 的通用前端表示差异，
+不是一般共享 pointer rf/co。unsigned 最小正例已恢复，相应 unsupported fixture 已改名。
 
-原“Dartagnan 浮点直接 CRASH、数组 join 全 UNKNOWN”的对比缺少当前版本及同配置配对证据，
-不作为确定优势；待复核后再比较。
+### 5.3 单次 main allocation
 
----
+核实真实 malloc intrinsic/外部声明、calling ABI、pointer 返回与目标 size_t 参数。
+实际执行在首次 create 前一次分配，大小由已执行定义求得，正且不超过 1MiB。
+保留 allocation/extent 独立身份，选择合法非空成功分支；目标必须解析到同次分配并满足范围。
+两个同大小 abstract heap cell 不能因此合并。
 
-## 11. 已复现并修复的 soundness 缺陷（2026-10-08，Codex 审查）
+单次 main 堆写和有真实来源的同宽堆整数读已支持；worker/helper 动态分配、重复站点、
+free、一般寿命、可变槽和 heap pointer rf 尚未完成。
+`09-regions` 列表需要这些能力，不能仅凭参考 FAIL 就开放对象门。
 
-Codex 审查（`docs/ikos-bmc-review-2026-10-08.md`）复现了 1 FP + 2 FN，均已修复并提交：
+<a id="threads"></a>
+## 6. 线程激活、动态调用与完成端点
 
-| 用例 | 问题 | 根因 | 修复 commit |
-|---|---|---|---|
-| `exclusive-flag.c` | **FP**：无竞争程序报 FALSE | 自由变量：两线程读同一 shared var 各取不同值，造出程序没有的执行 | `4910339`（A0 gate）|
-| `published-before-init.c` | **FN**：真竞争报 SAFE | `private_init` 未证对象未发布即删候选 | `df63329`（禁用）|
-| `overlapping-widths.c` | **FN**：真竞争报 SAFE | 偏移过滤无访问宽度 | `df63329`（width+范围重叠）|
+### 6.1 真实创建前缀
 
-**核心教训**：「BMC 是欠近似 ⇒ FP=0」证伪。BMC 结构上欠近似（有界路径）、数据上过近似（自由变量），
-两种近似方向同时存在，不能靠模块名称判断。FP=0 是 A0 gate 主动封自由变量后的**实测结果**，不是架构保证。
+不同非 main 入口需要 main 的实际创建事件；同入口两实例需要两次不同动态 create。
+main/worker 候选中所选 main 路径必须包含对应 create。
+may-multiplicity、静态 create site 数量、互斥分支内两个站点均不能证明实例同时存在。
+早期仅直线创建的 gate 已被受限 CFG、循环、helper 创建替代，不能继续写成当前只支持直线。
 
-**历史代价**：TP 80→50，30 项被撤回确认。旧编码缺少充分值来源前提，但不能据此断言每条旧反例虚假，
-更不能说这些任务没有真实竞争。恢复须补齐值、执行及实例证据，不能再用自由 load。
-本轮在后续更严格的 TP=7 基线上实现算术、参数及受限 SC 值流，恢复到 35。
-复现脚本 `docs/review-repros/bmc-2026-10-08/run.py`。
+保留直线快路径，另最多 8 个创建 CFG 前缀，按真实 guard、动态定义和资源界限展开。
+默认属性、合法输出槽、匹配 API/返回类型下选择成功创建；成功返回值为 signed32 的 0。
+失败分支不会与活跃 child 拼接；一般失败/属性语义仍未建完。
+startup 的共同初值、实际实参和条件与两路径一起编码，孩子可暂不调度。
 
----
+枚举耗尽仍保留真正完成的创建前缀。nondet-array 中 main 可创建两孩子后暂停，
+但原 n>=5 guard 必须成立，不能把循环上限改成2或假造退出。
+startup 的同步区间须满足当前完整性检查，未知调用/无法支持的上下文不确认。
 
-*铁证来源：Dartagnan `7caef5c` 源码（svcomp.cat / PropertyEncoder.encodeDataRaces / VisitorLlvm）、
-IKOS `unroll.hpp` / `encode.hpp` / `bmc.hpp` / `data_race.cpp`、实跑 Dartagnan 4.3.1 与 IKOS A/B。*
+### 6.2 动态定义与实际 callee
+
+确定函数常量、assignment/bitcast 链和本次已执行调用的 callback 参数可展开。
+helper 在真实 Return 后接调用方续点；未知/bodyless 调用不是 no-op。
+事件保留实际 callee、call/return 位置及 invocation，参数、返回与局部值按这一上下文解析。
+同静态变量的两实例不能共享符号，后一次调用不能复用前一次 nondet/定义。
+
+**共享内存中的函数指针 load→间接调用尚未实现**，详见[共享回调方案](#callback-plan)。
+FPA may-callee 仅能安排候选，不能任选函数体来确认实际调用。
+
+### 6.3 受限线程完成
+
+`unroll_completed` 支持真实 root Return，另支持非 main worker 根函数中的
+直接 `pthread_exit(NULL)`：核实 C ABI、void 返回、单 pointer 参数、LLVM noreturn。
+不能沿 exit 后继制造返回；helper/main exit、非 NULL payload、错误 ABI、未知 callback 注册继续拒绝。
+这是有限完成端点，不是一般线程生命周期模型。
+
+### 6.4 Join 仍是精度缺口
+
+当前每个 A.Join 对 B 添加 `B.last < Join`，缺少完整 handle→动态实例匹配。
+这可能过约束 join 其他线程的真实竞争，是已知能力边界，不是 POSIX 正确语义摘要。
+创建句柄的普通身份读取和具体值读取也必须区分；库输出不能随意供值。
+恢复 join 数组/多级线程需具体 handle、被 join 实例的真实完成及必要其他线程效果，
+不能只删除这条边或放开定义性 gate。
+
+<a id="sync"></a>
+## 7. 同步与库效果
+
+### 7.1 mutex / rwlock 的完整历史
+
+沿实际参数解析对象和 offset，保存每段完整或未闭合临界区；旧 held/function-level 提前门已替换。
+同对象区间互斥；rwlock reader-reader 不互斥，涉及 writer 的区间互斥。
+单个 outstanding 符号锁支持实际地址表达式、unlock 同址与所有权等式；复杂符号嵌套仍拒绝。
+未知身份、重入、没有本路径持有依据的 unlock 不能当成功释放。
+抽象锁集 MUST 分量在 join 取交、MAY 取并，不能凭集合名字推断 definite 同步。
+
+受限 **ERRORCHECK 已实现**：glibc GNU/Linux x86 ILP32/LP64，type=2、attr4、mutex24/40，
+原 LLVM 真实类型/布局证明 global subobject、大小和对齐，支持常量成员及受限数组仿射索引。
+首次创建前实际 attr_init→settype(2)→mutex_init；destroy 后禁止再使用属性，
+但 attr destroy 不使已复制属性的 mutex 失效。
+未初始化/重复 init、已使用 mutex 的重初始化、显式篡改、未知类型或并发控制变化拒绝。
+只建成功 owned-unlock，失败 unlock 不产生释放效果。
+
+恢复的 sound_unlock 两任务所选 main 分别 nondet=0/4，确实解锁自己持有的 mutex1/m[4]，
+之后发生不受共同锁保护的访问。目标后的重复 unlock 不在所选有限前缀。
+参考 setter/unlock 摘要省略 ERRORCHECK 所有权，不能直接移植；本地双架构 native 合同另验证 EPERM。
+这不是所有平台、属性或错误路径的完整模型。
+
+### 7.2 verifier atomic 与内部目标
+
+依据核实的 `__VERIFIER_atomic_` API 前缀及具体函数体，保留真实调用并合成 begin/end，
+实际 return 后才闭合。不可分割区间排除另一线程**所有事件**，不只排斥另一个 atomic 段。
+synthetic 标记避免把一条源调用算成多次调用/定义。
+嵌套、bodyless、atomic root 或未知硬件/C11 原子仍有 unsupported 边界。
+
+目标在 atomic 内时不只删 open gate：显式标记动态目标，保留实际尾部，
+当前要求双方都完成真实入口 Return/受支持完成路径，所有尾部 guard/值/调用继续编码。
+普通 helper Return 枚举不能错误固定某一次循环目标，避免遗漏后续调用。
+双 atomic 目标在搜索前排除；单侧 atomic 查询保留两方向，禁止其他内存/真实同步夹在目标之间，
+局部/assume/合成边界不作为障碍，但执行约束仍在。
+
+该查询比完整参考关系受限；目标前后都有内存障碍的中间目标可能仍 UNKNOWN。
+两侧完成要求也可在未来用已证明的控制依赖闭包替代，不能当永久设计定律。
+
+### 7.3 condition 的有限虚假唤醒
+
+显式默认 cond_init：可解析非 TLS global 范围、大小/对齐可证，main 创建前初始化一次。
+wait 需本路径实际持有可解析 global mutex，以 synthetic release/reacquire 分割区间，
+选择一次有限虚假唤醒和成功返回0。条件谓词/循环 guard 仍编码，signal/broadcast 不凭空创造唤醒 HB。
+同一 condition 的所选 waiter 绑定同一 mutex；顺序变更绑定也暂拒绝，是比 POSIX 更保守的能力边界。
+普通用户访问覆盖控制存储则拒绝，不能以静态零充当库状态。
+
+静态初始化仅核实 glibc x86 Linux/GNU 48-byte `union.pthread_cond_t`、非 TLS 直接 global，
+控制字段 offset/size 为 0/8/16/24/32/36/40 与 8/8/8/8/4/4/8，LLVM 和 AR typed 初值均全零。
+不把任意零数组、未知 ABI 或存储子范围当合法 condition。
+destroy、timedwait、非默认属性、堆/局部/嵌入 condition 等仍有边界。
+`condvar_spurious_wakeup` 与两个静态计数器任务已恢复；其他 barrier 不能因此放行。
+
+### 7.4 隐式库写与 opaque 控制存储
+
+mutex 内部字段、condition/rwlock 控制状态、pthread_create 输出和 join 返回槽有隐式库写，
+不一定存在普通 AR Store。不能把调用前的静态初值当调用后的最新读源。
+普通内存与控制存储可能别名时拒绝确认；按真实对象、常量范围/共同 stride 字段余数证明不相交。
+输出句柄用于 guard/算术/地址时缺少具体摘要仍拒绝，正常 join 身份读取不因此封死。
+
+初版门只挡 offset0，AR 把 mutex 参数 opaque 化为 `si8*`，错误 footprint=1；
+offset8 的 glibc owner 字段仍产生假 guard。
+当前从原 LLVM CallBase 参数和 DataLayout 恢复完整 allocation size（含 padding），
+condition wait 第二参数也用真实 mutex 类型。原类型缺失/opaque/byte/不定长/零大小拒绝。
+普通 pthread_t/返回输出槽沿原输出宽度逻辑。
+这修复控制宽度门，尚未实现库内部字段具体值和全部生命周期。
+
+### 7.5 stdio 与未支持 API
+
+仅极小常量格式子集有 BMC 摘要：终止的不可变 puts/文本/`%%` 和核实的 promoted32 整数格式。
+`%n`、`%s`、动态宽度/格式、返回值依赖不能当 no-op。
+抽象解释也需记录实际库内存效果；sem_getvalue 共享输出和其他同步 API 输出/超时输入另有 SAFE 审查。
+未知 API、混合 callee、C11 原子和其他未建模副作用在实际前缀中拒绝；
+未调用函数或目标之后无关同步不应直接否决所有候选。
+
+<a id="search"></a>
+## 8. 展开、搜索与性能优化
+
+### 8.1 有界真实 CFG 与资源限制
+
+DFS 保留真实分支条件、动态定义和调用栈，后继复制前缀/栈。
+Unreachable/abort/exit 终止对应前缀；不能猜循环次数、删除 guard 或在截断回边上制造 exit。
+到普通目标可发出有限前缀，atomic 内目标先保留必要完成尾部。
+中断 DFS 分支不发出，已到达真实 target/Return 的完整前缀可保留。
+
+| 资源 | 当前限制/作用 |
+| --- | --- |
+| 普通展开 | 原 bound1 后 bound16；实际度量是基本块访问，不必等于 C 循环次数 |
+| 额外界限安排 | 暂缓组 bound2；创建先小界限、需要时较大界限；真实循环常量提示至多34 |
+| 构造 | 路径256、事件1024、DFS步16384、栈深256、helper深8 |
+| 查询 | 每组32候选、每轮256候选/1024路径查询，阶段共用原10秒文件 deadline |
+| SMT | 每个方向1000ms，UNSAT/UNKNOWN 都不证明 SAFE |
+| 诊断细节 | 每候选最多16语句例子、每组前256候选详情；aggregate 覆盖被省略候选 |
+
+这些是内部 BMC 预算，外部 30 秒 task timeout 另行统计。
+耗尽/未搜索与 UNSAT 不同；诊断第一阻塞也不能代表被遮挡阶段已经成功或失败。
+
+### 8.2 已采用的公式与查询优化
+
+| 机制 | 前提及保持性 | 已保存观察 |
+| --- | --- | --- |
+| 动态仿射守卫 | 同一变量及实际定义事件的叶子、同型赋值/实际helper参数、带no-wrap的同符号加减常量；比较消去公共项，不能用于unsigned回绕或不同load | fmaxsymopt恢复；无同源/无溢出证据时保留原搜索 |
+| 首方向 SAT 短路 | 保存首个模型后停止，另一方向仅在未确认时执行 | TP58基线逐项不变，正例SAT查询2→1 |
+| 两方向 fresh solver | 复制全部基础约束，各方向独立求解，取实际SAT模型 | 回绕例恢复，冻结集TP61逐项不变；不是扩大超时 |
+| 同路径 SC 简化 | 完整来源核对后，相关写全是本路径先行精确同区间写，po已确定最新源 | fib5读源吞吐改善，本阶段仍UNKNOWN |
+| 创建前 main 写源简化 | 原po/create已证明 main 写先于 child 写，保留全部来源/类型检查 | 六个fib恢复；post-spawn/符号写仍general rf |
+| 确定值传播/false guard | 保留read==source等式，再精确simplify；恒false直接拒绝 | 四个fib恢复；未知读不能变自由值 |
+| guard优先 | 可行路径仍检查全部unused算术/trap/poison，失败来源不复用cache | ticket恢复，禁止unused溢出/除零对照仍拒绝 |
+| atomic约束延后 | 仅拒绝路径省构造，可行路径原排斥约束完整添加 | 全量不变，四fib局部耗时改善 |
+| atomic中间结构UNSAT | 闭合段内target前后各有真实障碍，对侧只能段外，必违当前相邻公式 | lu恢复；不证明源程序无竞争 |
+| Join提前UNSAT | 当前过约束公式中Join位于target前必有对侧末端排序障碍 | 全量不变；未来精确join时须同步收窄剪枝 |
+
+同路径/main-source 简化证明针对当前有限编码，不能升级成全程序 private/K线程无干扰证明。
+fresh solver 之前试过 Int/BV 改整数模表达式，未恢复正例而撤回。
+unsigned-wrap 的独立非增量公式 SAT、push 模式超时是本地 Z3 观察，不是所有版本定理。
+
+### 8.3 有依赖前提的 false guard cache
+
+仅同一次 `confirm_race` 的 fixed facts/startup、同展开路径组/界限内缓存非 startup 恒false：
+编码开始该路径 cache 为空，guard前无 unencodable；读依赖完整收集。
+消费 formal/非直接 global load 禁止复用；本路径所有写与整个对侧路径集合 store union 均须精确 direct global。
+只有读集合与对侧 writer union 不相交才复用，不能只看第一次不写 flag 的对侧分支。
+递归读依赖一并记录，不跨候选/创建上下文/界限复用，不缓存一般 SMT UNSAT/unsupported。
+
+这减少重复不可行编码，保留 deadline，不消耗额外 SMT 次数；
+22轮最小例恢复，TP92全量逐项不变，较大 fib 当时仍卡实际 SMT。
+缓存是两前缀内不变性检查，不是一般全程序 private 证明。
+
+### 8.4 分轮搜索与预算公平性
+
+完整路径稳定按较短前缀排序，不删路径；计数器所选创建数15→1降低验证成本，旧15次模型仍未验证。
+枚举中断组先暂缓，原查询集合结束后在同一 deadline 查询已有完整前缀；
+创建新增短前缀保留旧/主线程候选优先，再必要时重试 bound16。
+新短创建候选中不同入口优先于同入口，相同优先级稳定，报告编号仍对应原候选。
+这是启发式排序，不是不可行证明；不能永久删掉同入口竞争。
+
+实际循环比较中的15..32常量可提示 n+2，上限34；仅自身在循环中的比较参与，
+扫描根及受限helper至多64函数/深8。提示不是循环次数或终止证明，所有真实guard仍成立。
+
+诊断保留 `first_pass_candidates` 与最终 `candidates`，aggregate 两轮合计不重复。
+否则 qrcu 只见末轮 search_budget，掩盖第一轮已执行的360次UNSAT/构造耗尽，
+不能据此断言延时就能恢复。诊断内容有上限，不等于完整执行证据。
+
+### 8.5 撤回的搜索实验与性能边界
+
+| 撤回实验 | 定向效果 | 全量暴露的代价 |
+| --- | --- | --- |
+| 全候选中间界限1/2/4/8/16及补充变体 | fmaxsymopt恢复 | TP60总数不变，lamport-b回退；共享文件预算被挤占 |
+| 按A/B总前缀长度堆排序 | lu恢复 | TP78不变，fmaxsymopt回退；保留笛卡尔积不保证有限预算更好 |
+| helper静态调用图跳过目标搜索 | 原helper控制通过，qrcu/gcd仍UNKNOWN | TP80不变，07_rand替换ticket；撤回源码 |
+| 完整前缀直接混入/四对试探 | 部分新候选可查询 | TP76/79均有旧TP回退；改为分轮后才采用 |
+| 新激活候选直接提前 | 新数组恢复 | ticket47的旧main/worker确认被挤出deadline；最终分轮后保留 |
+
+冻结集 TP 增减必须比较逐项集合，不能只报净总数。
+资源敏感 lu、ticket、fmax 全量/隔离结果均保存；隔离 FALSE 不替换全量 UNKNOWN。
+
+历史 35→58 sweep 的逐任务 wall 合计为631.4→719.7秒，中间版1530.7秒；
+它是并行任务耗时合计，不是整体墙钟，也不是受控全局提速实验。
+qw、回绕、lu、fib 等有局部改善：例如回绕 wrapper 中位数11.23→0.187秒，
+涉及 UNKNOWN→首查询SAT，不能声称全工具60倍加速。
+Dartagnan 也可用 CAAT 惰性一致性检查；“全程序必然指数大公式/必然慢”缺乏依据。
+同资源、同性质、同界限及相同验证标准的端到端性能比较仍待做。
+
+<a id="correctness"></a>
+## 9. 正确性修复、SAFE 覆盖与 TN 代价
+
+### 9.1 最初三个反例及正确性收紧
+
+| 用例/机制 | 旧错误 | 当前处理与依据 |
+| --- | --- | --- |
+| exclusive-flag | 两worker的共享selector各取1/2，自由load造假FALSE | `4910339`先gate，后SC共享真实初始化；不可同时满足仍不确认 |
+| published-before-init | private_init未证明首写前未发布，删掉真候选 | `df63329`禁用 private_init；默认不再SAFE，BMC仍可因动态堆边界UNKNOWN |
+| overlapping-widths | 只比起始offset，漏掉不同起点重叠 | `df63329`增加width/范围；两架构default/BMC确认竞争 |
+| 未知base仍查询 | 缺实际同址证明的SAT被当竞争 | base/地址前提失败不确认 |
+
+P0 用例和控制保留在 [review-repros/bmc-2026-10-08/](review-repros/bmc-2026-10-08/)。
+runner 的20条模式/位宽输出须逐项核对真实 verdict，不能只检查退出码。
+
+后续53→27是激活/实例前提收紧；新增 scull，但撤回27个旧确认。
+27→7继续收紧调用、锁历史、整数定义性、真实assume、合成来源和循环到达；
+旧27保留4、撤回23，新增lamport/szymanski/Boop早期真实访问。
+撤回不等于标签错，也不意味着每条旧反例已经被证明虚假。
+保留下来的早期 flag/turn 竞争不等于证明协议最终互斥失败。
+
+最小反例还覆盖 helper互斥共享guard、helper assume、嵌套、默认mutex重入、
+整数256转uchar再assume、普通未知call及返回/实参来源。
+有些未初始化/volatile局部负例涉及UB，只用于能力边界。
+7→35以后恢复靠补合法数据/调用/SC来源，不能恢复自由load或猜循环退出。
+
+### 9.2 新变体持续暴露的缺口
+
+| 审查对象 | 问题与已采用处理 | 仍须追踪 |
+| --- | --- | --- |
+| helper重复create | 静态站点去重误证单实例；改为保守可重复并核对具体输出/handle读取 | 一般动态创建/祖先和join对应 |
+| aggregate入口写 | 只materialize标量，静态数组初值掩盖main真实写；有发布写时先forget非pointer aggregate | 带offset/width字段摘要与关系精度 |
+| 锁分区写值 | unlock发布到`_lock_partition`，入口只读平坦黑板，flag被误判0 | 入口合并已发布平坦/锁分区；嵌套保护关系尚不完整 |
+| partial-width干扰 | 窄写未覆盖宽读guard，可能删真路径 | 已独立修复；不是当前仍在修复的待办 |
+| 动态父实例过滤 | 创建/排序摘要把多个父实例混同，吞真竞争 | 已有独立修复与对照，不归因资源波动的全量+1 |
+| TLS与锁分配身份 | 假共享对象FP、假共同锁FN；同入口heap/stack锁摘要身份坍缩 | 独立修复后仍需一般动态对象/寿命证明 |
+| stdio/sem/同步参数 | 库访问、共享输出、超时输入或混合callee遗漏 | 已补覆盖；完整API语义仍待审查 |
+| pre-main constructor | 静态flag1实际被constructor改0，BMC仍制造flag==1路径 | 有`ar.global_ctors`暂拒绝确认；未来展开真实初始化顺序 |
+| 库内部字段 | 锁成功修改控制字，静态零不再是合法读源 | 别名库控制门+原LLVM完整宽度；具体值摘要未实现 |
+
+constructor race-free 控制例在固定 Dartagnan 也报 SOURCE_RACE，processed事件缺少constructor写0。
+这不是双工具独立验证通过，更说明参考也需核实源语义。
+owner offset8假反例在TP102基线外仍能复现，冻结集FP0没检出；宽度修复后direct/helper双架构退UNKNOWN。
+这些新反例说明“先确认没有任何正确性问题再开始精度”无法仅靠有限基准完成；
+工程上持续审查明确前提，发现缺陷优先修复，精度增量同时补足证据。
+
+上游专门审查仍按其跨模块主题维护，BMC结论已收拢在此：
+[创建实例](ikos-creation-instance-audit-2026-10-10.md)、
+[TLS](ikos-tls-identity-audit-2026-10-10.md)、
+[锁分配身份](ikos-lock-allocation-identity-2026-10-10.md)、
+[干扰宽度](ikos-interference-width-audit-2026-10-10.md)、
+[单次执行](ikos-single-execution-2026-10-09.md)、
+[结构偏移](ikos-structural-offset-2026-10-09.md)、
+[stdio](ikos-stdio-effects-2026-10-09.md)、
+[sem输出](ikos-sem-value-2026-10-09.md)、
+[同步参数效果](ikos-sync-effects-2026-10-09.md)。
+
+### 9.3 TN 回退与前端归因
+
+35→58曾有11个TN退UNKNOWN，与更保守动态实例/joined覆盖和aggregate干扰有关，不能只报+23TP。
+简单正答计数TRUE+2/FALSE+1净+1，不是正式比赛得分，后者还依赖官方集合/witness。
+其后stdio保守覆盖退4TN，单次执行证明恢复3TN；锁入口摘要另退1TN，当前TN696。
+
+**`mark_internal_inline` 的独立 A/B 已完成**：只撤回 remove NoInline，其他管线相同，
+两端1029项逐项一致TP58/TN698，历史11项均UNKNOWN。
+调用链显示它位于`if (InlineAll)`，默认全量未开启inline-all；AlwaysInline本来就在上游。
+活动控制证实开启时noinline/alwaysinline冲突确实不同，当前修复应保留。
+这排除那一行造成11项下降，未给其他历史改动全部归因，也不证明11项已恢复。
+
+锁入口合并唯一退TN的 `28-race_reach_60-invariant_racefree`：
+内层锁释放发布x中间值，外层锁保证worker实际只读0，合并丢失嵌套保护相关性。
+恢复它需要发布上下文/嵌套保护证明，不能重新忽略所有锁分区写。
+Goblint PBR read/unlock是参照，IKOS当前采用保守入口合并，并未实现完整PBR。
+摘要类型统一后再逐源cast，避免窄unsigned渐进cast错误符号扩展；已有六种排列C++断言。
+
+<a id="validation"></a>
+## 10. 反例记录、witness 与独立验证
+
+### 10.1 四种证据不能混称
+
+| 证据 | 能说明什么 | 不能说明什么 |
+| --- | --- | --- |
+| YAML标签TP | verdict与预期一致 | 所选模型真实 |
+| Dartagnan原生SOURCE_RACE | 固定参考模型找到了某条竞争 | 与IKOS同一动态实例/值/交错 |
+| GraphML ACCEPT / 部分约束SAT | 投影或已传入条件可被参考满足 | 被省略的IKOS执行内容已验证 |
+| 完整所选执行/witness验证 | 在明确导入/语义契约下验证具体执行 | 全系统普遍soundness，或未被验证的前端语义 |
+
+“反例”是违反性质的执行；“witness”是对它的可交换描述。
+一个TP任务可能保存多对访问、多条反例，故任务数、候选数、模型数不能混用。
+validator验证witness/指定执行，replayer按具体步骤重算执行，是验证的一种机制；
+自写重放器不是唯一可用路线。目前优先复用Dartagnan编码并严格绑定所选证据。
+
+### 10.2 结构化 AR 导出
+
+诊断 SAT 候选的 `replay` 保存AR函数CFG、指令/操作数、类型/布局、global初值；
+动态步骤引用实际语句和creator trace/step，保留SMT已编码结果、地址和目标索引。
+未编码值不冒充给定输入。`replay.hpp`直接序列化AR，不再调用BMC编码器生成指令语义。
+导出标记 `UNVALIDATED`，仍信任前端与快照本身，不是独立C导入；正式YAML2.2导出是另一路径。
+TP58阶段58任务全部重新导出并保持FALSE，全量行为不变。
+
+内部长期证据应统一动态thread/create/call/loop身份、对象/extent/offset/width、值、rf、
+同步、guard分支、完整创建依赖及源位置一对多映射，让checker和exporter消费同一成功记录。
+startup_N标记不是已求出的全局clock，内部函数token也不能冒充实际C地址。
+
+### 10.3 旧 GraphML validator 的校准与失败
+
+CPAchecker4.2.2与Dartagnan4.3.1本地GraphML已接通，32/64位race/locked/exclusive控制通过。
+但二者都接受损坏thread ID；Dartagnan还接受不存在目标行和程序另一处竞争。
+`WitnessGraph`按行号收集所有线程事件，缺目标时可能不加约束；因此ACCEPT不严格绑定目标/实例。
+CPAchecker调用必须同时保留`datarace.spc`和GraphML自动机，不能只`--spec witness.graphml`覆盖性质。
+
+TP35阶段44对ILP32源码前缀投影：
+
+| 工具 | ACCEPT | REJECT | UNKNOWN | TIMEOUT | ERROR |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| CPAchecker4.2.2 | 20 | 6 | 17 | 1 | 0 |
+| Dartagnan4.3.1 | 41 | 1 | 0 | 2 | 0 |
+
+两工具投影联合覆盖34任务，第35个funptr通过原生参考竞争印证；不能称35个原模型验证。
+CPAchecker拒prefix但接targets、qw拒投影但独立找到race、funptr不支持指针、fkp超时均单列。
+同源行AR合并/排序是源码抽象，会丢列号/表达式内访问及细粒度交错。
+targets弱于prefix，不可把降级通过写成更严格证据。
+
+35→58阶段26对投影修正create被挪到初始化循环前的问题后，CPA17ACCEPT/7UNKNOWN，
+Dartagnan24ACCEPT，另2对实例歧义拒导出。
+新增outer-counter另一次CPAUNKNOWN/DartagnanREJECT，包括读写翻转对照也拒绝；
+不能断言只是翻转顺序就修好。其源码探针仍找到真实data竞争。
+源码投影把相邻行强制成CAT hb，而IKOS总调度先后不等于该关系，是已知不匹配。
+
+CPAchecker4.2.2解析正式YAML2.2 violation_sequence失败，没有验证结论。
+现代CPA源码`bd91e2fd…`仅是实现参照，不代表已构建运行或官方指定版本。
+正式并发witness2.2验收须固定真正支持它的validator及BenchExec配置，再校准坏实例/值/地址/目标。
+现有ACCEPT不等于官方验收。
+
+### 10.4 Dartagnan 指定候选研究接口
+
+`scripts/dartagnan_strict/`在隔离目录核对固定AssumeSolver源码hash，编译hook并复用原JAR依赖，
+不覆盖本地参考包。程序/内存模型仍由Dartagnan编码，证书约束指定事件、动态线程/creator、
+目标、值、对象相对地址、rf/co及已映射内存顺序。
+核对IR指纹、事件descriptor、类型/宽度/范围，不接受未知字段/错误身份。
+证书模式关闭线程对称性破缺，避免指定实例被对称选择删除；保留许可`DAT3M-LICENSE`。
+
+无证书保留原生性质查询。证书模式需检查指定对的双方向相邻可行性，
+不再叠加原生单方向存在性公式：固定读到新写值的合法方向不能随意翻转。
+read-after-write控制的旧接口读0SAT/读7UNSAT，修正后两种合法取值可满足；
+fkp2014/13_unverif三组旧固定值UNSAT随后SAT，改store值仍UNSAT。
+旧冲突被保留和解释，不能因标签命中忽略，也不能把映射错误UNSAT当原模型假。
+
+| 映射增量 | 明确绑定的内容 | 仍有边界 |
+| --- | --- | --- |
+| 相对地址/间接访问 | 唯一静态来源+object base/byte offset/width，不靠打印字符串猜地址 | 同行多静态访问歧义仍拒绝 |
+| 类型descriptor | 实际IntegerType区分同源行pointer/int load | 固定参考ILP32 pointer存储64bit，不能把IKOS4字节槽绑定成8字节 |
+| 内存occurrence | 唯一pre-unroll身份及已执行前序clone，区别重复访问 | 跳迭代/复杂call尚未完整绑定；每次重新定义先清旧模型值 |
+| nondet | 精确声明白名单交集、实际Local/NonDetValue、位宽/符号及源位置 | size_t、参考long64与ILP32long32、多个动态occurrence/优化来源有边界 |
+| 显式rf/co | 按已映射同区域实际clock绑定读源/写序，不只值相等 | unknown地址、缺/并列clock、混合宽度仍显式遗漏 |
+| 初始rf | 唯一同对象/offset/位宽的实际Init，不能充当race目标 | padding/部分重叠初始字段拒绝 |
+| 内存相对顺序 | 独立ikos_schedule延伸完整已编码SC图 | 不把clock直接加成CAT hb边，未绑定完整总调度 |
+| 单次heap Alloc | 同源码唯一allocation、大小/creator/descriptor、实际地址base+offset | 动态/重复分配、pointer值及完整寿命未绑定 |
+| 跨分支创建序列 | 按实际父trace全创建顺序选forward CFG clone，绑定执行occurrence和前缀创建总数 | 完整CFG/call/一般内存occurrence仍有限制 |
+
+SC顺序绑定需要完整原生hb边，不能用Acyclicity只保留SCC/must推导后的削减图当排序证书。
+研究接口在预处理前增加`ForceEncodeAxiom(hb)`，只要求编码，不增删原内存模型约束。
+校准覆盖“相同值的不同写仍不能替代来源”和“独立对象执行先后不意味着CAT hb边”。
+
+FK旧mapper把首次consumer和producer映射到同一循环互斥分支，导致双架构UNSAT；
+修复沿实际consumer22→producer38而非producer16，部分SAT，坏值/创建数UNSAT、坏creator拒绝。
+这项修改属于研究adapter，不能算分析器能力或额外TP。
+
+### 10.5 已保存覆盖与未闭环内容
+
+| 历史模型集合/检查阶段 | 结果 | 解释 |
+| --- | --- | --- |
+| TP58，71候选，bound2 | SAT38 / UNMAPPED31 / UNSUPPORTED2 | 部分固定内存模型 |
+| TP77，95候选，最初 | SAT68 / UNMAPPED20 / UNSUPPORTED2 / UNSAT2 / TIMEOUT3 | 全候选参与，不等于全模型验证 |
+| 同集合，nondet/重复访问增量 | SAT80 / UNMAPPED8 / UNSUPPORTED2 / UNSAT2 / TIMEOUT3 | 14次局部nondet绑定 |
+| 同集合，rf/co增量 | SAT82 / UNMAPPED8 / UNSUPPORTED2 / UNSAT2 / TIMEOUT1 | 254条通信边，原超时转SAT不宣称加速 |
+| 重导TP77，顺序检查 | SAT83 / UNMAPPED7 / UNSUPPORTED2 / UNSAT1 / TIMEOUT2 | 只验证已传入条件，不是83个完整反例 |
+
+fmax界限2不足，6可部分SAT。实际N次创建不等于bound=N：循环退出常需再访问头部，
+最小count3在bound3不满足、bound4满足。旧counter15创建模型扩大bound后仍超时；
+后来短前缀选择真实1次创建，部分SAT，不是修改旧模型成较小值。
+airline15/20超时、25未导IR/未映射，以及未支持funptr/object等记录均保留。
+
+后续typed37、heap38、condition、数组、ERRORCHECK和field模型有局部SAT/改值UNSAT，
+仍遗漏完整CFG/call occurrence、全部局部值、同步历史和总调度。
+fib5早先bound16超时，后来新模型bound13双架构部分SAT；fib10/12指定模型仍有60秒超时。
+**坏模型被拒绝不能把原模型超时算成验证通过。**
+状态继续为`PARTIAL_FIXED_MEMORY_MODEL`，`full_counterexample_validated:false`。
+
+已有未跟踪 `scripts/replay_bmc.py` 只读条件试验：9个ILP32 byte模型及FK可ACCEPT，
+改读值/creator均REJECT；byte的LP64因NULL pointer-byte tuple与整数零检查不一致UNSUPPORTED。
+创建数组曾因main(argc,argv)零实参初始化失败，尚未执行事件。
+它依赖同IKOS AR快照与glibc合同，没有独立C导入；脚本未提交，证据以本地hash为条件，
+不能声称全新checkout即可复现，更不能算正式2.2验证通过。
+
+<a id="workflow"></a>
+## 11. 具体实施、回归与提交流程
+
+### 11.1 按差异用例迁移通用能力
+
+1. **固定任务与差异**：从最新UNKNOWN台账选任务，记录YAML/input hash、ABI、性质、CAT、
+   参数、预算和两端实际二进制。先让固定Dartagnan确认SOURCE_RACE；没有确认时记录PASS/UNKNOWN/TIMEOUT/ERROR。
+2. **事先推导有限执行**：从C逐步列创建、guard、局部值、共享rf、地址范围、同步及必要其他线程。
+   不要求两工具选相同反例，不从总bound猜实际创建次数。
+3. **观察参考机制**：保存LLVM/processed IR、动态事件、creator、rf及所选访问。
+   必要时隔离env-gated探针，同时保留无探针结果，不覆盖比赛工具包。
+4. **定位IKOS真正阻塞层**：AI覆盖、候选过滤、展开、编码还是输出；上游零候选须先修覆盖。
+   保留C→LLVM→AR一对多来源，不凭行号/函数名合并动态实例。
+5. **实现一个完整通用增量**：写清前提/方向/证据/失败回退，联动必要依赖。
+   复用已有AR、CandidateFacts、展开和SC机制；不照搬参考限制、默认假设或整套慢编码。
+6. **验证执行与泛化**：所选模型部分/完整验证范围分列；最小正例、对照、改名/helper/控制流/宽度变体。
+   重点检查只有一次create、互斥创建、共同锁、顺序create/join和错误值/来源。
+7. **逐项A/B与台账更新**：执行下面的适用检查，记每条变化、错误/超时和证据覆盖。
+   FP/FN或假反例先处理，不能用TP净增抵消。不能实现的记录具体缺口，不写“数学不可能”。
+8. **立即独立commit**：验证通过后提交此阶段，message写机制及前→后配对数。
+   不等待全部UNKNOWN处理完；一个commit一件事，前端单独A/B和提交。
+
+这符合 `ikos-conc-semantics` 的语义契约、原始文献/版本核对、泛化与保守回退，
+也符合 `ponytail` 的最小完整改动。没有新增审批步骤或一般框架要求。
+
+### 11.2 构建与行为回归
+
+以下命令均在 `/home/ruan/ikos-conc` 根目录；不能先cd build再使用build/analyzer相对路径。
+运行全量前保存旧二进制/同配置结果，并确认可用资源；不要并发跑两套互相干扰的全量。
+
+```bash
+cmake --build build --target ikos-analyzer -j"$(nproc)"
+cp build/analyzer/ikos-analyzer install/bin/ikos-analyzer
+cmp build/analyzer/ikos-analyzer install/bin/ikos-analyzer
+
+# 单文件：默认may分析，与BMC确认模式区分
+install/bin/ikos --analyses=race --concurrency=auto <file.c>
+IKOS_BMC_RECOVER=1 install/bin/ikos --analyses=race --concurrency=auto \
+  --demote-race-to-unknown <file.c>
+
+# 原P0反例/控制，需核对输出中的verdict
+python3 docs/review-repros/bmc-2026-10-08/run.py --bits 32
+python3 docs/review-repros/bmc-2026-10-08/run.py --bits 64
+
+# 冻结集，固定两端jobs/timeout/任务人口
+IKOS_BMC_RECOVER=1 python3 svcomp_race_test.py --demote --jobs 4 --only-fail
+# 滚动集仅作补充，不替代冻结集配对
+IKOS_BMC_RECOVER=1 python3 svcomp_race_test.py /home/ruan/sv-benchmarks --demote --jobs 4
+```
+
+恢复同时需要demote选项和`IKOS_BMC_RECOVER`存在；`getenv`检查使值0也会开启，关闭A/B应unset。
+`install/bin/ikos`是wrapper，真二进制为install/bin/ikos-analyzer；
+Python改动需同步wrapper实际加载的 `install/libexec/lib/python3.12/site-packages/ikos/`。
+前端改动还要核对真实ikos-pp和管线，并单独测试AI SAFE影响，不能混进BMC恢复阶段。
+
+按改动选择现有针对性套件，基础入口包括：
+
+```bash
+python3 analyzer/test/regression/bmc-correctness/runtest
+python3 analyzer/test/regression/bmc-address/runtest
+python3 analyzer/test/regression/bmc-candidates/runtest
+python3 analyzer/test/regression/bmc-values/runtest
+python3 analyzer/test/regression/bmc-instances/runtest
+```
+
+同步/对象/搜索回归入口集中在 [review-repros/](review-repros/)，各阶段证据索引保留具体套件。
+文档或研究mapper变化不影响analyzer行为时，检查对应链接/映射校准即可，不重复不相关全量。
+不要写镜像实现的无意义测试；语义增量的正反例必须真正区分合法/虚假执行。
+
+### 11.3 诊断与验证复现
+
+输出使用新临时目录；脚本保存具体命令、返回码、分类、输入/工具hash。
+
+```bash
+python3 scripts/bmc_diagnostics.py --output /tmp/ikos-bmc-diagnostics-NEW
+python3 scripts/bmc_diagnostics.py \
+  --input /home/ruan/sv-benchmarks-2026/c/pthread-atomic/scull.i \
+  --output /tmp/ikos-bmc-scull-NEW --jobs 1
+
+python3 scripts/test_bmc_witnesses.py
+python3 scripts/validate_bmc_witnesses.py \
+  --pairs docs/artifacts/bmc-precision-2026-10-09/confirmed-pairs.json \
+  --output /tmp/ikos-witness-NEW --jobs 3 --timeout 60
+
+python3 scripts/dartagnan_strict/calibrate.py --output /tmp/ikos-strict-NEW
+python3 scripts/dartagnan_strict/sweep_ikos.py \
+  --reports <本轮导出的confirmed-reports目录> --output /tmp/ikos-fixed-model-NEW
+python3 scripts/dartagnan_strict/calibrate_heap.py --output /tmp/ikos-heap-calibration-NEW
+python3 scripts/dartagnan_strict/test_indirect_addresses.py
+```
+
+参考wrapper的 `-Xmx2g` 不一定限制它另启动的engine JVM；历史UNKNOWN遍历只限制launcher，
+不能声称两进程统一2GiB。研究hook的直接JVM设置与官方资源配置也不同。
+超时杀进程组，分类核对ExitCode：固定版BOUNDED_RESULT=1、UNKNOWN_ERROR=30，
+内部FAIL后launcher失败不能算有效竞争。
+
+### 11.4 证据与文档维护
+
+只提交小型summary/results/transitions/confirmed-pairs、源码回归和结论；
+大日志、数据库、编译类和二进制放临时目录并gitignore。历史/tmp可能清空，
+不可声称它们长期可得；核心结论需由Git内小证据、输入hash和复现流程支撑。
+未经验证/未跟踪脚本不能混入文档commit。临时探针用完删除，必要观测保持env-gated。
+`log::debug/info/...`返回void；流式日志用`log::msg()`。
+稳定顺序按语义值/源身份而不是指针地址，防止ASLR改变搜索。
+
+后续BMC设计、状态、实验结论和todo只更新本文对应小节，证据索引增加同阶段条目，
+不再新建一篇平行BMC报告。跨模块SAFE理论仍放专门架构文档，本文记录影响和链接。
+
+<a id="roadmap"></a>
+## 12. 下一阶段、小目标与结束条件
+
+当前没有必须用户补源码/安装工具才能推进的阻塞。
+官方2027任务清单、validator版本及实际BenchExec参数需要组织者明确；暂不阻塞2026回归。
+普遍soundness的学术声明需要完整契约和独立同行审查，不能由有限TP/模型试验替代。
+
+| 阶段 | 小目标/实施落点 | 验收与暂时停止条件 |
+| --- | --- | --- |
+| P0持续正确性/证据 | 审查新规则与SAFE覆盖；完善指定实例/值/地址/同步/CFG绑定 | 发现假模型或FN先修；部分SAT不升级完整验证 |
+| 近期精度：共享回调 | 有来源function-pointer SC + 实际callee等式 + 动态调用/导出 | 最小正反变体、参考probe、所选证据、全量旧TP/TN变化明确后提交 |
+| 对象/句柄/依赖闭包 | 动态allocation/lifetime、join实例、必要第三线程 | 每次只补当前具体任务所需通用子集；来源/副作用不可证继续UNKNOWN |
+| 同步/搜索 | 有限属性/失败API、atomic闭包、公平调度与公式规模 | 先合同和保持性；预算实验逐项A/B，不能替换旧成功任务却称提升 |
+| IKOS协同与TN恢复 | 字段化interference、嵌套保护、条件化may/must证书 | 不恢复旧漏报；消融测候选/依赖规模、结果、时间/内存 |
+| 最终外部验收 | 固定官方集合和现代并发witness validator | 坏实例/值/地址/目标校准、完整源witness验收与受控性能比较 |
+
+不是一次证明“没有所有正确性问题”以后才允许恢复精度，也不是做完validator就停止优化。
+每轮精度扩展同时建立执行依据，遇到新正确性缺陷立即优先处理。
+遍历当前UNKNOWN后，每项必须有参考状态、实际阻塞、已尝试机制、结果和剩余前提；
+新UNKNOWN要进入台账。只在这一轮可实施的通用增量均尝试、缺口具体记录且基线复现后总结，
+不因单次超时或TP平台期宣称达到数学能力上限。
+不能实现的边界可以暂放过，但须写需要哪类语义/证明/官方信息，而不是归因“大模型能力不足”。
+
+<a id="callback-plan"></a>
+### 12.1 已有探针、尚未实现的共享回调方案
+
+目标 `04-mutex_27-base_rc`：f初始good，main创建后持fm写bad；worker持fm读f再调用，
+main持gm读global。读bad后调用的写不持gm，能够竞争；读good后的写仍受共同gm保护。
+IKOS目前卡call_summary，不能任选may-callee。
+
+固定7caef5c、bound2双架构新跑SOURCE_RACE；参考原生探针结果：
+
+| 值源与调用目标 | ILP32 | LP64 |
+| --- | --- | --- |
+| f从main bad-store读取，执行bad写 | SAT | SAT |
+| f从初始good读取，却执行bad写 | UNSAT_AT_BOUND | UNSAT_AT_BOUND |
+| f从初始good读取，执行受共同锁保护的good写 | UNSAT_AT_BOUND | UNSAT_AT_BOUND |
+
+`NaiveDevirtualisation`枚举addressed functions并加`funcPtr==target`分支，
+`Inlining`复制动态register scope，WmmEncoder的rf/co约束读值。
+该参考还删除自递归候选并打印“unsoundly assumes”，不迁移这一限制。
+这些是参考探针，不是尚未实现的IKOS模型验证。
+
+最小完整实施范围：
+
+1. IKOS may-callee只排候选/搜索，旧查询优先；先支持精确global固定offset函数指针槽。
+2. 来源仅真实function/null静态初值和startup/A/B完整宽度function-store；
+   TLS、partial bytes、普通数据指针转换、未知初值/源继续拒绝。
+3. 复用SC clock和最新写源，每次调用约束实际函数身份等于本次展开callee，
+   核对原LLVMsignature、calling convention、参数及返回类型。
+4. 保留动态调用、定义、实参和return上下文，先非递归；未知/递归需要有界真实上下文或UNKNOWN。
+5. 导出函数语义身份和pointer rf，更新mapper；内部token不是可直接送validator的C地址。
+6. 正例、初始good、不可执行bad-store、签名不兼容、未写pointer、helper/改名/多实例，
+   然后build/install、P0、相关回归、1029配对、独立commit。
+
+不能把它缩成放行call_summary的补丁。实施后才评估TP与性能收益，不承诺整桶恢复。
+
+<a id="history"></a>
+## 13. 阶段历史与不再采用的判断
+
+以下为不同版本/配置的已保存观察，当前状态只以§1为准。
+数字之间不可跳过源码/预算/任务指纹直接估计因果或上限；对应小型证据见§14。
+
+| 阶段 | TP前→后 | TN后 | UNKNOWN后 | 关键机制/代价 |
+| --- | --- | ---: | ---: | --- |
+| A0、A1 v1 | 80→50→52 | 709 | 267 | 封自由load，开放真nondet；error1 |
+| 地址A1 | 52→53 | 709 | 266 | 地址与guard共值；仅恢复1项，非预估6项；error1 |
+| 候选/激活审查 | 53→27 | 709 | 292 | 新scull，撤回27旧确认；error1 |
+| 正确性收紧 | 27→7 | 709 | 312 | 旧4保留、新3早期竞争；error1 |
+| 值/参数/SC恢复 | 7→35 | 709 | 285 | 原TP/TN保留，28恢复；error0 |
+| 参考驱动遍历 | 35→58 | 698 | 273 | 原35保留、23新增、11TN退UNKNOWN |
+| create返回、startup地址 | 58→59→60 | 698 | 271 | C-DAC成功guard、fmax初始化 |
+| 后续SAFE审查及仿射guard | 60→61 | 697 | 271 | stdio退4TN、单次执行恢复3TN；fmaxsymopt恢复 |
+| 命名atomic、内部目标 | 61→67→77 | 697 | 255 | 完整不可分割helper和目标尾部 |
+| global-choice / 创建审查 | 77→78（有波动） | 697 | 254 | 实际选B；lu/fmax回退与隔离记录保留 |
+| condition、完整前缀 | 78→79→80 | 697 | 252 | condition真恢复；outer-counter回退随后恢复 |
+| main单次heap、静态condition | 80→82→84 | 697 | 248 | 两对象任务、两个计数器 |
+| 小界限、atomic中间剪枝 | 84→85→86 | 697 | 246 | 新inner2/3但lu回退，后阶段恢复lu |
+| 终止/SC简化/确定guard/构造顺序 | 86→89→90 | 697 | 242 | 四fib新增、ticket全量回退随后恢复 |
+| 循环提示 | 90→92 | 697 | 240 | 两fib7 |
+| 锁入口覆盖/guard cache | 92→92 | 696 | 241 | 修新FN，嵌套锁TN退UNKNOWN；cache未增比赛TP |
+| 创建前写源SC简化 | 92→98 | 696 | 235 | 六fib，首轮ticket回退、复跑保留 |
+| constructor/库来源/byte rf/Join剪枝 | 98→98 | 696 | 235 | 正确性与通用能力，非比赛TP收益 |
+| 完整激活前缀 | 98→101 | 696 | 232 | 两nondet-array、ticket48；旧TP保留 |
+| heap整数读 | 101→101 | 696 | 232 | 有来源读，未采用无来源zero假设 |
+| 新激活排序 | 101→102 | 696 | 231 | fk恢复，先修外部创建mapper冲突 |
+| 同步真实控制宽度 | 102→102 | 696 | 231 | owner字段假反例收紧，冻结集不变 |
+| ERRORCHECK生命周期 | 102→104 | 696 | 229 | 两合法owned-unlock任务 |
+| pointer-slot纯cast、最终台账/回调probe | 104→104 | 696 | 229 | 通用cast恢复最小正例；回调仍方案 |
+
+历史审查参考头10beda2、A1/早期阶段51b795c，最初多轮未提交diff后由用户分8个commit
+整理e8bab77…3e36320。后续独立阶段立即提交，不再以巨型diff交付。
+近期关键行为提交：控制宽度`1c698f2`、属性`9d9cf39`、cast`48d36a2`；
+台账`f1539d7`/`ea00a07`与方案`7daab30`不能当成行为增量。
+
+旧UNKNOWN表从296（原285+新增11）更新300（stdio等新增），再到301（嵌套锁回退）。
+历史TP61/77/80/82/90/98台账分别保留当时状态，不拿旧blocker排序当前任务。
+TP35→58原285处置为23恢复、135参考竞争仍未确认、23PASS、78TIMEOUT、21ERROR、1UNKNOWN、4参考/标签分歧；
+新增11项6PASS/5TIMEOUT。libvsync/cnalock及三个container_of分歧单列，不能盲目追随参考改IKOS。
+
+明确撤回/修正：
+
+- “标签FALSE正确即可证明反例真实”“独有TP就是可靠优势”：不成立。
+- 旧Dartagnan176/IKOS80/交集57/独有23（另报告改19）未同配置核实，旧ERR分类也有歧义；不作当前收益依据。
+- “约15个lost TP都是初始化后只读”“地址一项可救约6个”“TP≈140”“最后约35个数学上不可恢复”：缺乏逐项证据。
+- “hb=po+com+mutex+assume”“相邻等价无hb”“两工具时钟相同所以语义相同”：错误。
+- “Dartagnan浮点必crash、数组join全UNKNOWN、IKOS自然覆盖C11重排优势”：缺少固定配置对比与完整反例证据。
+- `target/classes/git.properties`遗留4.1.0曾误导版本判断；实际运行launcher+library均4.3.1/7caef5c。
+- 历史workstealqueue null-deref本轮未复现，ASAN未报错；不把路径栈修正冒称已证明原崩溃根因。
+- 脚本Recall排除UNKNOWN；FN0/Recall1不能解释成检出全部235个racy任务。
+
+<a id="evidence"></a>
+## 14. 证据索引
+
+每条对应一个原报告的证据来源，正文已按机制合并。目录内保留实际summary、配对、
+probe/校准/所选模型与hash；它们的日期/数字是**历史阶段**，不是当前基线。
+原报告正文可从本次合并提交的父提交查看；不再维护平行Markdown。
+JSON中旧报告路径是不可改写的实验来源元数据，查结论请按本文章节和以下索引定位。
+
+### 架构、审查与参考驱动
+
+- <a id="record-ikos-bmc-review-2026-10-08"></a>**IKOS BMC 文档与实现审查（2026-10-08）**：[bmc-2026-10-08](review-repros/bmc-2026-10-08/)。
+- <a id="record-ikos-bmc-correctness-2026-10-09"></a>**BMC 正确性审查与回归（2026-10-09）**：[metadata.json](artifacts/bmc-correctness-2026-10-09/metadata.json)；[source.patch](artifacts/bmc-correctness-2026-10-09/source.patch)；[baseline-dirty.patch](artifacts/bmc-correctness-2026-10-09/baseline-dirty.patch)；[transitions.tsv](artifacts/bmc-correctness-2026-10-09/transitions.tsv)；[confirmed-pairs.json](artifacts/bmc-correctness-2026-10-09/confirmed-pairs.json)；[audited-tasks.json](artifacts/bmc-correctness-2026-10-09/audited-tasks.json)；[minimal-ab.json](artifacts/bmc-correctness-2026-10-09/minimal-ab.json)；[consumption-final.json](artifacts/bmc-correctness-2026-10-09/consumption-final.json)。
+- <a id="record-ikos-bmc-precision-2026-10-09"></a>**BMC 精度恢复与 IKOS 事实接口（2026-10-09）**：[bmc-precision-2026-10-09](artifacts/bmc-precision-2026-10-09/)；[manifest.json](artifacts/bmc-reference-guided-2026-10-09/manifest.json)。
+- <a id="record-ikos-bmc-reference-guided-plan"></a>**BMC 后续实施方案：以具体差异用例验证并迁移参考语义**：[manifest.json](artifacts/bmc-reference-guided-2026-10-09/manifest.json)。
+- <a id="record-ikos-bmc-unknown-sweep-2026-10-09"></a>**UNKNOWN 全量遍历与参考驱动精度恢复**：[results.tsv](artifacts/bmc-unknown-sweep-2026-10-09/ledger-pruned/results.tsv)；[results.json](artifacts/bmc-unknown-sweep-2026-10-09/ledger-pruned/results.json)；[full-before-paired/summary.json](artifacts/bmc-unknown-sweep-2026-10-09/full-before-paired/summary.json)；[full-pruned/summary.json](artifacts/bmc-unknown-sweep-2026-10-09/full-pruned/summary.json)；[reference/summary.json](artifacts/bmc-unknown-sweep-2026-10-09/reference/summary.json)；[reference-supplemental/summary.json](artifacts/bmc-unknown-sweep-2026-10-09/reference-supplemental/summary.json)；[reference-entry-supplemental/summary.json](artifacts/bmc-unknown-sweep-2026-10-09/reference-entry-supplemental/summary.json)；[manifest.json](artifacts/bmc-unknown-sweep-2026-10-09/manifest.json)；[transitions.json](artifacts/bmc-unknown-sweep-2026-10-09/transitions.json)；[restored-tp.md](artifacts/bmc-unknown-sweep-2026-10-09/restored-tp.md)；[task-source-changes.patch](artifacts/bmc-unknown-sweep-2026-10-09/task-source-changes.patch)；[reference-probe](artifacts/bmc-unknown-sweep-2026-10-09/reference-probe/)；[witness-validation-fixed/summary.json](artifacts/bmc-unknown-sweep-2026-10-09/witness-validation-fixed/summary.json)；[witness-validation-prune-extra/summary.json](artifacts/bmc-unknown-sweep-2026-10-09/witness-validation-prune-extra/summary.json)；[counter](artifacts/bmc-unknown-sweep-2026-10-09/reference-probe/counter/)；[pruned-normal-suite.log](artifacts/bmc-unknown-sweep-2026-10-09/pruned-normal-suite.log)；[pruned-normal-summary.json](artifacts/bmc-unknown-sweep-2026-10-09/pruned-normal-summary.json)。
+- <a id="record-dartagnan-svcomp2026-reference"></a>**Dartagnan SV-COMP 2026 权威参照（版本 + no-data-race 原理）**：[manifest.json](artifacts/bmc-reference-guided-2026-10-09/manifest.json)。
+- <a id="record-ikos-vs-dartagnan-gap"></a>**IKOS vs Dartagnan 差距分析（no-data-race，SV-COMP 2026 官方参照）**：[dartagnan_official_tp_176.txt](artifacts/dartagnan_official_tp_176.txt)；[ikos_unique_real_19.txt](artifacts/ikos_unique_real_19.txt)。
+- <a id="record-ikos-inline-ab-2026-10-09"></a>**mark_internal_inline 单独 A/B**：[summary.json](artifacts/ikos-inline-ab-2026-10-09/summary.json)。
+
+### 值、地址与对象
+
+- <a id="record-ikos-bmc-a1-address-2026-10-08"></a>**BMC A1 地址编码：实现与验证（2026-10-08）**：[bmc-a1-address-2026-10-08.json](artifacts/bmc-a1-address-2026-10-08.json)；[bmc-a1-address-2026-10-08.tsv](artifacts/bmc-a1-address-2026-10-08.tsv)。
+- <a id="record-ikos-bmc-affine-guards-2026-10-09"></a>**动态仿射守卫：减少不可行循环路径**：[summary.json](artifacts/bmc-affine-guards-2026-10-09/summary.json)。
+- <a id="record-ikos-bmc-startup-address-2026-10-09"></a>**启动前缀的逐次数组地址**：[summary.json](artifacts/bmc-startup-address-2026-10-09/summary.json)。
+- <a id="record-ikos-bmc-pointer-returns-2026-10-09"></a>**实际 helper 返回的全局指针**：[summary.json](artifacts/bmc-pointer-returns-2026-10-09/summary.json)。
+- <a id="record-ikos-bmc-global-choice-2026-10-10"></a>**有限全局 points-to 集合用于候选选择，实际路径证明对象**：[summary.json](artifacts/bmc-global-choice-2026-10-10/summary.json)；[global-choice-final-full-repeat-paired.json](artifacts/bmc-global-choice-2026-10-10/global-choice-final-full-repeat-paired.json)。
+- <a id="record-ikos-bmc-main-heap-2026-10-10"></a>**实际初始化的不可变指针槽与单次main堆分配**：[paired.json](artifacts/bmc-main-heap-2026-10-10/paired.json)；[summary.json](artifacts/bmc-main-heap-2026-10-10/summary.json)；[confirmed-targets.json](artifacts/bmc-main-heap-2026-10-10/confirmed-targets.json)。
+- <a id="record-ikos-bmc-byte-rf-2026-10-10"></a>**原始整数全局对象的字节级 SC 读源（2026-10-10）**：[before.json](artifacts/bmc-byte-rf-2026-10-10/before.json)；[fixtures.json](artifacts/bmc-byte-rf-2026-10-10/fixtures.json)；[reference.json](artifacts/bmc-byte-rf-2026-10-10/reference.json)；[selected-pairs-32.json](artifacts/bmc-byte-rf-2026-10-10/selected-pairs-32.json)；[selected-pairs-64.json](artifacts/bmc-byte-rf-2026-10-10/selected-pairs-64.json)；[paired.json](artifacts/bmc-byte-rf-2026-10-10/paired.json)；[summary.json](artifacts/bmc-byte-rf-2026-10-10/summary.json)；[partial-validation.json](artifacts/bmc-byte-rf-2026-10-10/partial-validation.json)；[conditional-replay-probes.json](artifacts/bmc-byte-rf-2026-10-10/conditional-replay-probes.json)；[conditional-replay.json](artifacts/bmc-byte-rf-2026-10-10/conditional-replay.json)。
+- <a id="record-ikos-bmc-heap-scalar-read-2026-10-10"></a>**真实来源的堆整数读（2026-10-10）**：[paired.json](artifacts/bmc-heap-scalar-read-2026-10-10/paired.json)；[summary.json](artifacts/bmc-heap-scalar-read-2026-10-10/summary.json)；[fixtures.json](artifacts/bmc-heap-scalar-read-2026-10-10/fixtures.json)；[reference.json](artifacts/bmc-heap-scalar-read-2026-10-10/reference.json)；[partial-validation.json](artifacts/bmc-heap-scalar-read-2026-10-10/partial-validation.json)；[targeted.json](artifacts/bmc-heap-scalar-read-2026-10-10/targeted.json)。
+- <a id="record-ikos-bmc-pointer-slot-casts-2026-10-10"></a>**BMC 已发布指针槽的纯地址 cast（2026-10-10）**：[summary.json](artifacts/bmc-pointer-slot-casts-2026-10-10/summary.json)；[paired.json](artifacts/bmc-pointer-slot-casts-2026-10-10/paired.json)；[fixtures.json](artifacts/bmc-pointer-slot-casts-2026-10-10/fixtures.json)；[heap.json](artifacts/bmc-pointer-slot-casts-2026-10-10/heap.json)；[targets.json](artifacts/bmc-pointer-slot-casts-2026-10-10/targets.json)；[reference-value-probes.json](artifacts/bmc-pointer-slot-casts-2026-10-10/reference-value-probes.json)；[selected-field.json](artifacts/bmc-pointer-slot-casts-2026-10-10/selected-field.json)。
+
+### 线程与同步
+
+- <a id="record-ikos-bmc-candidates-2026-10-08"></a>**BMC 阻塞诊断、多候选搜索与线程激活审查**：[bmc-candidates-2026-10-08.json](artifacts/bmc-candidates-2026-10-08.json)；[bmc-candidates-2026-10-08.tsv](artifacts/bmc-candidates-2026-10-08.tsv)。
+- <a id="record-ikos-bmc-create-result-2026-10-09"></a>**成功 Create 的返回值与守卫**：[summary.json](artifacts/bmc-create-result-2026-10-09/summary.json)。
+- <a id="record-ikos-bmc-named-atomic-2026-10-09"></a>**完整命名 atomic helper 前缀**：[summary.json](artifacts/bmc-named-atomic-2026-10-09/summary.json)。
+- <a id="record-ikos-bmc-atomic-target-2026-10-09"></a>**atomic 内部目标、完成路径和预算保护**：[summary.json](artifacts/bmc-atomic-target-2026-10-09/summary.json)。
+- <a id="record-ikos-bmc-thread-exit-2026-10-10"></a>**实际 pthread_exit 完成端点（2026-10-10）**：[paired.json](artifacts/bmc-thread-exit-2026-10-10/paired.json)；[summary.json](artifacts/bmc-thread-exit-2026-10-10/summary.json)；[models-partial.json](artifacts/bmc-thread-exit-2026-10-10/models-partial.json)。
+- <a id="record-ikos-bmc-condition-prefix-2026-10-10"></a>**条件变量的有限虚假唤醒前缀**：[summary.json](artifacts/bmc-condition-2026-10-10/summary.json)；[paired.json](artifacts/bmc-condition-2026-10-10/paired.json)。
+- <a id="record-ikos-bmc-static-condition-2026-10-10"></a>**静态条件变量初始化的ABI证据**：[paired.json](artifacts/bmc-static-condition-2026-10-10/paired.json)；[summary.json](artifacts/bmc-static-condition-2026-10-10/summary.json)；[fixtures.json](artifacts/bmc-static-condition-2026-10-10/fixtures.json)；[partial-models.json](artifacts/bmc-static-condition-2026-10-10/partial-models.json)。
+- <a id="record-ikos-bmc-constructors-2026-10-10"></a>**构造函数遗漏导致的 BMC 假反例（2026-10-10）**：[before.json](artifacts/bmc-constructors-2026-10-10/before.json)；[fixtures.json](artifacts/bmc-constructors-2026-10-10/fixtures.json)；[reference.json](artifacts/bmc-constructors-2026-10-10/reference.json)；[paired.json](artifacts/bmc-constructors-2026-10-10/paired.json)；[summary.json](artifacts/bmc-constructors-2026-10-10/summary.json)。
+- <a id="record-ikos-bmc-library-origin-2026-10-10"></a>**BMC 隐式库写入的值来源边界（2026-10-10）**：[abi.json](artifacts/bmc-library-origin-2026-10-10/abi.json)；[before.json](artifacts/bmc-library-origin-2026-10-10/before.json)；[fixtures.json](artifacts/bmc-library-origin-2026-10-10/fixtures.json)；[reference.json](artifacts/bmc-library-origin-2026-10-10/reference.json)；[paired.json](artifacts/bmc-library-origin-2026-10-10/paired.json)；[summary.json](artifacts/bmc-library-origin-2026-10-10/summary.json)；[first-paired.json](artifacts/bmc-library-origin-2026-10-10/first-paired.json)。
+- <a id="record-ikos-bmc-sync-storage-width-2026-10-10"></a>**BMC 同步控制存储的完整宽度（2026-10-10）**：[before.json](artifacts/bmc-sync-storage-width-2026-10-10/before.json)；[fixtures.json](artifacts/bmc-sync-storage-width-2026-10-10/fixtures.json)；[p0.json](artifacts/bmc-sync-storage-width-2026-10-10/p0.json)；[abi.json](artifacts/bmc-sync-storage-width-2026-10-10/abi.json)；[paired.json](artifacts/bmc-sync-storage-width-2026-10-10/paired.json)；[summary.json](artifacts/bmc-sync-storage-width-2026-10-10/summary.json)。
+- <a id="record-ikos-bmc-mutex-attributes-2026-10-10"></a>**BMC ERRORCHECK 属性与成功 owned-unlock 前缀（2026-10-10）**：[paired.json](artifacts/bmc-mutex-attributes-2026-10-10/paired.json)；[summary.json](artifacts/bmc-mutex-attributes-2026-10-10/summary.json)；[fixtures.json](artifacts/bmc-mutex-attributes-2026-10-10/fixtures.json)；[targets.json](artifacts/bmc-mutex-attributes-2026-10-10/targets.json)；[reference.json](artifacts/bmc-mutex-attributes-2026-10-10/reference.json)；[selected-models.json](artifacts/bmc-mutex-attributes-2026-10-10/selected-models.json)。
+- <a id="record-ikos-bmc-lock-interference-2026-10-10"></a>**已释放锁分区写值的入口覆盖（2026-10-10）**：[paired.json](artifacts/bmc-lock-interference-2026-10-10/paired.json)；[summary.json](artifacts/bmc-lock-interference-2026-10-10/summary.json)；[run.py](review-repros/lock-interference/run.py)；[native.json](artifacts/bmc-lock-interference-2026-10-10/native.json)。
+- <a id="record-ikos-bmc-shared-callback-feasibility-2026-10-10"></a>**共享回调值流的下一阶段依据（2026-10-10）**：[reference.json](artifacts/bmc-shared-callback-feasibility-2026-10-10/reference.json)；[probes.json](artifacts/bmc-shared-callback-feasibility-2026-10-10/probes.json)。
+
+### 搜索、性能与撤回实验
+
+- <a id="record-ikos-bmc-search-short-circuit-2026-10-09"></a>**竞争方向 SAT 后停止重复求解**：[summary.json](artifacts/bmc-search-short-circuit-2026-10-09/summary.json)。
+- <a id="record-ikos-bmc-fresh-solver-2026-10-09"></a>**独立竞争方向查询：保留非增量预处理**：[summary.json](artifacts/bmc-fresh-solver-2026-10-09/summary.json)。
+- <a id="record-ikos-bmc-short-prefix-2026-10-09"></a>**优先较短的实际前缀**：[summary.json](artifacts/bmc-short-prefix-2026-10-09/summary.json)；[paired.json](artifacts/bmc-short-prefix-2026-10-09/paired.json)；[schedule-calibration.json](artifacts/bmc-short-prefix-2026-10-09/schedule-calibration.json)；[schedule-selected.json](artifacts/bmc-short-prefix-2026-10-09/schedule-selected.json)。
+- <a id="record-ikos-bmc-loop-search-2026-10-09"></a>**中间循环界限搜索实验：暂不落地**：[bmc-loop-deepening](review-repros/bmc-loop-deepening/)。
+- <a id="record-ikos-bmc-pair-order-experiment-2026-10-10"></a>**总前缀长度排序实验：撤回**：[summary.json](artifacts/bmc-pair-order-experiment-2026-10-10/summary.json)。
+- <a id="record-ikos-bmc-helper-search-experiment-2026-10-10"></a>**helper目标搜索实验：配对回退后撤回**：[paired.json](artifacts/bmc-helper-search-experiment-2026-10-10/paired.json)；[summary.json](artifacts/bmc-helper-search-experiment-2026-10-10/summary.json)。
+- <a id="record-ikos-bmc-completed-enumeration-2026-10-10"></a>**枚举中断后的完整竞争前缀与分阶段搜索**：[summary.json](artifacts/bmc-completed-enumeration-2026-10-10/summary.json)；[paired.json](artifacts/bmc-completed-enumeration-2026-10-10/paired.json)；[run.py](review-repros/completed-enumeration/run.py)。
+- <a id="record-ikos-bmc-small-bound-2026-10-10"></a>**暂缓候选组的小界限补充搜索**：[paired.json](artifacts/bmc-small-bound-2026-10-10/paired.json)；[summary.json](artifacts/bmc-small-bound-2026-10-10/summary.json)；[partial-models.json](artifacts/bmc-small-bound-2026-10-10/partial-models.json)；[fixture-reference.json](artifacts/bmc-small-bound-2026-10-10/fixture-reference.json)。
+- <a id="record-ikos-bmc-atomic-interior-2026-10-10"></a>**提前判定atomic区间中间目标的查询UNSAT**：[paired.json](artifacts/bmc-atomic-interior-2026-10-10/paired.json)；[summary.json](artifacts/bmc-atomic-interior-2026-10-10/summary.json)；[lu-partial.json](artifacts/bmc-atomic-interior-2026-10-10/lu-partial.json)。
+- <a id="record-ikos-bmc-sc-same-path-2026-10-10"></a>**同路径SC读源公式简化（2026-10-10）**：[paired.json](artifacts/bmc-sc-same-path-2026-10-10/paired.json)；[summary.json](artifacts/bmc-sc-same-path-2026-10-10/summary.json)；[reference-partial.json](artifacts/bmc-sc-same-path-2026-10-10/reference-partial.json)。
+- <a id="record-ikos-bmc-constant-guard-2026-10-10"></a>**确定读值传播与不可行守卫（2026-10-10）**：[paired.json](artifacts/bmc-constant-guard-2026-10-10/paired.json)；[summary.json](artifacts/bmc-constant-guard-2026-10-10/summary.json)；[bench-native.json](artifacts/bmc-constant-guard-2026-10-10/bench-native.json)；[reference-partial.json](artifacts/bmc-constant-guard-2026-10-10/reference-partial.json)；[fib-32-partial.json](artifacts/bmc-constant-guard-2026-10-10/fib-32-partial.json)；[fib-64-partial.json](artifacts/bmc-constant-guard-2026-10-10/fib-64-partial.json)。
+- <a id="record-ikos-bmc-guard-first-2026-10-10"></a>**守卫先于未使用算术的完整检查（2026-10-10）**：[paired.json](artifacts/bmc-guard-first-2026-10-10/paired.json)；[summary.json](artifacts/bmc-guard-first-2026-10-10/summary.json)；[reference-partial.json](artifacts/bmc-guard-first-2026-10-10/reference-partial.json)。
+- <a id="record-ikos-bmc-atomic-delay-2026-10-10"></a>**延后不可行路径的atomic约束构造（2026-10-10）**：[paired.json](artifacts/bmc-atomic-delay-2026-10-10/paired.json)；[summary.json](artifacts/bmc-atomic-delay-2026-10-10/summary.json)；[fib-32-partial.json](artifacts/bmc-atomic-delay-2026-10-10/fib-32-partial.json)；[fib-64-partial.json](artifacts/bmc-atomic-delay-2026-10-10/fib-64-partial.json)。
+- <a id="record-ikos-bmc-loop-hint-2026-10-10"></a>**依据实际循环守卫安排搜索（2026-10-10）**：[paired.json](artifacts/bmc-loop-hint-2026-10-10/paired.json)；[summary.json](artifacts/bmc-loop-hint-2026-10-10/summary.json)；[bench-native.json](artifacts/bmc-loop-hint-2026-10-10/bench-native.json)；[fib7-32-partial.json](artifacts/bmc-loop-hint-2026-10-10/fib7-32-partial.json)。
+- <a id="record-ikos-bmc-guard-cache-2026-10-10"></a>**固定候选组内复用确定false守卫（2026-10-10）**：[paired.json](artifacts/bmc-guard-cache-2026-10-10/paired.json)；[summary.json](artifacts/bmc-guard-cache-2026-10-10/summary.json)。
+- <a id="record-ikos-bmc-spawn-source-2026-10-10"></a>**创建前main写源的SC顺序简化（2026-10-10）**：[paired.json](artifacts/bmc-spawn-source-2026-10-10/paired.json)；[first-paired.json](artifacts/bmc-spawn-source-2026-10-10/first-paired.json)；[summary.json](artifacts/bmc-spawn-source-2026-10-10/summary.json)。
+- <a id="record-ikos-bmc-join-query-prune-2026-10-10"></a>**提前删除当前 Join 查询必然 UNSAT 的前缀（2026-10-10）**：[paired.json](artifacts/bmc-join-query-prune-2026-10-10/paired.json)；[summary.json](artifacts/bmc-join-query-prune-2026-10-10/summary.json)；[fixtures.json](artifacts/bmc-join-query-prune-2026-10-10/fixtures.json)。
+- <a id="record-ikos-bmc-activation-prefix-2026-10-10"></a>**完整创建前缀与分阶段查询（2026-10-10）**：[early-paired.json](artifacts/bmc-activation-prefix-2026-10-10/early-paired.json)；[paired.json](artifacts/bmc-activation-prefix-2026-10-10/paired.json)；[summary.json](artifacts/bmc-activation-prefix-2026-10-10/summary.json)；[reference.json](artifacts/bmc-activation-prefix-2026-10-10/reference.json)；[partial-validation.json](artifacts/bmc-activation-prefix-2026-10-10/partial-validation.json)；[ticket48-validation.json](artifacts/bmc-activation-prefix-2026-10-10/ticket48-validation.json)；[confirmed-pairs.json](artifacts/bmc-activation-prefix-2026-10-10/confirmed-pairs.json)；[targeted.json](artifacts/bmc-activation-prefix-2026-10-10/targeted.json)；[fixtures.json](artifacts/bmc-activation-prefix-2026-10-10/fixtures.json)。
+- <a id="record-ikos-bmc-activation-query-order-2026-10-10"></a>**新激活候选的查询顺序（2026-10-10）**：[paired.json](artifacts/bmc-activation-query-order-2026-10-10/paired.json)；[summary.json](artifacts/bmc-activation-query-order-2026-10-10/summary.json)；[targeted.json](artifacts/bmc-activation-query-order-2026-10-10/targeted.json)；[lp64.json](artifacts/bmc-activation-query-order-2026-10-10/lp64.json)；[fixtures.json](artifacts/bmc-activation-query-order-2026-10-10/fixtures.json)；[fixture-reference.json](artifacts/bmc-activation-query-order-2026-10-10/fixture-reference.json)。
+- <a id="record-ikos-bmc-stage-diagnostics-2026-10-10"></a>**保留暂缓候选的两轮搜索证据**：[summary.json](artifacts/bmc-stage-diagnostics-2026-10-10/summary.json)；[paired.json](artifacts/bmc-stage-diagnostics-2026-10-10/paired.json)。
+
+### 反例导出与研究验证
+
+- <a id="record-ikos-bmc-witness-validation-2026-10-09"></a>**本地 GraphML 验证与下一步优化（2026-10-09）**：[validate_bmc_witnesses.py](../scripts/validate_bmc_witnesses.py)；[test_bmc_witnesses.py](../scripts/test_bmc_witnesses.py)；[bmc-witness-validation-2026-10-09](artifacts/bmc-witness-validation-2026-10-09/)；[task-results.tsv](artifacts/bmc-witness-validation-2026-10-09/task-results.tsv)。
+- <a id="record-ikos-bmc-replay-2026-10-09"></a>**BMC 结构化前缀与独立重放（2026-10-09）**：[export-summary.json](artifacts/bmc-replay-2026-10-09/export-summary.json)。
+- <a id="record-ikos-dartagnan-strict-validation-2026-10-09"></a>**Dartagnan 指定候选约束接口：校准阶段**：[calibration.json](artifacts/dartagnan-strict-2026-10-09/calibration.json)；[ikos-simple-fixed-memory.json](artifacts/dartagnan-strict-2026-10-09/ikos-simple-fixed-memory.json)；[relative-address-calibration.json](artifacts/dartagnan-strict-2026-10-09/relative-address-calibration.json)；[fixed-memory-sweep.json](artifacts/dartagnan-strict-2026-10-09/fixed-memory-sweep.json)；[creation-occurrence-calibration.json](artifacts/dartagnan-strict-2026-10-09/creation-occurrence-calibration.json)；[creation-occurrence-real-candidates.json](artifacts/dartagnan-strict-2026-10-09/creation-occurrence-real-candidates.json)；[fixed-orientation-calibration.json](artifacts/dartagnan-strict-2026-10-09/fixed-orientation-calibration.json)；[fixed-orientation-evidence.json](artifacts/dartagnan-strict-2026-10-09/fixed-orientation-evidence.json)。
+- <a id="record-ikos-bmc-tp77-validation-2026-10-09"></a>**当前77项标签TP的验证覆盖**：[export-summary.json](artifacts/bmc-tp77-validation-2026-10-09/export-summary.json)；[initial-fixed-memory.json](artifacts/bmc-tp77-validation-2026-10-09/initial-fixed-memory.json)；[selected-retries.json](artifacts/bmc-tp77-validation-2026-10-09/selected-retries.json)；[memory-calibration.json](artifacts/bmc-tp77-validation-2026-10-09/memory-calibration.json)；[nondet-calibration.json](artifacts/bmc-tp77-validation-2026-10-09/nondet-calibration.json)；[nondet-selected.json](artifacts/bmc-tp77-validation-2026-10-09/nondet-selected.json)；[nondet-fixed-memory.json](artifacts/bmc-tp77-validation-2026-10-09/nondet-fixed-memory.json)；[nondet-bound-retries.json](artifacts/bmc-tp77-validation-2026-10-09/nondet-bound-retries.json)；[communication-calibration.json](artifacts/bmc-tp77-validation-2026-10-09/communication-calibration.json)；[communication-selected.json](artifacts/bmc-tp77-validation-2026-10-09/communication-selected.json)；[communication-fixed-memory.json](artifacts/bmc-tp77-validation-2026-10-09/communication-fixed-memory.json)；[communication-fmax-bound6.json](artifacts/bmc-tp77-validation-2026-10-09/communication-fmax-bound6.json)；[loop-exit-calibration.json](artifacts/bmc-tp77-validation-2026-10-09/loop-exit-calibration.json)；[communication-loop-retries.json](artifacts/bmc-tp77-validation-2026-10-09/communication-loop-retries.json)。
+- <a id="record-ikos-bmc-schedule-validation-2026-10-10"></a>**TP77 已映射内存顺序的检查结果**：[fixed-memory.json](artifacts/bmc-schedule-validation-2026-10-10/fixed-memory.json)；[export-summary.json](artifacts/bmc-schedule-validation-2026-10-10/export-summary.json)；[fmax-bound6.json](artifacts/bmc-schedule-validation-2026-10-10/fmax-bound6.json)。
+- <a id="record-ikos-bmc-initial-rf-2026-10-10"></a>**严格检查中的隐式初始写来源**：[initial-calibration.json](artifacts/bmc-initial-rf-2026-10-10/initial-calibration.json)；[full-calibration.json](artifacts/bmc-initial-rf-2026-10-10/full-calibration.json)；[simple.json](artifacts/bmc-initial-rf-2026-10-10/simple.json)；[unverif.json](artifacts/bmc-initial-rf-2026-10-10/unverif.json)；[lu.json](artifacts/bmc-initial-rf-2026-10-10/lu.json)。
+- <a id="record-ikos-bmc-indirect-address-validation-2026-10-10"></a>**间接访问的严格参考地址约束**：[32.json](artifacts/bmc-indirect-address-2026-10-10/32.json)；[64.json](artifacts/bmc-indirect-address-2026-10-10/64.json)；[test_indirect_addresses.py](../scripts/dartagnan_strict/test_indirect_addresses.py)。
+- <a id="record-ikos-bmc-heap-binding-2026-10-10"></a>**严格参考约束中的实际堆分配绑定**：[summary.json](artifacts/bmc-heap-binding-2026-10-10/summary.json)；[fixtures.json](artifacts/bmc-heap-binding-2026-10-10/fixtures.json)；[benchmark38.json](artifacts/bmc-heap-binding-2026-10-10/benchmark38.json)。
+- <a id="record-ikos-bmc-typed-reference-2026-10-10"></a>**严格参考映射中的实际内存类型（2026-10-10）**：[calibration.json](artifacts/bmc-typed-reference-2026-10-10/calibration.json)；[heap-calibration.json](artifacts/bmc-typed-reference-2026-10-10/heap-calibration.json)；[37-32-partial.json](artifacts/bmc-typed-reference-2026-10-10/37-32-partial.json)；[37-64-partial.json](artifacts/bmc-typed-reference-2026-10-10/37-64-partial.json)。
+- <a id="record-ikos-bmc-creation-sequence-validation-2026-10-10"></a>**跨分支的真实创建实例映射（2026-10-10）**：[summary.json](artifacts/bmc-creation-sequence-validation-2026-10-10/summary.json)；[old-incompatible-mapping.json](artifacts/bmc-creation-sequence-validation-2026-10-10/old-incompatible-mapping.json)；[selected-models.json](artifacts/bmc-creation-sequence-validation-2026-10-10/selected-models.json)；[compatibility.json](artifacts/bmc-creation-sequence-validation-2026-10-10/compatibility.json)；[conditional-replay.json](artifacts/bmc-creation-sequence-validation-2026-10-10/conditional-replay.json)。
+
+### 逐任务历史台账
+
+- <a id="record-ikos-bmc-current-ledger-2026-10-09"></a>**当前 UNKNOWN 台账与历史证据衔接**：[results.json](artifacts/bmc-current-ledger-2026-10-09/results.json)；[summary.json](artifacts/bmc-current-ledger-2026-10-09/summary.json)。
+- <a id="record-ikos-bmc-post-atomic-ledger-2026-10-09"></a>**TP77基线后的完整UNKNOWN台账**：[results.json](artifacts/bmc-post-atomic-ledger-2026-10-09/results.json)；[summary.json](artifacts/bmc-post-atomic-ledger-2026-10-09/summary.json)。
+- <a id="record-ikos-bmc-tp80-ledger-2026-10-10"></a>**TP80基线后的UNKNOWN台账更新**：[results.json](artifacts/bmc-tp80-ledger-2026-10-10/results.json)；[summary.json](artifacts/bmc-tp80-ledger-2026-10-10/summary.json)。
+- <a id="record-ikos-bmc-tp82-ledger-2026-10-10"></a>**TP82基线后的UNKNOWN台账**：[results.json](artifacts/bmc-tp82-ledger-2026-10-10/results.json)；[summary.json](artifacts/bmc-tp82-ledger-2026-10-10/summary.json)。
+- <a id="record-ikos-bmc-tp90-ledger-2026-10-10"></a>**TP90之后的逐任务台账（2026-10-10）**：[results.json](artifacts/bmc-tp90-ledger-2026-10-10/results.json)；[summary.json](artifacts/bmc-tp90-ledger-2026-10-10/summary.json)。
+- <a id="record-ikos-bmc-tp98-ledger-2026-10-10"></a>**TP98之后的逐任务台账（2026-10-10）**：[results.json](artifacts/bmc-tp98-ledger-2026-10-10/results.json)；[summary.json](artifacts/bmc-tp98-ledger-2026-10-10/summary.json)。
+- <a id="record-ikos-bmc-tp104-ledger-2026-10-10"></a>**TP104 后的逐任务台账（2026-10-10）**：[results.json](artifacts/bmc-tp104-ledger-2026-10-10/results.json)；[summary.json](artifacts/bmc-tp104-ledger-2026-10-10/summary.json)。
+
+<a id="references"></a>
+## 15. 文献、规范与固定源码
+
+原始依据按具体设计决策阅读，不把论文性能数字当本项目测量；相关章节阅读也不等于移植完整算法。
+
+| 依据 | 对IKOS的用途与阅读范围 |
+| --- | --- |
+| Biere et al., *Symbolic Model Checking without BDDs*, TACAS1999，[DOI](https://doi.org/10.1007/3-540-49059-0_14) | BMC转移展开和有界UNSAT范围；审查时未阅读全文 |
+| Ponce de León et al., *BMC with Memory Models as Modules*, FMCAD2018，[论文](https://hernanponcedeleon.github.io/pdfs/fmcad2018.pdf) | 已读相关建模章节：控制、数据、内存模型、性质四部分；不能只迁移竞争公式 |
+| Gavrilenko et al., *BMC for Weak Memory Models: Relation Analysis for Compact SMT Encodings*, CAV2019，[论文](https://hernanponcedeleon.github.io/pdfs/cav2019.pdf) | 已读may/active关系候选压缩；指导IKOS候选/依赖裁剪，未移植完整关系分析 |
+| Haas et al., *CAAT: Consistency as a Theory*, OOPSLA2022，[论文](https://hernanponcedeleon.github.io/pdfs/oopsla2022.pdf) | 已读相关章节：惰性一致性与执行编码分离，后期研究方向，不立即搬入整个CAAT |
+| *Static Analysis of Memory Models for SMT Encodings*, OOPSLA2023 | 条件化may/must与外部filters；版本/URL/hash/实际阅读范围见精度恢复证据目录references/manifest.json |
+| Alglave et al., *Partial Orders for Efficient Bounded Model Checking of Concurrent Software*, CAV2013，[DOI](https://doi.org/10.1007/978-3-642-39799-8_9) | 部分序调度与执行证据；题录核对，审查时未阅读全文 |
+| Ponce de León et al., *Dartagnan: SMT-based Violation Witness Validation*, TACAS2022，[论文](https://hernanponcedeleon.github.io/pdfs/svcomp2022.pdf) | witness表达执行与独立验证；题录核对，审查时未阅读全文 |
+| Miné, ESOP2012 / VMCAI2014并发抽象解释论文 | 干扰覆盖与关系线程模块化，SAFE及AI/BMC契约的后续阅读，不由BMC论文代替 |
+| Vojdani et al., *Static Race Detection for Device Drivers: The Goblint Approach*, ASE2016 | 私有化、发布、锁保护；题录/算法阅读建议，完整PBR未移植 |
+
+规范：
+[SV-COMP2027规则](https://sv-comp.sosy-lab.org/2027/rules.php)、
+[POSIX mutex_init](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_mutex_init.html)、
+[mutex lock/unlock](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_mutex_lock.html)、
+[mutexattr_settype](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_mutexattr_settype.html)、
+[cond_wait](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_cond_wait.html)。
+平台私有字段依据本地 glibc 头文件/库 hash 与 native 断言，不冒称POSIX可移植布局。
+
+源码参照：
+
+- [固定Dat3M源码](https://github.com/hernanponcedeleon/Dat3M/tree/7caef5c850dc2dbf81c5554dcf41e402007f7a19)：
+  ProgramEncoder、PropertyEncoder、ExpressionEncoder、WmmEncoder、LoopUnrolling、ThreadCreation、
+  Inlining、Intrinsics、NaiveDevirtualisation、WitnessGraph、Alloc/Init及Acyclicity。
+  实际launcher和library JAR都需核对内嵌git.properties/hash，不能只读旁边target/classes。
+- Goblint本地 `/home/ruan/goblint-analyzer`，提交`bb55b70d91290992629ba3d073185c10cdf356e6`：
+  interval/overflow和`basePriv.ml::ProtectionBasedPriv.read_global/unlock`。
+  它的保护读端与证明依赖不能省略后宣称已经迁移完整算法。
+- IKOS上游 `/home/ruan/ikos-original`：核对真实revision后对照前端、AR、域和执行机制，
+  不修改上游来适配本fork的结论。
+
+历史Dat3M提交线索包括join/detach `664d81f7f/0e1e73128/ab0610069`、跨线程SCCP
+`55590d7c7`、rf类型转换`95224e40c`、指针修复`ee5a58ae9`、devirtualization
+`24a65b237`、混合字长`e45ac070e`、spinloop/bound相关`e8622b751/d8e6066d6/7950dd782/81da44f69`、
+witness `5fc2bcb78`。这些是源码研究入口，不是各机制的当前IKOS缺口证明或收益预测。

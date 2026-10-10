@@ -88,9 +88,9 @@ category/task manifest before claiming competition-wide coverage.
 | Navigation | `docs/README.md` |
 | API/build traps | `docs/dev-gotchas.md` |
 | Architecture/theory claims | `docs/ikos-race-theory-mapping.md`, `docs/concurrency-architecture.md` |
-| BMC design/limits | `docs/ikos-bmc-complete.md` |
-| Historical counterexamples | `docs/ikos-bmc-review-2026-10-08.md`, `docs/review-repros/bmc-2026-10-08/` |
-| Reference analyzer | `docs/dartagnan-svcomp2026-reference.md`, `docs/ikos-vs-dartagnan-gap.md` |
+| BMC design/limits, current ledger, workflow and evidence | `docs/ikos-bmc-complete.md` (single maintained BMC document) |
+| Historical counterexamples | `docs/ikos-bmc-complete.md#correctness`, `docs/review-repros/bmc-2026-10-08/` |
+| Reference analyzer | `docs/ikos-bmc-complete.md#contract`, `docs/ikos-bmc-complete.md#references` |
 | Competition integration | `svcomp/category-structure-mr.md`, `svcomp/reference/README.md`, relevant `docs/SVCOMP2027-*.md` |
 
 Historical reviews describe pre-fix behavior. Navigation docs still contain older
