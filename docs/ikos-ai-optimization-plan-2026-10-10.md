@@ -511,3 +511,33 @@ TP104/TN676/UNKNOWN248/error1，唯一超时为 nsc-ircc 驱动；单独运行�
 [关系域](artifacts/ai-p0-2026-10-10/f4/relational.json)、
 [首轮预算变化](artifacts/ai-p0-2026-10-10/f4/first-scan.json)、
 [1029 配对](artifacts/ai-p0-2026-10-10/f4/paired.json)。
+
+### 9.6 P0-F2：无逃逸闭包证据时不排除堆对象
+
+checker 不再用 MUST fresh 删除堆访问。另将每个显式 pointer store 的 may-target 保守记为
+可能逃逸，不依赖当前容器是否已发布；TOP 目标撤销所有地址的该私有排除，集合扩张通知
+外层重算。这覆盖“先连边、后发布”的 heap/stack/TLS 末端，也覆盖 stack 根的显式连边。
+它是保守后备，未实现完整可达图；copy/未知调用、spawn TOP、指针值恢复仍需效果覆盖审查。
+恢复 private 精度必须用完备 may 图及未知边回退，不能重新使用直接 fresh 的捷径。
+
+build/install 一致；56 个双位宽/双模式用例覆盖深度2/3、环、helper、数组转移、64位字段、
+先发布再连边、stack/TLS 末端和 stack 根。真正独立 heap 与 join 后写对照保持 SAFE，
+竞争变体全部不再 SAFE；7条逃逸/dirty/TOP/clear 断言通过。
+先前五项机制144次定向运行、旧 BMC20次保持；原审查76次现在无 KNOWN_FN_PENDING。
+这不是整个项目不存在 FN 的证明。
+
+1029 完整顺序复跑：AI TN676→667/UNKNOWN353→362；BMC TP104→104、TN676→667、
+UNKNOWN249→258，FP/FN/error0。9个 TN 回退为 list/region 私有证明案例，逐项登记。
+首轮并行 AI/BMC 两侧 nsc-ircc 都超30秒；保留该轮预算变化，不用局部结果替换全量。
+
+继续审查时新增具体 FN：`pick = nondet()? &left : &right; target = *pick`，
+两个已写 pointer global 的 board 恢复按源逐次强绑定，最后一个源覆盖前一个源。
+两个选择分支都可竞争，但双 ABI 下只有 y 被保留，主线程写 x 被误判 SAFE。
+它不依赖 fresh 排除，必须作为下一项独立修复；当前不能宣称 P0 全部结束。
+[最小输入](artifacts/ai-p0-2026-10-10/f2/pending-pointer-choice.c)、
+[双位宽观测](artifacts/ai-p0-2026-10-10/f2/pending-pointer-choice.json)。
+
+阶段证据：[汇总](artifacts/ai-p0-2026-10-10/f2/summary.json)、
+[9项变化](artifacts/ai-p0-2026-10-10/f2/transitions.json)、
+[56次用例](artifacts/ai-p0-2026-10-10/f2/fixtures-after.json)、
+[原审查](artifacts/ai-p0-2026-10-10/f2/audit.json)。

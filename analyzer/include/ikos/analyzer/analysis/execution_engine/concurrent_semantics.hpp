@@ -1443,6 +1443,10 @@ void on_store_privatize(E& eng,
                         ar::Store* store,
                         const ScalarLit& ptr,
                         const Literal& val) {
+  if (val.is_scalar() && val.scalar().is_pointer_var()) {
+    eng.ctx().concurrent_env.record_possible_escape(
+        eng.data().normal().pointer_to_points_to(val.scalar().var()));
+  }
   auto points_to = eng.data().normal().pointer_to_points_to(ptr.var());
   if (!points_to.is_top() && !points_to.is_bottom()) {
     auto& env = eng.ctx().concurrent_env;

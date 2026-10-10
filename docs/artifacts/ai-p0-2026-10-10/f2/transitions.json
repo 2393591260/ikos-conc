@@ -1,0 +1,65 @@
+[
+  {
+    "task": "c/goblint-regression/09-regions_02-list_nr.c",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/goblint-regression/28-race_reach_81-list_racing.i",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/goblint-regression/28-race_reach_82-list_racefree.i",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/goblint-regression/28-race_reach_83-list2_racing1.i",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/goblint-regression/28-race_reach_84-list2_racing2.i",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/goblint-regression/28-race_reach_85-list2_racefree.i",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/goblint-regression/28-race_reach_86-lists_racing.i",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/goblint-regression/28-race_reach_87-lists_racefree.i",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/goblint-regression/28-race_reach_94-alloc_region_racing.i",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  }
+]

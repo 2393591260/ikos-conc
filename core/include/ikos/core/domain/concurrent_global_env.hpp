@@ -356,6 +356,7 @@ private:
   /// (`04-mutex_45-escape_rc.c`). `DataRaceChecker::touches_shared_memory`
   /// consults `is_escaped` to treat these locals as cross-thread visible.
   std::unordered_set< analyzer::MemoryLocation* > _escaped_locs;
+  bool _unknown_escaped_target = false;
 
   /// \brief Pointer blackboard cell: the points-to set AND the byte offset of
   /// a global pointer field's value.
@@ -1561,14 +1562,29 @@ public:
     return true;
   }
 
-  /// \brief Was `loc`'s address captured into a pthread_create `arg`?
-  /// Consulted by DataRaceChecker to treat escaped stack locals as shared.
+  /// Conservative fallback: a stored pointer's container may be published later.
+  /// A complete reachability analysis can restore precision for private stores.
+  void record_possible_escape(
+      const PointsToSet< analyzer::MemoryLocation* >& targets) {
+    std::lock_guard< std::mutex > lock(_mutex);
+    if (targets.is_top()) {
+      if (!_unknown_escaped_target) {
+        _unknown_escaped_target = true;
+        _is_dirty = true;
+      }
+    } else if (targets.is_set()) {
+      for (auto* target : targets)
+        if (_escaped_locs.insert(target).second) _is_dirty = true;
+    }
+  }
+
+  /// May have escaped via a stored pointer, global pointer, or spawn argument.
   bool is_escaped(analyzer::MemoryLocation* loc) const {
     if (loc == nullptr) {
       return false;
     }
     std::lock_guard< std::mutex > lock(_mutex);
-    return _escaped_locs.count(loc) != 0;
+    return _unknown_escaped_target || _escaped_locs.count(loc) != 0;
   }
 
   /// \brief Widening threshold for the pointer blackboard channel: once a
@@ -1784,6 +1800,7 @@ public:
     _join_summary.clear();
     _spawn_args.clear();
     _escaped_locs.clear();
+    _unknown_escaped_target = false;
     _cond_waiters.clear();
     _cond_signal_epoch.clear();
     _global_pointer_board.clear();

@@ -1,0 +1,58 @@
+{
+  "analyzer_sha256": "9768b5b1ca822db24b830721d0197538dbeb8f87b5d8fc23fec93a4ad316deca",
+  "baseline_analyzer_sha256": "82e8d497c99e0d9c5867578b0047804c1cc55fd89c56f893d437888d45989922",
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp": "97a36d80291ea7d31547f6d9f120f16401177bbf6a8889e6443ca18356b431ab",
+    "analyzer/include/ikos/analyzer/checker/data_race.hpp": "c57fbc77c18aa7dca0e0b0fc0b3010dd5c3815ecff18b926dfcaa4f070699b3a",
+    "analyzer/src/checker/data_race.cpp": "906fb5ff48506d4a6de46d29344f37ec4d0d9650af112b7a5a377f68a3e49961",
+    "core/include/ikos/core/domain/concurrent_global_env.hpp": "c8bf0c2afba68be018a5d6602f73bbb2b77addadc037f92434de89fb7b70d58b"
+  },
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 676,
+      "FN": 0,
+      "error": 0,
+      "unknown": 353
+    },
+    "after_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 667,
+      "FN": 0,
+      "error": 0,
+      "unknown": 362
+    },
+    "before_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 676,
+      "FN": 0,
+      "error": 0,
+      "unknown": 249
+    },
+    "after_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 667,
+      "FN": 0,
+      "error": 0,
+      "unknown": 258
+    }
+  },
+  "tasks": 1029,
+  "jobs": 4,
+  "timeout_seconds": 30,
+  "data_model": "ILP32",
+  "known_audit_misses_pending": 0,
+  "old_bmc_cases": 20,
+  "build_and_install_equal": true,
+  "manifest": "docs/artifacts/ai-p0-2026-10-10/f1/paired.json",
+  "manifest_sha256": "9a6a9d81d2f8599d66d2a38574bb05d6c00e3a662048e096d634e027af6d9a8c",
+  "baseline_commit": "2182cb7",
+  "fixtures": 56,
+  "escape_assertions": 7,
+  "prior_fixture_configs": 144,
+  "note": "Disable unsupported heap-fresh candidate suppression. Stored pointer targets are conservatively maybe escaped regardless of current container visibility; TOP removes the private exclusion for every location. This is not a complete escape graph. Original six audit families and stack/TLS/stack-root variants no longer SAFE. Coupled and broader effect coverage risks remain; new multi-source pointer-restore FN reproduced for a next independent fix."
+}

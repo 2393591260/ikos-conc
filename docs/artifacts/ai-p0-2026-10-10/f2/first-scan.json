@@ -1,0 +1,21 @@
+{
+  "matrix": {
+    "ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 667,
+      "FN": 0,
+      "error": 1,
+      "unknown": 361
+    },
+    "bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 667,
+      "FN": 0,
+      "error": 1,
+      "unknown": 257
+    }
+  },
+  "note": "Concurrent AI/BMC first scan: both UNKNOWN nsc-ircc tasks exceeded 30 seconds. Full sequential repetitions are recorded in summary.json and paired.json; no partial recheck substituted."
+}
