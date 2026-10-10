@@ -975,24 +975,28 @@ void exec_pthread_once(E& eng, ar::CallBase* call) {
       once_func = fpc->function();
     }
   }
-  if (once_func != nullptr) {
+  if (once_func != nullptr && once_func->is_definition()) {
     // Key the once-instance by the ONCE-CONTROL object (arg0), not the
-    // callback name or call site: pthread_once runs the callback once PER
-    // distinct control. Resolve the control STATICALLY (peel PointerShift/
-    // Bitcast to a GlobalVariable) — the runtime points-to is TOP during the
-    // first thread's analysis (globals not yet materialized), so keying by it
-    // would split ONE control into two instances and defeat "all instances
-    // joined" (87-once/02 FP). A non-global control (optr loaded from a
-    // pointer global) is ambiguous → keyed by call site, never joinable.
+    // callback name: distinct fields of one global are distinct controls.
+    // Prove an exact static base+offset; summarized or TLS objects may have
+    // multiple concrete instances and cannot establish a MUST join.
     std::uint64_t key = 0;
+    core::ZNumber offset(0);
     bool joinable = false;
     if (call->arg_begin() != call->arg_end()) {
       ar::Value* ctrl_arg = *call->arg_begin();
       for (int depth = 0; depth < 16; ++depth) {
         if (auto* gv = dyn_cast< ar::GlobalVariable >(ctrl_arg)) {
-          key = ikos::core::IndexableTraits< MemoryLocation* >::index(
-              eng.ctx().mem_factory->get_global(gv));
-          joinable = true;
+          auto* type = dyn_cast< ar::PointerType >(call->argument(0)->type());
+          auto* object = gv->type()->pointee();
+          if (gv->is_definition() && !gv->is_thread_local() &&
+              !object->is_opaque() && type != nullptr && !type->pointee()->is_opaque() &&
+              offset >= 0 && offset + eng.data_layout().store_size_in_bytes(type->pointee()) <=
+                                 eng.data_layout().alloc_size_in_bytes(object)) {
+            key = core::IndexableTraits< MemoryLocation* >::index(
+                eng.ctx().mem_factory->get_global(gv));
+            joinable = true;
+          }
           break;
         }
         auto* iv = dyn_cast< ar::InternalVariable >(ctrl_arg);
@@ -1001,17 +1005,17 @@ void exec_pthread_once(E& eng, ar::CallBase* call) {
         }
         ar::Statement* def = unique_def(iv);
         if (auto* ps = dyn_cast_or_null< ar::PointerShift >(def)) {
+          bool exact = true;
+          for (std::size_t i = 0; i < ps->num_terms(); ++i) {
+            auto term = ps->term(i);
+            auto* constant = dyn_cast< ar::IntegerConstant >(term.second);
+            if (constant == nullptr) { exact = false; break; }
+            offset += term.first.to_z_number() * constant->value().to_z_number();
+          }
+          if (!exact) break;
           ctrl_arg = ps->pointer();
         } else if (auto* un = dyn_cast_or_null< ar::UnaryOperation >(def)) {
-          switch (un->op()) {
-            case ar::UnaryOperation::Bitcast:
-            case ar::UnaryOperation::PtrToUI:
-            case ar::UnaryOperation::UIToPtr:
-              ctrl_arg = un->operand();
-              break;
-            default:
-              ctrl_arg = nullptr;
-          }
+          ctrl_arg = un->op() == ar::UnaryOperation::Bitcast ? un->operand() : nullptr;
         } else {
           break; // Load / call / phi: ambiguous control
         }
@@ -1021,15 +1025,18 @@ void exec_pthread_once(E& eng, ar::CallBase* call) {
       }
     }
     if (!joinable) {
-      // Ambiguous control: key by the (stable) call-site identity so the
-      // callback gets a distinct, never-joined instance per site.
       key = reinterpret_cast< std::uint64_t >(call);
+      eng.ctx().concurrent_env.record_unmodeled_effect(
+          call, "pthread_once control object not proven unique");
     }
     std::uint64_t sid =
-        eng.ctx().concurrent_env.register_once_thread(once_func, key, joinable);
+        eng.ctx().concurrent_env.register_once_thread(once_func, key, joinable, offset);
     if (sid != 0) {
       eng.lockset().add_joined_thread(sid);
     }
+  } else {
+    eng.ctx().concurrent_env.record_unmodeled_effect(
+        call, "pthread_once callback body not covered");
   }
   // The callback returns void and pthread_once has no data side effects; only
   // the int return code (if any) is nondet.

@@ -454,6 +454,13 @@ DataRaceChecker::~DataRaceChecker() {
         {{"unknown_reason", "thread entry body not covered"}});
   }
 
+  for (const auto& effect : this->_ctx.concurrent_env.unmodeled_effects()) {
+    this->_checks.insert(
+        CheckKind::DataRace, CheckerName::DataRace, Result::Warning,
+        effect.first, this->_ctx.call_context_factory->get_empty(), {},
+        {{"unknown_reason", effect.second}});
+  }
+
   // Temporary probe (env IKOS_BMC_DUMP): dump the BMC events (memory + mutex
   // sync) for every function, verifying the event extraction on real code.
   // Remove once the BMC module is wired in.

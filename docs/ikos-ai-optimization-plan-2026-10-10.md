@@ -610,3 +610,28 @@ once首次调用的显式展开与n==sizeof(flag)路径的常量copy特化在Dar
 [新漏报](artifacts/ai-p0-2026-10-10/coupling/pending-coverage.json)、
 [原生once限制](artifacts/ai-p0-2026-10-10/coupling/pending-once-native-reference.json)、
 [特化参考](artifacts/ai-p0-2026-10-10/coupling/pending-specialized-reference.json)。
+
+
+### 9.9 P0：pthread_once 控制对象与回调覆盖
+
+控制对象身份改为带独立known/ambiguous命名空间的(base,精确byte offset)结构键，
+不能忽略同一struct/array的字段偏移或用会碰撞的整数打包。
+只对范围内、非TLS、已定义global的静态常量地址建立MUST once完成事实；
+变量下标、加载地址、TLS/汇总对象和未知/声明回调均留下明确UNKNOWN边界。
+同一control可能传不同callback时，每个函数都必须记录该实例；唯一函数映射不成立则置未知，
+不能把某一回调漏出multiplicity统计。新增通用unmodeled-effect元数据供checker产生Warning，
+也通知外层重算，未引入文件名、比赛标签或参考结果分支。
+
+build/install一致；30条真实AR对象断言、48次双ABI/双模式程序运行、原审查76次、旧BMC20次通过。
+struct两个字段、array两个元素、TLS每线程对象和声明回调的竞争变体旧版SAFE，新版UNKNOWN；
+同一control的直接struct/array及等价地址对照仍SAFE。
+不同control但顺序调用，以及同一control选择不同callback的安全对照只保证不报确定FALSE，
+仍有实例/MHP精度空间。额外callback注册遗漏有单元反例，复杂程序旧版已UNKNOWN，
+不能把该程序当作新修复的FN。未扩展BMC的once语义，未把Goblint may-warning当witness验证。
+
+1029完整顺序AI/BMC扫描逐任务与coupling阶段一致：AI TN662/UNKNOWN366/error1；
+BMC TP104/TN662/UNKNOWN262/error1，FP/FN0。共享byte effects与未知外部调用覆盖仍待续。
+证据：[汇总](artifacts/ai-p0-2026-10-10/once/summary.json)、
+[双ABI修复前](artifacts/ai-p0-2026-10-10/once/fixtures-before.json)、
+[修复后](artifacts/ai-p0-2026-10-10/once/fixtures-after.json)、
+[1029配对](artifacts/ai-p0-2026-10-10/once/paired.json)。

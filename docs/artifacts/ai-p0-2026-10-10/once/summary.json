@@ -1,0 +1,56 @@
+{
+  "analyzer_sha256": "52ddefdc268ddd9e523bab5245c442d7c64510fa94fb50dc2ebe62a447ea319c",
+  "baseline_analyzer_sha256": "d32a03a4d60f4df7741a4e373c3ba86775515f3ba090211fdf3cdb8ea167a24a",
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp": "c85814e779ea37bed711cdbffd10c317c6be45ba6dd751a242e9f313d1a004ad",
+    "analyzer/src/checker/data_race.cpp": "7f54b852590c5aa9a28929264db1c81e4892d341678914e6ad675bebee55b620",
+    "core/include/ikos/core/domain/concurrent_global_env.hpp": "35d4c2be125e4a9841f73b1a940fc583f7deee5e8aa35fa6895859e3a0bcb3f8"
+  },
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 662,
+      "FN": 0,
+      "error": 1,
+      "unknown": 366
+    },
+    "after_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 662,
+      "FN": 0,
+      "error": 1,
+      "unknown": 366
+    },
+    "before_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 662,
+      "FN": 0,
+      "error": 1,
+      "unknown": 262
+    },
+    "after_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 662,
+      "FN": 0,
+      "error": 1,
+      "unknown": 262
+    }
+  },
+  "tasks": 1029,
+  "jobs": 4,
+  "timeout_seconds": 30,
+  "data_model": "ILP32",
+  "known_audit_misses_pending": 0,
+  "old_bmc_cases": 20,
+  "build_and_install_equal": true,
+  "manifest": "docs/artifacts/ai-p0-2026-10-10/f1/paired.json",
+  "manifest_sha256": "9a6a9d81d2f8599d66d2a38574bb05d6c00e3a662048e096d634e027af6d9a8c",
+  "summary_assertions": 30,
+  "program_configurations": 48,
+  "soundness_premises": "Exact global base+byte offset+extent; TLS/summary/variable control and missing callback bodies warn UNKNOWN. All alternative callbacks retain the same possible control instance; ambiguous function mapping is not a transitive-join premise.",
+  "capability_limit": "Sequential different-control and alternative-callback controls may remain UNKNOWN. No BMC pthread_once value/event model added; original Dartagnan PASS had explicit unsupported-intrinsic warning."
+}

@@ -44,6 +44,7 @@
 #pragma once
 
 #include <array>
+#include <tuple>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -284,7 +285,10 @@ private:
   /// (else "all instances joined" can never hold), two on different controls
   /// get two (they run twice and race — 87-once/07-different-onces.c). The
   /// ambiguous-control case keys by the call site instead (never joinable).
-  std::unordered_map< std::uint64_t, std::uint64_t > _once_sids;
+  // Known controls use (base, exact byte offset); ambiguous sites are a
+  // separate key space and cannot establish uniqueness or inherited joins.
+  std::map< std::tuple< bool, std::uint64_t, ZNumber >, std::uint64_t > _once_sids;
+  std::vector< std::pair< ar::Statement*, std::string > > _unmodeled_effects;
 
   /// \brief Per-function MUST-join summary: entry function → the set of thread
   /// instances it definitely joined by the time it exits (its exit invariant's
@@ -1100,6 +1104,22 @@ public:
     return _unmodeled_thread_creations;
   }
 
+  /// Unsupported reachable effects invalidate property proofs even with no pairs.
+  void record_unmodeled_effect(ar::Statement* statement, const std::string& reason) {
+    std::lock_guard< std::mutex > lock(_mutex);
+    auto value = std::make_pair(statement, reason);
+    if (std::find(_unmodeled_effects.begin(), _unmodeled_effects.end(), value) ==
+        _unmodeled_effects.end()) {
+      _unmodeled_effects.push_back(value);
+      _is_dirty = true;
+    }
+  }
+
+  std::vector< std::pair< ar::Statement*, std::string > > unmodeled_effects() const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    return _unmodeled_effects;
+  }
+
   /// \brief Register a pthread_once callback and return its instance id.
   ///
   /// Unlike pthread_create (one instance per create site), a once-callback
@@ -1110,8 +1130,9 @@ public:
   /// `joinable` is false (ambiguous control) the returned id is 0 and the
   /// caller must NOT join — the callback may run under a different control and
   /// so is not proven to happen-before this call's return.
-  std::uint64_t register_once_thread(ar::Function* func, std::uint64_t key,
-                                     bool joinable) {
+  std::uint64_t register_once_thread(ar::Function* func, std::uint64_t base,
+                                     bool joinable, const ZNumber& offset) {
+    const auto key = std::make_tuple(joinable, base, offset);
     std::lock_guard< std::mutex > lock(_mutex);
     bool is_new = true;
     for (ar::Function* existing : _discovered_thread_functions) {
@@ -1134,6 +1155,14 @@ public:
       _is_dirty = true;
       _func_instances[func->name()].insert(sid);
       _site_func[sid] = func;
+    }
+    // A control can be passed different callbacks. Each function still has
+    // this possible instance; forgetting an existing key loses multiplicity.
+    if (_func_instances[func->name()].insert(sid).second) _is_dirty = true;
+    auto& entry = _site_func[sid];
+    if (entry != nullptr && entry != func) {
+      entry = nullptr;
+      _is_dirty = true;
     }
     return joinable ? sid : 0;
   }
@@ -1751,6 +1780,7 @@ public:
     _site_func.clear();
     _unmodeled_thread_creations.clear();
     _once_sids.clear();
+    _unmodeled_effects.clear();
     _join_summary.clear();
     _spawn_joined.clear();
     _spawn_args.clear();
