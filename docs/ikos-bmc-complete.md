@@ -2,7 +2,8 @@
 
 > 本文描述当前实现、证据前提和能力边界；读过源码或测试通过不等于获得完整 soundness 证明。
 > 最新 UNKNOWN 全量遍历及基线见 [逐任务恢复报告](ikos-bmc-unknown-sweep-2026-10-09.md)。
-> 当前冻结集回归：TP=82（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=250 / 错误=0。
+> 当前冻结集回归：TP=84（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=248 / 错误=0。
+> glibc x86静态condition初值证据恢复两个计数器任务，旧TP/TN全保留，见[静态条件变量](ikos-bmc-static-condition-2026-10-10.md)。
 > 不可变指针槽的实际发布及单次main分配身份恢复两项TP；heap读、一般动态分配仍有边界，见[地址与分配报告](ikos-bmc-main-heap-2026-10-10.md)。
 > 单次main堆对象已严格绑定参考Alloc，38的ILP32选中模型部分约束SAT且改值UNSAT；仍非完整验证，见[分配绑定](ikos-bmc-heap-binding-2026-10-10.md)。
 > 枚举中断时保留已完成前缀，在原第一轮之后利用同一10秒deadline的剩余预算查询；唯一恢复outer-race-3，见[完整前缀报告](ikos-bmc-completed-enumeration-2026-10-10.md)。
@@ -13,7 +14,7 @@
 > 已映射顺序的全部95候选检查见[顺序报告](ikos-bmc-schedule-validation-2026-10-10.md)，隐式初始rf增量见[初始读源](ikos-bmc-initial-rf-2026-10-10.md)，仍是部分模型验证。
 > 优先查询较短的完整前缀，冻结集逐项不变，两个计数器模型的创建数15→1、参考局部约束SAT，见[短前缀报告](ikos-bmc-short-prefix-2026-10-09.md)。
 > 77项当前二进制复测和95个候选的部分检查已全覆盖；重复访问/初始化值约束的增量及未绑定内容见[验证覆盖](ikos-bmc-tp77-validation-2026-10-09.md)。
-> 剩余250项已用TP82二进制全部重新诊断且逐项UNKNOWN，300条历史/当前记录见[更新台账](ikos-bmc-tp82-ledger-2026-10-10.md)。
+> TP82时的250项已全部重新诊断且逐项UNKNOWN，300条历史记录见[台账](ikos-bmc-tp82-ledger-2026-10-10.md)；此后静态condition恢复其中两项。
 > atomic内部目标可保留真实尾部，要求双方完成路径并提前排除atomic/atomic候选，见[目标闭包报告](ikos-bmc-atomic-target-2026-10-09.md)（67→77）；完整独立验证仍未闭环。
 > 完整命名atomic helper前缀已保留不可分割区间，六项UNKNOWN恢复FALSE，见[命名atomic报告](ikos-bmc-named-atomic-2026-10-09.md)（61→67）。
 > 动态仿射守卫减少无溢出循环的不可行路径，唯一恢复 fmaxsymopt，见[守卫报告](ikos-bmc-affine-guards-2026-10-09.md)（60→61）。
@@ -151,7 +152,7 @@ struct BmcEvent {
 `classify_event`：Load→Read、Store→Write、Comparison→Assume、mutex→Lock/Unlock（`__VERIFIER_atomic_begin/end`
 → PSEUDO_ATOMIC_LOCK）、pthread_create→Create、pthread_join→Join。
 assume 调用收集实际实参；有定义的普通 wrapper 展开实际函数体。不能证明无阻塞/终止/副作用的调用标记 Unsupported。
-支持 rwlock rdlock/wrlock/unlock，Lock 事件另携带 reader 标记；cond 和其他 rwlock API 保持未建模边界。
+支持 rwlock rdlock/wrlock/unlock，Lock 事件另携带 reader 标记；condition支持受限显式/静态初始化及有限虚假唤醒，其他rwlock API仍有边界。
 极小常量 stdio 子集有摘要，`%n`、动态格式、返回值依赖等不当作 no-op。
 地址提取失败 / 锁身份提取失败 → 保持 base==0 → 上游保守不确认。
 

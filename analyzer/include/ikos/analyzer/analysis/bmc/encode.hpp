@@ -92,6 +92,11 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       BmcEvent address;
       if (!condition_address(call, path, i, root, argument, address)) return false;
       auto initialized = conditions.find({address.base, address.const_off});
+      if (initialized == conditions.end() && static_condition(address)) {
+        const ConditionId identity{address.base, address.const_off};
+        initialized = conditions.emplace(identity, address.width).first;
+        condition_origins.emplace(identity, std::make_pair(nullptr, 0));
+      }
       if (initialized == conditions.end() || initialized->second != address.width ||
           (is_startup && name == "pthread_cond_wait")) return false;
       const auto& origin = condition_origins.at(initialized->first);
