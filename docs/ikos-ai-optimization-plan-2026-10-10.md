@@ -825,3 +825,43 @@ P0仍有句柄表示及未完成的SAFE前提审查，不能宣称普遍零FN；
 [2项归因](artifacts/ai-p0-2026-10-10/library/regression-causes.json)、
 [全量](artifacts/ai-p0-2026-10-10/library/paired.json)、
 [当前参考池](artifacts/ai-p0-2026-10-10/library/goblint-safe-unknown-pool.json)。
+
+
+### 9.16 P0：合成线程句柄表示与 join 来源
+
+IKOS 把创建点 SID 写入 scalar pthread_t，将 main 的 pthread_self 写成 0xA7E0AD1D；
+这是内部身份令牌，不是目标 libc 的可观察数值。create 后比较 t!=1、或比较
+pthread_self()!=main-token 的分支，旧版双 ABI/双模式可错误消失并 SAFE。
+本机 glibc 两 ABI 探针核实实际值不同，只验证表示前提，不当作竞争 witness。
+POSIX 2024 pthread_equal 的 rationale 允许结构类型身份，pthread_join 要求有效 joinable 目标。
+Dartagnan 对 t!=1 为 PASS、t==1 为 FAIL，采用不同句柄合同；不能因此笼统指控其不 sound。
+
+全局摘要新增 handle-slot→SID 集合，变更触发耦合重算；轮次重置保留、完整 clear 清除。
+读取令牌只允许直接 declared join 与唯一同宽 assignment/bitcast 链；数值/字节观察、
+重写、存储或其他消费者留下 representation 边界。join 的 singleton SID 还必须可追溯
+到标记槽的 offset0 load 或 declared self，不能把 literal/nondet 凑出的 SID 当真实目标。
+私有未逃逸槽在相关 SID 尚不在 MAY-spawn 时的 seed-store 豁免，避免 ikos-pp 的
+nondet 初始化被误判成句柄重写；其后所有未知身份/逃逸/别名均保持保守。
+BMC 暂时以该边界作 program-wide gate，避免内部数值再用于分支/值 witness。
+尚未实现完整 HandleSet/provenance；TOP points-to 和整个对象标记会损失精度。
+
+build/install 一致，56 次句柄双 ABI/双模式/改名对照、64 次 pointer 配置及实际对象
+unit 断言、库100次、原审查76次和旧BMC20次通过。plain join、同宽复制和pre-create
+初始化仍SAFE；数值观察、自身数值比较、字节copy/rewrite及伪造SID均UNKNOWN。
+literal/nondet-forged join 两例属于不支持来源边界，不冒称已证实的具体FN。
+
+1029完整顺序扫描：AI TN645→643、UNKNOWN383→385；
+BMC TP104→97、TN645→643、UNKNOWN279→288，FP/FN0、error1。
+2个TN是ptra_nr/arraylist的TOP别名及对象粒度边界，非已确认真实竞争。
+7个TP都是thread-join-counter inner/outer 的pthread_detach令牌消费：当前仅允许join，
+于是程序级gate撤回旧确认，不等于旧witness已被证伪。下一轮核实detach的纯身份消费，
+单独恢复；不撤销数值观察gate。nsc-ircc超时仍计error，未替换为局部结果。
+
+证据：[汇总](artifacts/ai-p0-2026-10-10/handles/summary.json)、
+[前](artifacts/ai-p0-2026-10-10/handles/fixtures-before.json)、
+[后](artifacts/ai-p0-2026-10-10/handles/fixtures-after.json)、
+[合同](artifacts/ai-p0-2026-10-10/handles/contracts.json)、
+[本机ABI](artifacts/ai-p0-2026-10-10/handles/native.json)、
+[参考差异](artifacts/ai-p0-2026-10-10/handles/reference.json)、
+[9项归因](artifacts/ai-p0-2026-10-10/handles/regression-causes.json)、
+[全量配对](artifacts/ai-p0-2026-10-10/handles/paired.json)。

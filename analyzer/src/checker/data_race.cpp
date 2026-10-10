@@ -446,6 +446,7 @@ inline bool region_of(ar::Value* v, Context& ctx, CallContext* cc,
 DataRaceChecker::DataRaceChecker(Context& ctx) : Checker(ctx) {}
 
 DataRaceChecker::~DataRaceChecker() {
+  bool synthetic_handle_unsupported = false;
   for (ar::CallBase* call : this->_ctx.concurrent_env.unmodeled_thread_creations()) {
     this->_checks.insert(
         CheckKind::UnknownFunctionCallPointer, CheckerName::DataRace,
@@ -455,6 +456,8 @@ DataRaceChecker::~DataRaceChecker() {
   }
 
   for (const auto& effect : this->_ctx.concurrent_env.unmodeled_effects()) {
+    synthetic_handle_unsupported |=
+        effect.second == "synthetic pthread handle representation not modeled";
     this->_checks.insert(
         CheckKind::DataRace, CheckerName::DataRace, Result::Warning,
         effect.first, this->_ctx.call_context_factory->get_empty(), {},
@@ -1378,6 +1381,9 @@ DataRaceChecker::~DataRaceChecker() {
         }
       }
       gate(pr.is_unknown, "mixed_atomic");
+      // The numeric identity tokens must not justify branch/value witnesses.
+      // A future provenance model can narrow this program-wide boundary.
+      gate(synthetic_handle_unsupported, "pthread_handle_representation");
       // Unsupported synchronization is checked on each executed prefix.
       // Unused functions and operations after the target cannot order a race
       // already present in that finite execution.

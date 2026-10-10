@@ -291,6 +291,8 @@ private:
   // separate key space and cannot establish uniqueness or inherited joins.
   std::map< std::tuple< bool, std::uint64_t, ZNumber >, std::uint64_t > _once_sids;
   std::vector< std::pair< ar::Statement*, std::string > > _unmodeled_effects;
+  std::unordered_map< analyzer::MemoryLocation*, std::unordered_set< std::uint64_t > >
+      _synthetic_handle_slots;
 
   /// \brief Per-function MUST-join summary: entry function → the set of thread
   /// instances it definitely joined by the time it exits (its exit invariant's
@@ -1121,6 +1123,25 @@ public:
     return _unmodeled_effects;
   }
 
+  void record_synthetic_handle_slot(analyzer::MemoryLocation* location,
+                                    std::uint64_t sid) {
+    std::lock_guard< std::mutex > lock(_mutex);
+    if (_synthetic_handle_slots[location].insert(sid).second) _is_dirty = true;
+  }
+
+  bool is_synthetic_handle_slot(analyzer::MemoryLocation* location) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    return _synthetic_handle_slots.count(location) != 0;
+  }
+
+  std::unordered_set< std::uint64_t > synthetic_handle_slot_ids(
+      analyzer::MemoryLocation* location) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    auto it = _synthetic_handle_slots.find(location);
+    return it == _synthetic_handle_slots.end()
+        ? std::unordered_set< std::uint64_t >{} : it->second;
+  }
+
   /// \brief Register a pthread_once callback and return its instance id.
   ///
   /// Unlike pthread_create (one instance per create site), a once-callback
@@ -1798,6 +1819,7 @@ public:
     _unmodeled_thread_creations.clear();
     _once_sids.clear();
     _unmodeled_effects.clear();
+    _synthetic_handle_slots.clear();
     _join_summary.clear();
     _spawn_joined.clear();
     _spawn_args.clear();

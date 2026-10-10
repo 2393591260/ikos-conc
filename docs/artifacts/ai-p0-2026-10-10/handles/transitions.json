@@ -1,0 +1,65 @@
+[
+  {
+    "task": "c/goblint-regression/09-regions_06-ptra_nr.i",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/goblint-regression/09-regions_09-arraylist.c",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race-2.i",
+    "before_ai": "Unknown",
+    "after_ai": "Unknown",
+    "before_bmc": "Race Found",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race-3.i",
+    "before_ai": "Unknown",
+    "after_ai": "Unknown",
+    "before_bmc": "Race Found",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race-5.i",
+    "before_ai": "Unknown",
+    "after_ai": "Unknown",
+    "before_bmc": "Race Found",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race.i",
+    "before_ai": "Unknown",
+    "after_ai": "Unknown",
+    "before_bmc": "Race Found",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-outer-race-2.i",
+    "before_ai": "Unknown",
+    "after_ai": "Unknown",
+    "before_bmc": "Race Found",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-outer-race-3.i",
+    "before_ai": "Unknown",
+    "after_ai": "Unknown",
+    "before_bmc": "Race Found",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-outer-race.i",
+    "before_ai": "Unknown",
+    "after_ai": "Unknown",
+    "before_bmc": "Race Found",
+    "after_bmc": "Unknown"
+  }
+]

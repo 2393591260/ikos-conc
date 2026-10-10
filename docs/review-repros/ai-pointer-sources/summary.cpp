@@ -5,6 +5,23 @@ int main() {
   using namespace ikos::core;
   ikos::analyzer::AbsoluteZeroMemoryLocation key;
   ikos::analyzer::ArgvMemoryLocation target;
+  {
+    ConcurrentGlobalEnv env;
+    assert(!env.is_synthetic_handle_slot(&key));
+    env.record_synthetic_handle_slot(&key, 17);
+    assert(env.is_dirty() && env.is_synthetic_handle_slot(&key));
+    env.clear_dirty();
+    env.record_synthetic_handle_slot(&key, 17);
+    assert(!env.is_dirty());
+    assert(env.synthetic_handle_slot_ids(&key).count(17));
+    env.record_synthetic_handle_slot(&key, 19);
+    assert(env.is_dirty() && env.synthetic_handle_slot_ids(&key).size()==2);
+    env.reset_spawn_counts();
+    assert(env.is_synthetic_handle_slot(&key));
+    env.clear();
+    assert(!env.is_synthetic_handle_slot(&key));
+    assert(env.synthetic_handle_slot_ids(&key).empty());
+  }
   using Value = ConcurrentGlobalEnv::PointerValue;
   for (unsigned width : {32u, 64u}) {
     for (bool heap : {false, true}) {

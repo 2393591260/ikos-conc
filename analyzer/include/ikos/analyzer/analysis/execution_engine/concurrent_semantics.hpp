@@ -39,6 +39,7 @@
 #include <ikos/analyzer/util/log.hpp>
 
 #include <cstdint>
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -139,6 +140,124 @@ enum class AtomicKind {
   SingleCall,    // __sync_*, __atomic_*, __VERIFIER_atomic_CAS/TAS/w/assert
                  // — pseudo-lock wraps just the call
 };
+
+// Site ids are opaque identity tokens, not the integer representation of
+// pthread_t. Only direct identity consumers and unique same-width copies may
+// use these tokens without a representation/value-flow model.
+inline bool identity_only_handle_uses(ar::InternalVariable* root) {
+  auto* function = root->code()->function_or_null();
+  if (function == nullptr || !function->is_definition()) return false;
+  std::vector< ar::InternalVariable* > pending{root};
+  std::unordered_set< ar::InternalVariable* > seen;
+  while (!pending.empty()) {
+    auto* value = pending.back(); pending.pop_back();
+    if (!seen.insert(value).second) continue;
+    if (seen.size() > 256) return false;
+    for (auto* block : *function->body_or_null()) for (auto* statement : *block) {
+      if (std::find(statement->op_begin(), statement->op_end(), value) ==
+          statement->op_end()) continue;
+      if (auto* call = dyn_cast< ar::CallBase >(statement)) {
+        auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+        if (target != nullptr && target->function()->is_declaration() &&
+            (target->function()->name() == "pthread_join" ||
+             target->function()->intrinsic_id() == ar::Intrinsic::PthreadJoin) &&
+            call->num_arguments() == 2 && call->argument(0) == value &&
+            call->argument(1) != value) continue;
+        return false;
+      }
+      ar::InternalVariable* copy = nullptr;
+      if (auto* assign = dyn_cast< ar::Assignment >(statement)) copy = assign->result();
+      if (auto* cast = dyn_cast< ar::UnaryOperation >(statement)) {
+        if (cast->op() == ar::UnaryOperation::Bitcast) copy = cast->result();
+      }
+      auto* source_type = dyn_cast< ar::IntegerType >(value->type());
+      auto* copy_type = copy ? dyn_cast< ar::IntegerType >(copy->type()) : nullptr;
+      if (copy_type == nullptr || source_type == nullptr ||
+          copy_type->bit_width() != source_type->bit_width() ||
+          unique_def(copy) != statement) return false;
+      pending.push_back(copy);
+    }
+  }
+  return true;
+}
+
+template < typename E >
+bool touches_synthetic_handle(E& eng, const ScalarLit& pointer) {
+  if (!pointer.is_pointer_var()) return false;
+  auto points = eng.data().normal().pointer_to_points_to(pointer.var());
+  if (points.is_top()) return true;
+  if (!points.is_set()) return false;
+  for (auto* location : points)
+    if (eng.ctx().concurrent_env.is_synthetic_handle_slot(location)) return true;
+  return false;
+}
+
+template < typename E >
+void check_synthetic_handle_effect(E& eng, ar::Statement* statement,
+                                   const ScalarLit& pointer,
+                                   ar::InternalVariable* result = nullptr) {
+  // A private slot cannot contain this frame's create token before any of
+  // its associated sites may have executed. This includes ikos-pp's seed
+  // store, even if unrelated initializers precede the actual create call.
+  if (isa< ar::Store >(statement) && pointer.is_pointer_var() &&
+      !eng.lockset().spawned_is_top()) {
+    auto points = eng.data().normal().pointer_to_points_to(pointer.var());
+    auto spawned = eng.lockset().get_spawned_instances();
+    bool before_create = points.is_set() && !points.is_empty();
+    if (points.is_set()) for (auto* location : points) {
+      if (!isa< LocalMemoryLocation >(location) ||
+          eng.ctx().concurrent_env.is_escaped(location)) {
+        before_create = false;
+        break;
+      }
+      for (auto sid : eng.ctx().concurrent_env.synthetic_handle_slot_ids(location))
+        if (spawned.count(sid)) before_create = false;
+    }
+    if (before_create) return;
+  }
+  if (touches_synthetic_handle(eng, pointer) &&
+      (result == nullptr || !identity_only_handle_uses(result))) {
+    eng.ctx().concurrent_env.record_unmodeled_effect(
+        statement, "synthetic pthread handle representation not modeled");
+  }
+}
+
+template < typename E >
+bool proven_synthetic_handle_source(E& eng, ar::Value* value) {
+  for (unsigned depth = 0; depth < 64; ++depth) {
+    auto* variable = dyn_cast< ar::InternalVariable >(value);
+    if (variable == nullptr) return false;
+    auto* definition = unique_def(variable);
+    if (auto* load = dyn_cast_or_null< ar::Load >(definition)) {
+      const auto& pointer = eng.lit_factory().get_scalar(load->operand());
+      if (!pointer.is_pointer_var()) return false;
+      auto points = eng.data().normal().pointer_to_points_to(pointer.var());
+      auto offset = eng.data().normal().pointer_to_pointer(pointer.var()).offset();
+      if (!points.is_set() || points.is_empty() || !offset.singleton() ||
+          !offset.lb().is_zero()) return false;
+      for (auto* location : points)
+        if (!eng.ctx().concurrent_env.is_synthetic_handle_slot(location)) return false;
+      return true;
+    }
+    if (auto* call = dyn_cast_or_null< ar::CallBase >(definition)) {
+      auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+      return target != nullptr && target->function()->is_declaration() &&
+             target->function()->name() == "pthread_self";
+    }
+    ar::Value* operand = nullptr;
+    if (auto* assignment = dyn_cast_or_null< ar::Assignment >(definition))
+      operand = assignment->operand();
+    if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
+      if (cast->op() == ar::UnaryOperation::Bitcast) operand = cast->operand();
+    }
+    auto* source_type = operand ? dyn_cast< ar::IntegerType >(operand->type()) : nullptr;
+    auto* type = dyn_cast< ar::IntegerType >(variable->type());
+    if (source_type == nullptr || type == nullptr ||
+        source_type->bit_width() != type->bit_width()) return false;
+    value = operand;
+  }
+  return false;
+}
 
 /// \brief Single source of truth for atomic-intrinsic detection.
 /// Centralised here so the DECLARATION-call, match_down, and match_up
@@ -870,7 +989,8 @@ void exec_pthread_join(E& eng, ar::CallBase* call) {
       // A hull's registered upper bound does not establish a MUST target.
       if (auto single = iv.singleton()) {
         std::uint64_t sid =
-            single->to_z_number().template to< std::uint64_t >();
+            single->cast(single->bit_width(), core::Unsigned)
+                .to_z_number().template to< std::uint64_t >();
         if (sid == core::kMainThreadSid ||
             (sid != 0 && env.site_func(sid) != nullptr)) {
           joined_sids.insert(sid);
@@ -878,6 +998,7 @@ void exec_pthread_join(E& eng, ar::CallBase* call) {
       }
     } else if (scalar_lit.is_machine_int()) {
       std::uint64_t sid = scalar_lit.machine_int()
+                              .cast(scalar_lit.machine_int().bit_width(), core::Unsigned)
                               .to_z_number()
                               .template to< std::uint64_t >();
       if (sid == core::kMainThreadSid ||
@@ -886,6 +1007,12 @@ void exec_pthread_join(E& eng, ar::CallBase* call) {
       }
     }
     // Pointer / other arg forms carry no instance value → nothing to join.
+  }
+
+  if (!joined_sids.empty() && !proven_synthetic_handle_source(eng, handle_arg)) {
+    joined_sids.clear();
+    env.record_unmodeled_effect(
+        call, "synthetic pthread handle representation not modeled");
   }
 
   for (std::uint64_t sid : joined_sids) {
@@ -1054,6 +1181,10 @@ void exec_pthread_self(E& eng, ar::CallBase* call) {
     }
   }
   if (call->has_result()) {
+    if (!identity_only_handle_uses(call->result())) {
+      eng.ctx().concurrent_env.record_unmodeled_effect(
+          call, "synthetic pthread handle representation not modeled");
+    }
     const Literal& ret = eng.lit_factory().get(call->result());
     if (ret.is_scalar() && ret.scalar().is_var()) {
       if (in_main) {
@@ -1742,6 +1873,7 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
               // written via mem_write (the old scalar_assign_nondet only
               // touched the ADDRESS var, not the content).
               if (sid != 0 && pointee->is_integer()) {
+                eng.ctx().concurrent_env.record_synthetic_handle_slot(loc, sid);
                 ar::IntegerType* ity = ar::cast< ar::IntegerType >(pointee);
                 auto size = core::MachineInt(
                     eng.data_layout().store_size_in_bytes(pointee),

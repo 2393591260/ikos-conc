@@ -1805,6 +1805,10 @@ public:
       const ScalarLit& lhs = result.scalar();
       ikos_assert_msg(lhs.is_var(), "left hand side is not a variable");
 
+      if (this->_ctx.opts.enable_thread_modular) {
+        check_synthetic_handle_effect(*this, s, ptr, s->result());
+      }
+
       if (this->_ctx.opts.enable_thread_modular && !s->is_volatile()) {
         on_load_integer_interference(*this, s, ptr, lhs, size);
         if (lhs.is_pointer_var()) on_load_pointer_restore(*this, ptr, lhs, size);
@@ -1876,6 +1880,7 @@ public:
 
     // Privatization probe (see concurrent_semantics.hpp).
     if (this->_ctx.opts.enable_thread_modular) {
+      check_synthetic_handle_effect(*this, s, ptr);
       on_store_privatize(*this, s->value()->type(), ptr, val);
     }
 
@@ -3038,6 +3043,8 @@ private:
 
     ar::Type* effect_type = nullptr;
     if (this->_ctx.opts.enable_thread_modular) {
+      check_synthetic_handle_effect(*this, call, src);
+      check_synthetic_handle_effect(*this, call, dest);
       auto length = size.is_machine_int() ? IntInterval(size.machine_int())
                                          : this->data().normal().int_to_interval(size.var());
       if (!length.is_bottom() && !length.ub().is_zero()) {
@@ -3098,6 +3105,10 @@ private:
 
     if (!this->prepare_mem_access(dest)) {
       return;
+    }
+
+    if (this->_ctx.opts.enable_thread_modular) {
+      check_synthetic_handle_effect(*this, call, dest);
     }
 
     ar::Type* effect_type = nullptr;
