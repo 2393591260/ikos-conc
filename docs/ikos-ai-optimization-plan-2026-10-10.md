@@ -2,7 +2,7 @@
 
 日期：2026-10-10。设计基线：`b3e6706`。**方案已批准，按独立机制实施；进度见 §9。**
 事实依据及复现输入见[正确性审查](ikos-ai-soundness-audit-2026-10-10.md)。
-当前保存的冻结集基线是 `TP106/TN696/UNKNOWN227/FP0/FN0/error0`，
+审查启动时保存的冻结集基线是 `TP106/TN696/UNKNOWN227/FP0/FN0/error0`，
 但集合外已发现六类 FN，必须先修 SAFE 的前提，再讨论 TN 增长与加速。
 
 建议路线：**干扰/访问覆盖可靠 → 保护与对象摘要精化 → 选择性关系与收敛优化 → 有证据的 AI/BMC 双向反馈**。
@@ -1012,3 +1012,34 @@ SV-COMP2026规则规定函数名以`__VERIFIER_atomic_`开始时整个body为原
 反而按通用前缀实现。`29_conditionals_vs`只有共享m位于这两个函数体内，
 与`40_barrier_vf-b`在函数体外仍有COND冲突不同；不能借后者的race标签排除前缀
 合同。此项还在独立核实/实施，不能据TRUE数量推断算法收益。
+
+
+### 9.22 精度：统一 verifier atomic 函数体合同（2026-10-11）
+
+官方 [2027 rules](https://sv-comp.sosy-lab.org/2027/rules.php) 明确所有以
+`__VERIFIER_atomic_` 开头的函数体不可交错，没有 acquire/release 的例外。
+AI 分类器移除这两个名字的额外排除，并纠正将它们说成 caller section markers 的注释；
+只有 begin/end 延续调用者的临界段，acquire/release 仅包裹本次函数体。
+BMC 已按通用前缀实现，本轮没有更改 BMC 或 frontend。
+
+充分条件仍是两条访问都有共同 MUST 伪锁；函数体外的普通访问不获得该锁。
+缺失函数体继续使用已有未覆盖效果 gate，不从 atomicity 推出访问/值覆盖。
+`29_conditionals_vs.i` 的全部共享 m 访问位于 acquire/release 内，因而由 UNKNOWN 恢复 SAFE；
+`40_barrier_vf-b.i` 的 COND 竞争位于函数体外，全量保持原判定，不能根据其标签排除 API 合同。
+
+build/install 一致；40 次 ILP32/LP64、AI/BMC、改名运行覆盖 static/external 前缀、
+acquire/release、函数体外竞争、普通函数和缺失函数体。定向确定 FALSE 的执行均通过
+独立 AR 检查；旧正确性76次、旧BMC20次通过。原六个参考用例已双ABI比较 Goblint/Dartagnan，
+新增 acquire/release 外部竞争对照也得到 Goblint UNKNOWN 与 Dartagnan FAIL；Dartagnan
+直接引擎的 exit13 是本次 FAIL 的退出码，不把它误记为运行错误。
+
+完整顺序1029扫描：AI TN653→654 / UNKNOWN375→374；BMC TP104→104、TN653→654、
+UNKNOWN271→270，FP/FN0、error1（同一 nsc-ircc timeout）。唯一逐任务变化是上述
+conditionals 的 UNKNOWN→SAFE，未静默替换其他成功任务。有限零FN不能证明所有SAFE过滤；
+本轮也没有重新导出全部104项执行或测量速度提升。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/atomic-prefix/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-11/atomic-prefix/paired.json)、
+[40次用例](artifacts/ai-precision-2026-10-11/atomic-prefix/fixtures-after.json)、
+[API合同](artifacts/ai-precision-2026-10-11/atomic-prefix/contracts.json)、
+[参考输出](artifacts/ai-precision-2026-10-11/atomic-prefix/reference.json)。

@@ -1,0 +1,9 @@
+[
+  {
+    "task": "c/pthread-ext/29_conditionals_vs.i",
+    "before_ai": "Unknown",
+    "after_ai": "Safe",
+    "before_bmc": "Unknown",
+    "after_bmc": "Safe"
+  }
+]

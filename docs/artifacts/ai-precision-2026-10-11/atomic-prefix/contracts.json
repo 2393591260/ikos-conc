@@ -1,0 +1,7 @@
+{
+  "url": "https://sv-comp.sosy-lab.org/2027/rules.php",
+  "clause_html": "  <strong>__VERIFIER_atomic_*(): </strong>\n  These functions are deprecated, but still used in existing tasks.\n  Please consider using standard C features from <tt>stdatomic.h</tt> and <tt>pthread.h</tt> to model atomicity (e.g., atomic types, atomic loads / stores, mutexes, ...).<br>\n  For modeling an atomic execution of a sequence of statements in a multi-threaded run-time environment,\n  those statements can be placed between two function calls <tt>__VERIFIER_atomic_begin()</tt> and <tt>__VERIFIER_atomic_end()</tt>\n  or those statements can be placed in a function whose name starts with <tt>__VERIFIER_atomic_</tt>.\n  The verifiers are instructed to assume that the execution between those calls is not interrupted.\n  The two calls need to occur within the same control-flow block; nesting or interleaving of those function calls is not allowed.\n",
+  "premise": "SV-COMP verifier-prefix contract: a defined prefixed body is indivisible; only begin/end extend across caller statements.",
+  "approximation": "Exclude only pairs with a common MUST pseudo-lock. Atomic versus ordinary access remains a candidate.",
+  "unknown_body": "Existing effect-coverage gate prevents SAFE; bodyless call is not evidence of absent accesses."
+}

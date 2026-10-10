@@ -130,15 +130,14 @@ inline bool concrete_lock_object(MemoryLocation* location,
          env.function_executes_at_most_once(allocation->code()->function());
 }
 
-/// \brief Classification of hardware-atomic / pseudo-locked intrinsics.
+/// \brief Classification of verifier atomic functions and section markers.
 enum class AtomicKind {
   None,          // not an atomic primitive
-  SectionBegin,  // __VERIFIER_atomic_begin / acquire — pseudo-lock added
+  SectionBegin,  // __VERIFIER_atomic_begin — pseudo-lock added
                  // and kept across the call
-  SectionEnd,    // __VERIFIER_atomic_end / release — pseudo-lock removed
+  SectionEnd,    // __VERIFIER_atomic_end — pseudo-lock removed
                  // after the call (assumed on from the matching begin)
-  SingleCall,    // __sync_*, __atomic_*, __VERIFIER_atomic_CAS/TAS/w/assert
-                 // — pseudo-lock wraps just the call
+  SingleCall,    // __VERIFIER_atomic_<suffix> — pseudo-lock wraps the body
 };
 
 // Site ids are opaque identity tokens, not the integer representation of
@@ -273,13 +272,9 @@ bool proven_synthetic_handle_source(E& eng, ar::Value* value) {
 /// Centralised here so the DECLARATION-call, match_down, and match_up
 /// sites all agree on what counts as atomic.
 inline AtomicKind classify_atomic_intrinsic(const std::string& fname) {
-  // SV-COMP atomic-section markers. NOTE: only the standard
-  // __VERIFIER_atomic_begin/end are true section markers (the tool must
-  // treat the delimited block as non-interleaved). __VERIFIER_atomic_acquire
-  // /release are NOT standard intrinsics — in the pthread benchmark family
-  // they are DEFINED hand-rolled flags (`assume(MTX==0); MTX=1`), i.e. a
-  // RACY lock. Treating them by NAME as atomic sections injects the
-  // pseudo-lock and silently suppresses the real race (40_barrier_vf-b.c).
+  // Only begin/end delimit an atomic section in the caller. Other verifier
+  // atomic functions, including acquire/release, make just their body atomic
+  // under the SV-COMP rules, not the subsequent caller statements.
   if (fname == "__VERIFIER_atomic_begin") {
     return AtomicKind::SectionBegin;
   }
@@ -297,16 +292,9 @@ inline AtomicKind classify_atomic_intrinsic(const std::string& fname) {
       fname == "__VERIFIER_atomic_assert") {
     return AtomicKind::SingleCall;
   }
-  // A user-DEFINED function named __VERIFIER_atomic_<suffix> is atomic by the
-  // SV-COMP convention (goblint ana.sv-comp.functions): the whole body is a
-  // non-interleaved section (29-svcomp_17-atomic_fun_nr.c). The standard
-  // markers/primaries are matched above; acquire/release are deliberately NOT
-  // atomic — in the pthread benchmark family they are hand-rolled RACY flags
-  // (`assume(MTX==0); MTX=1`), and treating them atomic suppresses the real
-  // race (40_barrier_vf-b.c).
-  if (fname.size() > 18 && fname.compare(0, 18, "__VERIFIER_atomic_") == 0 &&
-      fname != "__VERIFIER_atomic_acquire" &&
-      fname != "__VERIFIER_atomic_release") {
+  // SV-COMP specifies every body with this prefix as non-interleaved.
+  // Declaration calls still need the separate omitted-effect gate below.
+  if (fname.size() > 18 && fname.compare(0, 18, "__VERIFIER_atomic_") == 0) {
     return AtomicKind::SingleCall;
   }
   return AtomicKind::None;
@@ -1224,9 +1212,9 @@ void exec_pthread_self(E& eng, ar::CallBase* call) {
 /// Distinguish three sub-cases (see `classify_atomic_intrinsic`):
 ///   1. SingleCall atomics: pseudo-lock wraps just the call.
 ///   2. SectionBegin markers: pseudo-lock is added and LEFT ON until the
-///      matching end/release.
+///      matching end.
 ///   3. SectionEnd markers: pseudo-lock (assumed on since the matching
-///      begin/acquire) is removed AFTER exec.
+///      begin) is removed AFTER exec.
 ///
 /// \return True when the call was handled (SectionBegin/End/SingleCall);
 ///         false for non-atomic calls (caller falls through to the default
@@ -1280,7 +1268,7 @@ bool exec_atomic_extern_call(E& eng,
 /// body are recorded with the pseudo-lock in their snapshot, eliminating
 /// spurious races on internal synchronization flags.
 ///
-/// For SECTION MARKERS (acquire/release, begin/end), the pseudo-lock is also
+/// For SECTION MARKERS (begin/end), the pseudo-lock is also
 /// kept in the caller's state across the call (not removed by match_up) so
 /// that intervening statements in the caller — the actual critical-section
 /// body — also see the pseudo-lock. For SINGLE-CALL ATOMICS the pseudo-lock
@@ -1297,7 +1285,7 @@ void add_atomic_pseudo_lock(E& eng, ar::Function* called) {
       break;
     case AtomicKind::SectionEnd:
     case AtomicKind::None:
-      // SectionEnd: pseudo-lock was added by the matching begin/acquire;
+      // SectionEnd: pseudo-lock was added by the matching begin;
       // leave it across the call so match_up can remove it.
       // None: not an atomic primitive.
       break;
@@ -1308,8 +1296,8 @@ void add_atomic_pseudo_lock(E& eng, ar::Function* called) {
 /// side of the pseudo-lock model).
 ///
 /// For SECTION-END markers, the pseudo-lock was added by the matching
-/// acquire/begin; remove it so the caller's state after the call no longer
-/// carries the atomic section. For SINGLE-CALL atomics (GCC builtins), the
+/// begin; remove it so the caller's state after the call no longer
+/// carries the atomic section. For SINGLE-CALL verifier atomics, the
 /// pseudo-lock was added in match_down; remove it here.
 template < typename E >
 void remove_atomic_pseudo_lock(E& eng, ar::Function* fn) {
