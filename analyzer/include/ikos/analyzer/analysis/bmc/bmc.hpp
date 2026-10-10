@@ -192,6 +192,17 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
       if (budget != nullptr && !rA.paths.empty() && !rB.paths.empty()) budget->saw_interrupted = true;
       return false;
     }
+    // Keep first-pass queries unchanged. In deferred groups, a smaller complete
+    // enumeration may find short executions absent from the saturated DFS set.
+    if (loop_bound == 16) {
+      record(diagnostics, "interrupted_small_bound");
+      if (confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
+                       diagnostics, budget, creations, facts, 2)) return true;
+      if (diagnostics != nullptr) {
+        diagnostics->paths_a = rA.paths.size();
+        diagnostics->paths_b = rB.paths.size();
+      }
+    }
   }
   if (rA.paths.empty() || rB.paths.empty()) {
     record(diagnostics, "target_not_reached", rA.paths.empty() ? stmtA : stmtB);

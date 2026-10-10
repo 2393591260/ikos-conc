@@ -2,7 +2,8 @@
 
 > 本文描述当前实现、证据前提和能力边界；读过源码或测试通过不等于获得完整 soundness 证明。
 > 最新 UNKNOWN 全量遍历及基线见 [逐任务恢复报告](ikos-bmc-unknown-sweep-2026-10-09.md)。
-> 当前冻结集回归：TP=84（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=248 / 错误=0。
+> 当前冻结集回归：TP=85（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=247 / 错误=0。
+> 暂缓组的小界限补充搜索恢复inner-race-2/3；全量lu回退但隔离旧/新同查询均FALSE，净增1，见[搜索报告](ikos-bmc-small-bound-2026-10-10.md)。
 > glibc x86静态condition初值证据恢复两个计数器任务，旧TP/TN全保留，见[静态条件变量](ikos-bmc-static-condition-2026-10-10.md)。
 > 不可变指针槽的实际发布及单次main分配身份恢复两项TP；heap读、一般动态分配仍有边界，见[地址与分配报告](ikos-bmc-main-heap-2026-10-10.md)。
 > 单次main堆对象已严格绑定参考Alloc，38的ILP32选中模型部分约束SAT且改值UNSAT；仍非完整验证，见[分配绑定](ikos-bmc-heap-binding-2026-10-10.md)。

@@ -1,0 +1,98 @@
+{
+  "rows": [
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.1910803249993478,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/completed-enumeration/nested-loops-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "e1d4d18205f8e2838f8b37166da7ddca87df29f496dcc4e90bab2f47850493f3",
+      "data_model": "32",
+      "case": "nested-loops-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.1477283420008462,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/completed-enumeration/nested-loops-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "e1d4d18205f8e2838f8b37166da7ddca87df29f496dcc4e90bab2f47850493f3",
+      "data_model": "64",
+      "case": "nested-loops-race"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.298120003000804,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/completed-enumeration/nested-loops-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=4",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "71af3e6e15fc9e74fff47fd1520f8732a7ffae4e74b4306c1ec5a26245ed41dc",
+      "data_model": "32",
+      "case": "nested-loops-control",
+      "native_pass": true
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.2679762949992437,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/completed-enumeration/nested-loops-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=4",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "71af3e6e15fc9e74fff47fd1520f8732a7ffae4e74b4306c1ec5a26245ed41dc",
+      "data_model": "64",
+      "case": "nested-loops-control",
+      "native_pass": true
+    },
+    {
+      "case": "nested-loops-control",
+      "bits": 32,
+      "bound": 2,
+      "status": "SOURCE_UNKNOWN",
+      "note": "Initial check was inconclusive; not PASS."
+    }
+  ],
+  "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19"
+}

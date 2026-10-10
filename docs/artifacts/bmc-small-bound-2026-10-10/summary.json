@@ -1,0 +1,429 @@
+{
+  "before": {
+    "TP": 84,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 248,
+    "error": 0
+  },
+  "after": {
+    "TP": 85,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 247,
+    "error": 0
+  },
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "changes": [
+    {
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/23_lu-fig2.fixed.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown"
+    },
+    {
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-2.i",
+      "expected": "Race Found",
+      "before": "Unknown",
+      "after": "Race Found"
+    },
+    {
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-3.i",
+      "expected": "Race Found",
+      "before": "Unknown",
+      "after": "Race Found"
+    }
+  ],
+  "analyzer_sha256": "eb01db25246f66d65c1cd5a2db3fd6ca5aa0a586a9afef7e03c56bd6fe1fed90",
+  "regressions": {
+    "enumeration_assertions": 8,
+    "atomic_assertions": 28,
+    "p0_observations_unchanged": 20
+  },
+  "targeted": [
+    {
+      "task": "c/pthread-race-challenges/thread-join-counter-inner-race-2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-2.i",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "verdict": "Race Found",
+      "seconds": 2.2779096550002578,
+      "returncode": 0,
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 3,
+        "interrupted_small_bound": 1,
+        "not_searched_after_confirmation": 1,
+        "sat": 1,
+        "sc_read_from": 5,
+        "thread_activation_unproven": 12,
+        "unroll_path_budget": 3
+      },
+      "first_blockers": {
+        "thread_activation_unproven": 3,
+        "not_searched_after_confirmation": 1
+      },
+      "candidates": 2,
+      "artifacts": "thread-join-counter-inner-race-2-7ae7ad092b1d",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/tmp/ikos-recovery-2026-10-10/small-bound-targeted/thread-join-counter-inner-race-2-7ae7ad092b1d/report.json",
+        "-o",
+        "/tmp/ikos-recovery-2026-10-10/small-bound-targeted/thread-join-counter-inner-race-2-7ae7ad092b1d/output.db",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-2.i"
+      ]
+    },
+    {
+      "task": "c/pthread-race-challenges/thread-join-counter-inner-race-3.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-3.i",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "verdict": "Race Found",
+      "seconds": 2.288667884999086,
+      "returncode": 0,
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 3,
+        "interrupted_small_bound": 1,
+        "not_searched_after_confirmation": 1,
+        "sat": 1,
+        "sc_read_from": 4,
+        "thread_activation_unproven": 10,
+        "unroll_path_budget": 3
+      },
+      "first_blockers": {
+        "thread_activation_unproven": 3,
+        "not_searched_after_confirmation": 1
+      },
+      "candidates": 2,
+      "artifacts": "thread-join-counter-inner-race-3-aac8864ee7cf",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/tmp/ikos-recovery-2026-10-10/small-bound-targeted/thread-join-counter-inner-race-3-aac8864ee7cf/report.json",
+        "-o",
+        "/tmp/ikos-recovery-2026-10-10/small-bound-targeted/thread-join-counter-inner-race-3-aac8864ee7cf/output.db",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-3.i"
+      ]
+    },
+    {
+      "task": "c/pthread-race-challenges/thread-join-counter-inner-race-5.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-5.i",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "verdict": "Race Found",
+      "seconds": 0.623329066000224,
+      "returncode": 0,
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "interrupted_small_bound": 1,
+        "not_searched_after_confirmation": 1,
+        "sat": 1,
+        "sc_read_from": 2,
+        "thread_activation_unproven": 10,
+        "unroll_path_budget": 3
+      },
+      "first_blockers": {
+        "thread_activation_unproven": 3,
+        "not_searched_after_confirmation": 1
+      },
+      "candidates": 2,
+      "artifacts": "thread-join-counter-inner-race-5-e4c2a20a9a86",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/tmp/ikos-recovery-2026-10-10/small-bound-targeted/thread-join-counter-inner-race-5-e4c2a20a9a86/report.json",
+        "-o",
+        "/tmp/ikos-recovery-2026-10-10/small-bound-targeted/thread-join-counter-inner-race-5-e4c2a20a9a86/output.db",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-5.i"
+      ]
+    },
+    {
+      "task": "c/pthread-race-challenges/thread-join-counter-outer-race-2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-outer-race-2.i",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "verdict": "Race Found",
+      "seconds": 0.776168725999014,
+      "returncode": 0,
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 4,
+        "interrupted_small_bound": 1,
+        "not_searched_after_confirmation": 1,
+        "sat": 1,
+        "sc_read_from": 3,
+        "thread_activation_unproven": 10,
+        "unroll_path_budget": 3
+      },
+      "first_blockers": {
+        "thread_activation_unproven": 3,
+        "not_searched_after_confirmation": 1
+      },
+      "candidates": 2,
+      "artifacts": "thread-join-counter-outer-race-2-6913cf45c38e",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/tmp/ikos-recovery-2026-10-10/small-bound-targeted/thread-join-counter-outer-race-2-6913cf45c38e/report.json",
+        "-o",
+        "/tmp/ikos-recovery-2026-10-10/small-bound-targeted/thread-join-counter-outer-race-2-6913cf45c38e/output.db",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-outer-race-2.i"
+      ]
+    }
+  ],
+  "before_targeted": [
+    {
+      "task": "c/pthread-race-challenges/thread-join-counter-inner-race-2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-2.i",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "verdict": "Unknown",
+      "seconds": 10.273165532998974,
+      "returncode": 0,
+      "counts": {
+        "ai_candidate_bounds": 108,
+        "integer_operation": 1836,
+        "sc_read_from": 1492,
+        "search_budget": 2,
+        "smt_unsat": 216,
+        "thread_activation_unproven": 6,
+        "unroll_path_budget": 3
+      },
+      "first_blockers": {
+        "thread_activation_unproven": 3,
+        "search_budget": 1
+      },
+      "candidates": 2,
+      "artifacts": "thread-join-counter-inner-race-2-7ae7ad092b1d",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/tmp/ikos-recovery-2026-10-10/static-condition-targeted/thread-join-counter-inner-race-2-7ae7ad092b1d/report.json",
+        "-o",
+        "/tmp/ikos-recovery-2026-10-10/static-condition-targeted/thread-join-counter-inner-race-2-7ae7ad092b1d/output.db",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-2.i"
+      ]
+    },
+    {
+      "task": "c/pthread-race-challenges/thread-join-counter-inner-race-3.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-3.i",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "verdict": "Unknown",
+      "seconds": 10.241741829000603,
+      "returncode": 0,
+      "counts": {
+        "ai_candidate_bounds": 110,
+        "integer_operation": 2315,
+        "sc_read_from": 1423,
+        "search_budget": 2,
+        "smt_unsat": 220,
+        "thread_activation_unproven": 6,
+        "unroll_path_budget": 3
+      },
+      "first_blockers": {
+        "thread_activation_unproven": 3,
+        "search_budget": 1
+      },
+      "candidates": 2,
+      "artifacts": "thread-join-counter-inner-race-3-aac8864ee7cf",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/tmp/ikos-recovery-2026-10-10/static-condition-targeted/thread-join-counter-inner-race-3-aac8864ee7cf/report.json",
+        "-o",
+        "/tmp/ikos-recovery-2026-10-10/static-condition-targeted/thread-join-counter-inner-race-3-aac8864ee7cf/output.db",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-3.i"
+      ]
+    },
+    {
+      "task": "c/pthread-race-challenges/thread-join-counter-inner-race-5.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-5.i",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "verdict": "Race Found",
+      "seconds": 0.6354945520015463,
+      "returncode": 0,
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "not_searched_after_confirmation": 1,
+        "sat": 1,
+        "sc_read_from": 2,
+        "thread_activation_unproven": 8,
+        "unroll_path_budget": 3
+      },
+      "first_blockers": {
+        "thread_activation_unproven": 3,
+        "not_searched_after_confirmation": 1
+      },
+      "candidates": 2,
+      "artifacts": "thread-join-counter-inner-race-5-e4c2a20a9a86",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/tmp/ikos-recovery-2026-10-10/static-condition-targeted/thread-join-counter-inner-race-5-e4c2a20a9a86/report.json",
+        "-o",
+        "/tmp/ikos-recovery-2026-10-10/static-condition-targeted/thread-join-counter-inner-race-5-e4c2a20a9a86/output.db",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-5.i"
+      ]
+    },
+    {
+      "task": "c/pthread-race-challenges/thread-join-counter-outer-race-2.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-outer-race-2.i",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "verdict": "Race Found",
+      "seconds": 0.7665371100010816,
+      "returncode": 0,
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 4,
+        "not_searched_after_confirmation": 1,
+        "sat": 1,
+        "sc_read_from": 3,
+        "thread_activation_unproven": 9,
+        "unroll_path_budget": 3
+      },
+      "first_blockers": {
+        "thread_activation_unproven": 3,
+        "not_searched_after_confirmation": 1
+      },
+      "candidates": 2,
+      "artifacts": "thread-join-counter-outer-race-2-6913cf45c38e",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/tmp/ikos-recovery-2026-10-10/static-condition-targeted/thread-join-counter-outer-race-2-6913cf45c38e/report.json",
+        "-o",
+        "/tmp/ikos-recovery-2026-10-10/static-condition-targeted/thread-join-counter-outer-race-2-6913cf45c38e/output.db",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-outer-race-2.i"
+      ]
+    }
+  ],
+  "lu_isolated_before": {
+    "task": "c/pthread-ext/23_lu-fig2.fixed.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/23_lu-fig2.fixed.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Race Found",
+    "seconds": 7.596348146998935,
+    "returncode": 0,
+    "counts": {
+      "atomic_pair": 12,
+      "ai_candidate_bounds": 273,
+      "atomic_completed_paths": 2,
+      "call_summary": 5,
+      "integer_operation": 816,
+      "sc_read_from": 4369,
+      "smt_unsat": 544,
+      "sat": 1
+    },
+    "first_blockers": {
+      "atomic_pair": 12,
+      "atomic_completed_paths": 1,
+      "call_summary": 1
+    },
+    "candidates": 14,
+    "artifacts": "23_lu-fig2.fixed-03b34099ba70",
+    "command": [
+      "/tmp/ikos-recovery-2026-10-10/before-small-bound-ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-recovery-2026-10-10/small-bound-lu-before/23_lu-fig2.fixed-03b34099ba70/report.json",
+      "-o",
+      "/tmp/ikos-recovery-2026-10-10/small-bound-lu-before/23_lu-fig2.fixed-03b34099ba70/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-ext/23_lu-fig2.fixed.i"
+    ]
+  },
+  "lu_isolated_after": {
+    "task": "c/pthread-ext/23_lu-fig2.fixed.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/23_lu-fig2.fixed.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Race Found",
+    "seconds": 7.694782053000381,
+    "returncode": 0,
+    "counts": {
+      "atomic_pair": 12,
+      "ai_candidate_bounds": 273,
+      "atomic_completed_paths": 2,
+      "call_summary": 5,
+      "integer_operation": 816,
+      "sc_read_from": 4369,
+      "smt_unsat": 544,
+      "sat": 1
+    },
+    "first_blockers": {
+      "atomic_pair": 12,
+      "atomic_completed_paths": 1,
+      "call_summary": 1
+    },
+    "candidates": 14,
+    "artifacts": "23_lu-fig2.fixed-03b34099ba70",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-recovery-2026-10-10/small-bound-lu-after/23_lu-fig2.fixed-03b34099ba70/report.json",
+      "-o",
+      "/tmp/ikos-recovery-2026-10-10/small-bound-lu-after/23_lu-fig2.fixed-03b34099ba70/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-ext/23_lu-fig2.fixed.i"
+    ]
+  },
+  "full_counterexample_validated": false
+}
