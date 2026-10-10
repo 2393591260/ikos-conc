@@ -204,12 +204,10 @@ TopProvenance classify_top_provenance(ar::Value* pointer, Context& ctx) {
       // pointed-to identity; an array/struct/int global's value is concrete.
       if (gv->type()->pointee()->is_pointer()) {
         auto* glob_loc = ctx.mem_factory->get_global(gv);
-        core::PointsToSet< MemoryLocation* > pts =
-            core::PointsToSet< MemoryLocation* >::empty();
-        core::machine_int::Interval off =
-            core::machine_int::Interval::bottom(64, core::Signed);
+        auto pointer_value = core::ConcurrentGlobalEnv::PointerValue::top(64, core::Unsigned);
         auto& env = ctx.concurrent_env;
-        if (!env.get_global_pointer(glob_loc, pts, off) || pts.is_top()) {
+        if (!env.get_global_pointer(glob_loc, pointer_value) ||
+            pointer_value.points_to().is_top()) {
           return TopProvenance::UnknownObject;
         }
       }

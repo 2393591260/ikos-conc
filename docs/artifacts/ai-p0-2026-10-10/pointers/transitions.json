@@ -1,0 +1,44 @@
+[
+  {
+    "task": "c/goblint-regression/09-regions_04-list2_nr.c",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.i",
+    "before_ai": "Unknown",
+    "after_ai": "Error (timeout)",
+    "before_bmc": "Unknown",
+    "after_bmc": "Error (timeout)"
+  },
+  {
+    "task": "c/libvsync/hclhlock.i",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/weaver/loop-tiling-eq.wvr.c",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/weaver/popl20-bad-dot-product-alt.wvr.c",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  },
+  {
+    "task": "c/weaver/popl20-prod-cons-eq.wvr.c",
+    "before_ai": "Safe",
+    "after_ai": "Unknown",
+    "before_bmc": "Safe",
+    "after_bmc": "Unknown"
+  }
+]

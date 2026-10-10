@@ -1319,84 +1319,52 @@ void on_load_shared_uninit(E& eng,
   }
 }
 
-/// \brief Pointer blackboard restoration (Load executor).
-///
-/// A global POINTER's DynAlloc points-to is invisible to the interval-only
-/// flat board, so `mem_read` materializes an empty/TOP pointer. Restore the
-/// board's points-to onto lhs (02-base_24-malloc_races.c FN: t_fun's `*y`
-/// otherwise dereferences to an empty set).
+/// Join pointer may-writes through memory; retain every local/source alternative.
 template < typename E >
 void on_load_pointer_restore(E& eng,
                              const ScalarLit& ptr,
-                             const ScalarLit& lhs) {
-  auto src_pts = eng.data().normal().pointer_to_points_to(ptr.var());
-  if (src_pts.is_set()) {
-    auto& env = eng.ctx().concurrent_env;
-    for (MemoryLocation* ml : src_pts) {
-      auto* gml = dyn_cast< GlobalMemoryLocation >(ml);
-      if (gml == nullptr) {
-        // Heap-field pointer restore (09-regions_03-list2_rc.c FN):
-        // a DynAlloc field (`A->next`) may hold a cross-thread
-        // pointer written on the heap board; restore it so the
-        // downstream `->datum` deref lands on the shared node.
-        auto* dal = dyn_cast< DynAllocMemoryLocation >(ml);
-        if (dal == nullptr) {
-          continue;
-        }
-        auto src_ptr = eng.data().normal().pointer_to_pointer(ptr.var());
-        // Variable element offset (`B[i]`) reads the sentinel "whole array"
-        // key (heap_pointer_key packs 0xFFFFFFFF), restoring the JOINed
-        // pointer instead of falling through to the memory domain's ⊤.
-        std::uint64_t key = heap_pointer_key(
-            static_cast< std::uint64_t >(
-                core::IndexableTraits< MemoryLocation* >::index(dal)),
-            src_ptr.offset());
-        core::PointsToSet< MemoryLocation* > tgt_pts =
-            core::PointsToSet< MemoryLocation* >::empty();
-        core::machine_int::Interval tgt_offset =
-            core::machine_int::Interval::bottom(64, core::Signed);
-        if (!env.get_heap_pointer(key, tgt_pts, tgt_offset) ||
-            !tgt_pts.is_set() || tgt_pts.size() == 0) {
-          continue;
-        }
-        if (tgt_pts.size() >
-            ikos::core::ConcurrentGlobalEnv::kPtrBoardWidenThreshold) {
-          continue;
-        }
-        // Strong-bind the whole may-set + offset (same union-fold as
-        // the global path below): reset to nondet then refine.
-        eng.data().normal().pointer_assign_nondet(lhs.var());
-        eng.data().normal().pointer_refine(lhs.var(), tgt_pts, tgt_offset);
-        continue;
-      }
-      core::PointsToSet< MemoryLocation* > tgt_pts =
-          core::PointsToSet< MemoryLocation* >::empty();
-      core::machine_int::Interval tgt_offset =
-          core::machine_int::Interval::bottom(64, core::Signed);
-      if (!env.get_global_pointer(gml, tgt_pts, tgt_offset)) {
-        continue;
-      }
-      if (tgt_pts.is_top()) {
-        // TOP board entry (a TOP write or board-widened): the global
-        // pointer may alias ANY cell — conservatively leave lhs as TOP
-        // (universal access), never mask it to empty.
-        eng.data().normal().pointer_assign_nondet(lhs.var());
-        continue;
-      }
-      if (tgt_pts.size() == 0) {
-        continue;
-      }
-      // Region fold (union-fold): STRONGLY bind the FULL points-to
-      // set with its transported byte offset in one shot — not the
-      // first target only. `pointer_refine` INTERSECTS, so first
-      // reset lhs to nondet (TOP) — mem_read left it bottom (empty local
-      // cell for a global pointer) or TOP; refining a bottom stays bottom
-      // (the 02-base_24-malloc_races.c family FN). Reset->refine == strong
-      // assign of the whole may-set + offset.
-      eng.data().normal().pointer_assign_nondet(lhs.var());
-      eng.data().normal().pointer_refine(lhs.var(), tgt_pts, tgt_offset);
+                             const ScalarLit& lhs,
+                             const core::MachineInt& size) {
+  auto sources = eng.data().normal().pointer_to_points_to(ptr.var());
+  if (!sources.is_set()) return;
+  auto& env = eng.ctx().concurrent_env;
+  auto alternatives = eng.data();
+  bool changed = false;
+  for (MemoryLocation* source : sources) {
+    auto value = core::ConcurrentGlobalEnv::PointerValue::top(size.bit_width(), core::Unsigned);
+    bool found = false;
+    if (isa< GlobalMemoryLocation >(source)) {
+      found = env.get_global_pointer(source, value);
+    } else if (isa< DynAllocMemoryLocation >(source)) {
+      auto offset = eng.data().normal().pointer_to_pointer(ptr.var()).offset();
+      found = env.get_heap_pointer(heap_pointer_key(
+          core::IndexableTraits< MemoryLocation* >::index(source), offset), value);
     }
+    if (!found) {
+      auto* global = dyn_cast< GlobalMemoryLocation >(source);
+      if ((global && (!global->global_var()->is_thread_local() || env.is_escaped(source))) ||
+          isa< DynAllocMemoryLocation >(source) || env.is_escaped(source)) {
+        eng.data().normal().mem_forget_reachable(ptr.var(), size);
+        return;
+      }
+      continue;
+    }
+    if (lhs.var() == ptr.var()) {
+      eng.data().normal().mem_forget_reachable(ptr.var(), size);
+      return;
+    }
+    auto observation = eng.data();
+    observation.normal().mem_read(lhs, ptr.var(), size);
+    if (value.leq(observation.normal().pointer_to_pointer(lhs.var()))) continue;
+    auto alternative = eng.data();
+    alternative.normal().pointer_assign_nondet(lhs.var());
+    alternative.normal().pointer_refine(lhs.var(), value);
+    alternative.normal().mem_write(ptr.var(), lhs, size);
+    alternative.normal().scalar_forget(lhs.var());
+    alternatives.join_with(alternative);
+    changed = true;
   }
+  if (changed) eng.data().join_with(alternatives);
 }
 
 /// \brief Mark a pointer-typed LOAD from global memory as cross-thread
@@ -1464,11 +1432,13 @@ void on_store_privatize(E& eng,
       if (isa< DynAllocMemoryLocation >(loc)) {
         if (val.is_scalar()) {
           const ScalarLit& rhs = val.scalar();
-          if (rhs.is_pointer_var()) {
+          if (rhs.is_pointer_var() || rhs.is_null()) {
             auto store_ptr =
                 eng.data().normal().pointer_to_pointer(ptr.var());
-            auto rhs_ptr =
-                eng.data().normal().pointer_to_pointer(rhs.var());
+            auto rhs_ptr = rhs.is_null()
+                ? core::ConcurrentGlobalEnv::PointerValue::null(
+                      eng.ctx().bundle->data_layout().pointers.bit_width, core::Unsigned)
+                : eng.data().normal().pointer_to_pointer(rhs.var());
             // Variable element offset (`B[i] = p`) now lands on the sentinel
             // "whole array" key (heap_pointer_key packs 0xFFFFFFFF), so the
             // pointer is JOINed onto one summarised entry instead of dropped.
@@ -1476,8 +1446,7 @@ void on_store_privatize(E& eng,
                 static_cast< std::uint64_t >(
                     core::IndexableTraits< MemoryLocation* >::index(loc)),
                 store_ptr.offset());
-            env.join_heap_pointer(key, rhs_ptr.points_to(),
-                                  rhs_ptr.offset());
+            env.join_heap_pointer(key, rhs_ptr);
             // Heap-node publication: if this heap node (the store destination)
             // is NOT fresh (i.e. it is already shared), then storing `rhs`
             // into its field publishes `rhs`'s targets too (`A->next = p` with
@@ -1485,7 +1454,7 @@ void on_store_privatize(E& eng,
             // nothing (both stay thread-private).
             if (!eng.lockset().is_heap_node_fresh(
                     core::IndexableTraits< MemoryLocation* >::index(loc))) {
-              unfresh_pointer_targets(eng, rhs);
+              if (rhs.is_pointer_var()) unfresh_pointer_targets(eng, rhs);
             }
           }
         }
@@ -1524,9 +1493,12 @@ void on_store_privatize(E& eng,
           // dropped field offset breaks the reader's container_of
           // inversion (09-regions_20-arrayloop2_rc.c FN).
           auto rhs_ptr = eng.data().normal().pointer_to_pointer(rhs.var());
-          env.join_global_pointer(gv, rhs_ptr.points_to(), rhs_ptr.offset());
+          env.join_global_pointer(gv, rhs_ptr);
           // A store into a GLOBAL publishes `rhs`'s heap nodes.
           unfresh_pointer_targets(eng, rhs);
+        } else if (rhs.is_null() && store->value()->type()->is_pointer()) {
+          env.join_global_pointer(gv, core::ConcurrentGlobalEnv::PointerValue::null(
+              eng.ctx().bundle->data_layout().pointers.bit_width, core::Unsigned));
         }
       }
 

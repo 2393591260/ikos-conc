@@ -544,3 +544,33 @@ UNKNOWN249→258，FP/FN/error0。9个 TN 回退为 list/region 私有证明案�
 [9项变化](artifacts/ai-p0-2026-10-10/f2/transitions.json)、
 [56次用例](artifacts/ai-p0-2026-10-10/f2/fixtures-after.json)、
 [原审查](artifacts/ai-p0-2026-10-10/f2/audit.json)。
+
+
+### 9.7 P0：多源指针读保留本地与全部干扰值
+
+旧 pointer restore 在 may-source 集合上逐项强绑定 lhs，最后一个来源覆盖其他来源。
+最小例 `pick = nondet()? &left : &right; target = *pick; *target=2` 中，
+主线程并发写 x 被误判 SAFE，而写 y 得到 UNKNOWN；Dartagnan 原生双 ABI 均 FAIL。
+修复将 pointer board 改用现有 PointerAbsValue，保留初始化、nullity、points-to 和 offset；
+load 前把每个来源写入独立内存状态并与本地 join，再执行原 mem_read。
+NULL/TOP 也参与摘要，offset 等任何值分量扩张都触发 dirty；缺共享摘要时 havoc 读取范围。
+已被本地值包含的摘要跳过重复合并，避免无意义的状态复制。
+
+build/install 一致；40 次双 ABI/双模式程序运行、48 条真实 MemoryLocation 摘要断言、
+原审查76次及旧BMC20次通过。直接不相交与join对照保持SAFE。
+历史指针值和私有原子指针对照只要求不报确定FALSE，不能称作保持SAFE；
+原子指针用例修复前已UNKNOWN，不能把它们算成新修复FN。
+数组容器用例是global数组，heap摘要有单元覆盖及既有F2堆回归，不能混称malloc用例。
+
+1029 完整顺序扫描：AI TN667→662、UNKNOWN362→366、error0→1；
+BMC TP104→104、TN667→662、UNKNOWN258→262、error0→1，FP/FN0。
+五个TN回退为 list2、hclhlock 和三个weaver程序，逐项登记。
+安全标签的 nsc-ircc 原为UNKNOWN，现在两侧均超过30秒；初版及优化版完整扫描结果一致。
+这是性能退化，不把局部重跑拼成error0的全量；P2需单独优化。
+原六类及本次具体FN已修，但耦合不动点和效果覆盖仍待验收，尚不能宣称P0全部完成。
+
+证据：[汇总](artifacts/ai-p0-2026-10-10/pointers/summary.json)、
+[变化](artifacts/ai-p0-2026-10-10/pointers/transitions.json)、
+[修复前](artifacts/ai-p0-2026-10-10/pointers/fixtures-before.json)、
+[修复后](artifacts/ai-p0-2026-10-10/pointers/fixtures-after.json)、
+[Dartagnan](artifacts/ai-p0-2026-10-10/pointers/reference.json)。

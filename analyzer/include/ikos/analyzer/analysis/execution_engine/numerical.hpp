@@ -1807,6 +1807,7 @@ public:
 
       if (this->_ctx.opts.enable_thread_modular && !s->is_volatile()) {
         on_load_integer_interference(*this, s, ptr, lhs, size);
+        if (lhs.is_pointer_var()) on_load_pointer_restore(*this, ptr, lhs, size);
       }
       if (!s->is_volatile()) {
         // Perform memory read in the value domain
@@ -1823,8 +1824,6 @@ public:
       // Reduction between value and pointer analysis
       if (lhs.is_pointer_var()) {
         this->refine_addresses_offset(lhs.var());
-        // Pointer blackboard restoration (see concurrent_semantics.hpp).
-        on_load_pointer_restore(*this, ptr, lhs);
         // FS+FI hybrid registry (see concurrent_semantics.hpp).
         if (this->_ctx.opts.enable_thread_modular) {
           on_load_glob_flown(*this, ptr, lhs);

@@ -62,6 +62,7 @@
 #include <ikos/core/number/machine_int.hpp>
 #include <ikos/core/number/z_number.hpp>
 #include <ikos/core/value/pointer/points_to_set.hpp>
+#include <ikos/core/value/pointer/pointer.hpp>
 #include <ikos/analyzer/analysis/memory_location.hpp>
 #include <ikos/analyzer/analysis/variable.hpp>
 
@@ -98,6 +99,7 @@ constexpr std::uint64_t kMainThreadSid = 0xA7E0AD1DULL;
 /// abstraction) to short-circuit same-thread race pairs.
 class ConcurrentGlobalEnv {
 public:
+  using PointerValue = PointerAbsValue< analyzer::MemoryLocation* >;
   /// \brief Symbolic array slot identity: `coeff * idx_var + const_term`,
   /// where the index variable is identified by its AR InternalVariable
   /// pointer (stable within a run — the same SSA value maps to the same
@@ -349,7 +351,7 @@ private:
                       std::unordered_map< ar::CallBase*, SpawnJoined > >
       _spawn_joined;
 
-  /// \brief Set of LOCATIONS whose address escaped into a thread `arg`.
+  /// Locations possibly published through pointer stores or thread arguments.
   ///
   /// A stack local is normally thread-private, but passing `&i` as the
   /// pthread_create arg escapes it — the child dereferences the same cell
@@ -358,18 +360,13 @@ private:
   std::unordered_set< analyzer::MemoryLocation* > _escaped_locs;
   bool _unknown_escaped_target = false;
 
-  /// \brief Pointer blackboard cell: the points-to set AND the byte offset of
-  /// a global pointer field's value.
+  /// Pointer summaries use the core value, including nullity and initialization.
   ///
   /// The offset must ride along with the points-to set — the old
   /// PointsToSet-only board dropped it, so a reader's `container_of`
   /// subtracted `offsetof` from a base that had already lost its field
   /// offset and the deref landed at the wrong byte (09-regions_20
   /// -arrayloop2_rc.c FN). Mirrors `SpawnArg`'s offset-transport pattern.
-  struct GlobalPointer {
-    PointsToSet< analyzer::MemoryLocation* > pts;
-    machine_int::Interval offset;
-  };
 
   /// \brief Pointer-domain blackboard channel: global pointer variable →
   /// the points-to set (and its byte offset) it currently holds.
@@ -378,9 +375,8 @@ private:
   /// DynAlloc points-to is lost at the thread handoff (`02-base_24
   /// -malloc_races.c`: `x = malloc()` in main never reaches t_fun, so
   /// `*y` dereferences to an empty set). This channel propagates it.
-  /// Written by `join_global_pointer` (Store side) and consumed at thread
-  /// entry (thread_modular.cpp injects it into the pointer domain).
-  std::unordered_map< analyzer::MemoryLocation*, GlobalPointer >
+  /// Written by stores and joined into read-source memory in the executor.
+  std::unordered_map< analyzer::MemoryLocation*, PointerValue >
       _global_pointer_board;
 
   /// \brief Reverse index of the pointer blackboard: the set of heap DynAlloc
@@ -398,7 +394,7 @@ private:
   /// access (09-regions_03-list2_rc.c FN). Keyed by allocation site × field
   /// offset (reversible pack) so distinct list nodes / fields never collide,
   /// and the per-key set stays bounded by `kPtrBoardWidenThreshold`.
-  std::unordered_map< std::uint64_t, GlobalPointer > _heap_pointer_board;
+  std::unordered_map< std::uint64_t, PointerValue > _heap_pointer_board;
 
   /// \brief Dirty flag for the global-fixpoint driver
   /// (`analysis/value/interprocedural/sequential/analysis.cpp`).
@@ -1595,61 +1591,41 @@ public:
   /// `get_global_pointer` copies stay O(1).
   static constexpr std::size_t kPtrBoardWidenThreshold = 16;
 
-  /// \brief Join the points-to set of a global pointer variable into the
-  /// pointer blackboard channel. Called by the Store executor when it
-  /// writes a pointer-typed value to a global.
-  ///
-  /// \param glob   The global pointer variable (board key).
-  /// \param pts    The written value's may-points-to set.
-  /// \param offset The written value's byte offset (offset-fidelity: must
-  ///               ride along so readers can invert `container_of`).
+  /// Join a complete pointer may-value, including NULL/TOP and offset changes.
   void join_global_pointer(analyzer::MemoryLocation* glob,
-                           const PointsToSet< analyzer::MemoryLocation* >& pts,
-                           const machine_int::Interval& offset) {
-    // Soundness: a TOP write means "the global pointer may alias ANY cell".
-    // Dropping it would silently convert "everything" into "nothing"
-    // (under-approximation) and hide races. Only BOTTOM (no possible value)
-    // may be skipped. The board already stores TOP entries (widen-to-top cap).
-    if (glob == nullptr || pts.is_bottom()) {
-      return;
-    }
+                           const PointerValue& value) {
+    if (glob == nullptr || value.is_bottom()) return;
     std::lock_guard< std::mutex > lock(_mutex);
-    auto r = _global_pointer_board.emplace(glob, GlobalPointer{pts, offset});
-    auto it = r.first;
-    if (r.second) {
-      _is_dirty = true; // new entry: a later restore must see it
-    } else if (!it->second.pts.is_top()) {
-      std::size_t old_n = it->second.pts.is_set() ? it->second.pts.size() : 0;
-      it->second.pts.join_with(pts);
-      it->second.offset.join_with(offset);
-      if (it->second.pts.is_set() && it->second.pts.size() > old_n) {
-        _is_dirty = true; // expanded: keep iterating so a restore re-reads it
-      }
-    }
-    // Widen-to-top cap: a may-set past the threshold is ⊤ (may alias any
-    // cell). Sound for race detection (over-approximation), and prevents
-    // the unbounded set growth from a loop-malloc'd / big pointer-array
-    // global pointer.
-    if (it->second.pts.is_set() &&
-        it->second.pts.size() > kPtrBoardWidenThreshold) {
-      it->second.pts.set_to_top();
-    }
-    // Maintain the reverse index: every target of a global pointer is
-    // cross-thread reachable (a deref through it reads SHARED memory).
-    if (it->second.pts.is_set()) {
-      for (analyzer::MemoryLocation* tgt : it->second.pts) {
-        _global_pointer_targets.insert(tgt);
-        // A cell published through a GLOBAL pointer has ESCAPED its owning
-        // thread's scope (e.g. `gp = &local` — a stack local now reachable by
-        // any thread that derefs `gp`). Mark it escaped so
-        // DataRaceChecker::touches_shared_memory treats a deref through the
-        // global as a cross-thread access, not a thread-private local
-        // (global-pointer-escape FN, gap #6). Mirrors record_spawn_arg.
-        _escaped_locs.insert(tgt);
+    join_pointer_summary_nolock(_global_pointer_board, glob, value);
+    const auto& targets = _global_pointer_board.at(glob).points_to();
+    if (targets.is_set()) {
+      for (auto* target : targets) {
+        _global_pointer_targets.insert(target);
+        _escaped_locs.insert(target);
       }
     }
   }
 
+private:
+  template < typename Key >
+  void join_pointer_summary_nolock(std::unordered_map< Key, PointerValue >& board,
+                                   Key key,
+                                   const PointerValue& value) {
+    auto inserted = board.emplace(key, value);
+    auto& current = inserted.first->second;
+    auto old = current;
+    if (!inserted.second) {
+      if (_global_iteration.load(std::memory_order_relaxed) > kWideningDelay)
+        current.widen_with(value);
+      else
+        current.join_with(value);
+    }
+    if (current.points_to().is_set() &&
+        current.points_to().size() > kPtrBoardWidenThreshold) current.set_to_top();
+    if (inserted.second || !current.leq(old)) _is_dirty = true;
+  }
+
+public:
   /// \brief Is `loc` a target of some global pointer recorded on the pointer
   /// blackboard (i.e. cross-thread SHARED, as opposed to a thread-private
   /// malloc)? O(1) set lookup against the reverse index.
@@ -1668,75 +1644,34 @@ public:
   /// per pointer deref and dominated deref-heavy programs.
   ///
   /// \param loc  The global pointer location (board key).
-  /// \param[out] pts  Receives a copy of the recorded points-to set.
-  /// \param[out] offset  Receives a copy of the recorded byte offset.
+  /// \param[out] value Receives the complete joined pointer value.
   /// \return true iff `loc` is present in the board.
   bool get_global_pointer(analyzer::MemoryLocation* loc,
-                          PointsToSet< analyzer::MemoryLocation* >& pts,
-                          machine_int::Interval& offset) const {
-    if (loc == nullptr) {
-      return false;
-    }
+                          PointerValue& value) const {
+    if (loc == nullptr) return false;
     std::lock_guard< std::mutex > lock(_mutex);
     auto it = _global_pointer_board.find(loc);
-    if (it == _global_pointer_board.end()) {
-      return false;
-    }
-    pts = it->second.pts;
-    offset = it->second.offset;
+    if (it == _global_pointer_board.end()) return false;
+    value = it->second;
     return true;
   }
 
-  /// \brief Join a heap-field pointer's points-to into the heap pointer board.
-  /// Mirrors `join_global_pointer` but keyed by (alloc-site, field-offset).
-  /// \param key    Packed (stable_id << 32 | field offset), see heap_pointer_key.
-  /// \param pts    The written value's may-points-to set.
-  /// \param offset The written value's byte offset (offset-fidelity for
-  ///               container_of inversion on the reader side).
-  void join_heap_pointer(std::uint64_t key,
-                         const PointsToSet< analyzer::MemoryLocation* >& pts,
-                         const machine_int::Interval& offset) {
-    if (pts.is_top() || pts.is_bottom()) {
-      return;
-    }
+  /// Join a heap-field pointer value keyed by allocation and field offset.
+  void join_heap_pointer(std::uint64_t key, const PointerValue& value) {
+    if (value.is_bottom()) return;
     std::lock_guard< std::mutex > lock(_mutex);
-    auto r = _heap_pointer_board.emplace(key, GlobalPointer{pts, offset});
-    auto it = r.first;
-    if (r.second) {
-      _is_dirty = true; // new entry: a later restore must see it
-    } else if (!it->second.pts.is_top()) {
-      std::size_t old_n = it->second.pts.is_set() ? it->second.pts.size() : 0;
-      it->second.pts.join_with(pts);
-      it->second.offset.join_with(offset);
-      if (it->second.pts.is_set() && it->second.pts.size() > old_n) {
-        _is_dirty = true; // expanded: keep iterating so a restore re-reads it
-      }
-    }
-    if (it->second.pts.is_set() &&
-        it->second.pts.size() > kPtrBoardWidenThreshold) {
-      it->second.pts.set_to_top();
-    }
-    // Heap-field targets are cross-thread reachable too (a deref through
-    // `A->next` reads SHARED memory), so maintain the reverse index.
-    if (it->second.pts.is_set()) {
-      for (analyzer::MemoryLocation* tgt : it->second.pts) {
-        _global_pointer_targets.insert(tgt);
-      }
+    join_pointer_summary_nolock(_heap_pointer_board, key, value);
+    const auto& targets = _heap_pointer_board.at(key).points_to();
+    if (targets.is_set()) {
+      for (auto* target : targets) _global_pointer_targets.insert(target);
     }
   }
 
-  /// \brief Single-key read of the heap pointer board (mirrors
-  /// `get_global_pointer`). \return true iff the key is present.
-  bool get_heap_pointer(std::uint64_t key,
-                        PointsToSet< analyzer::MemoryLocation* >& pts,
-                        machine_int::Interval& offset) const {
+  bool get_heap_pointer(std::uint64_t key, PointerValue& value) const {
     std::lock_guard< std::mutex > lock(_mutex);
     auto it = _heap_pointer_board.find(key);
-    if (it == _heap_pointer_board.end()) {
-      return false;
-    }
-    pts = it->second.pts;
-    offset = it->second.offset;
+    if (it == _heap_pointer_board.end()) return false;
+    value = it->second;
     return true;
   }
 
