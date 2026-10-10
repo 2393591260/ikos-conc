@@ -28,13 +28,20 @@ inline bool atomic_query_barrier(const BmcEvent& event) {
            event.mutex == PSEUDO_ATOMIC_LOCK);
 }
 
+struct GuardRejection {
+  unsigned path = 0; // 1 = A, 2 = B; startup/context-dependent rejection is not reusable.
+  std::set< ar::GlobalVariable* > reads;
+};
+
 /// Check the selected accesses, including any necessary atomic completion.
 /// 返回 true = 确认；false = 未确认（含 UNSAT / unsupported），不是无竞争证明。
 inline bool check_race(const std::vector< BmcEvent >& inputA,
                        const std::vector< BmcEvent >& inputB,
                        ar::Function* funcA, ar::Function* funcB,
                        Diagnostics* diagnostics = nullptr,
-                       const CandidateFacts* facts = nullptr) {
+                       const CandidateFacts* facts = nullptr,
+                       GuardRejection* rejection = nullptr) {
+  if (rejection != nullptr) *rejection = {};
   auto pathA = inputA, pathB = inputB;
   if (pathA.empty() || pathB.empty()) {
     record(diagnostics, "empty_path");
@@ -352,6 +359,8 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   using ValueKey = std::pair< ar::InternalVariable*, std::size_t >;
   using ValueCache = std::map< ValueKey, z3::expr >;
   ValueCache cache_a, cache_b, cache_init;
+  bool guard_reusable = false;
+  std::set< ar::GlobalVariable* > guard_reads;
   std::map< const BmcEvent*, z3::expr > replay_offsets;
   std::function<
       bool(ar::Value*, z3::expr&, ValueCache&, const std::string&, unsigned, std::size_t) >
@@ -380,6 +389,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
     std::size_t call_index = 0;
     auto* actual = def == nullptr ? formal_argument(iv, path, before, call_index) : nullptr;
     if (actual != nullptr) {
+      guard_reusable = false;
       if (actual->type() != iv->type() || !encode_value(actual, out, cache, prefix, depth + 1, call_index)) return false;
       return true;
     }
@@ -499,6 +509,9 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       return true;
     }
     if (auto* load = core::dyn_cast_or_null< ar::Load >(def)) {
+      auto* global = core::dyn_cast< ar::GlobalVariable >(load->operand());
+      if (global == nullptr) guard_reusable = false;
+      else guard_reads.insert(global);
       auto* type = core::dyn_cast< ar::IntegerType >(iv->type());
       const auto& access = path[definition_index];
       if (type == nullptr || abstract_initializer(def)) return false;
@@ -867,6 +880,10 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   };
 
   auto assumptions = [&](const std::vector< BmcEvent >& path, ValueCache& cache, const std::string& prefix) {
+    // A prepopulated cache may hide dependencies encoded for the other path.
+    // Startup is fixed within this query group, but is not itself cached as a rejection.
+    guard_reusable = prefix != "value_init_" && cache.empty();
+    guard_reads.clear();
     for (std::size_t i = 0; i < path.size(); ++i) {
       const auto& e = path[i];
       if (e.kind != EvKind::Assume) continue;
@@ -887,7 +904,14 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       }
       if (static_cast< bool >(guard)) {
         guard = guard.simplify();
-        if (guard.is_false()) {record(diagnostics, "constant_guard_unsat", e.stmt); return false;}
+        if (guard.is_false()) {
+          record(diagnostics, "constant_guard_unsat", e.stmt);
+          if (rejection != nullptr && guard_reusable && !unencodable) {
+            rejection->path = prefix == "value_a_" ? 1 : 2;
+            rejection->reads = guard_reads;
+          }
+          return false;
+        }
         s.add(guard);
       }
     }

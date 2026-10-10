@@ -1,0 +1,380 @@
+[
+  {
+    "case": "completed-counter-control",
+    "bits": 32,
+    "verdict": "The program is SAFE",
+    "counts": {}
+  },
+  {
+    "case": "completed-counter-control",
+    "bits": 64,
+    "verdict": "The program is SAFE",
+    "counts": {}
+  },
+  {
+    "case": "completed-counter-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "atomic_completed_paths": 2,
+      "cached_guard_rejection": 336,
+      "constant_guard_unsat": 28,
+      "integer_operation": 278,
+      "sat": 1,
+      "sc_read_from": 5,
+      "sc_same_path_read_from": 695,
+      "target_not_reached": 1
+    }
+  },
+  {
+    "case": "completed-counter-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "atomic_completed_paths": 2,
+      "cached_guard_rejection": 336,
+      "constant_guard_unsat": 28,
+      "integer_operation": 278,
+      "sat": 1,
+      "sc_read_from": 5,
+      "sc_same_path_read_from": 695,
+      "target_not_reached": 1
+    }
+  },
+  {
+    "case": "counter-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "constant_guard_unsat": 4,
+      "integer_operation": 6,
+      "sat": 1,
+      "sc_same_path_read_from": 18
+    }
+  },
+  {
+    "case": "counter-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "constant_guard_unsat": 4,
+      "integer_operation": 6,
+      "sat": 1,
+      "sc_same_path_read_from": 18
+    }
+  },
+  {
+    "case": "disjoint-field-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "disjoint-field-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "exclusive-control",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 2,
+      "sc_same_path_read_from": 4,
+      "smt_unsat": 4
+    }
+  },
+  {
+    "case": "exclusive-control",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 2,
+      "sc_same_path_read_from": 4,
+      "smt_unsat": 4
+    }
+  },
+  {
+    "case": "larger-counter-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "atomic_completed_paths": 2,
+      "cached_guard_rejection": 968,
+      "constant_guard_unsat": 48,
+      "integer_operation": 708,
+      "literal_loop_search_hint": 1,
+      "sat": 1,
+      "sc_read_from": 5,
+      "sc_same_path_read_from": 1675,
+      "target_not_reached": 1
+    }
+  },
+  {
+    "case": "larger-counter-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "atomic_completed_paths": 2,
+      "cached_guard_rejection": 968,
+      "constant_guard_unsat": 48,
+      "integer_operation": 708,
+      "literal_loop_search_hint": 1,
+      "sat": 1,
+      "sc_read_from": 5,
+      "sc_same_path_read_from": 1675,
+      "target_not_reached": 1
+    }
+  },
+  {
+    "case": "latest-control",
+    "bits": 32,
+    "verdict": "The program is SAFE",
+    "counts": {}
+  },
+  {
+    "case": "latest-control",
+    "bits": 64,
+    "verdict": "The program is SAFE",
+    "counts": {}
+  },
+  {
+    "case": "longer-counter-control",
+    "bits": 32,
+    "verdict": "The program is SAFE",
+    "counts": {}
+  },
+  {
+    "case": "longer-counter-control",
+    "bits": 64,
+    "verdict": "The program is SAFE",
+    "counts": {}
+  },
+  {
+    "case": "longer-counter-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "atomic_completed_paths": 2,
+      "cached_guard_rejection": 512,
+      "constant_guard_unsat": 36,
+      "integer_operation": 426,
+      "literal_loop_search_hint": 1,
+      "sat": 1,
+      "sc_read_from": 5,
+      "sc_same_path_read_from": 1039,
+      "target_not_reached": 1
+    }
+  },
+  {
+    "case": "longer-counter-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "atomic_completed_paths": 2,
+      "cached_guard_rejection": 512,
+      "constant_guard_unsat": 36,
+      "integer_operation": 426,
+      "literal_loop_search_hint": 1,
+      "sat": 1,
+      "sc_read_from": 5,
+      "sc_same_path_read_from": 1039,
+      "target_not_reached": 1
+    }
+  },
+  {
+    "case": "mixed-width-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "assume_value": 2
+    }
+  },
+  {
+    "case": "mixed-width-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "assume_value": 2
+    }
+  },
+  {
+    "case": "old-source-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "call_summary": 2,
+      "target_not_reached": 2
+    }
+  },
+  {
+    "case": "old-source-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "call_summary": 2,
+      "target_not_reached": 2
+    }
+  },
+  {
+    "case": "other-writer-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 2,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "case": "other-writer-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 2,
+      "sat": 2,
+      "sc_read_from": 1
+    }
+  },
+  {
+    "case": "renamed-helper-counter-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "atomic_completed_paths": 2,
+      "cached_guard_rejection": 512,
+      "constant_guard_unsat": 36,
+      "integer_operation": 426,
+      "literal_loop_search_hint": 1,
+      "sat": 1,
+      "sc_read_from": 5,
+      "sc_same_path_read_from": 1039,
+      "target_not_reached": 1
+    }
+  },
+  {
+    "case": "renamed-helper-counter-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "atomic_completed_paths": 2,
+      "cached_guard_rejection": 512,
+      "constant_guard_unsat": 36,
+      "integer_operation": 426,
+      "literal_loop_search_hint": 1,
+      "sat": 1,
+      "sc_read_from": 5,
+      "sc_same_path_read_from": 1039,
+      "target_not_reached": 1
+    }
+  },
+  {
+    "case": "signed-conversion-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "signed-conversion-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "unused-arithmetic-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 1,
+      "sat": 1,
+      "sc_same_path_read_from": 3
+    }
+  },
+  {
+    "case": "unused-arithmetic-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 1,
+      "sat": 1,
+      "sc_same_path_read_from": 3
+    }
+  },
+  {
+    "case": "unused-divzero-control",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 2,
+      "constant_guard_unsat": 2,
+      "integer_operation": 2,
+      "sc_same_path_read_from": 2,
+      "smt_unsat": 4
+    }
+  },
+  {
+    "case": "unused-divzero-control",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 2,
+      "constant_guard_unsat": 2,
+      "integer_operation": 2,
+      "sc_same_path_read_from": 2,
+      "smt_unsat": 4
+    }
+  },
+  {
+    "case": "unused-overflow-control",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 2,
+      "constant_guard_unsat": 2,
+      "integer_operation": 2,
+      "sc_same_path_read_from": 8,
+      "smt_unsat": 4
+    }
+  },
+  {
+    "case": "unused-overflow-control",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 2,
+      "constant_guard_unsat": 2,
+      "integer_operation": 2,
+      "sc_same_path_read_from": 8,
+      "smt_unsat": 4
+    }
+  }
+]

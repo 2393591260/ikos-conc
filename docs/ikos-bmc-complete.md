@@ -1,5 +1,7 @@
 # IKOS BMC 完整设计文档（从零到 sound gate 体系）
 
+> 固定展开组内复用有来源不变性证明的false守卫，全量逐项不变；大循环已推进至SMT瓶颈，见[守卫复用](ikos-bmc-guard-cache-2026-10-10.md)。
+
 > 已发现并修复锁分区入口遗漏的SAFE漏报；全量TP92/FP0/TN696/FN0/UNKNOWN241，一项嵌套锁TN回退已记录，见[锁值覆盖](ikos-bmc-lock-interference-2026-10-10.md)。
 
 > 本文描述当前实现、证据前提和能力边界；读过源码或测试通过不等于获得完整 soundness 证明。

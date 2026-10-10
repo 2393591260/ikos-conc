@@ -259,11 +259,48 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   auto shorter = [](const auto& a, const auto& b) {return a.size() < b.size();};
   std::stable_sort(rA.paths.begin(), rA.paths.end(), shorter);
   std::stable_sort(rB.paths.begin(), rB.paths.end(), shorter);
+  struct Writers {
+    bool direct = true;
+    std::set< ar::GlobalVariable* > globals;
+  };
+  auto writers = [](const auto& paths) {
+    Writers result;
+    for (const auto& path : paths)
+      for (const auto& event : path) {
+        auto* store = core::dyn_cast< ar::Store >(event.stmt);
+        if (store == nullptr || abstract_initializer(store)) continue;
+        auto* global = core::dyn_cast< ar::GlobalVariable >(store->pointer());
+        if (global == nullptr) result.direct = false;
+        else result.globals.insert(global);
+      }
+    return result;
+  };
+  const auto writers_a = writers(rA.paths), writers_b = writers(rB.paths);
+  std::set< const std::vector< BmcEvent >* > rejected_a, rejected_b;
+  auto reusable = [&](const GuardRejection& rejection, const auto& path, const Writers& other) {
+    if (rejection.path == 0 || !other.direct) return false;
+    // Root arguments may vary with the opposing main prefix. Direct stores
+    // prevent that context from changing the rejected path's own read sources.
+    for (const auto& event : path) {
+      auto* store = core::dyn_cast< ar::Store >(event.stmt);
+      if (store != nullptr && !abstract_initializer(store) &&
+          !core::isa< ar::GlobalVariable >(store->pointer())) return false;
+    }
+    for (auto* global : rejection.reads)
+      if (other.globals.count(global) != 0) return false;
+    return true;
+  };
   for (const auto& pA : rA.paths) {
     for (const auto& pB : rB.paths) {
       if (budget != nullptr && (budget->expired() || budget->queries == 0)) {
         record(diagnostics, "search_budget");
         return false;
+      }
+      // Only exact false guards with invariant value sources are reusable.
+      // The cache belongs to this fixed startup, path set and loop bound.
+      if (rejected_a.count(&pA) != 0 || rejected_b.count(&pB) != 0) {
+        record(diagnostics, "cached_guard_rejection");
+        continue;
       }
       if (diagnostics != nullptr) {
         ++diagnostics->path_pairs;
@@ -285,7 +322,8 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
       if (budget != nullptr) {
         --budget->queries;
       }
-      if (check_race(pA, pB, funcA, funcB, diagnostics, facts)) {
+      GuardRejection rejection;
+      if (check_race(pA, pB, funcA, funcB, diagnostics, facts, &rejection)) {
         if (creations != nullptr) {
           creations->clear();
           for (const auto* path : {&pA, &pB})
@@ -294,6 +332,8 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
         }
         return true;
       }
+      if (rejection.path == 1 && reusable(rejection, pA, writers_b)) rejected_a.insert(&pA);
+      if (rejection.path == 2 && reusable(rejection, pB, writers_a)) rejected_b.insert(&pB);
     }
   }
   if (loop_bound == 1) {
