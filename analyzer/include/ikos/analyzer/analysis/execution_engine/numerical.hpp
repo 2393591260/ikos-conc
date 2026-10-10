@@ -2234,6 +2234,23 @@ public:
       }
     }
 
+    // A NULL exit status has no pointer publication to model. Cleanup/TLS
+    // registration APIs retain their uncovered-effect gates; no locks release.
+    if (this->_ctx.opts.enable_thread_modular && func_name == "pthread_exit" &&
+        !fun->type()->is_var_arg() && fun->num_parameters() == 1 &&
+        fun->type()->return_type()->is_void() && call->num_arguments() == 1 &&
+        fun->type()->param_type(0)->is_pointer() &&
+        call->argument(0)->type()->is_pointer()) {
+      const auto& status = this->_lit_factory.get_scalar(call->argument(0));
+      if (status.is_null() ||
+          (status.is_pointer_var() &&
+           this->data().normal().nullity_is_null(status.var()))) {
+        this->exec_unknown_call(call, false, false, false, false);
+        this->data().set_normal_flow_to_bottom();
+        return;
+      }
+    }
+
     // Default initialization and destruction touch only the runtime object,
     // under the valid opaque-pthread-object contract used by lock transfer.
     if (this->_ctx.opts.enable_thread_modular &&

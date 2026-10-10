@@ -919,3 +919,37 @@ BMC TP104不变、TN643→647、UNKNOWN281→277，FP/FN0、error1。
 [四个参考结果](artifacts/ai-p0-2026-10-10/sleep/corpus-reference.json)、
 [源码充分前提](artifacts/ai-p0-2026-10-10/sleep/corpus-proof.json)、
 [全量](artifacts/ai-p0-2026-10-10/sleep/paired.json)。
+
+
+### 9.19 精度：NULL状态的当前线程退出
+
+6个triangular safe-label UNKNOWN的唯一覆盖边界为pthread_exit(NULL)。全部共享i/j
+访问位于verifier atomic区域；no-data-race不要求数值断言成立。校准Goblint六项TRUE、
+无Unsound，libraryFunctions.ml:470建模ThreadExit并将返回状态传给join，不解引用状态。
+POSIX2024明确退出当前线程、执行cleanup/TLS析构、不释放mutex。故不能简单
+假设无回调，也不能把它变成进程abort或隐式unlock。
+
+仅支持准确declared、非variadic、void返回、单pointer参数且状态可证NULL的合同；
+复用参数检查后结束当前normal continuation，保留退出前记录/摘要，不修改锁集或
+其他线程状态。非NULL状态仍走原覆盖边界；cleanup/TLS/进程清理注册API保留其
+未知效果警告，当前没有实现析构调用或完整退出状态值流，也没有增加BMC exit leaf。
+这依赖已覆盖的注册API边界，后续扩展注册模型时必须同时补齐退出回调，不能直接删gate。
+
+build/install一致；52次双ABI/双模式/helper/改名/退出前竞争/当前main退出/不释放锁/
+cleanup/TLS/错误声明/非NULL对照通过；旧审查76、sleep48、句柄64与旧BMC20通过。
+无noreturn声明的变体AR仍有exit后的data=1，transfer确实阻止续行；普通同名defined
+body正常分析，其真实写竞争双ABI确认并重放ACCEPT。NULL能力不会盖掉回调警告。
+两ABI原生glibc探针确认NULL状态、无后续写、mutex仍EBUSY；仅证明库效果，不是witness。
+Goblint20项参考中，cleanup/TLS与asm-alias无noreturn例有Unsound，明确排除其背书；
+非NULL安全例Goblint为TRUE而IKOS仍UNKNOWN，是保留的能力边界。
+
+1029完整顺序配对仅恢复6个triangular：AI TN647→653、UNKNOWN381→375；
+BMC TP104不变、TN647→653、UNKNOWN277→271，FP/FN0、error1。未修改frontend。
+证据：[汇总](artifacts/ai-p0-2026-10-10/exit/summary.json)、
+[合同](artifacts/ai-p0-2026-10-10/exit/contracts.json)、
+[对照](artifacts/ai-p0-2026-10-10/exit/fixtures-after.json)、
+[原生效果](artifacts/ai-p0-2026-10-10/exit/native.json)、
+[AR续行](artifacts/ai-p0-2026-10-10/exit/ar-continuation.json)、
+[参考边界](artifacts/ai-p0-2026-10-10/exit/goblint.json)、
+[六项源码前提](artifacts/ai-p0-2026-10-10/exit/corpus-proof.json)、
+[全量配对](artifacts/ai-p0-2026-10-10/exit/paired.json)。

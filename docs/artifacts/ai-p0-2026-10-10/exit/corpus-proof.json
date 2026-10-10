@@ -1,0 +1,98 @@
+[
+  {
+    "task": "c/pthread/triangular-1.i",
+    "source_sha256": "b585114ab4aff9777d36c84f93f7abe0931f77338421f004296c8a8d328d3dfd",
+    "premises": "SV-COMP verifier-atomic contract and successful standard pthread creation; relevant callbacks not registered.",
+    "reason": "All application accesses to shared i/j are within verifier atomic sections. Thread exit status is NULL; no cleanup/TLS registration. Assertions are a separate reachability property.",
+    "exit_lines": [
+      {
+        "line": 701,
+        "source": "pthread_exit(((void *)0));"
+      },
+      {
+        "line": 709,
+        "source": "pthread_exit(((void *)0));"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/triangular-2.i",
+    "source_sha256": "9ca4ad6de5ce46f9737c47ccc55c2628eaef135acf1b94c234f6d96d13f1ccb1",
+    "premises": "SV-COMP verifier-atomic contract and successful standard pthread creation; relevant callbacks not registered.",
+    "reason": "All application accesses to shared i/j are within verifier atomic sections. Thread exit status is NULL; no cleanup/TLS registration. Assertions are a separate reachability property.",
+    "exit_lines": [
+      {
+        "line": 701,
+        "source": "pthread_exit(((void *)0));"
+      },
+      {
+        "line": 709,
+        "source": "pthread_exit(((void *)0));"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/triangular-longer-1.i",
+    "source_sha256": "1e30b67a045ce6921ac9aa6cdcebddb50c3d7d787a6b9dd7b66c9173f916fde4",
+    "premises": "SV-COMP verifier-atomic contract and successful standard pthread creation; relevant callbacks not registered.",
+    "reason": "All application accesses to shared i/j are within verifier atomic sections. Thread exit status is NULL; no cleanup/TLS registration. Assertions are a separate reachability property.",
+    "exit_lines": [
+      {
+        "line": 701,
+        "source": "pthread_exit(((void *)0));"
+      },
+      {
+        "line": 709,
+        "source": "pthread_exit(((void *)0));"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/triangular-longer-2.i",
+    "source_sha256": "647bb9f2bc4e44b8324ce986a0773d034e56e6ec110a9fd5233f5c8c0dbbeb10",
+    "premises": "SV-COMP verifier-atomic contract and successful standard pthread creation; relevant callbacks not registered.",
+    "reason": "All application accesses to shared i/j are within verifier atomic sections. Thread exit status is NULL; no cleanup/TLS registration. Assertions are a separate reachability property.",
+    "exit_lines": [
+      {
+        "line": 701,
+        "source": "pthread_exit(((void *)0));"
+      },
+      {
+        "line": 709,
+        "source": "pthread_exit(((void *)0));"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/triangular-longest-1.i",
+    "source_sha256": "81809963fcaff21fd6241cde97e522447f695a8b323a0a16c5a31b7f82b0f683",
+    "premises": "SV-COMP verifier-atomic contract and successful standard pthread creation; relevant callbacks not registered.",
+    "reason": "All application accesses to shared i/j are within verifier atomic sections. Thread exit status is NULL; no cleanup/TLS registration. Assertions are a separate reachability property.",
+    "exit_lines": [
+      {
+        "line": 701,
+        "source": "pthread_exit(((void *)0));"
+      },
+      {
+        "line": 709,
+        "source": "pthread_exit(((void *)0));"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/triangular-longest-2.i",
+    "source_sha256": "874fb84f685baf0441a9bf8db1864605baa10908128545fe3028b9b499246108",
+    "premises": "SV-COMP verifier-atomic contract and successful standard pthread creation; relevant callbacks not registered.",
+    "reason": "All application accesses to shared i/j are within verifier atomic sections. Thread exit status is NULL; no cleanup/TLS registration. Assertions are a separate reachability property.",
+    "exit_lines": [
+      {
+        "line": 701,
+        "source": "pthread_exit(((void *)0));"
+      },
+      {
+        "line": 709,
+        "source": "pthread_exit(((void *)0));"
+      }
+    ]
+  }
+]

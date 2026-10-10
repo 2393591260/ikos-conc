@@ -1,0 +1,32 @@
+[
+  {
+    "bits": 32,
+    "command": [
+      "gcc",
+      "-m32",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/native.c",
+      "-pthread",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/exit-native-32"
+    ],
+    "source_sha256": "773494a2c34cbf5eabec77ccfaf1278c9cad78588c7e68f36783a1352e6f2e69",
+    "returncode": 0,
+    "output": "NULL status, no continuation, mutex retained: 1\n",
+    "scope": "Native glibc exit/NULL-status/retained-mutex contract only; not race witness validation."
+  },
+  {
+    "bits": 64,
+    "command": [
+      "gcc",
+      "-m64",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/native.c",
+      "-pthread",
+      "-o",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/exit-native-64"
+    ],
+    "source_sha256": "773494a2c34cbf5eabec77ccfaf1278c9cad78588c7e68f36783a1352e6f2e69",
+    "returncode": 0,
+    "output": "NULL status, no continuation, mutex retained: 1\n",
+    "scope": "Native glibc exit/NULL-status/retained-mutex contract only; not race witness validation."
+  }
+]

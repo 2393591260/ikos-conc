@@ -1,0 +1,4 @@
+{
+  "log_sha256": "3aa81d9e41968285ff4a6fddeae14113a5988be0da62f8e906b4ced82451011d",
+  "evidence": "CASE10 AR contains pthread_exit(null), followed by store data=1; SAFE relies on thread termination transfer, not frontend deleting this store."
+}

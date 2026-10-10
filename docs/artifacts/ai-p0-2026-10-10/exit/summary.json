@@ -1,0 +1,58 @@
+{
+  "analyzer_sha256": "bc53216e70a24c7a1019208765a09af86996fe66791697a05741d72ee8bee25d",
+  "baseline_analyzer_sha256": "ad0becd3e882e91e6012e42a3c3b1645ad7f8f8c0da13eff3abd7e22a08011cd",
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/numerical.hpp": "0a8d1136e1cc3f0042dc70cd7bd61cc54f32b1ce450d1838212965cd85265b1c"
+  },
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 647,
+      "FN": 0,
+      "error": 1,
+      "unknown": 381
+    },
+    "after_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 653,
+      "FN": 0,
+      "error": 1,
+      "unknown": 375
+    },
+    "before_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 647,
+      "FN": 0,
+      "error": 1,
+      "unknown": 277
+    },
+    "after_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 653,
+      "FN": 0,
+      "error": 1,
+      "unknown": 271
+    }
+  },
+  "tasks": 1029,
+  "jobs": 4,
+  "timeout_seconds": 30,
+  "data_model": "ILP32",
+  "known_audit_misses_pending": 0,
+  "old_bmc_cases": 20,
+  "build_and_install_equal": true,
+  "manifest": "docs/artifacts/ai-p0-2026-10-10/f1/paired.json",
+  "manifest_sha256": "9a6a9d81d2f8599d66d2a38574bb05d6c00e3a662048e096d634e027af6d9a8c",
+  "targeted_cases": 52,
+  "handle_regressions": 64,
+  "sleep_regressions": 48,
+  "fixture_sha256": {
+    "docs/review-repros/ai-thread-exit/run.py": "facbfaedcf1435659225ba0ce4571ef169c20ffb9969842abbc70645962803cf",
+    "docs/review-repros/ai-thread-exit/exits.c": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "docs/review-repros/ai-thread-exit/native.c": "773494a2c34cbf5eabec77ccfaf1278c9cad78588c7e68f36783a1352e6f2e69"
+  }
+}

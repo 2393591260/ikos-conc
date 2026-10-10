@@ -1,0 +1,546 @@
+[
+  {
+    "bits": 32,
+    "case": 0,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "32bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=0\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "true",
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: true"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "32bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=1\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "unknown",
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: unknown"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "32bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=2\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "true",
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: true"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "32bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=3\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "unknown",
+    "unsound": true,
+    "diagnostics": [
+      "[Error][Imprecise][Unsound] Function definition missing for __sigsetjmp_cancel (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:42:9-42:81)",
+      "[Error][Imprecise][Unsound] Function definition missing for __pthread_unwind_next (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:42:164-42:201)",
+      "[Error][Imprecise][Unsound] Function definition missing for __pthread_register_cancel (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:42:205-42:246)",
+      "[Info][Unsound] Unknown address in {&__cancel_buf} has escaped. (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:42:205-42:246)",
+      "[Info][Unsound] Unknown value in {?} could be an escaped pointer address! (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:42:205-42:246)",
+      "[Info][Unsound] Write to unknown address: privatization is unsound. (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:42:205-42:246)",
+      "[Error][Imprecise][Unsound] Function definition missing for __pthread_unregister_cancel (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:44:33-44:76)",
+      "SV-COMP result: unknown",
+      "[Error][Imprecise][Unsound] Function definition missing"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "32bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=4\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "unknown",
+    "unsound": true,
+    "diagnostics": [
+      "[Info][Unsound] Unknown value type given as function argument (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:46:3-46:35)",
+      "[Info][Unsound] Write to unknown address: privatization is unsound. (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:46:36-46:70)",
+      "SV-COMP result: unknown"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "32bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=5\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "true",
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: true"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "32bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=6\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "unknown",
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: unknown"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "32bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=7\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "unknown",
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: unknown"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "32bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=8\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "true",
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: true"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 10,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "32bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=10\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "unknown",
+    "unsound": true,
+    "diagnostics": [
+      "[Error][Imprecise][Unsound] Function definition missing for exit_without_attribute (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:54:3-54:28)",
+      "SV-COMP result: unknown",
+      "[Error][Imprecise][Unsound] Function definition missing"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=0\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "true",
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: true"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=1\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "unknown",
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: unknown"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=2\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "true",
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: true"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=3\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "unknown",
+    "unsound": true,
+    "diagnostics": [
+      "[Error][Imprecise][Unsound] Function definition missing for __sigsetjmp_cancel (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:42:9-42:81)",
+      "[Error][Imprecise][Unsound] Function definition missing for __pthread_unwind_next (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:42:164-42:201)",
+      "[Error][Imprecise][Unsound] Function definition missing for __pthread_register_cancel (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:42:205-42:246)",
+      "[Info][Unsound] Unknown address in {&__cancel_buf} has escaped. (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:42:205-42:246)",
+      "[Info][Unsound] Unknown value in {?} could be an escaped pointer address! (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:42:205-42:246)",
+      "[Info][Unsound] Write to unknown address: privatization is unsound. (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:42:205-42:246)",
+      "[Error][Imprecise][Unsound] Function definition missing for __pthread_unregister_cancel (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:44:33-44:76)",
+      "SV-COMP result: unknown",
+      "[Error][Imprecise][Unsound] Function definition missing"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=4\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "unknown",
+    "unsound": true,
+    "diagnostics": [
+      "[Info][Unsound] Unknown value type given as function argument (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:46:3-46:35)",
+      "[Info][Unsound] Write to unknown address: privatization is unsound. (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:46:36-46:70)",
+      "SV-COMP result: unknown"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=5\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "true",
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: true"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=6\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "unknown",
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: unknown"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=7\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "unknown",
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: unknown"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=8\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "true",
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: true"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 10,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "64bit",
+      "--set",
+      "pre.cppflags",
+      "[\"-DCASE=10\"]",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c"
+    ],
+    "returncode": 0,
+    "source_sha256": "9e2eb31a805847754460a6033666cb06859c54d7079f78f49cf1c9536e6f8bff",
+    "result": "unknown",
+    "unsound": true,
+    "diagnostics": [
+      "[Error][Imprecise][Unsound] Function definition missing for exit_without_attribute (/home/ruan/ikos-conc/docs/review-repros/ai-thread-exit/exits.c:54:3-54:28)",
+      "SV-COMP result: unknown",
+      "[Error][Imprecise][Unsound] Function definition missing"
+    ]
+  }
+]
