@@ -175,11 +175,6 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
         event.base = 0; event.local_base = nullptr; event.const_off = 0; event.var_id = 0; event.coeff = 0;
         event.heap_allocation = nullptr; event.heap_extent = 0;
         if (!pointer_on_path(pointer, path, i, root, argument, event, &allocation_origin)) {record(diagnostics, "prefix_address", event.stmt); return false;}
-        // Heap loads need initialization and SC value/pointer sources. Do not
-        // promote malloc's indeterminate bytes into unconstrained input values.
-        if (event.heap_allocation != nullptr && event.kind == EvKind::Read) {
-          record(diagnostics, "heap_read_origin", event.stmt); return false;
-        }
       }
       if ((event.kind == EvKind::Lock || event.kind == EvKind::Unlock) &&
           !event.synthetic_atomic &&
@@ -589,6 +584,15 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       auto* type = core::dyn_cast< ar::IntegerType >(iv->type());
       const auto& access = path[definition_index];
       if (type == nullptr || abstract_initializer(def)) return false;
+      if (access.heap_allocation != nullptr &&
+          (access.var_id != 0 || access.width == 0 || access.width > 8 ||
+           type->bit_width() != access.width * 8 ||
+           access.const_off % load->bundle()->data_layout().abi_alignment(type) != 0)) return false;
+      auto same_object = [&](const BmcEvent& write) {
+        if (access.heap_allocation != nullptr) return write.heap_allocation == access.heap_allocation;
+        if (access.base != 0) return write.base == access.base;
+        return access.local_base != nullptr && write.local_base == access.local_base;
+      };
       if (aliases_library(access, &path, false)) {
         record(diagnostics, "library_read_origin", load); return false;
       }
@@ -731,13 +735,17 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
             known = complete && !first;
           }
         }
+      }
+      if (access.base != 0 || access.heap_allocation != nullptr) {
+        // malloc has no initialized source. Fold only actual stores to this
+        // allocation, never stores to another heap object or a null local base.
         // The retained startup executes before either selected child. Fold
         // actual main writes once, sharing its nondet symbols across reads.
         {
           const auto end = prefix == "value_init_" ? definition_index : startup.size();
           for (std::size_t j = 0; j < end; ++j) {
             const auto& e = startup[j];
-            if (e.kind != EvKind::Write || e.base != access.base) continue;
+            if (e.kind != EvKind::Write || !same_object(e)) continue;
             if (e.var_id == 0 && access.var_id == 0 &&
                 (e.const_off >= access.const_off + access.width || access.const_off >= e.const_off + e.width)) continue;
             if (e.width != access.width) return false;
@@ -763,7 +771,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       std::vector< z3::expr > sources;
       struct Write {z3::expr time; z3::expr value; z3::expr matches;};
       std::vector< Write > writes;
-      bool ordered_sources = access.base != 0 && access.var_id == 0;
+      bool ordered_sources = (access.base != 0 || access.heap_allocation != nullptr) && access.var_id == 0;
       const auto& other_path = prefix == "value_a_" ? pathB : pathA;
       auto* root = prefix == "value_a_" ? funcA : funcB;
       auto* other_root = prefix == "value_a_" ? funcB : funcA;
@@ -787,7 +795,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
         for (std::size_t j = begin; j < events.size(); ++j) {
           const auto& e = events[j];
           if (e.kind != EvKind::Write || abstract_initializer(e.stmt) || (&events == &path && j >= definition_index)) continue;
-          if (access.base != 0 ? e.base != access.base : e.local_base != access.local_base) continue;
+          if (!same_object(e)) continue;
           if (e.var_id == 0 && access.var_id == 0 &&
               (e.const_off >= access.const_off + access.width || access.const_off >= e.const_off + e.width)) continue;
           if (e.width != access.width) return false;
@@ -985,6 +993,16 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
                                 const std::string& prefix) {
     for (std::size_t i = 0; i < path.size(); ++i) {
       if (path[i].synthetic_condition) continue;
+      if (path[i].heap_allocation != nullptr && path[i].kind == EvKind::Read) {
+        // Even an unused heap read must have a defined actual SC source.
+        // Pointer or unsupported sources cannot become free malloc data.
+        auto* load = core::cast< ar::Load >(path[i].stmt);
+        z3::expr value(ctx);
+        if (!encode_value(load->result(), value, cache, prefix, 0, i + 1)) {
+          record(diagnostics, "heap_read_origin", load);
+          return false;
+        }
+      }
       if (auto* op = core::dyn_cast< ar::BinaryOperation >(path[i].stmt)) {
         if (facts != nullptr && facts->no_wrap != nullptr) {
           auto proof = facts->no_wrap->find(op);
@@ -1166,6 +1184,12 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
         z3::expr offset(ctx);
         if (!encode_offset(e, offset, cache, prefix, i)) return false;
         s.add(offset >= 0 && offset + ctx.int_val(std::to_string(e.width).c_str()) <= ctx.int_val(size.str().c_str()));
+        if (e.heap_allocation != nullptr) {
+          auto* type = e.kind == EvKind::Read ? core::cast< ar::Load >(e.stmt)->result()->type()
+                                            : core::cast< ar::Store >(e.stmt)->value()->type();
+          const auto alignment = e.stmt->bundle()->data_layout().abi_alignment(type);
+          s.add(z3::mod(offset, ctx.int_val(alignment.str().c_str())) == 0);
+        }
       }
       return true;
     };

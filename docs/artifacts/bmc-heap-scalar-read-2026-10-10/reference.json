@@ -1,0 +1,131 @@
+{
+  "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+  "rows": [
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.5371746820019325,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_24-malloc_races.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "f90c032cad43da2fb4e0b7a9fd7f3200ca1c4adf3f239f2d78774392ccecc031",
+      "data_model": "32",
+      "case": "02-base_24-malloc_races"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.380020386997785,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_24-malloc_races.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "f90c032cad43da2fb4e0b7a9fd7f3200ca1c4adf3f239f2d78774392ccecc031",
+      "data_model": "64",
+      "case": "02-base_24-malloc_races"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.3805961550024222,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_25-malloc_race_cp.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "5c24865639a0fb6385d87b52f972ca15b09ce8699a47a6e19f8c040c7561a77b",
+      "data_model": "32",
+      "case": "02-base_25-malloc_race_cp"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.3435196210011782,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_25-malloc_race_cp.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "5c24865639a0fb6385d87b52f972ca15b09ce8699a47a6e19f8c040c7561a77b",
+      "data_model": "64",
+      "case": "02-base_25-malloc_race_cp"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.3848254490003455,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_26-malloc_struct.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "35c5c2f16af42b98b1ab7b41b9d586c18e7bed3d8d4b2db75e06bb8de929769e",
+      "data_model": "32",
+      "case": "02-base_26-malloc_struct"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.3865677469984803,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_26-malloc_struct.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "35c5c2f16af42b98b1ab7b41b9d586c18e7bed3d8d4b2db75e06bb8de929769e",
+      "data_model": "64",
+      "case": "02-base_26-malloc_struct"
+    }
+  ]
+}

@@ -877,7 +877,8 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
     if (core::isa< ar::Allocate >(def)) return true;
     if (core::isa< ar::Load >(def)) {
       const auto& access = path[index];
-      if (access.base != 0) return true; // demanded values still need initialization/rf
+      // The encoder requires SC sources for every heap read, even unused ones.
+      if (access.base != 0 || access.heap_allocation != nullptr) return true;
       if (access.local_base == nullptr || access.var_id != 0) return false;
       for (std::size_t j = index; j-- > 0;) {
         const auto& previous = path[j];
