@@ -235,6 +235,73 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       !prefix_values_defined(pathA, diagnostics, funcA, argumentA) ||
       !prefix_values_defined(pathB, diagnostics, funcB, argumentB)) return false;
 
+  // Calls update handles and opaque synchronization storage without AR Stores.
+  // Preserve their footprints so static initialization cannot masquerade as rf.
+  struct LibraryStorage {BmcEvent address; const void* path; bool opaque;};
+  std::vector< LibraryStorage > library_storage;
+  auto library_outputs = [&](const std::vector< BmcEvent >& path, ar::Function* root, ar::Value* argument) {
+    for (std::size_t i = 0; i < path.size(); ++i) {
+      const auto& event = path[i];
+      if (event.synthetic_atomic || event.synthetic_condition) continue;
+      auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+      auto* function = call != nullptr ? exact_callee(call) : nullptr;
+      if (function == nullptr || !function->is_declaration()) continue;
+      const auto& name = function->name();
+      std::vector< unsigned > arguments;
+      const bool opaque = ((event.kind == EvKind::Lock || event.kind == EvKind::Unlock) &&
+                           !is_verifier_atomic(call)) || name == "pthread_mutex_init" || condition_call(call);
+      if (opaque || event.kind == EvKind::Create) arguments.push_back(0);
+      if (name == "pthread_cond_wait") arguments.push_back(1);
+      if (event.kind == EvKind::Join && call->num_arguments() == 2 &&
+          !core::isa< ar::NullConstant >(call->argument(1))) arguments.push_back(1);
+      for (auto index : arguments) {
+        BmcEvent address;
+        auto* type = core::dyn_cast< ar::PointerType >(call->argument(index)->type());
+        if (type == nullptr || type->pointee()->is_opaque() ||
+            !pointer_on_path(call->argument(index), path, i, root, argument, address, &allocation_origin)) {
+          record(diagnostics, "library_storage_identity", call); return false;
+        }
+        address.width = call->bundle()->data_layout().store_size_in_bytes(type->pointee()).to< std::uint64_t >();
+        library_storage.push_back({address, &path, opaque});
+      }
+    }
+    return true;
+  };
+  if (!library_outputs(startup, main, nullptr) || !library_outputs(pathA, funcA, argumentA) ||
+      !library_outputs(pathB, funcB, argumentB)) return false;
+  auto aliases_library = [&](const BmcEvent& access, const void* path, bool opaque_only) {
+    for (const auto& storage : library_storage) {
+      if (opaque_only && !storage.opaque) continue;
+      const auto& output = storage.address;
+      const bool same = access.base != 0 ? access.base == output.base :
+          access.heap_allocation != nullptr ? access.heap_allocation == output.heap_allocation :
+          access.local_base != nullptr && path == storage.path && access.local_base == output.local_base;
+      // Fields in repeated records can be disjoint for every index. A common
+      // stride plus nonwrapping, disjoint residues proves byte nonaliasing.
+      core::ZNumber stride = access.var_id != 0 ? (access.coeff < 0 ? -access.coeff : access.coeff) : core::ZNumber(0);
+      const auto output_stride = output.coeff < 0 ? -output.coeff : output.coeff;
+      const bool common_stride = output.var_id == 0 || stride == 0 || stride == output_stride;
+      if (output.var_id != 0 && stride == 0) stride = output_stride;
+      if (same && common_stride && stride > 0 && access.width != 0 && output.width != 0) {
+        auto read_field = access.const_off % stride, output_field = output.const_off % stride;
+        if (read_field < 0) read_field += stride;
+        if (output_field < 0) output_field += stride;
+        if (read_field + access.width <= stride && output_field + output.width <= stride &&
+            (read_field + access.width <= output_field || output_field + output.width <= read_field)) continue;
+      }
+      if (same && (access.var_id != 0 || output.var_id != 0 || access.width == 0 || output.width == 0 ||
+          (access.const_off < output.const_off + output.width && output.const_off < access.const_off + access.width)))
+        return true;
+    }
+    return false;
+  };
+  const std::vector< BmcEvent >* data_paths[] = {&startup, &pathA, &pathB};
+  for (const auto* path : data_paths)
+    for (const auto& event : *path)
+      if ((event.kind == EvKind::Read || event.kind == EvKind::Write) && aliases_library(event, path, true)) {
+        record(diagnostics, "opaque_library_storage", event.stmt); return false;
+      }
+
   z3::context ctx;
   z3::solver s(ctx);
 
@@ -522,6 +589,9 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       auto* type = core::dyn_cast< ar::IntegerType >(iv->type());
       const auto& access = path[definition_index];
       if (type == nullptr || abstract_initializer(def)) return false;
+      if (aliases_library(access, &path, false)) {
+        record(diagnostics, "library_read_origin", load); return false;
+      }
       // Cache the read before following writes: legal dependencies may be
       // syntactically cyclic, but strict SC source order rules out rf cycles.
       out = ctx.int_const((prefix + "read_" + std::to_string(definition_index)).c_str());

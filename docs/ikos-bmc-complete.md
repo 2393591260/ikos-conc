@@ -1,5 +1,7 @@
 # IKOS BMC 完整设计文档（从零到 sound gate 体系）
 
+> mutex内部状态遗漏造成的错误FALSE已修复，隐式库输出不能冒充静态读源；冻结集逐项不变，见[库值来源](ikos-bmc-library-origin-2026-10-10.md)。
+
 > pre-main constructor遗漏造成的错误FALSE已收紧为UNKNOWN，冻结集逐项不变；固定参考也遗漏该初始化，见[构造函数审查](ikos-bmc-constructors-2026-10-10.md)。
 
 > 235项剩余UNKNOWN已逐项重新诊断，301条记录见[TP98台账](ikos-bmc-tp98-ledger-2026-10-10.md)；部分宽度干扰的SAFE漏报已单独修复，见[宽度审查](ikos-interference-width-audit-2026-10-10.md)。

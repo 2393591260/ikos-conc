@@ -1,0 +1,46 @@
+{
+  "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+  "rows": [
+    {
+      "status": "SOURCE_PASS",
+      "returncode": 0,
+      "seconds": 2.0987059510007384,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/library-origin/mutex-state-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "f24d6aabac700b7d02691c70bbd30058aee21cb518642e91d23d9a896eb0c207",
+      "data_model": "32"
+    },
+    {
+      "status": "SOURCE_PASS",
+      "returncode": 0,
+      "seconds": 1.9254731860019092,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/library-origin/mutex-state-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "f24d6aabac700b7d02691c70bbd30058aee21cb518642e91d23d9a896eb0c207",
+      "data_model": "64"
+    }
+  ],
+  "full_counterexample_validated": false
+}
