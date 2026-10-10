@@ -421,6 +421,17 @@ condition wait 第二参数也用真实 mutex 类型。原类型缺失/opaque/by
 
 仅极小常量格式子集有 BMC 摘要：终止的不可变 puts/文本/`%%` 和核实的 promoted32 整数格式。
 `%n`、`%s`、动态宽度/格式、返回值依赖不能当 no-op。
+受支持的stdout调用按单点成功输出摘要选择严格顺序；与内存事件不能共享clock。
+若A目标在A输出前、B输出在B目标前，则A输出先于B输出会通过POSIX stream锁建立
+目标HB，查询要求相反输出顺序；另一方向对称。保留输出的Local分类，不把单个
+中间输出一律视为HB障碍，否则会无端丢失atomic写后读其值、却仍无HB的真实竞争。
+旧公式可能容许stream已排序目标的模型；手工构造的串行完成满足旧clock/rf条件，
+独立执行检查明确以targets ordered by pthread synchronization拒绝。旧默认所选模型
+在该例上本来ACCEPT，此证据不是新发现的冻结集FP。本阶段1029配对 TP106→106 / TN696→696 / UNKNOWN227→227 / FP/FN/error0，无判定变化。
+最小例、puts/printf、值守卫、
+改名和真正join的源码对照在双架构通过，所选模型ACCEPT，串行stream证书REJECT。
+证据：[calibration](artifacts/bmc-v1-stdio-order-2026-10-10/calibration.json)、
+[fixtures](artifacts/bmc-v1-stdio-order-2026-10-10/fixtures.json)。
 抽象解释也需记录实际库内存效果；sem_getvalue 共享输出和其他同步 API 输出/超时输入另有 SAFE 审查。
 未知 API、混合 callee、C11 原子和其他未建模副作用在实际前缀中拒绝；
 未调用函数或目标之后无关同步不应直接否决所有候选。

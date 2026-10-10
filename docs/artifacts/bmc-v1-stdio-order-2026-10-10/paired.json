@@ -1,0 +1,28 @@
+{
+  "tasks": 1029,
+  "before": {
+    "TP": 106,
+    "FP": 0,
+    "TN": 696,
+    "FN": 0,
+    "unknown": 227,
+    "error": 0
+  },
+  "after": {
+    "TP": 106,
+    "FP": 0,
+    "TN": 696,
+    "FN": 0,
+    "unknown": 227,
+    "error": 0
+  },
+  "transitions": [],
+  "jobs": 4,
+  "timeout": 30,
+  "analyzer_sha256": "a2684f4907914ed36cdc78e0767e4bf7056ffa41e9929360de664e652bf97132",
+  "baseline_commit": "539a0b4",
+  "dual_abi_cases": 8,
+  "execution_assertions": 242,
+  "join_cases": 20,
+  "p0_observations": 20
+}

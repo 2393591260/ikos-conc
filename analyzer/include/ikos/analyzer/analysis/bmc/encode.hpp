@@ -24,6 +24,11 @@ namespace ikos {
 namespace analyzer {
 namespace bmc {
 
+inline bool stream_output(const BmcEvent& event) {
+  auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+  return call != nullptr && constant_output_call(call);
+}
+
 inline bool atomic_query_barrier(const BmcEvent& event) {
   return event.kind != EvKind::Local && event.kind != EvKind::Assume &&
          !((event.kind == EvKind::Lock || event.kind == EvKind::Unlock) &&
@@ -479,13 +484,13 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   for (std::size_t i = 0; i + 1 < nB; ++i) {
     s.add(clock[nA + i] < clock[nA + i + 1]);
   }
-  // SC memory operations have a common total order. Tied writes cannot supply
-  // different "latest" values to separate reads.
+  // SC memory and indivisible stdout calls have a common strict order. Ties
+  // must not invent distinct latest writes or omit the stream synchronization.
   z3::expr_vector memory_clocks(ctx);
   for (std::size_t i = 0; i < nA; ++i)
-    if (pathA[i].kind == EvKind::Read || pathA[i].kind == EvKind::Write) memory_clocks.push_back(clock[i]);
+    if (pathA[i].kind == EvKind::Read || pathA[i].kind == EvKind::Write || stream_output(pathA[i])) memory_clocks.push_back(clock[i]);
   for (std::size_t i = 0; i < nB; ++i)
-    if (pathB[i].kind == EvKind::Read || pathB[i].kind == EvKind::Write) memory_clocks.push_back(clock[nA + i]);
+    if (pathB[i].kind == EvKind::Read || pathB[i].kind == EvKind::Write || stream_output(pathB[i])) memory_clocks.push_back(clock[nA + i]);
   if (memory_clocks.size() > 1) s.add(z3::distinct(memory_clocks));
 
   // spawn HB（svcomp.cat 的 po 跨线程边）：路径里 create(T)（T = 对方线程入口函数）
@@ -1425,6 +1430,17 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   // Preserve the old query for ordinary targets. Atomic targets may have a
   // completion suffix: pure local operations and atomic markers are not hb
   // barriers. Keep memory and real synchronization between them excluded.
+  // POSIX stdout release/acquire orders the calls. Only the stream direction
+  // that would order our targets is excluded; an intervening single output is
+  // not itself a proof of HB between them (notably inside verifier atomic).
+  for (std::size_t i = 0; i < nA; ++i) {
+    if (!stream_output(pathA[i])) continue;
+    for (std::size_t j = 0; j < nB; ++j) {
+      if (!stream_output(pathB[j])) continue;
+      if (targetA < i && j < targetB) s.add(clock[nA + j] < clock[i]);
+      if (targetB < j && i < targetA) s.add(clock[i] < clock[nA + j]);
+    }
+  }
   bool solver_unknown = false;
   for (int dir = 0; dir < 2; ++dir) {
     // Each query is independent. push/pop switches Z3 to incremental solving,
