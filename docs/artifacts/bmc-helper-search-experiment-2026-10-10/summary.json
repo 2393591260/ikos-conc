@@ -1,0 +1,385 @@
+{
+  "disposition": "REVERTED",
+  "baseline_behavior_commit": "c73b9b5",
+  "baseline_sha256": "ba7a0fd11f7004a0ea2fbe529a47d851d9db9748d3f48f3544f6305a26b69d94",
+  "experiment_sha256": "6542b626ba58ca3f8a57d37084140134567ae08d4f8bfa2d88f87a7323078f8b",
+  "matrix": {
+    "TP": 80,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 252,
+    "error": 0
+  },
+  "transitions": [
+    {
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/07_rand.i",
+      "expected": "Race Found",
+      "before": "Unknown",
+      "after": "Race Found"
+    },
+    {
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/47_ticket_lock_hc_backoff_vs.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown"
+    }
+  ],
+  "p0_dual_model_observations": 20,
+  "atomic_target_regressions": 28,
+  "fixture_checks": 14,
+  "reference": [
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.5473856640001031,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/qrcu-1.i",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "3655f01df3eccc3acdb69c97e41dec3a3ff24ca3333b88921cb12b5b6c342936",
+      "data_model": "32"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.532508842000425,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/qrcu-2.i",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "d1980d3c26a5811df2d100379a9d31e1e9ec963bc59bfe660be33ada51bfb014",
+      "data_model": "32"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.4048695159999625,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/gcd-2.i",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "abac4834eb8b1123405a2c6108c3d30e84ad22df2224a055d262e226b4ba66e1",
+      "data_model": "32"
+    }
+  ],
+  "fixture_reference": [
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.7387698570000794,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/helper-target-search/callback-target-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "13a2bd0bc455c7d192ccd9b61fd0837abb2f9a2809fb6c9348e7cd2d021d11a5",
+      "data_model": "32",
+      "case": "callback-target-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.632445066999935,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/helper-target-search/callback-target-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "13a2bd0bc455c7d192ccd9b61fd0837abb2f9a2809fb6c9348e7cd2d021d11a5",
+      "data_model": "64",
+      "case": "callback-target-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.719283608999831,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/helper-target-search/caller-target-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "ceddede09821bc6704c5c3d7ab494367ae63f831e9c9a35b695cff53cb210223",
+      "data_model": "32",
+      "case": "caller-target-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.6328415379994112,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/helper-target-search/caller-target-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "ceddede09821bc6704c5c3d7ab494367ae63f831e9c9a35b695cff53cb210223",
+      "data_model": "64",
+      "case": "caller-target-race"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.662433112999679,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/helper-target-search/helper-effects-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "e06760b766510bd941281fffd8a17cba6fcb1c9b249659d1069e087d55fbe630",
+      "data_model": "32",
+      "case": "helper-effects-control"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.7154564789998403,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/helper-target-search/helper-effects-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "e06760b766510bd941281fffd8a17cba6fcb1c9b249659d1069e087d55fbe630",
+      "data_model": "64",
+      "case": "helper-effects-control"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.9500876270003573,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/helper-target-search/mutex-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "cc55e9f011390d55464d55c85e322f230d536a1aca532d345354b0e8d28a10ff",
+      "data_model": "32",
+      "case": "mutex-control"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.753884451999511,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/helper-target-search/mutex-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "cc55e9f011390d55464d55c85e322f230d536a1aca532d345354b0e8d28a10ff",
+      "data_model": "64",
+      "case": "mutex-control"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.69205156299995,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/helper-target-search/nested-target-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "e606447ecd1e3efcc83b391cd21cc5811124f3bd5cfc3d6abc75c8ae54faec5a",
+      "data_model": "32",
+      "case": "nested-target-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.7544850970007246,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/helper-target-search/nested-target-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "e606447ecd1e3efcc83b391cd21cc5811124f3bd5cfc3d6abc75c8ae54faec5a",
+      "data_model": "64",
+      "case": "nested-target-race"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 2.226009738999892,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/helper-target-search/branching-helper-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "a4149a270fe4da1cf4eefa384337d7d3a885b4865a65d3f47b6ca064edc0518a",
+      "data_model": "32"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 2.064833329999601,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/helper-target-search/branching-helper-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "a4149a270fe4da1cf4eefa384337d7d3a885b4865a65d3f47b6ca064edc0518a",
+      "data_model": "64"
+    }
+  ],
+  "timing": [
+    {
+      "variant": "before",
+      "repetition": 0,
+      "seconds": 0.2250753349999286,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "variant": "after",
+      "repetition": 0,
+      "seconds": 0.2003472710002825,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "variant": "after",
+      "repetition": 1,
+      "seconds": 0.2174567340007343,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "variant": "before",
+      "repetition": 1,
+      "seconds": 0.21398045099977026,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "variant": "before",
+      "repetition": 2,
+      "seconds": 0.23181921400009742,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "variant": "after",
+      "repetition": 2,
+      "seconds": 0.20319593899967003,
+      "verdict": "The program is definitely UNSAFE"
+    }
+  ],
+  "full_counterexample_validated": false,
+  "note": "No net precision gain; replaced an old TP. Local timing sample is small and overlapping; no global speed claim."
+}
