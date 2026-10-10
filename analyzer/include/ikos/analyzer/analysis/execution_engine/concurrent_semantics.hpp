@@ -1415,7 +1415,7 @@ void unfresh_pointer_targets(E& eng, const ScalarLit& rhs) {
 
 template < typename E >
 void on_store_privatize(E& eng,
-                        ar::Store* store,
+                        ar::Type* written_type,
                         const ScalarLit& ptr,
                         const Literal& val) {
   if (val.is_scalar() && val.scalar().is_pointer_var()) {
@@ -1503,14 +1503,14 @@ void on_store_privatize(E& eng,
           env.join_global_pointer(gv, rhs_ptr);
           // A store into a GLOBAL publishes `rhs`'s heap nodes.
           unfresh_pointer_targets(eng, rhs);
-        } else if (rhs.is_null() && store->value()->type()->is_pointer()) {
+        } else if (rhs.is_null() && written_type->is_pointer()) {
           env.join_global_pointer(gv, core::ConcurrentGlobalEnv::PointerValue::null(
               eng.ctx().bundle->data_layout().pointers.bit_width, core::Unsigned));
         }
       }
 
       if (auto* type = dyn_cast< ar::IntegerType >(gv->global_var()->type()->pointee())) {
-        auto* written = dyn_cast< ar::IntegerType >(store->value()->type());
+        auto* written = dyn_cast< ar::IntegerType >(written_type);
         auto offset = eng.data().normal().pointer_to_pointer(ptr.var()).offset();
         // This board describes a whole scalar, not its starting byte. A
         // partial/shifted write cannot be modeled by numeric sign extension.
@@ -1546,6 +1546,56 @@ void on_store_privatize(E& eng,
       }
     }
   }
+}
+
+// Byte operations bypass Store/Load hooks. Only a complete scalar global
+// write has a typed summary; other layouts need a property coverage boundary.
+template < typename E >
+ar::Type* byte_effect_type(E& eng, const ScalarLit& dest, const ScalarLit& size) {
+  auto points = eng.data().normal().pointer_to_points_to(dest.var());
+  auto length = size.is_machine_int()
+      ? core::machine_int::Interval(size.machine_int())
+      : eng.data().normal().int_to_interval(size.var());
+  auto offset = eng.data().normal().pointer_to_pointer(dest.var()).offset();
+  if (!points.singleton() || !offset.singleton() || !offset.lb().is_zero() ||
+      !length.singleton()) return nullptr;
+  auto* global = dyn_cast< GlobalMemoryLocation >(*points.singleton());
+  if (global == nullptr) return nullptr;
+  auto* type = global->global_var()->type()->pointee();
+  if (!(type->is_integer() || type->is_pointer()) ||
+      length.lb().to_z_number() != eng.data_layout().store_size_in_bytes(type))
+    return nullptr;
+  return type;
+}
+
+template < typename E >
+bool byte_source_is_shared(E& eng, const ScalarLit& src) {
+  auto points = eng.data().normal().pointer_to_points_to(src.var());
+  if (points.is_top()) return true;
+  if (!points.is_set()) return false;
+  for (MemoryLocation* loc : points) {
+    auto* global = dyn_cast< GlobalMemoryLocation >(loc);
+    if ((global && !global->global_var()->is_thread_local()) ||
+        isa< DynAllocMemoryLocation >(loc) || eng.ctx().concurrent_env.is_escaped(loc))
+      return true;
+  }
+  return false;
+}
+
+template < typename E >
+void publish_byte_effect(E& eng, const ScalarLit& dest, ar::Type* type) {
+  // Reuse one projected scalar, avoiding a fresh permanent shadow per replay.
+  auto points = eng.data().normal().pointer_to_points_to(dest.var());
+  auto name = "concurrency.byte.effect." + std::to_string(
+      core::IndexableTraits< MemoryLocation* >::index(*points.singleton()));
+  Variable* tmp = eng.ctx().var_factory->get_named_shadow(type, name);
+  auto rhs = type->is_pointer() ? ScalarLit::pointer_var(tmp)
+                               : ScalarLit::machine_int_var(tmp);
+  auto size = core::MachineInt(eng.data_layout().store_size_in_bytes(type),
+                              eng.data_layout().pointers.bit_width, core::Unsigned);
+  eng.data().normal().mem_read(rhs, dest.var(), size);
+  on_store_privatize(eng, type, dest, Literal(rhs));
+  eng.data().normal().scalar_forget(tmp);
 }
 
 /// \brief pthread_create detection and modelling.

@@ -1876,7 +1876,7 @@ public:
 
     // Privatization probe (see concurrent_semantics.hpp).
     if (this->_ctx.opts.enable_thread_modular) {
-      on_store_privatize(*this, s, ptr, val);
+      on_store_privatize(*this, s->value()->type(), ptr, val);
     }
 
     auto size =
@@ -2889,6 +2889,23 @@ private:
       return;
     }
 
+    ar::Type* effect_type = nullptr;
+    if (this->_ctx.opts.enable_thread_modular) {
+      auto length = size.is_machine_int() ? IntInterval(size.machine_int())
+                                         : this->data().normal().int_to_interval(size.var());
+      if (!length.is_bottom() && !length.ub().is_zero()) {
+        effect_type = byte_effect_type(*this, dest, size);
+        if (effect_type == nullptr) {
+          this->_ctx.concurrent_env.record_unmodeled_effect(
+              call, "byte memory effects not fully modeled");
+          // The copy can carry pointer edges which a typed Store never records.
+          this->_ctx.concurrent_env.record_possible_escape(PointsToSet::top());
+        }
+        if (byte_source_is_shared(*this, src))
+          this->data().normal().mem_forget_reachable(src.var());
+      }
+    }
+
     if (this->data().normal().pointer_to_points_to(dest.var()).is_top()) {
       // Ignore memory copy/move, analysis could be unsound.
       // See CheckKind::IgnoredMemoryCopy, CheckKind::IgnoredMemoryMove
@@ -2907,6 +2924,9 @@ private:
         ikos_unreachable("unreachable");
       }
     }
+
+    if (effect_type != nullptr && !this->data().is_normal_flow_bottom())
+      publish_byte_effect(*this, dest, effect_type);
 
     if (call->has_result()) {
       const ScalarLit& lhs = this->_lit_factory.get_scalar(call->result());
@@ -2933,12 +2953,28 @@ private:
       return;
     }
 
+    ar::Type* effect_type = nullptr;
+    if (this->_ctx.opts.enable_thread_modular) {
+      auto length = size.is_machine_int() ? IntInterval(size.machine_int())
+                                         : this->data().normal().int_to_interval(size.var());
+      if (!length.is_bottom() && !length.ub().is_zero()) {
+        effect_type = byte_effect_type(*this, dest, size);
+        if (effect_type == nullptr) {
+          this->_ctx.concurrent_env.record_unmodeled_effect(
+              call, "byte memory effects not fully modeled");
+        }
+      }
+    }
+
     if (this->data().normal().pointer_to_points_to(dest.var()).is_top()) {
       // Ignore memory set, analysis could be unsound.
       // See CheckKind::IgnoredMemorySet
     } else {
       this->data().normal().mem_set(dest.var(), value, size);
     }
+
+    if (effect_type != nullptr && !this->data().is_normal_flow_bottom())
+      publish_byte_effect(*this, dest, effect_type);
 
     if (call->has_result()) {
       const ScalarLit& lhs = this->_lit_factory.get_scalar(call->result());

@@ -635,3 +635,28 @@ BMC TP104/TN662/UNKNOWN262/error1，FP/FN0。共享byte effects与未知外部�
 [双ABI修复前](artifacts/ai-p0-2026-10-10/once/fixtures-before.json)、
 [修复后](artifacts/ai-p0-2026-10-10/once/fixtures-after.json)、
 [1029配对](artifacts/ai-p0-2026-10-10/once/paired.json)。
+
+
+### 9.10 P0：字节内存操作发布与覆盖边界
+
+memcpy/memmove/memset原先绕过Store的跨线程写摘要，线程在mutex下复制flag=1，
+另一个线程先写flag=0再读取，真实可能读到1的路径被删，payload竞争误判SAFE。
+完整、offset0、精确长度、单一global整数/指针标量现在通过复用typed Store发布结果；
+共享copy源在读取前havoc，避免用过期本地值排除可能执行。
+其他非零目标布局留下明确byte-effects UNKNOWN边界，copy还保守记录可能逃逸；
+零长度保持no-op。没有前端改动，也未修改BMC竞争公式。
+
+build/install一致；96次双ABI/双模式/宽度/改名配置、pointer程序40次、
+原审查76次、旧BMC20次通过。copy/move/set及pointer发布主反例不再SAFE，
+复制零值、同锁保护payload和零长度对照仍SAFE；private copy对照只保证不报确定FALSE。
+部分写和共享array源明确回退，未生成新的BMC FALSE。
+原生Dartagnan动态长度输入ERROR；之前的常量长度路径特化FAIL只是佐证，不能当原输入确认。
+
+1029完整顺序AI/BMC扫描逐任务与once阶段一致：AI TN662/UNKNOWN366/error1；
+BMC TP104/TN662/UNKNOWN262/error1，FP/FN0。nsc-ircc超时保留，未用局部重跑替换。
+P0尚未结束：另已复现heap通配字段写被精确字段读遗漏、LP64 offset=2^32的锁键碰撞。
+未知extern、aggregate和数值地址覆盖继续审查，假设与已复现问题分开记录。
+证据：[汇总](artifacts/ai-p0-2026-10-10/bytes/summary.json)、
+[修复前](artifacts/ai-p0-2026-10-10/bytes/fixtures-before.json)、
+[修复后](artifacts/ai-p0-2026-10-10/bytes/fixtures-after.json)、
+[1029配对](artifacts/ai-p0-2026-10-10/bytes/paired.json)。
