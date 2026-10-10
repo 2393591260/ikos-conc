@@ -1482,6 +1482,7 @@ void unfresh_pointer_targets(E& eng, const ScalarLit& rhs) {
 
 template < typename E >
 void on_store_privatize(E& eng,
+                        ar::Store* store,
                         const ScalarLit& ptr,
                         const Literal& val) {
   auto points_to = eng.data().normal().pointer_to_points_to(ptr.var());
@@ -1564,6 +1565,19 @@ void on_store_privatize(E& eng,
           env.join_global_pointer(gv, rhs_ptr.points_to(), rhs_ptr.offset());
           // A store into a GLOBAL publishes `rhs`'s heap nodes.
           unfresh_pointer_targets(eng, rhs);
+        }
+      }
+
+      if (auto* type = dyn_cast< ar::IntegerType >(gv->global_var()->type()->pointee())) {
+        auto* written = dyn_cast< ar::IntegerType >(store->value()->type());
+        auto offset = eng.data().normal().pointer_to_pointer(ptr.var()).offset();
+        // This board describes a whole scalar, not its starting byte. A
+        // partial/shifted write cannot be modeled by numeric sign extension.
+        if (written == nullptr || written->bit_width() != type->bit_width() ||
+            offset.is_bottom() || offset.is_top() || offset.lb() != offset.ub() || !offset.lb().is_zero()) {
+          val_interval = core::machine_int::Interval::top(type->bit_width(), type->sign());
+        } else {
+          val_interval = val_interval.cast(type->bit_width(), type->sign());
         }
       }
 

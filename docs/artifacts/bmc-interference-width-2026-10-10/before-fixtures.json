@@ -1,0 +1,74 @@
+[
+  {
+    "case": "high-byte-race",
+    "bits": 32,
+    "verdict": "The program is SAFE",
+    "returncode": 0
+  },
+  {
+    "case": "high-byte-race",
+    "bits": 64,
+    "verdict": "The program is SAFE",
+    "returncode": 0
+  },
+  {
+    "case": "impossible-byte-control",
+    "bits": 32,
+    "verdict": "The program is SAFE",
+    "returncode": 0
+  },
+  {
+    "case": "impossible-byte-control",
+    "bits": 64,
+    "verdict": "The program is SAFE",
+    "returncode": 0
+  },
+  {
+    "case": "low-byte-race",
+    "bits": 32,
+    "verdict": "The program is SAFE",
+    "returncode": 0
+  },
+  {
+    "case": "low-byte-race",
+    "bits": 64,
+    "verdict": "The program is SAFE",
+    "returncode": 0
+  },
+  {
+    "case": "renamed-helper-race",
+    "bits": 32,
+    "verdict": "The program is SAFE",
+    "returncode": 0
+  },
+  {
+    "case": "renamed-helper-race",
+    "bits": 64,
+    "verdict": "The program is SAFE",
+    "returncode": 0
+  },
+  {
+    "case": "whole-word-control",
+    "bits": 32,
+    "verdict": "The program is SAFE",
+    "returncode": 0
+  },
+  {
+    "case": "whole-word-control",
+    "bits": 64,
+    "verdict": "The program is SAFE",
+    "returncode": 0
+  },
+  {
+    "case": "whole-word-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "returncode": 0
+  },
+  {
+    "case": "whole-word-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "returncode": 0
+  }
+]

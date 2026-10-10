@@ -1887,7 +1887,7 @@ public:
 
     // Privatization probe (see concurrent_semantics.hpp).
     if (this->_ctx.opts.enable_thread_modular) {
-      on_store_privatize(*this, ptr, val);
+      on_store_privatize(*this, s, ptr, val);
     }
 
     auto size =
