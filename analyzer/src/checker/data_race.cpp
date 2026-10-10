@@ -857,39 +857,6 @@ DataRaceChecker::~DataRaceChecker() {
           continue;
         }
       }
-      // TODO: matching each access to its own instance does not prove a
-      // common mutex; this shortcut still admits distinct field locks.
-      {
-        auto& env = this->_ctx.concurrent_env;
-        auto self_locked = [&](const AccessRecord& rec) {
-          // Fast-path: the two match modes need, respectively, a symbolic
-          // region (has_region) or a concrete singleton base (base != 0). With
-          // neither, no lock can ever match — skip the per-lock
-          // lock_symbolic_index / lock_instance lookups entirely. This is the
-          // common case for heap-node accesses whose base is a malloc/call
-          // result (region_collect leaves those region-less), and it
-          // previously burned an env hash probe per held lock for nothing.
-          if (!rec.has_region && rec.base == 0) {
-            return false;
-          }
-          for (std::uint64_t key : rec.locks) {
-            std::uint64_t base;
-            core::ConcurrentGlobalEnv::SymbolicIndex sym;
-            if (env.lock_symbolic_index(key, base, sym)) {
-              if (rec.has_region && sym == rec.region) {
-                return true; // symbolic lock on the access's own identity
-              }
-            } else if (rec.base != 0 && (key >> 32) == rec.base &&
-                       env.lock_instance(key) == rec.instance) {
-              return true; // flat field lock on the access's own instance
-            }
-          }
-          return false;
-        };
-        if (self_locked(a) && self_locked(b)) {
-          continue;
-        }
-      }
       // Field/element sensitivity on the DATA side, width-aware: `data.x` and
       // `data.y` (or `data[3]` and `data[4]`) collapse to the same base
       // location, but their byte RANGES are disjoint — provably distinct, no
@@ -940,7 +907,9 @@ DataRaceChecker::~DataRaceChecker() {
           std::uint64_t bx;
           core::ConcurrentGlobalEnv::SymbolicIndex sx;
           if (env.lock_symbolic_index(lx, bx, sx)) {
-            continue; // symbolic lock: handled by the flat-array rule above
+            // A per-access region match does not prove that both executions
+            // hold the same mutex. Keep symbolic pairs until that is proved.
+            continue;
           }
           for (std::uint64_t ly : y) {
             std::uint64_t by;
