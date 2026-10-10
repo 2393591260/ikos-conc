@@ -1886,7 +1886,10 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
                     eng.data_layout().store_size_in_bytes(pointee),
                     eng.data_layout().pointers.bit_width, core::Unsigned);
                 eng.data().normal().mem_write(
-                    var,
+                    // Preserve the actual may-target set and displacement.
+                    // Writing each base separately would strongly overwrite
+                    // every candidate even though create writes only one slot.
+                    scalar_lit.var(),
                     core::Literal< Variable*, MemoryLocation* >::machine_int(
                         core::MachineInt(static_cast< std::uint64_t >(sid),
                                          ity->bit_width(), ity->sign())),

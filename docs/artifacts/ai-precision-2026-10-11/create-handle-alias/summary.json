@@ -1,0 +1,66 @@
+{
+  "baseline_commit": "367bd6d",
+  "analyzer_sha256": "0e9c720459387f551fe5bc3d05cafc1fb9558bfb3d91b9196d7a5929018e4ef9",
+  "baseline_analyzer_sha256": "1e53169ad326f162a3779326113d9043e6e17c5750666bcc8145c34bc7ffa6de",
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp": "81bee10a52f8eb093675ad4ef6fcd99c537e6f03d5eba87703477db6a9f3622d",
+    "docs/review-repros/ai-create-handle-alias/choice.c": "4d3f8c4852cb0e8404c2445eae64cf5155858ed3d55ecc7a4b9e15b218ac31ac",
+    "docs/review-repros/ai-create-handle-alias/run.py": "7401316296ca91e2e353d0a29339f1952d130c19576cf193b47822bcc83c6bc1"
+  },
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 654,
+      "FN": 0,
+      "error": 1,
+      "unknown": 374
+    },
+    "after_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 654,
+      "FN": 0,
+      "error": 1,
+      "unknown": 374
+    },
+    "before_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 654,
+      "FN": 0,
+      "error": 1,
+      "unknown": 270
+    },
+    "after_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 654,
+      "FN": 0,
+      "error": 1,
+      "unknown": 270
+    }
+  },
+  "tasks": 1029,
+  "jobs": 4,
+  "timeout_seconds": 30,
+  "data_model": "ILP32",
+  "full_scans_sequential": true,
+  "build_and_install_equal": true,
+  "targeted_cases": 64,
+  "newly_repaired_FN_observations": 8,
+  "conservative_safe_control_transitions": 8,
+  "audit_cases": 76,
+  "handle_regression_cases": 64,
+  "atomic_prefix_cases": 40,
+  "old_bmc_cases": 20,
+  "reference_cases": 32,
+  "log_sha256": {
+    "handle-alias-build.log": "3cd0ce7b9cb109a3694e5c5d271a83233830a546b5b966e992791d0bac112f14",
+    "handle-alias-ai.log": "de5c23c73b3c8805fcd6d8b84fe059159c5bdda0a8bcb524b47db5851fe959c2",
+    "handle-alias-bmc.log": "414d025cf2998dc512f18ec0e7a0aff9f054b68a73ea5357cdca4ebcc667ab9f"
+  },
+  "proof_basis": "memory/value.hpp::mem_write strongly updates only singleton addresses; may-targets preserve old alternatives via weak_update. Passing each canonical base separately destroys this premise.",
+  "scope": "Existing scalar create output modeling; dynamic/array handles, complete origin tracking, library error behavior and all SAFE filters remain separate obligations.",
+  "note": "Frozen-set counters unchanged. New valid-call minimal cases exposed eight SAFE misses, now confirmed FALSE executions checked ACCEPT. No universal soundness claim."
+}

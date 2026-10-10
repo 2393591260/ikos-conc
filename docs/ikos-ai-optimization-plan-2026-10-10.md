@@ -1087,3 +1087,37 @@ LDV join文件还涉及条件创建、helper返回、retval等，不能把此最
 [实际观测与义务](artifacts/ai-precision-2026-10-11/goblint-portfolio/pending-global-handle.json)、
 [双ABI参考](artifacts/ai-precision-2026-10-11/goblint-portfolio/pending-global-handle-reference.json)。
 原始日志/DB留在临时目录，不纳入Git。
+
+
+### 9.24 正确性：create 的 may-output 必须弱更新（2026-10-11）
+
+继续核实句柄来源时发现集合外FN：先把left/right各创建为空线程的有效句柄，
+再 `slot = nondet()? &left : &right; create(slot, work); join(left); data=2; join(right)`。
+若slot=right，join(left)只等待旧空线程，work的data=1与主线程data=2没有HB。
+旧模型却遍历may points-to集合，向每个canonical base单独强写work的site token，
+使left/right都变成work，join(left)产生假的MUST完成并把竞争删除。
+普通调用/helper调用、32/64bit、AI/BMC共8次均错误SAFE，Dartagnan均FAIL，
+Goblint官方portfolio均UNKNOWN且无Unsound。
+
+修复仅把create的mem_write目标换回真实argument pointer，保留其完整may-target及offset。
+复用现有 memory/value.hpp::mem_write：单地址才strong_update，多地址weak_update，
+每个槽保留“旧身份或新身份”，不把可能被写当作必定被写。没有使用文件名、标签或改动frontend；
+仍只在原有scalar句柄支持范围内操作，不声称补齐所有array、失败API或origin语义。
+
+64次双ABI/双模式、改名/helper、global/local、明确左/右槽和两个join对照通过；
+8个FN观测变为BMC确定FALSE，执行均独立AR ACCEPT。明确左槽的有效join仍SAFE。
+“两槽都join后访问”的普通/helper安全对照共8次由SAFE退UNKNOWN：MAY集合丢失
+“新线程必在两槽之一”的相关性，不能把原假的单例当成保持SAFE的依据。
+Goblint在这些对照的level03返回TRUE，DartagnanPASS；这成为后续关系/句柄精度入口。
+旧正确性76次、句柄64次、atomic前缀40次、旧BMC20次通过。
+
+完整顺序1029配对逐任务无变化：AI TN654/UNKNOWN374；BMC TP104/TN654/UNKNOWN270，
+FP/FN0、error1仍为原nsc-ircc超时。新FN不在冻结集合，正说明有限零FN不能证明实现无漏报。
+build/install一致。此修复独立提交，不与未来句柄精度恢复混合。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/create-handle-alias/summary.json)、
+[修复前](artifacts/ai-precision-2026-10-11/create-handle-alias/fixtures-before.json)、
+[修复后](artifacts/ai-precision-2026-10-11/create-handle-alias/fixtures-after.json)、
+[定向变化](artifacts/ai-precision-2026-10-11/create-handle-alias/fixture-transitions.json)、
+[参考结果](artifacts/ai-precision-2026-10-11/create-handle-alias/reference.json)、
+[1029配对](artifacts/ai-precision-2026-10-11/create-handle-alias/paired.json)。

@@ -1,0 +1,118 @@
+{
+  "repaired": [
+    {
+      "bits": 32,
+      "case": 0,
+      "mode": "ai",
+      "before": "The program is SAFE",
+      "after": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 32,
+      "case": 0,
+      "mode": "bmc",
+      "before": "The program is SAFE",
+      "after": "The program is definitely UNSAFE"
+    },
+    {
+      "bits": 32,
+      "case": 4,
+      "mode": "ai",
+      "before": "The program is SAFE",
+      "after": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 32,
+      "case": 4,
+      "mode": "bmc",
+      "before": "The program is SAFE",
+      "after": "The program is definitely UNSAFE"
+    },
+    {
+      "bits": 64,
+      "case": 0,
+      "mode": "ai",
+      "before": "The program is SAFE",
+      "after": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 64,
+      "case": 0,
+      "mode": "bmc",
+      "before": "The program is SAFE",
+      "after": "The program is definitely UNSAFE"
+    },
+    {
+      "bits": 64,
+      "case": 4,
+      "mode": "ai",
+      "before": "The program is SAFE",
+      "after": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 64,
+      "case": 4,
+      "mode": "bmc",
+      "before": "The program is SAFE",
+      "after": "The program is definitely UNSAFE"
+    }
+  ],
+  "conservative_controls": [
+    {
+      "bits": 32,
+      "case": 1,
+      "mode": "ai",
+      "before": "The program is SAFE",
+      "after": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 32,
+      "case": 1,
+      "mode": "bmc",
+      "before": "The program is SAFE",
+      "after": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 32,
+      "case": 5,
+      "mode": "ai",
+      "before": "The program is SAFE",
+      "after": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 32,
+      "case": 5,
+      "mode": "bmc",
+      "before": "The program is SAFE",
+      "after": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 64,
+      "case": 1,
+      "mode": "ai",
+      "before": "The program is SAFE",
+      "after": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 64,
+      "case": 1,
+      "mode": "bmc",
+      "before": "The program is SAFE",
+      "after": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 64,
+      "case": 5,
+      "mode": "ai",
+      "before": "The program is SAFE",
+      "after": "The program is potentially UNSAFE"
+    },
+    {
+      "bits": 64,
+      "case": 5,
+      "mode": "bmc",
+      "before": "The program is SAFE",
+      "after": "The program is potentially UNSAFE"
+    }
+  ]
+}
