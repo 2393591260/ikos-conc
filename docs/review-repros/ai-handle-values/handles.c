@@ -59,6 +59,12 @@ int main(void) {
 #elif CASE == 11
   t=(pthread_t)1;
   if(t==(pthread_t)1)data=2;
+#elif CASE == 12
+  pthread_detach(t);data=2;return 0;
+#elif CASE == 13
+  pthread_detach(t);
+  if(t!=(pthread_t)1)data=2;
+  return 0;
 #endif
   pthread_join(t,0);
   return 0;

@@ -163,6 +163,16 @@ inline bool identity_only_handle_uses(ar::InternalVariable* root) {
              target->function()->intrinsic_id() == ar::Intrinsic::PthreadJoin) &&
             call->num_arguments() == 2 && call->argument(0) == value &&
             call->argument(1) != value) continue;
+        // POSIX detach consumes opaque identity and creates no join/HB edge.
+        if (target != nullptr && target->function()->is_declaration() &&
+            target->function()->name() == "pthread_detach" &&
+            !target->function()->type()->is_var_arg() &&
+            target->function()->num_parameters() == 1 &&
+            call->num_arguments() == 1 && call->argument(0) == value) {
+          auto* result_type = dyn_cast< ar::IntegerType >(
+              target->function()->type()->return_type());
+          if (result_type && result_type->bit_width() == 32) continue;
+        }
         return false;
       }
       ar::InternalVariable* copy = nullptr;

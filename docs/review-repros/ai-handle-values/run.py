@@ -18,7 +18,7 @@ def main(args):
     renamed_source.write_text(Path(__file__).with_name('handles.c').read_text())
     rows = []
     for bits in (32, 64):
-        for case in range(12):
+        for case in range(14):
             for renamed in ([0, 1] if case in (0, 2) else [0]):
                 for mode in ('ai', 'bmc'):
                     folder = args.output / f'{bits}-{case}-renamed{renamed}-{mode}'
@@ -49,6 +49,11 @@ def main(args):
                         if case in (3, 5, 6):
                             assert verdict == 'The program is SAFE', (folder, verdict)
                             assert not boundaries, (folder, boundaries)
+                        elif case == 12:
+                            assert not boundaries and verdict != 'The program is SAFE', (folder, verdict, boundaries)
+                            if mode == 'bmc':
+                                assert verdict == 'The program is definitely UNSAFE', (folder, verdict)
+                                assert executions and all(e['status'] == 'ACCEPT' for e in executions), (folder, executions)
                         else:
                             assert boundaries and verdict == 'The program is potentially UNSAFE', (folder, verdict)
                     rows.append(dict(bits=bits, case=case, renamed=renamed, mode=mode, verdict=verdict,

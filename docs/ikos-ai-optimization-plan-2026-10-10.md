@@ -865,3 +865,26 @@ BMC TP104→97、TN645→643、UNKNOWN279→288，FP/FN0、error1。
 [参考差异](artifacts/ai-p0-2026-10-10/handles/reference.json)、
 [9项归因](artifacts/ai-p0-2026-10-10/handles/regression-causes.json)、
 [全量配对](artifacts/ai-p0-2026-10-10/handles/paired.json)。
+
+
+### 9.17 精度：detach 的不透明身份消费
+
+POSIX 2024 pthread_detach 只使目标由 joinable 变 detached，不使其立即终止，也不建立
+join/HB。Goblint libraryFunctions.ml 的 detach 摘要丢弃 thread 值且不读写应用内存。
+直接 declared、非variadic、单参数、32bit int 返回的 detach 可消费内部身份令牌，
+不需要假定令牌就是 libc 的数值表示。仅扩展 identity-only-use 白名单；数值/字节
+观察仍 gate，join 来源证明不放宽，detach 的未知extern效果边界仍保留，未捏造同步边。
+
+新 plain detach 竞争例双 ABI 都由 BMC 确认，选中执行重放ACCEPT；detach 后数值比较
+仍UNKNOWN。64次句柄对照、原审查76次、旧BMC20次通过，build/install一致。
+7个thread-join-counter旧确认逐文件再次导出选中执行，全部ACCEPT；这是具体AR/API
+执行检查，不等同官方C/witness验收。
+
+1029完整顺序AI/BMC配对仅恢复这7项：AI TN643/UNKNOWN385/error1不变；
+BMC TP97→104、TN643不变、UNKNOWN288→281，FP/FN0、error1。
+两个TOP别名TN仍UNKNOWN，句柄通用值流尚未实现。没有frontend改动。
+证据：[汇总](artifacts/ai-p0-2026-10-10/detach/summary.json)、
+[合同](artifacts/ai-p0-2026-10-10/detach/contracts.json)、
+[对照](artifacts/ai-p0-2026-10-10/detach/fixtures-after.json)、
+[7个选中执行](artifacts/ai-p0-2026-10-10/detach/executions.json)、
+[全量配对](artifacts/ai-p0-2026-10-10/detach/paired.json)。

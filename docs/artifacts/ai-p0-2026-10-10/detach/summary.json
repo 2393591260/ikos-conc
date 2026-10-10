@@ -1,0 +1,58 @@
+{
+  "analyzer_sha256": "1b1e9fa90ab8ab2961e63f7795d77a052b8dab6a0e93589ac35a89032f1689b5",
+  "baseline_analyzer_sha256": "5abb29c5efc52f65f01d440a0faa0df1c61fc5338de51a89a171ece01f7e9aec",
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp": "f73d4852470f2b9c1677142063a0a4ee999b483440dd2b9213143002fdbca08d"
+  },
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 643,
+      "FN": 0,
+      "error": 1,
+      "unknown": 385
+    },
+    "after_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 643,
+      "FN": 0,
+      "error": 1,
+      "unknown": 385
+    },
+    "before_bmc": {
+      "TP": 97,
+      "FP": 0,
+      "TN": 643,
+      "FN": 0,
+      "error": 1,
+      "unknown": 288
+    },
+    "after_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 643,
+      "FN": 0,
+      "error": 1,
+      "unknown": 281
+    }
+  },
+  "tasks": 1029,
+  "jobs": 4,
+  "timeout_seconds": 30,
+  "data_model": "ILP32",
+  "known_audit_misses_pending": 0,
+  "old_bmc_cases": 20,
+  "build_and_install_equal": true,
+  "manifest": "docs/artifacts/ai-p0-2026-10-10/f1/paired.json",
+  "manifest_sha256": "9a6a9d81d2f8599d66d2a38574bb05d6c00e3a662048e096d634e027af6d9a8c",
+  "targeted_cases": 64,
+  "selected_execution_tasks": 7,
+  "selected_execution_status": "ACCEPT in all seven tasks; concrete AR/API scope, not official witness validation",
+  "fixture_sha256": {
+    "docs/review-repros/ai-handle-values/handles.c": "d37b9de45820211c3748e693bc898e479ac31f8a2037c5a947efd0f05f9cb11a",
+    "docs/review-repros/ai-handle-values/run.py": "91f7b89e80f59b33cf9e0251d6ddc9f588b13347a8036a3af981385786763edc",
+    "docs/review-repros/ai-handle-values/native.c": "441a40d21a34d3b13066b902de6165bf9e3c46fba618459cd94d034698b5725d"
+  }
+}
