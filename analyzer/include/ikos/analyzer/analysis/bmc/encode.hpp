@@ -47,6 +47,13 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
     record(diagnostics, "empty_path");
     return false;
   }
+  // Static initializers are not the pre-main state when constructors execute.
+  // Until their actual prefixes are retained, neither values nor activation
+  // derived from main alone establish a concrete execution.
+  if (funcA->bundle()->global_or_null("ar.global_ctors") != nullptr) {
+    record(diagnostics, "global_constructor_prefix");
+    return false;
+  }
   const std::vector< BmcEvent > empty_startup;
   const auto& startup = facts != nullptr ? facts->startup : empty_startup;
   auto* argumentA = created_argument(funcA, funcB->name() == "main" ? pathB : startup);
