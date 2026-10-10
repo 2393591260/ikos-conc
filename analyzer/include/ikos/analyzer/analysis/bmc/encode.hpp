@@ -609,6 +609,103 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       };
       z3::expr read_offset(ctx);
       if (!address_offset(access, read_offset, cache, prefix)) return false;
+      // Only primitive, exactly addressed globals enter byte-level SC rf.
+      // Keep the existing word encoding for uniform accesses and symbolic fields.
+      auto* scalar = access.base != 0 ? core::dyn_cast< ar::IntegerType >(
+          reinterpret_cast< ar::GlobalVariable* >(access.base)->type()->pointee()) : nullptr;
+      bool mixed = false;
+      if (scalar != nullptr && access.var_id == 0 && access.width != 0 &&
+          type->bit_width() == access.width * 8 && scalar->bit_width() % 8 == 0 && scalar->bit_width() <= 64) {
+        mixed = type->bit_width() != scalar->bit_width() || access.const_off != 0;
+        for (const auto* events : data_paths)
+          for (const auto& event : *events)
+            if (event.kind == EvKind::Write && event.base == access.base &&
+                (event.var_id != 0 || (event.const_off < access.const_off + access.width &&
+                 access.const_off < event.const_off + event.width)))
+              mixed |= event.width != access.width || event.const_off != access.const_off;
+      }
+      if (mixed) {
+        if (type->bit_width() > 64 || access.const_off < 0 ||
+            access.const_off + access.width > scalar->bit_width() / 8) return false;
+        auto* object = reinterpret_cast< ar::GlobalVariable* >(access.base);
+        const bool little = object->bundle()->data_layout().is_little_endian();
+        auto byte_of = [&](const z3::expr& value, unsigned bits, unsigned index) {
+          const unsigned shift = 8 * (little ? index : bits / 8 - 1 - index);
+          return z3::int2bv(bits, value).extract(shift + 7, shift).simplify();
+        };
+        ZNumber initial_value;
+        const bool initialized = initial_integer(object, ZNumber(0), scalar->bit_width(), initial_value);
+        std::vector< z3::expr > bytes;
+        std::vector< bool > byte_known;
+        for (unsigned k = 0; k < access.width; ++k) {
+          bytes.push_back(initialized ? byte_of(ctx.int_val(initial_value.str().c_str()), scalar->bit_width(),
+                                              access.const_off.to< unsigned >() + k) : ctx.bv_val(0, 8));
+          byte_known.push_back(initialized);
+        }
+        struct ByteWrite {z3::expr time; z3::expr value;};
+        std::vector< std::vector< ByteWrite > > byte_writes(access.width);
+        auto collect_bytes = [&](const std::vector< BmcEvent >& events, ValueCache& values,
+                                 const std::string& label, std::size_t clock_start, bool startup_source) {
+          const std::size_t end = startup_source && prefix == "value_init_" ? definition_index : events.size();
+          for (std::size_t j = 0; j < end; ++j) {
+            const auto& event = events[j];
+            if (event.kind != EvKind::Write || event.base != access.base || abstract_initializer(event.stmt) ||
+                (!startup_source && &events == &path && j >= definition_index)) continue;
+            if (event.var_id != 0) return false;
+            if (event.const_off >= access.const_off + access.width || access.const_off >= event.const_off + event.width) continue;
+            auto* value = core::cast< ar::Store >(event.stmt)->value();
+            auto* stored_type = core::dyn_cast< ar::IntegerType >(value->type());
+            z3::expr encoded(ctx);
+            if (stored_type == nullptr || event.width == 0 || event.width > 8 ||
+                stored_type->bit_width() != event.width * 8 || event.const_off < 0 ||
+                event.const_off + event.width > scalar->bit_width() / 8 ||
+                !encode_value(value, encoded, values, label, depth + 1, j)) return false;
+            for (unsigned k = 0; k < access.width; ++k) {
+              auto index = access.const_off + k - event.const_off;
+              if (index < 0 || index >= event.width) continue;
+              auto value_byte = byte_of(encoded, stored_type->bit_width(), index.to< unsigned >());
+              if (startup_source) {bytes[k] = value_byte; byte_known[k] = true;}
+              else byte_writes[k].push_back({clock[clock_start + j], value_byte});
+            }
+          }
+          return true;
+        };
+        if (!collect_bytes(startup, cache_init, "value_init_", 0, true)) return false;
+        if (prefix != "value_init_" &&
+            (!collect_bytes(pathA, cache_a, "value_a_", 0, false) ||
+             !collect_bytes(pathB, cache_b, "value_b_", nA, false))) return false;
+        if (prefix == "value_init_") {
+          for (bool known : byte_known) if (!known) return false;
+        } else {
+          const auto read_time = clock[(prefix == "value_a_" ? 0 : nA) + definition_index];
+          for (unsigned k = 0; k < access.width; ++k) {
+            const auto& writes = byte_writes[k];
+            auto byte = ctx.bv_const((prefix + "byte_" + std::to_string(definition_index) + "_" + std::to_string(k)).c_str(), 8);
+            auto choice = ctx.bool_val(false), first = ctx.bool_val(true);
+            for (std::size_t j = 0; j < writes.size(); ++j) {
+              auto latest = writes[j].time < read_time;
+              first = first && read_time < writes[j].time;
+              for (std::size_t l = 0; l < writes.size(); ++l)
+                if (l != j) latest = latest && !(writes[j].time < writes[l].time && writes[l].time < read_time);
+              choice = choice || (latest && byte == writes[j].value);
+            }
+            if (byte_known[k]) choice = choice || (first && byte == bytes[k]);
+            if (writes.empty()) {
+              if (!byte_known[k]) return false;
+            } else {s.add(choice); bytes[k] = byte;}
+          }
+        }
+        // All constituent bytes use the same load clock; a word load is one
+        // event, not independent byte reads that could invent a torn value.
+        auto assembled = bytes[little ? access.width - 1 : 0];
+        for (unsigned k = 1; k < access.width; ++k)
+          assembled = z3::concat(assembled, bytes[little ? access.width - 1 - k : k]);
+        auto source = z3::bv2int(assembled, type->is_signed()).simplify();
+        s.add(out == source);
+        out = source; cache.find(key)->second = out;
+        record(diagnostics, "sc_byte_read_from", load);
+        return true;
+      }
       z3::expr initial(ctx);
       bool known = false;
       if (access.base != 0) {

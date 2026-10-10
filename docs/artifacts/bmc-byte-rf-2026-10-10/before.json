@@ -1,0 +1,122 @@
+[
+  {
+    "case": "aggregate-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "aggregate-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "both-bytes-race",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "both-bytes-race",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "byte-from-word-race",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "byte-from-word-race",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "high-byte-race",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "high-byte-race",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "impossible-byte-control",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "impossible-byte-control",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "low-byte-race",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "low-byte-race",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "mutually-exclusive-control",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "mutually-exclusive-control",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "parent-partial-race",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "parent-partial-race",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "renamed-helper-race",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "renamed-helper-race",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "signed-high-byte-race",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "signed-high-byte-race",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "unsigned-byte-race",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "unsigned-byte-race",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "wide64-race",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "wide64-race",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE"
+  }
+]
