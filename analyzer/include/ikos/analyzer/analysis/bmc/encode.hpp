@@ -810,10 +810,6 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
     }
     return true;
   };
-  if (!arithmetic_prefix(startup, cache_init, "value_init_") ||
-      !arithmetic_prefix(pathA, cache_a, "value_a_") ||
-      !arithmetic_prefix(pathB, cache_b, "value_b_")) return false;
-
   auto encode_assume = [&](ar::Comparison* cmp,
                            ValueCache& cache,
                            const std::string& prefix, std::size_t before) -> z3::expr {
@@ -913,6 +909,11 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   if (!assumptions(startup, cache_init, "value_init_") ||
       !assumptions(pathA, cache_a, "value_a_") ||
       !assumptions(pathB, cache_b, "value_b_")) return false;
+  // Reject impossible guards before encoding unused operations. Every retained
+  // path still needs the complete trap/poison obligations, including dead results.
+  if (unencodable || !arithmetic_prefix(startup, cache_init, "value_init_") ||
+      !arithmetic_prefix(pathA, cache_a, "value_a_") ||
+      !arithmetic_prefix(pathB, cache_b, "value_b_")) return false;
 
   // Executed pointer definitions must select the same global object, even
   // when the checker's may-points-to sets contain several objects.
