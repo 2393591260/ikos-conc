@@ -5474,7 +5474,7 @@
     "source_sha256": "aa6769954855c21e78e338b5c9c85b82b4dc1b815f455d6f752caea060e1fc2c",
     "reference": "FAIL",
     "ikos_current": "Unknown",
-    "reference_fresh": false,
+    "reference_fresh": true,
     "prior_ledger": "docs/artifacts/bmc-tp98-ledger-2026-10-10/results.json",
     "full_counterexample_validated": false,
     "diagnostics_fresh": true,
@@ -5505,8 +5505,13 @@
     ],
     "status": "confirmed_reference_race_ikos_remaining",
     "remaining_obligations": [
-      "call_summary: observed blocker; verify source premises before expanding support."
-    ]
+      "Implement finite function-pointer SC sources plus an equality binding each dynamic indirect call to its actual chosen function.",
+      "Keep exact call ABI and invocation-local symbols; unknown/partial/mismatched pointer semantics stay UNKNOWN.",
+      "Reference-native bad source/target is SAT; initial good -> bad and jointly protected good targets are UNSAT on both ABIs. These are not IKOS model certificates.",
+      "Update semantic function-identity export/mapping; do not export pointer tokens as physical addresses."
+    ],
+    "reference_evidence": "docs/artifacts/bmc-shared-callback-feasibility-2026-10-10/reference.json",
+    "investigation": "docs/ikos-bmc-shared-callback-feasibility-2026-10-10.md"
   },
   {
     "task": "c/goblint-regression/04-mutex_35-trylock_rc.yml",

@@ -165,7 +165,7 @@
       "safe": 2
     }
   },
-  "reference_refresh": "Hash-matching historical records retained; two attribute cases and malloc_struct freshly run on both ABIs; explicit reference-native value probes recorded.",
+  "reference_refresh": "Hash-matching historical records retained; two attribute cases, malloc_struct, and shared callback freshly run on both ABIs, with explicit value/rf probes.",
   "remaining_global_obligations": [
     "Full source/witness validation of selected executions.",
     "Proof of all SAFE filters and C/LLVM definedness premises.",
