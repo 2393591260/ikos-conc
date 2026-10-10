@@ -1,0 +1,235 @@
+{
+  "status": "REVERTED",
+  "source_change": "Merge all path pairs by combined prefix length using a bounded row heap; no formula change",
+  "before": {
+    "TP": 78,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 254,
+    "error": 0
+  },
+  "after": {
+    "TP": 78,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 254,
+    "error": 0
+  },
+  "transitions": [
+    {
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/11_fmaxsymopt-race.i",
+      "expected": "Race Found",
+      "before": "Race Found",
+      "after": "Unknown"
+    },
+    {
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/23_lu-fig2.fixed.i",
+      "expected": "Race Found",
+      "before": "Unknown",
+      "after": "Race Found"
+    }
+  ],
+  "targeted": [
+    {
+      "task": "c/pthread-ext/06_ticket.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/06_ticket.i",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "verdict": "Unknown",
+      "seconds": 10.201055438999902,
+      "returncode": 0,
+      "counts": {
+        "ai_candidate_bounds": 500,
+        "integer_operation": 3486,
+        "sc_read_from": 9172,
+        "search_budget": 25,
+        "smt_unsat": 1000
+      },
+      "first_blockers": {
+        "smt_unsat": 1,
+        "search_budget": 24
+      },
+      "candidates": 25,
+      "artifacts": "06_ticket-9db01c90a2e5",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/tmp/ikos-recovery-2026-10-10/pair-order-subset/06_ticket-9db01c90a2e5/report.json",
+        "-o",
+        "/tmp/ikos-recovery-2026-10-10/pair-order-subset/06_ticket-9db01c90a2e5/output.db",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-ext/06_ticket.i"
+      ]
+    },
+    {
+      "task": "c/pthread-ext/11_fmaxsymopt-race.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/11_fmaxsymopt-race.i",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "verdict": "Unknown",
+      "seconds": 10.250755002000005,
+      "returncode": 0,
+      "counts": {
+        "ai_candidate_bounds": 374,
+        "call_summary": 4,
+        "integer_operation": 6732,
+        "sc_read_from": 2244,
+        "search_budget": 2,
+        "smt_unsat": 748,
+        "target_not_reached": 1
+      },
+      "first_blockers": {
+        "call_summary": 1,
+        "search_budget": 1
+      },
+      "candidates": 2,
+      "artifacts": "11_fmaxsymopt-race-848e459a1067",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/tmp/ikos-recovery-2026-10-10/pair-order-subset/11_fmaxsymopt-race-848e459a1067/report.json",
+        "-o",
+        "/tmp/ikos-recovery-2026-10-10/pair-order-subset/11_fmaxsymopt-race-848e459a1067/output.db",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-ext/11_fmaxsymopt-race.i"
+      ]
+    },
+    {
+      "task": "c/pthread-ext/23_lu-fig2.fixed.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/23_lu-fig2.fixed.i",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "verdict": "Race Found",
+      "seconds": 9.621867526000187,
+      "returncode": 0,
+      "counts": {
+        "atomic_pair": 12,
+        "ai_candidate_bounds": 273,
+        "atomic_completed_paths": 2,
+        "call_summary": 5,
+        "integer_operation": 816,
+        "sc_read_from": 4369,
+        "smt_unsat": 544,
+        "sat": 1
+      },
+      "first_blockers": {
+        "atomic_pair": 12,
+        "atomic_completed_paths": 1,
+        "call_summary": 1
+      },
+      "candidates": 14,
+      "artifacts": "23_lu-fig2.fixed-03b34099ba70",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/tmp/ikos-recovery-2026-10-10/pair-order-subset/23_lu-fig2.fixed-03b34099ba70/report.json",
+        "-o",
+        "/tmp/ikos-recovery-2026-10-10/pair-order-subset/23_lu-fig2.fixed-03b34099ba70/output.db",
+        "/home/ruan/sv-benchmarks-2026/c/pthread-ext/23_lu-fig2.fixed.i"
+      ]
+    }
+  ],
+  "reference": {
+    "status": "SOURCE_RACE",
+    "returncode": 13,
+    "seconds": 1.342117134000091,
+    "command": [
+      "java",
+      "-Xmx2g",
+      "-cp",
+      "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-ext/06_ticket.i",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=2",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "source_sha256": "d21b75ab9211f19b3beb5c83d6d66f0a0906e2f271e4621d3ded70db8a63bb33",
+    "data_model": "32"
+  },
+  "wrapping": [
+    {
+      "case": "unsigned-overflow-control",
+      "bits": 32,
+      "verdict": "The program is SAFE",
+      "counts": {}
+    },
+    {
+      "case": "unsigned-overflow-control",
+      "bits": 64,
+      "verdict": "The program is SAFE",
+      "counts": {}
+    },
+    {
+      "case": "unsigned-overflow-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "sat": 1
+      }
+    },
+    {
+      "case": "unsigned-overflow-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "sat": 1
+      }
+    },
+    {
+      "case": "wrapping-guard-control",
+      "bits": 32,
+      "verdict": "The program is SAFE",
+      "counts": {}
+    },
+    {
+      "case": "wrapping-guard-control",
+      "bits": 64,
+      "verdict": "The program is SAFE",
+      "counts": {}
+    },
+    {
+      "case": "unsigned-wrap-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "sat": 1
+      }
+    },
+    {
+      "case": "unsigned-wrap-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE",
+      "counts": {
+        "ai_candidate_bounds": 1,
+        "integer_operation": 2,
+        "sat": 1
+      }
+    }
+  ],
+  "global_choice_checks": 16,
+  "p0_observations": 20
+}
