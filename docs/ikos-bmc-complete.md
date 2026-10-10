@@ -2,7 +2,8 @@
 
 > 本文描述当前实现、证据前提和能力边界；读过源码或测试通过不等于获得完整 soundness 证明。
 > 最新 UNKNOWN 全量遍历及基线见 [逐任务恢复报告](ikos-bmc-unknown-sweep-2026-10-09.md)。
-> 当前冻结集回归：TP=86（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=246 / 错误=0。
+> 当前冻结集回归：TP=89（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=243 / 错误=0。
+> 确定读值传播及false守卫提前拒绝恢复四个fib任务，ticket-lock全量回退但隔离旧/新均FALSE；fib5部分模型验证超时，见[守卫优化](ikos-bmc-constant-guard-2026-10-10.md)。
 > 精确global读的同路径SC来源已由po简化，原来源检查保留，全量逐项不变；fib5查询吞吐改善但仍UNKNOWN，见[读源优化](ikos-bmc-sc-same-path-2026-10-10.md)。
 > 受限实际`pthread_exit(NULL)`已作为worker完成端点，全量逐项不变；fib5转为值流求解预算阻塞，见[终止端点](ikos-bmc-thread-exit-2026-10-10.md)。
 > atomic中间目标的结构UNSAT判定省去无效SMT，恢复lu；隔离7.7→2.6秒但无全局提速结论，见[查询优化](ikos-bmc-atomic-interior-2026-10-10.md)。

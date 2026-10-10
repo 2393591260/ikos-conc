@@ -633,7 +633,10 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       // In these two prefixes, po fixes the latest exact-region write. Keep
       // collect's full source validation; this does not prove program privacy.
       if (same_path_sources && (!writes.empty() || known)) {
-        s.add(out == (writes.empty() ? initial : writes.back().value));
+        auto source = (writes.empty() ? initial : writes.back().value).simplify();
+        s.add(out == source);
+        out = source;
+        cache.find(key)->second = out;
         record(diagnostics, "sc_same_path_read_from", load);
         return true;
       }
@@ -884,25 +887,32 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
     for (std::size_t i = 0; i < path.size(); ++i) {
       const auto& e = path[i];
       if (e.kind != EvKind::Assume) continue;
+      z3::expr guard(ctx);
       if (auto* cmp = core::dyn_cast< ar::Comparison >(e.stmt)) {
-        s.add(encode_assume(cmp, cache, prefix, i));
+        guard = encode_assume(cmp, cache, prefix, i);
       } else if (auto* call = core::dyn_cast< ar::CallBase >(e.stmt)) {
         z3::expr value(ctx);
         if (call->num_arguments() != 1 || !encode_value(call->argument(0), value, cache, prefix, 0, i)) {
           record(diagnostics, "assume_argument", e.stmt);
           unencodable = true;
         } else {
-          s.add(value != 0);
+          guard = value != 0;
         }
       } else {
         record(diagnostics, "assume_statement", e.stmt);
         unencodable = true;
       }
+      if (static_cast< bool >(guard)) {
+        guard = guard.simplify();
+        if (guard.is_false()) {record(diagnostics, "constant_guard_unsat", e.stmt); return false;}
+        s.add(guard);
+      }
     }
+    return true;
   };
-  assumptions(startup, cache_init, "value_init_");
-  assumptions(pathA, cache_a, "value_a_");
-  assumptions(pathB, cache_b, "value_b_");
+  if (!assumptions(startup, cache_init, "value_init_") ||
+      !assumptions(pathA, cache_a, "value_a_") ||
+      !assumptions(pathB, cache_b, "value_b_")) return false;
 
   // Executed pointer definitions must select the same global object, even
   // when the checker's may-points-to sets contain several objects.

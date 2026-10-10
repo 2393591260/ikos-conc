@@ -37,6 +37,8 @@ def main(args):
                 assert counts['sc_same_path_read_from'] > 0, (source.name, bits, counts)
             if source.stem == 'other-writer-race':
                 assert counts['sc_read_from'] > 0, (source.name, bits, counts)
+            if source.stem in ('counter-race', 'completed-counter-race'):
+                assert counts['constant_guard_unsat'] > 0, (source.name, bits, counts)
             rows.append(dict(case=source.stem, bits=bits, verdict=verdict, counts=dict(counts)))
             print(source.stem, bits, verdict, flush=True)
     (args.output / 'summary.json').write_text(json.dumps(rows, indent=2)+'\n')
