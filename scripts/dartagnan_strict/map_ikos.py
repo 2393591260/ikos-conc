@@ -282,7 +282,17 @@ def translate(replay, ir_hash, ir_events):
                 continue
             token = 'load(' if kind == 'load' else 'store('
             matches = [e for e in ir_events if e['thread'] == threads[name] and same_source(ar, e)
-                       and token in e['code'] and re.search(r'\b' + re.escape(obj['id']) + r'\b', e['code'])]
+                       and token in e['code']]
+            named = [e for e in matches if re.search(r'\b' + re.escape(obj['id']) + r'\b', e['code'])]
+            if named:
+                matches = named
+            else:
+                # Indirect addresses need not print the object's name. Only a
+                # unique static source site may fall back to the SMT address claim.
+                sites = [sid for sid, stmt in instructions.items()
+                         if stmt['kind'] == kind and same_source(stmt, ar)]
+                if sites != [step['statement']]:
+                    matches = []
             if not matches:
                 omitted.append(dict(trace=name, step=index, kind=kind, reason='ambiguous/unmapped memory event'))
                 continue
