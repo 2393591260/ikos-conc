@@ -3,6 +3,7 @@
 > 本文描述当前实现、证据前提和能力边界；读过源码或测试通过不等于获得完整 soundness 证明。
 > 最新 UNKNOWN 全量遍历及基线见 [逐任务恢复报告](ikos-bmc-unknown-sweep-2026-10-09.md)。
 > 当前冻结集回归：TP=78（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=254 / 错误=0。
+> 有限global候选集交给实际地址编码，稳定恢复对象选择用例；全量77/78有波动，lu全量回退而隔离旧/新均FALSE，暂不声称净增长或速度收益，见[对象选择报告](ikos-bmc-global-choice-2026-10-10.md)。
 > 创建过滤的动态父实例漏报已修复，见[实例审查](ikos-creation-instance-audit-2026-10-10.md)；其中全量+1在隔离旧/新二进制都可复现，不归因于补丁。
 > TLS假对象FP及假共同锁FN已修复，见[TLS审查](ikos-tls-identity-audit-2026-10-10.md)。同入口线程的堆/栈锁摘要身份FN也已修复，见[分配身份审查](ikos-lock-allocation-identity-2026-10-10.md)；尚不能宣称全部正确性问题已清零。
 > 已映射顺序的全部95候选检查见[顺序报告](ikos-bmc-schedule-validation-2026-10-10.md)，隐式初始rf增量见[初始读源](ikos-bmc-initial-rf-2026-10-10.md)，仍是部分模型验证。

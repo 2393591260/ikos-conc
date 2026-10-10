@@ -748,9 +748,8 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   assumptions(pathA, cache_a, "value_a_");
   assumptions(pathB, cache_b, "value_b_");
 
-  // SMT 同址门：两个访问必须在同一 base 上字节范围重叠。base 相同由 checker 的
-  // same_global 门保证，这里判范围重叠；base 不同或提取失败（base==0）则不确认
-  // （保持 UNKNOWN）。
+  // Executed pointer definitions must select the same global object, even
+  // when the checker's may-points-to sets contain several objects.
   {
     const BmcEvent& ea = pathA[targetA];
     const BmcEvent& eb = pathB[targetB];

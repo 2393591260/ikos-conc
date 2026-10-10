@@ -1,0 +1,645 @@
+{
+  "before_behavior_commit": "d18e9cf",
+  "before_sha256": "f45ac6d51ab93b223aa720e609e938981cefecdd33915b43d76a85aa7d816918",
+  "after_sha256": "7be155c9c751e9364422057a998ae3fa52a1e866443112bae42c75ecf4f51efb",
+  "runs": [
+    {
+      "run": "global-choice-final-full",
+      "matrix": {
+        "TP": 77,
+        "FP": 0,
+        "TN": 697,
+        "FN": 0,
+        "unknown": 255,
+        "error": 0
+      },
+      "transitions": [
+        {
+          "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_10-equ_rc.c",
+          "expected": "Race Found",
+          "before": "Unknown",
+          "after": "Race Found"
+        },
+        {
+          "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/11_fmaxsymopt-race.i",
+          "expected": "Race Found",
+          "before": "Race Found",
+          "after": "Unknown"
+        },
+        {
+          "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/23_lu-fig2.fixed.i",
+          "expected": "Race Found",
+          "before": "Race Found",
+          "after": "Unknown"
+        }
+      ]
+    },
+    {
+      "run": "global-choice-final-full-repeat",
+      "matrix": {
+        "TP": 78,
+        "FP": 0,
+        "TN": 697,
+        "FN": 0,
+        "unknown": 254,
+        "error": 0
+      },
+      "transitions": [
+        {
+          "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_10-equ_rc.c",
+          "expected": "Race Found",
+          "before": "Unknown",
+          "after": "Race Found"
+        },
+        {
+          "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/23_lu-fig2.fixed.i",
+          "expected": "Race Found",
+          "before": "Race Found",
+          "after": "Unknown"
+        }
+      ]
+    }
+  ],
+  "before_fixtures": [
+    {
+      "case": "choice-race",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "choice-race",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "disjoint-control",
+      "bits": 32,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "disjoint-control",
+      "bits": 64,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "guard-control",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "guard-control",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "helper-race",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "helper-race",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "instances-race",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "instances-race",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "mutex-control",
+      "bits": 32,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "mutex-control",
+      "bits": 64,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "overlapping-race",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "overlapping-race",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "shared-pointer-unsupported",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "shared-pointer-unsupported",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    }
+  ],
+  "after_fixtures": [
+    {
+      "case": "choice-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "choice-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "disjoint-control",
+      "bits": 32,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "disjoint-control",
+      "bits": 64,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "guard-control",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "guard-control",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "helper-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "helper-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "instances-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "instances-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "mutex-control",
+      "bits": 32,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "mutex-control",
+      "bits": 64,
+      "verdict": "The program is SAFE"
+    },
+    {
+      "case": "overlapping-race",
+      "bits": 32,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "overlapping-race",
+      "bits": 64,
+      "verdict": "The program is definitely UNSAFE"
+    },
+    {
+      "case": "shared-pointer-unsupported",
+      "bits": 32,
+      "verdict": "The program is potentially UNSAFE"
+    },
+    {
+      "case": "shared-pointer-unsupported",
+      "bits": 64,
+      "verdict": "The program is potentially UNSAFE"
+    }
+  ],
+  "reference": [
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.2788733690001663,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/choice-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "d9ca2a5839629680ebf384cc280dbcb3135a176a2aff3d8fdb2d0c30f2d23c9a",
+      "data_model": "32",
+      "case": "choice-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.1857879199999388,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/choice-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "d9ca2a5839629680ebf384cc280dbcb3135a176a2aff3d8fdb2d0c30f2d23c9a",
+      "data_model": "64",
+      "case": "choice-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.159559188000003,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/disjoint-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "cfe1d6955c33b573763a60fc476545dbb891a5950320a42a7b1a6fe83d5c2392",
+      "data_model": "32",
+      "case": "disjoint-control",
+      "native_result": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.1615515250000499,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/disjoint-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "cfe1d6955c33b573763a60fc476545dbb891a5950320a42a7b1a6fe83d5c2392",
+      "data_model": "64",
+      "case": "disjoint-control",
+      "native_result": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.2053601539998908,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/guard-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "4bd735be87d8938e3091eb38ed9196e8dbddfcf0f1f520e3c491cc4c18a688e2",
+      "data_model": "32",
+      "case": "guard-control",
+      "native_result": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.1761523229999966,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/guard-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "4bd735be87d8938e3091eb38ed9196e8dbddfcf0f1f520e3c491cc4c18a688e2",
+      "data_model": "64",
+      "case": "guard-control",
+      "native_result": "PASS"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.1429236050000782,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/helper-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "70936b51467d36f5569032c5158edd8f6d4ad5ff3b01a3fa09f393539769b05a",
+      "data_model": "32",
+      "case": "helper-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.1620271550000325,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/helper-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "70936b51467d36f5569032c5158edd8f6d4ad5ff3b01a3fa09f393539769b05a",
+      "data_model": "64",
+      "case": "helper-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.1619797569999264,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/instances-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "1655e99764c176ab937d0fbd365541080764e33d73f7ede0e1f1aabeac9580bd",
+      "data_model": "32",
+      "case": "instances-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.1519843659998514,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/instances-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "1655e99764c176ab937d0fbd365541080764e33d73f7ede0e1f1aabeac9580bd",
+      "data_model": "64",
+      "case": "instances-race",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.2220326269998623,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/mutex-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "c895e2c56086fcb6004a3e99c1a4c4018323c9b922540b3e5ce06ab4547ea980",
+      "data_model": "32",
+      "case": "mutex-control",
+      "native_result": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.2255296309999721,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/mutex-control.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "c895e2c56086fcb6004a3e99c1a4c4018323c9b922540b3e5ce06ab4547ea980",
+      "data_model": "64",
+      "case": "mutex-control",
+      "native_result": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.1805113479999818,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/overlapping-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "879664a8984ecddcfc125e0d22a383f314dbf343c317a9ca07a06f61a81cee5e",
+      "data_model": "32",
+      "case": "overlapping-race",
+      "native_result": "PASS"
+    },
+    {
+      "status": "OTHER",
+      "returncode": 0,
+      "seconds": 1.2157063419999758,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/overlapping-race.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "879664a8984ecddcfc125e0d22a383f314dbf343c317a9ca07a06f61a81cee5e",
+      "data_model": "64",
+      "case": "overlapping-race",
+      "native_result": "PASS"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.1412340680001307,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/shared-pointer-unsupported.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "8f2891313a2b9888a22183d05d5073d218d995bb674e8c49cc5a830eb635bf24",
+      "data_model": "32",
+      "case": "shared-pointer-unsupported",
+      "native_result": "FAIL"
+    },
+    {
+      "status": "SOURCE_RACE",
+      "returncode": 13,
+      "seconds": 1.1463914040000418,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-cp",
+        "/tmp/ikos-recovery-2026-10-10/initial-calibration/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/global-choice/shared-pointer-unsupported.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=2",
+        "--program.processing.skipAssertionsOfType=USER"
+      ],
+      "source_sha256": "8f2891313a2b9888a22183d05d5073d218d995bb674e8c49cc5a830eb635bf24",
+      "data_model": "64",
+      "case": "shared-pointer-unsupported",
+      "native_result": "FAIL"
+    }
+  ],
+  "strict_evidence": "docs/artifacts/bmc-indirect-address-2026-10-10/",
+  "isolated_old_new": [
+    {
+      "rep": 0,
+      "case": "11_fmaxsymopt-race",
+      "mode": "before",
+      "verdict": "The program is definitely UNSAFE",
+      "rc": 0
+    },
+    {
+      "rep": 0,
+      "case": "11_fmaxsymopt-race",
+      "mode": "after",
+      "verdict": "The program is definitely UNSAFE",
+      "rc": 0
+    },
+    {
+      "rep": 0,
+      "case": "23_lu-fig2.fixed",
+      "mode": "before",
+      "verdict": "The program is definitely UNSAFE",
+      "rc": 0
+    },
+    {
+      "rep": 0,
+      "case": "23_lu-fig2.fixed",
+      "mode": "after",
+      "verdict": "The program is definitely UNSAFE",
+      "rc": 0
+    },
+    {
+      "rep": 1,
+      "case": "11_fmaxsymopt-race",
+      "mode": "before",
+      "verdict": "The program is definitely UNSAFE",
+      "rc": 0
+    },
+    {
+      "rep": 1,
+      "case": "11_fmaxsymopt-race",
+      "mode": "after",
+      "verdict": "The program is definitely UNSAFE",
+      "rc": 0
+    },
+    {
+      "rep": 1,
+      "case": "23_lu-fig2.fixed",
+      "mode": "before",
+      "verdict": "The program is definitely UNSAFE",
+      "rc": 0
+    },
+    {
+      "rep": 1,
+      "case": "23_lu-fig2.fixed",
+      "mode": "after",
+      "verdict": "The program is definitely UNSAFE",
+      "rc": 0
+    }
+  ],
+  "isolated_old_behavior_commit": "105b986",
+  "isolated_note": "Old saved binary predates allocation lock gate; changed benchmark uses only global locks, so that gate has no effect. Not an exact d18e9cf timing A/B.",
+  "p0_checks": 20,
+  "allocation_checks": 20,
+  "full_counterexample_validated": false
+}

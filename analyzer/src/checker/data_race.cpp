@@ -1367,13 +1367,22 @@ DataRaceChecker::~DataRaceChecker() {
       bool same_global = false;
       bool singleton = a.pts.is_set() && a.pts.size() == 1 &&
                        b.pts.is_set() && b.pts.size() == 1;
-      gate(!singleton, "points_to_not_singleton");
+      auto globals_only = [](const PointsToSet& pts) {
+        return pts.is_set() && !pts.is_empty() &&
+               std::all_of(pts.begin(), pts.end(), [](MemoryLocation* location) {
+                 return isa< GlobalMemoryLocation >(location);
+               });
+      };
+      bool global_candidates = globals_only(a.pts) && globals_only(b.pts);
+      // May-alias sets only select candidates; executed definitions and the
+      // encoder's same-base/overlap checks establish the actual object.
+      gate(!singleton && !global_candidates, "points_to_not_singleton");
+      gate(!global_candidates, "non_global_object");
       if (singleton) {
         MemoryLocation* ma = *a.pts.begin();
         MemoryLocation* mb = *b.pts.begin();
         bool global = isa< GlobalMemoryLocation >(ma) &&
                       isa< GlobalMemoryLocation >(mb);
-        gate(!global, "non_global_object");
         same_global = global &&
                       core::IndexableTraits< MemoryLocation* >::index(ma) ==
                           core::IndexableTraits< MemoryLocation* >::index(mb);
