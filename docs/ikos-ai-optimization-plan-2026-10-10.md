@@ -998,7 +998,7 @@ UNKNOWN，未伪造竞争确认；有限集合零FN不是全部SAFE的证明。b
 [全量配对](artifacts/ai-p0-2026-10-10/ptrbytes/paired.json)。
 
 
-### 9.21 当前 Goblint 对照池更新
+### 9.21 简化配置 Goblint 对照池（历史，已由§9.23更新）
 
 `e440a19`基线实际有140个safe-label UNKNOWN，已全部重新运行固定Goblint校准二进制，
 没有复用旧结果。ILP32、每项30秒、4并发：TRUE18、UNKNOWN59、UNSUPPORTED60、ERROR2、
@@ -1043,3 +1043,47 @@ conditionals 的 UNKNOWN→SAFE，未静默替换其他成功任务。有限零F
 [40次用例](artifacts/ai-precision-2026-10-11/atomic-prefix/fixtures-after.json)、
 [API合同](artifacts/ai-precision-2026-10-11/atomic-prefix/contracts.json)、
 [参考输出](artifacts/ai-precision-2026-10-11/atomic-prefix/reference.json)。
+
+
+### 9.23 官方 Goblint portfolio 校准与后续入口（2026-10-11）
+
+核实父目录原 binary、隔离校准 binary 和官方
+[2027训练表](https://sv-comp.sosy-lab.org/2027/results/results-verified/C.no-data-race.Concurrency.table.html)
+均为 `tags/svcomp26-0-gbb55b70d9`（源码commit `bb55b70d91290992629ba3d073185c10cdf356e6`）。
+官方结果XML记录选项 `--portfolio-conf conf/svcomp26/seq.txt`、900秒、3000MB、1核，
+1030任务的TRUE/TN为714、FALSE/TP为0；不是官网已经切换了一个新的 svcomp27 算法。
+官网比本地1029清单多一个 `safestack_relacy_racy.i`，它为UNKNOWN；公共任务名/标签一致。
+未逐一比较官网下载输入内容，也未在本地按官方资源全量复现714。
+
+此前§9.21的18个TRUE只覆盖IKOS的140个safe-label UNKNOWN，且使用 `ldv-races.json`，
+不是Goblint全量TN，也不是其官方配置的能力上限。本轮重新运行全部140项，source hash
+与旧池逐项一致，并增加YAML hash、模型与原生判定记录。使用同一校准binary和上游runner，
+仅将六阶段配置文件路径改成绝对路径，隔离任务工作目录；每项60秒、4并发。
+结果为正常TRUE46、UNKNOWN25、UNSUPPORTED33、TIMEOUT34、ERROR2。
+原生TRUE共63，但其中17项含Unsound，不能直接作为参考安全证明。超时的历史unknown输出
+也不能当成该次最终完成的UNKNOWN；未发现runner停止None却沿用上一阶段判定的误统计。
+这是本地参考池校准，时限和资源仍与官方不同。
+
+§9.22已经恢复其中一个atomic用例，因此当前139个safe-label UNKNOWN的参考分布为：
+**正常TRUE45 / UNKNOWN25 / UNSUPPORTED33 / TIMEOUT34 / ERROR2**。
+45个TRUE仅表示可以继续核对源码的入口，没有承诺45个都能移植成TN。
+台账的research_area是阅读路线假设，不是已经核实的根因或“IKOS不能实现”结论：
+条件数据/锁对应7、escape/region16、protected值不变量2、条件锁2、句柄/实例join4、
+container指针/锁对应7、condition/helper控制流1、库buffer/发布2、transitive join2、
+atomic/thread-local覆盖2。
+
+本轮开始具体研究全局句柄：最小程序 `create(&handle); join(handle); data=2` 在两个ABI
+均为UNKNOWN，Goblint官方portfolio均正常TRUE，Dartagnan固定引擎均PASS（有界PASS
+只是对照，不当作无界证明）。调试输出显示静态初始化0发布到整数干扰board；create的
+site token只写本地memory，后续global load合并0而丢失单例，报告中joined_threads为空。
+LDV join文件还涉及条件创建、helper返回、retval等，不能把此最小观察声称为所有文件的唯一根因。
+后续须区分初始化和真正并发写，覆盖所有handle写来源（包括join输出别名、字节/未知写），
+保留本地alternative，尊重宽度/offset/实例唯一性；不能重新用区间端点生成MUST join。
+此诊断尚未实现恢复规则。
+
+证据：[参考池汇总](artifacts/ai-precision-2026-10-11/goblint-portfolio/summary.json)、
+[全部140项](artifacts/ai-precision-2026-10-11/goblint-portfolio/results.json)、
+[句柄最小输入](artifacts/ai-precision-2026-10-11/goblint-portfolio/pending-global-handle.c)、
+[实际观测与义务](artifacts/ai-precision-2026-10-11/goblint-portfolio/pending-global-handle.json)、
+[双ABI参考](artifacts/ai-precision-2026-10-11/goblint-portfolio/pending-global-handle-reference.json)。
+原始日志/DB留在临时目录，不纳入Git。

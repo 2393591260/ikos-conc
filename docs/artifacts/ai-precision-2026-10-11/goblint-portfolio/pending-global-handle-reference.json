@@ -1,0 +1,78 @@
+[
+  {
+    "tool": "Goblint",
+    "bits": 32,
+    "command": [
+      "python3",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/scripts/sv-comp/goblint_runner.py",
+      "--portfolio-conf",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-official-portfolio/seq-absolute.txt",
+      "--sets",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--sets",
+      "exp.architecture",
+      "32bit",
+      "/home/ruan/ikos-conc/docs/artifacts/ai-precision-2026-10-11/goblint-portfolio/pending-global-handle.c"
+    ],
+    "returncode": 0,
+    "output": "\u001b[0;33m[Warning] --sets is deprecated, use --set instead.\u001b[0;0;00m\n\u001b[0;33m[Warning] --sets is deprecated, use --set instead.\u001b[0;0;00m\n[Info] Specification: CHECK( init(main()), LTL(G ! data-race) ) -> enabling soundness analyses: \"access, race\"\n[Info] Enabled widening thresholds\n[Info] SV-COMP specification: CHECK( init(main()), LTL(G ! data-race) )\n[Info][Deadcode] Logical lines of code (LLoC) summary:\n  live: 2\n  dead: 0\n  total lines: 2\nSV-COMP result: true\n[Info][Witness] witness generation summary:\n  location invariants: 0\n  loop invariants: 0\n  flow-insensitive invariants: 0\n  total generation entries: 2\n[Info][Race] Memory locations race summary:\n  safe: 2\n  vulnerable: 0\n  unsafe: 0\n  total memory locations: 2\n\n[Info][goblintrunner] Loaded goblint configs: --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/common.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/verify.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/level00.json, --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/common.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/verify.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/level01.json, --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/common.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/verify.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/level02.json, --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/common.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/verify.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/level03.json, --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/common.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/verify.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/level04.json, --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/common.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/verify.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/level05.json\n[Info][goblintrunner] Starting config [0]\n[Info][goblintrunner] Config details: ./goblint --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/common.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/verify.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/level00.json --sets ana.specification /home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp --sets exp.architecture 32bit /home/ruan/ikos-conc/docs/artifacts/ai-precision-2026-10-11/goblint-portfolio/pending-global-handle.c\n[Info][goblintrunner] Stopping portfolio sequence with verdict [true] after config [0]\n"
+  },
+  {
+    "tool": "Goblint",
+    "bits": 64,
+    "command": [
+      "python3",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/scripts/sv-comp/goblint_runner.py",
+      "--portfolio-conf",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-official-portfolio/seq-absolute.txt",
+      "--sets",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--sets",
+      "exp.architecture",
+      "64bit",
+      "/home/ruan/ikos-conc/docs/artifacts/ai-precision-2026-10-11/goblint-portfolio/pending-global-handle.c"
+    ],
+    "returncode": 0,
+    "output": "\u001b[0;33m[Warning] --sets is deprecated, use --set instead.\u001b[0;0;00m\n\u001b[0;33m[Warning] --sets is deprecated, use --set instead.\u001b[0;0;00m\n[Info] Specification: CHECK( init(main()), LTL(G ! data-race) ) -> enabling soundness analyses: \"access, race\"\n[Info] Enabled widening thresholds\n[Info] SV-COMP specification: CHECK( init(main()), LTL(G ! data-race) )\n[Info][Deadcode] Logical lines of code (LLoC) summary:\n  live: 2\n  dead: 0\n  total lines: 2\nSV-COMP result: true\n[Info][Witness] witness generation summary:\n  location invariants: 0\n  loop invariants: 0\n  flow-insensitive invariants: 0\n  total generation entries: 2\n[Info][Race] Memory locations race summary:\n  safe: 2\n  vulnerable: 0\n  unsafe: 0\n  total memory locations: 2\n\n[Info][goblintrunner] Loaded goblint configs: --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/common.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/verify.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/level00.json, --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/common.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/verify.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/level01.json, --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/common.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/verify.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/level02.json, --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/common.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/verify.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/level03.json, --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/common.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/verify.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/level04.json, --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/common.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/verify.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/level05.json\n[Info][goblintrunner] Starting config [0]\n[Info][goblintrunner] Config details: ./goblint --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/common.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/verify.json --conf /tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/conf/svcomp26/level00.json --sets ana.specification /home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp --sets exp.architecture 64bit /home/ruan/ikos-conc/docs/artifacts/ai-precision-2026-10-11/goblint-portfolio/pending-global-handle.c\n[Info][goblintrunner] Stopping portfolio sequence with verdict [true] after config [0]\n"
+  },
+  {
+    "tool": "Dartagnan",
+    "bits": 32,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/artifacts/ai-precision-2026-10-11/goblint-portfolio/pending-global-handle.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "returncode": 0,
+    "output": "Test: /home/ruan/ikos-conc/docs/artifacts/ai-precision-2026-10-11/goblint-portfolio/pending-global-handle.c\nResult: PASS\nTime: 0.680 secs\n"
+  },
+  {
+    "tool": "Dartagnan",
+    "bits": 64,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/home/ruan/ikos-conc/docs/artifacts/ai-precision-2026-10-11/goblint-portfolio/pending-global-handle.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "returncode": 0,
+    "output": "Test: /home/ruan/ikos-conc/docs/artifacts/ai-precision-2026-10-11/goblint-portfolio/pending-global-handle.c\nResult: PASS\nTime: 0.639 secs\n"
+  }
+]

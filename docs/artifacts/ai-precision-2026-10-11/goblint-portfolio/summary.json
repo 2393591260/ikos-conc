@@ -1,0 +1,72 @@
+{
+  "seed_outcomes": {
+    "UNSUPPORTED": 33,
+    "TRUE": 46,
+    "UNKNOWN": 25,
+    "TIMEOUT": 34,
+    "ERROR": 2
+  },
+  "current_outcomes": {
+    "UNSUPPORTED": 33,
+    "TRUE": 45,
+    "UNKNOWN": 25,
+    "TIMEOUT": 34,
+    "ERROR": 2
+  },
+  "current_areas": {
+    "conditional_mutex_correspondence": 7,
+    "escape_closure_and_regions": 16,
+    "protected_shared_value_invariants": 2,
+    "conditional_mutex_acquisition_release": 2,
+    "handle_provenance_and_instance_joins": 4,
+    "container_pointer_and_mutex_correspondence": 7,
+    "condition_wait_and_helper_control_flow": 1,
+    "library_buffer_effects_and_ordered_publication": 2,
+    "transitive_join_and_shared_pointer_values": 2,
+    "atomic_coverage_and_thread_local_accesses": 2
+  },
+  "raw_verdicts": {
+    "true": 63,
+    "unknown": 75,
+    "None": 2
+  },
+  "official_header": {
+    "benchmarkname": "goblint",
+    "date": "2026-03-25 22:32:10 CET",
+    "starttime": "2026-03-25T22:34:07.147788+01:00",
+    "tool": "Goblint",
+    "version": "tags/svcomp26-0-gbb55b70d9",
+    "toolmodule": "benchexec.tools.goblint",
+    "generator": "BenchExec 3.35-dev",
+    "displayName": "Goblint",
+    "memlimit": "3000000000B",
+    "timelimit": "900s",
+    "cpuCores": "1",
+    "options": "--portfolio-conf conf/svcomp26/seq.txt",
+    "block": "C.no-data-race.Concurrency",
+    "name": "SV-COMP27_no-data-race.C.no-data-race.Concurrency",
+    "endtime": "2026-03-26T10:32:12.775737+01:00"
+  },
+  "official_tasks": 1030,
+  "official_TN": 714,
+  "local_tasks": 1029,
+  "official_only": [
+    "c/pthread-complex/safestack_relacy_racy.i"
+  ],
+  "local_only": [],
+  "official_on_seed": {
+    "true": 63,
+    "unknown": 44,
+    "TIMEOUT": 26,
+    "OUT OF MEMORY": 5,
+    "EXCEPTION (Cilfacade.TypeOfError)": 2
+  },
+  "current_reference_TRUE": 45,
+  "all_input_hashes_match_previous_pool": true,
+  "full_corpus_reproduction": false,
+  "notes": [
+    "Budget is 60 seconds locally versus 900 seconds in official table; no claim to reproduce official full TN=714.",
+    "Any Unsound diagnostic blocks using TRUE as a safety reference; official TRUE labels can coexist with such diagnostics.",
+    "Areas are initial reading routes; only atomic body restoration is implemented in this phase."
+  ]
+}

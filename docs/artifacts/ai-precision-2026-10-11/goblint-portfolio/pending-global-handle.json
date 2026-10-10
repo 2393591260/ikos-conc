@@ -1,0 +1,224 @@
+{
+  "source_sha256": "3204ae861f6487b0cbae1e61b12edd16663e279408efbfa9b449582c876ab433",
+  "analyzer_commit": "7b11c3d",
+  "data_model": "ILP32",
+  "mode": "AI + demote",
+  "verdict": "The program is potentially UNSAFE",
+  "reports": [
+    {
+      "kind": 40,
+      "status": 1,
+      "statement_id": 0,
+      "call_context_ids": [
+        0
+      ],
+      "operands": null,
+      "info": {
+        "memory_location": "GlobalMemoryLocation{@data}",
+        "access_a": {
+          "thread_id": "main",
+          "kind": 1,
+          "locks": [],
+          "joined_threads": [],
+          "unique_thread": true,
+          "line": 4,
+          "column": 79,
+          "file": "join.c",
+          "points_to": [
+            "GlobalMemoryLocation{@data}"
+          ]
+        },
+        "access_b": {
+          "thread_id": "work",
+          "kind": 1,
+          "locks": [],
+          "joined_threads": [],
+          "unique_thread": true,
+          "line": 3,
+          "column": 34,
+          "file": "join.c",
+          "points_to": [
+            "GlobalMemoryLocation{@data}"
+          ]
+        },
+        "conflicting_accesses": [
+          {
+            "pair_id": 0,
+            "access_a": {
+              "thread_id": "main",
+              "kind": 1,
+              "locks": [],
+              "joined_threads": [],
+              "unique_thread": true,
+              "line": 4,
+              "column": 79,
+              "file": "join.c",
+              "points_to": [
+                "GlobalMemoryLocation{@data}"
+              ]
+            },
+            "access_b": {
+              "thread_id": "work",
+              "kind": 1,
+              "locks": [],
+              "joined_threads": [],
+              "unique_thread": true,
+              "line": 3,
+              "column": 34,
+              "file": "join.c",
+              "points_to": [
+                "GlobalMemoryLocation{@data}"
+              ]
+            }
+          }
+        ],
+        "num_pairs": 1,
+        "unique_lockset_intersection": "empty",
+        "thread_creations": [
+          {
+            "line": 4,
+            "column": 17,
+            "file": "join.c",
+            "thread_function": "work",
+            "creator": "main"
+          }
+        ],
+        "bmc_result": {
+          "status": "NOT_SEARCHED",
+          "observed": [
+            "NOT_SEARCHED"
+          ],
+          "metrics": {
+            "path_queries": 0,
+            "prefix_events": 0,
+            "solver_queries": 0,
+            "assertions": 0,
+            "solver_us": 0,
+            "evidence_us": 0,
+            "ai_bounds": 0,
+            "ai_no_wrap": 0
+          },
+          "validation_status": "NO_COUNTEREXAMPLE"
+        }
+      }
+    }
+  ],
+  "observations": [
+    "[Strict Flush] Deferred unlocked write to global: handle (val_interval=[0, 0])"
+  ],
+  "source_locations": {
+    "creation": "concurrent_semantics.hpp::exec_pthread_create",
+    "global_read_interference": "concurrent_semantics.hpp::on_load_integer_interference",
+    "initialization_summary": "on_store_privatize -> record_privatized_write"
+  },
+  "diagnosis": "Static initialization publishes 0 into the same integer interference board. pthread_create stores a site token only in local memory; the later global handle load joins the static 0 and loses its singleton. The candidate has no joined_threads. This is one observed precision loss, not proof of the only blocker in every LDV join task.",
+  "required_premises": [
+    "Separate initialization from actual concurrent writes; preserve local alternatives.",
+    "Complete provenance for every handle write, including raw/byte stores, join output aliasing and unknown calls; unsupported origins must retain UNKNOWN.",
+    "Respect machine width/offset, dynamic instance uniqueness, conditional creation and possible multiple creators.",
+    "MUST completion must hold for every possible valid handle target; never restore an arbitrary interval endpoint."
+  ],
+  "implementation_status": "NOT_IMPLEMENTED",
+  "LP64_observation": {
+    "verdict": "The program is potentially UNSAFE",
+    "reports": [
+      {
+        "kind": 40,
+        "status": 1,
+        "statement_id": 0,
+        "call_context_ids": [
+          0
+        ],
+        "operands": null,
+        "info": {
+          "memory_location": "GlobalMemoryLocation{@data}",
+          "access_a": {
+            "thread_id": "main",
+            "kind": 1,
+            "locks": [],
+            "joined_threads": [],
+            "unique_thread": true,
+            "line": 4,
+            "column": 79,
+            "file": "pending-global-handle.c",
+            "points_to": [
+              "GlobalMemoryLocation{@data}"
+            ]
+          },
+          "access_b": {
+            "thread_id": "work",
+            "kind": 1,
+            "locks": [],
+            "joined_threads": [],
+            "unique_thread": true,
+            "line": 3,
+            "column": 34,
+            "file": "pending-global-handle.c",
+            "points_to": [
+              "GlobalMemoryLocation{@data}"
+            ]
+          },
+          "conflicting_accesses": [
+            {
+              "pair_id": 0,
+              "access_a": {
+                "thread_id": "main",
+                "kind": 1,
+                "locks": [],
+                "joined_threads": [],
+                "unique_thread": true,
+                "line": 4,
+                "column": 79,
+                "file": "pending-global-handle.c",
+                "points_to": [
+                  "GlobalMemoryLocation{@data}"
+                ]
+              },
+              "access_b": {
+                "thread_id": "work",
+                "kind": 1,
+                "locks": [],
+                "joined_threads": [],
+                "unique_thread": true,
+                "line": 3,
+                "column": 34,
+                "file": "pending-global-handle.c",
+                "points_to": [
+                  "GlobalMemoryLocation{@data}"
+                ]
+              }
+            }
+          ],
+          "num_pairs": 1,
+          "unique_lockset_intersection": "empty",
+          "thread_creations": [
+            {
+              "line": 4,
+              "column": 17,
+              "file": "pending-global-handle.c",
+              "thread_function": "work",
+              "creator": "main"
+            }
+          ],
+          "bmc_result": {
+            "status": "NOT_SEARCHED",
+            "observed": [
+              "NOT_SEARCHED"
+            ],
+            "metrics": {
+              "path_queries": 0,
+              "prefix_events": 0,
+              "solver_queries": 0,
+              "assertions": 0,
+              "solver_us": 0,
+              "evidence_us": 0,
+              "ai_bounds": 0,
+              "ai_no_wrap": 0
+            },
+            "validation_status": "NO_COUNTEREXAMPLE"
+          }
+        }
+      }
+    ]
+  }
+}
