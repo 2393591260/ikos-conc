@@ -1,5 +1,7 @@
 # IKOS BMC 完整设计文档（从零到 sound gate 体系）
 
+> 235项剩余UNKNOWN已逐项重新诊断，301条记录见[TP98台账](ikos-bmc-tp98-ledger-2026-10-10.md)；部分宽度干扰的SAFE漏报变体正在单独修复。
+
 > po/create已确定的main初始化写与子线程写源顺序用于简化SC公式，新增六个fib；首轮ticket-lock波动与模型验证超时完整保留，见[创建前读源](ikos-bmc-spawn-source-2026-10-10.md)。
 
 > 固定展开组内复用有来源不变性证明的false守卫，全量逐项不变；大循环已推进至SMT瓶颈，见[守卫复用](ikos-bmc-guard-cache-2026-10-10.md)。
