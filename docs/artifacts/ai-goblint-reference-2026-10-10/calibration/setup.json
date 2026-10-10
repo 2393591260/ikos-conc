@@ -1,0 +1,61 @@
+{
+  "source_commit": "bb55b70d91290992629ba3d073185c10cdf356e6",
+  "cil_opam_pin": "2e076120a039b52f174fa799e65773f3a78d383c",
+  "isolated_worktree": "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref",
+  "isolated_cil_prefix": "/tmp/ikos-ai-p0-20261010-ePqDG0/cil-prefix",
+  "binary_sha256": "d6a54c5874ff4c06e053ab70166805ce98ad715efc3dac032af0e1e0c70c7426",
+  "original_binary_sha256": "48798699f87ee0401ec2e4f21f23a6e4e740da8bc431cf58c0eb3168fc4219d6",
+  "original_machdep_sha256": "2d1dbdee6b5146f06c5df803c1fa0e62cc3cee3655c3209dc2ccc3033a49dc77",
+  "rebuilt_machdep_sha256": "c499303c6527cd485beac9fa0b5eb6302da2f20748683fd04bf4dbaa4456b530",
+  "dune_profile": "release",
+  "ocaml": "4.14.2",
+  "privatization": "protection-read",
+  "layout_assertions": 10,
+  "calibration_runs": 8,
+  "unsound_warnings": 0,
+  "commands": [
+    [
+      "opam",
+      "exec",
+      "--switch=/home/ruan/goblint-analyzer",
+      "--",
+      "dune",
+      "build",
+      "@install",
+      "-j",
+      "2"
+    ],
+    [
+      "opam",
+      "exec",
+      "--switch=/home/ruan/goblint-analyzer",
+      "--",
+      "dune",
+      "install",
+      "--prefix",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/cil-prefix",
+      "goblint-cil"
+    ],
+    [
+      "opam",
+      "exec",
+      "--switch=/home/ruan/goblint-analyzer",
+      "--",
+      "env",
+      "OCAMLPATH=/tmp/ikos-ai-p0-20261010-ePqDG0/cil-prefix/lib:/home/ruan/goblint-analyzer/_opam/lib",
+      "dune",
+      "build",
+      "--profile=release",
+      "-j",
+      "2",
+      "src/goblint.exe"
+    ]
+  ],
+  "notes": [
+    "CIL cached pinned source copied unchanged; regenerate machine definitions with available real gcc -m32. Original binary/dependency retained.",
+    "Copy compiled Goblint to worktree root as upstream make does, for runtime includes.",
+    "--writeconf writes configuration and raises Stdlib.Exit (exit 1); run analysis separately.",
+    "CIL version text is unreplaced %%VERSION_NUM%% in this cached build; use pinned source and file hashes, not that text.",
+    "Calibration establishes ABI and smoke outcomes; not complete artifact reproduction or a proof of every Goblint TRUE."
+  ]
+}

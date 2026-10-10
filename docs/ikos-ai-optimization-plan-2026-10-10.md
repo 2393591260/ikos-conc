@@ -345,7 +345,7 @@ P0 修复可能改变池子，届时重新生成基线。
 
 1. **先修 P0**，重建 IKOS AI-only/BMC 基线，当前 696 个 TN 也保留审查与反例变体。
 2. **同 ABI 跑 Goblint**，固定版本和完整有效配置。当前本地 ILP32 机器定义缺失会发 Unsound，
-   修好配置并验证类型/layout 后才用于配对；不能用 LP64 TRUE 代替 ILP32 结果。
+   指原安装二进制；现已按下述隔离构建校准，后续用新参考二进制。不能用 LP64 TRUE 代替 ILP32 结果。
 3. 对 YAML-safe / IKOS-UNKNOWN 逐项记录：Goblint TRUE、UNKNOWN、TIMEOUT、ERROR、UNSOUND/配置不支持或结论冲突。
    Goblint TRUE + Unsound 单独归类，不作为参考安全证明。
 4. 优先选 Goblint 正常 TRUE 的一个文件，写出为什么全部相关访问被排除：对象/width，
@@ -381,6 +381,17 @@ Goblint UNKNOWN 也不等于 IKOS 必然无法证明安全。可以记录为参�
 全部可做的小机制处理完，再决定是否为剩余大机制单独立项。
 
 前期完成了注释清理与该路线的文献/源码核实；digest 改造与 TN 恢复仍未实施。
+
+**2026-10-10 参考环境校准**：系统实际支持 GCC13 `-m32` 编译及执行，无需修改系统库。
+在临时目录复制原 opam 固定 CIL 源码（pin `2e076120a039b52f174fa799e65773f3a78d383c`），
+重新生成 gcc32/gcc64 机器定义、安装到独立 prefix，再用同一 Goblint commit
+`bb55b70d91290992629ba3d073185c10cdf356e6` 的 detached worktree 构建。
+原源码、二进制、安装依赖及用户文件保留。生成 gcc32=Some，实际五类 sizeof 检查在每个 ABI
+均通过：int/long/pointer/pthread_t/mutex，ILP32 为4/4/4/4/24，LP64 为4/8/8/8/40。
+共同锁 SAFE 与三类竞争 smoke 共8次，没有 Unsound；竞争时 Goblint 原生输出 UNKNOWN，
+不能称其已生成竞争 witness。完整有效配置已保存，privatization 实际为 `protection-read`。
+该校准尚不是98项/更新候选池的全量配对，也没有复现论文的大型 artifact。
+构建与哈希、机器定义和结果见[校准证据](artifacts/ai-goblint-reference-2026-10-10/calibration/setup.json)。
 
 ## 9. 实施进度与配对证据
 
