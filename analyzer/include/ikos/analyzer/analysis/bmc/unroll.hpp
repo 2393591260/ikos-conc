@@ -37,6 +37,7 @@ struct BmcEvent {
   ar::Statement* stmt = nullptr;  // 对应的 AR 语句
   ar::Function* called_function = nullptr; // Callee proven on this executed call.
   bool synthetic_atomic = false; // Boundary marker, not another source call.
+  bool synthetic_condition = false; // Wait's release/reacquire, not another call.
   bool candidate = false; // Selected dynamic access; atomic closure may follow.
   EvKind kind = EvKind::Read;
   std::uint64_t mutex = 0;  // Lock/Unlock 的锁对象语法同一性（arg0 指针）；内存事件为 0
@@ -355,6 +356,15 @@ inline bool supported_leaf_call(ar::CallBase* call) {
   if (f->name() == "pthread_mutex_init") {
     return call->num_arguments() == 2 && core::isa< ar::NullConstant >(call->argument(1));
   }
+  // Object initialization and ownership are checked on the actual prefixes.
+  if (f->name() == "pthread_cond_init" || f->name() == "pthread_cond_wait" ||
+      f->name() == "pthread_cond_signal" || f->name() == "pthread_cond_broadcast") {
+    auto* returned = core::dyn_cast< ar::IntegerType >(f->type()->return_type());
+    if (returned == nullptr || returned->bit_width() != 32 || !returned->is_signed()) return false;
+    if (f->name() == "pthread_cond_init")
+      return call->num_arguments() == 2 && core::isa< ar::NullConstant >(call->argument(1));
+    return call->num_arguments() == (f->name() == "pthread_cond_wait" ? 2u : 1u);
+  }
   return false;
 }
 
@@ -452,7 +462,7 @@ inline ar::Statement* reaching_definition(ar::InternalVariable* value,
   std::size_t begin = call == path.size() ? 0 : call + 1;
   ar::Statement* definition = nullptr;
   for (std::size_t i = begin; i < before; ++i)
-    if (!path[i].synthetic_atomic && path[i].stmt->result_or_null() == value && invocation_call(path, value->code(), i) == call) {definition = path[i].stmt; index = i;}
+    if (!path[i].synthetic_atomic && !path[i].synthetic_condition && path[i].stmt->result_or_null() == value && invocation_call(path, value->code(), i) == call) {definition = path[i].stmt; index = i;}
   return definition;
 }
 
@@ -697,6 +707,25 @@ inline bool successful_create_result(const BmcEvent& event) {
          result->is_signed() && returned->bit_width() == 32 && returned->is_signed();
 }
 
+inline bool condition_call(ar::CallBase* call) {
+  auto* function = exact_callee(call);
+  if (function == nullptr || !function->is_declaration()) return false;
+  const auto& name = function->name();
+  return (name == "pthread_cond_init" || name == "pthread_cond_wait" ||
+          name == "pthread_cond_signal" || name == "pthread_cond_broadcast") &&
+         supported_leaf_call(call);
+}
+
+inline bool successful_condition_result(const BmcEvent& event) {
+  auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+  if (call == nullptr || !condition_call(call)) return false;
+  auto* result = core::dyn_cast_or_null< ar::IntegerType >(
+      call->has_result() ? call->result()->type() : nullptr);
+  auto* returned = core::dyn_cast< ar::IntegerType >(exact_callee(call)->type()->return_type());
+  return result != nullptr && returned != nullptr && result->bit_width() == 32 &&
+         result->is_signed() && returned->bit_width() == 32 && returned->is_signed();
+}
+
 // Definedness is required even for values not used in guards/addresses.
 // This does not encode load values or establish read-from relations.
 inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
@@ -765,6 +794,7 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
     if (auto* call = core::dyn_cast< ar::CallBase >(def)) {
       if (source_nondet(call)) return true;
       if (successful_create_result(path[index])) return true;
+      if (successful_condition_result(path[index])) return true;
       auto* f = callee_on_path(call, path, index);
       if (f == nullptr || f->body_or_null() == nullptr) return false;
       for (std::size_t j = index + 1; j < before; ++j) {
@@ -781,7 +811,7 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
     return true;
   };
   for (std::size_t i = 0; i < path.size(); ++i) {
-    if (path[i].synthetic_atomic) continue;
+    if (path[i].synthetic_atomic || path[i].synthetic_condition) continue;
     auto* stmt = path[i].stmt;
     // These two marked operations are abstract bookkeeping, not source uses.
     if (abstract_initializer(stmt)) continue;

@@ -38,11 +38,109 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   const auto& startup = facts != nullptr ? facts->startup : empty_startup;
   auto* argumentA = created_argument(funcA, funcB->name() == "main" ? pathB : startup);
   auto* argumentB = created_argument(funcB, funcA->name() == "main" ? pathA : startup, funcA == funcB ? 1 : 0);
+  using ConditionId = std::pair< std::uint64_t, core::ZNumber >;
+  std::map< ConditionId, std::uint64_t > conditions;
+  std::map< ConditionId, std::pair< const void*, std::size_t > > condition_origins;
+  auto condition_address = [&](ar::CallBase* call, const auto& path, std::size_t before,
+                               ar::Function* root, ar::Value* argument, BmcEvent& address) {
+    auto* type = core::dyn_cast< ar::PointerType >(call->argument(0)->type());
+    core::ZNumber size;
+    if (type == nullptr || type->pointee()->is_opaque() ||
+        !pointer_on_path(call->argument(0), path, before, root, argument, address) ||
+        address.base == 0 || address.var_id != 0 || !memory_extent(address, size)) return false;
+    address.width = call->bundle()->data_layout().store_size_in_bytes(type->pointee()).to< std::uint64_t >();
+    auto alignment = call->bundle()->data_layout().abi_alignment(type->pointee());
+    auto* global = reinterpret_cast< ar::GlobalVariable* >(address.base);
+    return address.width != 0 && address.const_off >= 0 && address.const_off + address.width <= size &&
+           address.const_off % alignment == 0 &&
+           call->bundle()->data_layout().abi_alignment(global->type()->pointee()) >= alignment;
+  };
+  auto condition_initializers = [&](const auto& path, ar::Function* root, ar::Value* argument) {
+    bool spawned = false;
+    for (std::size_t i = 0; i < path.size(); ++i) {
+      spawned |= path[i].kind == EvKind::Create;
+      auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt);
+      if (call == nullptr || !condition_call(call) || exact_callee(call)->name() != "pthread_cond_init") continue;
+      BmcEvent address;
+      // Initialize once in main before children exist. Concurrent initialization
+      // and implicit/static initializer recognition need separate lifetime evidence.
+      if (root == nullptr || root->name() != "main" || spawned ||
+          !condition_address(call, path, i, root, argument, address)) return false;
+      for (const auto& previous : conditions)
+        if (previous.first.first == address.base &&
+            previous.first.second < address.const_off + address.width &&
+            address.const_off < previous.first.second + previous.second) return false;
+      ConditionId identity{address.base, address.const_off};
+      conditions.emplace(identity, address.width);
+      condition_origins.emplace(identity, std::make_pair(static_cast< const void* >(&path), i));
+    }
+    return true;
+  };
+  auto* main = funcA->bundle()->function_or_null("main");
+  if (!condition_initializers(startup, main, nullptr) ||
+      !condition_initializers(pathA, funcA, argumentA) ||
+      !condition_initializers(pathB, funcB, argumentB)) {
+    record(diagnostics, "condition_initialization"); return false;
+  }
+  std::map< ConditionId, ConditionId > waiting_mutexes;
+  auto condition_uses = [&](const auto& path, ar::Function* root, ar::Value* argument, bool is_startup) {
+    for (std::size_t i = 0; i < path.size(); ++i) {
+      auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt);
+      if (call == nullptr || !condition_call(call)) continue;
+      const auto& name = exact_callee(call)->name();
+      BmcEvent address;
+      if (!condition_address(call, path, i, root, argument, address)) return false;
+      auto initialized = conditions.find({address.base, address.const_off});
+      if (initialized == conditions.end() || initialized->second != address.width ||
+          (is_startup && name == "pthread_cond_wait")) return false;
+      const auto& origin = condition_origins.at(initialized->first);
+      if (origin.first == &path && i < origin.second) return false;
+      if (name == "pthread_cond_wait") {
+        BmcEvent mutex;
+        if (!pointer_on_path(call->argument(1), path, i, root, argument, mutex) ||
+            mutex.base == 0 || mutex.var_id != 0) return false;
+        ConditionId identity{mutex.base, mutex.const_off};
+        auto binding = waiting_mutexes.emplace(ConditionId{address.base, address.const_off}, identity);
+        // Concurrent waiters with different mutexes violate POSIX's dynamic binding.
+        if (binding.first->second != identity) return false;
+      }
+    }
+    return true;
+  };
+  if (!condition_uses(startup, main, nullptr, true) ||
+      !condition_uses(pathA, funcA, argumentA, false) ||
+      !condition_uses(pathB, funcB, argumentB, false)) {
+    record(diagnostics, "condition_object"); return false;
+  }
+  for (std::size_t i = 0; !conditions.empty() && i < startup.size(); ++i) {
+    const auto& event = startup[i];
+    if (event.kind != EvKind::Read && event.kind != EvKind::Write) continue;
+    auto* pointer = event.kind == EvKind::Read ? core::cast< ar::Load >(event.stmt)->operand()
+                                             : core::cast< ar::Store >(event.stmt)->pointer();
+    BmcEvent address;
+    if (!pointer_on_path(pointer, startup, i, main, nullptr, address)) return false;
+    for (const auto& condition : conditions)
+      if (address.base == condition.first.first &&
+          (address.var_id != 0 || event.width == 0 ||
+           (address.const_off < condition.first.second + condition.second &&
+            condition.first.second < address.const_off + event.width))) {
+        record(diagnostics, "condition_storage_alias", event.stmt); return false;
+      }
+  }
   std::map< std::pair< std::uint64_t, core::ZNumber >, std::uint64_t > lock_ids;
   auto prepare = [&](std::vector< BmcEvent >& path, ar::Function* root, ar::Value* argument) {
     std::set< std::uint64_t > held;
     std::uint64_t symbolic_lock = 0;
     for (std::size_t i = 0; i < path.size(); ++i) {
+      auto* wait = core::dyn_cast< ar::CallBase >(path[i].stmt);
+      if (!path[i].synthetic_condition && wait != nullptr && condition_call(wait) &&
+          exact_callee(wait)->name() == "pthread_cond_wait") {
+        // POSIX permits a spurious wake: choose a finite successful wait, with
+        // the owned mutex released and reacquired, without inventing signal HB.
+        BmcEvent release(wait, EvKind::Unlock), reacquire(wait, EvKind::Lock);
+        release.synthetic_condition = reacquire.synthetic_condition = true;
+        path.insert(path.begin() + i + 1, {release, reacquire});
+      }
       auto& event = path[i];
       ar::Value* pointer = nullptr;
       if (auto* load = core::dyn_cast< ar::Load >(event.stmt)) pointer = load->operand();
@@ -57,16 +155,18 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
         auto* call = core::cast< ar::CallBase >(event.stmt);
         BmcEvent address;
         core::ZNumber size;
-        if (call->num_arguments() != 1 ||
-            !pointer_on_path(call->argument(0), path, i, root, argument, address) ||
+        auto argument_index = event.synthetic_condition ? 1u : 0u;
+        if (call->num_arguments() != (event.synthetic_condition ? 2u : 1u) ||
+            !pointer_on_path(call->argument(argument_index), path, i, root, argument, address) ||
             address.base == 0 || !memory_extent(address, size)) {
           record(diagnostics, "mutex_identity", event.stmt); return false;
         }
         event.base = address.base; event.const_off = address.const_off;
         event.var_id = address.var_id; event.var_before = address.var_before; event.coeff = address.coeff;
-        auto* type = core::dyn_cast< ar::PointerType >(call->argument(0)->type());
+        auto* type = core::dyn_cast< ar::PointerType >(call->argument(argument_index)->type());
         if (type == nullptr || type->pointee()->is_opaque()) return false;
         event.width = call->bundle()->data_layout().store_size_in_bytes(type->pointee()).to< std::uint64_t >();
+        if (event.synthetic_condition && event.var_id != 0) return false;
         if (event.var_id == 0 && (event.const_off < 0 || event.const_off + event.width > size)) return false;
         auto id = lock_ids.emplace(std::make_pair(address.base, address.const_off), lock_ids.size() + 1);
         if (event.kind == EvKind::Lock) {
@@ -85,6 +185,16 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
           symbolic_lock = 0;
         }
       }
+      // The library's control storage is opaque here, not ordinary SC data.
+      // Explicit reads/writes aliasing it cannot be silently omitted from rf.
+      if (event.kind == EvKind::Read || event.kind == EvKind::Write)
+        for (const auto& condition : conditions)
+          if (event.base == condition.first.first &&
+              (event.var_id != 0 || event.width == 0 ||
+               (event.const_off < condition.first.second + condition.second &&
+                condition.first.second < event.const_off + event.width))) {
+            record(diagnostics, "condition_storage_alias", event.stmt); return false;
+          }
     }
     return true;
   };
@@ -502,7 +612,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       return true;
     }
     if (auto* call = core::dyn_cast_or_null< ar::CallBase >(def)) {
-      if (successful_create_result(path[definition_index])) {
+      if (successful_create_result(path[definition_index]) || successful_condition_result(path[definition_index])) {
         out = ctx.int_val(0);
         cache.emplace(key, out);
         return true;
@@ -634,6 +744,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   auto arithmetic_prefix = [&](const std::vector< BmcEvent >& path, ValueCache& cache,
                                 const std::string& prefix) {
     for (std::size_t i = 0; i < path.size(); ++i) {
+      if (path[i].synthetic_condition) continue;
       if (auto* op = core::dyn_cast< ar::BinaryOperation >(path[i].stmt)) {
         if (facts != nullptr && facts->no_wrap != nullptr) {
           auto proof = facts->no_wrap->find(op);
@@ -895,6 +1006,8 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
             JsonDict step; step.put("statement", snapshot.statement_id(path[i].stmt));
             if (path[i].synthetic_atomic)
               step.put("synthetic_event", path[i].kind == EvKind::Lock ? "atomic_begin" : "atomic_end");
+            if (path[i].synthetic_condition)
+              step.put("synthetic_event", path[i].kind == EvKind::Lock ? "condition_reacquire" : "condition_release");
             if (id != "startup") step.put("clock", Z3_get_numeral_string(ctx, model.eval(clock[start + i], true)));
             auto* result = core::dyn_cast_or_null< ar::InternalVariable >(path[i].stmt->result_or_null());
             if (result != nullptr) {
