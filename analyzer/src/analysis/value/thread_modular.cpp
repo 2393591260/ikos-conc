@@ -135,15 +135,15 @@ void ThreadModularAnalysis::run() {
   };
 
   // Thread-local semantics (Mukherjee SAS'17): materialize the cross-thread
-  // integer interference ONCE at function entry, by joining the flat
-  // `_global_board` into the thread's LOCAL invariant. This replaces the
+  // integer interference ONCE at function entry, by joining published flat
+  // and lock-partition values into the thread's LOCAL invariant. This replaces the
   // unsound per-read override (`int_set(lhs, injected)` in exec(Load)) that
   // narrowed a locally-widened global counter back to a stale singleton peek
   // and collapsed the loop exit to bottom (fib_*-racy.i FN). Joining at entry
   // is monotone (⊔), so it is sound and never narrows.
   auto materialize_globals = [&](AbstractDomain& entry_inv) {
     auto& env = _ctx.concurrent_env;
-    auto board = env.snapshot_global_board();
+    auto board = env.snapshot_global_interference();
     if (board.empty()) {
       return;
     }

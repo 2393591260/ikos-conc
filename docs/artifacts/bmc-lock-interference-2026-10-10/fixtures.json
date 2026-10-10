@@ -1,0 +1,146 @@
+[
+  {
+    "case": "guard-indirect-reader-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "constant_guard_unsat": 1,
+      "sat": 1,
+      "sc_read_from": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "guard-indirect-reader-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "constant_guard_unsat": 1,
+      "sat": 1,
+      "sc_read_from": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "guard-indirect-writer-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "constant_guard_unsat": 1,
+      "sat": 1,
+      "sc_read_from": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "guard-indirect-writer-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "constant_guard_unsat": 1,
+      "sat": 1,
+      "sc_read_from": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "guard-writer-union-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "constant_guard_unsat": 1,
+      "sat": 1,
+      "sc_read_from": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "guard-writer-union-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "constant_guard_unsat": 1,
+      "sat": 1,
+      "sc_read_from": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "no-writer-control",
+    "bits": 32,
+    "verdict": "The program is SAFE",
+    "counts": {}
+  },
+  {
+    "case": "no-writer-control",
+    "bits": 64,
+    "verdict": "The program is SAFE",
+    "counts": {}
+  },
+  {
+    "case": "protected-data-control",
+    "bits": 32,
+    "verdict": "The program is SAFE",
+    "counts": {}
+  },
+  {
+    "case": "protected-data-control",
+    "bits": 64,
+    "verdict": "The program is SAFE",
+    "counts": {}
+  },
+  {
+    "case": "renamed-helper-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "constant_guard_unsat": 1,
+      "sat": 1,
+      "sc_read_from": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "renamed-helper-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "constant_guard_unsat": 1,
+      "sat": 1,
+      "sc_read_from": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "signed-byte-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "constant_guard_unsat": 1,
+      "sat": 1,
+      "sc_read_from": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "signed-byte-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "constant_guard_unsat": 1,
+      "sat": 1,
+      "sc_read_from": 1,
+      "sc_same_path_read_from": 1
+    }
+  }
+]

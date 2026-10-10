@@ -611,14 +611,32 @@ public:
     return machine_int::Interval::top(64, Signed);
   }
 
-  /// \brief Snapshot of the flat `_global_board` (addr -> interval), for
-  /// thread-local-semantics entry materialization: the thread-modular driver
-  /// joins each entry into the thread's LOCAL invariant at function entry, so
-  /// cross-thread integer interference is visible WITHOUT a per-read override.
+  /// Published integer interference, including releases into lock partitions.
+  /// Entry materialization must cover protected writers too: keeping only the
+  /// flat board can make a shared guard permanently equal its static initializer.
   std::unordered_map< std::uint64_t, machine_int::Interval >
-  snapshot_global_board() const {
+  snapshot_global_interference() const {
     std::lock_guard< std::mutex > lock(_mutex);
-    return {_global_board.begin(), _global_board.end()};
+    std::map< std::uint64_t, std::vector< machine_int::Interval > > sources;
+    for (const auto& cell : _global_board) sources[cell.first].push_back(cell.second);
+    for (const auto& partition : _lock_partition)
+      for (const auto& cell : partition.second.intervals)
+        sources[cell.first].push_back(cell.second);
+    std::unordered_map< std::uint64_t, machine_int::Interval > result;
+    for (const auto& cell : sources) {
+      std::uint64_t width = 0;
+      Signedness sign = Unsigned;
+      for (const auto& value : cell.second) {
+        width = std::max(width, value.bit_width());
+        if (value.sign() == Signed) sign = Signed;
+      }
+      // Pick the common type before casting any source. Progressive casts
+      // could sign-extend an earlier unsigned narrow value incorrectly.
+      auto joined = machine_int::Interval::bottom(width, sign);
+      for (const auto& value : cell.second) joined.join_with(value.cast(width, sign));
+      result.emplace(cell.first, std::move(joined));
+    }
+    return result;
   }
 
   /// \brief AstréeA lock-aware read with sound signedness.
