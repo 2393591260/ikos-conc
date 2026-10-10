@@ -17,6 +17,7 @@
 #include "facts.hpp"
 #include "initial.hpp"
 #include "replay.hpp"
+#include "result.hpp"
 
 namespace ikos {
 namespace analyzer {
@@ -34,8 +35,8 @@ struct GuardRejection {
 };
 
 /// Check the selected accesses, including any necessary atomic completion.
-/// 返回 true = 确认；false = 未确认（含 UNSAT / unsupported），不是无竞争证明。
-inline bool check_race(const std::vector< BmcEvent >& inputA,
+/// Failed outcomes never establish unbounded safety; SAT retains its evidence.
+inline Result check_race(const std::vector< BmcEvent >& inputA,
                        const std::vector< BmcEvent >& inputB,
                        ar::Function* funcA, ar::Function* funcB,
                        Diagnostics* diagnostics = nullptr,
@@ -45,14 +46,14 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   auto pathA = inputA, pathB = inputB;
   if (pathA.empty() || pathB.empty()) {
     record(diagnostics, "empty_path");
-    return false;
+    return Result(Status::Unsupported);
   }
   // Static initializers are not the pre-main state when constructors execute.
   // Until their actual prefixes are retained, neither values nor activation
   // derived from main alone establish a concrete execution.
   if (funcA->bundle()->global_or_null("ar.global_ctors") != nullptr) {
     record(diagnostics, "global_constructor_prefix");
-    return false;
+    return Result(Status::Unsupported);
   }
   const std::vector< BmcEvent > empty_startup;
   const auto& startup = facts != nullptr ? facts->startup : empty_startup;
@@ -200,7 +201,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   };
   if (!attribute_lifecycle(startup, funcA->bundle()->function_or_null("main"), nullptr) ||
       !attribute_lifecycle(pathA, funcA, argumentA) || !attribute_lifecycle(pathB, funcB, argumentB)) {
-    record(diagnostics, "mutex_attribute_lifecycle"); return false;
+    record(diagnostics, "mutex_attribute_lifecycle"); return Result(Status::Unsupported);
   }
   using ConditionId = std::pair< std::uint64_t, core::ZNumber >;
   std::map< ConditionId, std::uint64_t > conditions;
@@ -244,7 +245,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   if (!condition_initializers(startup, main, nullptr) ||
       !condition_initializers(pathA, funcA, argumentA) ||
       !condition_initializers(pathB, funcB, argumentB)) {
-    record(diagnostics, "condition_initialization"); return false;
+    record(diagnostics, "condition_initialization"); return Result(Status::Unsupported);
   }
   std::map< ConditionId, ConditionId > waiting_mutexes;
   auto condition_uses = [&](const auto& path, ar::Function* root, ar::Value* argument, bool is_startup) {
@@ -279,7 +280,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   if (!condition_uses(startup, main, nullptr, true) ||
       !condition_uses(pathA, funcA, argumentA, false) ||
       !condition_uses(pathB, funcB, argumentB, false)) {
-    record(diagnostics, "condition_object"); return false;
+    record(diagnostics, "condition_object"); return Result(Status::Unsupported);
   }
   for (std::size_t i = 0; !conditions.empty() && i < startup.size(); ++i) {
     const auto& event = startup[i];
@@ -287,13 +288,13 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
     auto* pointer = event.kind == EvKind::Read ? core::cast< ar::Load >(event.stmt)->operand()
                                              : core::cast< ar::Store >(event.stmt)->pointer();
     BmcEvent address;
-    if (!pointer_on_path(pointer, startup, i, main, nullptr, address)) return false;
+    if (!pointer_on_path(pointer, startup, i, main, nullptr, address)) return Result(Status::Unsupported);
     for (const auto& condition : conditions)
       if (address.base == condition.first.first &&
           (address.var_id != 0 || event.width == 0 ||
            (address.const_off < condition.first.second + condition.second &&
             condition.first.second < address.const_off + event.width))) {
-        record(diagnostics, "condition_storage_alias", event.stmt); return false;
+        record(diagnostics, "condition_storage_alias", event.stmt); return Result(Status::Unsupported);
       }
   }
   std::map< std::pair< std::uint64_t, core::ZNumber >, std::uint64_t > lock_ids;
@@ -372,7 +373,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   if (!prepare(pathA, funcA, argumentA) || !prepare(pathB, funcB, argumentB) ||
       !prefix_values_defined(startup, diagnostics) ||
       !prefix_values_defined(pathA, diagnostics, funcA, argumentA) ||
-      !prefix_values_defined(pathB, diagnostics, funcB, argumentB)) return false;
+      !prefix_values_defined(pathB, diagnostics, funcB, argumentB)) return Result(Status::Unsupported);
 
   // Calls update handles and opaque synchronization storage without AR Stores.
   // Preserve their footprints so static initialization cannot masquerade as rf.
@@ -414,7 +415,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
     return true;
   };
   if (!library_outputs(startup, main, nullptr) || !library_outputs(pathA, funcA, argumentA) ||
-      !library_outputs(pathB, funcB, argumentB)) return false;
+      !library_outputs(pathB, funcB, argumentB)) return Result(Status::Unsupported);
   auto aliases_library = [&](const BmcEvent& access, const void* path, bool opaque_only) {
     for (const auto& storage : library_storage) {
       if (opaque_only && !storage.opaque) continue;
@@ -445,7 +446,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   for (const auto* path : data_paths)
     for (const auto& event : *path)
       if ((event.kind == EvKind::Read || event.kind == EvKind::Write) && aliases_library(event, path, true)) {
-        record(diagnostics, "opaque_library_storage", event.stmt); return false;
+        record(diagnostics, "opaque_library_storage", event.stmt); return Result(Status::Unsupported);
       }
 
   z3::context ctx;
@@ -454,7 +455,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   const std::size_t nA = pathA.size();
   const std::size_t nB = pathB.size();
   const std::size_t targetA = candidate_index(pathA), targetB = candidate_index(pathB);
-  if (targetA == nA || targetB == nB) {record(diagnostics, "candidate_missing"); return false;}
+  if (targetA == nA || targetB == nB) {record(diagnostics, "candidate_missing"); return Result(Status::Unsupported);}
 
   // clock 变量：A 的 nA 个 + B 的 nB 个。
   std::vector< z3::expr > clock;
@@ -542,14 +543,14 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
     return true;
   };
   std::vector< Section > sections_a, sections_b;
-  if (!sections(pathA, sections_a) || !sections(pathB, sections_b)) return false;
+  if (!sections(pathA, sections_a) || !sections(pathB, sections_b)) return Result(Status::Unsupported);
   auto atomic_target = [](const std::vector< Section >& sections, std::size_t target) {
     return std::any_of(sections.begin(), sections.end(), [&](const Section& section) {
       return section.mutex == PSEUDO_ATOMIC_LOCK && section.begin < target && target < section.end;
     });
   };
   const bool atomicA = atomic_target(sections_a, targetA), atomicB = atomic_target(sections_b, targetB);
-  if (atomicA && atomicB) {record(diagnostics, "atomic_pair"); return false;}
+  if (atomicA && atomicB) {record(diagnostics, "atomic_pair"); return Result(Status::BoundedUnsat);}
   auto interior = [](const auto& sections, const auto& path, std::size_t target) {
     for (const auto& section : sections) {
       if (section.mutex != PSEUDO_ATOMIC_LOCK || !(section.begin < target && target < section.end)) continue;
@@ -566,7 +567,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   // The other target is outside this indivisible interval. A mandatory barrier
   // on each side of this target prevents both adjacent orientations in our query.
   if (interior(sections_a, pathA, targetA) || interior(sections_b, pathB, targetB)) {
-    record(diagnostics, "atomic_interior_unsat"); return false;
+    record(diagnostics, "atomic_interior_unsat"); return Result(Status::BoundedUnsat);
   }
   // Only source nondet is free. Other demanded values need an executed dynamic
   // definition, exact machine arithmetic, actual arguments/returns or SC rf.
@@ -1280,12 +1281,12 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   };
   if (!assumptions(startup, cache_init, "value_init_") ||
       !assumptions(pathA, cache_a, "value_a_") ||
-      !assumptions(pathB, cache_b, "value_b_")) return false;
+      !assumptions(pathB, cache_b, "value_b_")) return Result(unencodable ? Status::Unsupported : Status::BoundedUnsat);
   // Reject impossible guards before encoding unused operations. Every retained
   // path still needs the complete trap/poison obligations, including dead results.
   if (unencodable || !arithmetic_prefix(startup, cache_init, "value_init_") ||
       !arithmetic_prefix(pathA, cache_a, "value_a_") ||
-      !arithmetic_prefix(pathB, cache_b, "value_b_")) return false;
+      !arithmetic_prefix(pathB, cache_b, "value_b_")) return Result(Status::Unsupported);
 
   // Verifier atomic blocks exclude all other threads, including accesses
   // outside atomic blocks. A mutex-only exclusion does not express this.
@@ -1310,7 +1311,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
     const bool same_heap = ea.heap_allocation != nullptr && ea.heap_allocation == eb.heap_allocation;
     if (!same_heap && (ea.base == 0 || eb.base == 0 || ea.base != eb.base)) {
       record(diagnostics, "address_base", ea.base == 0 ? ea.stmt : eb.stmt);
-      return false;
+      return Result(Status::Unsupported);
     }
     auto encode_offset = [&](const BmcEvent& e, z3::expr& out,
                              ValueCache& cache, const std::string& prefix, std::size_t before) {
@@ -1344,7 +1345,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       }
       return true;
     };
-    if (!valid_memory(pathA, cache_a, "value_a_") || !valid_memory(pathB, cache_b, "value_b_")) return false;
+    if (!valid_memory(pathA, cache_a, "value_a_") || !valid_memory(pathB, cache_b, "value_b_")) return Result(Status::Unsupported);
     auto ownership = [&](const std::vector< Section >& sections, const std::vector< BmcEvent >& path,
                          ValueCache& cache, const std::string& prefix) {
       for (const auto& section : sections) {
@@ -1359,20 +1360,20 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       return true;
     };
     if (!ownership(sections_a, pathA, cache_a, "value_a_") ||
-        !ownership(sections_b, pathB, cache_b, "value_b_")) return false;
+        !ownership(sections_b, pathB, cache_b, "value_b_")) return Result(Status::Unsupported);
     for (const auto& a : sections_a) for (const auto& b : sections_b) {
       if (a.mutex == PSEUDO_ATOMIC_LOCK || b.mutex == PSEUDO_ATOMIC_LOCK || (a.reader && b.reader)) continue;
       const auto& lock_a = pathA[a.begin]; const auto& lock_b = pathB[b.begin];
       if (lock_a.base != lock_b.base) continue;
       z3::expr address_a(ctx), address_b(ctx);
       if (!encode_offset(lock_a, address_a, cache_a, "value_a_", a.begin) ||
-          !encode_offset(lock_b, address_b, cache_b, "value_b_", b.begin)) return false;
+          !encode_offset(lock_b, address_b, cache_b, "value_b_", b.begin)) return Result(Status::Unsupported);
       z3::expr a_first = a.end < nA ? clock[a.end] < clock[nA + b.begin] : ctx.bool_val(false);
       z3::expr b_first = b.end < nB ? clock[nA + b.end] < clock[a.begin] : ctx.bool_val(false);
       s.add(address_a != address_b || a_first || b_first);
     }
     z3::expr off_a(ctx), off_b(ctx);
-    if (!encode_offset(ea, off_a, cache_a, "value_a_", targetA) || !encode_offset(eb, off_b, cache_b, "value_b_", targetB)) return false;
+    if (!encode_offset(ea, off_a, cache_a, "value_a_", targetA) || !encode_offset(eb, off_b, cache_b, "value_b_", targetB)) return Result(Status::Unsupported);
     if (facts != nullptr) {
       if (facts->bounded_a) s.add(off_a >= ctx.int_val(facts->lo_a.str().c_str()) && off_a <= ctx.int_val(facts->hi_a.str().c_str()));
       if (facts->bounded_b) s.add(off_b >= ctx.int_val(facts->lo_b.str().c_str()) && off_b <= ctx.int_val(facts->hi_b.str().c_str()));
@@ -1395,13 +1396,13 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   // 有无法编码的约束（变量值来源 / 指针 / 浮点比较）→ 保守不确认
   // （UNKNOWN），避免误报。
   if (unencodable) {
-    return false;
+    return Result(Status::Unsupported);
   }
 
   // Preserve the old query for ordinary targets. Atomic targets may have a
   // completion suffix: pure local operations and atomic markers are not hb
   // barriers. Keep memory and real synchronization between them excluded.
-  bool any = false;
+  bool solver_unknown = false;
   for (int dir = 0; dir < 2; ++dir) {
     // Each query is independent. push/pop switches Z3 to incremental solving,
     // disabling preprocessing needed by some mixed Int/BV guards.
@@ -1427,14 +1428,15 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
     record(diagnostics, result == z3::sat ? "sat" :
                         result == z3::unsat ? "smt_unsat" : "smt_unknown");
     if (result == z3::sat) {
-      any = true;
-      if (diagnostics != nullptr && diagnostics->model.empty()) {
+      Result outcome(Status::Confirmed);
+      auto& evidence = outcome.evidence;
+      {
         auto model = query.get_model();
-        diagnostics->model = model.to_string();
+        evidence.model = model.to_string();
         ReplaySnapshot snapshot(funcA->bundle());
-        diagnostics->replay.put("schema", 1);
-        diagnostics->replay.put("validation_status", "UNVALIDATED");
-        diagnostics->replay.put("program", snapshot.program());
+        evidence.replay.put("schema", 1);
+        evidence.replay.put("validation_status", "UNVALIDATED");
+        evidence.replay.put("program", snapshot.program());
         JsonList traces;
         auto export_trace = [&](const std::vector< BmcEvent >& path, const ValueCache& values,
                                 const std::string& id, ar::Function* entry, std::size_t start) {
@@ -1482,21 +1484,21 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
         if (!startup.empty()) export_trace(startup, cache_init, "startup", funcA->bundle()->function_or_null("main"), 0);
         export_trace(pathA, cache_a, "a", funcA, 0);
         export_trace(pathB, cache_b, "b", funcB, nA);
-        diagnostics->replay.put("traces", traces);
-        diagnostics->replay.put("targets", JsonList(JsonDict{{"trace", "a"}, {"step", targetA}},
+        evidence.replay.put("traces", traces);
+        evidence.replay.put("targets", JsonList(JsonDict{{"trace", "a"}, {"step", targetA}},
                                                    JsonDict{{"trace", "b"}, {"step", targetB}}));
         for (std::size_t i = 0; i < startup.size(); ++i)
-          diagnostics->confirmed_startup.push_back({startup[i].stmt, "startup_" + std::to_string(i)});
+          evidence.confirmed_startup.push_back({startup[i].stmt, "startup_" + std::to_string(i)});
         for (std::size_t i = 0; i < nA; ++i)
-          diagnostics->confirmed_a.push_back({pathA[i].stmt, Z3_get_numeral_string(ctx, model.eval(clock[i], true))});
+          evidence.confirmed_a.push_back({pathA[i].stmt, Z3_get_numeral_string(ctx, model.eval(clock[i], true))});
         for (std::size_t i = 0; i < nB; ++i)
-          diagnostics->confirmed_b.push_back({pathB[i].stmt, Z3_get_numeral_string(ctx, model.eval(clock[nA + i], true))});
+          evidence.confirmed_b.push_back({pathB[i].stmt, Z3_get_numeral_string(ctx, model.eval(clock[nA + i], true))});
       }
+      return outcome;
     }
-    // One SAT direction proves this existential query and preserves its first model.
-    if (any) return true;
+    solver_unknown |= result == z3::unknown;
   }
-  return any;
+  return Result(solver_unknown ? Status::SolverUnknown : Status::BoundedUnsat);
 }
 
 }  // namespace bmc

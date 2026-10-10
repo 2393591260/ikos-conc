@@ -166,8 +166,8 @@ struct SearchBudget {
 /// funcA/funcB = 两访问所在的线程入口函数；stmtA/stmtB = 两访问语句；
 /// widthA/widthB = 两访问的字节宽度（data_layout 的 store size，0=未知），
 /// 供 encode 阶段用字节范围重叠判同址。
-/// 返回 true = 确认竞争（报 FALSE 找回 TP）；false = 不确认（保持 UNKNOWN）。
-inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
+/// Structured bounded-search outcome; failures keep the checker inconclusive.
+inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
                          std::uint64_t widthA, ar::Function* funcB,
                          ar::Statement* stmtB, std::uint64_t widthB,
                          Diagnostics* diagnostics = nullptr,
@@ -175,6 +175,7 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
                          std::vector< ar::Statement* >* creations = nullptr,
                          const CandidateFacts* facts = nullptr,
                          unsigned loop_bound = 1) {
+  Result outcome(Status::NotSearched);
   // The actual startup and worker prefixes reject unsupported atomic memory
   // events/calls. Synchronization outside them need not be executable here.
   UnrollResult rA = unroll_to(funcA, stmtA, 1, loop_bound, true);
@@ -195,7 +196,7 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
       std::all_of(rA.paths.begin(), rA.paths.end(), atomic_access) &&
       std::all_of(rB.paths.begin(), rB.paths.end(), atomic_access)) {
     record(diagnostics, "atomic_pair");
-    return false;
+    return Result(Status::BoundedUnsat);
   }
   auto needs_completion = [&](const UnrollResult& unrolled) {
     return std::any_of(unrolled.paths.begin(), unrolled.paths.end(), atomic_access);
@@ -205,8 +206,14 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     rB = unroll_completed(funcB, stmtB, loop_bound);
     record(diagnostics, "atomic_completed_paths");
   }
-  if (rA.rejected_reason != nullptr) record(diagnostics, rA.rejected_reason, rA.rejected_statement);
-  if (rB.rejected_reason != nullptr) record(diagnostics, rB.rejected_reason, rB.rejected_statement);
+  if (rA.rejected_reason != nullptr) {
+    record(diagnostics, rA.rejected_reason, rA.rejected_statement);
+    outcome.merge(Result(Status::Unsupported));
+  }
+  if (rB.rejected_reason != nullptr) {
+    record(diagnostics, rB.rejected_reason, rB.rejected_statement);
+    outcome.merge(Result(Status::Unsupported));
+  }
   if (diagnostics != nullptr) {
     diagnostics->paths_a = rA.paths.size();
     diagnostics->paths_b = rB.paths.size();
@@ -223,6 +230,7 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   // Exhaustion leaves unexplored alternatives, not incomplete emitted prefixes.
   // Retained targets/returns still follow actual guards and atomic completion.
   if (rA.incomplete || rB.incomplete) {
+    outcome.merge(Result(Status::BudgetExceeded));
     if (rA.incomplete) {
       record(diagnostics, rA.reason != nullptr ? rA.reason : "unroll_incomplete", stmtA);
     }
@@ -231,14 +239,15 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     }
     if (budget == nullptr || !budget->probe_interrupted) {
       if (budget != nullptr && !rA.paths.empty() && !rB.paths.empty()) budget->saw_interrupted = true;
-      return false;
+      return outcome;
     }
     // Keep first-pass queries unchanged. In deferred groups, a smaller complete
     // enumeration may find short executions absent from the saturated DFS set.
     if (loop_bound >= 16) {
       record(diagnostics, "interrupted_small_bound");
-      if (confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
-                       diagnostics, budget, creations, facts, 2)) return true;
+      outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
+                                 diagnostics, budget, creations, facts, 2));
+      if (outcome.confirmed()) return outcome;
       if (diagnostics != nullptr) {
         diagnostics->paths_a = rA.paths.size();
         diagnostics->paths_b = rB.paths.size();
@@ -250,10 +259,12 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     if (loop_bound == 1) {
       auto bound = std::max(literal_loop_search_bound(funcA), literal_loop_search_bound(funcB));
       if (bound > 16) record(diagnostics, "literal_loop_search_hint");
-      return confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
-                          diagnostics, budget, creations, facts, bound);
+      outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
+                                 diagnostics, budget, creations, facts, bound));
+      return outcome;
     }
-    return false;
+    outcome.merge(Result(Status::BoundedUnsat));
+    return outcome;
   }
   // Prefer smaller concrete prefixes before spending the shared query budget.
   auto shorter = [](const auto& a, const auto& b) {return a.size() < b.size();};
@@ -294,12 +305,14 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     for (const auto& pB : rB.paths) {
       if (budget != nullptr && (budget->expired() || budget->queries == 0)) {
         record(diagnostics, "search_budget");
-        return false;
+        outcome.merge(Result(Status::BudgetExceeded));
+        return outcome;
       }
       // Only exact false guards with invariant value sources are reusable.
       // The cache belongs to this fixed startup, path set and loop bound.
       if (rejected_a.count(&pA) != 0 || rejected_b.count(&pB) != 0) {
         record(diagnostics, "cached_guard_rejection");
+        outcome.merge(Result(Status::BoundedUnsat));
         continue;
       }
       if (diagnostics != nullptr) {
@@ -317,20 +330,22 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
       if ((funcA->name() == "main" && !starts(pA, funcB)) ||
           (funcB->name() == "main" && !starts(pB, funcA))) {
         record(diagnostics, "thread_activation_unproven");
+        outcome.merge(Result(Status::Unsupported));
         continue;
       }
       if (budget != nullptr) {
         --budget->queries;
       }
       GuardRejection rejection;
-      if (check_race(pA, pB, funcA, funcB, diagnostics, facts, &rejection)) {
+      outcome.merge(check_race(pA, pB, funcA, funcB, diagnostics, facts, &rejection));
+      if (outcome.confirmed()) {
         if (creations != nullptr) {
           creations->clear();
           for (const auto* path : {&pA, &pB})
             for (const auto& event : *path)
               if (event.kind == EvKind::Create) creations->push_back(event.stmt);
         }
-        return true;
+        return outcome;
       }
       if (rejection.path == 1 && reusable(rejection, pA, writers_b)) rejected_a.insert(&pA);
       if (rejection.path == 2 && reusable(rejection, pB, writers_a)) rejected_b.insert(&pB);
@@ -339,10 +354,10 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   if (loop_bound == 1) {
     auto bound = std::max(literal_loop_search_bound(funcA), literal_loop_search_bound(funcB));
     if (bound > 16) record(diagnostics, "literal_loop_search_hint");
-    return confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
-                        diagnostics, budget, creations, facts, bound);
+    outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
+                               diagnostics, budget, creations, facts, bound));
   }
-  return false;
+  return outcome;
 }
 
 }  // namespace bmc

@@ -62,7 +62,9 @@ PASS、界限不足 UNKNOWN、TIMEOUT 和 ERROR 必须分开。101 个 FAIL 也�
 | UNKNOWN | 当前能力或资源不能给出上述结论 | 保留具体原因；不解释成无竞争 |
 
 BMC 在本架构中只恢复 FALSE，**不从有界 UNSAT、候选为空、截断或超时推出 TRUE**。
-`confirm_race` / `check_race` 的 false 返回表示未确认，不能当作无竞争证明。
+`confirm_race` / `check_race` 返回结构化 `Result`。CONFIRMED 带所选执行证据；
+BOUNDED_UNSAT、UNSUPPORTED、SOLVER_UNKNOWN、BUDGET_EXCEEDED、NOT_SEARCHED 均不证明安全。
+聚合保留 observed 状态，遇到未支持分支或预算耗尽不能总结为全部 UNSAT。
 
 有限展开限制了路径集合；省略值流、调用或实例约束却会增加虚假执行。
 所以“BMC 是欠近似，因此自动 FP=0”不成立。真实 nondet 可以是自由符号，
@@ -821,8 +823,40 @@ python3 scripts/dartagnan_strict/test_indirect_addresses.py
 不因单次超时或TP平台期宣称达到数学能力上限。
 不能实现的边界可以暂放过，但须写需要哪类语义/证明/官方信息，而不是归因“大模型能力不足”。
 
+### 12.1 第一版实施与验收（用户已授权）
+
+第一版是候选驱动的 SC 有界确认器：保留 IKOS 抽象解释负责 SAFE、may 候选、
+范围与局部无溢出事实的分工；不以清空 UNKNOWN 或复刻 Dartagnan 为结束条件。
+
+验收分阶段：
+
+1. **结果/证据接口**：普通运行也返回所选模型的程序快照、动态前缀、创建绑定、
+   值/地址与目标；诊断仅追加计数与示例。未确认结果显式分类，不宣称 SAFE。
+2. **执行证据检查**：独立于 Z3/编码器规则执行 AR 前缀，校准坏实例、值、地址、
+   读源和路径；支持外的 API/对象返回 UNSUPPORTED。AR 验收不冒称官方 C/witness 验收。
+3. **核心语义**：有限共享函数指针的真实 SC 来源与调用等式、受限 join 实例匹配；
+   分配/字段干扰仅扩展有具体任务与前提的通用子集，未知来源/寿命保守不确认。
+4. **IKOS 协同**：标明 AI 事实的适用条件与依赖覆盖，受控消融记录候选/事件/查询、
+   结果、时间/内存。字段/嵌套保护的 TN 回退单列，不能只报告 TP 增长。
+5. **发布状态**：每阶段 build/install、双架构 P0、相应语义回归、1029 配对后立即独立
+   commit。剩余 UNKNOWN 均有参考状态、具体阻塞与后续所需语义。
+
+以上验收结果分别更新本文及小型 artifacts；未完成项目不能被“第一版已完成”覆盖。
+一般 K 线程/堆图/寿命、弱内存、公平性、CAT 引擎和官方 witness2.2 验收可留到后续版本。
+
+**结果接口阶段**：本阶段1029项固定jobs4/30秒A/B为 TP104→104、TN696→696、UNKNOWN229→229、
+FP/FN/error0，无逐任务判定变化；见 [results证据](artifacts/bmc-v1-results-2026-10-10/summary.json)。
+值回归双架构100条与P0双架构20条通过。旧候选回归的paths期望已在原版复现过时：
+保留的完整前缀能确认竞争，不能把枚举预算耗尽等同于所有候选无法确认。
+
+`result.hpp` 将结果与 `Counterexample` 分离，check/search/checker 传递
+证据，普通报告 `info.bmc_result` 与确认时的 `info.counterexample` 无需诊断开关；历史
+诊断候选仍保留 replay 以兼容已有脚本。证据在 SAT 时生成，不为失败路径复制整个程序。
+证据状态仍为 UNVALIDATED。诊断关/开同证据对照覆盖五个值/调用/未初始化变体、双架构；
+AR 展示字符串含 ASLR 名称，比较时只排除这一展示字段，保留全部语义内容。
+
 <a id="callback-plan"></a>
-### 12.1 已有探针、尚未实现的共享回调方案
+### 12.2 已有探针、尚未实现的共享回调方案
 
 目标 `04-mutex_27-base_rc`：f初始good，main创建后持fm写bad；worker持fm读f再调用，
 main持gm读global。读bad后调用的写不持gm，能够竞争；读good后的写仍受共同gm保护。

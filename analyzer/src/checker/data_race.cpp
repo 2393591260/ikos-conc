@@ -1352,6 +1352,7 @@ DataRaceChecker::~DataRaceChecker() {
     }
 
     bool bmc_confirmed = false;
+    bmc::Result group_result(bmc::Status::NotSearched);
     std::vector< ar::Statement* > confirmed_creations;
     JsonList candidate_diagnostics;
     std::map< std::string, std::size_t > reason_counts;
@@ -1384,6 +1385,7 @@ DataRaceChecker::~DataRaceChecker() {
       const PendingRacePair& pr = all_pairs[pk];
       const AccessRecord& a = this->_accesses[pr.i];
       const AccessRecord& b = this->_accesses[pr.j];
+      bmc::Result candidate_result(bmc::Status::NotSearched);
       bmc::Diagnostics diagnostics;
       bmc::Diagnostics* trace = diagnostics_enabled ? &diagnostics : nullptr;
       bool eligible = true;
@@ -1391,6 +1393,7 @@ DataRaceChecker::~DataRaceChecker() {
         if (blocked) {
           eligible = false;
           bmc::record(trace, reason, stmt);
+          candidate_result.merge(bmc::Result(bmc::Status::Unsupported));
         }
       };
       // Evaluate independent eligibility gates even when another one fails.
@@ -1492,8 +1495,10 @@ DataRaceChecker::~DataRaceChecker() {
           bmc::record(trace, "not_searched_after_confirmation");
         } else if (group_attempts >= 32) {
           bmc::record(trace, "group_search_budget");
+          candidate_result.merge(bmc::Result(bmc::Status::BudgetExceeded));
         } else if (search_budget.candidates == 0 || search_budget.expired()) {
           bmc::record(trace, "search_budget");
+          candidate_result.merge(bmc::Result(bmc::Status::BudgetExceeded));
         } else {
           ++group_attempts;
           --search_budget.candidates;
@@ -1502,9 +1507,10 @@ DataRaceChecker::~DataRaceChecker() {
           facts.bounded_a = eff_interval(a, facts.lo_a, facts.hi_a);
           facts.bounded_b = eff_interval(b, facts.lo_b, facts.hi_b);
           auto confirm = [&] {
-            return bmc::confirm_race(fa, a.stmt, a.width,
+            candidate_result.merge(bmc::confirm_race(fa, a.stmt, a.width,
                                           fb, b.stmt, b.width,
-                                          trace, &search_budget, &confirmed_creations, &facts);
+                                          trace, &search_budget, &confirmed_creations, &facts));
+            return candidate_result.confirmed();
           };
           if (a.thread_id != "main" && b.thread_id != "main") {
             for (const auto& startup : activation_prefixes.at(std::minmax(a.thread_id, b.thread_id))) {
@@ -1523,7 +1529,9 @@ DataRaceChecker::~DataRaceChecker() {
           }
         }
       }
+      group_result.merge(candidate_result);
       if (diagnostics_enabled) {
+        const auto& evidence = candidate_result.evidence;
         JsonDict counts;
         for (const auto& entry : diagnostics.counts) {
           counts.put(entry.first, entry.second);
@@ -1547,14 +1555,15 @@ DataRaceChecker::~DataRaceChecker() {
           }
           JsonDict d;
           d.put("pair_id", candidate_id);
+          d.put("result", candidate_result.summary());
           d.put("first_blocker", diagnostics.first_blocker);
           d.put("counts", counts);
           d.put("paths_a", diagnostics.paths_a);
           d.put("paths_b", diagnostics.paths_b);
           d.put("path_pairs", diagnostics.path_pairs);
           d.put("examples", examples);
-          if (!diagnostics.model.empty()) {
-            auto path_info = [](const std::vector< bmc::Diagnostics::Step >& steps) {
+          if (!evidence.model.empty()) {
+            auto path_info = [](const std::vector< bmc::Counterexample::Step >& steps) {
               JsonList path;
               for (const auto& step : steps) {
                 JsonDict item;
@@ -1571,11 +1580,11 @@ DataRaceChecker::~DataRaceChecker() {
               }
               return path;
             };
-            d.put("confirmed_path_a", path_info(diagnostics.confirmed_a));
-            d.put("confirmed_path_b", path_info(diagnostics.confirmed_b));
-            d.put("confirmed_startup", path_info(diagnostics.confirmed_startup));
-            d.put("smt_model", diagnostics.model);
-            d.put("replay", diagnostics.replay);
+            d.put("confirmed_path_a", path_info(evidence.confirmed_a));
+            d.put("confirmed_path_b", path_info(evidence.confirmed_b));
+            d.put("confirmed_startup", path_info(evidence.confirmed_startup));
+            d.put("smt_model", evidence.model);
+            d.put("replay", evidence.replay);
           }
           candidate_diagnostics.add(d);
         }
@@ -1608,7 +1617,9 @@ DataRaceChecker::~DataRaceChecker() {
     info.put("thread_creations", creation_info(bmc_confirmed ? &confirmed_creations : nullptr));
     if (bmc_confirmed) {
       info.put("confirmed_pair_id", confirmed_pair_id);
+      info.put("counterexample", group_result.evidence.replay);
     }
+    info.put("bmc_result", group_result.summary());
     if (group_is_unknown) {
       info.put("verdict", std::string("unknown"));
       info.put("unknown_reason", std::string("mixed atomic/non-atomic accesses"));
