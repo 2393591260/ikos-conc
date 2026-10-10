@@ -337,7 +337,7 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
         --budget->queries;
       }
       GuardRejection rejection;
-      outcome.merge(check_race(pA, pB, funcA, funcB, diagnostics, facts, &rejection));
+      outcome.merge(check_race(pA, pB, funcA, funcB, diagnostics, facts, &rejection, &outcome.metrics));
       if (outcome.confirmed()) {
         if (creations != nullptr) {
           creations->clear();

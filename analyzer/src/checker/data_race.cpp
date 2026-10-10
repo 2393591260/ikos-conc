@@ -1293,6 +1293,7 @@ DataRaceChecker::~DataRaceChecker() {
   // Deferred groups emit once after their last retry, under the same deadline.
   std::set< std::string > deferred_groups;
   std::set< std::string > larger_activation_groups;
+  std::map< std::string, bmc::Result > deferred_results;
   std::map< std::string, JsonList > deferred_candidates;
   std::map< std::string, std::map< std::string, std::size_t > > deferred_counts;
   bool file_confirmed = false;
@@ -1353,6 +1354,7 @@ DataRaceChecker::~DataRaceChecker() {
 
     bool bmc_confirmed = false;
     bmc::Result group_result(bmc::Status::NotSearched);
+    if (pass != 0) group_result.merge(deferred_results.at(kv.first));
     std::vector< ar::Statement* > confirmed_creations;
     JsonList candidate_diagnostics;
     std::map< std::string, std::size_t > reason_counts;
@@ -1503,9 +1505,13 @@ DataRaceChecker::~DataRaceChecker() {
           ++group_attempts;
           --search_budget.candidates;
           bmc::CandidateFacts facts;
-          facts.no_wrap = &this->_bmc_no_wrap;
-          facts.bounded_a = eff_interval(a, facts.lo_a, facts.hi_a);
-          facts.bounded_b = eff_interval(b, facts.lo_b, facts.hi_b);
+          // Experimental ablation affects numerical BMC facts only. SAFE,
+          // candidate filtering, exact initialization and activation are retained.
+          if (getenv("IKOS_BMC_DISABLE_AI_FACTS") == nullptr) {
+            facts.no_wrap = &this->_bmc_no_wrap;
+            facts.bounded_a = eff_interval(a, facts.lo_a, facts.hi_a);
+            facts.bounded_b = eff_interval(b, facts.lo_b, facts.hi_b);
+          }
           auto confirm = [&] {
             candidate_result.merge(bmc::confirm_race(fa, a.stmt, a.width,
                                           fb, b.stmt, b.width,
@@ -1594,6 +1600,7 @@ DataRaceChecker::~DataRaceChecker() {
     file_confirmed |= bmc_confirmed;
     if (!bmc_confirmed && ((pass == 0 && search_budget.saw_interrupted) ||
                           (pass == 1 && group_small_activation && !file_confirmed))) {
+      deferred_results[kv.first] = group_result;
       if (pass == 0) deferred_groups.insert(kv.first);
       else larger_activation_groups.insert(kv.first);
       if (diagnostics_enabled) {

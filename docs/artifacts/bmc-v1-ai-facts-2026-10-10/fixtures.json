@@ -1,0 +1,14 @@
+[
+  {
+    "bits": 32,
+    "verdict": "Race Found",
+    "proof_consumed": true,
+    "all_executions": "ACCEPT"
+  },
+  {
+    "bits": 64,
+    "verdict": "Race Found",
+    "proof_consumed": true,
+    "all_executions": "ACCEPT"
+  }
+]

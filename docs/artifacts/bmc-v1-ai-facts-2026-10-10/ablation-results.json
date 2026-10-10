@@ -1,0 +1,4922 @@
+[
+  {
+    "input": "/home/ruan/ikos-conc/docs/review-repros/ai-facts/unused-local.c",
+    "source_sha256": "8145445834b43d992436837ea887d291057903a48080ac87ab83676a277d33d6",
+    "repeat": 0,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.19312296000134666,
+    "maxrss_kib": 85036,
+    "candidate_pairs": 1,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 16,
+      "solver_queries": 1,
+      "assertions": 25,
+      "solver_us": 3485,
+      "evidence_us": 1114,
+      "ai_bounds": 2,
+      "ai_no_wrap": 1
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "8c581084d64f685cfdc72adc5d4953d39c96bff38705c83f386490260dfa3258",
+        "certificate_sha256": "95ee830921aa57c237dd90fb7fc98e9559b68728ced088acfc42094e47200d8c",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 6
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 10
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 16,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-0-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-0-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-0-1/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-facts/unused-local.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/ikos-conc/docs/review-repros/ai-facts/unused-local.c",
+    "source_sha256": "8145445834b43d992436837ea887d291057903a48080ac87ab83676a277d33d6",
+    "repeat": 0,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.4744937340001343,
+    "maxrss_kib": 85888,
+    "candidate_pairs": 1,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 16,
+      "solver_queries": 1,
+      "assertions": 25,
+      "solver_us": 279123,
+      "evidence_us": 1013,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "042c125454e9b6653a58c164f3b59bd6a28e2d55aab4f33033553a5f75f7efc1",
+        "certificate_sha256": "e2eab79e332a9ca90b4bd97e1d59de938a59702f7521696b7cc249d2270c61bc",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 6
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 10
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 16,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-0-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-0-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-0-0/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-facts/unused-local.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/ikos-conc/docs/review-repros/ai-facts/unused-local.c",
+    "source_sha256": "8145445834b43d992436837ea887d291057903a48080ac87ab83676a277d33d6",
+    "repeat": 1,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.4626004500023555,
+    "maxrss_kib": 85624,
+    "candidate_pairs": 1,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 16,
+      "solver_queries": 1,
+      "assertions": 25,
+      "solver_us": 279534,
+      "evidence_us": 1149,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "162da17b297862c4c36444046dc3d1cd702d41f2a9e0482539c2c1ad294f230e",
+        "certificate_sha256": "bdb288d66489a9e9ef1a6d41d35df645fc8b1fc2069da61919b1126e803b975d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 6
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 10
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 16,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-1-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-1-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-1-0/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-facts/unused-local.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/ikos-conc/docs/review-repros/ai-facts/unused-local.c",
+    "source_sha256": "8145445834b43d992436837ea887d291057903a48080ac87ab83676a277d33d6",
+    "repeat": 1,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.18396321999898646,
+    "maxrss_kib": 85624,
+    "candidate_pairs": 1,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 16,
+      "solver_queries": 1,
+      "assertions": 25,
+      "solver_us": 3379,
+      "evidence_us": 1001,
+      "ai_bounds": 2,
+      "ai_no_wrap": 1
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "b361ba870a7c0613caed965d43f1a92839cfe08887267060d0cb845cad9ffde8",
+        "certificate_sha256": "bf025369844a3ed9043fb84754db19a439a251de6652578fee4c65ba18d1205f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 6
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 10
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 16,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-1-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-1-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-1-1/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-facts/unused-local.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/ikos-conc/docs/review-repros/ai-facts/unused-local.c",
+    "source_sha256": "8145445834b43d992436837ea887d291057903a48080ac87ab83676a277d33d6",
+    "repeat": 2,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.17824395099887624,
+    "maxrss_kib": 86312,
+    "candidate_pairs": 1,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 16,
+      "solver_queries": 1,
+      "assertions": 25,
+      "solver_us": 2998,
+      "evidence_us": 967,
+      "ai_bounds": 2,
+      "ai_no_wrap": 1
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "d2eb333a29a682d868ca8c9f98b0004438f1cc19ccd324aeb7df4518a118334d",
+        "certificate_sha256": "60c8b30d1748ac21fa31056cf858d46e141cfed987963585c3d5d032eed264a3",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 6
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 10
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 16,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-2-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-2-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-2-1/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-facts/unused-local.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/ikos-conc/docs/review-repros/ai-facts/unused-local.c",
+    "source_sha256": "8145445834b43d992436837ea887d291057903a48080ac87ab83676a277d33d6",
+    "repeat": 2,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.4641122320026625,
+    "maxrss_kib": 86224,
+    "candidate_pairs": 1,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 16,
+      "solver_queries": 1,
+      "assertions": 25,
+      "solver_us": 277648,
+      "evidence_us": 1343,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "1366a995e7f2206585a7a93db2bc924b7e07e3c3f914a215f4cc4c768f3b5a90",
+        "certificate_sha256": "49f79e1634175dff7c721cfd7128727b684b648aa44746163a2c319338f2c0d9",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 6
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 10
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 16,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-2-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-2-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/unused-local-2c7678d1-2-0/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-facts/unused-local.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_27-base_rc.c",
+    "source_sha256": "aa6769954855c21e78e338b5c9c85b82b4dc1b815f455d6f752caea060e1fc2c",
+    "repeat": 0,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.19961602800321998,
+    "maxrss_kib": 86444,
+    "candidate_pairs": 1,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 22,
+      "solver_queries": 1,
+      "assertions": 44,
+      "solver_us": 3393,
+      "evidence_us": 2145,
+      "ai_bounds": 2,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ca631a88f5de9bf8df6b8f64a7fda1dd1b5f103f88657127a93521de326f4615",
+        "certificate_sha256": "71da1174daf070432efefd3c0789bfeb93affe2327c32508f7a4df20f3ed6be6",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 10,
+              "1": 9
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-0-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-0-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-0-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_27-base_rc.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_27-base_rc.c",
+    "source_sha256": "aa6769954855c21e78e338b5c9c85b82b4dc1b815f455d6f752caea060e1fc2c",
+    "repeat": 0,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.20156573800340993,
+    "maxrss_kib": 86444,
+    "candidate_pairs": 1,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 22,
+      "solver_queries": 1,
+      "assertions": 42,
+      "solver_us": 3547,
+      "evidence_us": 2192,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "c6962ca04fd3da0beb60699c1ec3569f3a5beb9b62748cd2a87df6e1479f9af0",
+        "certificate_sha256": "6312335d676515909bdbc4c3c649983c6d507d740339103004e1f3447ff4eb48",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 10,
+              "1": 9
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-0-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-0-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-0-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_27-base_rc.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_27-base_rc.c",
+    "source_sha256": "aa6769954855c21e78e338b5c9c85b82b4dc1b815f455d6f752caea060e1fc2c",
+    "repeat": 1,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.19996836000063922,
+    "maxrss_kib": 86188,
+    "candidate_pairs": 1,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 22,
+      "solver_queries": 1,
+      "assertions": 42,
+      "solver_us": 3907,
+      "evidence_us": 2053,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "72e4187d3bedec0ddf4b9ed7b2d708671db3d526872e25bd45aa62cd92e5674b",
+        "certificate_sha256": "c0bcaa4c623ee263190dedc1b9805f89e09f28b1b8dd588f618402a7c1a64fb2",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 10,
+              "1": 9
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-1-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-1-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-1-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_27-base_rc.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_27-base_rc.c",
+    "source_sha256": "aa6769954855c21e78e338b5c9c85b82b4dc1b815f455d6f752caea060e1fc2c",
+    "repeat": 1,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.19878329100174597,
+    "maxrss_kib": 86444,
+    "candidate_pairs": 1,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 22,
+      "solver_queries": 1,
+      "assertions": 44,
+      "solver_us": 3928,
+      "evidence_us": 2167,
+      "ai_bounds": 2,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "84589134eb25a99c624b7ed674362d97e03783b182822e496ee5d1c762835741",
+        "certificate_sha256": "af593a98156f66302b6f7cb2f001febf8b2a279caea10a91f5bc7d5b16dd5882",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 10,
+              "1": 9
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-1-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-1-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-1-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_27-base_rc.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_27-base_rc.c",
+    "source_sha256": "aa6769954855c21e78e338b5c9c85b82b4dc1b815f455d6f752caea060e1fc2c",
+    "repeat": 2,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.1972085649977089,
+    "maxrss_kib": 87400,
+    "candidate_pairs": 1,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 22,
+      "solver_queries": 1,
+      "assertions": 44,
+      "solver_us": 3718,
+      "evidence_us": 2110,
+      "ai_bounds": 2,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "656e36693fffe2d508dec1082d387926d6a10102089f8ffabdb797dd064004fa",
+        "certificate_sha256": "8311ae0fee0e48c9aec674ad23e23a7b14b99e8c28c826aa232d0ced71e4edf2",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 10,
+              "1": 9
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-2-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-2-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-2-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_27-base_rc.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_27-base_rc.c",
+    "source_sha256": "aa6769954855c21e78e338b5c9c85b82b4dc1b815f455d6f752caea060e1fc2c",
+    "repeat": 2,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.20074571699660737,
+    "maxrss_kib": 87268,
+    "candidate_pairs": 1,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 22,
+      "solver_queries": 1,
+      "assertions": 42,
+      "solver_us": 3810,
+      "evidence_us": 2176,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "dc8f7ff693e7c5c01801fcf5824dd15ef9ddada6c4712a60f7dacbff28eb6c81",
+        "certificate_sha256": "e80f4a22072dadbcd2a31254f3546034c47d7a156cc25f78ba243e02cdf046c3",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 10,
+              "1": 9
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-2-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-2-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_27-base_rc-ce6ee1ac-2-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_27-base_rc.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_14-idxunknown_access.c",
+    "source_sha256": "604d6f32ad556c32a6b07f3bb57d696511cb4f2a0c5078b65ceef78243de6f21",
+    "repeat": 0,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.18935531299939612,
+    "maxrss_kib": 86444,
+    "candidate_pairs": 3,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 48,
+      "solver_queries": 1,
+      "assertions": 38,
+      "solver_us": 3180,
+      "evidence_us": 1657,
+      "ai_bounds": 1,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "047f5eaccd57a208c948e5e8d36ff7817568b71bee00d55701890cbec4d6b827",
+        "certificate_sha256": "886a343172c3bca4762ce67ae1f085a8230acb38ab287efca2b580811bb24934",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 20
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 18,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 25,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-0-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-0-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-0-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_14-idxunknown_access.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_14-idxunknown_access.c",
+    "source_sha256": "604d6f32ad556c32a6b07f3bb57d696511cb4f2a0c5078b65ceef78243de6f21",
+    "repeat": 0,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.1885230350017082,
+    "maxrss_kib": 86464,
+    "candidate_pairs": 3,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 48,
+      "solver_queries": 1,
+      "assertions": 37,
+      "solver_us": 3522,
+      "evidence_us": 1670,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "0c080b89aa5322cac3f5f16c1cc1d36b3d5c9cddf6ebc6d40f6f29b934bb0a04",
+        "certificate_sha256": "969f9589376e2b5af67a5768d37797c4251de6ba6692e3c3e105dcffbf38f7db",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 20
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 18,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 25,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-0-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-0-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-0-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_14-idxunknown_access.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_14-idxunknown_access.c",
+    "source_sha256": "604d6f32ad556c32a6b07f3bb57d696511cb4f2a0c5078b65ceef78243de6f21",
+    "repeat": 1,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.1986326949991053,
+    "maxrss_kib": 85824,
+    "candidate_pairs": 3,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 48,
+      "solver_queries": 1,
+      "assertions": 37,
+      "solver_us": 3819,
+      "evidence_us": 1986,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "55fa8a0da6d240b26b81c863042bf59498cc49f00f15fd72c0996fd594e13f92",
+        "certificate_sha256": "216166a4423c6d58e4f49065021fc83524b4fb4bdc4d3c91a5628dce5ca1ffaf",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 20
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 18,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 25,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-1-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-1-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-1-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_14-idxunknown_access.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_14-idxunknown_access.c",
+    "source_sha256": "604d6f32ad556c32a6b07f3bb57d696511cb4f2a0c5078b65ceef78243de6f21",
+    "repeat": 1,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.18850131199724274,
+    "maxrss_kib": 86484,
+    "candidate_pairs": 3,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 48,
+      "solver_queries": 1,
+      "assertions": 38,
+      "solver_us": 3376,
+      "evidence_us": 2242,
+      "ai_bounds": 1,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "2c3c7f0b97efc6942a86981c884d10970ecaca926cd12aacae7d10b6b9b98e48",
+        "certificate_sha256": "c6dbc290d1459e6332ed98eb3919ab58c5524ef7172c9b5076b2f2e7ab678a99",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 20
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 18,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 25,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-1-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-1-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-1-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_14-idxunknown_access.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_14-idxunknown_access.c",
+    "source_sha256": "604d6f32ad556c32a6b07f3bb57d696511cb4f2a0c5078b65ceef78243de6f21",
+    "repeat": 2,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.19114820200047689,
+    "maxrss_kib": 86596,
+    "candidate_pairs": 3,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 48,
+      "solver_queries": 1,
+      "assertions": 38,
+      "solver_us": 3737,
+      "evidence_us": 1889,
+      "ai_bounds": 1,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "a0255593c8af16ba7da3eaf207435858f586c447a52819745ec9d88bea4a4ac8",
+        "certificate_sha256": "b64367ffb7100ac12412013c0e48ecf0d807f9cdb71c11ca2e89a4e8b3404eb3",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 20
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 18,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 25,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-2-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-2-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-2-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_14-idxunknown_access.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_14-idxunknown_access.c",
+    "source_sha256": "604d6f32ad556c32a6b07f3bb57d696511cb4f2a0c5078b65ceef78243de6f21",
+    "repeat": 2,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.1964452300017001,
+    "maxrss_kib": 85900,
+    "candidate_pairs": 3,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 48,
+      "solver_queries": 1,
+      "assertions": 37,
+      "solver_us": 3412,
+      "evidence_us": 1996,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "8cf734d7bff4ade3bd56be0114dbca94f205275d6382783395a4fed52f8fb43a",
+        "certificate_sha256": "3da2abce5bbd106cd8b757eba185705d4c95b9fab51227375d76dcd2be1ed100",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 20
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 18,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 25,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-2-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-2-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/05-lval_ls_14-idxunknown_access-c9858b8f-2-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/05-lval_ls_14-idxunknown_access.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_09-tricky_address4.c",
+    "source_sha256": "1f3bfcbefa47ffbbca39d8d8566e5ce2761e25d53033962fa4c6edf41ef0c3ed",
+    "repeat": 0,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.2730832189990906,
+    "maxrss_kib": 87316,
+    "candidate_pairs": 3,
+    "metrics": {
+      "path_queries": 5,
+      "prefix_events": 535,
+      "solver_queries": 1,
+      "assertions": 150,
+      "solver_us": 6771,
+      "evidence_us": 4287,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "c87654ed6a830a1b6207fbc63d70af5515e046be59b7b61adabb22bdb87df4f7",
+        "certificate_sha256": "ad808e1ee4ebb2a6bdb487cdab4d1d52b70cbb1ce57d948d0b8b04ad4a5decb0",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 87
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 81,
+              "1": 22
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 109,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-0-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-0-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-0-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_09-tricky_address4.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_09-tricky_address4.c",
+    "source_sha256": "1f3bfcbefa47ffbbca39d8d8566e5ce2761e25d53033962fa4c6edf41ef0c3ed",
+    "repeat": 0,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.2759437400018214,
+    "maxrss_kib": 87048,
+    "candidate_pairs": 3,
+    "metrics": {
+      "path_queries": 5,
+      "prefix_events": 535,
+      "solver_queries": 1,
+      "assertions": 150,
+      "solver_us": 5871,
+      "evidence_us": 4270,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "c8c5e70d1c0c6c3f85ca562718bdef687e66269f3236501745aabee07a6a71f0",
+        "certificate_sha256": "4f25cade6111b0b4d622ccd4aa9672bf754208b05030e9f449a35eef0337ca82",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 87
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 81,
+              "1": 22
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 109,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-0-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-0-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-0-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_09-tricky_address4.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_09-tricky_address4.c",
+    "source_sha256": "1f3bfcbefa47ffbbca39d8d8566e5ce2761e25d53033962fa4c6edf41ef0c3ed",
+    "repeat": 1,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.2719049980005366,
+    "maxrss_kib": 86952,
+    "candidate_pairs": 3,
+    "metrics": {
+      "path_queries": 5,
+      "prefix_events": 535,
+      "solver_queries": 1,
+      "assertions": 150,
+      "solver_us": 6223,
+      "evidence_us": 4080,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f1576e33472dcd8e8a2a4caa9d6dc1a8413135380373b2682111f25c2ae0aeeb",
+        "certificate_sha256": "876559f4f6d963d1a9900b222436a9b00af40cb43ee3306aad5e0b4710c75186",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 87
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 81,
+              "1": 22
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 109,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-1-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-1-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-1-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_09-tricky_address4.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_09-tricky_address4.c",
+    "source_sha256": "1f3bfcbefa47ffbbca39d8d8566e5ce2761e25d53033962fa4c6edf41ef0c3ed",
+    "repeat": 1,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.279911698999058,
+    "maxrss_kib": 86352,
+    "candidate_pairs": 3,
+    "metrics": {
+      "path_queries": 5,
+      "prefix_events": 535,
+      "solver_queries": 1,
+      "assertions": 150,
+      "solver_us": 6113,
+      "evidence_us": 4194,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "073b3ad3205acdf98cc82a65d7678ef0a5646d0841d935db87469a5c5683d126",
+        "certificate_sha256": "34b6a869c9c208a66cc9190eab07c6b0c96e16871c8d516a7001e8132d67e9ad",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 87
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 81,
+              "1": 22
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 109,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-1-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-1-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-1-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_09-tricky_address4.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_09-tricky_address4.c",
+    "source_sha256": "1f3bfcbefa47ffbbca39d8d8566e5ce2761e25d53033962fa4c6edf41ef0c3ed",
+    "repeat": 2,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.2731905539985746,
+    "maxrss_kib": 86188,
+    "candidate_pairs": 3,
+    "metrics": {
+      "path_queries": 5,
+      "prefix_events": 535,
+      "solver_queries": 1,
+      "assertions": 150,
+      "solver_us": 6385,
+      "evidence_us": 3972,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "4dfbd3f3c1a47cb83099378061718e1a9c979a8406b08c37d8f1ed6906143d26",
+        "certificate_sha256": "5cc2d1007e8ba7b9ae3aa227dc85a354514a6a7c4520bbd0e49c6efabbb19a2a",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 87
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 81,
+              "1": 22
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 109,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-2-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-2-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-2-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_09-tricky_address4.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_09-tricky_address4.c",
+    "source_sha256": "1f3bfcbefa47ffbbca39d8d8566e5ce2761e25d53033962fa4c6edf41ef0c3ed",
+    "repeat": 2,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.2871446190038114,
+    "maxrss_kib": 87500,
+    "candidate_pairs": 3,
+    "metrics": {
+      "path_queries": 5,
+      "prefix_events": 535,
+      "solver_queries": 1,
+      "assertions": 150,
+      "solver_us": 7559,
+      "evidence_us": 4913,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "a05e02a522b5f60fc361dbc3312da13b5ddcf811d63a6685192a617078765f30",
+        "certificate_sha256": "0aa43977bcfecac11b3aae58deb40b4709c3d364f39e5146ecdc52a2162ddbff",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 87
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 81,
+              "1": 22
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 109,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-2-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-2-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/06-symbeq_09-tricky_address4-d8410ad0-2-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_09-tricky_address4.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/46_monabsex2_vs-b.i",
+    "source_sha256": "cb0da49952f084f4179c44b957c91689c392bf769782a6b0853667237fdff1db",
+    "repeat": 0,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.2047335240058601,
+    "maxrss_kib": 86184,
+    "candidate_pairs": 8,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 44,
+      "solver_queries": 1,
+      "assertions": 28,
+      "solver_us": 3341,
+      "evidence_us": 2103,
+      "ai_bounds": 2,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f6291a345a3d4f3bf6395e0068bd56b3003e12f518900b05cc844d28ad85b0f3",
+        "certificate_sha256": "fb0ffa1f1137bebcde82408785937d87845c4275288e8ced0a6f325ab1ee57d6",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 6,
+              "2": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-0-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-0-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-0-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-ext/46_monabsex2_vs-b.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/46_monabsex2_vs-b.i",
+    "source_sha256": "cb0da49952f084f4179c44b957c91689c392bf769782a6b0853667237fdff1db",
+    "repeat": 0,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.19817061200592434,
+    "maxrss_kib": 85476,
+    "candidate_pairs": 8,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 44,
+      "solver_queries": 1,
+      "assertions": 26,
+      "solver_us": 3182,
+      "evidence_us": 1801,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "74f5dce1c190006ec3849c62bb4fbde8ec667b51fbe173ebd96d03f8fa244c8d",
+        "certificate_sha256": "5c7e9d881452405eb95392aced89feddd4a4b9a8599d3d2a51b022a414c2a2bb",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 6,
+              "2": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-0-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-0-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-0-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-ext/46_monabsex2_vs-b.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/46_monabsex2_vs-b.i",
+    "source_sha256": "cb0da49952f084f4179c44b957c91689c392bf769782a6b0853667237fdff1db",
+    "repeat": 1,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.2017422489952878,
+    "maxrss_kib": 86380,
+    "candidate_pairs": 8,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 44,
+      "solver_queries": 1,
+      "assertions": 26,
+      "solver_us": 3741,
+      "evidence_us": 1805,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "2d1e85c909a6a6ee4e50b3dfa8968c6747adb1f5bed3c90b861245b2ecddd584",
+        "certificate_sha256": "8923510900c82955bb9a4febc93bb5c6e60b1cbc175a59ae415de3749f368bc7",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 6,
+              "2": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-1-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-1-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-1-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-ext/46_monabsex2_vs-b.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/46_monabsex2_vs-b.i",
+    "source_sha256": "cb0da49952f084f4179c44b957c91689c392bf769782a6b0853667237fdff1db",
+    "repeat": 1,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.19971450400043977,
+    "maxrss_kib": 86380,
+    "candidate_pairs": 8,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 44,
+      "solver_queries": 1,
+      "assertions": 28,
+      "solver_us": 3482,
+      "evidence_us": 2301,
+      "ai_bounds": 2,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "5cf467cc7cb1ed93a1af80458b7d97b9b96960b576bc934fdef4c19438821dd9",
+        "certificate_sha256": "f11f658aabc71a9c054de10f44ff7d301e5b19b066921be4b785cf27a5c75fdc",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 6,
+              "2": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-1-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-1-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-1-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-ext/46_monabsex2_vs-b.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/46_monabsex2_vs-b.i",
+    "source_sha256": "cb0da49952f084f4179c44b957c91689c392bf769782a6b0853667237fdff1db",
+    "repeat": 2,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.2034026119945338,
+    "maxrss_kib": 86880,
+    "candidate_pairs": 8,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 44,
+      "solver_queries": 1,
+      "assertions": 28,
+      "solver_us": 4071,
+      "evidence_us": 2648,
+      "ai_bounds": 2,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "3fe01e7a814210b949b87c999ad8829de6657385a651511d1a4aacfec0ba54bd",
+        "certificate_sha256": "9ca6b43ddbc0ba8e7709d569fb70af14808333c6cee5e53ebf14d3086c18ff2b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 6,
+              "2": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-2-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-2-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-2-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-ext/46_monabsex2_vs-b.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/46_monabsex2_vs-b.i",
+    "source_sha256": "cb0da49952f084f4179c44b957c91689c392bf769782a6b0853667237fdff1db",
+    "repeat": 2,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.19926209199911682,
+    "maxrss_kib": 85872,
+    "candidate_pairs": 8,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 44,
+      "solver_queries": 1,
+      "assertions": 26,
+      "solver_us": 3007,
+      "evidence_us": 2148,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f2f6b36a5a66184a2a4b90b6e1e882ee2716712243aaeca1522789a4193132ed",
+        "certificate_sha256": "0997f5e70c8bddbfb06d5e492b800da203a9d63d4a87a531696211e7024c6780",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 6,
+              "2": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-2-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-2-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/46_monabsex2_vs-b-2c60266f-2-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-ext/46_monabsex2_vs-b.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-5-racy.i",
+    "source_sha256": "40fcfd4444bd180f6e5508f0972ed92e70894b01f23e03dc2e761819c6d5a859",
+    "repeat": 0,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.8447005609996268,
+    "maxrss_kib": 86660,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 34,
+      "prefix_events": 4958,
+      "solver_queries": 2,
+      "assertions": 4532,
+      "solver_us": 100914,
+      "evidence_us": 34903,
+      "ai_bounds": 4,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "0820fb658f7793e936a6433838d7e200978090af02201275e684f33603a05b13",
+        "certificate_sha256": "260bcc98b417fd0dae114e8133b42d44f8e0ed34d875d160523098a6c5fcb79f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 180
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "0820fb658f7793e936a6433838d7e200978090af02201275e684f33603a05b13",
+        "certificate_sha256": "89d2b8a2a377c86ce3969d4e1cd8ee8c2587eaa4d19411bc19fb711d0dc10304",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 182
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-0-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-0-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-0-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-5-racy.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-5-racy.i",
+    "source_sha256": "40fcfd4444bd180f6e5508f0972ed92e70894b01f23e03dc2e761819c6d5a859",
+    "repeat": 0,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.8801113709996571,
+    "maxrss_kib": 85112,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 34,
+      "prefix_events": 4958,
+      "solver_queries": 2,
+      "assertions": 4528,
+      "solver_us": 104088,
+      "evidence_us": 34585,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "40b337cd97a21a92665ab5b5617b40bfafef41e800421c08942a7212333ea96b",
+        "certificate_sha256": "e31407f5ee808ced46bd9725a135a086c13f4552b8d34951d77461e0d265216c",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 180
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "40b337cd97a21a92665ab5b5617b40bfafef41e800421c08942a7212333ea96b",
+        "certificate_sha256": "d36c7b6e5e16202f853bcbc6a2a5b87ec710c58d6645db206e702fea6447f6f1",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 182
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-0-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-0-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-0-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-5-racy.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-5-racy.i",
+    "source_sha256": "40fcfd4444bd180f6e5508f0972ed92e70894b01f23e03dc2e761819c6d5a859",
+    "repeat": 1,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.8712344570012647,
+    "maxrss_kib": 85924,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 34,
+      "prefix_events": 4958,
+      "solver_queries": 2,
+      "assertions": 4528,
+      "solver_us": 106515,
+      "evidence_us": 34821,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "8156ceac83e003d68ac646407eaeba7ea3a6cde8baa680249530303fdb19accc",
+        "certificate_sha256": "7543637f7f4ae525fbde3e78e07579d7900381905b61df0227d6d09892dd100a",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 180
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "8156ceac83e003d68ac646407eaeba7ea3a6cde8baa680249530303fdb19accc",
+        "certificate_sha256": "137b8c9f2a2f2ce0176fa9e2107aa600416f23976ae69c81b884fa1d8df0667a",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 182
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-1-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-1-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-1-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-5-racy.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-5-racy.i",
+    "source_sha256": "40fcfd4444bd180f6e5508f0972ed92e70894b01f23e03dc2e761819c6d5a859",
+    "repeat": 1,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.8451686879998306,
+    "maxrss_kib": 85508,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 34,
+      "prefix_events": 4958,
+      "solver_queries": 2,
+      "assertions": 4532,
+      "solver_us": 104286,
+      "evidence_us": 35312,
+      "ai_bounds": 4,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e291cc8c6febd3da00fc5ed850a9e8878738993a367c2a654378571107edb136",
+        "certificate_sha256": "ec4edfc312cda7c91ca29190f2b9db7253654c8466cd081c5fc2ec7949ec60eb",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 180
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "e291cc8c6febd3da00fc5ed850a9e8878738993a367c2a654378571107edb136",
+        "certificate_sha256": "a4f8023d00e5ec99409c03e8dba85fbfd69d44b86a097387aaea2ea4071cc538",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 182
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-1-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-1-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-1-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-5-racy.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-5-racy.i",
+    "source_sha256": "40fcfd4444bd180f6e5508f0972ed92e70894b01f23e03dc2e761819c6d5a859",
+    "repeat": 2,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.8543025199978729,
+    "maxrss_kib": 86480,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 34,
+      "prefix_events": 4958,
+      "solver_queries": 2,
+      "assertions": 4532,
+      "solver_us": 100369,
+      "evidence_us": 36159,
+      "ai_bounds": 4,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "6c1c13724c8435d8bd2c9282162f9d92645b24d946559053e9f4c3b1cb6ad9b5",
+        "certificate_sha256": "0e367d6f3fa8d21642e20e8f9531ac971aa923ff9e4f4b878988094e79520d82",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 180
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "6c1c13724c8435d8bd2c9282162f9d92645b24d946559053e9f4c3b1cb6ad9b5",
+        "certificate_sha256": "86bf76c16ed740b7daa6086ce78fc3c51aa0ae6e21ef762b155a778f7530b245",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 182
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-2-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-2-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-2-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-5-racy.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-5-racy.i",
+    "source_sha256": "40fcfd4444bd180f6e5508f0972ed92e70894b01f23e03dc2e761819c6d5a859",
+    "repeat": 2,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.8539134229940828,
+    "maxrss_kib": 86480,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 34,
+      "prefix_events": 4958,
+      "solver_queries": 2,
+      "assertions": 4528,
+      "solver_us": 103005,
+      "evidence_us": 35197,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "7398f3d2db9ab5c068ce598e1205367fca92f683ac430ddaf2a15e05def0bd1e",
+        "certificate_sha256": "bb5a38dc0945101bc3b6f773d8ae4b280926a72cbecf62bd1668441e988f1d00",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 180
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "7398f3d2db9ab5c068ce598e1205367fca92f683ac430ddaf2a15e05def0bd1e",
+        "certificate_sha256": "15ee023bde80d1c16589246bf3f059d260682332a5d4d668ea6463c8b49e876e",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 182
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-2-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-2-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/fib_safe-5-racy-d7ce715b-2-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-5-racy.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/bigshot_p.i",
+    "source_sha256": "4f85a81c281496cbdf0eab98e129af733fe18998c76267e6089945bdfc7c0c54",
+    "repeat": 0,
+    "ai_facts": true,
+    "verdict": "Unknown",
+    "seconds": 0.17901159499888308,
+    "maxrss_kib": 85592,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 0,
+      "prefix_events": 0,
+      "solver_queries": 0,
+      "assertions": 0,
+      "solver_us": 0,
+      "evidence_us": 0,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-0-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-0-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-0-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/bigshot_p.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/bigshot_p.i",
+    "source_sha256": "4f85a81c281496cbdf0eab98e129af733fe18998c76267e6089945bdfc7c0c54",
+    "repeat": 0,
+    "ai_facts": false,
+    "verdict": "Unknown",
+    "seconds": 0.1811393309981213,
+    "maxrss_kib": 85592,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 0,
+      "prefix_events": 0,
+      "solver_queries": 0,
+      "assertions": 0,
+      "solver_us": 0,
+      "evidence_us": 0,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-0-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-0-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-0-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/bigshot_p.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/bigshot_p.i",
+    "source_sha256": "4f85a81c281496cbdf0eab98e129af733fe18998c76267e6089945bdfc7c0c54",
+    "repeat": 1,
+    "ai_facts": false,
+    "verdict": "Unknown",
+    "seconds": 0.17707752199930837,
+    "maxrss_kib": 85572,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 0,
+      "prefix_events": 0,
+      "solver_queries": 0,
+      "assertions": 0,
+      "solver_us": 0,
+      "evidence_us": 0,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-1-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-1-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-1-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/bigshot_p.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/bigshot_p.i",
+    "source_sha256": "4f85a81c281496cbdf0eab98e129af733fe18998c76267e6089945bdfc7c0c54",
+    "repeat": 1,
+    "ai_facts": true,
+    "verdict": "Unknown",
+    "seconds": 0.17989537300309166,
+    "maxrss_kib": 86960,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 0,
+      "prefix_events": 0,
+      "solver_queries": 0,
+      "assertions": 0,
+      "solver_us": 0,
+      "evidence_us": 0,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-1-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-1-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-1-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/bigshot_p.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/bigshot_p.i",
+    "source_sha256": "4f85a81c281496cbdf0eab98e129af733fe18998c76267e6089945bdfc7c0c54",
+    "repeat": 2,
+    "ai_facts": true,
+    "verdict": "Unknown",
+    "seconds": 0.18459718200028874,
+    "maxrss_kib": 85540,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 0,
+      "prefix_events": 0,
+      "solver_queries": 0,
+      "assertions": 0,
+      "solver_us": 0,
+      "evidence_us": 0,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-2-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-2-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-2-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/bigshot_p.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/bigshot_p.i",
+    "source_sha256": "4f85a81c281496cbdf0eab98e129af733fe18998c76267e6089945bdfc7c0c54",
+    "repeat": 2,
+    "ai_facts": false,
+    "verdict": "Unknown",
+    "seconds": 0.17672627400315832,
+    "maxrss_kib": 86844,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 0,
+      "prefix_events": 0,
+      "solver_queries": 0,
+      "assertions": 0,
+      "solver_us": 0,
+      "evidence_us": 0,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-2-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-2-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/bigshot_p-f2ad187c-2-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/bigshot_p.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/singleton.i",
+    "source_sha256": "ea0ecaab9c4a4889914d1343f60808acf6ec66df89812b70cea6837a39471f7f",
+    "repeat": 0,
+    "ai_facts": true,
+    "verdict": "Unknown",
+    "seconds": 0.2006468639956438,
+    "maxrss_kib": 85616,
+    "candidate_pairs": 11,
+    "metrics": {
+      "path_queries": 0,
+      "prefix_events": 0,
+      "solver_queries": 0,
+      "assertions": 0,
+      "solver_us": 0,
+      "evidence_us": 0,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-0-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-0-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-0-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/singleton.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/singleton.i",
+    "source_sha256": "ea0ecaab9c4a4889914d1343f60808acf6ec66df89812b70cea6837a39471f7f",
+    "repeat": 0,
+    "ai_facts": false,
+    "verdict": "Unknown",
+    "seconds": 0.19522534000134328,
+    "maxrss_kib": 85596,
+    "candidate_pairs": 11,
+    "metrics": {
+      "path_queries": 0,
+      "prefix_events": 0,
+      "solver_queries": 0,
+      "assertions": 0,
+      "solver_us": 0,
+      "evidence_us": 0,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-0-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-0-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-0-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/singleton.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/singleton.i",
+    "source_sha256": "ea0ecaab9c4a4889914d1343f60808acf6ec66df89812b70cea6837a39471f7f",
+    "repeat": 1,
+    "ai_facts": false,
+    "verdict": "Unknown",
+    "seconds": 0.19335188499826472,
+    "maxrss_kib": 86808,
+    "candidate_pairs": 11,
+    "metrics": {
+      "path_queries": 0,
+      "prefix_events": 0,
+      "solver_queries": 0,
+      "assertions": 0,
+      "solver_us": 0,
+      "evidence_us": 0,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-1-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-1-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-1-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/singleton.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/singleton.i",
+    "source_sha256": "ea0ecaab9c4a4889914d1343f60808acf6ec66df89812b70cea6837a39471f7f",
+    "repeat": 1,
+    "ai_facts": true,
+    "verdict": "Unknown",
+    "seconds": 0.19391081600042526,
+    "maxrss_kib": 85600,
+    "candidate_pairs": 11,
+    "metrics": {
+      "path_queries": 0,
+      "prefix_events": 0,
+      "solver_queries": 0,
+      "assertions": 0,
+      "solver_us": 0,
+      "evidence_us": 0,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-1-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-1-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-1-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/singleton.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/singleton.i",
+    "source_sha256": "ea0ecaab9c4a4889914d1343f60808acf6ec66df89812b70cea6837a39471f7f",
+    "repeat": 2,
+    "ai_facts": true,
+    "verdict": "Unknown",
+    "seconds": 0.19601843200507574,
+    "maxrss_kib": 86136,
+    "candidate_pairs": 11,
+    "metrics": {
+      "path_queries": 0,
+      "prefix_events": 0,
+      "solver_queries": 0,
+      "assertions": 0,
+      "solver_us": 0,
+      "evidence_us": 0,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-2-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-2-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-2-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/singleton.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/singleton.i",
+    "source_sha256": "ea0ecaab9c4a4889914d1343f60808acf6ec66df89812b70cea6837a39471f7f",
+    "repeat": 2,
+    "ai_facts": false,
+    "verdict": "Unknown",
+    "seconds": 0.20201271600672044,
+    "maxrss_kib": 85888,
+    "candidate_pairs": 11,
+    "metrics": {
+      "path_queries": 0,
+      "prefix_events": 0,
+      "solver_queries": 0,
+      "assertions": 0,
+      "solver_us": 0,
+      "evidence_us": 0,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-2-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-2-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/singleton-473affd8-2-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread/singleton.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_21-sound_base.c",
+    "source_sha256": "68c0c5000c21f9e9ce587210ecf523aa294fc1749c89b05b6201f4ee47346a2b",
+    "repeat": 0,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.2076038450031774,
+    "maxrss_kib": 86604,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 22,
+      "solver_queries": 2,
+      "assertions": 41,
+      "solver_us": 6282,
+      "evidence_us": 2369,
+      "ai_bounds": 2,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "d7296480b2d648cc9512adb4785b0670ec2a7e8cf91cb82072f36001de0c6a31",
+        "certificate_sha256": "47644638d01b7fbcf2d657f2d400c7471712612d7ad7b8db9ada6a76959689a9",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:f",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:f",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 8,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "d7296480b2d648cc9512adb4785b0670ec2a7e8cf91cb82072f36001de0c6a31",
+        "certificate_sha256": "d26e59a9b4f8e501135cefcec23bc12b427bdd5cce7f08e6af01701025039ff2",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 6
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 14,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-0-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-0-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-0-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_21-sound_base.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_21-sound_base.c",
+    "source_sha256": "68c0c5000c21f9e9ce587210ecf523aa294fc1749c89b05b6201f4ee47346a2b",
+    "repeat": 0,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.20701203199860174,
+    "maxrss_kib": 85776,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 22,
+      "solver_queries": 2,
+      "assertions": 39,
+      "solver_us": 6572,
+      "evidence_us": 2501,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "82471aec8173865af64257037a17148e057114a99df66f0b2909e0481aeeeaeb",
+        "certificate_sha256": "e064c866680335e4f9da48254c40f6f1cd931fbf7ad04f8aaa5423f8209581cd",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:f",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:f",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 8,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "82471aec8173865af64257037a17148e057114a99df66f0b2909e0481aeeeaeb",
+        "certificate_sha256": "7c1d06bfaf6242ddabcf0b4162dcb6a18904386c766d024113462badb3954140",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 6
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 14,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-0-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-0-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-0-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_21-sound_base.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_21-sound_base.c",
+    "source_sha256": "68c0c5000c21f9e9ce587210ecf523aa294fc1749c89b05b6201f4ee47346a2b",
+    "repeat": 1,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.2013786719980999,
+    "maxrss_kib": 86264,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 22,
+      "solver_queries": 2,
+      "assertions": 39,
+      "solver_us": 5822,
+      "evidence_us": 2404,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "1eb4d0290d51c3b2e1afae7dc6c90efed80150bcf8951379c73f834694d6eb74",
+        "certificate_sha256": "05dab26d028fd67471a3e4ed7c769612fe53470c4b7e5f0a03476b6f5cb134f3",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:f",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:f",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 8,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "1eb4d0290d51c3b2e1afae7dc6c90efed80150bcf8951379c73f834694d6eb74",
+        "certificate_sha256": "f0066f60d3dfa4fe7e9d9e68e5df73dc24d3dc7c0265f4a79098add89a379b41",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 6
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 14,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-1-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-1-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-1-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_21-sound_base.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_21-sound_base.c",
+    "source_sha256": "68c0c5000c21f9e9ce587210ecf523aa294fc1749c89b05b6201f4ee47346a2b",
+    "repeat": 1,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.20520637400477426,
+    "maxrss_kib": 87404,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 22,
+      "solver_queries": 2,
+      "assertions": 41,
+      "solver_us": 6053,
+      "evidence_us": 3000,
+      "ai_bounds": 2,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "478f9d2206b92992cb0775f180fdfc209bbe61a0475ecd16750cbce7c830d91c",
+        "certificate_sha256": "e9e74c9d5e05420bf02ca1e8af3f09d99e4665be23c2d16dde16f35881a73202",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:f",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:f",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 8,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "478f9d2206b92992cb0775f180fdfc209bbe61a0475ecd16750cbce7c830d91c",
+        "certificate_sha256": "07ce762eb2353c91a38b52aa24abda5eb849d5fb7cb0de614c2a8ff51d2bebfa",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 6
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 14,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-1-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-1-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-1-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_21-sound_base.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_21-sound_base.c",
+    "source_sha256": "68c0c5000c21f9e9ce587210ecf523aa294fc1749c89b05b6201f4ee47346a2b",
+    "repeat": 2,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 0.20298533500317717,
+    "maxrss_kib": 85416,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 22,
+      "solver_queries": 2,
+      "assertions": 41,
+      "solver_us": 5914,
+      "evidence_us": 2341,
+      "ai_bounds": 2,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e7e6ebc3c9de74d0e03f375f70b87e1046e5ab7fa923f7db544f1e8b6d086c66",
+        "certificate_sha256": "52eb78f60d6a26e7456b9500e8d640459f127c4830bb4501518aaeaa5029d223",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:f",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:f",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 8,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "e7e6ebc3c9de74d0e03f375f70b87e1046e5ab7fa923f7db544f1e8b6d086c66",
+        "certificate_sha256": "1104ed389c573d645bcf47b292747624e1077e1b5ca183f25e5684a682b50244",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 6
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 14,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-2-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-2-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-2-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_21-sound_base.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_21-sound_base.c",
+    "source_sha256": "68c0c5000c21f9e9ce587210ecf523aa294fc1749c89b05b6201f4ee47346a2b",
+    "repeat": 2,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 0.20148292400699575,
+    "maxrss_kib": 86780,
+    "candidate_pairs": 2,
+    "metrics": {
+      "path_queries": 2,
+      "prefix_events": 22,
+      "solver_queries": 2,
+      "assertions": 39,
+      "solver_us": 5743,
+      "evidence_us": 2432,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "2789b3f32cc31ffbadb5565a79d19341c7ac79506c98030f8250ca37991d5400",
+        "certificate_sha256": "c89aa6c9524e905f4de4511f03ef5ec1c3a86d809e64c47556768cd1f84bb40e",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:f",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:f",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 8,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "2789b3f32cc31ffbadb5565a79d19341c7ac79506c98030f8250ca37991d5400",
+        "certificate_sha256": "48b52418503eac85a829d13b2fe3e5b443b07273ece0264c0326ef9feab67803",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 6
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 14,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-2-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-2-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/04-mutex_21-sound_base-0236ec3a-2-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_21-sound_base.c"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_generic_nvram_read_nvram_write_nvram-race.i",
+    "source_sha256": "aedfaf2f30401ef1fb89035eef2af3f1fa0e071d7640dfb0ac0413d4b26b1c7b",
+    "repeat": 0,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 1.964462914998876,
+    "maxrss_kib": 90372,
+    "candidate_pairs": 7,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 135,
+      "solver_queries": 2,
+      "assertions": 160,
+      "solver_us": 1524860,
+      "evidence_us": 23875,
+      "ai_bounds": 2,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "86cd882dd65fa1acc7d94b8260f5d6608ad0ca26fc700256e1dce77ccc686144",
+        "certificate_sha256": "e49a59b0a9cd654e2d306994cae567057e67f1eb02a375b480ac362d7470e180",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "heap:1:s54",
+            "offset": 0,
+            "width": 8,
+            "write": false,
+            "vc": {
+              "0": 86,
+              "2": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "heap:1:s54",
+            "offset": 0,
+            "width": 8,
+            "write": true,
+            "vc": {
+              "0": 85,
+              "1": 33
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 135,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-0-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-0-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-0-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_generic_nvram_read_nvram_write_nvram-race.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_generic_nvram_read_nvram_write_nvram-race.i",
+    "source_sha256": "aedfaf2f30401ef1fb89035eef2af3f1fa0e071d7640dfb0ac0413d4b26b1c7b",
+    "repeat": 0,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 2.076806855999166,
+    "maxrss_kib": 89328,
+    "candidate_pairs": 7,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 135,
+      "solver_queries": 2,
+      "assertions": 158,
+      "solver_us": 1625026,
+      "evidence_us": 23084,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "882a6c2d07e5ac82ab8771eed2d47e2439e8a3fc019d170c33b551832ebefd8d",
+        "certificate_sha256": "566b7b754a3c36816074866513242957db81e271389a7266e3d15fdf0dac302a",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "heap:1:s54",
+            "offset": 0,
+            "width": 8,
+            "write": false,
+            "vc": {
+              "0": 86,
+              "2": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "heap:1:s54",
+            "offset": 0,
+            "width": 8,
+            "write": true,
+            "vc": {
+              "0": 85,
+              "1": 33
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 135,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-0-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-0-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-0-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_generic_nvram_read_nvram_write_nvram-race.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_generic_nvram_read_nvram_write_nvram-race.i",
+    "source_sha256": "aedfaf2f30401ef1fb89035eef2af3f1fa0e071d7640dfb0ac0413d4b26b1c7b",
+    "repeat": 1,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 2.0759174980048556,
+    "maxrss_kib": 90412,
+    "candidate_pairs": 7,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 135,
+      "solver_queries": 2,
+      "assertions": 158,
+      "solver_us": 1628089,
+      "evidence_us": 23618,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "8bf6e2836038a2305e228d217f1f928929d6b50924ec198f56afb371b8c5e603",
+        "certificate_sha256": "a0dce805b68d14ce5e48e93dec09a7a879ee2a83af946009c848e8be3602dddb",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "heap:1:s54",
+            "offset": 0,
+            "width": 8,
+            "write": false,
+            "vc": {
+              "0": 86,
+              "2": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "heap:1:s54",
+            "offset": 0,
+            "width": 8,
+            "write": true,
+            "vc": {
+              "0": 85,
+              "1": 33
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 135,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-1-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-1-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-1-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_generic_nvram_read_nvram_write_nvram-race.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_generic_nvram_read_nvram_write_nvram-race.i",
+    "source_sha256": "aedfaf2f30401ef1fb89035eef2af3f1fa0e071d7640dfb0ac0413d4b26b1c7b",
+    "repeat": 1,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 2.080451087997062,
+    "maxrss_kib": 89816,
+    "candidate_pairs": 7,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 135,
+      "solver_queries": 2,
+      "assertions": 160,
+      "solver_us": 1624777,
+      "evidence_us": 24269,
+      "ai_bounds": 2,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "79273c11e3e905748625562779f770034d755ea99f58856e4b7da7c2f70d0eb8",
+        "certificate_sha256": "eef36929c2a23ad525a343e7c7f0040bcee74703085b4c5c0fc50fe0c975734d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "heap:1:s54",
+            "offset": 0,
+            "width": 8,
+            "write": false,
+            "vc": {
+              "0": 86,
+              "2": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "heap:1:s54",
+            "offset": 0,
+            "width": 8,
+            "write": true,
+            "vc": {
+              "0": 85,
+              "1": 33
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 135,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-1-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-1-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-1-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_generic_nvram_read_nvram_write_nvram-race.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_generic_nvram_read_nvram_write_nvram-race.i",
+    "source_sha256": "aedfaf2f30401ef1fb89035eef2af3f1fa0e071d7640dfb0ac0413d4b26b1c7b",
+    "repeat": 2,
+    "ai_facts": true,
+    "verdict": "Race Found",
+    "seconds": 2.0804738290025853,
+    "maxrss_kib": 90408,
+    "candidate_pairs": 7,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 135,
+      "solver_queries": 2,
+      "assertions": 160,
+      "solver_us": 1626879,
+      "evidence_us": 22927,
+      "ai_bounds": 2,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "206e63b13d4f6c00c691fe16296a106db2e67ace55afcb7d20c1c44f0b2e575b",
+        "certificate_sha256": "3ffdeccadfb84697a6a565b70fc39514eb542039a5408aa694b3a3479ee86a0d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "heap:1:s54",
+            "offset": 0,
+            "width": 8,
+            "write": false,
+            "vc": {
+              "0": 86,
+              "2": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "heap:1:s54",
+            "offset": 0,
+            "width": 8,
+            "write": true,
+            "vc": {
+              "0": 85,
+              "1": 33
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 135,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-2-1/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-2-1/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-2-1/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_generic_nvram_read_nvram_write_nvram-race.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_generic_nvram_read_nvram_write_nvram-race.i",
+    "source_sha256": "aedfaf2f30401ef1fb89035eef2af3f1fa0e071d7640dfb0ac0413d4b26b1c7b",
+    "repeat": 2,
+    "ai_facts": false,
+    "verdict": "Race Found",
+    "seconds": 2.088683599999058,
+    "maxrss_kib": 90340,
+    "candidate_pairs": 7,
+    "metrics": {
+      "path_queries": 1,
+      "prefix_events": 135,
+      "solver_queries": 2,
+      "assertions": 158,
+      "solver_us": 1630151,
+      "evidence_us": 23701,
+      "ai_bounds": 0,
+      "ai_no_wrap": 0
+    },
+    "validations": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "3951fa34fb1ecb3f73ec8132febe7f20f2cbe79ba509909b69f13347611d66d6",
+        "certificate_sha256": "01c6a7288c375935158db813fc7a7d22dee7d974abdfc0bc3eb0565b0b9bb6f0",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "heap:1:s54",
+            "offset": 0,
+            "width": 8,
+            "write": false,
+            "vc": {
+              "0": 86,
+              "2": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "heap:1:s54",
+            "offset": 0,
+            "width": 8,
+            "write": true,
+            "vc": {
+              "0": 85,
+              "1": 33
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 135,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ],
+    "command": [
+      "/usr/bin/time",
+      "-f",
+      "%e %U %S %M",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-2-0/usage.txt",
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-2-0/report.json",
+      "-o",
+      "/tmp/ikos-v1-2026-10-10/ai-ablation/char_generic_nvram_read_nvram_write_nvram-race-7a0108bb-2-0/output.db",
+      "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_generic_nvram_read_nvram_write_nvram-race.i"
+    ],
+    "data_model": 32,
+    "timeout": 30
+  }
+]

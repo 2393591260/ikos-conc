@@ -9,6 +9,7 @@
 #include <llvm/IR/Instructions.h>
 
 #include <functional>
+#include <chrono>
 #include <map>
 #include <set>
 #include <vector>
@@ -47,7 +48,11 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                        ar::Function* funcA, ar::Function* funcB,
                        Diagnostics* diagnostics = nullptr,
                        const CandidateFacts* facts = nullptr,
-                       GuardRejection* rejection = nullptr) {
+                       GuardRejection* rejection = nullptr, Metrics* metrics = nullptr) {
+  if (metrics != nullptr) {
+    ++metrics->path_queries;
+    metrics->prefix_events += inputA.size() + inputB.size() + (facts != nullptr ? facts->startup.size() : 0);
+  }
   if (rejection != nullptr) *rejection = {};
   auto pathA = inputA, pathB = inputB;
   if (pathA.empty() || pathB.empty()) {
@@ -1180,6 +1185,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           auto proof = facts->no_wrap->find(op);
           if (proof != facts->no_wrap->end() && proof->second) {
             record(diagnostics, "ai_no_wrap", op);
+            if (metrics != nullptr) ++metrics->ai_no_wrap;
             continue; // Demanded results still go through exact encode_value.
           }
         }
@@ -1406,6 +1412,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       if (facts->bounded_a) s.add(off_a >= ctx.int_val(facts->lo_a.str().c_str()) && off_a <= ctx.int_val(facts->hi_a.str().c_str()));
       if (facts->bounded_b) s.add(off_b >= ctx.int_val(facts->lo_b.str().c_str()) && off_b <= ctx.int_val(facts->hi_b.str().c_str()));
       if (facts->bounded_a || facts->bounded_b) record(diagnostics, "ai_candidate_bounds");
+      if (metrics != nullptr) metrics->ai_bounds += facts->bounded_a + facts->bounded_b;
     }
     {
       // 字节范围重叠（而非起始 offset 相等）：`x`(u32@[0]) 与 `((u8*)&x)[1]`
@@ -1463,14 +1470,25 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       };
       exclude_between(pathA, 0); exclude_between(pathB, nA);
     }
+    auto solve_start = std::chrono::steady_clock::now();
     z3::check_result result = query.check();
+    const auto solve_end = std::chrono::steady_clock::now();
+    if (metrics != nullptr) {
+      ++metrics->solver_queries;
+      metrics->assertions += query.assertions().size();
+      metrics->solver_us += std::chrono::duration_cast< std::chrono::microseconds >(
+          solve_end - solve_start).count();
+    }
     record(diagnostics, result == z3::sat ? "sat" :
                         result == z3::unsat ? "smt_unsat" : "smt_unknown");
     if (result == z3::sat) {
       Result outcome(Status::Confirmed);
       auto model = query.get_model();
+      auto export_start = std::chrono::steady_clock::now();
       outcome.evidence = export_counterexample(funcA, funcB, startup, pathA, pathB,
           cache_init, cache_a, cache_b, clock, replay_offsets, model, &functions);
+      if (metrics != nullptr) metrics->evidence_us += std::chrono::duration_cast< std::chrono::microseconds >(
+          std::chrono::steady_clock::now() - export_start).count();
       return outcome;
     }
     solver_unknown |= result == z3::unknown;

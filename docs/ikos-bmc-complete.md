@@ -169,7 +169,38 @@ Read/Write、Lock/Unlock、Assume、Create/Join、Local/Unsupported 是基础事
 no-wrap 证书消费为 0；这是信息流观测，不是因果收益。
 后来对所选 21 个恢复任务关闭 bounds/no-wrap 两项事实，TP **21→21**。
 此消融保留 typed initializer、创建和候选筛选，不能称为关闭全部 IKOS。
-尚无证据声称这两个数值证书增加 TP 或稳定加速。
+这一历史样本未证明这两个数值证书增加TP或稳定加速。
+
+第一版补充普通结果内的`metrics`，不依赖diagnostics：尝试的path queries、输入prefix events
+（synthetic展开前）、真正solver queries、累计顶层SMT assertions、solver/evidence微秒和
+消费的bounds/no-wrap数。跨deferred轮次累积结果、失败状态及计数；不是只报最后一轮。
+顶层assertion数量不等于内部AST/bit-vector复杂度，事件数也不是全程序事件数。
+`scripts/ablate_bmc.py`串行运行、交替A/B顺序和三次重复，保留逐项时间、最大RSS与所选
+执行验收。`IKOS_BMC_DISABLE_AI_FACTS`的存在只关闭BMC offset bounds和no-wrap消费，
+仍保留AI SAFE、may候选筛选、typed initializer和真实创建；不能称为关闭整个IKOS。
+
+10输入60次受控运行：7个比赛标签TP、2个UNKNOWN、1个最小正例，A/B判定完全一致，
+所有所选执行AR ACCEPT。局部unsigned-char推广后加1的unused结果，AI证明范围[1,256]
+不溢出，避免重复混合Int/BV求解：中位总耗时**0.184s→0.464s（开→关）**，
+solver **3379µs→279123µs**，最大RSS85624→85888KiB。两个query输入均16事件、
+1solver query、25顶层assertions；计数相同不意味着公式复杂度相同。
+此类未被使用的结果仍需要定义性前提，不能为了快直接忽略；被guard/地址/值流使用的
+结果仍走精确编码。双架构正例确认实际消费1条no-wrap证书，关事实后为0，执行均ACCEPT。
+其他比赛样本耗时基本持平或只有小幅波动，例如shared callback 0.199/0.201s、
+fib5 0.845/0.871s、NVRAM 2.080/2.077s；没有全项目普遍大幅加速的依据。
+范围证书目前主要增加两个约束，样本的queries/events保持不变，尚未证明其一般收益。
+`/usr/bin/time`测的是报告的maximum RSS，不是整个cgroup合计峰值。
+证据：[ablation-summary](artifacts/bmc-v1-ai-facts-2026-10-10/ablation-summary.json)、
+[逐次结果](artifacts/bmc-v1-ai-facts-2026-10-10/ablation-results.json)。
+
+**依赖覆盖契约**：AI may-bounds不能替代rf来源。完整选择的startup/A/B前缀中，
+真正执行的store、地址、库控制存储、动态调用/返回、guard和可能trap逐项核对；读取的
+每个可能重叠写必须能解析并纳入SC最新写选择，未知别名/源/width/部分指针写拒绝。
+未选择的其他线程保持未调度，仅允许§6.4核实的无副作用完成。这个存在性执行策略不
+要求整个程序所有写进入查询，但不能忽略已经执行或为了Join必须完成的第三线程。
+导出byte rf、具体值/地址/调用和实际创建，AR检查从全部执行事件重新计算，
+不能把abstract range、may-callee或interval摘要当作某个实际store已执行的证据。
+SAFE仍依赖抽象域与保守过滤覆盖，本文不把有限回归视为其完整证明。
 
 共享读 interval 可能 stale，历史递增例两个线程读区间都为 `[0,0]`。
 不能直接限制 BMC 具体读值；需要跨线程不动点、读时干扰及上下文契约。
