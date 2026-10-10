@@ -22,7 +22,10 @@ def main(args):
         compiled = subprocess.run(['g++', *flags, '-fexceptions', '-UNDEBUG', '-O1',
             '-I' + str(ROOT / 'core/include'), '-I' + str(ROOT / 'ar/include'),
             '-I' + str(ROOT / 'analyzer/include'),
-            str(Path(__file__).with_name('escape.cpp')), '-o', str(unit),
+            '-I' + str(ROOT / 'frontend/llvm/include'),
+            str(Path(__file__).with_name('escape.cpp')),
+            str(ROOT / 'analyzer/src/analysis/memory_location.cpp'), '-o', str(unit),
+            '-ffunction-sections', '-fdata-sections', '-Wl,--gc-sections',
             '-lgmpxx', '-lgmp', '-lLLVM-14', '-pthread'],
             capture_output=True, text=True, timeout=60)
         (args.output / 'unit-build.log').write_text(compiled.stdout + compiled.stderr)

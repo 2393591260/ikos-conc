@@ -4,9 +4,10 @@
 int main() {
   using namespace ikos::core;
   ConcurrentGlobalEnv env;
-  int keys[2]; // Opaque identities only; the environment never dereferences them.
-  auto* a = reinterpret_cast<ikos::analyzer::MemoryLocation*>(&keys[0]);
-  auto* b = reinterpret_cast<ikos::analyzer::MemoryLocation*>(&keys[1]);
+  ikos::analyzer::AbsoluteZeroMemoryLocation first;
+  ikos::analyzer::ArgvMemoryLocation second;
+  auto* a = &first;
+  auto* b = &second;
   using Targets = PointsToSet<ikos::analyzer::MemoryLocation*>;
   assert(!env.is_escaped(a));
   env.record_possible_escape(Targets::bottom());

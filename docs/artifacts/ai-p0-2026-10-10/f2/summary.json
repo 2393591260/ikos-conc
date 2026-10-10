@@ -54,5 +54,8 @@
   "fixtures": 56,
   "escape_assertions": 7,
   "prior_fixture_configs": 144,
-  "note": "Disable unsupported heap-fresh candidate suppression. Stored pointer targets are conservatively maybe escaped regardless of current container visibility; TOP removes the private exclusion for every location. This is not a complete escape graph. Original six audit families and stack/TLS/stack-root variants no longer SAFE. Coupled and broader effect coverage risks remain; new multi-source pointer-restore FN reproduced for a next independent fix."
+  "note": "Disable unsupported heap-fresh candidate suppression. Stored pointer targets are conservatively maybe escaped regardless of current container visibility; TOP removes the private exclusion for every location. This is not a complete escape graph. Original six audit families and stack/TLS/stack-root variants no longer SAFE. Coupled and broader effect coverage risks remain; new multi-source pointer-restore FN reproduced for a next independent fix.",
+  "original_escape_unit_invalid": true,
+  "corrected_escape_unit": "real MemoryLocation objects; compiled against committed F2 header with production memory_location.cpp",
+  "corrected_escape_assertions": 7
 }

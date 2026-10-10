@@ -523,6 +523,9 @@ checker 不再用 MUST fresh 删除堆访问。另将每个显式 pointer store 
 build/install 一致；56 个双位宽/双模式用例覆盖深度2/3、环、helper、数组转移、64位字段、
 先发布再连边、stack/TLS 末端和 stack 根。真正独立 heap 与 join 后写对照保持 SAFE，
 竞争变体全部不再 SAFE；7条逃逸/dirty/TOP/clear 断言通过。
+单元测试后续更正：原版使用伪对象地址，但 points-to 集合会读取 stable_id，存在 UB，
+原版7条断言不能作为证据。现改为真实 AbsoluteZero/Argv MemoryLocation，链接生产构造实现，
+对已提交 F2 header 重新执行7条断言，并复跑56次程序；更正证据单独提交，分析器未改变。
 先前五项机制144次定向运行、旧 BMC20次保持；原审查76次现在无 KNOWN_FN_PENDING。
 这不是整个项目不存在 FN 的证明。
 
