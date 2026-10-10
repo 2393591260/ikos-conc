@@ -1,0 +1,57 @@
+{
+  "baseline_commit": "77c685e",
+  "baseline_analyzer_sha256": "96550aa8dfdf50655bf4cc79bee4f3443ef489032feeabc9f3b9328ac461a7b3",
+  "analyzer_sha256": "8ad119718d715b026fca2bd2384e833ce1afa7acaa153c7b64f6f02707a676f2",
+  "source_sha256": {
+    "analyzer/src/checker/data_race.cpp": "f0ffc586c501a198834db1def00a04004a71cb58def623caf2a5a69a97684d1d",
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp": "f9d065223d0aabea34d771992dba9184e652dc3b976928bd6f701f7fa1a2a165",
+    "core/include/ikos/core/domain/concurrent_global_env.hpp": "0e8b4ed764967294d765f60e97a4e7cda0fb80fe228602b7b50fdf0472ad1c15"
+  },
+  "manifest": "docs/artifacts/ai-p0-2026-10-10/f1/paired.json",
+  "manifest_sha256": "9a6a9d81d2f8599d66d2a38574bb05d6c00e3a662048e096d634e027af6d9a8c",
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 680,
+      "FN": 0,
+      "error": 0,
+      "unknown": 349
+    },
+    "after_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 680,
+      "FN": 0,
+      "error": 0,
+      "unknown": 349
+    },
+    "before_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 680,
+      "FN": 0,
+      "error": 0,
+      "unknown": 245
+    },
+    "after_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 680,
+      "FN": 0,
+      "error": 0,
+      "unknown": 245
+    }
+  },
+  "tasks": 1029,
+  "jobs": 4,
+  "timeout_seconds": 30,
+  "data_model": "ILP32",
+  "build_and_install_equal": true,
+  "fixtures": 32,
+  "audit_cases": 76,
+  "known_audit_misses_pending": 16,
+  "old_bmc_cases": 20,
+  "selected_evidence_scope": "Native-entry BMC control accepted by independent AR checker. No BMC formula changes; previous F1 export has 130 ACCEPT across 104 retained TPs. Not official witness validation.",
+  "note": "F1 no-parallel-compilation rerun recovered the two nondet-array tasks: TP104/TN680/UNKNOWN245. F3 changes no frozen verdict. F2/F4/F5/F6 remain pending."
+}

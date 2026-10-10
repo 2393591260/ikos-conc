@@ -1600,7 +1600,7 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
     }
     if (isa< ar::FunctionPointerConstant >(thread_func_val)) {
       auto fpc = cast< ar::FunctionPointerConstant >(thread_func_val);
-      if (fpc->function()) {
+      if (fpc->function() && fpc->function()->is_definition()) {
         thread_func = fpc->function();
         thread_func_name = fpc->function()->name();
         spawn_resolved = true;
@@ -1629,6 +1629,8 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
     // TOP — "may have spawned ANY thread" — so the checker refuses the
     // create-edge skip for every child.
     eng.lockset().set_spawned_top();
+    // Missing child accesses cannot be repaired by a TOP spawned digest.
+    eng.ctx().concurrent_env.record_unmodeled_thread_creation(call);
   }
 
   // Thread-instance id of this create site (0 when the spawn was indirect /

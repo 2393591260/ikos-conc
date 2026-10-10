@@ -403,7 +403,9 @@ AI-only/BMC，24 个竞争配置均不再 SAFE；共同锁及读写互斥对照�
 
 16 个 TN 回退全部来自已撤销的符号/region 捷径，逐项保留，后续只能用完整锁地址相关性恢复。
 两个 funloop 的可靠 TP 因新增候选耗尽搜索预算退 UNKNOWN；另两个 nondet-array 首轮退 UNKNOWN，
-但独立选中任务重跑仍确认，正在不并行编译的全量运行中核对预算波动。
+但独立选中任务重跑仍确认；未并行编译的全量复跑恢复这两项，
+得到 TP104/TN680/UNKNOWN245、FP/FN/error0，逐项对照见下节证据。
+该观测符合时间预算波动，不证明编译是唯一原因；两个 funloop 的候选膨胀仍待优化。
 重导出旧 106 项时，104 项确认、130 组执行获独立 AR ACCEPT，两个未确认项不算验证成功。
 这些不是官方 C/witness 验证，也不证明其他五类 FN 已解决。
 
@@ -412,3 +414,24 @@ AI-only/BMC，24 个竞争配置均不再 SAFE；共同锁及读写互斥对照�
 [变化清单](artifacts/ai-p0-2026-10-10/f1/transitions.json)、
 [双位宽用例](artifacts/ai-p0-2026-10-10/f1/fixtures-after.json)、
 [130 组执行](artifacts/ai-p0-2026-10-10/f1/execution-results.json)。
+
+### 9.2 P0-F3：未知线程体的覆盖回退
+
+实际执行 `pthread_create` 时，只有解析到有函数体的入口才算已覆盖。
+未解析入口/只有声明的入口记录到 per-analysis environment；DataRaceChecker 即使没有访问对，
+也发出性质 Warning，不能返回 SAFE。记录在迭代间保留、分析环境清空时一并清除。
+告警使用已有 unknown-function-pointer 类型和 `unknown_reason`，没有修改 Python 前端或 BMC 编码。
+有限间接入口集合的解析是后续精度任务；这里没有伪称已分析那些线程体。
+
+32 项双位宽/双模式覆盖 volatile 入口、缺少函数体、有限选择、helper、不可达创建及 join 对照。
+未覆盖入口全部 UNKNOWN；字面量入口竞争在 BMC 中确认并获 AR ACCEPT；字面量先 join 与不可达创建保持 SAFE。
+新增六类审查 runner：默认要求全部修复，分阶段 `--fixed F1 F3` 会明确列出仍待修的 16 次漏报，
+不把它们伪装成已通过正确性验收。19 个输入的 76 次运行及旧三类 BMC 的 20 次双位宽回归通过当前阶段约束。
+
+完整 1029 配对：AI-only TP0/TN680/UNKNOWN349 不变；BMC TP104/TN680/UNKNOWN245 不变，
+两侧 FP/FN/error0，逐任务无变化。F2/F4/F5/F6 仍待修，P0 整体尚未通过。
+
+证据：[汇总](artifacts/ai-p0-2026-10-10/f3/summary.json)、
+[配对](artifacts/ai-p0-2026-10-10/f3/paired.json)、
+[新用例](artifacts/ai-p0-2026-10-10/f3/fixtures-after.json)、
+[原审查输入](artifacts/ai-p0-2026-10-10/f3/audit.json)。

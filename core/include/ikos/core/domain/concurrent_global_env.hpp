@@ -273,6 +273,9 @@ private:
   /// join HB).
   std::unordered_map< std::uint64_t, ar::Function* > _site_func;
 
+  /// Reachable creates whose child body is not covered by the worklist.
+  std::vector< ar::CallBase* > _unmodeled_thread_creations;
+
   /// \brief pthread_once callback instance ids, keyed by a stable identity of
   /// the once-CONTROL object (arg0). A once-callback runs once PER DISTINCT
   /// control: two once-calls on the same control must share ONE instance id
@@ -1065,6 +1068,20 @@ public:
     }
   }
 
+  void record_unmodeled_thread_creation(ar::CallBase* call) {
+    std::lock_guard< std::mutex > lock(_mutex);
+    if (std::find(_unmodeled_thread_creations.begin(),
+                  _unmodeled_thread_creations.end(), call) ==
+        _unmodeled_thread_creations.end()) {
+      _unmodeled_thread_creations.push_back(call);
+    }
+  }
+
+  std::vector< ar::CallBase* > unmodeled_thread_creations() const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    return _unmodeled_thread_creations;
+  }
+
   /// \brief Register a pthread_once callback and return its instance id.
   ///
   /// Unlike pthread_create (one instance per create site), a once-callback
@@ -1740,6 +1757,7 @@ public:
     _next_site_id = 1;
     _func_instances.clear();
     _site_func.clear();
+    _unmodeled_thread_creations.clear();
     _once_sids.clear();
     _join_summary.clear();
     _spawn_args.clear();

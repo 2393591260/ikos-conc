@@ -448,6 +448,14 @@ inline bool region_of(ar::Value* v, Context& ctx, CallContext* cc,
 DataRaceChecker::DataRaceChecker(Context& ctx) : Checker(ctx) {}
 
 DataRaceChecker::~DataRaceChecker() {
+  for (ar::CallBase* call : this->_ctx.concurrent_env.unmodeled_thread_creations()) {
+    this->_checks.insert(
+        CheckKind::UnknownFunctionCallPointer, CheckerName::DataRace,
+        Result::Warning, call, this->_ctx.call_context_factory->get_empty(),
+        {call->argument(2)},
+        {{"unknown_reason", "thread entry body not covered"}});
+  }
+
   // Temporary probe (env IKOS_BMC_DUMP): dump the BMC events (memory + mutex
   // sync) for every function, verifying the event extraction on real code.
   // Remove once the BMC module is wired in.
