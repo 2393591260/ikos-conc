@@ -1,5 +1,7 @@
 # IKOS BMC 完整设计文档（从零到 sound gate 体系）
 
+> 与当前两线程Join公式等价的提前UNSAT剪枝已落地，冻结集逐项不变；动态句柄匹配仍待实现，见[Join查询](ikos-bmc-join-query-prune-2026-10-10.md)。
+
 > 原始整数global的真实字节来源可拼接混合宽度读，9类正例恢复确认；普通同宽快速路径保留，冻结集逐项不变，见[字节SC值流](ikos-bmc-byte-rf-2026-10-10.md)。
 
 > mutex内部状态遗漏造成的错误FALSE已修复，隐式库输出不能冒充静态读源；冻结集逐项不变，见[库值来源](ikos-bmc-library-origin-2026-10-10.md)。

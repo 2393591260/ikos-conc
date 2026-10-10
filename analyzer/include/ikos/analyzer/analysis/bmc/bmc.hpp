@@ -177,8 +177,8 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
                          unsigned loop_bound = 1) {
   // The actual startup and worker prefixes reject unsupported atomic memory
   // events/calls. Synchronization outside them need not be executable here.
-  UnrollResult rA = unroll_to(funcA, stmtA, 1, loop_bound);
-  UnrollResult rB = unroll_to(funcB, stmtB, 1, loop_bound);
+  UnrollResult rA = unroll_to(funcA, stmtA, 1, loop_bound, true);
+  UnrollResult rB = unroll_to(funcB, stmtB, 1, loop_bound, true);
   auto atomic_access = [](const std::vector< BmcEvent >& path) {
       int active = 0;
       for (const auto& event : path) {

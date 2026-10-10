@@ -1092,6 +1092,7 @@ inline bool inline_ok(ar::Function* f) {
 constexpr std::size_t MAX_PATHS = 256;
 constexpr std::size_t MAX_PATH_EVENTS = 1024;
 struct UnrollBudget {
+  bool prune_join_prefix = false;
   std::size_t steps = 0;
   unsigned loop_bound = 1;
   unsigned target_occurrence = 1;
@@ -1192,6 +1193,15 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
       }
       BmcEvent ev;
       if (classify_event(s, ev, &in_stack)) {
+        // check_race currently orders the opponent's last event before every
+        // join. A join before our target therefore makes adjacency UNSAT.
+        // This is query pruning, not a claim about actual join handle identity.
+        if (budget.prune_join_prefix && ev.kind == EvKind::Join &&
+            candidate_index(current) == current.size()) {
+          budget.rejected_reason = "join_orders_target";
+          budget.rejected_statement = s;
+          return;
+        }
         current.push_back(ev);
       } else if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
         // Encode the actual nonzero argument, including casts. Failure to
@@ -1313,7 +1323,8 @@ struct UnrollResult {
 /// 从函数入口到 `target` 的所有路径（事件序列）。
 inline UnrollResult unroll_to(
     ar::Function* func, ar::Statement* target,
-    unsigned target_occurrence = 1, unsigned loop_bound = 1) {
+    unsigned target_occurrence = 1, unsigned loop_bound = 1,
+    bool prune_join_prefix = false) {
   UnrollResult result;
   // A root invocation has no source call on which to attach the boundaries.
   if (named_verifier_atomic(func)) {
@@ -1326,6 +1337,7 @@ inline UnrollResult unroll_to(
     return result;
   }
   UnrollBudget budget;
+  budget.prune_join_prefix = prune_join_prefix;
   budget.target_occurrence = target_occurrence;
   budget.loop_bound = loop_bound;
   budget.root_target = target;
