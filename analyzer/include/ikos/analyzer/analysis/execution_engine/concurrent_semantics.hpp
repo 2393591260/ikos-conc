@@ -77,22 +77,13 @@ inline std::uint64_t lock_key_instance(std::uint64_t key) {
   return key & 0xFFFFFFFFULL;
 }
 
-/// \brief Pack a heap-field pointer-board key: (alloc-site stable_id << 32 |
-/// field byte offset). Mirrors `offset_lock_key`'s reversible packing — the
-/// high 32 bits identify the DynAlloc allocation site, the low 32 bits the
-/// byte offset of the field WITHIN that allocation, so `N_A->next` and
-/// `N_B->next` (and `N_A->datum`) never collide (09-regions_03-list2_rc.c FN).
-/// A NON-SINGLETON (variable) offset packs as the sentinel 0xFFFFFFFF — a
-/// distinct "whole array / unknown field" slot so an imprecise element write
-/// (`B[i] = p`) is JOINED onto one summarised entry instead of being dropped
-/// (weaver loop-tiling: B[i][j] otherwise derefs to ⊤).
-inline std::uint64_t heap_pointer_key(std::uint64_t stable_id,
-                                      const core::machine_int::Interval& off) {
-  std::uint64_t i = 0xFFFFFFFFULL; // sentinel: variable / unknown field offset
-  if (auto s = off.singleton()) {
-    i = s->to_z_number().to< std::uint64_t >();
-  }
-  return (stable_id << 32) | i;
+/// Preserve the full allocation and offset identities; unknown fields overlap
+/// every exact field rather than occupying a disjoint packed sentinel slot.
+inline core::ConcurrentGlobalEnv::HeapPointerKey heap_pointer_key(
+    std::uint64_t stable_id, const core::machine_int::Interval& off) {
+  if (auto s = off.singleton())
+    return {stable_id, true, s->to_z_number()};
+  return {stable_id, false, core::ZNumber(0)};
 }
 
 /// \brief Is a dynamic-allocation call site inside a CFG loop?
@@ -1433,9 +1424,8 @@ void on_store_privatize(E& eng,
       // a DynAlloc field (`A->next = p`) is invisible to the global-only
       // boards, so a cross-thread deref through it loses the datum
       // access. Propagate pointer-typed writes onto the heap pointer
-      // board keyed by (alloc-site, field-offset) — precise only when
-      // the field offset is a singleton; imprecise fields are skipped
-      // (no worse than today's whole-DynAlloc skip).
+      // board keyed by (alloc-site, field-offset); unknown offsets overlap
+      // all fields of the allocation.
       if (isa< DynAllocMemoryLocation >(loc)) {
         if (val.is_scalar()) {
           const ScalarLit& rhs = val.scalar();
@@ -1446,10 +1436,7 @@ void on_store_privatize(E& eng,
                 ? core::ConcurrentGlobalEnv::PointerValue::null(
                       eng.ctx().bundle->data_layout().pointers.bit_width, core::Unsigned)
                 : eng.data().normal().pointer_to_pointer(rhs.var());
-            // Variable element offset (`B[i] = p`) now lands on the sentinel
-            // "whole array" key (heap_pointer_key packs 0xFFFFFFFF), so the
-            // pointer is JOINed onto one summarised entry instead of dropped.
-            std::uint64_t key = heap_pointer_key(
+            auto key = heap_pointer_key(
                 static_cast< std::uint64_t >(
                     core::IndexableTraits< MemoryLocation* >::index(loc)),
                 store_ptr.offset());

@@ -101,6 +101,8 @@ constexpr std::uint64_t kMainThreadSid = 0xA7E0AD1DULL;
 class ConcurrentGlobalEnv {
 public:
   using PointerValue = PointerAbsValue< analyzer::MemoryLocation* >;
+  // Base identity, exact-offset flag, and unbounded byte offset.
+  using HeapPointerKey = std::tuple< std::uint64_t, bool, ZNumber >;
   /// \brief Symbolic array slot identity: `coeff * idx_var + const_term`,
   /// where the index variable is identified by its AR InternalVariable
   /// pointer (stable within a run — the same SSA value maps to the same
@@ -388,15 +390,14 @@ private:
   /// `_global_pointer_board` in `join_global_pointer` and `clear`.
   std::unordered_set< analyzer::MemoryLocation* > _global_pointer_targets;
 
-  /// \brief Heap-field pointer blackboard channel: (alloc-site stable_id << 32
-  /// | field byte offset) → the points-to set (+ offset) that heap field
-  /// currently holds. The global `_global_pointer_board` only carries GLOBAL
+  /// \brief Heap-field pointer channel: (allocation site, exact/unknown offset)
+  /// → the complete joined pointer value written to that field. The global `_global_pointer_board` only carries GLOBAL
   /// pointer variables; a DynAlloc field (`A->next = p`) is invisible there,
   /// so a cross-thread deref through it (`A->next->datum++`) loses the datum
   /// access (09-regions_03-list2_rc.c FN). Keyed by allocation site × field
-  /// offset (reversible pack) so distinct list nodes / fields never collide,
+  /// offset (structural key) so distinct allocation sites / fields do not collide,
   /// and the per-key set stays bounded by `kPtrBoardWidenThreshold`.
-  std::unordered_map< std::uint64_t, PointerValue > _heap_pointer_board;
+  std::map< HeapPointerKey, PointerValue > _heap_pointer_board;
 
   /// \brief Dirty flag for the global-fixpoint driver
   /// (`analysis/value/interprocedural/sequential/analysis.cpp`).
@@ -1655,9 +1656,9 @@ public:
   }
 
 private:
-  template < typename Key >
-  void join_pointer_summary_nolock(std::unordered_map< Key, PointerValue >& board,
-                                   Key key,
+  template < typename Board >
+  void join_pointer_summary_nolock(Board& board,
+                                   const typename Board::key_type& key,
                                    const PointerValue& value) {
     auto inserted = board.emplace(key, value);
     auto& current = inserted.first->second;
@@ -1705,7 +1706,7 @@ public:
   }
 
   /// Join a heap-field pointer value keyed by allocation and field offset.
-  void join_heap_pointer(std::uint64_t key, const PointerValue& value) {
+  void join_heap_pointer(const HeapPointerKey& key, const PointerValue& value) {
     if (value.is_bottom()) return;
     std::lock_guard< std::mutex > lock(_mutex);
     join_pointer_summary_nolock(_heap_pointer_board, key, value);
@@ -1715,12 +1716,28 @@ public:
     }
   }
 
-  bool get_heap_pointer(std::uint64_t key, PointerValue& value) const {
+  bool get_heap_pointer(const HeapPointerKey& key, PointerValue& value) const {
     std::lock_guard< std::mutex > lock(_mutex);
-    auto it = _heap_pointer_board.find(key);
-    if (it == _heap_pointer_board.end()) return false;
-    value = it->second;
-    return true;
+    bool found = false;
+    auto include = [&](const PointerValue& incoming) {
+      if (found) value.join_with(incoming);
+      else value = incoming;
+      found = true;
+    };
+    auto base = std::get<0>(key);
+    HeapPointerKey wildcard{base, false, ZNumber(0)};
+    if (std::get<1>(key)) {
+      auto exact = _heap_pointer_board.find(key);
+      if (exact != _heap_pointer_board.end()) include(exact->second);
+      auto unknown = _heap_pointer_board.find(wildcard);
+      if (unknown != _heap_pointer_board.end()) include(unknown->second);
+    } else {
+      // An unknown read may overlap every pointer field of this allocation.
+      for (auto it = _heap_pointer_board.lower_bound(wildcard);
+           it != _heap_pointer_board.end() && std::get<0>(it->first) == base; ++it)
+        include(it->second);
+    }
+    return found;
   }
 
   /// \brief Retrieve the recorded spawn-arg points-to set + offset for a

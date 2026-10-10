@@ -33,7 +33,7 @@ def main(args):
         subprocess.run([str(unit)], check=True, timeout=30)
     rows = []
     for bits in (32, 64):
-        for case in range(10):
+        for case in range(16):
             for mode in ('ai', 'bmc'):
                 folder = args.output / f'{bits}-{case}-{mode}'
                 folder.mkdir()
@@ -56,9 +56,9 @@ def main(args):
                 parsed = json.loads(report.read_text())
                 executions = validate_report(parsed) if mode == 'bmc' else []
                 if not args.observe:
-                    if case in (4, 5):
+                    if case in (4, 5, 11, 14):
                         assert verdict == 'The program is SAFE', (folder, verdict)
-                    elif case in (6, 9):
+                    elif case in (6, 9, 15):
                         assert verdict != 'The program is definitely UNSAFE', (folder, verdict)
                     else:
                         assert verdict != 'The program is SAFE', (folder, verdict)

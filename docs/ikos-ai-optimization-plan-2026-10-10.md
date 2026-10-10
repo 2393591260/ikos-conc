@@ -660,3 +660,30 @@ P0尚未结束：另已复现heap通配字段写被精确字段读遗漏、LP64 
 [修复前](artifacts/ai-p0-2026-10-10/bytes/fixtures-before.json)、
 [修复后](artifacts/ai-p0-2026-10-10/bytes/fixtures-after.json)、
 [1029配对](artifacts/ai-p0-2026-10-10/bytes/paired.json)。
+
+
+### 9.11 P0：堆指针通配字段与精确字段重叠
+
+已复现的独立FN：reader先在mutex内把slot0重设为x，publisher在同mutex内向
+slot[nondet()?0:1]写z，reader随后读取slot0并在锁外写*p，与main写z竞争。
+旧精确字段getter只取slot0摘要，遗漏通配写，因此双ABI/双模式均SAFE；
+原生Dartagnan对保存的原输入双ABI均FAIL，无unsupported警告，仍不等于IKOS witness验证。
+修复把摘要键改为完整(allocation-site,exact-offset?,ZNumber offset)结构：
+精确读合并对应字段和通配写，未知读合并该base全部字段。
+无摘要时继续已有havoc回退；offset或base高32位不再损坏身份。
+allocation-site仍是汇总对象，不能把结构键当动态堆唯一性证明。
+
+64次双ABI/双模式配置、92条真实MemoryLocation摘要断言、byte96次、
+原审查76次、旧BMC20次通过。slot0/slot1竞争变体SAFE→UNKNOWN，
+未知下标读原来已UNKNOWN，不能算成新修复FN；不相交目标、同锁、join对照仍SAFE。
+单元覆盖通配与精确摘要并存、未知读、缺精确字段但有通配写、不同base，
+以及超32位base/offset。没有新BMC FALSE或前端修改。
+
+1029完整顺序AI/BMC扫描逐任务与bytes阶段一致：AI TN662/UNKNOWN366/error1；
+BMC TP104/TN662/UNKNOWN262/error1，FP/FN0。nsc-ircc超时仍在。
+大偏移锁键碰撞和未知extern覆盖待续，未宣称P0全部通过。
+证据：[汇总](artifacts/ai-p0-2026-10-10/heap/summary.json)、
+[修复前](artifacts/ai-p0-2026-10-10/heap/fixtures-before.json)、
+[修复后](artifacts/ai-p0-2026-10-10/heap/fixtures-after.json)、
+[原生参考](artifacts/ai-p0-2026-10-10/heap/reference.json)、
+[配对](artifacts/ai-p0-2026-10-10/heap/paired.json)。
