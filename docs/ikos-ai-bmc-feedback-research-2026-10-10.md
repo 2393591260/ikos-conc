@@ -211,6 +211,13 @@ Goblint ESOP 2023 的 local traces、关系 clusters、创建身份与 MHP。
 顺序 path focusing 的定理不能在加入未经建模的环境变化后直接沿用。
 原文及查阅范围见[publications.json](artifacts/ai-audit-2026-10-10/publications.json)。
 
+后续补充核对了 STTT 2024 的 digest framework 与 VMCAI 2026 的
+Data Race Detection by Digest-Driven Abstract Interpretation。
+它们已经研究了可调并发敏感性、摘要可接受性及访问不并行谓词的组合；
+这些不能再当作本项目独有贡献。具体与 IKOS 的差异及参考驱动 TN 流程见
+[优化计划 §8](ikos-ai-optimization-plan-2026-10-10.md#goblint-tn)。
+此补充采用作者扩展版，论文实验未在本轮复现。
+
 ### 6.2 值得检验的研究问题
 
 一个具体题目方向：**面向线程模块化数据竞争分析的证书化双向抽象—符号反馈**。

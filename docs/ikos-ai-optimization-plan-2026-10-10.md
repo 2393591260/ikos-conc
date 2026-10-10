@@ -254,3 +254,130 @@ F4/F6 要改读/写环境契约，PBR 与 coupled convergence 必须一起核查
 连续候选都受同一未解决大模型边界阻塞时，记录案例并停止堆局部规则。
 第一轮实施建议只做 P0 并单项提交；完成后重新建立可信工程基线，再挑 P1 的一个嵌套保护案例。
 论文研究则在正确基线和真实消融结果上判断是否继续，不能提前包装成已经实现的贡献。
+
+<a id="goblint-tn"></a>
+## 8. 补充：以 Goblint digest-driven 分析为参照，逐项恢复 TN
+
+补充日期：2026-10-10。用户提到的论文已核实为 Michael Schwarz、Julian Erhard，
+[Data Race Detection by Digest-Driven Abstract Interpretation](https://doi.org/10.1007/978-3-032-15700-3_15)，
+**VMCAI 2026**，正式页面标注 first online 2026-01-13。
+正式全文入口此次返回订阅预览，因此实际阅读全文相关部分采用作者提供的
+[扩展版 arXiv:2511.11055v2](https://arxiv.org/abs/2511.11055)，2025-11-25，29 页。
+不能把扩展版发布日期说成正式会议年份，也不能假称读到了付费正式版全部正文。
+
+另核对背景论文
+[The digest framework: concurrency-sensitivity for abstract interpretation](https://doi.org/10.1007/s10009-024-00773-y)，
+STTT 2024；其 §3 用 admissibility 条件保证 digest 不会排除真正兼容的线程历史。
+来源和指纹见[研究元数据](artifacts/ai-goblint-reference-2026-10-10/sources.json)。
+本地 Goblint 仍固定 `bb55b70d91290992629ba3d073185c10cdf356e6`。
+论文 [artifact](https://doi.org/10.5281/zenodo.17128591) 的公开元数据已取得，
+但本轮没有下载 8.9GB 档案或复现其论文实验，不把本地 checkout 自动称作原版 artifact。
+
+### 8.1 为什么没完整采用这个框架，也可能得到相近 TN
+
+这里的 digest 是**计算历史的摘要**：持锁、创建历史、唯一线程、已经完成的线程、对象未逃逸等。
+它不是哈希校验码，也不等同于函数输入/输出摘要或单纯把所有共享写值取 join。
+
+VMCAI 2026 扩展版 §7 明确说：Goblint 长期已支持竞争检测，
+该框架为既有机制提供 theoretical underpinning，并统一了 older ad-hoc mechanisms。
+所以缺少一份统一框架，并不意味着必然缺少全部对应的 operational 能力。
+IKOS 已有 AccessRecord 和析构后 pair 检查，结构上也接近论文 §6 的两阶段检测；
+相近结构仍不表示已经满足其 admissibility、access stability 和访问覆盖要求。
+
+| 论文中的 digest | IKOS 当前已有相似信息 | 需要核查/补齐的差异 |
+| --- | --- | --- |
+| L：locksets / RW 模式 | MUST locks/read_locks，共同锁过滤 | 完整锁身份、成功持锁；F1 的 self shortcut 有错 |
+| TF：单/多线程阶段 | 创建前后 spawned 信息及 creator 顺序 | 是否涵盖全部入口/创建；F3 未解析入口缺访问 |
+| TID：创建历史线程身份 | site_id、入口/uniqueness、实例集合 | 不等于完整历史型 thread ID；重复/嵌套创建要证明 |
+| J：MUST joined | joined digest 与实例覆盖 | F5 的数值区间上界不是句柄身份 |
+| FR：fresh / 未逃逸对象 | fresh_heap_nodes 与 escape 标记 | F2 缺 transitive publication |
+| SL：符号元素锁 | symbolic index、对象/instance 对应 | 模式覆盖及数据→锁映射前提；不能仅凭相同 index |
+| R：regions | region_collect 与 taint gate | 语法 gate 不是完整 region/alias 证明 |
+
+其中 SL、R 在论文 §7 明确带星号，含时间/空间共同推理，超出基本 framework 的展示范围。
+不能认为包装成一个统一 `Digest` 就自动继承它们的正确性。
+
+论文 Fig. 8 在 **SV-COMP 2025 的 794 个 race-free 任务**上报告：
+`L+TID+J` 证明 681 项，全部组合证明 712 项；实验预算 5 分钟/5GB。
+这支持“锁、线程身份和 join 的组合很重要”，
+**不支持**“在 IKOS 上引入一个 digest 类就会得到五倍 TN”或“必定再恢复若干项”。
+两工具需固定同一源码/YAML/ABI、时限、内存和 API 假设后逐项配对，不能比较两个总数就认定能力等价。
+已有六类漏报也说明当前较高 TN 中可能有未被冻结集暴露的错误规则。
+
+### 8.2 两个不同的收益方向
+
+**方向 A：候选访问的时间排除。**
+把现有 L/TF/TID/J 信息整理成独立、可核查的 no-parallel 判定。
+每个模块只在证明不并行时返回排除；否则返回 MAY，保留候选。
+独立模块的保守谓词可以组合，但跨模块推断更强结论时须补专门证明。
+这是扩展版 §5.2–5.3 的区分，而不是“所有条件凑齐就大概安全”。
+
+论文也明确：两个静态访问 tuple 可以完全相同，仍可能属于不同动态线程而竞争。
+IKOS 的非唯一实例复制/同语句处理不能因新接口重构而丢失。
+此外，公式中的 `m_g` 是 local-trace 语义的理论 atomicity mutex，
+**不能在 IKOS checker 新增成真实共同锁来隐藏数据竞争**。
+
+**方向 B：值分析的干扰精化。**
+STTT 2024 §3 让摘要/分析节点带 digest，筛选实际兼容的观察来源；
+本地 `basePriv.ml:DigestWrapper` 为共享贡献保留来源，再在读时 join 未被排除的贡献。
+`commonPriv.ml` 的 `ThreadDigest` / `ThreadNotStartedDigest` 明确区分：
+“同唯一线程或已 joined 的贡献由本地状态涵盖”与“尚未启动线程的贡献不可能被观察”。
+只有第一种所需局部状态真正涵盖效果时，才能省去对应摘要。
+
+IKOS 当前 flat board 与入口合并会丢失来源，单加 postfilter 不能恢复 guard 所需关系。
+可按需保留 `(cell, 抽象写者/创建历史, 必要保护状态)` 的效果分区，
+读取时 join 全部可能来源；只有可证不兼容或已被本地状态涵盖的贡献才能排除。
+未知/重复实例并入保守 bucket，分区数超预算做 join，不能舍弃。
+这是机制设计建议，**本轮尚未实现，也没有测出 TN 增益**。
+
+优先研究 A 还是 B，取决于具体 UNKNOWN 是“时间关系缺失”还是“guard/地址的值关系丢失”，
+不是先为整个项目引入 digest 的全笛卡尔积。
+
+### 8.3 可直接启动的逐文件工作流程
+
+当前已保存的 227 项 UNKNOWN 中，**98 项 YAML 标为 Safe、129 项标为 Race Found**。
+本轮重新核对 98 项输入 SHA256、活动 no-data-race YAML 性质与 ILP32 配置，
+保存[初始台账](artifacts/ai-goblint-reference-2026-10-10/safe-unknown-seed.json)。
+这些是未来恢复 TN 的候选池，不是承诺恢复 98 项；也不是 98 次新 Goblint 分析。
+P0 修复可能改变池子，届时重新生成基线。
+
+建议完全沿用此前 BMC 的具体文件驱动方法，但把证据方向改为安全证明：
+
+1. **先修 P0**，重建 IKOS AI-only/BMC 基线，当前 696 个 TN 也保留审查与反例变体。
+2. **同 ABI 跑 Goblint**，固定版本和完整有效配置。当前本地 ILP32 机器定义缺失会发 Unsound，
+   修好配置并验证类型/layout 后才用于配对；不能用 LP64 TRUE 代替 ILP32 结果。
+3. 对 YAML-safe / IKOS-UNKNOWN 逐项记录：Goblint TRUE、UNKNOWN、TIMEOUT、ERROR、UNSOUND/配置不支持或结论冲突。
+   Goblint TRUE + Unsound 单独归类，不作为参考安全证明。
+4. 优先选 Goblint 正常 TRUE 的一个文件，写出为什么全部相关访问被排除：对象/width，
+   L/TF/TID/J/FR/SL/R 各贡献了什么，哪个 guard 不可达。
+5. 读取具体源码和对应 Goblint 转移/摘要，先预测各关键状态，再用已有诊断或临时探针核对。
+   对某个 digest 的排除谓词做消融时，保持其他分析设置相同；
+   关闭整个子分析还会影响 value analysis，不能把这种结果当成纯 pair-filter 消融。
+6. 对照 IKOS，定位第一处信息丢失或不合法过滤。落地一个一般机制，而非复制最终 TRUE。
+7. 为该机制做最小 race-free 正例、应发现竞争的反例和改名/字段/位宽/控制流/helper 变体。
+   尤其用“移除共同锁、改变 join 目标、提前发布”检查是否只是恢复一个错误 SAFE。
+8. build/install、旧正确性/BMC 执行回归、全量逐项 A/B；独立提交这一机制并更新台账。
+
+Goblint UNKNOWN 也不等于 IKOS 必然无法证明安全。可以记录为参考边界，
+有独立一般证明时仍研究 IKOS 的优势；但不把未证结论直接恢复成 TN。
+
+### 8.4 记录、优先级和停止节点
+
+每条记录保留：源码/YAML hash、ABI/配置、参考原生结果及 Unsound 警告、
+语义解释、Goblint 源码/论文位置、IKOS 缺口、尝试与结果、正反变体、配对代价。
+
+建议分桶顺序：
+
+1. P0 之后仍存在的历史 TN 回退，尤其嵌套锁/PBR。
+2. 正确句柄与创建历史能够排除的访问对。
+3. 分字段/来源干扰能恢复 guard 关系的例子。
+4. 完整 escape 下的 fresh/regions 与符号元素锁。
+5. 选择性关系域与更复杂 API；成本过高时记录能力边界。
+
+退出时要求候选池都有状态：已一般实现并恢复 TN、参考未证/失败、
+参考已证但 IKOS 需尚未实现大机制、或存在规范/源码结论冲突待审查。
+不是逐项试到“任何办法都不可能”，也不能把“尚未实现”写成“IKOS 理论上不能实现”。
+时间/内存收益分别测量，未完成处理的输入有清楚阻塞记录；
+全部可做的小机制处理完，再决定是否为剩余大机制单独立项。
+
+本轮完成了注释清理与该路线的文献/源码核实。**没有实施 P0、digest 改造或 TN 恢复。**
