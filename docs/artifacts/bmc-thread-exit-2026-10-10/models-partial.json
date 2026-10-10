@@ -1,0 +1,738 @@
+{
+  "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+  "rows": [
+    {
+      "case": "named-race",
+      "bits": 32,
+      "pair_id": 0,
+      "full_counterexample_validated": false,
+      "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+      "threads": {
+        "startup": 0,
+        "a": 1,
+        "b": 2
+      },
+      "mapped_memory_events": 2,
+      "omitted_steps": [
+        {
+          "trace": "startup",
+          "step": 0,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 1,
+          "kind": "allocate",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 2,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 3,
+          "kind": "store",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 4,
+          "kind": "allocate",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 5,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 6,
+          "kind": "store",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 7,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 8,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 0,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 1,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 3,
+          "kind": "return",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 4,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 5,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 1,
+          "kind": "return",
+          "reason": "not a mapped global/heap memory access"
+        }
+      ],
+      "creation_bindings": [
+        {
+          "trace": "a",
+          "parent_trace": "startup",
+          "creator_step": 7,
+          "reference_event": 3,
+          "occurrence": null,
+          "pre_unroll_id": 18
+        },
+        {
+          "trace": "b",
+          "parent_trace": "startup",
+          "creator_step": 8,
+          "reference_event": 7,
+          "occurrence": null,
+          "pre_unroll_id": 25
+        }
+      ],
+      "heap_bindings": [],
+      "memory_bindings": [
+        {
+          "trace": "a",
+          "step": 2,
+          "reference_event": 17,
+          "occurrence": null,
+          "pre_unroll_id": 4
+        },
+        {
+          "trace": "b",
+          "step": 0,
+          "reference_event": 29,
+          "occurrence": null,
+          "pre_unroll_id": 13
+        }
+      ],
+      "nondet_bindings": [],
+      "initial_bindings": [],
+      "communication_bindings": [
+        {
+          "relation": "co",
+          "from": 29,
+          "to": 17
+        }
+      ],
+      "communication_omissions": [],
+      "memory_orderings": [
+        {
+          "before": 29,
+          "after": 17
+        }
+      ],
+      "memory_order_omissions": [],
+      "unbound_claims": [
+        "CFG and call occurrence mapping",
+        "local values and nondet occurrences",
+        "synchronization history and identities",
+        "IKOS total schedule and rf choices"
+      ],
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 1.3926795490006043,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/thread-exit/named-race.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "40359eb05e826540c7b96a32c43d1c6a62ad0ac9f3f850f428db06b1c3d9669b",
+        "data_model": "32"
+      }
+    },
+    {
+      "case": "named-race",
+      "bits": 64,
+      "pair_id": 0,
+      "full_counterexample_validated": false,
+      "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+      "threads": {
+        "startup": 0,
+        "a": 1,
+        "b": 2
+      },
+      "mapped_memory_events": 2,
+      "omitted_steps": [
+        {
+          "trace": "startup",
+          "step": 0,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 1,
+          "kind": "allocate",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 2,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 3,
+          "kind": "store",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 4,
+          "kind": "allocate",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 5,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 6,
+          "kind": "store",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 7,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 8,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 0,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 1,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 3,
+          "kind": "return",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 4,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 5,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 1,
+          "kind": "return",
+          "reason": "not a mapped global/heap memory access"
+        }
+      ],
+      "creation_bindings": [
+        {
+          "trace": "a",
+          "parent_trace": "startup",
+          "creator_step": 7,
+          "reference_event": 3,
+          "occurrence": null,
+          "pre_unroll_id": 18
+        },
+        {
+          "trace": "b",
+          "parent_trace": "startup",
+          "creator_step": 8,
+          "reference_event": 7,
+          "occurrence": null,
+          "pre_unroll_id": 25
+        }
+      ],
+      "heap_bindings": [],
+      "memory_bindings": [
+        {
+          "trace": "a",
+          "step": 2,
+          "reference_event": 17,
+          "occurrence": null,
+          "pre_unroll_id": 4
+        },
+        {
+          "trace": "b",
+          "step": 0,
+          "reference_event": 29,
+          "occurrence": null,
+          "pre_unroll_id": 13
+        }
+      ],
+      "nondet_bindings": [],
+      "initial_bindings": [],
+      "communication_bindings": [
+        {
+          "relation": "co",
+          "from": 29,
+          "to": 17
+        }
+      ],
+      "communication_omissions": [],
+      "memory_orderings": [
+        {
+          "before": 29,
+          "after": 17
+        }
+      ],
+      "memory_order_omissions": [],
+      "unbound_claims": [
+        "CFG and call occurrence mapping",
+        "local values and nondet occurrences",
+        "synchronization history and identities",
+        "IKOS total schedule and rf choices"
+      ],
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 1.2568139439990773,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/thread-exit/named-race.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "40359eb05e826540c7b96a32c43d1c6a62ad0ac9f3f850f428db06b1c3d9669b",
+        "data_model": "64"
+      }
+    },
+    {
+      "case": "byte-renamed-race",
+      "bits": 32,
+      "pair_id": 0,
+      "full_counterexample_validated": false,
+      "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+      "threads": {
+        "startup": 0,
+        "a": 1,
+        "b": 2
+      },
+      "mapped_memory_events": 2,
+      "omitted_steps": [
+        {
+          "trace": "startup",
+          "step": 0,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 1,
+          "kind": "allocate",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 2,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 3,
+          "kind": "store",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 4,
+          "kind": "allocate",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 5,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 6,
+          "kind": "store",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 7,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 8,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 0,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 1,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 3,
+          "kind": "return",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 4,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 5,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 1,
+          "kind": "return",
+          "reason": "not a mapped global/heap memory access"
+        }
+      ],
+      "creation_bindings": [
+        {
+          "trace": "a",
+          "parent_trace": "startup",
+          "creator_step": 7,
+          "reference_event": 3,
+          "occurrence": null,
+          "pre_unroll_id": 18
+        },
+        {
+          "trace": "b",
+          "parent_trace": "startup",
+          "creator_step": 8,
+          "reference_event": 7,
+          "occurrence": null,
+          "pre_unroll_id": 25
+        }
+      ],
+      "heap_bindings": [],
+      "memory_bindings": [
+        {
+          "trace": "a",
+          "step": 2,
+          "reference_event": 17,
+          "occurrence": null,
+          "pre_unroll_id": 4
+        },
+        {
+          "trace": "b",
+          "step": 0,
+          "reference_event": 29,
+          "occurrence": null,
+          "pre_unroll_id": 13
+        }
+      ],
+      "nondet_bindings": [],
+      "initial_bindings": [],
+      "communication_bindings": [
+        {
+          "relation": "co",
+          "from": 29,
+          "to": 17
+        }
+      ],
+      "communication_omissions": [],
+      "memory_orderings": [
+        {
+          "before": 29,
+          "after": 17
+        }
+      ],
+      "memory_order_omissions": [],
+      "unbound_claims": [
+        "CFG and call occurrence mapping",
+        "local values and nondet occurrences",
+        "synchronization history and identities",
+        "IKOS total schedule and rf choices"
+      ],
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 1.2039096240005165,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/thread-exit/byte-renamed-race.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "ff838d4b4f492b2e235b8165f144bc2d5c46875cbe30a84df6218689aeec1bd8",
+        "data_model": "32"
+      }
+    },
+    {
+      "case": "byte-renamed-race",
+      "bits": 64,
+      "pair_id": 0,
+      "full_counterexample_validated": false,
+      "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+      "threads": {
+        "startup": 0,
+        "a": 1,
+        "b": 2
+      },
+      "mapped_memory_events": 2,
+      "omitted_steps": [
+        {
+          "trace": "startup",
+          "step": 0,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 1,
+          "kind": "allocate",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 2,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 3,
+          "kind": "store",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 4,
+          "kind": "allocate",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 5,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 6,
+          "kind": "store",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 7,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "startup",
+          "step": 8,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 0,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 1,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 3,
+          "kind": "return",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 4,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 5,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 1,
+          "kind": "return",
+          "reason": "not a mapped global/heap memory access"
+        }
+      ],
+      "creation_bindings": [
+        {
+          "trace": "a",
+          "parent_trace": "startup",
+          "creator_step": 7,
+          "reference_event": 3,
+          "occurrence": null,
+          "pre_unroll_id": 18
+        },
+        {
+          "trace": "b",
+          "parent_trace": "startup",
+          "creator_step": 8,
+          "reference_event": 7,
+          "occurrence": null,
+          "pre_unroll_id": 25
+        }
+      ],
+      "heap_bindings": [],
+      "memory_bindings": [
+        {
+          "trace": "a",
+          "step": 2,
+          "reference_event": 17,
+          "occurrence": null,
+          "pre_unroll_id": 4
+        },
+        {
+          "trace": "b",
+          "step": 0,
+          "reference_event": 29,
+          "occurrence": null,
+          "pre_unroll_id": 13
+        }
+      ],
+      "nondet_bindings": [],
+      "initial_bindings": [],
+      "communication_bindings": [
+        {
+          "relation": "co",
+          "from": 29,
+          "to": 17
+        }
+      ],
+      "communication_omissions": [],
+      "memory_orderings": [
+        {
+          "before": 29,
+          "after": 17
+        }
+      ],
+      "memory_order_omissions": [],
+      "unbound_claims": [
+        "CFG and call occurrence mapping",
+        "local values and nondet occurrences",
+        "synchronization history and identities",
+        "IKOS total schedule and rf choices"
+      ],
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 1.228261157999441,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/heap-binding-negative-final/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/ikos-conc/docs/review-repros/thread-exit/byte-renamed-race.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "ff838d4b4f492b2e235b8165f144bc2d5c46875cbe30a84df6218689aeec1bd8",
+        "data_model": "64"
+      }
+    }
+  ],
+  "full_counterexample_validated": false
+}

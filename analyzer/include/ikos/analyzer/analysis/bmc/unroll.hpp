@@ -361,6 +361,27 @@ inline bool malloc_call(ar::CallBase* call) {
          source->arg_size() == 1 && source->getArgOperand(0)->getType()->isIntegerTy(bits);
 }
 
+// A direct worker termination endpoint; it is never an ordinary returning leaf.
+// Callback registration and non-null return payloads remain unsupported.
+inline bool thread_exit_call(ar::CallBase* call) {
+  if (call == nullptr || !call->code()->is_function_body() ||
+      call->code()->function()->name() == "main") return false;
+  auto* function = exact_callee(call);
+  auto* source = call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+  auto* declaration = source != nullptr
+      ? llvm::dyn_cast< llvm::Function >(source->getCalledOperand()->stripPointerCasts()) : nullptr;
+  return function != nullptr && function->is_declaration() && function->name() == "pthread_exit" &&
+         function->type()->return_type()->is_void() && !call->has_result() && call->num_arguments() == 1 &&
+         core::isa< ar::NullConstant >(call->argument(0)) && declaration != nullptr &&
+         declaration->isDeclaration() && declaration->getName() == "pthread_exit" && declaration->doesNotReturn() &&
+         llvm::isa< llvm::CallInst >(source) && source->getCallingConv() == llvm::CallingConv::C &&
+         declaration->getCallingConv() == llvm::CallingConv::C &&
+         !declaration->isVarArg() && declaration->arg_size() == 1 && declaration->getReturnType()->isVoidTy() &&
+         declaration->getFunctionType()->getParamType(0)->isPointerTy() && source->getType()->isVoidTy() &&
+         source->arg_size() == 1 && source->getArgOperand(0)->getType()->isPointerTy();
+}
+
 // These summaries do not touch existing user memory or hide synchronization.
 // Other memory-using libc calls and unknown externals have no such summary.
 inline bool supported_leaf_call(ar::CallBase* call) {
@@ -1340,7 +1361,8 @@ inline UnrollResult unroll_completed(ar::Function* func, ar::Statement* target,
   budget.completed = true;
   budget.loop_bound = loop_bound;
   for (auto* block : *body) for (auto* statement : *block) {
-    if (!core::isa< ar::ReturnValue >(statement)) continue;
+    if (!core::isa< ar::ReturnValue >(statement) &&
+        !thread_exit_call(core::dyn_cast< ar::CallBase >(statement))) continue;
     std::vector< BmcEvent > current;
     dfs_paths(body->entry_block(), statement, current, result.paths, {}, budget);
   }
