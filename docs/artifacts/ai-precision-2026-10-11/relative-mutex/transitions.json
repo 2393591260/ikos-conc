@@ -1,0 +1,9 @@
+[
+  {
+    "task": "c/goblint-regression/06-symbeq_11-equ_nr.c",
+    "before_ai": "Unknown",
+    "after_ai": "Safe",
+    "before_bmc": "Unknown",
+    "after_bmc": "Safe"
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_11-equ_nr.c",
+    "bits": 32,
+    "mode": "ai",
+    "returncode": 0,
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_11-equ_nr.c",
+    "bits": 32,
+    "mode": "bmc",
+    "returncode": 0,
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_11-equ_nr.c",
+    "bits": 64,
+    "mode": "ai",
+    "returncode": 0,
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_11-equ_nr.c",
+    "bits": 64,
+    "mode": "bmc",
+    "returncode": 0,
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_13-equ_proc_nr.c",
+    "bits": 32,
+    "mode": "ai",
+    "returncode": 0,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_13-equ_proc_nr.c",
+    "bits": 32,
+    "mode": "bmc",
+    "returncode": 0,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_13-equ_proc_nr.c",
+    "bits": 64,
+    "mode": "ai",
+    "returncode": 0,
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_13-equ_proc_nr.c",
+    "bits": 64,
+    "mode": "bmc",
+    "returncode": 0,
+    "verdict": "The program is potentially UNSAFE"
+  }
+]

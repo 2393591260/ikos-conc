@@ -1,0 +1,282 @@
+[
+  {
+    "case": "heap-helper-race",
+    "bits": 32,
+    "mode": "default",
+    "phase": "before",
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "case": "heap-helper-race",
+    "bits": 32,
+    "mode": "default",
+    "phase": "after",
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "case": "heap-helper-race",
+    "bits": 32,
+    "mode": "bmc",
+    "phase": "before",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "heap-helper-race",
+    "bits": 32,
+    "mode": "bmc",
+    "phase": "after",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "heap-helper-race",
+    "bits": 64,
+    "mode": "default",
+    "phase": "before",
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "case": "heap-helper-race",
+    "bits": 64,
+    "mode": "default",
+    "phase": "after",
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "case": "heap-helper-race",
+    "bits": 64,
+    "mode": "bmc",
+    "phase": "before",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "heap-helper-race",
+    "bits": 64,
+    "mode": "bmc",
+    "phase": "after",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "heap-main-control",
+    "bits": 32,
+    "mode": "default",
+    "phase": "before",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "case": "heap-main-control",
+    "bits": 32,
+    "mode": "default",
+    "phase": "after",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "case": "heap-main-control",
+    "bits": 32,
+    "mode": "bmc",
+    "phase": "before",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "case": "heap-main-control",
+    "bits": 32,
+    "mode": "bmc",
+    "phase": "after",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "case": "heap-main-control",
+    "bits": 64,
+    "mode": "default",
+    "phase": "before",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "case": "heap-main-control",
+    "bits": 64,
+    "mode": "default",
+    "phase": "after",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "case": "heap-main-control",
+    "bits": 64,
+    "mode": "bmc",
+    "phase": "before",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "case": "heap-main-control",
+    "bits": 64,
+    "mode": "bmc",
+    "phase": "after",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "case": "stack-main-control",
+    "bits": 32,
+    "mode": "default",
+    "phase": "before",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "stack-main-control",
+    "bits": 32,
+    "mode": "default",
+    "phase": "after",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "stack-main-control",
+    "bits": 32,
+    "mode": "bmc",
+    "phase": "before",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "stack-main-control",
+    "bits": 32,
+    "mode": "bmc",
+    "phase": "after",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "stack-main-control",
+    "bits": 64,
+    "mode": "default",
+    "phase": "before",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "stack-main-control",
+    "bits": 64,
+    "mode": "default",
+    "phase": "after",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "stack-main-control",
+    "bits": 64,
+    "mode": "bmc",
+    "phase": "before",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "stack-main-control",
+    "bits": 64,
+    "mode": "bmc",
+    "phase": "after",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "worker-heap-race",
+    "bits": 32,
+    "mode": "default",
+    "phase": "before",
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "case": "worker-heap-race",
+    "bits": 32,
+    "mode": "default",
+    "phase": "after",
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "case": "worker-heap-race",
+    "bits": 32,
+    "mode": "bmc",
+    "phase": "before",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "worker-heap-race",
+    "bits": 32,
+    "mode": "bmc",
+    "phase": "after",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "worker-heap-race",
+    "bits": 64,
+    "mode": "default",
+    "phase": "before",
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "case": "worker-heap-race",
+    "bits": 64,
+    "mode": "default",
+    "phase": "after",
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "case": "worker-heap-race",
+    "bits": 64,
+    "mode": "bmc",
+    "phase": "before",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "worker-heap-race",
+    "bits": 64,
+    "mode": "bmc",
+    "phase": "after",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "worker-stack-race",
+    "bits": 32,
+    "mode": "default",
+    "phase": "before",
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "case": "worker-stack-race",
+    "bits": 32,
+    "mode": "default",
+    "phase": "after",
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "case": "worker-stack-race",
+    "bits": 32,
+    "mode": "bmc",
+    "phase": "before",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "worker-stack-race",
+    "bits": 32,
+    "mode": "bmc",
+    "phase": "after",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "worker-stack-race",
+    "bits": 64,
+    "mode": "default",
+    "phase": "before",
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "case": "worker-stack-race",
+    "bits": 64,
+    "mode": "default",
+    "phase": "after",
+    "verdict": "The program is definitely UNSAFE"
+  },
+  {
+    "case": "worker-stack-race",
+    "bits": 64,
+    "mode": "bmc",
+    "phase": "before",
+    "verdict": "The program is potentially UNSAFE"
+  },
+  {
+    "case": "worker-stack-race",
+    "bits": 64,
+    "mode": "bmc",
+    "phase": "after",
+    "verdict": "The program is potentially UNSAFE"
+  }
+]

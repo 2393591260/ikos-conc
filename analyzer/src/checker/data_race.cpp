@@ -53,6 +53,7 @@
 #include <ikos/core/domain/concurrent_global_env.hpp>
 
 #include <algorithm>
+#include <functional>
 #include <map>
 #include <sstream>
 #include <vector>
@@ -61,6 +62,96 @@ namespace ikos {
 namespace analyzer {
 
 namespace {
+
+// Keep byte displacements: a field pattern is not a mutex identity by itself.
+bool constant_pointer_root(ar::Value* pointer, ar::Value*& root,
+                           core::ZNumber& displacement) {
+  displacement = 0;
+  for (unsigned depth = 0; depth < 32; ++depth) {
+    if (!pointer->type()->is_pointer()) return false;
+    auto* variable = dyn_cast< ar::InternalVariable >(pointer);
+    if (variable == nullptr) { root = pointer; return true; }
+    auto* definition = unique_def(variable);
+    if (auto* shift = dyn_cast_or_null< ar::PointerShift >(definition)) {
+      for (auto i = shift->term_begin(); i != shift->term_end(); ++i) {
+        auto term = *i;
+        auto* constant = dyn_cast< ar::IntegerConstant >(term.second);
+        if (constant == nullptr) return false;
+        displacement += term.first.to_z_number() * constant->value().to_z_number();
+      }
+      pointer = shift->pointer();
+    } else if (auto* assignment = dyn_cast_or_null< ar::Assignment >(definition)) {
+      pointer = assignment->operand();
+    } else if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
+      if (cast->op() != ar::UnaryOperation::Bitcast) return false;
+      pointer = cast->operand();
+    } else {
+      root = pointer;
+      return true;
+    }
+  }
+  return false;
+}
+
+// Prove every CFG route to this access retains a mutex at access+delta.
+// Rebinding, any intervening call (including unlock), and an uncovered cycle
+// invalidate the certificate. No equality between different thread locals is used.
+boost::optional< core::ZNumber > relative_mutex(const AccessRecord& access) {
+  ar::Value* pointer = nullptr;
+  if (auto* load = dyn_cast< ar::Load >(access.stmt)) pointer = load->operand();
+  if (auto* store = dyn_cast< ar::Store >(access.stmt)) pointer = store->pointer();
+  if (pointer == nullptr) return boost::none;
+  ar::Value* root = nullptr;
+  core::ZNumber data_offset;
+  if (!constant_pointer_root(pointer, root, data_offset)) return boost::none;
+  std::unordered_set< ar::BasicBlock* > active;
+  std::unordered_map< ar::BasicBlock*, boost::optional< core::ZNumber > > cache;
+  unsigned budget = 256;
+  std::function< boost::optional< core::ZNumber >(ar::BasicBlock*, ar::Statement*) > visit;
+  visit = [&](ar::BasicBlock* block, ar::Statement* stop)
+      -> boost::optional< core::ZNumber > {
+    if (block == nullptr || budget == 0 || !active.insert(block).second) return boost::none;
+    if (stop == nullptr) {
+      auto old = cache.find(block);
+      if (old != cache.end()) { active.erase(block); return old->second; }
+    }
+    auto scan = [&]() -> boost::optional< core::ZNumber > {
+      auto end = stop ? std::find(block->begin(), block->end(), stop) : block->end();
+      if (stop && end == block->end()) return boost::none;
+      while (end != block->begin()) {
+        if (budget == 0) return boost::none;
+        --budget;
+        auto* statement = *--end;
+        if (statement->result_or_null() == root) return boost::none;
+        if (auto* call = dyn_cast< ar::CallBase >(statement)) {
+          auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+          if (!isa< ar::Call >(call) || target == nullptr ||
+              !target->function()->is_declaration() ||
+              target->function()->intrinsic_id() != ar::Intrinsic::PthreadMutexLock ||
+              call->num_arguments() != 1) return boost::none;
+          ar::Value* mutex_root = nullptr;
+          core::ZNumber mutex_offset;
+          if (!constant_pointer_root(call->argument(0), mutex_root, mutex_offset) ||
+              mutex_root != root) return boost::none;
+          return mutex_offset - data_offset;
+        }
+      }
+      if (block->num_predecessors() == 0) return boost::none;
+      boost::optional< core::ZNumber > delta;
+      for (auto p = block->predecessor_begin(); p != block->predecessor_end(); ++p) {
+        auto before = visit(*p, nullptr);
+        if (!before || (delta && *delta != *before)) return boost::none;
+        delta = before;
+      }
+      return delta;
+    };
+    auto result = scan();
+    active.erase(block);
+    if (stop == nullptr) cache.emplace(block, result);
+    return result;
+  };
+  return visit(access.stmt->parent(), access.stmt);
+}
 
 // A fresh source nondet and its pure SSA expressions are independent of shared
 // memory and of the caller's context. Loads, parameters and phi are excluded.
@@ -605,6 +696,13 @@ DataRaceChecker::~DataRaceChecker() {
   };
 
   std::vector< PendingRacePair > all_pairs;
+  std::unordered_map< ar::Statement*, boost::optional< core::ZNumber > > relative_mutexes;
+  auto mutex_delta = [&](const AccessRecord& access) {
+    auto old = relative_mutexes.find(access.stmt);
+    if (old == relative_mutexes.end())
+      old = relative_mutexes.emplace(access.stmt, relative_mutex(access)).first;
+    return old->second;
+  };
 
   // State the pairing precondition: two accesses on the SAME statement
   // from the same unique (single-instance) thread cannot race — skip
@@ -945,6 +1043,27 @@ DataRaceChecker::~DataRaceChecker() {
           protects_both(a.locks, b.read_locks) ||     // exclusive ∩ read
           protects_both(a.read_locks, b.locks)) {     // read ∩ exclusive
         continue;
+      }
+
+      // Exact equal starts in concrete global objects plus equal relative
+      // mutex displacements imply the SAME mutex whenever the data alias.
+      // Merely overlapping byte ranges, TLS, heap summaries or TOP do not.
+      auto a_start = a.offset.singleton(), b_start = b.offset.singleton();
+      if (a.pts.is_set() && b.pts.is_set() && a.width != 0 && b.width != 0 &&
+          a_start && b_start && a_start->to_z_number() == b_start->to_z_number()) {
+        auto common = a.pts.meet(b.pts);
+        bool concrete = !common.is_empty();
+        for (auto* location : common) {
+          auto* global = dyn_cast< GlobalMemoryLocation >(location);
+          if (global == nullptr || global->global_var()->is_thread_local()) {
+            concrete = false;
+            break;
+          }
+        }
+        if (concrete) {
+          auto left = mutex_delta(a), right = mutex_delta(b);
+          if (left && right && *left == *right) continue;
+        }
       }
 
       // Anchor the report to the Write (or to A if both are writes).

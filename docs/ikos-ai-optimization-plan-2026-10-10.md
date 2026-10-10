@@ -1121,3 +1121,50 @@ build/install一致。此修复独立提交，不与未来句柄精度恢复混�
 [定向变化](artifacts/ai-precision-2026-10-11/create-handle-alias/fixture-transitions.json)、
 [参考结果](artifacts/ai-precision-2026-10-11/create-handle-alias/reference.json)、
 [1029配对](artifacts/ai-precision-2026-10-11/create-handle-alias/paired.json)。
+
+
+### 9.25 精度：用访问地址证明互斥锁对应（2026-10-11）
+
+以正常 Goblint TRUE 的 `06-symbeq_11-equ_nr.c` 为入口，先预测再核对 AR：
+主线程选择 A/B 后数据地址为 `s+0`、锁地址为 `s+12`（ILP32），
+工作线程使用 `A+0`、`A+12`。旧报告显示同址候选存在，但符号锁与具体锁未能相交。
+新规则没有恢复旧的“各自 region 匹配就视为同锁”，而是证明每条 CFG 路径在访问时
+持有 `access_address + delta` 的阻塞 mutex；重新赋值 root、中间任意调用（包括 unlock）
+及未覆盖的环都拒绝该证明。常量 PointerShift 使用完整字节系数，指针 bitcast 保地址；
+扫描预算耗尽保留原候选，不据此证明安全。
+
+候选两侧还必须是非 TLS 的具体 global、已知 width、相同的精确起始 offset。
+此时真实访问若别名，其起始地址相同；两侧 delta 相同意味着实际 mutex 地址相同，
+故不能并发冲突。这是当前受支持 blocking pthread 合同下的充分条件，不比较跨线程
+局部变量，也不使用符号锁 hash 建立身份；既有未覆盖效果继续给出 WARNING。
+未知起点、不同起点的部分重叠、heap summary、跨函数持锁等均保留候选。
+这是利用 IKOS may-points-to/offset/width 再做局部覆盖证明，不是用 BMC 有界 UNSAT 判 SAFE。
+
+52次双ABI/双模式及改名变体通过：条件对象对应、两个独立 nondet 指针选择、同入口两线程
+恢复 SAFE；错字段锁、提前/ helper 解锁、缺失分支锁、指针重赋值、循环改向和错锁的
+部分字节重叠均不变为 SAFE。合法但不同起点的 byte 访问与 array-element phi 保留 UNKNOWN。
+确定 FALSE 的所选执行均独立 AR ACCEPT。正确性76次、field/rwlock40次、mutex属性36次、
+旧BMC20次通过。历史 allocation runner 要求 stack-main-control 必须 SAFE，当前及前驱
+367bd6d 在两个ABI/模式均为 UNKNOWN；另做正确配置的20组前驱/当前配对全部无变化，
+没有把该历史断言失败声称为通过，也没有更改无关实现恢复其旧结论。
+
+60次双ABI Goblint/Dartagnan 对照包含两个真实 benchmark 及13个变体。两工具均确认
+入口 benchmark 安全；`06-symbeq_13-equ_proc_nr.c` 仍 UNKNOWN，AR 证实它需要跨 update
+调用传递持锁证明，本轮未实现。特别是 helper 解锁 CASE3：Goblint 正常 TRUE，但
+Dartagnan FAIL、IKOS FALSE 的独立执行 ACCEPT。仅关闭 Goblint level00 的 symb_locks，
+两个ABI均 TRUE→UNKNOWN；其 `symbLocksDomain.ml::remove` 的源码注释明确写着
+“Removing based on must-equality sets is not sound”。这支持不直接移植其解锁规则；
+未记录内部 EqualSet 查询轨迹，不把消融说成完整根因证明。2016 Goblint论文
+DOI 10.1145/2970276.2970337 来自该源文件引用，本轮未重新阅读全文。
+
+完整顺序1029扫描：AI TN654→655 / UNKNOWN374→373；BMC TP104不变、TN654→655、
+UNKNOWN270→269，FP/FN0、error1仍为 nsc-ircc timeout。唯一变化是 equ_nr UNKNOWN→SAFE。
+build/install一致，无 frontend 修改；本轮未测得加速或证明全部 SAFE 规则。
+当前 safe-label UNKNOWN 为138项，正常 Goblint TRUE 入口还剩44项。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/relative-mutex/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-11/relative-mutex/paired.json)、
+[最小变体](review-repros/ai-relative-mutex/choice.c)、
+[修复前后](artifacts/ai-precision-2026-10-11/relative-mutex/fixture-transitions.json)、
+[参考结果](artifacts/ai-precision-2026-10-11/relative-mutex/reference.json)、
+[Goblint消融](artifacts/ai-precision-2026-10-11/relative-mutex/goblint-ablation.json)。
