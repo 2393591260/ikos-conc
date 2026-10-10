@@ -219,30 +219,6 @@ constexpr std::uint64_t PSEUDO_ATOMIC_LOCK = 0xA7E0AD1CULL;
 /// \name Implement pthread operations
 /// @{
 
-/// \brief Execute pthread_mutex_lock
-///
-/// Plan Y (lockset-precision fix, prerequisite for PBR):
-///
-/// The default IKOS modelling of an unknown call (`exec_unknown_call`)
-/// applies `throw_unknown_exceptions()` because it conservatively assumes
-/// the call MAY fail. For pthread_mutex_lock/unlock this is catastrophic:
-/// the exception join collapses the caller's lockset into ⊤, which then
-/// causes our PBR hooks (exec_store / exec_load) to observe
-/// `lockset_is_top() == true` at the global variable access site — PBR
-/// becomes dead code.
-///
-/// SV-COMP programs assume the mutex lock/unlock always succeeds (the
-/// contract of a well-synchronised program). We therefore BYPASS
-/// exec_unknown_call entirely and perform only the minimum side-effects:
-///   1. Check that the mutex pointer operand is initialised.
-///   2. Update the lockset (add_lock).
-///   3. Skip mem_forget_reachable(&m) — we don't model mutex internals,
-///      and skipping it preserves the points-to set so the matching
-///      unlock gets the SAME lock_addr and can flush the same PBR bucket.
-///   4. Skip throw_unknown_exceptions() — pthread synchronisation
-///      primitives are assumed not to throw in race-detection analyses.
-///   5. Initialise the return value to a non-deterministic int (the
-///      success code is unconstrained).
 /// \brief Struct-instance base offset of a pointer (container_of inverse).
 ///
 /// For a pointer that is the result of a PointerShift (`&s->mutex = s + 8`),
@@ -691,7 +667,7 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
     } catch (...) {
       // nullity_is_null may assert on variables that haven't been
       // initialised by the inliner yet; defer the forget rather than
-      // crash. The post-unlock flush still drives the PBR release.
+      // crash. Deferred writes are flushed by the unlock executor.
     }
   }
 
@@ -717,13 +693,7 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
   }
 }
 
-/// \brief Execute pthread_mutex_unlock
-///
-/// Plan Y (lockset-precision fix, prerequisite for PBR): symmetric to
-/// exec_pthread_mutex_lock — bypass exec_unknown_call so that the
-/// lockset stays concrete across the unlock boundary, and so that the
-/// privatized write flush happens on an invariant that still holds the
-/// lock (we remove the lock FIRST, then publish).
+/// \brief Remove resolved locks and flush their deferred write queues.
 template < typename E >
 void exec_pthread_mutex_unlock(E& eng, ar::CallBase* call, bool also_read = false) {
   // Get the mutex argument (first argument). An UNINITIALISED mutex pointer
@@ -841,29 +811,7 @@ void exec_pthread_mutex_unlock(E& eng, ar::CallBase* call, bool also_read = fals
     }
   }
 
-  // PBR release (Goblint SAS'21) + AstréeA partition deposit:
-  // atomically drain the privatized registry for this lock, join
-  // per-address, and join_partition_nolock each into the lock's
-  // partition `_lock_partition[lock_addr]`. After this call, the
-  // protected writes are visible to lock-aware reads by any thread
-  // holding the same lock; unlocked reads see them via the flat
-  // `_global_board` (which they only consult if no held lock has a
-  // partition entry — see read_global_with_lockset).
-  //
-  // The lockset_remove_lock above happens FIRST so that the local
-  // lattice state is consistent: post-unlock, this thread holds no
-  // locks, and concurrent analyses will see the freshly published
-  // partition state.
-  //
-  // Note: flush_privatized takes the global env's internal mutex,
-  // which serializes against record_privatized_write in other
-  // threads. Since pthread mutexes are mutually exclusive at runtime,
-  // only the releasing thread ever has writes in its privatized set
-  // — no cross-thread contention is possible in a correct program.
-  //
-  // flush_privatized internally calls join_partition_nolock (NOT
-  // join_partition) because it already holds the env mutex —
-  // re-acquiring a non-recursive std::mutex would deadlock.
+  // Flush deferred writes for resolved locks into their summary partitions.
   if (unlock_addr_known) {
     auto& env = eng.ctx().concurrent_env;
     // Weak-unlock flush dispatch. With multiple candidate locks, EACH
@@ -895,7 +843,7 @@ void exec_pthread_mutex_unlock(E& eng, ar::CallBase* call, bool also_read = fals
       }
     } catch (...) {
       // nullity lattice not initialised yet — defer the forget and let
-      // the next iteration handle it. PBR flush has already happened above.
+      // the next iteration handle it. Deferred writes were flushed above.
     }
   }
 
@@ -943,11 +891,7 @@ void exec_pthread_join(E& eng, ar::CallBase* call) {
     const auto& scalar_lit = handle_lit.scalar();
     if (scalar_lit.is_machine_int_var()) {
       auto iv = eng.data().normal().int_to_interval(scalar_lit.var());
-      // A global pthread_t written by pthread_self() in main reads back as
-      // [0, kMainThreadSid] — the thread-modular global blackboard joins the
-      // zero-init lower bound with the stored main id. That interval can only
-      // mean "uninitialized 0 (UB for join) or main's self", so treat it as
-      // joining main (sound: the 0 arm is UB and may be ignored).
+      // TODO: [0, main] is an interval hull, not a two-value handle set.
       if (!iv.is_top() && !iv.is_bottom() &&
           iv.ub().to_z_number().template to< std::uint64_t >() ==
               core::kMainThreadSid &&
@@ -962,13 +906,7 @@ void exec_pthread_join(E& eng, ar::CallBase* call) {
         }
       } else if (!iv.is_top() && !iv.is_bottom() &&
                  iv.lb().to_z_number() == core::ZNumber(0)) {
-        // Conditional create → handle ∈ [0, S]: 0 is the "never created" arm
-        // (joining it is UB and may be ignored), S is the create that wrote
-        // this handle. S exists iff that create ran iff the handle is S, so
-        // joining S is sound — S is joined whenever it exists (race-1_1/1_2/
-        // 1_3-join.c: `pdev=5` after `join(t1)` must not race the child).
-        // ub must be a registered site; a never-written handle stays 0 (nothing
-        // to join), and a stale/unknown ub (site_func == nullptr) is ignored.
+        // TODO: a registered upper bound does not prove the join target.
         std::uint64_t ub =
             iv.ub().to_z_number().template to< std::uint64_t >();
         if (ub != 0 && env.site_func(ub) != nullptr) {
@@ -1444,30 +1382,10 @@ void on_load_glob_flown(E& eng, const ScalarLit& ptr, const ScalarLit& lhs) {
   }
 }
 
-/// \brief Privatization probe (Store executor, Bug 2/3 first-principles
-/// rewrite, Stage 3).
-///
-/// Two and only two cases determine whether an unlocked-store probe is fired
-/// or a PBR private-cache write is recorded:
-///
-///   1. `held_mutexes.empty()` — no mutex visible (either TOP of the lockset
-///      lattice, or concrete-empty). We have no proof that any lock protects
-///      this access — FORCED publish to the global blackboard so concurrent
-///      threads can observe the write as interference. Sound
-///      over-approximation.
-///
-///   2. `held_mutexes` non-empty — at least one mutex is must-held — FORCED
-///      defer into the PBR privatized registry under each held lock.
-///      Publication to the blackboard waits for the unlock.
-///
-/// No `lockset_unknown` inverted branches, no `!lockset_unknown` ternaries.
-/// The empty-vs-non-empty check on the snapshot IS the PBR gate.
+/// \brief Remove direct heap targets from the fresh set on publication.
+/// TODO: publication must also cover transitively reachable objects.
 template < typename E >
 void unfresh_pointer_targets(E& eng, const ScalarLit& rhs) {
-  // Remove every heap node `rhs` may point to from the flow-sensitive "fresh"
-  // set: storing `rhs` into a shared location PUBLISHES its targets (goblint
-  // fresh-bullet materialization). Soundness: a published node is cross-thread
-  // reachable, so its accesses must race like any shared cell.
   auto rhs_pts = eng.data().normal().pointer_to_points_to(rhs.var());
   if (!rhs_pts.is_set()) {
     return;
@@ -1582,15 +1500,7 @@ void on_store_privatize(E& eng,
       }
 
       if (!has_locks) {
-        // Strict unlock-flushing (AstreeA-style): route unlocked
-        // writes to the sentinel "no_lock" partition. They
-        // accumulate during this iteration and are drained
-        // atomically at the iteration boundary by the worklist
-        // driver (see thread_modular.cpp, `flush_unlocked_partition`
-        // inserted between the `for func in worklist` body and the
-        // `is_dirty()` fixpoint check). Replaces the previous
-        // per-store `join_global` which forced every unlocked write
-        // to widen to TOP within the same iteration.
+        // Queue unlocked writes for publication at the iteration boundary.
         env.record_privatized_write(
             ikos::core::ConcurrentGlobalEnv::kNoLockPartitionAddr, addr,
             val_interval);
@@ -1600,18 +1510,7 @@ void on_store_privatize(E& eng,
                      << "\n";
         }
       } else {
-        // Case 2: PBR (Goblint SAS'21) deferral. Register the
-        // (addr, val) pair against every held lock; flush on unlock
-        // routes the aggregated value into `_lock_partition[lock]`
-        // (AstreeA-style interference), NOT into the flat blackboard.
-        // Reads by lock-aware `read_global_with_lockset` consult
-        // these partitions in priority order.
-        //
-        // Approximation (CI-3): we register against every held lock
-        // rather than only the lock that statically protects `addr`.
-        // IKOS lacks an `address -> protecting_lock` alias mapping;
-        // over-registration only widens the published value, never
-        // misses a race.
+        // Queue under every held lock; no variable protection set is consulted.
         for (std::uint64_t lock_addr : held_mutexes) {
           env.record_privatized_write(lock_addr, addr, val_interval);
         }

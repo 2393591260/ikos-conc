@@ -1006,13 +1006,6 @@ public:
 
   /// \brief Enter a basic block
   ///
-  /// PBR (Goblint SAS'21): no per-function reset is needed for the
-  /// privatized write registry. The registry is keyed only by lock_addr
-  /// and persists for the program's lifetime — a function called inside a
-  /// held critical section should still propagate its writes into the
-  /// owning lock's privatized set, which requires the entry block to
-  /// inherit (not clear) the parent's registry state. See CI-5 in the
-  /// design review.
   void exec_enter(ar::BasicBlock*) override {}
 
   /// \brief Leave a basic block
@@ -1812,10 +1805,7 @@ public:
       const ScalarLit& lhs = result.scalar();
       ikos_assert_msg(lhs.is_var(), "left hand side is not a variable");
 
-      // Thread-local semantics: NO per-read injection here. Cross-thread integer interference is materialized ONCE at
-      // function entry (thread_modular.cpp materialize_globals); the local mem_read below yields the
-      // thread's own (widened) value, so a global loop counter exits correctly instead of collapsing to bottom.
-
+      // Reads local memory; integer summaries are currently joined at entry.
       if (!s->is_volatile()) {
         // Perform memory read in the value domain
         this->data().normal().mem_read(lhs, ptr.var(), size);
@@ -2656,7 +2646,7 @@ public:
             // Plan Y: route the indirect extern call through the same
             // precision-preserving lock semantics as the intrinsic handler.
             // Otherwise exec_unknown_call's throw_unknown_exceptions() join
-            // collapses the lockset to ⊤ and PBR becomes dead code.
+            // collapses the lockset to ⊤ and prevents lock-based write deferral.
             exec_pthread_mutex_lock(*this, call);
             return;
           } else if (func_name == "pthread_mutex_unlock") {

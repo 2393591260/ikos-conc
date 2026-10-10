@@ -134,13 +134,8 @@ void ThreadModularAnalysis::run() {
     }
   };
 
-  // Thread-local semantics (Mukherjee SAS'17): materialize the cross-thread
-  // integer interference ONCE at function entry, by joining published flat
-  // and lock-partition values into the thread's LOCAL invariant. This replaces the
-  // unsound per-read override (`int_set(lhs, injected)` in exec(Load)) that
-  // narrowed a locally-widened global counter back to a stale singleton peek
-  // and collapsed the loop exit to bottom (fib_*-racy.i FN). Joining at entry
-  // is monotone (⊔), so it is sound and never narrows.
+  // Join published integer summaries into the function entry memory.
+  // TODO: later shared reads also need allowed interference after local writes.
   auto materialize_globals = [&](AbstractDomain& entry_inv) {
     auto& env = _ctx.concurrent_env;
     auto board = env.snapshot_global_interference();
@@ -402,18 +397,7 @@ void ThreadModularAnalysis::run() {
       }
     }
 
-    // ── Strict unlock-flushing boundary (AstréeA) ────────────────────
-    // Drain the sentinel "no_lock" partition at iteration end so all
-    // unlocked writes accumulated during this iteration's analysis leak
-    // into `_global_board` atomically. This replaces the per-store
-    // `env.join_global(addr, val)` that previously fired on every
-    // unlocked write inside the worklist body (the "unconditional flush"
-    // the user wanted to disable).
-    //
-    // The drain's return value sets `_is_dirty` via `join_global_nolock`
-    // if any cell expanded, so the dirty-check below naturally triggers
-    // another iteration if state actually changed. Writes accumulated
-    // during iteration N are visible starting iteration N+1.
+    // Publish the unlocked queue before checking global summary changes.
     _ctx.concurrent_env.flush_unlocked_partition();
 
     // Check fixpoint

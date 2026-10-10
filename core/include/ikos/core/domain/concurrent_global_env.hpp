@@ -68,25 +68,13 @@
 namespace ikos {
 namespace core {
 
-/// \brief Public record type for the PBR (Protection-Based Reading)
-/// deferral queue: one deferred write of a GLOBAL variable — its address
-/// and the interval value written under the held lock(s).
-///
-/// Declared at namespace scope (not nested inside `ConcurrentGlobalEnv`)
-/// because `_privatized_writes` (a private member of the env) needs the
-/// complete type at its declaration site, and the env declares this
-/// member before any `public:` block — keeping the type outside the class
-/// body lets the member declaration see the complete type regardless of
-/// access-specifier order.
+/// \brief Address and value captured for a deferred global write.
 struct PrivatizedWrite {
   std::uint64_t addr;
   machine_int::Interval val;
 };
 
-/// \brief One lock's partition of the interference environment: the
-/// interval value per global address written under that lock. Read by
-/// `read_global_with_lockset` pass (b); widened by the widening
-/// discipline (`join_into_cell_nolock`) at the iteration boundary.
+/// \brief Interval summaries indexed by a lock and global address.
 struct LockPartition {
   std::unordered_map< std::uint64_t /*glob_addr*/, machine_int::Interval >
       intervals;
@@ -194,38 +182,14 @@ private:
   /// \brief Global blackboard: address -> machine integer interval
   std::map< std::uint64_t, machine_int::Interval > _global_board;
 
-  /// \brief Protection-Based Reading (Goblint SAS'21) privatized write log.
-  ///
-  /// Keyed by mutex address; each entry is a list of (global_addr, value)
-  /// writes that were DEFERRED (skipped join_global) because the lock was
-  /// held at the write site. The values are captured at write time from
-  /// the local RHS interval, NOT extracted from the memory cell at unlock
-  /// time — this is the soundness-bias choice in the SAS'21 paper
-  /// (over-approximation is preferred for race detection).
-  ///
-  /// Lifecycle:
-  ///   - exec_store:    env.record_privatized_write(lock_addr, addr, val)
-  ///   - exec_unlock:   env.flush_privatized(lock_addr) → joins per-addr,
-  ///                     then join_global(addr, joined) for each; clears.
-  ///
-  /// The registry is keyed only by lock_addr (no per-function state), so
-  /// it does NOT need to be reset at function entry — a function called
-  /// inside a held critical section should still propagate its writes
-  /// into the lock's privatized set (see CI-5 in the design review).
+  /// \brief Deferred write queues indexed by lock; zero is the unlocked queue.
+  /// Queues are shared across function and thread analyses, not path-local.
   std::unordered_map< std::uint64_t /*lock_addr*/,
                       std::vector< PrivatizedWrite > >
       _privatized_writes;
 
-  /// \brief Lock-partitioned blackboard (AstréeA-style interference,
-  /// interval-only now that the relational DBM backend was removed).
-  ///
-  /// `_lock_partition[L].intervals` maps each global address written under
-  /// lock `L` to its interval value. Populated exclusively by
-  /// `flush_privatized(L)` (the sentinel value 0 is intercepted to
-  /// `flush_unlocked_partition`); read by `read_global_with_lockset` pass
-  /// (b). The flat `_global_board` is preserved for unlocked interference.
-  /// The widening discipline (count-then-force-TOP) operates on
-  /// `LockPartition::intervals`.
+  /// \brief Lock-indexed interval summaries populated by flush_privatized.
+  /// snapshot_global_interference joins these with the flat board at entry.
   std::unordered_map< std::uint64_t /*lock_addr*/, LockPartition >
       _lock_partition;
 
@@ -514,7 +478,7 @@ public:
   }
 
   /// \brief Look up a lock's protection region (struct-instance base offset).
-  /// Returns 0 when unknown (whole-object lock).
+  /// Returns 0 when absent; absence is not a proven instance identity.
   std::uint64_t lock_instance(std::uint64_t key) const {
     std::lock_guard< std::mutex > lock(this->_mutex);
     auto it = this->_lock_instance.find(key);
@@ -525,7 +489,7 @@ public:
   /// and bind its (base, SymbolicIndex). Returns the key to push into the
   /// lockset. The key is a pure function of (base, sym) so the same symbolic
   /// slot always yields the same key (fixpoint-stable); a 2^-64 collision
-  /// would only OVER-approximate the lock (sound direction).
+  /// must not establish identity without checking the full tuple on collision.
   std::uint64_t record_lock_symbolic_index(std::uint64_t base,
                                            const SymbolicIndex& sym) {
     std::lock_guard< std::mutex > lock(this->_mutex);
@@ -639,52 +603,9 @@ public:
     return result;
   }
 
-  /// \brief AstréeA lock-aware read with sound signedness.
-  ///
-  /// For each lock L in `held_locks`, consult both:
-  ///   (a) the unflushed deferral queue `_privatized_writes[L]` (the
-  ///       current thread's pending writes under L — sound to consult
-  ///       because we are the writer), and
-  ///   (b) the aggregated partition `_lock_partition[L]` (the value
-  ///       of the global at the last unlock of L).
-  /// Return the join of all hits. If no held lock has state for `addr`,
-  /// fall back to `_global_board[addr]` only if the entry exists;
-  /// otherwise return **Bottom**.
-  ///
-  /// \warning The "absence → Bottom" contract is REQUIRED for
-  /// soundness at the call site: `exec_load` uses
-  /// `if (!interference.is_bottom()) { ... inject ... }` to gate
-  /// unconditional injection. Returning Top here would silently widen
-  /// every local global read that has no concurrent writer, which is
-  /// unsound. Top returned from this method is reserved for the case
-  /// where real concurrent contention has forced a partition cell to
-  /// widen — that Top MUST be absorbed by the local value.
-  ///
-  /// \warning Sign and bit-width contract. Each candidate interval
-  /// (from the PBR deferral queue, a lock partition, or the flat board)
-  /// is normalized to the caller's `(bit_width, sign)` via
-  /// `Interval::cast` BEFORE joining. Without this normalization, two
-  /// candidates with mismatched signs would trip
-  /// `assert_compatible<Interval,Interval>` in `join_with` (see
-  /// compatibility.hpp:62), and a candidate with the wrong sign would
-  /// silently widen a `m : unsigned int` to Signed 64-bit, breaking
-  /// every later `m == 0` / `value < n` comparison. The fix here is
-  /// not a guard at the injection site (numerical.hpp) — it is a
-  /// type-aware result construction INSIDE this method, so that ALL
-  /// callers (now and future) get a correctly-signed interval.
-  ///
-  /// \param addr        The global address being read.
-  /// \param bit_width   Bit width of the destination variable (e.g. 32
-  ///                    for `unsigned int`, 64 for `unsigned long long`).
-  ///                    Must match the LLVM type's bit width so that the
-  ///                    returned interval can be soundly assigned back.
-  /// \param sign        Signedness of the destination variable.
-  /// \param held_locks  Locks currently held by the reading thread
-  ///                    (typically `inv.normal().lockset_held_mutexes()`).
-  /// \return The joined interference interval, expressed in
-  ///         `(bit_width, sign)`. Bottom if no held lock and no
-  ///         flat-board entry; possibly Top if a partition cell was
-  ///         widened by real concurrent contention.
+  /// \brief Join matching pending/partition values, then use the flat fallback.
+  /// Sources are cast to the requested type before joining; no match is bottom.
+  /// Currently not called by the numerical load executor.
   machine_int::Interval read_global_with_lockset(
       std::uint64_t addr,
       std::uint64_t bit_width,
@@ -883,7 +804,7 @@ public:
         // Delayed widening: after the delay, widen a still-unstable bound
         // to TOP. Preserve the existing interval's bit_width and sign:
         // collapsing to a 64-bit TOP would create a bit_width mismatch with
-        // future callers (e.g. PBR flush_privatized publishes intervals
+        // future callers (e.g. flush_privatized publishes intervals
         // whose bit_width matches the LLVM type of the written global —
         // often 32 bits for `int`, 8 for `char`, etc.).
         it->second = machine_int::Interval::top(old_val.bit_width(),
@@ -908,13 +829,7 @@ public:
                                        value) == JoinResult::Expanded;
   }
 
-  /// \brief AstréeA: insert/join into a specific lock's partition
-  /// (interval channel).
-  ///
-  /// Caller MUST already hold `_mutex`. Used by `flush_privatized` to
-  /// drain per-lock PBR queues into the partition (the destination
-  /// for "value at unlock time"). The widening discipline matches
-  /// `join_global_nolock` via `join_into_cell_nolock`.
+  /// \brief Join into a lock's interval partition; caller holds _mutex.
   bool join_partition_nolock(std::uint64_t lock_addr,
                              std::uint64_t addr,
                              const machine_int::Interval& value) {
@@ -926,18 +841,10 @@ public:
   }
 
   // ---------------------------------------------------------------------
-  // Protection-Based Reading (Goblint SAS'21) — privatized write registry
+  // Deferred global write queues
   // ---------------------------------------------------------------------
 
-  /// \brief Record a deferred (lock-protected) global write.
-  ///
-  /// Called from NumericalExecutionEngine::exec_store when the write site
-  /// holds at least one mutex. The mutex address is the KEY of the
-  /// registry entry; the (addr, val) pair will be flushed on unlock.
-  ///
-  /// \param lock_addr  Address of the mutex held at the write site.
-  /// \param addr       Address of the global being written.
-  /// \param val        Local RHS interval (sound to over-approximate).
+  /// \brief Append a write to the queue for lock_addr (or the zero sentinel).
   void record_privatized_write(
       std::uint64_t lock_addr,
       std::uint64_t addr,
@@ -946,51 +853,7 @@ public:
     _privatized_writes[lock_addr].push_back(PrivatizedWrite{addr, val});
   }
 
-  /// \brief Flush all privatized writes recorded against `lock_addr`.
-  ///
-  /// Atomically: groups writes by `addr`, joins their `val` intervals,
-  /// and either:
-  ///   (a) deposits into the lock's partition `_lock_partition[lock_addr]`
-  ///       when `lock_addr != kNoLockPartitionAddr`, or
-  ///   (b) publishes into the flat `_global_board` via
-  ///       `join_global_nolock` when `lock_addr == kNoLockPartitionAddr`.
-  /// In both cases the registry entry is cleared after aggregation.
-  /// Returns true if any join actually expanded state (i.e., the
-  /// publish exposed new interference to other threads).
-  ///
-  /// \param lock_addr  The mutex being released, or the sentinel
-  ///                   `kNoLockPartitionAddr` for the unlocked-write
-  ///                   partition (drained at worklist iteration boundaries).
-  /// \return true iff the global fixpoint should re-iterate.
-  ///
-  /// \note `pthread_mutex_unlock` paths whose points-to resolution
-  /// failed are guarded at the call site (`numerical.hpp:4318`) and
-  /// do NOT call this method with `lock_addr == 0`; that guard is the
-  /// load-bearing safety property that prevents the strict-flushing
-  /// invariant from being violated by misresolved unlocks.
-  /// \brief Over-approximation flush (soundness guard for TOP locksets).
-  ///
-  /// Drain EVERY non-empty `_privatized_writes` bucket as if the
-  /// releasing thread held all of those locks. Sound exactly when the
-  /// releasing thread's abstract lockset is TOP: the abstract set of
-  /// held locks is then "any subset of the universe", so each
-  /// non-sentinel bucket MAY be a real release point — publishing all
-  /// of them is a strict over-approximation (a wrong bucket only
-  /// widens its partition; the interval widening discipline bounds the
-  /// growth). Never unsound-narrowing.
-  ///
-  /// Trigger (numerical.hpp unlock path): the lockset is TOP, under
-  /// which the abstract `lockset_remove_lock` is a no-op and the
-  /// single-lock flush cannot identify the released bucket — see the
-  /// `04-mutex_23-sound_unlock.c` trace (unlock EXIT printed
-  /// `lockset_is_top=YES` with a real mutex1 bucket left undrained:
-  /// the FN root cause). Non-TOP locksets keep the precise single-lock
-  /// flush and never enter this path.
-  ///
-  /// Implementation note: the per-bucket work is `flush_nolock` (the
-  /// locked core of `flush_privatized`); re-entering the locking
-  /// `flush_privatized` here would deadlock on the non-recursive
-  /// `_mutex`.
+  /// \brief Flush all non-sentinel queues using the same aggregation routine.
   void flush_all_privatized_locks() {
     std::lock_guard< std::mutex > lock(_mutex);
     // Snapshot keys under the mutex: flushing mutates the map.
@@ -1007,35 +870,21 @@ public:
     }
   }
 
+  /// \brief Flush queued values into a lock partition or the flat board.
   bool flush_privatized(std::uint64_t lock_addr) {
     std::lock_guard< std::mutex > lock(_mutex);
     return this->flush_nolock(lock_addr);
   }
 
 private:
-  /// \brief Locked core of `flush_privatized`. Caller MUST hold
-  /// `_mutex` (same discipline as join_*_nolock).
-  ///
-  /// State-Overwriting semantics: within ONE critical section the
-  /// writes to the same global are strictly ordered by program order —
-  /// the later write OVERWRITES the earlier one. The queue is appended
-  /// in statement order, so folding it into a "latest-state map"
-  /// (addr -> last write) and publishing ONLY the surviving entries is
-  /// the flow-sensitive projection of the global at the release
-  /// instant. The previous join_all aggregation was flow-INsensitive:
-  /// it published the join of the whole history (`x=0 ⊔ x=1 = [0,1]`
-  /// instead of the true `[1,1]`), letting ghost values pollute the
-  /// lock partition and produce false races
-  /// (13-privatized_03-priv_inv.c).
+  /// \brief Publish the last queued value per address; caller holds _mutex.
+  /// TODO: shared queue order is not program order; effects must be joined.
   bool flush_nolock(std::uint64_t lock_addr) {
     auto it = _privatized_writes.find(lock_addr);
     if (it == _privatized_writes.end() || it->second.empty()) {
       return false;
     }
-    // Overwrite map: iterate in queue (statement) order; a later write
-    // to the same address replaces the earlier record entirely.
-    // (`operator[]` needs a default-constructible mapped type —
-    // `machine_int::Interval` is not — hence find/assign.)
+    // Keep the last queue entry per address (not a per-thread final state).
     std::unordered_map< std::uint64_t, machine_int::Interval > latest;
     for (const PrivatizedWrite& pw : it->second) {
       auto lit = latest.find(pw.addr);
@@ -1060,7 +909,7 @@ private:
         changed = changed || c;
       }
     } else {
-      // AstréeA-style: deposit into the lock's partition.
+      // Deposit into the lock's partition.
       // join_partition_nolock reuses the widening discipline of
       // join_global_nolock via join_into_cell_nolock. We already
       // hold `_mutex`, so the nolock variant is required —

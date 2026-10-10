@@ -307,16 +307,8 @@ inline bool is_fresh_alloc(ar::Value* v) {
   return false;
 }
 
-/// \brief Collect the flat-array slots a value derives from. Follows
-/// container_of (constant-offset PointerShift), value-preserving casts, and
-/// phi copies (Assignment). Loads are followed unconditionally: a GLOBAL
-/// array load (`slot[i]`) yields its slot index, and a heap-node `->next`
-/// load inherits its base pointer's region. The heap-node case is sound
-/// because check_load/check_store only call region_of when
-/// region_tainting_sound() holds — no cross-slot pointer aliasing
-/// (09-regions_23-evilcollapse_rc.c) — so a node reached through slot[j]
-/// provably stays in slot[j]'s list. An untraceable leaf (malloc/call
-/// result) still sets `ambiguous`.
+/// \brief Collect symbolic slots through shifts, casts, copies and load bases.
+/// Callers use a syntactic alias gate; it is not a complete non-escape proof.
 inline void region_collect(
     ar::Value* v,
     std::vector< core::ConcurrentGlobalEnv::SymbolicIndex >& out,
@@ -395,16 +387,7 @@ inline void region_collect(
           region_collect(ps->pointer(), out, visiting, ambiguous, ctx, cc,
                          acc + constant_element_offset(ps));
         } else if (auto* ld = dyn_cast< ar::Load >(s)) {
-          // Follow the loaded-from address unconditionally. A GLOBAL array
-          // pointer (`slot[i]`) yields its slot index; a heap-node `->next`
-          // load inherits the region of its base pointer (`t` in
-          // `p = t->next`, where `t = slot[j]`). The heap-node case is sound
-          // because check_load/check_store only call region_of when
-          // region_tainting_sound() holds — i.e. no cross-slot pointer
-          // aliasing (09-regions_23-evilcollapse_rc.c) — so a node reached
-          // through slot[j] provably stays in slot[j]'s list. If the operand
-          // traces to a malloc/other untraceable leaf, the recursion sets
-          // `ambiguous` deeper down, so no unsound single-slot region escapes.
+          // Propagate the load address's region, subject to the caller's gate.
           region_collect(ld->operand(), out, visiting, ambiguous, ctx, cc,
                          acc);
         } else if (auto* as = dyn_cast< ar::Assignment >(s)) {
@@ -874,17 +857,8 @@ DataRaceChecker::~DataRaceChecker() {
           continue;
         }
       }
-      // Local self-consistency (flat-array + polymorphic-base FP): two
-      // accesses to the SAME cell, each holding a lock that is provably on
-      // ITS OWN instance, are mutually exclusive — "same cell ⟹ same
-      // instance ⟹ same lock". Each side must be self-consistent on its own:
-      //   (symbolic) a symbolic lock whose index/identity == the access's own
-      //              region (09-regions_11-arraylist_nr.c / 06-symbeq_11-equ).
-      //   (flat)     a field lock on the SAME object AND same struct instance
-      //              as the access (concrete singleton only: rec.base != 0).
-      // The "same cell" fact is the precise points-to meet above; "same cell
-      // ⟹ same instance" is sound because region/base tainting is gated on no
-      // cross-instance pointer aliasing.
+      // TODO: matching each access to its own instance does not prove a
+      // common mutex; this shortcut still admits distinct field locks.
       {
         auto& env = this->_ctx.concurrent_env;
         auto self_locked = [&](const AccessRecord& rec) {
@@ -2210,14 +2184,10 @@ bool DataRaceChecker::touches_shared_memory(const PointsToSet& pts,
       return true;
     }
     if (isa< DynAllocMemoryLocation >(addr)) {
-      // A fresh (not-yet-published) heap node is thread-private: only the
-      // allocating thread holds its pointer, so its accesses cannot race
-      // across threads (goblint region-domain "fresh bullet" argument). A
-      // published node (its pointer was stored into a shared location) is
-      // shared and must race like any other cell.
+      // TODO: the fresh test depends on complete transitive publication.
       if (inv.second().is_heap_node_fresh(
               core::IndexableTraits< MemoryLocation* >::index(addr))) {
-        continue; // fresh heap node → thread-private → no race
+        continue; // Skip nodes retained in the fresh set.
       }
       return true; // published heap node → shared
     }

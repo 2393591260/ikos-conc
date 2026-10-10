@@ -69,8 +69,7 @@ struct CondLock {
 ///
 /// Tracks the set of mutex addresses that MUST be held by every path reaching
 /// the program point. Used by the race checker for happens-before inference
-/// and by Protection-Based Reading (PBR, Goblint SAS'21) to decide whether
-/// a write may be deferred until the lock is released.
+/// and by the store executor to select deferred write queues.
 ///
 /// Atomic / pseudo-lock primitives (e.g. `__VERIFIER_atomic_*`, `__sync_*`)
 /// are intentionally NOT modelled here — the CPU atomicity guarantee is
@@ -139,14 +138,8 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
   /// t2 — the name-level digest alone cannot tell t2 apart from t1).
   std::unordered_set< std::uint64_t > _spawned_instances;
 
-  /// \brief Heap nodes (DynAlloc stable ids) that are provably FRESH — a
-  /// malloc result whose pointer has NOT yet been stored into a cross-thread
-  /// reachable location. MUST digest (join = intersection, ⊤ = ∅): a node is
-  /// fresh only if fresh on every incoming edge. A fresh node is thread-private
-  /// (only the allocating thread holds its pointer), so its accesses cannot
-  /// race (goblint region-domain "fresh bullet" soundness argument). A node
-  /// leaves the set once this thread stores its pointer into a global / thread
-  /// arg / non-fresh heap field.
+  /// \brief Allocation-site ids retained as fresh on all incoming paths.
+  /// MUST component: join is intersection. Publication coverage is incomplete.
   std::unordered_set< std::uint64_t > _fresh_heap_nodes;
 
   /// Spawned-threads digest TOP flag: "may have spawned ANY thread" (the
