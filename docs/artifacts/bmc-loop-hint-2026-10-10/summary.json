@@ -1,0 +1,121 @@
+{
+  "before": {
+    "TP": 90,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 242,
+    "error": 0
+  },
+  "after": {
+    "TP": 92,
+    "FP": 0,
+    "TN": 697,
+    "FN": 0,
+    "unknown": 240,
+    "error": 0
+  },
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "changes": [
+    {
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-7-racy.i",
+      "expected": "Race Found",
+      "before": "Unknown",
+      "after": "Race Found"
+    },
+    {
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread/fib_unsafe-7-racy.i",
+      "expected": "Race Found",
+      "before": "Unknown",
+      "after": "Race Found"
+    }
+  ],
+  "analyzer_sha256": "afead1ba60420075aaced9a9b1d8cd0b3ad61ed6c98f034b850391c39cd4a922",
+  "regressions": {
+    "sc_assertions": 32,
+    "atomic_assertions": 34,
+    "p0_observations_unchanged": 20
+  },
+  "targeted": [
+    {
+      "task": "c/pthread/fib_safe-7-racy.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-7-racy.i",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "verdict": "Race Found",
+      "seconds": 7.073430938002275,
+      "returncode": 0,
+      "counts": {
+        "ai_candidate_bounds": 2,
+        "atomic_completed_paths": 4,
+        "call_summary": 4,
+        "constant_guard_unsat": 556,
+        "integer_operation": 4628,
+        "literal_loop_search_hint": 2,
+        "sat": 2,
+        "sc_read_from": 126,
+        "sc_same_path_read_from": 10178,
+        "target_not_reached": 2
+      },
+      "first_blockers": {
+        "atomic_completed_paths": 2
+      },
+      "candidates": 2,
+      "artifacts": "fib_safe-7-racy-0b4f4d5e9932",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/tmp/ikos-recovery-2026-10-10/loop-hint-targeted/fib_safe-7-racy-0b4f4d5e9932/report.json",
+        "-o",
+        "/tmp/ikos-recovery-2026-10-10/loop-hint-targeted/fib_safe-7-racy-0b4f4d5e9932/output.db",
+        "/home/ruan/sv-benchmarks-2026/c/pthread/fib_safe-7-racy.i"
+      ]
+    },
+    {
+      "task": "c/pthread/fib_unsafe-7-racy.yml",
+      "input": "/home/ruan/sv-benchmarks-2026/c/pthread/fib_unsafe-7-racy.i",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "verdict": "Race Found",
+      "seconds": 7.185613857000135,
+      "returncode": 0,
+      "counts": {
+        "ai_candidate_bounds": 2,
+        "atomic_completed_paths": 4,
+        "call_summary": 4,
+        "constant_guard_unsat": 556,
+        "integer_operation": 4628,
+        "literal_loop_search_hint": 2,
+        "sat": 2,
+        "sc_read_from": 126,
+        "sc_same_path_read_from": 10178,
+        "target_not_reached": 2
+      },
+      "first_blockers": {
+        "atomic_completed_paths": 2
+      },
+      "candidates": 2,
+      "artifacts": "fib_unsafe-7-racy-83b1a08e85eb",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/tmp/ikos-recovery-2026-10-10/loop-hint-targeted/fib_unsafe-7-racy-83b1a08e85eb/report.json",
+        "-o",
+        "/tmp/ikos-recovery-2026-10-10/loop-hint-targeted/fib_unsafe-7-racy-83b1a08e85eb/output.db",
+        "/home/ruan/sv-benchmarks-2026/c/pthread/fib_unsafe-7-racy.i"
+      ]
+    }
+  ],
+  "full_counterexample_validated": false
+}

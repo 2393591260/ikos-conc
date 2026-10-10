@@ -1,0 +1,5768 @@
+{
+  "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+  "report_sha256": "9bc3321968725622660dc1ec047ed532ad6b46a3a607b9be5f568a161af03b72",
+  "input_sha256": "a938b9e3b803ef0b08d2618a78ac055be54a6e48f84c6853aab11e3467af8157",
+  "rows": [
+    {
+      "report_index": 0,
+      "pair_id": 0,
+      "full_counterexample_validated": false,
+      "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+      "threads": {
+        "a": 0,
+        "b": 1
+      },
+      "mapped_memory_events": 92,
+      "omitted_steps": [
+        {
+          "trace": "a",
+          "step": 0,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 1,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 2,
+          "kind": "allocate",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 3,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 4,
+          "kind": "store",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 5,
+          "kind": "allocate",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 6,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 7,
+          "kind": "store",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 8,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 9,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 11,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 12,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 14,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 15,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 16,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 17,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 18,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 19,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 20,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 21,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 22,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 23,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 29,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 30,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 31,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 32,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 33,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 34,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 35,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 36,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 42,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 43,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 44,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 45,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 46,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 47,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 48,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 49,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 55,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 56,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 57,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 58,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 59,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 60,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 61,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 62,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 68,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 69,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 70,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 71,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 72,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 73,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 74,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 75,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 81,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 82,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 83,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 84,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 85,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 86,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 87,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 88,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 94,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 95,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 96,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 97,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 98,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 99,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 100,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 101,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 107,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 108,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 109,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 110,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 111,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 112,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 113,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 114,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 120,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 121,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 122,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 123,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 124,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 125,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 126,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 127,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 133,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 134,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 135,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 136,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 137,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 138,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 139,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 140,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 146,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 147,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 148,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 149,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 150,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 151,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 152,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 153,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 159,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 160,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 161,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 162,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 163,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 164,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 165,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 166,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 172,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 173,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 174,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 175,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 176,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 177,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 178,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 179,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 185,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 186,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 187,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 188,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 189,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 190,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 191,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 192,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 198,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 199,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 200,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 201,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 202,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 203,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 204,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 205,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 211,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 212,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 213,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 214,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 215,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 216,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 217,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 218,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 224,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 225,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 226,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 227,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 228,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 230,
+          "kind": "return",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 232,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 234,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 235,
+          "kind": "return",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 0,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 1,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 2,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 3,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 4,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 5,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 6,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 8,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 9,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 10,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 11,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 12,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 13,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 14,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 15,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 16,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 17,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 19,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 20,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 21,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 22,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 23,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 24,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 25,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 26,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 27,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 28,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 30,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 31,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 32,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 33,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 34,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 35,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 36,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 37,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 38,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 39,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 41,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 42,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 43,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 44,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 45,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 46,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 47,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 48,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 49,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 50,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 52,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 53,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 54,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 55,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 56,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 57,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 58,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 59,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 60,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 61,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 63,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 64,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 65,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 66,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 67,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 68,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 69,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 70,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 71,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 72,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 74,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 75,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 76,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 77,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 78,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 79,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 80,
+          "kind": "return",
+          "reason": "not a mapped global/heap memory access"
+        }
+      ],
+      "creation_bindings": [
+        {
+          "trace": "b",
+          "parent_trace": "a",
+          "creator_step": 15,
+          "reference_event": 17,
+          "occurrence": null,
+          "pre_unroll_id": 81
+        }
+      ],
+      "heap_bindings": [],
+      "memory_bindings": [
+        {
+          "trace": "a",
+          "step": 10,
+          "reference_event": 4,
+          "occurrence": null,
+          "pre_unroll_id": 69
+        },
+        {
+          "trace": "a",
+          "step": 13,
+          "reference_event": 11,
+          "occurrence": null,
+          "pre_unroll_id": 76
+        },
+        {
+          "trace": "a",
+          "step": 24,
+          "reference_event": 32,
+          "occurrence": 1,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 25,
+          "reference_event": 33,
+          "occurrence": 1,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 26,
+          "reference_event": 34,
+          "occurrence": 1,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 27,
+          "reference_event": 35,
+          "occurrence": 1,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 28,
+          "reference_event": 36,
+          "occurrence": 1,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 37,
+          "reference_event": 47,
+          "occurrence": 2,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 38,
+          "reference_event": 48,
+          "occurrence": 2,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 39,
+          "reference_event": 49,
+          "occurrence": 2,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 40,
+          "reference_event": 50,
+          "occurrence": 2,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 41,
+          "reference_event": 51,
+          "occurrence": 2,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 50,
+          "reference_event": 62,
+          "occurrence": 3,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 51,
+          "reference_event": 63,
+          "occurrence": 3,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 52,
+          "reference_event": 64,
+          "occurrence": 3,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 53,
+          "reference_event": 65,
+          "occurrence": 3,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 54,
+          "reference_event": 66,
+          "occurrence": 3,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 63,
+          "reference_event": 77,
+          "occurrence": 4,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 64,
+          "reference_event": 78,
+          "occurrence": 4,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 65,
+          "reference_event": 79,
+          "occurrence": 4,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 66,
+          "reference_event": 80,
+          "occurrence": 4,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 67,
+          "reference_event": 81,
+          "occurrence": 4,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 76,
+          "reference_event": 92,
+          "occurrence": 5,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 77,
+          "reference_event": 93,
+          "occurrence": 5,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 78,
+          "reference_event": 94,
+          "occurrence": 5,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 79,
+          "reference_event": 95,
+          "occurrence": 5,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 80,
+          "reference_event": 96,
+          "occurrence": 5,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 89,
+          "reference_event": 107,
+          "occurrence": 6,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 90,
+          "reference_event": 108,
+          "occurrence": 6,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 91,
+          "reference_event": 109,
+          "occurrence": 6,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 92,
+          "reference_event": 110,
+          "occurrence": 6,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 93,
+          "reference_event": 111,
+          "occurrence": 6,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 102,
+          "reference_event": 122,
+          "occurrence": 7,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 103,
+          "reference_event": 123,
+          "occurrence": 7,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 104,
+          "reference_event": 124,
+          "occurrence": 7,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 105,
+          "reference_event": 125,
+          "occurrence": 7,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 106,
+          "reference_event": 126,
+          "occurrence": 7,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 115,
+          "reference_event": 137,
+          "occurrence": 8,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 116,
+          "reference_event": 138,
+          "occurrence": 8,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 117,
+          "reference_event": 139,
+          "occurrence": 8,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 118,
+          "reference_event": 140,
+          "occurrence": 8,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 119,
+          "reference_event": 141,
+          "occurrence": 8,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 128,
+          "reference_event": 152,
+          "occurrence": 9,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 129,
+          "reference_event": 153,
+          "occurrence": 9,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 130,
+          "reference_event": 154,
+          "occurrence": 9,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 131,
+          "reference_event": 155,
+          "occurrence": 9,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 132,
+          "reference_event": 156,
+          "occurrence": 9,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 141,
+          "reference_event": 167,
+          "occurrence": 10,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 142,
+          "reference_event": 168,
+          "occurrence": 10,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 143,
+          "reference_event": 169,
+          "occurrence": 10,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 144,
+          "reference_event": 170,
+          "occurrence": 10,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 145,
+          "reference_event": 171,
+          "occurrence": 10,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 154,
+          "reference_event": 182,
+          "occurrence": 11,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 155,
+          "reference_event": 183,
+          "occurrence": 11,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 156,
+          "reference_event": 184,
+          "occurrence": 11,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 157,
+          "reference_event": 185,
+          "occurrence": 11,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 158,
+          "reference_event": 186,
+          "occurrence": 11,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 167,
+          "reference_event": 197,
+          "occurrence": 12,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 168,
+          "reference_event": 198,
+          "occurrence": 12,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 169,
+          "reference_event": 199,
+          "occurrence": 12,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 170,
+          "reference_event": 200,
+          "occurrence": 12,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 171,
+          "reference_event": 201,
+          "occurrence": 12,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 180,
+          "reference_event": 212,
+          "occurrence": 13,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 181,
+          "reference_event": 213,
+          "occurrence": 13,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 182,
+          "reference_event": 214,
+          "occurrence": 13,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 183,
+          "reference_event": 215,
+          "occurrence": 13,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 184,
+          "reference_event": 216,
+          "occurrence": 13,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 193,
+          "reference_event": 227,
+          "occurrence": 14,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 194,
+          "reference_event": 228,
+          "occurrence": 14,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 195,
+          "reference_event": 229,
+          "occurrence": 14,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 196,
+          "reference_event": 230,
+          "occurrence": 14,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 197,
+          "reference_event": 231,
+          "occurrence": 14,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 206,
+          "reference_event": 242,
+          "occurrence": 15,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 207,
+          "reference_event": 243,
+          "occurrence": 15,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 208,
+          "reference_event": 244,
+          "occurrence": 15,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 209,
+          "reference_event": 245,
+          "occurrence": 15,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 210,
+          "reference_event": 246,
+          "occurrence": 15,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 219,
+          "reference_event": 257,
+          "occurrence": 16,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 220,
+          "reference_event": 258,
+          "occurrence": 16,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 221,
+          "reference_event": 259,
+          "occurrence": 16,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 222,
+          "reference_event": 260,
+          "occurrence": 16,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 223,
+          "reference_event": 261,
+          "occurrence": 16,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 229,
+          "reference_event": 283,
+          "occurrence": null,
+          "pre_unroll_id": 123
+        },
+        {
+          "trace": "a",
+          "step": 231,
+          "reference_event": 285,
+          "occurrence": null,
+          "pre_unroll_id": 127
+        },
+        {
+          "trace": "a",
+          "step": 233,
+          "reference_event": 293,
+          "occurrence": null,
+          "pre_unroll_id": 137
+        },
+        {
+          "trace": "b",
+          "step": 7,
+          "reference_event": 320,
+          "occurrence": 1,
+          "pre_unroll_id": 18
+        },
+        {
+          "trace": "b",
+          "step": 18,
+          "reference_event": 337,
+          "occurrence": 2,
+          "pre_unroll_id": 18
+        },
+        {
+          "trace": "b",
+          "step": 29,
+          "reference_event": 354,
+          "occurrence": 3,
+          "pre_unroll_id": 18
+        },
+        {
+          "trace": "b",
+          "step": 40,
+          "reference_event": 371,
+          "occurrence": 4,
+          "pre_unroll_id": 18
+        },
+        {
+          "trace": "b",
+          "step": 51,
+          "reference_event": 388,
+          "occurrence": 5,
+          "pre_unroll_id": 18
+        },
+        {
+          "trace": "b",
+          "step": 62,
+          "reference_event": 405,
+          "occurrence": 6,
+          "pre_unroll_id": 18
+        },
+        {
+          "trace": "b",
+          "step": 73,
+          "reference_event": 422,
+          "occurrence": 7,
+          "pre_unroll_id": 18
+        }
+      ],
+      "nondet_bindings": [],
+      "initial_bindings": [
+        {
+          "reference_event": 920,
+          "object": "cur",
+          "offset": 0,
+          "bits": 32
+        }
+      ],
+      "communication_bindings": [
+        {
+          "relation": "co",
+          "from": 4,
+          "to": 320
+        },
+        {
+          "relation": "co",
+          "from": 320,
+          "to": 337
+        },
+        {
+          "relation": "co",
+          "from": 337,
+          "to": 354
+        },
+        {
+          "relation": "co",
+          "from": 354,
+          "to": 371
+        },
+        {
+          "relation": "co",
+          "from": 371,
+          "to": 388
+        },
+        {
+          "relation": "co",
+          "from": 388,
+          "to": 405
+        },
+        {
+          "relation": "co",
+          "from": 405,
+          "to": 422
+        },
+        {
+          "relation": "rf",
+          "from": 320,
+          "to": 285
+        },
+        {
+          "relation": "rf",
+          "from": 11,
+          "to": 293
+        },
+        {
+          "relation": "co",
+          "from": 34,
+          "to": 49
+        },
+        {
+          "relation": "co",
+          "from": 49,
+          "to": 64
+        },
+        {
+          "relation": "co",
+          "from": 64,
+          "to": 79
+        },
+        {
+          "relation": "co",
+          "from": 79,
+          "to": 94
+        },
+        {
+          "relation": "co",
+          "from": 94,
+          "to": 109
+        },
+        {
+          "relation": "co",
+          "from": 109,
+          "to": 124
+        },
+        {
+          "relation": "co",
+          "from": 124,
+          "to": 139
+        },
+        {
+          "relation": "co",
+          "from": 139,
+          "to": 154
+        },
+        {
+          "relation": "co",
+          "from": 154,
+          "to": 169
+        },
+        {
+          "relation": "co",
+          "from": 169,
+          "to": 184
+        },
+        {
+          "relation": "co",
+          "from": 184,
+          "to": 199
+        },
+        {
+          "relation": "co",
+          "from": 199,
+          "to": 214
+        },
+        {
+          "relation": "co",
+          "from": 214,
+          "to": 229
+        },
+        {
+          "relation": "co",
+          "from": 229,
+          "to": 244
+        },
+        {
+          "relation": "co",
+          "from": 244,
+          "to": 259
+        },
+        {
+          "relation": "rf",
+          "from": 259,
+          "to": 283
+        },
+        {
+          "relation": "co",
+          "from": 36,
+          "to": 51
+        },
+        {
+          "relation": "co",
+          "from": 51,
+          "to": 66
+        },
+        {
+          "relation": "co",
+          "from": 66,
+          "to": 81
+        },
+        {
+          "relation": "co",
+          "from": 81,
+          "to": 96
+        },
+        {
+          "relation": "co",
+          "from": 96,
+          "to": 111
+        },
+        {
+          "relation": "co",
+          "from": 111,
+          "to": 126
+        },
+        {
+          "relation": "co",
+          "from": 126,
+          "to": 141
+        },
+        {
+          "relation": "co",
+          "from": 141,
+          "to": 156
+        },
+        {
+          "relation": "co",
+          "from": 156,
+          "to": 171
+        },
+        {
+          "relation": "co",
+          "from": 171,
+          "to": 186
+        },
+        {
+          "relation": "co",
+          "from": 186,
+          "to": 201
+        },
+        {
+          "relation": "co",
+          "from": 201,
+          "to": 216
+        },
+        {
+          "relation": "co",
+          "from": 216,
+          "to": 231
+        },
+        {
+          "relation": "co",
+          "from": 231,
+          "to": 246
+        },
+        {
+          "relation": "co",
+          "from": 246,
+          "to": 261
+        },
+        {
+          "relation": "rf",
+          "from": 920,
+          "to": 33
+        },
+        {
+          "relation": "rf",
+          "from": 36,
+          "to": 48
+        },
+        {
+          "relation": "rf",
+          "from": 51,
+          "to": 63
+        },
+        {
+          "relation": "rf",
+          "from": 66,
+          "to": 78
+        },
+        {
+          "relation": "rf",
+          "from": 81,
+          "to": 93
+        },
+        {
+          "relation": "rf",
+          "from": 96,
+          "to": 108
+        },
+        {
+          "relation": "rf",
+          "from": 111,
+          "to": 123
+        },
+        {
+          "relation": "rf",
+          "from": 126,
+          "to": 138
+        },
+        {
+          "relation": "rf",
+          "from": 141,
+          "to": 153
+        },
+        {
+          "relation": "rf",
+          "from": 156,
+          "to": 168
+        },
+        {
+          "relation": "rf",
+          "from": 171,
+          "to": 183
+        },
+        {
+          "relation": "rf",
+          "from": 186,
+          "to": 198
+        },
+        {
+          "relation": "rf",
+          "from": 201,
+          "to": 213
+        },
+        {
+          "relation": "rf",
+          "from": 216,
+          "to": 228
+        },
+        {
+          "relation": "rf",
+          "from": 231,
+          "to": 243
+        },
+        {
+          "relation": "rf",
+          "from": 246,
+          "to": 258
+        },
+        {
+          "relation": "co",
+          "from": 32,
+          "to": 47
+        },
+        {
+          "relation": "co",
+          "from": 47,
+          "to": 62
+        },
+        {
+          "relation": "co",
+          "from": 62,
+          "to": 77
+        },
+        {
+          "relation": "co",
+          "from": 77,
+          "to": 92
+        },
+        {
+          "relation": "co",
+          "from": 92,
+          "to": 107
+        },
+        {
+          "relation": "co",
+          "from": 107,
+          "to": 122
+        },
+        {
+          "relation": "co",
+          "from": 122,
+          "to": 137
+        },
+        {
+          "relation": "co",
+          "from": 137,
+          "to": 152
+        },
+        {
+          "relation": "co",
+          "from": 152,
+          "to": 167
+        },
+        {
+          "relation": "co",
+          "from": 167,
+          "to": 182
+        },
+        {
+          "relation": "co",
+          "from": 182,
+          "to": 197
+        },
+        {
+          "relation": "co",
+          "from": 197,
+          "to": 212
+        },
+        {
+          "relation": "co",
+          "from": 212,
+          "to": 227
+        },
+        {
+          "relation": "co",
+          "from": 227,
+          "to": 242
+        },
+        {
+          "relation": "co",
+          "from": 242,
+          "to": 257
+        },
+        {
+          "relation": "rf",
+          "from": 32,
+          "to": 35
+        },
+        {
+          "relation": "rf",
+          "from": 47,
+          "to": 50
+        },
+        {
+          "relation": "rf",
+          "from": 62,
+          "to": 65
+        },
+        {
+          "relation": "rf",
+          "from": 77,
+          "to": 80
+        },
+        {
+          "relation": "rf",
+          "from": 92,
+          "to": 95
+        },
+        {
+          "relation": "rf",
+          "from": 107,
+          "to": 110
+        },
+        {
+          "relation": "rf",
+          "from": 122,
+          "to": 125
+        },
+        {
+          "relation": "rf",
+          "from": 137,
+          "to": 140
+        },
+        {
+          "relation": "rf",
+          "from": 152,
+          "to": 155
+        },
+        {
+          "relation": "rf",
+          "from": 167,
+          "to": 170
+        },
+        {
+          "relation": "rf",
+          "from": 182,
+          "to": 185
+        },
+        {
+          "relation": "rf",
+          "from": 197,
+          "to": 200
+        },
+        {
+          "relation": "rf",
+          "from": 212,
+          "to": 215
+        },
+        {
+          "relation": "rf",
+          "from": 227,
+          "to": 230
+        },
+        {
+          "relation": "rf",
+          "from": 242,
+          "to": 245
+        },
+        {
+          "relation": "rf",
+          "from": 257,
+          "to": 260
+        }
+      ],
+      "communication_omissions": [],
+      "memory_orderings": [
+        {
+          "before": 4,
+          "after": 11
+        },
+        {
+          "before": 11,
+          "after": 32
+        },
+        {
+          "before": 32,
+          "after": 33
+        },
+        {
+          "before": 33,
+          "after": 34
+        },
+        {
+          "before": 34,
+          "after": 35
+        },
+        {
+          "before": 35,
+          "after": 36
+        },
+        {
+          "before": 36,
+          "after": 47
+        },
+        {
+          "before": 47,
+          "after": 48
+        },
+        {
+          "before": 48,
+          "after": 49
+        },
+        {
+          "before": 49,
+          "after": 50
+        },
+        {
+          "before": 50,
+          "after": 51
+        },
+        {
+          "before": 51,
+          "after": 62
+        },
+        {
+          "before": 62,
+          "after": 63
+        },
+        {
+          "before": 63,
+          "after": 64
+        },
+        {
+          "before": 64,
+          "after": 65
+        },
+        {
+          "before": 65,
+          "after": 66
+        },
+        {
+          "before": 66,
+          "after": 77
+        },
+        {
+          "before": 77,
+          "after": 78
+        },
+        {
+          "before": 78,
+          "after": 79
+        },
+        {
+          "before": 79,
+          "after": 80
+        },
+        {
+          "before": 80,
+          "after": 81
+        },
+        {
+          "before": 81,
+          "after": 92
+        },
+        {
+          "before": 92,
+          "after": 93
+        },
+        {
+          "before": 93,
+          "after": 94
+        },
+        {
+          "before": 94,
+          "after": 95
+        },
+        {
+          "before": 95,
+          "after": 96
+        },
+        {
+          "before": 96,
+          "after": 107
+        },
+        {
+          "before": 107,
+          "after": 108
+        },
+        {
+          "before": 108,
+          "after": 109
+        },
+        {
+          "before": 109,
+          "after": 110
+        },
+        {
+          "before": 110,
+          "after": 111
+        },
+        {
+          "before": 111,
+          "after": 122
+        },
+        {
+          "before": 122,
+          "after": 123
+        },
+        {
+          "before": 123,
+          "after": 124
+        },
+        {
+          "before": 124,
+          "after": 125
+        },
+        {
+          "before": 125,
+          "after": 126
+        },
+        {
+          "before": 126,
+          "after": 137
+        },
+        {
+          "before": 137,
+          "after": 138
+        },
+        {
+          "before": 138,
+          "after": 139
+        },
+        {
+          "before": 139,
+          "after": 140
+        },
+        {
+          "before": 140,
+          "after": 141
+        },
+        {
+          "before": 141,
+          "after": 152
+        },
+        {
+          "before": 152,
+          "after": 153
+        },
+        {
+          "before": 153,
+          "after": 154
+        },
+        {
+          "before": 154,
+          "after": 155
+        },
+        {
+          "before": 155,
+          "after": 156
+        },
+        {
+          "before": 156,
+          "after": 167
+        },
+        {
+          "before": 167,
+          "after": 168
+        },
+        {
+          "before": 168,
+          "after": 169
+        },
+        {
+          "before": 169,
+          "after": 170
+        },
+        {
+          "before": 170,
+          "after": 171
+        },
+        {
+          "before": 171,
+          "after": 182
+        },
+        {
+          "before": 182,
+          "after": 183
+        },
+        {
+          "before": 183,
+          "after": 184
+        },
+        {
+          "before": 184,
+          "after": 185
+        },
+        {
+          "before": 185,
+          "after": 186
+        },
+        {
+          "before": 186,
+          "after": 197
+        },
+        {
+          "before": 197,
+          "after": 198
+        },
+        {
+          "before": 198,
+          "after": 199
+        },
+        {
+          "before": 199,
+          "after": 200
+        },
+        {
+          "before": 200,
+          "after": 201
+        },
+        {
+          "before": 201,
+          "after": 212
+        },
+        {
+          "before": 212,
+          "after": 213
+        },
+        {
+          "before": 213,
+          "after": 214
+        },
+        {
+          "before": 214,
+          "after": 215
+        },
+        {
+          "before": 215,
+          "after": 216
+        },
+        {
+          "before": 216,
+          "after": 227
+        },
+        {
+          "before": 227,
+          "after": 228
+        },
+        {
+          "before": 228,
+          "after": 229
+        },
+        {
+          "before": 229,
+          "after": 230
+        },
+        {
+          "before": 230,
+          "after": 231
+        },
+        {
+          "before": 231,
+          "after": 242
+        },
+        {
+          "before": 242,
+          "after": 243
+        },
+        {
+          "before": 243,
+          "after": 244
+        },
+        {
+          "before": 244,
+          "after": 245
+        },
+        {
+          "before": 245,
+          "after": 246
+        },
+        {
+          "before": 246,
+          "after": 257
+        },
+        {
+          "before": 257,
+          "after": 258
+        },
+        {
+          "before": 258,
+          "after": 259
+        },
+        {
+          "before": 259,
+          "after": 260
+        },
+        {
+          "before": 260,
+          "after": 261
+        },
+        {
+          "before": 261,
+          "after": 283
+        },
+        {
+          "before": 283,
+          "after": 320
+        },
+        {
+          "before": 320,
+          "after": 285
+        },
+        {
+          "before": 285,
+          "after": 293
+        },
+        {
+          "before": 293,
+          "after": 337
+        },
+        {
+          "before": 337,
+          "after": 354
+        },
+        {
+          "before": 354,
+          "after": 371
+        },
+        {
+          "before": 371,
+          "after": 388
+        },
+        {
+          "before": 388,
+          "after": 405
+        },
+        {
+          "before": 405,
+          "after": 422
+        }
+      ],
+      "memory_order_omissions": [],
+      "unbound_claims": [
+        "CFG and call occurrence mapping",
+        "local values and nondet occurrences",
+        "synchronization history and identities",
+        "IKOS total schedule and rf choices"
+      ],
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 52.339943857001344,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/loop-hint-fib7-models-mapped/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/pthread/fib_unsafe-7-racy.i",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=17",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "a938b9e3b803ef0b08d2618a78ac055be54a6e48f84c6853aab11e3467af8157",
+        "data_model": "32"
+      },
+      "corruption_probe": {
+        "status": "UNSAT_AT_BOUND",
+        "returncode": 0,
+        "seconds": 6.312552507999499,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/loop-hint-fib7-models-mapped/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/pthread/fib_unsafe-7-racy.i",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=17",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "a938b9e3b803ef0b08d2618a78ac055be54a6e48f84c6853aab11e3467af8157",
+        "data_model": "32"
+      }
+    },
+    {
+      "report_index": 1,
+      "pair_id": 0,
+      "full_counterexample_validated": false,
+      "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+      "threads": {
+        "a": 0,
+        "b": 2
+      },
+      "mapped_memory_events": 92,
+      "omitted_steps": [
+        {
+          "trace": "a",
+          "step": 0,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 1,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 2,
+          "kind": "allocate",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 3,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 4,
+          "kind": "store",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 5,
+          "kind": "allocate",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 6,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 7,
+          "kind": "store",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 8,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 9,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 11,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 12,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 14,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 15,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 16,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 17,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 18,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 19,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 20,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 21,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 22,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 23,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 29,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 30,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 31,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 32,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 33,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 34,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 35,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 36,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 42,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 43,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 44,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 45,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 46,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 47,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 48,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 49,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 55,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 56,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 57,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 58,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 59,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 60,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 61,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 62,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 68,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 69,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 70,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 71,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 72,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 73,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 74,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 75,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 81,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 82,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 83,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 84,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 85,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 86,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 87,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 88,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 94,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 95,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 96,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 97,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 98,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 99,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 100,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 101,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 107,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 108,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 109,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 110,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 111,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 112,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 113,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 114,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 120,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 121,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 122,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 123,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 124,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 125,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 126,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 127,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 133,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 134,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 135,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 136,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 137,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 138,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 139,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 140,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 146,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 147,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 148,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 149,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 150,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 151,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 152,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 153,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 159,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 160,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 161,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 162,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 163,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 164,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 165,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 166,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 172,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 173,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 174,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 175,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 176,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 177,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 178,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 179,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 185,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 186,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 187,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 188,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 189,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 190,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 191,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 192,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 198,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 199,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 200,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 201,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 202,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 203,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 204,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 205,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 211,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 212,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 213,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 214,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 215,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 216,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 217,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 218,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 224,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 225,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 226,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 227,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "a",
+          "step": 228,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 230,
+          "kind": "return",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 232,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 234,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 235,
+          "kind": "return",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 0,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 1,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 2,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 3,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 4,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 5,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 6,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 8,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 9,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 10,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 11,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 12,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 13,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 14,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 15,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 16,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 17,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 19,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 20,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 21,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 22,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 23,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 24,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 25,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 26,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 27,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 28,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 30,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 31,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 32,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 33,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 34,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 35,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 36,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 37,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 38,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 39,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 41,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 42,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 43,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 44,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 45,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 46,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 47,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 48,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 49,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 50,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 52,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 53,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 54,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 55,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 56,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 57,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 58,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 59,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 60,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 61,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 63,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 64,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 65,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 66,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 67,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 68,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 69,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 70,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 71,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 72,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 74,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 75,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 76,
+          "kind": "binary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 77,
+          "kind": "store",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 78,
+          "kind": "load",
+          "reason": "distinct/unknown static memory origins"
+        },
+        {
+          "trace": "b",
+          "step": 79,
+          "kind": "compare",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 80,
+          "kind": "return",
+          "reason": "not a mapped global/heap memory access"
+        }
+      ],
+      "creation_bindings": [
+        {
+          "trace": "b",
+          "parent_trace": "a",
+          "creator_step": 16,
+          "reference_event": 21,
+          "occurrence": null,
+          "pre_unroll_id": 88
+        }
+      ],
+      "heap_bindings": [],
+      "memory_bindings": [
+        {
+          "trace": "a",
+          "step": 10,
+          "reference_event": 4,
+          "occurrence": null,
+          "pre_unroll_id": 69
+        },
+        {
+          "trace": "a",
+          "step": 13,
+          "reference_event": 11,
+          "occurrence": null,
+          "pre_unroll_id": 76
+        },
+        {
+          "trace": "a",
+          "step": 24,
+          "reference_event": 32,
+          "occurrence": 1,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 25,
+          "reference_event": 33,
+          "occurrence": 1,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 26,
+          "reference_event": 34,
+          "occurrence": 1,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 27,
+          "reference_event": 35,
+          "occurrence": 1,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 28,
+          "reference_event": 36,
+          "occurrence": 1,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 37,
+          "reference_event": 47,
+          "occurrence": 2,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 38,
+          "reference_event": 48,
+          "occurrence": 2,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 39,
+          "reference_event": 49,
+          "occurrence": 2,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 40,
+          "reference_event": 50,
+          "occurrence": 2,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 41,
+          "reference_event": 51,
+          "occurrence": 2,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 50,
+          "reference_event": 62,
+          "occurrence": 3,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 51,
+          "reference_event": 63,
+          "occurrence": 3,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 52,
+          "reference_event": 64,
+          "occurrence": 3,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 53,
+          "reference_event": 65,
+          "occurrence": 3,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 54,
+          "reference_event": 66,
+          "occurrence": 3,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 63,
+          "reference_event": 77,
+          "occurrence": 4,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 64,
+          "reference_event": 78,
+          "occurrence": 4,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 65,
+          "reference_event": 79,
+          "occurrence": 4,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 66,
+          "reference_event": 80,
+          "occurrence": 4,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 67,
+          "reference_event": 81,
+          "occurrence": 4,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 76,
+          "reference_event": 92,
+          "occurrence": 5,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 77,
+          "reference_event": 93,
+          "occurrence": 5,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 78,
+          "reference_event": 94,
+          "occurrence": 5,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 79,
+          "reference_event": 95,
+          "occurrence": 5,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 80,
+          "reference_event": 96,
+          "occurrence": 5,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 89,
+          "reference_event": 107,
+          "occurrence": 6,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 90,
+          "reference_event": 108,
+          "occurrence": 6,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 91,
+          "reference_event": 109,
+          "occurrence": 6,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 92,
+          "reference_event": 110,
+          "occurrence": 6,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 93,
+          "reference_event": 111,
+          "occurrence": 6,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 102,
+          "reference_event": 122,
+          "occurrence": 7,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 103,
+          "reference_event": 123,
+          "occurrence": 7,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 104,
+          "reference_event": 124,
+          "occurrence": 7,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 105,
+          "reference_event": 125,
+          "occurrence": 7,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 106,
+          "reference_event": 126,
+          "occurrence": 7,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 115,
+          "reference_event": 137,
+          "occurrence": 8,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 116,
+          "reference_event": 138,
+          "occurrence": 8,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 117,
+          "reference_event": 139,
+          "occurrence": 8,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 118,
+          "reference_event": 140,
+          "occurrence": 8,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 119,
+          "reference_event": 141,
+          "occurrence": 8,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 128,
+          "reference_event": 152,
+          "occurrence": 9,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 129,
+          "reference_event": 153,
+          "occurrence": 9,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 130,
+          "reference_event": 154,
+          "occurrence": 9,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 131,
+          "reference_event": 155,
+          "occurrence": 9,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 132,
+          "reference_event": 156,
+          "occurrence": 9,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 141,
+          "reference_event": 167,
+          "occurrence": 10,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 142,
+          "reference_event": 168,
+          "occurrence": 10,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 143,
+          "reference_event": 169,
+          "occurrence": 10,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 144,
+          "reference_event": 170,
+          "occurrence": 10,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 145,
+          "reference_event": 171,
+          "occurrence": 10,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 154,
+          "reference_event": 182,
+          "occurrence": 11,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 155,
+          "reference_event": 183,
+          "occurrence": 11,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 156,
+          "reference_event": 184,
+          "occurrence": 11,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 157,
+          "reference_event": 185,
+          "occurrence": 11,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 158,
+          "reference_event": 186,
+          "occurrence": 11,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 167,
+          "reference_event": 197,
+          "occurrence": 12,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 168,
+          "reference_event": 198,
+          "occurrence": 12,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 169,
+          "reference_event": 199,
+          "occurrence": 12,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 170,
+          "reference_event": 200,
+          "occurrence": 12,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 171,
+          "reference_event": 201,
+          "occurrence": 12,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 180,
+          "reference_event": 212,
+          "occurrence": 13,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 181,
+          "reference_event": 213,
+          "occurrence": 13,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 182,
+          "reference_event": 214,
+          "occurrence": 13,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 183,
+          "reference_event": 215,
+          "occurrence": 13,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 184,
+          "reference_event": 216,
+          "occurrence": 13,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 193,
+          "reference_event": 227,
+          "occurrence": 14,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 194,
+          "reference_event": 228,
+          "occurrence": 14,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 195,
+          "reference_event": 229,
+          "occurrence": 14,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 196,
+          "reference_event": 230,
+          "occurrence": 14,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 197,
+          "reference_event": 231,
+          "occurrence": 14,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 206,
+          "reference_event": 242,
+          "occurrence": 15,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 207,
+          "reference_event": 243,
+          "occurrence": 15,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 208,
+          "reference_event": 244,
+          "occurrence": 15,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 209,
+          "reference_event": 245,
+          "occurrence": 15,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 210,
+          "reference_event": 246,
+          "occurrence": 15,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 219,
+          "reference_event": 257,
+          "occurrence": 16,
+          "pre_unroll_id": 108
+        },
+        {
+          "trace": "a",
+          "step": 220,
+          "reference_event": 258,
+          "occurrence": 16,
+          "pre_unroll_id": 109
+        },
+        {
+          "trace": "a",
+          "step": 221,
+          "reference_event": 259,
+          "occurrence": 16,
+          "pre_unroll_id": 111
+        },
+        {
+          "trace": "a",
+          "step": 222,
+          "reference_event": 260,
+          "occurrence": 16,
+          "pre_unroll_id": 112
+        },
+        {
+          "trace": "a",
+          "step": 223,
+          "reference_event": 261,
+          "occurrence": 16,
+          "pre_unroll_id": 114
+        },
+        {
+          "trace": "a",
+          "step": 229,
+          "reference_event": 283,
+          "occurrence": null,
+          "pre_unroll_id": 123
+        },
+        {
+          "trace": "a",
+          "step": 231,
+          "reference_event": 285,
+          "occurrence": null,
+          "pre_unroll_id": 127
+        },
+        {
+          "trace": "a",
+          "step": 233,
+          "reference_event": 293,
+          "occurrence": null,
+          "pre_unroll_id": 137
+        },
+        {
+          "trace": "b",
+          "step": 7,
+          "reference_event": 621,
+          "occurrence": 1,
+          "pre_unroll_id": 49
+        },
+        {
+          "trace": "b",
+          "step": 18,
+          "reference_event": 638,
+          "occurrence": 2,
+          "pre_unroll_id": 49
+        },
+        {
+          "trace": "b",
+          "step": 29,
+          "reference_event": 655,
+          "occurrence": 3,
+          "pre_unroll_id": 49
+        },
+        {
+          "trace": "b",
+          "step": 40,
+          "reference_event": 672,
+          "occurrence": 4,
+          "pre_unroll_id": 49
+        },
+        {
+          "trace": "b",
+          "step": 51,
+          "reference_event": 689,
+          "occurrence": 5,
+          "pre_unroll_id": 49
+        },
+        {
+          "trace": "b",
+          "step": 62,
+          "reference_event": 706,
+          "occurrence": 6,
+          "pre_unroll_id": 49
+        },
+        {
+          "trace": "b",
+          "step": 73,
+          "reference_event": 723,
+          "occurrence": 7,
+          "pre_unroll_id": 49
+        }
+      ],
+      "nondet_bindings": [],
+      "initial_bindings": [
+        {
+          "reference_event": 920,
+          "object": "cur",
+          "offset": 0,
+          "bits": 32
+        }
+      ],
+      "communication_bindings": [
+        {
+          "relation": "rf",
+          "from": 4,
+          "to": 285
+        },
+        {
+          "relation": "co",
+          "from": 11,
+          "to": 621
+        },
+        {
+          "relation": "co",
+          "from": 621,
+          "to": 638
+        },
+        {
+          "relation": "co",
+          "from": 638,
+          "to": 655
+        },
+        {
+          "relation": "co",
+          "from": 655,
+          "to": 672
+        },
+        {
+          "relation": "co",
+          "from": 672,
+          "to": 689
+        },
+        {
+          "relation": "co",
+          "from": 689,
+          "to": 706
+        },
+        {
+          "relation": "co",
+          "from": 706,
+          "to": 723
+        },
+        {
+          "relation": "rf",
+          "from": 621,
+          "to": 293
+        },
+        {
+          "relation": "co",
+          "from": 34,
+          "to": 49
+        },
+        {
+          "relation": "co",
+          "from": 49,
+          "to": 64
+        },
+        {
+          "relation": "co",
+          "from": 64,
+          "to": 79
+        },
+        {
+          "relation": "co",
+          "from": 79,
+          "to": 94
+        },
+        {
+          "relation": "co",
+          "from": 94,
+          "to": 109
+        },
+        {
+          "relation": "co",
+          "from": 109,
+          "to": 124
+        },
+        {
+          "relation": "co",
+          "from": 124,
+          "to": 139
+        },
+        {
+          "relation": "co",
+          "from": 139,
+          "to": 154
+        },
+        {
+          "relation": "co",
+          "from": 154,
+          "to": 169
+        },
+        {
+          "relation": "co",
+          "from": 169,
+          "to": 184
+        },
+        {
+          "relation": "co",
+          "from": 184,
+          "to": 199
+        },
+        {
+          "relation": "co",
+          "from": 199,
+          "to": 214
+        },
+        {
+          "relation": "co",
+          "from": 214,
+          "to": 229
+        },
+        {
+          "relation": "co",
+          "from": 229,
+          "to": 244
+        },
+        {
+          "relation": "co",
+          "from": 244,
+          "to": 259
+        },
+        {
+          "relation": "rf",
+          "from": 259,
+          "to": 283
+        },
+        {
+          "relation": "co",
+          "from": 36,
+          "to": 51
+        },
+        {
+          "relation": "co",
+          "from": 51,
+          "to": 66
+        },
+        {
+          "relation": "co",
+          "from": 66,
+          "to": 81
+        },
+        {
+          "relation": "co",
+          "from": 81,
+          "to": 96
+        },
+        {
+          "relation": "co",
+          "from": 96,
+          "to": 111
+        },
+        {
+          "relation": "co",
+          "from": 111,
+          "to": 126
+        },
+        {
+          "relation": "co",
+          "from": 126,
+          "to": 141
+        },
+        {
+          "relation": "co",
+          "from": 141,
+          "to": 156
+        },
+        {
+          "relation": "co",
+          "from": 156,
+          "to": 171
+        },
+        {
+          "relation": "co",
+          "from": 171,
+          "to": 186
+        },
+        {
+          "relation": "co",
+          "from": 186,
+          "to": 201
+        },
+        {
+          "relation": "co",
+          "from": 201,
+          "to": 216
+        },
+        {
+          "relation": "co",
+          "from": 216,
+          "to": 231
+        },
+        {
+          "relation": "co",
+          "from": 231,
+          "to": 246
+        },
+        {
+          "relation": "co",
+          "from": 246,
+          "to": 261
+        },
+        {
+          "relation": "rf",
+          "from": 920,
+          "to": 33
+        },
+        {
+          "relation": "rf",
+          "from": 36,
+          "to": 48
+        },
+        {
+          "relation": "rf",
+          "from": 51,
+          "to": 63
+        },
+        {
+          "relation": "rf",
+          "from": 66,
+          "to": 78
+        },
+        {
+          "relation": "rf",
+          "from": 81,
+          "to": 93
+        },
+        {
+          "relation": "rf",
+          "from": 96,
+          "to": 108
+        },
+        {
+          "relation": "rf",
+          "from": 111,
+          "to": 123
+        },
+        {
+          "relation": "rf",
+          "from": 126,
+          "to": 138
+        },
+        {
+          "relation": "rf",
+          "from": 141,
+          "to": 153
+        },
+        {
+          "relation": "rf",
+          "from": 156,
+          "to": 168
+        },
+        {
+          "relation": "rf",
+          "from": 171,
+          "to": 183
+        },
+        {
+          "relation": "rf",
+          "from": 186,
+          "to": 198
+        },
+        {
+          "relation": "rf",
+          "from": 201,
+          "to": 213
+        },
+        {
+          "relation": "rf",
+          "from": 216,
+          "to": 228
+        },
+        {
+          "relation": "rf",
+          "from": 231,
+          "to": 243
+        },
+        {
+          "relation": "rf",
+          "from": 246,
+          "to": 258
+        },
+        {
+          "relation": "co",
+          "from": 32,
+          "to": 47
+        },
+        {
+          "relation": "co",
+          "from": 47,
+          "to": 62
+        },
+        {
+          "relation": "co",
+          "from": 62,
+          "to": 77
+        },
+        {
+          "relation": "co",
+          "from": 77,
+          "to": 92
+        },
+        {
+          "relation": "co",
+          "from": 92,
+          "to": 107
+        },
+        {
+          "relation": "co",
+          "from": 107,
+          "to": 122
+        },
+        {
+          "relation": "co",
+          "from": 122,
+          "to": 137
+        },
+        {
+          "relation": "co",
+          "from": 137,
+          "to": 152
+        },
+        {
+          "relation": "co",
+          "from": 152,
+          "to": 167
+        },
+        {
+          "relation": "co",
+          "from": 167,
+          "to": 182
+        },
+        {
+          "relation": "co",
+          "from": 182,
+          "to": 197
+        },
+        {
+          "relation": "co",
+          "from": 197,
+          "to": 212
+        },
+        {
+          "relation": "co",
+          "from": 212,
+          "to": 227
+        },
+        {
+          "relation": "co",
+          "from": 227,
+          "to": 242
+        },
+        {
+          "relation": "co",
+          "from": 242,
+          "to": 257
+        },
+        {
+          "relation": "rf",
+          "from": 32,
+          "to": 35
+        },
+        {
+          "relation": "rf",
+          "from": 47,
+          "to": 50
+        },
+        {
+          "relation": "rf",
+          "from": 62,
+          "to": 65
+        },
+        {
+          "relation": "rf",
+          "from": 77,
+          "to": 80
+        },
+        {
+          "relation": "rf",
+          "from": 92,
+          "to": 95
+        },
+        {
+          "relation": "rf",
+          "from": 107,
+          "to": 110
+        },
+        {
+          "relation": "rf",
+          "from": 122,
+          "to": 125
+        },
+        {
+          "relation": "rf",
+          "from": 137,
+          "to": 140
+        },
+        {
+          "relation": "rf",
+          "from": 152,
+          "to": 155
+        },
+        {
+          "relation": "rf",
+          "from": 167,
+          "to": 170
+        },
+        {
+          "relation": "rf",
+          "from": 182,
+          "to": 185
+        },
+        {
+          "relation": "rf",
+          "from": 197,
+          "to": 200
+        },
+        {
+          "relation": "rf",
+          "from": 212,
+          "to": 215
+        },
+        {
+          "relation": "rf",
+          "from": 227,
+          "to": 230
+        },
+        {
+          "relation": "rf",
+          "from": 242,
+          "to": 245
+        },
+        {
+          "relation": "rf",
+          "from": 257,
+          "to": 260
+        }
+      ],
+      "communication_omissions": [],
+      "memory_orderings": [
+        {
+          "before": 4,
+          "after": 11
+        },
+        {
+          "before": 11,
+          "after": 32
+        },
+        {
+          "before": 32,
+          "after": 33
+        },
+        {
+          "before": 33,
+          "after": 34
+        },
+        {
+          "before": 34,
+          "after": 35
+        },
+        {
+          "before": 35,
+          "after": 36
+        },
+        {
+          "before": 36,
+          "after": 47
+        },
+        {
+          "before": 47,
+          "after": 48
+        },
+        {
+          "before": 48,
+          "after": 49
+        },
+        {
+          "before": 49,
+          "after": 50
+        },
+        {
+          "before": 50,
+          "after": 51
+        },
+        {
+          "before": 51,
+          "after": 62
+        },
+        {
+          "before": 62,
+          "after": 63
+        },
+        {
+          "before": 63,
+          "after": 64
+        },
+        {
+          "before": 64,
+          "after": 65
+        },
+        {
+          "before": 65,
+          "after": 66
+        },
+        {
+          "before": 66,
+          "after": 77
+        },
+        {
+          "before": 77,
+          "after": 78
+        },
+        {
+          "before": 78,
+          "after": 79
+        },
+        {
+          "before": 79,
+          "after": 80
+        },
+        {
+          "before": 80,
+          "after": 81
+        },
+        {
+          "before": 81,
+          "after": 92
+        },
+        {
+          "before": 92,
+          "after": 93
+        },
+        {
+          "before": 93,
+          "after": 94
+        },
+        {
+          "before": 94,
+          "after": 95
+        },
+        {
+          "before": 95,
+          "after": 96
+        },
+        {
+          "before": 96,
+          "after": 107
+        },
+        {
+          "before": 107,
+          "after": 108
+        },
+        {
+          "before": 108,
+          "after": 109
+        },
+        {
+          "before": 109,
+          "after": 110
+        },
+        {
+          "before": 110,
+          "after": 111
+        },
+        {
+          "before": 111,
+          "after": 122
+        },
+        {
+          "before": 122,
+          "after": 123
+        },
+        {
+          "before": 123,
+          "after": 124
+        },
+        {
+          "before": 124,
+          "after": 125
+        },
+        {
+          "before": 125,
+          "after": 126
+        },
+        {
+          "before": 126,
+          "after": 137
+        },
+        {
+          "before": 137,
+          "after": 138
+        },
+        {
+          "before": 138,
+          "after": 139
+        },
+        {
+          "before": 139,
+          "after": 140
+        },
+        {
+          "before": 140,
+          "after": 141
+        },
+        {
+          "before": 141,
+          "after": 152
+        },
+        {
+          "before": 152,
+          "after": 153
+        },
+        {
+          "before": 153,
+          "after": 154
+        },
+        {
+          "before": 154,
+          "after": 155
+        },
+        {
+          "before": 155,
+          "after": 156
+        },
+        {
+          "before": 156,
+          "after": 167
+        },
+        {
+          "before": 167,
+          "after": 168
+        },
+        {
+          "before": 168,
+          "after": 169
+        },
+        {
+          "before": 169,
+          "after": 170
+        },
+        {
+          "before": 170,
+          "after": 171
+        },
+        {
+          "before": 171,
+          "after": 182
+        },
+        {
+          "before": 182,
+          "after": 183
+        },
+        {
+          "before": 183,
+          "after": 184
+        },
+        {
+          "before": 184,
+          "after": 185
+        },
+        {
+          "before": 185,
+          "after": 186
+        },
+        {
+          "before": 186,
+          "after": 197
+        },
+        {
+          "before": 197,
+          "after": 198
+        },
+        {
+          "before": 198,
+          "after": 199
+        },
+        {
+          "before": 199,
+          "after": 200
+        },
+        {
+          "before": 200,
+          "after": 201
+        },
+        {
+          "before": 201,
+          "after": 212
+        },
+        {
+          "before": 212,
+          "after": 213
+        },
+        {
+          "before": 213,
+          "after": 214
+        },
+        {
+          "before": 214,
+          "after": 215
+        },
+        {
+          "before": 215,
+          "after": 216
+        },
+        {
+          "before": 216,
+          "after": 227
+        },
+        {
+          "before": 227,
+          "after": 228
+        },
+        {
+          "before": 228,
+          "after": 229
+        },
+        {
+          "before": 229,
+          "after": 230
+        },
+        {
+          "before": 230,
+          "after": 231
+        },
+        {
+          "before": 231,
+          "after": 242
+        },
+        {
+          "before": 242,
+          "after": 243
+        },
+        {
+          "before": 243,
+          "after": 244
+        },
+        {
+          "before": 244,
+          "after": 245
+        },
+        {
+          "before": 245,
+          "after": 246
+        },
+        {
+          "before": 246,
+          "after": 257
+        },
+        {
+          "before": 257,
+          "after": 258
+        },
+        {
+          "before": 258,
+          "after": 259
+        },
+        {
+          "before": 259,
+          "after": 260
+        },
+        {
+          "before": 260,
+          "after": 261
+        },
+        {
+          "before": 261,
+          "after": 283
+        },
+        {
+          "before": 283,
+          "after": 285
+        },
+        {
+          "before": 285,
+          "after": 621
+        },
+        {
+          "before": 621,
+          "after": 293
+        },
+        {
+          "before": 293,
+          "after": 638
+        },
+        {
+          "before": 638,
+          "after": 655
+        },
+        {
+          "before": 655,
+          "after": 672
+        },
+        {
+          "before": 672,
+          "after": 689
+        },
+        {
+          "before": 689,
+          "after": 706
+        },
+        {
+          "before": 706,
+          "after": 723
+        }
+      ],
+      "memory_order_omissions": [],
+      "unbound_claims": [
+        "CFG and call occurrence mapping",
+        "local values and nondet occurrences",
+        "synchronization history and identities",
+        "IKOS total schedule and rf choices"
+      ],
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 43.05290502900243,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/loop-hint-fib7-models-mapped/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/pthread/fib_unsafe-7-racy.i",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=17",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "a938b9e3b803ef0b08d2618a78ac055be54a6e48f84c6853aab11e3467af8157",
+        "data_model": "32"
+      },
+      "corruption_probe": {
+        "status": "UNSAT_AT_BOUND",
+        "returncode": 0,
+        "seconds": 5.164075676999346,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/loop-hint-fib7-models-mapped/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/pthread/fib_unsafe-7-racy.i",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=17",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "a938b9e3b803ef0b08d2618a78ac055be54a6e48f84c6853aab11e3467af8157",
+        "data_model": "32"
+      }
+    }
+  ],
+  "warning": "Partial fixed-memory evidence; no full-counterexample verification claim"
+}

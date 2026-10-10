@@ -107,6 +107,47 @@ inline bool has_unmodeled_sync(ar::Bundle* bundle,
   return false;
 }
 
+// A search hint, not a trip-count proof: only actual encoded guards certify a
+// retained execution. Small literal loop limits include room for the exit test.
+inline unsigned literal_loop_search_bound(ar::Function* root) {
+  unsigned bound = 16;
+  std::set< ar::Function* > visited;
+  std::function< void(ar::Function*, unsigned) > scan;
+  scan = [&](ar::Function* function, unsigned depth) {
+    if (!inline_ok(function) || depth > 8 || visited.size() >= 64 || !visited.insert(function).second) return;
+    for (auto* block : *function->body()) {
+      for (auto* statement : *block) {
+        if (auto* call = core::dyn_cast< ar::CallBase >(statement)) scan(exact_callee(call), depth + 1);
+        auto* comparison = core::dyn_cast< ar::Comparison >(statement);
+        if (comparison == nullptr) continue;
+        switch (comparison->predicate()) {
+          case ar::Comparison::SILT: case ar::Comparison::SILE:
+          case ar::Comparison::SIGT: case ar::Comparison::SIGE:
+          case ar::Comparison::UILT: case ar::Comparison::UILE:
+          case ar::Comparison::UIGT: case ar::Comparison::UIGE: break;
+          default: continue;
+        }
+        auto* constant = core::dyn_cast< ar::IntegerConstant >(comparison->right());
+        if (constant == nullptr) constant = core::dyn_cast< ar::IntegerConstant >(comparison->left());
+        if (constant == nullptr) continue;
+        auto value = constant->value().to_z_number();
+        if (value < 15 || value > 32) continue;
+        std::vector< ar::BasicBlock* > pending;
+        for (auto it = block->successor_begin(), end = block->successor_end(); it != end; ++it) pending.push_back(*it);
+        std::set< ar::BasicBlock* > seen;
+        while (!pending.empty()) {
+          auto* current = pending.back(); pending.pop_back();
+          if (current == block) {bound = std::max(bound, value.to< unsigned >() + 2); break;}
+          if (!seen.insert(current).second) continue;
+          for (auto it = current->successor_begin(), end = current->successor_end(); it != end; ++it) pending.push_back(*it);
+        }
+      }
+    }
+  };
+  scan(root, 0);
+  return bound;
+}
+
 // A shared budget bounds all groups; exhaustion only leaves races unconfirmed.
 struct SearchBudget {
   std::size_t candidates = 256;
@@ -194,7 +235,7 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     }
     // Keep first-pass queries unchanged. In deferred groups, a smaller complete
     // enumeration may find short executions absent from the saturated DFS set.
-    if (loop_bound == 16) {
+    if (loop_bound >= 16) {
       record(diagnostics, "interrupted_small_bound");
       if (confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
                        diagnostics, budget, creations, facts, 2)) return true;
@@ -206,8 +247,12 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   }
   if (rA.paths.empty() || rB.paths.empty()) {
     record(diagnostics, "target_not_reached", rA.paths.empty() ? stmtA : stmtB);
-    if (loop_bound == 1) return confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
-                                            diagnostics, budget, creations, facts, 16);
+    if (loop_bound == 1) {
+      auto bound = std::max(literal_loop_search_bound(funcA), literal_loop_search_bound(funcB));
+      if (bound > 16) record(diagnostics, "literal_loop_search_hint");
+      return confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
+                          diagnostics, budget, creations, facts, bound);
+    }
     return false;
   }
   // Prefer smaller concrete prefixes before spending the shared query budget.
@@ -251,8 +296,12 @@ inline bool confirm_race(ar::Function* funcA, ar::Statement* stmtA,
       }
     }
   }
-  if (loop_bound == 1) return confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
-                                          diagnostics, budget, creations, facts, 16);
+  if (loop_bound == 1) {
+    auto bound = std::max(literal_loop_search_bound(funcA), literal_loop_search_bound(funcB));
+    if (bound > 16) record(diagnostics, "literal_loop_search_hint");
+    return confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
+                        diagnostics, budget, creations, facts, bound);
+  }
   return false;
 }
 
