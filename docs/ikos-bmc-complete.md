@@ -238,6 +238,8 @@ assume 调用收集实际实参；有定义的普通 wrapper 展开实际函数�
 **去启发式史（steps 1-4）**：acquire/release 归入 unmodeled、`function_has_sync_recursive` 补查 mutex/cond_wait、
 `is_induction_var` 只留局部 SSA、held 锁门注释改写成边界。TP 96→80，FP=0/FN=0 全程保持。
 
+两轮暂缓组保留第一轮候选记录和合并计数，避免只显示第二轮预算耗尽；见[诊断修复](ikos-bmc-stage-diagnostics-2026-10-10.md)。
+
 **已实现诊断**：`IKOS_BMC_DIAGNOSTICS=1` 在组报告 `info.bmc` 中记录候选编号、观察到的原因计数、
 首次记录的阻塞、路径数量及有上限的 AR/源码示例。独立的 checker 前提可同时记录；被阻塞后未执行的阶段不推断原因。
 `python3 -B scripts/bmc_diagnostics.py --output <新目录>` 保留原始报告、日志和逐任务结果，统计所有 UNKNOWN（包括预期安全任务）。

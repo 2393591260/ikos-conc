@@ -1288,6 +1288,8 @@ DataRaceChecker::~DataRaceChecker() {
   // Preserve the original query pass before probing interrupted enumerations.
   // Deferred groups emit once in pass two, under the same file deadline.
   std::set< std::string > deferred_groups;
+  std::map< std::string, JsonList > deferred_candidates;
+  std::map< std::string, std::map< std::string, std::size_t > > deferred_counts;
   bool file_confirmed = false;
   for (unsigned pass = 0; pass < 2; ++pass) {
     if (pass == 1) {
@@ -1341,6 +1343,7 @@ DataRaceChecker::~DataRaceChecker() {
     std::vector< ar::Statement* > confirmed_creations;
     JsonList candidate_diagnostics;
     std::map< std::string, std::size_t > reason_counts;
+    if (pass == 1 && diagnostics_enabled) reason_counts = deferred_counts.at(kv.first);
     std::size_t candidate_id = 0;
     std::size_t group_attempts = 0;
     for (std::size_t pk : pair_indices) {
@@ -1539,6 +1542,10 @@ DataRaceChecker::~DataRaceChecker() {
     file_confirmed |= bmc_confirmed;
     if (pass == 0 && !bmc_confirmed && search_budget.saw_interrupted) {
       deferred_groups.insert(kv.first);
+      if (diagnostics_enabled) {
+        deferred_candidates.emplace(kv.first, candidate_diagnostics);
+        deferred_counts.emplace(kv.first, reason_counts);
+      }
       continue;
     }
     // Flat targets and the report anchor must refer to the confirmed pair.
@@ -1568,6 +1575,7 @@ DataRaceChecker::~DataRaceChecker() {
       }
       diagnostics.put("counts", counts);
       diagnostics.put("candidates", candidate_diagnostics);
+      if (pass == 1) diagnostics.put("first_pass_candidates", deferred_candidates.at(kv.first));
       diagnostics.put("omitted_candidates", candidate_id > 256 ? candidate_id - 256 : 0);
       info.put("bmc", diagnostics);
     }

@@ -29,6 +29,16 @@ def main(args):
                 assert verdict == 'The program is potentially UNSAFE', (source.name, bits, verdict)
             else:
                 assert verdict == 'The program is definitely UNSAFE', (source.name, bits, verdict)
+            if source.stem == 'branching-race':
+                reports = json.loads((folder / 'report.json').read_text())['reports']
+                diagnostics = [r['info']['bmc'] for r in reports]
+                assert any(d.get('first_pass_candidates') for d in diagnostics)
+                for d in diagnostics:
+                    totals = {}
+                    for pair in d.get('first_pass_candidates', []) + d.get('candidates', []):
+                        for reason, count in pair.get('counts', {}).items():
+                            totals[reason] = totals.get(reason, 0) + count
+                    assert d['omitted_candidates'] == 0 and totals == d['counts'], d
             rows.append(dict(case=source.stem, bits=bits, verdict=verdict))
             print(source.stem, bits, verdict, flush=True)
     (args.output / 'summary.json').write_text(json.dumps(rows, indent=2)+'\n')

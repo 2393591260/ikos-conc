@@ -79,7 +79,10 @@ def main():
                     counts.update(diagnostic.get("counts", {}))
                     candidates += len(diagnostic.get("candidates", []))
                     candidates += diagnostic.get("omitted_candidates", 0)
-                    for pair in diagnostic.get("candidates", []):
+                    # Deferred groups keep the earlier search evidence separately;
+                    # aggregate counts already include both passes.
+                    for pair in (diagnostic.get("first_pass_candidates", []) +
+                                 diagnostic.get("candidates", [])):
                         if pair.get("first_blocker"):
                             first[pair["first_blocker"]] += 1
             except (ValueError, TypeError):
