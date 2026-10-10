@@ -1,0 +1,190 @@
+[
+  {
+    "case": "04-mutex_23-sound_unlock",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.23844631300016772,
+    "reference_certificate_equal": true,
+    "selected": [
+      {
+        "group": 0,
+        "pair": 0,
+        "main_nondet": [
+          "0"
+        ],
+        "main_mutexes": [
+          {
+            "object": {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "global",
+              "id": "mutex1"
+            },
+            "offset": "0",
+            "width": 24
+          },
+          {
+            "object": {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "global",
+              "id": "mutex1"
+            },
+            "offset": "0",
+            "width": 24
+          }
+        ],
+        "full_counterexample_validated": false
+      }
+    ]
+  },
+  {
+    "case": "04-mutex_23-sound_unlock",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.21999152500211494,
+    "reference_certificate_equal": true,
+    "selected": [
+      {
+        "group": 0,
+        "pair": 0,
+        "main_nondet": [
+          "0"
+        ],
+        "main_mutexes": [
+          {
+            "object": {
+              "type": {
+                "size": "8",
+                "extent": "8",
+                "kind": "pointer",
+                "bits": 64
+              },
+              "kind": "global",
+              "id": "mutex1"
+            },
+            "offset": "0",
+            "width": 40
+          },
+          {
+            "object": {
+              "type": {
+                "size": "8",
+                "extent": "8",
+                "kind": "pointer",
+                "bits": 64
+              },
+              "kind": "global",
+              "id": "mutex1"
+            },
+            "offset": "0",
+            "width": 40
+          }
+        ],
+        "full_counterexample_validated": false
+      }
+    ]
+  },
+  {
+    "case": "05-lval_ls_16-idxunknown_unlock",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2502961139980471,
+    "reference_certificate_equal": true,
+    "selected": [
+      {
+        "group": 0,
+        "pair": 0,
+        "main_nondet": [
+          "4"
+        ],
+        "main_mutexes": [
+          {
+            "object": {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "global",
+              "id": "m"
+            },
+            "offset": "96",
+            "width": 24
+          },
+          {
+            "object": {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "global",
+              "id": "m"
+            },
+            "offset": "96",
+            "width": 24
+          }
+        ],
+        "full_counterexample_validated": false
+      }
+    ]
+  },
+  {
+    "case": "05-lval_ls_16-idxunknown_unlock",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.25575417000072775,
+    "reference_certificate_equal": true,
+    "selected": [
+      {
+        "group": 0,
+        "pair": 0,
+        "main_nondet": [
+          "4"
+        ],
+        "main_mutexes": [
+          {
+            "object": {
+              "type": {
+                "size": "8",
+                "extent": "8",
+                "kind": "pointer",
+                "bits": 64
+              },
+              "kind": "global",
+              "id": "m"
+            },
+            "offset": "160",
+            "width": 40
+          },
+          {
+            "object": {
+              "type": {
+                "size": "8",
+                "extent": "8",
+                "kind": "pointer",
+                "bits": 64
+              },
+              "kind": "global",
+              "id": "m"
+            },
+            "offset": "160",
+            "width": 40
+          }
+        ],
+        "full_counterexample_validated": false
+      }
+    ]
+  }
+]

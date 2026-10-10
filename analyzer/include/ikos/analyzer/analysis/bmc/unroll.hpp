@@ -402,8 +402,36 @@ inline bool synchronization_layout(ar::CallBase* call, unsigned argument,
   return true;
 }
 
-// These summaries do not touch existing user memory or hide synchronization.
-// Other memory-using libc calls and unknown externals have no such summary.
+// Attribute effects require an executed lifecycle and opaque-storage checks in
+// the encoder. Matching an API name alone is not an initialization proof.
+inline bool mutex_attribute_call(ar::CallBase* call) {
+  auto* function = exact_callee(call);
+  if (function == nullptr || !function->is_declaration()) return false;
+  const auto& name = function->name();
+  if (name != "pthread_mutexattr_init" && name != "pthread_mutexattr_settype" &&
+      name != "pthread_mutexattr_destroy" && name != "pthread_mutex_init") return false;
+  const unsigned count = name == "pthread_mutexattr_settype" || name == "pthread_mutex_init" ? 2 : 1;
+  auto* returned = core::dyn_cast< ar::IntegerType >(function->type()->return_type());
+  auto* source = call->has_frontend() ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+  auto* declaration = source != nullptr ? llvm::dyn_cast< llvm::Function >(source->getCalledOperand()->stripPointerCasts()) : nullptr;
+  if (returned == nullptr || returned->bit_width() != 32 || !returned->is_signed() ||
+      call->num_arguments() != count || declaration == nullptr || !declaration->isDeclaration() ||
+      declaration->getName() != name || declaration->isVarArg() || declaration->arg_size() != count ||
+      source->arg_size() != count || !declaration->getReturnType()->isIntegerTy(32) ||
+      !source->getType()->isIntegerTy(32) || source->getCallingConv() != llvm::CallingConv::C ||
+      declaration->getCallingConv() != llvm::CallingConv::C) return false;
+  for (unsigned i = 0; i < count; ++i) {
+    auto* formal = declaration->getFunctionType()->getParamType(i);
+    auto* actual = source->getArgOperand(i)->getType();
+    if (name == "pthread_mutexattr_settype" && i == 1) {
+      if (!formal->isIntegerTy(32) || !actual->isIntegerTy(32)) return false;
+    } else if (!formal->isPointerTy() || !actual->isPointerTy()) return false;
+  }
+  return true;
+}
+
+// Memory-using summaries must discharge their object/effect obligations later.
+// Unknown externals have no such summary.
 inline bool supported_leaf_call(ar::CallBase* call) {
   auto* f = exact_callee(call);
   if (f == nullptr || !f->is_declaration()) return false;
@@ -420,8 +448,10 @@ inline bool supported_leaf_call(ar::CallBase* call) {
   if (nondet.count(f->name()) != 0 && call->num_arguments() == 0) return true;
   if (f->name() == "pthread_detach") return call->num_arguments() == 1;
   if (f->name() == "pthread_mutex_init") {
-    return call->num_arguments() == 2 && core::isa< ar::NullConstant >(call->argument(1));
+    return mutex_attribute_call(call);
   }
+  if (f->name() == "pthread_mutexattr_init" || f->name() == "pthread_mutexattr_settype" ||
+      f->name() == "pthread_mutexattr_destroy") return mutex_attribute_call(call);
   // Object initialization and ownership are checked on the actual prefixes.
   if (f->name() == "pthread_cond_init" || f->name() == "pthread_cond_wait" ||
       f->name() == "pthread_cond_signal" || f->name() == "pthread_cond_broadcast") {

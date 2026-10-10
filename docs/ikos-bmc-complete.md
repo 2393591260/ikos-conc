@@ -1,5 +1,7 @@
 # IKOS BMC 完整设计文档（从零到 sound gate 体系）
 
+> 受限 ERRORCHECK 属性生命周期已接入，实际 owned unlock 两项恢复；冻结集 TP102→104，旧 TP/TN 全保留，见[属性前缀](ikos-bmc-mutex-attributes-2026-10-10.md)。
+
 > 新激活候选中不同入口优先，FK双架构恢复；冻结集TP101→102，旧TP/TN全保留。实际创建序列映射已修复，模型仍部分验证，见[查询排序](ikos-bmc-activation-query-order-2026-10-10.md)。
 
 > 单次main分配的同宽堆整数读已有真实SC来源，所有堆读均要求来源；冻结集逐项不变，参考uninit=0假设未照搬，见[堆读](ikos-bmc-heap-scalar-read-2026-10-10.md)。
@@ -24,7 +26,7 @@
 
 > 本文描述当前实现、证据前提和能力边界；读过源码或测试通过不等于获得完整 soundness 证明。
 > 最新 UNKNOWN 全量遍历及基线见 [逐任务恢复报告](ikos-bmc-unknown-sweep-2026-10-09.md)。
-> 当前冻结集回归：TP=102（标签确认、未全部独立验证）/ FP=0 / TN=696 / FN=0 / UNKNOWN=231 / 错误=0。
+> 当前冻结集回归：TP=104（标签确认、未全部独立验证）/ FP=0 / TN=696 / FN=0 / UNKNOWN=229 / 错误=0。
 > 参考内存事件的实际类型消除同源码行pointer/int歧义，37双架构所选模型部分约束SAT；ILP32 pointer ABI边界仍明确遗漏，见[类型映射](ikos-bmc-typed-reference-2026-10-10.md)。
 > 实际循环守卫常量用于安排搜索，恢复两个fib7；原预算与确认前提保留，不把提示当循环次数证明，见[搜索提示](ikos-bmc-loop-hint-2026-10-10.md)。
 > 剩余242项已全部重新诊断且逐项UNKNOWN；300条历史任务与哈希一致的参考记录见[TP90台账](ikos-bmc-tp90-ledger-2026-10-10.md)。fib5双架构共四个所选模型部分约束SAT，仍非完整验证。

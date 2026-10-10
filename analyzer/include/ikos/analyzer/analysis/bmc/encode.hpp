@@ -59,6 +59,149 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
   auto* argumentA = created_argument(funcA, funcB->name() == "main" ? pathB : startup);
   auto* argumentB = created_argument(funcB, funcA->name() == "main" ? pathA : startup, funcA == funcB ? 1 : 0);
   const auto& allocation_origin = funcA->name() == "main" ? pathA : funcB->name() == "main" ? pathB : startup;
+  using ObjectId = std::pair< std::uint64_t, core::ZNumber >;
+  std::map< ObjectId, unsigned > attributes;
+  std::vector< BmcEvent > initialized_mutexes;
+  const std::vector< BmcEvent >* lifecycle_paths[] = {&startup, &pathA, &pathB};
+  bool has_attributes = false;
+  for (const auto* path : lifecycle_paths)
+    for (const auto& event : *path)
+      if (auto* call = core::dyn_cast< ar::CallBase >(event.stmt))
+        if (auto* function = exact_callee(call))
+          has_attributes |= function->name() == "pthread_mutexattr_init" ||
+                            function->name() == "pthread_mutexattr_settype" ||
+                            function->name() == "pthread_mutexattr_destroy" ||
+                            (function->name() == "pthread_mutex_init" && call->num_arguments() == 2 &&
+                             !core::isa< ar::NullConstant >(call->argument(1)));
+  auto attribute_lifecycle = [&](const std::vector< BmcEvent >& path, ar::Function* root, ar::Value* root_argument) {
+    if (!has_attributes) return true;
+    bool spawned = false;
+    std::vector< BmcEvent > used_mutexes;
+    auto object = [&](ar::CallBase* call, unsigned argument, std::size_t before,
+                      bool mutex, BmcEvent& address, bool symbolic = false) {
+      core::ZNumber extent;
+      if (!pointer_on_path(call->argument(argument), path, before, root, root_argument, address, &allocation_origin) ||
+          address.base == 0 || (address.var_id != 0 && !symbolic) || !memory_extent(address, extent)) return false;
+      auto* global = reinterpret_cast< ar::GlobalVariable* >(address.base);
+      if (!global->has_frontend() || global->is_thread_local()) return false;
+      auto* source = global->frontend< llvm::GlobalVariable >();
+      const llvm::Triple target(source->getParent()->getTargetTriple());
+      const auto bits = call->bundle()->data_layout().pointers.bit_width;
+      // Verified glibc x86 ABI: ERRORCHECK=2, attr=4, mutex=24/40 bytes.
+      if (!target.isOSLinux() || target.getEnvironment() != llvm::Triple::GNU ||
+          !((target.getArch() == llvm::Triple::x86 && bits == 32) ||
+            (target.getArch() == llvm::Triple::x86_64 && bits == 64))) return false;
+      const unsigned width = mutex ? (bits == 32 ? 24 : 40) : 4;
+      const unsigned alignment = mutex ? bits / 8 : 4;
+      const auto& layout = call->bundle()->data_layout();
+      std::uint64_t source_width, source_alignment;
+      if (!synchronization_layout(call, argument, source_width, source_alignment) ||
+          source_width != width || source_alignment != alignment) return false;
+      address.width = width;
+      if (address.var_id != 0) {
+        // An in-bounds aligned element of this homogeneous array is a mutex.
+        // Its actual index and unlock ownership still need the SMT constraints.
+        auto* array = llvm::dyn_cast< llvm::ArrayType >(source->getValueType());
+        auto* element = array != nullptr ? llvm::dyn_cast< llvm::StructType >(array->getElementType()) : nullptr;
+        return mutex && element != nullptr && !element->isOpaque() && element->hasName() &&
+               element->getName() == "union.pthread_mutex_t" &&
+               source->getParent()->getDataLayout().getTypeAllocSize(element) == width &&
+               address.const_off == 0 && address.coeff == width &&
+               layout.abi_alignment(global->type()->pointee()) >= alignment;
+      }
+      if (address.const_off < 0 || address.const_off + width > extent) return false;
+      // Find the actual declared library subobject, including array/struct
+      // fields. A cast into another control object cannot establish its type.
+      auto* selected = source->getValueType();
+      auto offset = address.const_off.to< std::uint64_t >();
+      const auto& native = source->getParent()->getDataLayout();
+      bool member = false;
+      for (unsigned depth = 0; depth < 32; ++depth) {
+        if (auto* structure = llvm::dyn_cast< llvm::StructType >(selected)) {
+          if (structure->isOpaque()) return false;
+          if (structure->hasName() && structure->getName() ==
+              (mutex ? "union.pthread_mutex_t" : "union.pthread_mutexattr_t")) {
+            member = offset == 0 && native.getTypeAllocSize(structure) == width;
+            break;
+          }
+          const auto* fields = native.getStructLayout(structure);
+          bool found = false;
+          for (unsigned j = 0; j < structure->getNumElements(); ++j) {
+            auto start = fields->getElementOffset(j);
+            auto* field = structure->getElementType(j);
+            if (offset >= start && offset - start < native.getTypeAllocSize(field)) {
+              offset -= start; selected = field; found = true; break;
+            }
+          }
+          if (!found) return false;
+        } else if (auto* array = llvm::dyn_cast< llvm::ArrayType >(selected)) {
+          auto stride = native.getTypeAllocSize(array->getElementType());
+          if (stride == 0 || offset / stride >= array->getNumElements()) return false;
+          offset %= stride; selected = array->getElementType();
+        } else return false;
+      }
+      return member &&
+             layout.abi_alignment(global->type()->pointee()) >= alignment &&
+             address.const_off >= 0 && address.const_off + width <= extent &&
+             address.const_off % alignment == 0;
+    };
+    for (std::size_t i = 0; i < path.size(); ++i) {
+      spawned |= path[i].kind == EvKind::Create;
+      auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt);
+      auto* function = call != nullptr ? exact_callee(call) : nullptr;
+      if (function == nullptr) continue;
+      if (has_attributes && (path[i].kind == EvKind::Lock || path[i].kind == EvKind::Unlock) &&
+          !is_verifier_atomic(call)) {
+        BmcEvent address;
+        if (call->num_arguments() != 1 || !object(call, 0, i, true, address, true)) return false;
+        used_mutexes.push_back(address);
+      }
+      const auto& name = function->name();
+      const bool init_mutex = name == "pthread_mutex_init";
+      if (!init_mutex && name != "pthread_mutexattr_init" && name != "pthread_mutexattr_settype" &&
+          name != "pthread_mutexattr_destroy") continue;
+      if (!has_attributes && init_mutex && call->num_arguments() == 2 &&
+          core::isa< ar::NullConstant >(call->argument(1))) continue;
+      if (root == nullptr || root->name() != "main" || spawned || !mutex_attribute_call(call)) return false;
+      BmcEvent address;
+      if (!object(call, 0, i, init_mutex, address)) return false;
+      const ObjectId identity{address.base, address.const_off};
+      if (init_mutex) {
+        for (const auto& previous : used_mutexes)
+          if (previous.base == address.base &&
+              (previous.var_id != 0 || (previous.const_off < address.const_off + address.width &&
+               address.const_off < previous.const_off + previous.width))) return false;
+        if (!core::isa< ar::NullConstant >(call->argument(1))) {
+          BmcEvent attr;
+          if (!object(call, 1, i, false, attr)) return false;
+          if (attr.base == address.base && attr.const_off < address.const_off + address.width &&
+              address.const_off < attr.const_off + attr.width) return false;
+          auto value = attributes.find({attr.base, attr.const_off});
+          if (value == attributes.end() || value->second != 2) return false;
+        }
+        for (const auto& previous : initialized_mutexes)
+          if (previous.base == address.base && previous.const_off < address.const_off + address.width &&
+              address.const_off < previous.const_off + previous.width) return false;
+        initialized_mutexes.push_back(address);
+      } else if (name == "pthread_mutexattr_init") {
+        if (!attributes.emplace(identity, 0).second) return false;
+      } else {
+        auto value = attributes.find(identity);
+        if (value == attributes.end()) return false;
+        if (name == "pthread_mutexattr_destroy") attributes.erase(value);
+        else {
+          core::ZNumber kind;
+          if (!constant_integer_on_path(call->argument(1), path, i, kind) || kind != 2) return false;
+          value->second = 2;
+        }
+      }
+    }
+    return true;
+  };
+  if (!attribute_lifecycle(startup, funcA->bundle()->function_or_null("main"), nullptr) ||
+      !attribute_lifecycle(pathA, funcA, argumentA) || !attribute_lifecycle(pathB, funcB, argumentB)) {
+    record(diagnostics, "mutex_attribute_lifecycle"); return false;
+  }
   using ConditionId = std::pair< std::uint64_t, core::ZNumber >;
   std::map< ConditionId, std::uint64_t > conditions;
   std::map< ConditionId, std::pair< const void*, std::size_t > > condition_origins;
@@ -245,7 +388,7 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
       const auto& name = function->name();
       std::vector< unsigned > arguments;
       const bool opaque = ((event.kind == EvKind::Lock || event.kind == EvKind::Unlock) &&
-                           !is_verifier_atomic(call)) || name == "pthread_mutex_init" || condition_call(call);
+                           !is_verifier_atomic(call)) || mutex_attribute_call(call) || condition_call(call);
       if (opaque || event.kind == EvKind::Create) arguments.push_back(0);
       if (name == "pthread_cond_wait") arguments.push_back(1);
       if (event.kind == EvKind::Join && call->num_arguments() == 2 &&
