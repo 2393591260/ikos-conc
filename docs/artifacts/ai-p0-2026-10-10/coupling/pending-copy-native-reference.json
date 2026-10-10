@@ -1,0 +1,46 @@
+[
+  {
+    "bits": 32,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/copy-flag.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "returncode": 30,
+    "result": [
+      "ERROR"
+    ],
+    "output_tail": "Test: /tmp/ikos-ai-p0-20261010-ePqDG0/copy-flag.c\nResult: ERROR\nReason: UnsupportedOperationException\nDetails:\n\tCannot handle memcpy with dynamic count argument: call llvm.memcpy.p0.p0.i32(&flag, bv64 r4, bv32 __r_nondet_uint, bv1(0))\n",
+    "CFLAGS": "-fgnu89-inline -m32"
+  },
+  {
+    "bits": 64,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/copy-flag.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "returncode": 30,
+    "result": [
+      "ERROR"
+    ],
+    "output_tail": "Test: /tmp/ikos-ai-p0-20261010-ePqDG0/copy-flag.c\nResult: ERROR\nReason: UnsupportedOperationException\nDetails:\n\tCannot handle memcpy with dynamic count argument: call llvm.memcpy.p0.p0.i64(&flag, bv64 r4, zext bv32 __r_nondet_uint to bv64, bv1(0))\n",
+    "CFLAGS": "-fgnu89-inline -m64"
+  }
+]

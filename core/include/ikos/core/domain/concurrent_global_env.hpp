@@ -339,10 +339,8 @@ private:
   /// entry `joined` digest must therefore inherit the threads the parent had
   /// DEFINITELY joined at the create point (bigshot_s/singleton_with-uninit:
   /// `create(t1); join(t1); create(t2);` — t2's `if(v)` must not race t1's
-  /// `v=malloc`). Per (function, site) the value is OVERWRITTEN (the parent's
-  /// fixpoint is monotone in the MUST lattice, so the last visit is the
-  /// converged value); `get_spawn_joined` intersects over sites (a thread is
-  /// "definitely joined before the child" only if joined at EVERY spawn site).
+  /// `v=malloc`). Intersect all observations, including earlier rounds: a
+  /// MUST fact cannot be inferred from whichever analysis visit happened last.
   struct SpawnJoined {
     bool top = true;                          // ⊤ = no definite join
     std::unordered_set< std::uint64_t > set;  // site ids definitely joined
@@ -1034,6 +1032,7 @@ public:
     if (func != nullptr && call_site != nullptr) {
       auto& sites = _spawn_sites_by_name[func->name()];
       if (sites.insert(call_site).second) {
+        _is_dirty = true;
         _sequential_cache.erase(func->name());
         bool in_loop = false;
         auto* executed_site = creation != nullptr ? creation : call_site;
@@ -1132,6 +1131,7 @@ public:
     } else {
       sid = _next_site_id++;
       _once_sids[key] = sid;
+      _is_dirty = true;
       _func_instances[func->name()].insert(sid);
       _site_func[sid] = func;
     }
@@ -1318,7 +1318,6 @@ public:
     // fixpoint and destabilise convergence.
     _cond_waiters.clear();
     _cond_signal_epoch.clear();
-    _spawn_joined.clear();
   }
 
   /// \brief Is `fun` a thread entry function (a function that has been
@@ -1409,14 +1408,18 @@ public:
 
   /// \brief Store a thread function's MUST-join summary (the instances it
   /// definitely joined by exit). Written by the thread-modular driver after
-  /// each function fixpoint; overwritten each iteration (converges).
+  /// each function fixpoint. Every change invalidates the outer fixpoint.
   void set_join_summary(ar::Function* func,
                         const std::unordered_set< std::uint64_t >& joined) {
     if (func == nullptr) {
       return;
     }
     std::lock_guard< std::mutex > lock(_mutex);
-    _join_summary[func] = joined;
+    auto& old = _join_summary[func];
+    if (old != joined) {
+      old = joined;
+      _is_dirty = true;
+    }
   }
 
   /// \brief A thread function's MUST-join summary (transitively closed set of
@@ -1476,46 +1479,62 @@ public:
   void record_spawn_arg(ar::Function* func,
                         const PointsToSet< analyzer::MemoryLocation* >& pts,
                         const machine_int::Interval& offset) {
-    if (func == nullptr || pts.is_bottom() || pts.is_top()) {
-      return; // nothing meaningful to bind
-    }
+    if (func == nullptr || pts.is_bottom()) return;
     std::lock_guard< std::mutex > lock(_mutex);
     auto it = _spawn_args.find(func);
     if (it == _spawn_args.end()) {
       _spawn_args.emplace(func, SpawnArg{pts, offset});
+      _is_dirty = true;
     } else {
-      // Defensive: multiple spawns of the same function may pass DIFFERENT
-      // args — the child may receive any of them, so union the sets AND the
-      // offset intervals.
+      auto old_pts = it->second.pts;
+      auto old_offset = it->second.offset;
       it->second.pts.join_with(pts);
-      it->second.offset.join_with(offset);
+      if (_global_iteration.load(std::memory_order_relaxed) <= kWideningDelay)
+        it->second.offset.join_with(offset);
+      else it->second.offset.widen_with(offset);
+      if (!it->second.pts.leq(old_pts) || !it->second.offset.leq(old_offset))
+        _is_dirty = true;
     }
-    // Any cell the thread `arg` points to has ESCAPED the spawner's scope
-    // (e.g. `&i` — a stack local now shared with the child).
-    if (pts.is_set()) {
-      for (auto* loc : pts) {
-        _escaped_locs.insert(loc);
+    // Unknown arguments may publish any address, including private locals.
+    if (pts.is_top()) {
+      if (!_unknown_escaped_target) {
+        _unknown_escaped_target = true;
+        _is_dirty = true;
       }
+    } else if (pts.is_set()) {
+      for (auto* loc : pts)
+        if (_escaped_locs.insert(loc).second) _is_dirty = true;
     }
   }
 
-  /// \brief Record the parent's MUST `joined` digest at a pthread_create point.
-  ///
-  /// Overwrite per (function, create site): the parent's fixpoint is monotone
-  /// in the MUST lattice (joined facts only grow), so the last visit at a site
-  /// is the converged value. Called on every visit; the map is cleared at each
-  /// global-iteration boundary (reset_spawn_counts) so a stale early value
-  /// never outlives the iteration.
+  /// \brief Retain only joins established at every observation of a create.
   void record_spawn_joined(
       ar::Function* func,
       ar::CallBase* create_site,
       bool parent_top,
       const std::unordered_set< std::uint64_t >& parent_set) {
-    if (func == nullptr || create_site == nullptr) {
+    if (func == nullptr || create_site == nullptr) return;
+    std::lock_guard< std::mutex > lock(_mutex);
+    auto& sites = _spawn_joined[func];
+    auto inserted = sites.emplace(create_site, SpawnJoined{parent_top, parent_set});
+    auto& value = inserted.first->second;
+    if (value.top) value.set.clear();
+    if (inserted.second) {
+      _is_dirty = true;
       return;
     }
-    std::lock_guard< std::mutex > lock(_mutex);
-    _spawn_joined[func][create_site] = SpawnJoined{parent_top, parent_set};
+    if (value.top) return;
+    auto old = value.set;
+    if (parent_top) {
+      value.top = true;
+      value.set.clear();
+    } else {
+      for (auto it = value.set.begin(); it != value.set.end();) {
+        if (parent_set.count(*it) == 0) it = value.set.erase(it);
+        else ++it;
+      }
+    }
+    if (parent_top || old != value.set) _is_dirty = true;
   }
 
   /// \brief The child's inherited MUST `joined` digest: intersection over all
@@ -1733,6 +1752,7 @@ public:
     _unmodeled_thread_creations.clear();
     _once_sids.clear();
     _join_summary.clear();
+    _spawn_joined.clear();
     _spawn_args.clear();
     _escaped_locs.clear();
     _unknown_escaped_target = false;

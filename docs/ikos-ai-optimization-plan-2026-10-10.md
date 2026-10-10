@@ -574,3 +574,39 @@ BMC TP104→104、TN667→662、UNKNOWN258→262、error0→1，FP/FN0。
 [修复前](artifacts/ai-p0-2026-10-10/pointers/fixtures-before.json)、
 [修复后](artifacts/ai-p0-2026-10-10/pointers/fixtures-after.json)、
 [Dartagnan](artifacts/ai-p0-2026-10-10/pointers/reference.json)。
+
+
+### 9.8 P0：耦合摘要参与收敛，最终检查变更回退
+
+join exit摘要任何改变（含MUST移除）、spawn实参points-to/offset扩大、逃逸信息变化、
+新增create/once实例均通知外层重算。TOP实参不再丢弃，同时撤销不可靠的私有地址排除；
+offset使用同一外层轮数的延迟widening。create点继承的MUST集合对历次观察取交，
+跨轮保存；round reset仅清临时状态，完整clear仍清摘要。
+所有锁分区及无锁队列均在判收敛前flush，不能依赖后续unlock才能通知重算。
+最终run_checks及全局析构后再次flush；若摘要变化，插入race Warning和明确unknown_reason，
+阻止旧快照证明SAFE。本阶段未改成自动丢弃旧访问记录后的重收敛，这是保守能力边界。
+
+build/install一致；真实AR函数/call和真实MemoryLocation的40条断言覆盖变更、幂等、
+TOP、offset、跨轮交集、queue和完整clear；旧header在第一条join dirty断言上失败。
+40次双ABI/双模式程序测试及原审查76次、旧BMC20次通过。
+析构中新建线程用例从SAFE回退UNKNOWN并有边界诊断；这是效果覆盖边界对照，本例本身安全，
+不能算作修复FN。嵌套helper的transitive-join安全对照仍UNKNOWN，直接join对照保持SAFE。
+
+1029完整顺序AI/BMC扫描与pointer阶段逐任务一致：AI TN662/UNKNOWN366/error1；
+BMC TP104/TN662/UNKNOWN262/error1，FP/FN0。原安全标签nsc-ircc超时仍在，未拼接局部重跑。
+
+效果审查继续发现两个具体漏报，双ABI都SAFE：
+(1)同一struct的两个pthread_once控制字段被当作同一对象，两个回调写同一数据被排除；
+(2)共享memcpy写未发布，reader的flag守卫被删，payload竞争消失。
+Dartagnan对原once输入给PASS但明确不支持pthread_once，对动态长度copy给ERROR；
+这些输出不能背书。Goblint校准配置对once双ABI给竞争警告（最终UNKNOWN，无Unsound）。
+once首次调用的显式展开与n==sizeof(flag)路径的常量copy特化在Dartagnan双ABI均FAIL；
+这种依据是源码/规范推理加等价特化的佐证，不冒充原输入原生确认，也不是IKOS witness验证。
+两项独立修复待续，不能宣称P0已经全结束。
+
+证据：[汇总](artifacts/ai-p0-2026-10-10/coupling/summary.json)、
+[新回归](artifacts/ai-p0-2026-10-10/coupling/fixtures-after.json)、
+[1029配对](artifacts/ai-p0-2026-10-10/coupling/paired.json)、
+[新漏报](artifacts/ai-p0-2026-10-10/coupling/pending-coverage.json)、
+[原生once限制](artifacts/ai-p0-2026-10-10/coupling/pending-once-native-reference.json)、
+[特化参考](artifacts/ai-p0-2026-10-10/coupling/pending-specialized-reference.json)。

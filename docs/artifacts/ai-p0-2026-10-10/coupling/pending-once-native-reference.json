@@ -1,0 +1,46 @@
+[
+  {
+    "bits": 32,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/once-fields.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "returncode": 0,
+    "result": [
+      "PASS"
+    ],
+    "output_tail": "[11.10.2026] 00:10:47 \u001b[33m[WARN]\u001b[m Intrinsics.markIntrinsics - Unknown intrinsics pthread_once. Detecting calls to unknown functions requires --property=program_spec.\nTest: /tmp/ikos-ai-p0-20261010-ePqDG0/once-fields.c\nResult: PASS\nTime: 0.619 secs\n",
+    "CFLAGS": "-fgnu89-inline -m32"
+  },
+  {
+    "bits": 64,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/once-fields.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ],
+    "returncode": 0,
+    "result": [
+      "PASS"
+    ],
+    "output_tail": "[11.10.2026] 00:10:49 \u001b[33m[WARN]\u001b[m Intrinsics.markIntrinsics - Unknown intrinsics pthread_once. Detecting calls to unknown functions requires --property=program_spec.\nTest: /tmp/ikos-ai-p0-20261010-ePqDG0/once-fields.c\nResult: PASS\nTime: 0.536 secs\n",
+    "CFLAGS": "-fgnu89-inline -m64"
+  }
+]

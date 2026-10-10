@@ -1,0 +1,55 @@
+{
+  "analyzer_sha256": "d32a03a4d60f4df7741a4e373c3ba86775515f3ba090211fdf3cdb8ea167a24a",
+  "baseline_analyzer_sha256": "4c271f02cc4f986fbad64fcdfa0ccc93083e6c52f101f131be557804b8a977dd",
+  "source_sha256": {
+    "analyzer/src/analysis/value/thread_modular.cpp": "b14ac286be773f861a2194e1a5b37e70b000aab2101c8e98d644176c04969400",
+    "core/include/ikos/core/domain/concurrent_global_env.hpp": "798d579c7d40afe9aed3c7e0b2c11802d2ae93424af1d1b2117f95dc30c35fa0"
+  },
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 662,
+      "FN": 0,
+      "error": 1,
+      "unknown": 366
+    },
+    "after_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 662,
+      "FN": 0,
+      "error": 1,
+      "unknown": 366
+    },
+    "before_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 662,
+      "FN": 0,
+      "error": 1,
+      "unknown": 262
+    },
+    "after_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 662,
+      "FN": 0,
+      "error": 1,
+      "unknown": 262
+    }
+  },
+  "tasks": 1029,
+  "jobs": 4,
+  "timeout_seconds": 30,
+  "data_model": "ILP32",
+  "known_audit_misses_pending": 0,
+  "old_bmc_cases": 20,
+  "build_and_install_equal": true,
+  "manifest": "docs/artifacts/ai-p0-2026-10-10/f1/paired.json",
+  "manifest_sha256": "9a6a9d81d2f8599d66d2a38574bb05d6c00e3a662048e096d634e027af6d9a8c",
+  "summary_assertions": 40,
+  "program_configurations": 40,
+  "source_premises": "MAY spawn args union (TOP retained); offset widening; every join-summary change dirty; inherited MUST intersection across visits/rounds; every partition flushed before convergence; late replay/destructor changes prevent SAFE.",
+  "limitations": "Transitive spawned-helper join control remains UNKNOWN; these finite tests do not prove all coupling/API/filter rules. New once-object identity and byte-copy interference misses remain pending."
+}

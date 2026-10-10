@@ -334,8 +334,8 @@ void ThreadModularAnalysis::run() {
     _ctx.concurrent_env.set_global_iteration(
         global_iteration);
     _ctx.concurrent_env.clear_dirty();
-    // Reset spawn counters: each iteration replays pthread_create, so
-    // the per-name counts must restart from zero (see reset_spawn_counts).
+    // Reset ephemeral condition state; persistent may/must spawn summaries
+    // survive replay and participate in the coupled fixpoint.
     _ctx.concurrent_env.reset_spawn_counts();
     log::debug("=== Worklist iteration: dirty cleared ===");
 
@@ -378,9 +378,7 @@ void ThreadModularAnalysis::run() {
       }
       // Record this function's MUST-join summary for transitive join HB: a
       // later pthread_join of this thread must also join everything IT joined
-      // before exiting (main joins t_benign, t_benign joins t_fun ⇒ main
-      // transitively joins t_fun — 51-threadjoins/01-trivial.c). Overwritten
-      // each iteration; converges with the fixpoint.
+      // before exiting. Changed MUST facts also require another global round.
       _ctx.concurrent_env.set_join_summary(
           func, fixpoint.exit_invariant().second().get_joined_threads());
       // NOTE: run_checks() intentionally omitted here for fixpoint iteration.
@@ -397,7 +395,8 @@ void ThreadModularAnalysis::run() {
       }
     }
 
-    // Publish the unlocked queue before checking global summary changes.
+    // Every partition contributes interference, even without a later unlock.
+    _ctx.concurrent_env.flush_all_privatized_locks();
     _ctx.concurrent_env.flush_unlocked_partition();
 
     // Check fixpoint
@@ -448,6 +447,9 @@ void ThreadModularAnalysis::run() {
     msg << "Converged after " << global_iteration << " global iterations" << "\n";
     dump_global_blackboard();
   }
+
+  // A final replay may discover effects absent from the converged snapshot.
+  _ctx.concurrent_env.clear_dirty();
 
   // ── Phase 4: Post-loop checks ───────────────────────────────────────
   if (!checkers.empty()) {
@@ -534,6 +536,29 @@ void ThreadModularAnalysis::run() {
       }
 
       init_inv = fixpoint.exit_invariant();
+    }
+  }
+
+  _ctx.concurrent_env.flush_all_privatized_locks();
+  _ctx.concurrent_env.flush_unlocked_partition();
+  if (_ctx.concurrent_env.is_dirty() &&
+      std::find(_ctx.opts.analyses.begin(), _ctx.opts.analyses.end(),
+                CheckerName::DataRace) != _ctx.opts.analyses.end() &&
+      _ctx.opts.use_checks) {
+    // Stale access records cannot prove SAFE. Reconvergence can replace this
+    // conservative boundary when checks are separated from transfer replay.
+    ar::Statement* anchor = nullptr;
+    for (ar::Function* func : analyzed_functions) {
+      for (auto* block : *func->body()) {
+        if (!block->empty()) { anchor = block->front(); break; }
+      }
+      if (anchor != nullptr) break;
+    }
+    if (anchor != nullptr) {
+      _ctx.output_db->checks.insert(
+          CheckKind::DataRace, CheckerName::DataRace,
+          Result::Warning, anchor, _ctx.call_context_factory->get_empty(), {},
+          {{"unknown_reason", "shared summaries changed after convergence"}});
     }
   }
 

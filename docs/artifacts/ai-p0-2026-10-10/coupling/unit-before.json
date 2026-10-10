@@ -1,0 +1,6 @@
+{
+  "returncode": -6,
+  "stderr": "coupling-unit-before: docs/review-repros/ai-coupled-fixpoint/summary.cpp:24: int main(): Assertion `env.is_dirty()' failed.\n",
+  "header_commit": "abf1127",
+  "expected": "First dirty assertion fails: join-summary updates were not reported."
+}
