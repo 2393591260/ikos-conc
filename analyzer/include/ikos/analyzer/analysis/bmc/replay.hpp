@@ -121,6 +121,27 @@ public:
     } else if (core::isa< ar::ReturnValue >(stmt)) out.put("kind", "return");
     else if (core::isa< ar::CallBase >(stmt)) {
       out.put("kind", "call"); out.put("abstract_initializer", abstract_initializer(stmt));
+      if (stmt->has_frontend()) {
+        auto* call = llvm::dyn_cast< llvm::CallBase >(stmt->frontend< llvm::Value >());
+        if (call != nullptr) {
+          out.put("calling_convention", call->getCallingConv());
+          JsonList layouts;
+          const auto& layout = call->getModule()->getDataLayout();
+          for (const auto& argument : call->args()) {
+            JsonDict item;
+            auto* pointer = llvm::dyn_cast< llvm::PointerType >(argument->getType());
+            auto* object = pointer != nullptr ? pointer->getPointerElementType() : nullptr;
+            if (object != nullptr && object->isSized()) {
+              item.put("size", layout.getTypeAllocSize(object).getFixedValue());
+              item.put("alignment", layout.getABITypeAlign(object).value());
+              if (auto* structure = llvm::dyn_cast< llvm::StructType >(object))
+                if (structure->hasName()) item.put("name", structure->getName().str());
+            }
+            layouts.add(item);
+          }
+          out.put("argument_layouts", layouts);
+        }
+      }
     } else out.put("kind", "unsupported");
     return out;
   }
@@ -129,8 +150,12 @@ public:
     JsonDict out, functions, instructions, globals;
     out.put("little_endian", _bundle->data_layout().is_little_endian());
     out.put("pointer_bits", _bundle->data_layout().pointers.bit_width);
+    bool target_exported = false;
     for (auto it = _bundle->function_begin(); it != _bundle->function_end(); ++it) {
       auto* f = *it; JsonDict fn;
+      if (!target_exported && f->has_frontend())
+        if (auto* source = f->frontend< llvm::Function >())
+          { out.put("target_triple", source->getParent()->getTargetTriple()); target_exported = true; }
       fn.put("declaration", f->is_declaration()); fn.put("return_type", type(f->type()->return_type()));
       fn.put("intrinsic_nondet", f->intrinsic_id() == ar::Intrinsic::IkosNonDet);
       fn.put("intrinsic_assume", f->intrinsic_id() == ar::Intrinsic::IkosAssume);

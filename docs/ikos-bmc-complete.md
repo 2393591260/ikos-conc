@@ -587,7 +587,8 @@ Goblint PBR read/unlock是参照，IKOS当前采用保守入口合并，并未�
 “反例”是违反性质的执行；“witness”是对它的可交换描述。
 一个TP任务可能保存多对访问、多条反例，故任务数、候选数、模型数不能混用。
 validator验证witness/指定执行，replayer按具体步骤重算执行，是验证的一种机制；
-自写重放器不是唯一可用路线。目前优先复用Dartagnan编码并严格绑定所选证据。
+自写重放器不是唯一可用路线。Dartagnan固定内存模型检查保留作交叉证据；
+第一版新增具体AR执行检查补CFG、局部值和动态实例绑定（见§10.6）。
 
 ### 10.2 结构化 AR 导出
 
@@ -691,6 +692,46 @@ fib5早先bound16超时，后来新模型bound13双架构部分SAT；fib10/12指
 创建数组曾因main(argc,argv)零实参初始化失败，尚未执行事件。
 它依赖同IKOS AR快照与glibc合同，没有独立C导入；脚本未提交，证据以本地hash为条件，
 不能声称全新checkout即可复现，更不能算正式2.2验证通过。
+
+### 10.6 第一版具体执行检查（2026-10-10）
+
+`validate_bmc_execution.py` 独立于 Z3/编码器，按程序快照的完整 CFG、动态调用栈和
+线程创建执行证据。字节内存从 typed 初值/真实 store 计算 load；证据内的值、地址、
+宽度和逐字节 read_from 必须与实际执行一致。vector clock 检查 spawn、mutex/rwlock、
+join 和 stdio stream 同步；命名/verifier atomic 检查完整边界与不交错。condition 仅选择
+合法 spurious wake，并实际 release/reacquire 已拥有的 mutex，不能制造 signal HB。
+单次 pre-spawn main malloc 不默认为零；属性仅支持已核实 glibc ERRORCHECK 生命周期。
+库 ABI 由快照直接导出原 LLVM target/calling convention/参数对象大小和对齐后核对，
+不会把编码器认定“支持”当作验证前提。未知 API/入口签名/初值/对象返回 UNSUPPORTED。
+
+快照与证书分别用 SHA256 绑定；CLI 另核对输入 hash。源→AR 前端、快照真实性、
+成功的库调用与 SC/verifier 合同仍是显式可信边界。ACCEPT 的准确含义是具体 AR 执行，
+**不是官方 C-source / witness2.2 验收或普遍 soundness 证明**。正常分析器仍输出 UNVALIDATED，
+离线 sweep 单独保存验收结论，不能把未运行过的证据升级为已验证。
+
+结果：[129组逐执行记录](artifacts/bmc-v1-execution-2026-10-10/results.json)、
+[汇总](artifacts/bmc-v1-execution-2026-10-10/summary.json)、
+[全量配对](artifacts/bmc-v1-execution-2026-10-10/paired.json)。104项标签TP共129组：
+128 ACCEPT、1 UNSUPPORTED、0 REJECT；103项全部所选组通过，另1项的函数指针
+非简单初值尚未导入。没有将这一项计为假反例，也没有把它计为已验证。
+
+242条双架构断言使用真实分析器输出，篡改创建步骤、目标实例、值、偏移、宽度、
+read_from、重复trace、synthetic边界和快照hash必须REJECT。命名atomic的调用事件
+发生在合成begin之前，检查器不能提前禁止这一间隔的其他线程；初轮6个误拒绝已按
+AR调用/atomic边界更正，不能据此撤回6个TP。stdio保留POSIX stream同步，不能仅当作
+无效果调用。AR展示字段含ASLR地址，仅供阅读，不用作对象/实例身份。
+
+本模块在保留未跟踪原草稿不变的前提下，经审查和校准另行维护；原草稿hash
+`c430b1d07824db796008688f5d768bb04b7086a33c468ee7630a5e9a8d6422ec`。
+`evidence.hpp` 从查询函数分离所选证据导出；纯序列化改动build/install、P0双架构、
+诊断开关对照、1029全量均通过，TP104/TN696/UNKNOWN229不变，无逐任务转移。
+
+复现：
+
+```bash
+python3 scripts/test_bmc_execution.py
+python3 scripts/sweep_bmc_execution.py --reports <本轮104项报告目录> --output /tmp/NEW
+```
 
 <a id="workflow"></a>
 ## 11. 具体实施、回归与提交流程

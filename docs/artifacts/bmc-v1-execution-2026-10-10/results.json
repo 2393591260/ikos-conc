@@ -1,0 +1,5917 @@
+[
+  {
+    "task": "c/goblint-regression/00-sanity_09-include.yml",
+    "input_sha256": "9d688e86e7e4087606ab9d08173c4c227b663da7e997bbf86bcc599e41d5985e",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "b49140233a4140ea5110d4b89a6adace8385395a525403c5748351c5a33d83e0",
+        "certificate_sha256": "92a6432a08d25ef6ead29c3f5f74e4ee4d9e4f3d6130793e4fd5740baadb3b05",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 6
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 11,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/01_inc.yml",
+    "input_sha256": "dc44c09c63836e77e2249e5abf8328354015a2494c028ff1b2e04f58fa741976",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 4,
+        "program_sha256": "8cba718d6e940f336c0e14dd1c26c8fb9a8d3d374f8892b1cb8ef9308852cacf",
+        "certificate_sha256": "a3c89f55884acde485af483d1e8935c5e2d733385be5eb706f5c88132de44dc2",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:value",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 22
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:value",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 6,
+              "2": 39
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 90,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/03-practical_07-nonterm.yml",
+    "input_sha256": "1a5c45a44223147f393b74702a24905a50f014553bda5f1e486b1b813907bad6",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "fd6754acdd3d356b37aa7be160a1464a70176b903997fbd703a7b0bf04afd1e7",
+        "certificate_sha256": "1827f366c0eb33fe7cc1a2151dcc73ccf315c35d43bbf7e160fe550bff3c3525",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/03-practical_08-nonterm1.yml",
+    "input_sha256": "3e969e32a88a5e156b51cffed83cf3d4aa28237f70c2f7ecca29f3fc87e23114",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "4b4df35dcbea09de2c5cdeb541553f182e0eef5c8c1e0838c68ad71e67ecf882",
+        "certificate_sha256": "84353d303e5acab463caa97547feab9773f7809271334bd6dcf0c79727f73f04",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "1": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 16
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 24,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/03-practical_15-exit_problems.yml",
+    "input_sha256": "5a6f58d33d2b81528ca8565b89a520d0b28390552fc2b179422de5d107efa015",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ff227a447177fb80483394af49bc048ae3ce1833cd0a4c3307dd735d865ac865",
+        "certificate_sha256": "c41a6f4ad06a4dea3427bccd5e674e1ac42ce4b7b1e3712b72e3a21c725d4da7",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 10
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 15,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_01-simple_rc.yml",
+    "input_sha256": "f386a8eced027f444b288d0e2b86adb39ba6177e302e8e8c075532cb09ebacc4",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "2bc444c56f8fe98158deb3195ad9a327ceee2a43174f30a0961584877c28e6c1",
+        "certificate_sha256": "4b1081bd3f275b5d919ac7427b880f43284b4f91ffcf96f7b3aee7bedc8e7a2e",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_03-munge_rc.yml",
+    "input_sha256": "aab2115ad2e925c4213b3ce20b28f5d1793c3c4d4ff2243b939094d903ee91f0",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "bcc74653a354cd3deb0443bdce771e8c723cf43b0bee46d38766e7cbf0613c68",
+        "certificate_sha256": "1232a575665a769fa4ad5b2c1fedf059b0fe7a08d688890049d4ca810c697085",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 10
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 7
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 17,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_06-ps_rc.yml",
+    "input_sha256": "6ff62bc1009e856ebfdbcc1756ddab571d8672e93ee6d6eb2d652f5f205a6980",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "c9a8bdd2b4105277707f5b7ac150056bf39d7062c20f52e961a0e5814e19a0f6",
+        "certificate_sha256": "9742db7389fab40b0b2717af70ad61cb80498b0af550da88aae3fe265b076730",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 17
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_09-ptrmunge_rc.yml",
+    "input_sha256": "98ade1545a6507815c327cd3fc492f66b7c6ddf31c82d9f9cf04be524a97482e",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ca3678d72e1e1d0c43e912c13a53abda32b171581181450939890e3d39cb3e64",
+        "certificate_sha256": "ccf01aa60dc9e6e1e69e5597ba28bb6ee3433b9cffec932171a537f94df68239",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 10
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 7
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 17,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_11-ptr_rc.yml",
+    "input_sha256": "71ba38fd5ed66bb007d5bb9846445fbaefd63ff00f3378443bfa6be6d343bab6",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "9c10fee1b4f8fa2b4bc5494e169258e72285df0e4b7cbd7d89e67faddc5b92e4",
+        "certificate_sha256": "f8353bc2f879e4b2e62b942666a7d400adb8e1dcebd5c33e9e99db4684110b9f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_14-funarg_rc.yml",
+    "input_sha256": "c5b7dc0e540e307a6b72f1c856de4e5efd074e26d20a9cb66b738ee1a80b8921",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "a3fba2fd6d63ffe0b01860aaa222ce92b4570f8362d2adc2088ca46a1d0fa312",
+        "certificate_sha256": "37c2ed943b3a8a86cceb3e5370d1b007043ff54e2799abf53f1394b415a5cb25",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_16-ps_add1_rc.yml",
+    "input_sha256": "f14ae10b41ae5d21e4843c4d2c5b0585a53e06611a0f2164ba4ebd070e3a3e0d",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "375dc810b6767bc78583d784f3c055ebdad48d32390f56ffd42433205f72a654",
+        "certificate_sha256": "4f779c279e3bbff26bed1ce4a51076857640bfb3e41e09eb1c2be56857f92d5a",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 21,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_19-call_by_ptr_rc.yml",
+    "input_sha256": "09bd5495e14a3740024968451b998f3083d63bdb3b7ff8a79710ef998155339e",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "0ab89de6779300dd053d675aa48562d922ea7d07f2b71b4ea08face9f5dd739b",
+        "certificate_sha256": "98e4bccd84e2b730524ac6272f12225b92f5e027f720c9276b374b77b864ff3d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 21,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_21-sound_base.yml",
+    "input_sha256": "68c0c5000c21f9e9ce587210ecf523aa294fc1749c89b05b6201f4ee47346a2b",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "0f5fb9ee1b2d53b99fcc9b22e13f8bf261bde0a287df44b2031429c2950184d7",
+        "certificate_sha256": "38876a1cc76a68b0da817e0c6479da8bcf3cedd2218975b98897a014e4f022b4",
+        "status": "UNSUPPORTED",
+        "reason": "read of uninitialized bytes"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_23-sound_unlock.yml",
+    "input_sha256": "7f1a0b5f149ecdba4cad3e07b291f8823e0e38c0a543433b39a259fbac94fd24",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f8924d8d4701b4019391f6337d9e28b12649ac4eb7bae972a710f2528610e73c",
+        "certificate_sha256": "c5149cec6a4d53c1988f98ca4de2559514825de9e7c1f53148bc9e68824c068b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 24
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 23,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 29,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_24-sound_lock.yml",
+    "input_sha256": "00547e36d203d351ce109def1a1c049ccdf8634fc105a04d7e326eea727b86e1",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "7c0da4241dea5a35e8cc1d7135f3e40aa5bd5ee22a34549d01eb2e4c84f6871f",
+        "certificate_sha256": "64afa19eaabe92ea63a2bf34587866d2f7363fc1127534e610043bd3f2259dbe",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 21,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_25-single_acc.yml",
+    "input_sha256": "d750445530daa57cef2f441377464e89f7d2e9f88f73166de8896066b4af753c",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "1f161755062abff1b1044b8fdee02bfa9f3ad1cb78650753f97f4c16ee4d229a",
+        "certificate_sha256": "875e9aca6b5a6acaf128f011538a84aea3f93bf78a43137e98cdf1027333d839",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_37-indirect_rc.yml",
+    "input_sha256": "2076b13c59b7d49779b8c352bd775e6bfc3c974320821f52074d18209bb5536d",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e440620b55f388f764427af8acf62bbd3e2518422baaa6ebf99ee0e0dbaa683f",
+        "certificate_sha256": "47c21b2baef5edd790c95e70a03f09a642d472bf47012646510f4fb461437d37",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:g",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 10
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:g",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 6
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 16,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_38-indexing_malloc.yml",
+    "input_sha256": "a5d5458e3d8cf05130899060969ec8c39906a1485e870f571d92651debe03df7",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "b84fe229865f1c74cd33deccd65fb2a1e4cf1cd3a2be40abd0f25692ea0e844e",
+        "certificate_sha256": "30b556fc1330b0c80f9633f14cab5033232faeb932c0503f4bae7509262a2691",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "heap:1:s4",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 11
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "heap:1:s4",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 14,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_47-fun_write.yml",
+    "input_sha256": "5b0292c738c94357f593ff6c55dd0d3ce5b536c491ec9ddb366c9e0619302adc",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "9d9617b2354839ab8daa482ae8191f0afa30bd5b3a59e11f813230fa183d376a",
+        "certificate_sha256": "81f332ae7da5ab624ebcb50b27fc6f9a5a0d50fb65906fd40f939dffdd564499",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_50-funptr_rc.yml",
+    "input_sha256": "ee142d20666d60ac4fd7f821852d0a9e3e7678fb9031d4a65233e7f955d8ec95",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "4ebf0ecac1801a122ff3c322510db2b6d11fcb71b3252925c3d0f6b4755b53b0",
+        "certificate_sha256": "a6fa9b263f3be01ca2bac8d228d29b99110a921a512eaef576d4cd1e958e24b3",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:fp",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:fp",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 12,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_55-pt_rwlock_rr.yml",
+    "input_sha256": "3bc4e24382ea60332625fc43697e18a0341207a28648f6b22b09d36670c74715",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "81c25faaebab1c4d80f191de87e3e42b3c6e2b01447e0132e604f7ba72a7448d",
+        "certificate_sha256": "e1788df33c0e1868ef4d4be2ed4dd39a516d403d9405ef5c7f74ae8f43e28665",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "81c25faaebab1c4d80f191de87e3e42b3c6e2b01447e0132e604f7ba72a7448d",
+        "certificate_sha256": "cd8eadb0818cdfa4ee202be21d8067dcc8cec5e8ccb30ff5403e24623a7ea99c",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data2",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data2",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 6
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 19,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_01-idx_rc.yml",
+    "input_sha256": "56a6e25282b29868c16664dd03b49f4664ee7d481a2f71d72d1017e2ed35171a",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "5df260c29f5f9ca59cc824f60205cd73424166a394f43a8d92a2741810468c77",
+        "certificate_sha256": "879c0bb7624859811ea2072143905308e8a231ce5eeaa11f5553df91d487bf99",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 61
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 58,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 66,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_03-fld_rc.yml",
+    "input_sha256": "10228ef7c40ddc635535d704f043727867d6dccb8dd54aab36d2ec6c768346d1",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "d786d17f241fb4156e2f15450295209c70b22180d48d851f6b76ee21f1247d75",
+        "certificate_sha256": "3892304dfca4720c5961bbdde1df53ec5ae106baa7d980e856c977fd8224f41f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 12
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 17,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_05-glob_idx_rc.yml",
+    "input_sha256": "d685ff0dbd621781bc284ec18b9cefcdab391a7cba0994455a59081cf8a12788",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e5943e3dc8fa956d14f2ad7739ac8e350f015513bdb7177b302b9e2b6bef0422",
+        "certificate_sha256": "ec5b38fdbd4be279a3c00457d766ac90764a46ce26d76c9529c604778115e982",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 12,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_07-glob_fld_rc.yml",
+    "input_sha256": "051e9de902f5f925b76552326852b754e8794c3d6efac87d73f390ecaab1f793",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e0a93eed1f60483a85e555d687cd1ca0952697119ed8c3d2624e9f305d76ec0e",
+        "certificate_sha256": "1808d755315d40e0fdee99c76de29b908add7d3b88eb72ef47c480beda9071a0",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 12,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_08-glob_fld_2_rc.yml",
+    "input_sha256": "f42aa68b87f2b35193e6ff5d46d2fe0f91ded9a814a1ef0270a9838c89e0ea48",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "a999be251c849ae101966b9e766e5e6db4c06095944f9712ac7f54f7a887466a",
+        "certificate_sha256": "747b6b6bd034b763752cd5f528936ea370bb35b2ed26b9063917297147653902",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 16,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_09-idxsense_rc.yml",
+    "input_sha256": "8c1781f4276fb7477e65ff70325038ade597aa15f5765b1b35bb643b25a9eda4",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "cb22d73bb4828a18de99bdb0318751ff70377b6cc4cc014aaa59ec2367b03b73",
+        "certificate_sha256": "0f7dbc797e000dec720e6828bf79805079f323074bde09a3cc7fe14c87381f1e",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 62
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 58,
+              "1": 7
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 69,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_11-fldsense_rc.yml",
+    "input_sha256": "4aad48867934589e3a01ca7f74518ea1c168c8ea92dc1c011e0828ba06fbf654",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "eede96d27e505a9ad5f1e71de09ea982e612d61b4de8c68843c3ee102171c348",
+        "certificate_sha256": "48090326208b67f9e6b0edec0298c867633bd0efe1ac047c3f28f772f10092cb",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "1": 7
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 20,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_13-idxunknown_lock.yml",
+    "input_sha256": "7688aff6d5d22cc8ccec6097e1f98cf9f4c3da7a9a8bbabab449855d0421cf17",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "227d510ab333e7242dd614417561cc1ac28a0e104ee5131a1dafc8c0a9a48023",
+        "certificate_sha256": "b174b343bf8d5f4d5c665414bf470639922170d7326c12d05a2ff9223939f48c",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 75
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 71,
+              "1": 7
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 82,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_14-idxunknown_access.yml",
+    "input_sha256": "604d6f32ad556c32a6b07f3bb57d696511cb4f2a0c5078b65ceef78243de6f21",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f8e7170cea0ae0890881d6f4d4f084b928899abfc4df88c381e28b7d728fcc0e",
+        "certificate_sha256": "2790173e36633ba8adfbf53fa1d765d3dd4a5c86169c3ced710fa3e0c6efdf50",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 20
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 18,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 25,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_15-fldunknown_access.yml",
+    "input_sha256": "822e3cbe8154a40a0b16b4ed770984d9583e88fef936bc78ca0b018dfdbef072",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "58b46e0b31b9bec683026a8f7e2ca2c411ff256752e4d3d99c802c30450ce23d",
+        "certificate_sha256": "2d0004293ff5f087e7fee25e9c2c6ca61fb437153d2128bee0ad6e686bd34bbb",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 12
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 11,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 17,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_16-idxunknown_unlock.yml",
+    "input_sha256": "29214acd67e83ba256f657aeff315da60973f387f2ccff2e3376d340418f774e",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ea8ad2e67893ae0cb613718ec2d4df75efb30db97724e6d93fe8bdd6cf38126e",
+        "certificate_sha256": "1d0ad2b6b86af9c5a85db3464ebb01bed8b08432f820c4c15a35983599dc01bc",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 90
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 89,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 95,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/06-symbeq_03-funloop_simple.yml",
+    "input_sha256": "ef37663658139b358a9f093f3b929c9ceece424d125426dc196af43d94bde65c",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "1de18a07cdfcaf28a25cfc7467d5db54d6e6c744e0dd5ac76855eeee87d40dfb",
+        "certificate_sha256": "547f3d3c12d85f8809302f62a5bb2e49a9efce6bbdd45429a01afe432e372f27",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:cache",
+            "offset": 140,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 213
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:cache",
+            "offset": 140,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 151,
+              "1": 81
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 294,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/06-symbeq_04-funloop_hard1.yml",
+    "input_sha256": "24244265f01939585dcad60d79e24558b858e5e4c04744e3239e6582f5d25cc4",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f9fb474d72d72894794f7243b8b7088786fa37b5f65c611136fbf3925dd62006",
+        "certificate_sha256": "d0e565be6eafa0b28bb498444b86d004cdc6da0b54bf6cd3382b66344336ea42",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:cache",
+            "offset": 140,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 215,
+              "1": 69
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:cache",
+            "offset": 140,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 151,
+              "1": 81
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 296,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/06-symbeq_09-tricky_address4.yml",
+    "input_sha256": "1f3bfcbefa47ffbbca39d8d8566e5ce2761e25d53033962fa4c6edf41ef0c3ed",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "a8400a984dd46edad046e82cc9ab6006c7020a5568ddb3549c7db2fdca4cd902",
+        "certificate_sha256": "7763cdb9a3835a0485406d62be8e69f74cc7330578f26277b4a4fc52ae2d8209",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 87
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 81,
+              "1": 22
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 109,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/06-symbeq_10-equ_rc.yml",
+    "input_sha256": "a60fcb98ac851c591a18dc1631d878e19b22590449601ba560425115015949af",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "9827a721c9d42de1493d89fc5bb0be0e78b625683dbbfdac283e1597452a9915",
+        "certificate_sha256": "7c7bce94a15af79b0beca76f0a2047f5f502a2a89a3a9a4aab93e1eaa7b8cd8c",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:B",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 18
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:B",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/09_fmaxsym-race.yml",
+    "input_sha256": "f225ad0ddd29038af28d51fbbac3525492e9437e240dca78f58919375937976a",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "df6b46bca4b7761d4105703255b889438be930887b36a9ddaed095c44e4138af",
+        "certificate_sha256": "b259eec3c1d566c2f5afb43aaf8d59698d91709ed2ef909fc8b59ef74768a96d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:max",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 51,
+              "1": 29,
+              "2": 30
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:max",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 51,
+              "2": 31
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 111,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/10-synch_02-thread_nonunique.yml",
+    "input_sha256": "bc78788d98da2638169fe03657250fbf876e72c9f507aa825539bd8508a72f4d",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "19dafcf9ae91e74603b233a8f54fd691fa316a78dd2052362bc962292fa80312",
+        "certificate_sha256": "40d9d24c66e0255de57d56c35f64aac848a3d50c397a32ff53d61345bfe44ca9",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 12,
+              "2": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 14,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/11_fmaxsymopt-race.yml",
+    "input_sha256": "c885fc256284ed3b5456c69b30daa307e14001acfa6c144983451f9519cbd1fd",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "4f730fccd3561a1e68425141f70b441f7fb923dc8ca7c19048cb87359a4bfa29",
+        "certificate_sha256": "6564970b231cd314ac4d3725b4e6d52ec574f464498adf961ceb82739d18e060",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:max",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 51,
+              "1": 49,
+              "2": 50
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:max",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 51,
+              "2": 51
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 151,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/13_unverif.yml",
+    "input_sha256": "ea403ebfe777a86c8f08ec54b02dc30e546c8fae743fed5fb0e88129df40ac76",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "579efdceaa4c2573e45bda450a0c4a2ecbeb3fbe1948f1beb406e48576694b61",
+        "certificate_sha256": "3a757a5a58526d9438e9664821c4e059ef7d5f23f89fe41b43fbce94aea4c95f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:r",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 16
+            },
+            "atomic": true
+          },
+          {
+            "instance": 2,
+            "object": "global:r",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 6,
+              "2": 20
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 50,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/17_szymanski.yml",
+    "input_sha256": "9d000bd3a81a7401f4ccb21c2696e2644e9236d2ccbd2094291c987ec91aaa92",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "b99f7b9ec79af0788c89481996d701bbfe1d69572e882b602abbe943b2e6a358",
+        "certificate_sha256": "16306edb4cd29ab0cb083f0cc83a60571386ca43c91272810012d941ef5057e4",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 9,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "b99f7b9ec79af0788c89481996d701bbfe1d69572e882b602abbe943b2e6a358",
+        "certificate_sha256": "eaa083098195646ddd923268477b9cd460045bd775f9d2fae116e8e3f8dc40ee",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:flag2",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:flag2",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 2
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 9,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/23_lu-fig2.fixed.yml",
+    "input_sha256": "1e7e50acdaac6c5347f0e6861619a1b564ff01a6e5e780f6d69a20f7f739312d",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 2,
+        "pair": 0,
+        "program_sha256": "1a278ff393dc9d5ba586c53749a76c2db8ae9ae552f5538e529e37e3a88cc4e4",
+        "certificate_sha256": "fd01dfa602582e12dc7332c5fe3c452496bb8e91befec1373833b74e56ca46b5",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:start_main",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 9
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:start_main",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 16
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 25,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/27_Boop_simple_vf.yml",
+    "input_sha256": "ce64fcfa63b9df647c320ea90e20b624e2dad5b9ca256083b6d2f56c3177560a",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f52235d0158fb66c4298064cd371e03f718e04b20d839c00b48384f2d5d129cb",
+        "certificate_sha256": "fb03844d182e3e7cec72121144b273ed66a4a46fc89b7e318377e68ee187b7ca",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 6,
+              "2": 12
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 23,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "f52235d0158fb66c4298064cd371e03f718e04b20d839c00b48384f2d5d129cb",
+        "certificate_sha256": "5277548e020149c7a979a5d3192ee3d0a035ddf81cb7ea4691e1147797f0eecb",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:release_thr1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:release_thr1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 6,
+              "2": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 11,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/30_Function_Pointer3_vs.yml",
+    "input_sha256": "c8b500e58ad9de43c2267c6cdc33609b02abfe24fc1cf283e17f14a4a70ea61c",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "0e62f79950bb05b51ce405e804235063c3c46c3a98570eb89e9952f1fed64f8d",
+        "certificate_sha256": "2bad6e98d2d378404961c2b64def3f6ebb8534ffa6255c8b7803ced49267dd78",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:res",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:res",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 6,
+              "2": 24
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 31,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/32_pthread5_vs.yml",
+    "input_sha256": "a1dca423de1ee0965d72c4be0ada5e821e4dbfc023ab1c498b90df0e18b4c1f3",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "dbe08d9c58c5d7773f9d7662a15f7cde6aee80d4e54d196c3e5561498f5dcc66",
+        "certificate_sha256": "ca85e0225d47f7a885657659a12bd0b5b630a62f4db3d42beba358212b9812be",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          3
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:lock",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 31
+            },
+            "atomic": false
+          },
+          {
+            "instance": 3,
+            "object": "global:lock",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 7,
+              "3": 19
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 57,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/39_rand_lock_p0_vs-b.yml",
+    "input_sha256": "963fe2b49296fadf7c892a862a5472be95dcc4e457bf5d1be114d7bd124d5424",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f2a9e1f2d5f78a469dcc751fa0d9e5130aa89a51e3fb1dcd77b0aa0e7cba7e0a",
+        "certificate_sha256": "0b21cd8c14a00dd9a7dab3ff641f6d6873e3bf444e70083c03e63552a88c560a",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:seed",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:seed",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 6,
+              "2": 32
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 43,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/41_FreeBSD_abd_kbd_sliced.yml",
+    "input_sha256": "a7b1b4de6077c19ce6e7b3206b7aec935b2c49ded10f81f01daddf9a689038c1",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "17896af874fee034cc0bb5798dc66ab8d512f533b6d49b74ddcd4be9c8d0f4c4",
+        "certificate_sha256": "fb6ad0d8fccc568dd6be8e812ad0558aabc615d3c4fdaf5fefe6038c22b4a56d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:COND",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 39
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:COND",
+            "offset": 0,
+            "width": 1,
+            "write": false,
+            "vc": {
+              "0": 6,
+              "2": 60
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 105,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/43_NetBSD_sysmon_power_sliced_2.yml",
+    "input_sha256": "58b504e0f9c99c4dab9903d0572a1a6fc9dccc97093dedf55f23b393d189b988",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "d7ccb8a2177413d9e948d4b656a86378684a05931fd87d3f33e7fa14f4bb9a27",
+        "certificate_sha256": "b459e171e368d3237404dae086fdad3fdd9f1d965f17b0fe645218570552db22",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:COND",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 50
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:COND",
+            "offset": 0,
+            "width": 1,
+            "write": false,
+            "vc": {
+              "0": 6,
+              "2": 71
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 127,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/45_monabsex1_vs-b.yml",
+    "input_sha256": "8f6daa714ad29a28643c70bea2be7f060091d3c3adf6e85890e4056205fd8d77",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "83cbe645d4fae9fec62a3580e78c05a6dc6bff8ff8da43c64427db2439a09142",
+        "certificate_sha256": "3b7163e6fdd29c107501c64b8bbc3a3bcb7704a54b0e263e62a882e9002dd409",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7,
+              "1": 3
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 15,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/46_monabsex2_vs-b.yml",
+    "input_sha256": "cb0da49952f084f4179c44b957c91689c392bf769782a6b0853667237fdff1db",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "25678cec2ac05bdb526fbf282afca1941bbf852173d0ba5eb76cea57fd02b071",
+        "certificate_sha256": "3edecacd17b7c4a20be980b2ef21a9ebad151c9bdc44d28f6f4b0ba3e8b137b3",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 6,
+              "2": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/47_ticket_lock_hc_backoff_vs.yml",
+    "input_sha256": "22ccde2ce516925ebfe813d783d47f1167b5115e5910734aa9e1bf526ce8c733",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "24c9e3e24aacb26dc9cf8afbf7210347a083a29dbc2af19b4bd3b7484feca3c4",
+        "certificate_sha256": "ec0c3b53641751140ee2da1ab978c62cf36d66309d7883ba640e5d19cb217bd5",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 35
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7,
+              "1": 36
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 71,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/48_ticket_lock_low_contention_vs-b.yml",
+    "input_sha256": "bee6bfabfc9168d01d046a770b423c49a0035ad8b39e289385170f3b76ba2fb2",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ead946e1995d51fb917681eb91e0555c51377650a68f6cd321bd9a62e5e68ad1",
+        "certificate_sha256": "cdc6a32f4976c01314336057ceb2e4abbff2c760560372226ac526f2f2feeee8",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 37
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7,
+              "1": 36
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 73,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/airline-10.yml",
+    "input_sha256": "8e894693d2d051395e42cf40effac907db7b5be7a8f5722374b3e5b36cc0228a",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "0150feb1d2debc5b0e44272af7a5c95ea88f5c41f11d259e405156cbbfc7e839",
+        "certificate_sha256": "1d62be572c9fb4325a64d36f5dfa6a587822918a4a152725f0eef22ee9dabb65",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 19,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 24,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 44,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/airline-15.yml",
+    "input_sha256": "c250d04a54594f141e4a6230ba64a939d316d8b15028517201aca3da084476d7",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "de42692da582fa55a6cfdd563687c98c8c2126ef7006b7df59e5f8532a583ba7",
+        "certificate_sha256": "6aa44cd9f5ba6ad079a73a1d3a4d3378684258bba2c8e730b6c99cc2a9a54367",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 19,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 24,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 44,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/airline-20.yml",
+    "input_sha256": "012c46975e61d3a8df350de2a682cb9d47f59406509497c2ea72a562542ce55a",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "14590768cfe5a3aee44dab4bd5c25cb0136627dc6cfe373e36319cfaa84d64da",
+        "certificate_sha256": "923107fbbcde274bdfcce99749d83f10bcdc90728c41c87eb093bbabd006259c",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 19,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 24,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 44,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/airline-25.yml",
+    "input_sha256": "a0d81069750f24e52e04bdb7efecd6d77b64aec41e058c154f75fbba11e6c11d",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "9db90a012aa804be24cea305889c4e2418ad83b2e7cc7b6502359c602fcec553",
+        "certificate_sha256": "8f269b075f631d5917b1377a12530b1bace123d824cbd59fcb19250f1c441dda",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 19,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 24,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 44,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/airline-5.yml",
+    "input_sha256": "b3375d634339bd0477387b7559c4eae5ae554f112c0f1d9d1b21e4edc4514353",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "4e2c9479e350df3db7d84c8db18498fffeea1e436a4fd2b25bd70908aac77e74",
+        "certificate_sha256": "4b630c03b558fa51991c628985a56437da0dc8b324e9ecff5f342cb514156337",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 19,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 24,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 44,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-divine/condvar_spurious_wakeup.yml",
+    "input_sha256": "36c3c3dc239d6629a8ba20aca175d79c45880ab21458cd8ebdaac3a8ef359066",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "7861bb681efa5235b5a961ad0fb9fb7d1cfa5bd33c18adc6162135a7c886c3c3",
+        "certificate_sha256": "3b7a659b9e2401474374fce349f3f0bfe9ccf1eb6f06572d81c4019b9f6ef7d1",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 10,
+              "1": 8
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 21,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/dekker-b.yml",
+    "input_sha256": "ee2c91df2652a75c113f2667be77b799d83dae8d01b1c36baa45b8c25ceec25f",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e3ab10c0af0802988e734a22902bdc652a9ba951cab6abab87f96a0046b231f2",
+        "certificate_sha256": "38cfebfe19c67f745abc1fdfb3d29210180d1e9da9a3f090e9a53dbc605a0dc5",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 20,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 21,
+              "2": 2
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 24,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/dekker-b-unfair.yml",
+    "input_sha256": "00eedb63fb9d62a729cbdbbc78c20dc2306cd626b581321e129d31c09fc5db8e",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "36eb26274fa34a3889981b9ea687c8909e37574805d5b8b86f82de27a480b2ff",
+        "certificate_sha256": "8b4fba179845bcf881605acb65badaeb45d0d543ee246f7990bd1569c1a28a83",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 20,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 21,
+              "2": 2
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 24,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_safe-10-racy.yml",
+    "input_sha256": "a48fe857d08ac3a4ba438de35e4bd3e7e5363b4267f7ed4ba2475f684ca08cd5",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "cf9fb574dcd24458e187cbdc1ab2ad6a36b6d1bda00bd5ddb7383cc25bf33456",
+        "certificate_sha256": "f32a5af3c4a97372e40a0ef70cc9d6d6ce496b7cde0ee9507cabf3fa1b7fa8e5",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 310
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 428,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "cf9fb574dcd24458e187cbdc1ab2ad6a36b6d1bda00bd5ddb7383cc25bf33456",
+        "certificate_sha256": "ceb6a670d628857572c845d590756a4ac6fcf8a450341e5db35f36360b430f63",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 312
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 428,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_safe-11-racy.yml",
+    "input_sha256": "deae7fd0ef95d67bb618281e50bfba6f50a83de212ef14f46660866b256c6152",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "1e89ce30f8404c1e918c700cd2c9fe1df39d0907d4d95d02e8cb47c960396745",
+        "certificate_sha256": "98e5d143ec01602b4e42e02581f565a06f7b6a5c480ef19c3ec6b1fb575cc688",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 336
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 465,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "1e89ce30f8404c1e918c700cd2c9fe1df39d0907d4d95d02e8cb47c960396745",
+        "certificate_sha256": "9ead60afe84cbe1364ace6f456fe097073390d4e0cb849f3755180f437d3ee76",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 338
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 465,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_safe-12-racy.yml",
+    "input_sha256": "d91b46fd69b3013c60bad92e46ce1ef1ddf2b09c97cd6d95697162ae1af201f2",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "1705c3536c048c80a1c6dedf5b2e508674c10842f1f8a6e78d1bc1a04b0b6b64",
+        "certificate_sha256": "9bbf43ab42bccef2fb9eed4abd6d0c248518efec4d8a13803ef6a9ab6fe0aea5",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 362
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 502,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "1705c3536c048c80a1c6dedf5b2e508674c10842f1f8a6e78d1bc1a04b0b6b64",
+        "certificate_sha256": "4a7856049a87e0fe9f2e8aee97c9169dbd322377b0625f0e5c6d0431bbdf9478",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 364
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 502,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_safe-5-racy.yml",
+    "input_sha256": "40fcfd4444bd180f6e5508f0972ed92e70894b01f23e03dc2e761819c6d5a859",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "6e722344a4ae5c7157d78f907cb97f9d3791e180a3ad7eff906ad0ae8e615ab6",
+        "certificate_sha256": "73ad7deb56a94b8581287c04e378fbcae3d55aaf4948a5ed16d69932caa81083",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 180
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "6e722344a4ae5c7157d78f907cb97f9d3791e180a3ad7eff906ad0ae8e615ab6",
+        "certificate_sha256": "e39a48f7934c1b9e1ab8cfb4975eec9d525308ab2d8462d7061d3b8fd28a547b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 182
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_safe-6-racy.yml",
+    "input_sha256": "6959d4f0e51834399b1f177b2907c6f040a7f82b22df70a4ffbb4c40805c24f4",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "b81bfc975a078dad92c138fbcf2d7f203929e13c9359ea7cc9c6d50823004484",
+        "certificate_sha256": "2ac81341a229b49b3526cf3ffe7a0650b45de76c88a8f43e5677d85c96bebc19",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 206
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 280,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "b81bfc975a078dad92c138fbcf2d7f203929e13c9359ea7cc9c6d50823004484",
+        "certificate_sha256": "822aeceab14d00ffe6661fbec9c0a7f42cf33c646d34a5a9171790ffa4cb898b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 208
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 280,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_safe-7-racy.yml",
+    "input_sha256": "1723883ecbdb95d71ea3ec2c746fab3b92c3a077cf232c2150d4112b37a05f98",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "3c2cea724832765e8579195c1a9c4e4e0b79f953db72adf46d572b5e80159256",
+        "certificate_sha256": "10dfa95fb36992cfa252f3389176e8694370c2bc88cda8ef944264d9e3aba7fe",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 232
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 317,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "3c2cea724832765e8579195c1a9c4e4e0b79f953db72adf46d572b5e80159256",
+        "certificate_sha256": "0d0fded445481c2d266d4db58c4f38065ab2ac0a28bcbc1787d3fd2e7a2fc500",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 234
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 317,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_unsafe-10-racy.yml",
+    "input_sha256": "38d4dff022ef4d2ea830e2718ea99215413d1e3f67567ac017eaf8275c303ef0",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ee65bc83de77ed39449ebe4b514f16d071b094c83c51393b77a21d4a26289370",
+        "certificate_sha256": "cb2b610f0c50f7e65d1e2e83fbe3d7db154fee860d5983575aaee386adee59b7",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 310
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 428,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "ee65bc83de77ed39449ebe4b514f16d071b094c83c51393b77a21d4a26289370",
+        "certificate_sha256": "b80a8c90faf4f6e4fcbf3c9babc7678ef16b5c7098522c80b41151d9aa4a1a91",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 312
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 428,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_unsafe-11-racy.yml",
+    "input_sha256": "dd8583a115904a75c64c276a67bc1fecbbb0d70873f2ea75f8f51b865297f64f",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e1a9c66e5795119ba37eddfe9a45259106f128bacc9ee67a1b9af3f22e1fa8f2",
+        "certificate_sha256": "8d98d1d841428fca9e5852e832e42a458f6e2bfa2e2ca2b7c633b83fb0af7a84",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 336
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 465,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "e1a9c66e5795119ba37eddfe9a45259106f128bacc9ee67a1b9af3f22e1fa8f2",
+        "certificate_sha256": "a3cb5f15a9dbe46713bddcce00de4e96a612dfff6c2140f4ec84fbb325a2fdc3",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 338
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 465,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_unsafe-12-racy.yml",
+    "input_sha256": "c4525591fa85ffc9750f318a48c09fdd29dc0d26cd65c6303a681f57303fc1a4",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "4cad6ec8ee6b15e18d73205316299262af0e5b9a078811c60d99e61ecd2ceb6e",
+        "certificate_sha256": "17df78340685e40b35147d9f8160634d76b6e71d24184c3ed90652bfe5811399",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 362
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 502,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "4cad6ec8ee6b15e18d73205316299262af0e5b9a078811c60d99e61ecd2ceb6e",
+        "certificate_sha256": "2fa28affd6dd760ba26e12d31946596fd4b691283873669a684083d30f6c8079",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 364
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 502,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_unsafe-5-racy.yml",
+    "input_sha256": "146f0d3d7f309689872842ec2e107172ef6d7d230f0dea419a95cb8899767aeb",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "679b850ed53edd8e20ce33a619c832501bfc73901493485fab7279282ee6d064",
+        "certificate_sha256": "8a30b2aceeb43f004e329e67b49ca6dade18d61c75434a18aa83f6d4cbffaba9",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 180
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "679b850ed53edd8e20ce33a619c832501bfc73901493485fab7279282ee6d064",
+        "certificate_sha256": "7d15b30c43393d23b393b9662194e4b33d408a0eda050fa159745677ad115cb0",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 182
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_unsafe-6-racy.yml",
+    "input_sha256": "4c475d56613186560380fd7710c1a393bef46e366024d2f60e26aa83cc625627",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "8049ef0b9af724fe2d94ae388894697bfb07a4ef64f9b9999f217f9fa226e57a",
+        "certificate_sha256": "8d92346ece5911a007080586785ae3d7ee24b688b239277af203053b7caf139b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 206
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 280,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "8049ef0b9af724fe2d94ae388894697bfb07a4ef64f9b9999f217f9fa226e57a",
+        "certificate_sha256": "452ea266793e6265292027afe6867796c31a94d02ba69170de75a156a70bfe32",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 208
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 280,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_unsafe-7-racy.yml",
+    "input_sha256": "a938b9e3b803ef0b08d2618a78ac055be54a6e48f84c6853aab11e3467af8157",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "94cdda1ed006e092be88778306fa9cdd6bbd6e2d48df9fc10a08fdf39f600201",
+        "certificate_sha256": "98b3b3926a2604664aa838fad13e944cc5aba79897ec7c5baeafb1c7691c6c08",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 232
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 317,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "94cdda1ed006e092be88778306fa9cdd6bbd6e2d48df9fc10a08fdf39f600201",
+        "certificate_sha256": "f157261d76a334075e586c7927029bb8f17d9c8a1467e1aac7bd00fe64030d0b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 234
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 317,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/fk2012.yml",
+    "input_sha256": "25a65bfeb78eff83ae0d8a23f733f9dc95190d8c8aa20c7c495d09a2bd7eb6f0",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "3566c2b7a03e499f6f53816d7c6531ec8d0ada29c6c7512c5ff14559a44dc375",
+        "certificate_sha256": "51c40fdba6ccd4eec715e53ae7cc0cdcb72f4ee27a301c440156adffc17a5474",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:counter",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 11,
+              "1": 15
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:counter",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 47
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 76,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/fkp2013-1.yml",
+    "input_sha256": "ac100ce7c66b3266dc643fb77471441d693f59fe8c56e13ccaa684a73cdda8b0",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e1e8cd9cee2009b007dbfb738d939bf94d3b40b54597297a1d40860d4dfc69cf",
+        "certificate_sha256": "f22937a34112387e24686cee95b1d5d6d468b4bd215a66a2a2434219946e51b1",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 11,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 19,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/fkp2013-2.yml",
+    "input_sha256": "e812004a84a4494a04d3a026bee09dbf1dbf7d202520f02258b12ac817a7a74e",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "43375ce4c8d149919e8530f2c3c4b0e08e0e00d754ae9ade063d22fbf82b2e95",
+        "certificate_sha256": "b379aad74ae0c588c9ebd8e6464c7904ba66f20c4f2923aad16bc95feeb2de03",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 11,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 19,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/fkp2013_variant-1.yml",
+    "input_sha256": "6f1a33edf94ce8e584ad249b95ad5bb2102c6ab4d820eebd8874b39ecbf22785",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f45a5d958a59fa877d97440d0c09c0dea2854bfb350ed6f0f8433973eebfec4d",
+        "certificate_sha256": "96ee8efb9181f47fd40c3aac125e43ff225189f1535f2028f0a4d671d6d11533",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 23,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 27,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 32,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/fkp2013_variant-2.yml",
+    "input_sha256": "37f99419c791b8329e91533415d896c367c9197a331e0ac4d97f5b27dc6c2be9",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e880b4bd4123d97375cc2b039c48439f12291ae820209875ed4d5051b93ca542",
+        "certificate_sha256": "199e72e5d93ba75811e4b51480513f6c069a2f5191e40bc936e8c776cfc76704",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 23,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 27,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 32,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/fkp2014.yml",
+    "input_sha256": "f24d9db33c7d5aecb89ac12017849974773f5d17a3292112bf25190c4dfae9f0",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "fa645e2628b612ac40298abbbb6c741ce7a3f1915c65a3a3ec611511ab0cdb3a",
+        "certificate_sha256": "89a2cf697679ce59476921a3f77aa236bf4afe4a5a0f71bdcd61ab15ebab666a",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 20,
+              "1": 10
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 24,
+              "2": 25
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 82,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/lamport-b.yml",
+    "input_sha256": "9bb446a7af732154870b2839e66288d9133e28dfbbe8fe81423789728796a44c",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e1a4c0249ad73b2ecc8e21c5bf8c98361019ffb58c6fd87be308e0fee14a448c",
+        "certificate_sha256": "d1e47a4bf9eb23e8617d32cda891c470c96a98bb45f6959981bb6ac4f0b8779e",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 2
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "e1a4c0249ad73b2ecc8e21c5bf8c98361019ffb58c6fd87be308e0fee14a448c",
+        "certificate_sha256": "806a600696b0b3eb7941d3e0ea86bb0bd5a8ebdbf62237f768d8d7e95a42cd64",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:y",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "1": 3
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:y",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 17,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-nondet/nondet-array-1.yml",
+    "input_sha256": "e22e1beeef18edf77effe210ae0122c1338eccee79cdab905e0b74599361bc08",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "7e9610f4c016b57a2e3e7584845685c3339f24754fc819b8445f4c2193921f93",
+        "certificate_sha256": "fec6c6f166f935b27eff1a9f515692e695976f7bf2a20698ba15c3e85ff746a5",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 22,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 27,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 35,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-nondet/nondet-array-2.yml",
+    "input_sha256": "2796c466e7d8363340777400f1e90c0fc7eb53096f49ded0fb8aa6814bf1ef21",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "5749b7950407ad74753486d47618519f83594f3c87e3ab2a2fba5c3404737604",
+        "certificate_sha256": "688c0486fd8137494ccb3f352e40c5759990989250f6d6678ecec6ec9bcc406e",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 22,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 27,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 35,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-nondet/nondet-loop-bound-1.yml",
+    "input_sha256": "cdf629ba70521b99830442583c87012a34d164ca28f01f7e59d76ae2f1e525ff",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "a86d6cb5fd162badfb8c3e2a557c09b8d79f6a26ed43943b00491cc779a982ef",
+        "certificate_sha256": "4cba3b0223010fd7b4b16383b4bc1434178c4c4a6ba72fa4198f519deb63b94e",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 26,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 30,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 35,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-nondet/nondet-loop-bound-2.yml",
+    "input_sha256": "9d7936e5b6ec9509cab6289f8b3da6dd07c923c681ccf9d629892aaea9fa54f9",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "243c26ad4c25a95068e89b70360d281d32589d71c5d56903781ef7bff3848557",
+        "certificate_sha256": "52636d6932cf545de8d0759f2a12b49920c9649d91a0cc52b538430739e012a0",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 26,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 30,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 35,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-nondet/nondet-loop-bound-variant-1.yml",
+    "input_sha256": "645ee85d2a671dd1acf511bbf13e9e3bda7e0b5cc29e8abc16fb4ed3af500077",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "d23caa9af3fd48eaec7fae7b4f9b62c6d82374893fa00121c1e9ea9fdf6afb87",
+        "certificate_sha256": "36db643f5a85c14a4824020b5f661df2b748bc9838f941e11b322768a33b3bd5",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 26,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 30,
+              "2": 21
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 52,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-nondet/nondet-loop-bound-variant-2.yml",
+    "input_sha256": "dc1a8bd7c922f93873ec39bdce92396c491017d4a5984ae9a59a0e03f4bb08ec",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "66a6bf73311cbf45ceaac7b081bce419ba611b873f28fb43fcac7a0600e178ab",
+        "certificate_sha256": "4e5c6836b490b6b69ef8fa8c5e381fdaa33de1a9c5ff337ea64dd816727ad1fb",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 26,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 30,
+              "2": 21
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 52,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/peterson-b.yml",
+    "input_sha256": "13ba0c0f12adccd3d0e8bef05c1f05e632aaa49018b022a8b148494f09e3ffe5",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f1969058e2cc17961a395ea8b3ca6bd2154637c698a0accc414769bd45bc2ca9",
+        "certificate_sha256": "3a37d9bef7936b5003e253d7dc8d1db5e7e58a5a4b3029fd83a26ad619cd6786",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 9,
+              "2": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "f1969058e2cc17961a395ea8b3ca6bd2154637c698a0accc414769bd45bc2ca9",
+        "certificate_sha256": "d24b0a08a4f7b615dcb4448810596a98b46c33f92119b076f91f12d62e6bffb0",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:flag2",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "1": 3
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:flag2",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 2,
+        "pair": 0,
+        "program_sha256": "f1969058e2cc17961a395ea8b3ca6bd2154637c698a0accc414769bd45bc2ca9",
+        "certificate_sha256": "936e97a96d08715ce2d04e0e1b55b51867d0c40c2673e1e26c9a95817e48a280",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:turn",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:turn",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 2
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-C-DAC/pthread-demo-datarace-2.yml",
+    "input_sha256": "8dedc3ea8e96f333d418860556906c8618bbf50be75cff10b45de6d34fe23444",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "2f619b8b751516c8d2056e2bd4651e7cdb87b83a799310dec38b491e29599543",
+        "certificate_sha256": "866c3bde58a9432c613225eee4c917c2404b7d4af284136a1ce3bde44f46086d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 22,
+              "1": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 13,
+              "1": 9
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 31,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/qw2004-1.yml",
+    "input_sha256": "3fb83c29fe591f537beeb8acce355ea986d79a29cfcecdcee0a9fb1725d601d1",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 1,
+        "pair": 1,
+        "program_sha256": "18f6db6235bd6705103f1ea1bb89dcfb448edb78a22baf945e8d2ddb4a466a22",
+        "certificate_sha256": "94aea1085b1316361f1e03308488122e9f8b0cd8109232fe28034cc7f7b09158",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          0
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:stoppingEvent",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 9,
+              "1": 17
+            },
+            "atomic": false
+          },
+          {
+            "instance": 0,
+            "object": "global:stoppingEvent",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 37
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 54,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 2,
+        "pair": 0,
+        "program_sha256": "18f6db6235bd6705103f1ea1bb89dcfb448edb78a22baf945e8d2ddb4a466a22",
+        "certificate_sha256": "12b95048bcef46f0d4b2edd1ded8ca93ce413f7a9e823d965717ffc5bdad95c2",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          0
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:stoppingFlag",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 0,
+            "object": "global:stoppingFlag",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 16
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 63,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/qw2004-2.yml",
+    "input_sha256": "a0f042164bf78d3595348b117153fa7346585efa21c060e488a9879023a64e1b",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "351a7d6130c3c2852eb27d920cac1b984178bb6b8ad9d2beed46a09f8bff6553",
+        "certificate_sha256": "57183ba76718237284340dc98161bb4a27b684e93e74673437ee75599ac03432",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          0
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:stopped",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "1": 36
+            },
+            "atomic": false
+          },
+          {
+            "instance": 0,
+            "object": "global:stopped",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 36
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 72,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/qw2004_variant.yml",
+    "input_sha256": "1ad14026eba5b252f16e1e7c5b06294a08c72d8fedf1d2cbda596d8ea988add3",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "b4c3b5a9f1ff55f486242ad0a098fecac5433c8749e34eaf73b33a8eaff17a18",
+        "certificate_sha256": "f5221389a914577a5fbffc3cb53a20c6c2adee4121de907985379cf3cac4f4f2",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "global:stoppingEvent",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 13,
+              "2": 34
+            },
+            "atomic": true
+          },
+          {
+            "instance": 1,
+            "object": "global:stoppingEvent",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 10,
+              "1": 13
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 70,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/ldv-races/race-1_2b-join.yml",
+    "input_sha256": "475c64db2a2029c09985266553634853aa5ae7653363254bdcc8a56a9d27dc04",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "00f834c1958baf9740b7e4698ec81a7d5dc751e8afe2b6b6f7efbdbeb28782c9",
+        "certificate_sha256": "66caac9a71ea412960029104e9e70cd4a6b8c37f8eed5a2bef8f9bffb4c2773b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:pdev",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 20
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:pdev",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 19,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 23,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/ldv-races/race-1_3b-join.yml",
+    "input_sha256": "c73b137d4d055d601e6891c370b9da4780621da8a7fc8a5ca4886c6b3b685d8b",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "051e3474b574778a12f295f9557e29b6a2d58209f30116c4105a2b90fb492542",
+        "certificate_sha256": "228870f81a00fb6b4ca4a990dae0e17f318dab7ee9562910d4953eb4b58b87f2",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:pdev",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 25
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:pdev",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 19,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 28,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/read_write_lock-1b.yml",
+    "input_sha256": "d6a3f8c57ab77e58af8013fe9ddd1fa7c1d656ac7e087660662f74a34f2abc91",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "c5f4cc32e330072f94dad5138d96becf2a138a698247173c667a93b0251de24e",
+        "certificate_sha256": "3d4829f2b18a0dde2afa0f12446bb0a9d879edcac3cc63f5276e97ff0b601099",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          4
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "global:y",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 15,
+              "2": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 4,
+            "object": "global:y",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 17,
+              "4": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 26,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/read_write_lock-2b.yml",
+    "input_sha256": "7b71c781c26c072fdf5838e0877462128517513c3df1f3bde9f2474cb4533ecb",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "952e288778e384dbe1ba96c4800f24a2f7b59861f2505e868ae4977dd17f8242",
+        "certificate_sha256": "6ad1af1a9b26f0981360e1eb598f00a7b15219afaef5e9b40a8a5b3103df7cd4",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          4
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "global:r",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 15,
+              "2": 15
+            },
+            "atomic": true
+          },
+          {
+            "instance": 4,
+            "object": "global:r",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 17,
+              "4": 23
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 69,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 2,
+        "program_sha256": "952e288778e384dbe1ba96c4800f24a2f7b59861f2505e868ae4977dd17f8242",
+        "certificate_sha256": "01936d22d75cbfc3279d35ae5f9ca8a08158a226a40080a4907c18727e4dc979",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          3
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:w",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 14,
+              "1": 3
+            },
+            "atomic": true
+          },
+          {
+            "instance": 3,
+            "object": "global:w",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "3": 19
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 56,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 2,
+        "pair": 0,
+        "program_sha256": "952e288778e384dbe1ba96c4800f24a2f7b59861f2505e868ae4977dd17f8242",
+        "certificate_sha256": "44a86da2555d67fb92f28551fe3f578c3b4d82b6a104c5c3d98c34cb11443c00",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          4
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "global:y",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 15,
+              "2": 19
+            },
+            "atomic": false
+          },
+          {
+            "instance": 4,
+            "object": "global:y",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 17,
+              "4": 20
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 56,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/scull.yml",
+    "input_sha256": "aa00f20131f5095ed14e7a46332bb5342dc26be5a17ecfa68bf5b51120e1579b",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f5cad13d515ca31d32390b07042bb52b7f60a652f1886efad58d5bf3f350e34b",
+        "certificate_sha256": "3c42e223b85e8db1dbeb1d9127d8901dcaee0d808e3b07a435f3bf0673a43151",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:dev_data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 13,
+              "1": 18
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:dev_data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 31
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 63,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "f5cad13d515ca31d32390b07042bb52b7f60a652f1886efad58d5bf3f350e34b",
+        "certificate_sha256": "b2d9da899e0366f2f91f01ab7ffdaf40939306ccff30966fcc5d3ae623cae81b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:dev_qset",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 13,
+              "1": 12
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:dev_qset",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 30
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 56,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 2,
+        "pair": 0,
+        "program_sha256": "f5cad13d515ca31d32390b07042bb52b7f60a652f1886efad58d5bf3f350e34b",
+        "certificate_sha256": "70068ff940bcd574368d2c0b03675d6f41db3507f0b353aa08dcc668439740b5",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:dev_quantum",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 13,
+              "1": 15
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:dev_quantum",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 28
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 57,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 3,
+        "pair": 0,
+        "program_sha256": "f5cad13d515ca31d32390b07042bb52b7f60a652f1886efad58d5bf3f350e34b",
+        "certificate_sha256": "78f025238ce47ec24ca0765d3740c4d4e9e8e13500d45092ffce5713f9e87c92",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:dev_size",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 13,
+              "1": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:dev_size",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 26
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 53,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/szymanski-b.yml",
+    "input_sha256": "85c07d53d6385c45c48e29a19b83e4c86409a0ffe74e084bb9e5c8a5937c23fb",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "97774a95a6955a1e803649476aa3b121e8aaaad15ed02fffaf2a911143b96d83",
+        "certificate_sha256": "5acddfa0fbcdd8130ac023363b1e3f85a491fe48f2f3b4afb1c547837ae5dbbd",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 9,
+              "2": 2
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 12,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "97774a95a6955a1e803649476aa3b121e8aaaad15ed02fffaf2a911143b96d83",
+        "certificate_sha256": "ec2254f3bd610a9e0149e1097f6d488c940cb5d291619d701eb1a6088c2fefd9",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:flag2",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:flag2",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 12,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race.yml",
+    "input_sha256": "490e43bb8ca19cea87b27390f3d2ab0cf6fc9da6355c682d1c6272a9c3d813c1",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "fdb2bcd6e0c3baed8eca85fe5d4acd91cdb2f066e8d25f049c94c6ed645575de",
+        "certificate_sha256": "4e274ededaaa329a22506a77ccdaf7e14eb733aab482ef65b69196e619545148",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:threads_alive",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 25
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:threads_alive",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 19,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 28,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race-2.yml",
+    "input_sha256": "57356a47c1e9533c32a5036af0336a5d2dbdf5bea55ed5f64606bf9ec7afd35e",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "c427acac420abb6190e7cd5861202234d260385aaa97597746e88d8c3a1d7b5d",
+        "certificate_sha256": "4432ea0bb3bf2d7346decfebfc457eb6bd6e67ef5c8b748bcaeb736b361528a2",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 42,
+              "1": 27
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 30,
+              "1": 32
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 74,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race-3.yml",
+    "input_sha256": "5adb63485f34d5cafa0d99a2c73701114544138d3e69ca15b00fc732949a8202",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "98235137e485b07a36c5c9137b3ec9b69429be3ce2ab623b1f45400bdd7c44c3",
+        "certificate_sha256": "dec9d716dc74edf67d612dd0f6595aa2d50c5f7be11c8ec40a0760c58d196c7e",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 43,
+              "1": 18
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 19,
+              "1": 23
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 66,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race-5.yml",
+    "input_sha256": "9c9074e122b1777f395c954ed30ab626f529c102cb2614b7e83435b6d498a843",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ad99accc9cc1ca4a303d8b20701c84dc4565cc8a82cb217f9189b52c336c40fe",
+        "certificate_sha256": "465908c239d3fe75f50bad8547e1078aab6929296b6f5c7bf622d51bd7a85872",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 31
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 30,
+              "1": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 45,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-outer-race-2.yml",
+    "input_sha256": "d12d10876782f724294e520e736e39c29f3c74eafacabb114f7449f7b8388c75",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "bb37e90c9544a49d39d30fd919490f7dd83b47adb46acbb2adfac35b669abc51",
+        "certificate_sha256": "fbf0de4949de43dbdb1c4a2fe64bdd90a81870f07e64313a33d3a1c9db767857",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 38,
+              "1": 9
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 26,
+              "1": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 52,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-outer-race-3.yml",
+    "input_sha256": "a77d68c8e15036e88d70009e5342d88dd2f93f021b72148028da08073ac36a38",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ce533104bf347274e94cb94577546f52b7c033b6cddcb33c56aca2506a0d20ef",
+        "certificate_sha256": "3f6930bf72f50d4440c421d739af46a64472f4df85b6fe63e7b0c022cd1f084c",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 38
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 26,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 43,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-outer-race.yml",
+    "input_sha256": "47827fdca8ccc83dae99015d656cdcf2872ea585121905304e5ffb2ef40b4eac",
+    "verdict": "Race Found",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 5,
+        "program_sha256": "d2173630467c4723f03289aa1fee37c0e175e1bcb23198928666bf391e4bfa79",
+        "certificate_sha256": "1dea2f52f5cacf31955f18123f9cc52ad1f0ce556f493d936e53a6e2a04ce278",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:threads_alive",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 28
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:threads_alive",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 22,
+              "1": 10
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 38,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  }
+]

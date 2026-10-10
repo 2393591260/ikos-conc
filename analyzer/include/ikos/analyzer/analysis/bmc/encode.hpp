@@ -16,7 +16,7 @@
 #include "unroll.hpp"
 #include "facts.hpp"
 #include "initial.hpp"
-#include "replay.hpp"
+#include "evidence.hpp"
 #include "result.hpp"
 
 namespace ikos {
@@ -1429,71 +1429,9 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                         result == z3::unsat ? "smt_unsat" : "smt_unknown");
     if (result == z3::sat) {
       Result outcome(Status::Confirmed);
-      auto& evidence = outcome.evidence;
-      {
-        auto model = query.get_model();
-        evidence.model = model.to_string();
-        ReplaySnapshot snapshot(funcA->bundle());
-        evidence.replay.put("schema", 1);
-        evidence.replay.put("validation_status", "UNVALIDATED");
-        evidence.replay.put("program", snapshot.program());
-        JsonList traces;
-        auto export_trace = [&](const std::vector< BmcEvent >& path, const ValueCache& values,
-                                const std::string& id, ar::Function* entry, std::size_t start) {
-          JsonDict trace; trace.put("id", id); trace.put("entry", entry->name()); JsonList steps;
-          if (id != "startup" && entry->name() != "main") {
-            const auto& creator = funcA->name() == "main" ? pathA : funcB->name() == "main" ? pathB : startup;
-            std::size_t occurrence = id == "b" && funcA == funcB ? 1 : 0;
-            for (std::size_t j = 0; j < creator.size(); ++j)
-              if (creator[j].kind == EvKind::Create && creator[j].thread == reinterpret_cast< std::uint64_t >(entry)) {
-                if (occurrence-- != 0) continue;
-                trace.put("creator_trace", funcA->name() == "main" ? "a" : funcB->name() == "main" ? "b" : "startup");
-                trace.put("creator_step", j); break;
-              }
-          }
-          for (std::size_t i = 0; i < path.size(); ++i) {
-            JsonDict step; step.put("statement", snapshot.statement_id(path[i].stmt));
-            if (path[i].synthetic_atomic)
-              step.put("synthetic_event", path[i].kind == EvKind::Lock ? "atomic_begin" : "atomic_end");
-            if (path[i].synthetic_condition)
-              step.put("synthetic_event", path[i].kind == EvKind::Lock ? "condition_reacquire" : "condition_release");
-            if (id != "startup") step.put("clock", Z3_get_numeral_string(ctx, model.eval(clock[start + i], true)));
-            auto* result = core::dyn_cast_or_null< ar::InternalVariable >(path[i].stmt->result_or_null());
-            if (result != nullptr) {
-              auto cached = values.find({result, i});
-              if (cached != values.end()) step.put("encoded_result", Z3_get_numeral_string(ctx, model.eval(cached->second, true)));
-            }
-            const auto& e = path[i];
-            if (e.base != 0 || e.local_base != nullptr || e.heap_allocation != nullptr) {
-              auto offset = replay_offsets.find(&e);
-              if (offset != replay_offsets.end() || e.var_id == 0) {
-                JsonDict object = e.heap_allocation != nullptr
-                    ? JsonDict{{"kind", "heap"}, {"allocation", snapshot.statement_id(e.heap_allocation)},
-                               {"owner", "main"}, {"occurrence", 1}, {"extent", e.heap_extent.str()}}
-                    : snapshot.value(e.base != 0 ? static_cast< ar::Value* >(reinterpret_cast< ar::GlobalVariable* >(e.base)) : e.local_base);
-                step.put("encoded_address", JsonDict{
-                    {"object", object},
-                    {"offset", offset != replay_offsets.end() ? std::string(Z3_get_numeral_string(ctx, model.eval(offset->second, true))) : e.const_off.str()},
-                    {"width", e.width}});
-              }
-            }
-            steps.add(step);
-          }
-          trace.put("steps", steps); traces.add(trace);
-        };
-        if (!startup.empty()) export_trace(startup, cache_init, "startup", funcA->bundle()->function_or_null("main"), 0);
-        export_trace(pathA, cache_a, "a", funcA, 0);
-        export_trace(pathB, cache_b, "b", funcB, nA);
-        evidence.replay.put("traces", traces);
-        evidence.replay.put("targets", JsonList(JsonDict{{"trace", "a"}, {"step", targetA}},
-                                                   JsonDict{{"trace", "b"}, {"step", targetB}}));
-        for (std::size_t i = 0; i < startup.size(); ++i)
-          evidence.confirmed_startup.push_back({startup[i].stmt, "startup_" + std::to_string(i)});
-        for (std::size_t i = 0; i < nA; ++i)
-          evidence.confirmed_a.push_back({pathA[i].stmt, Z3_get_numeral_string(ctx, model.eval(clock[i], true))});
-        for (std::size_t i = 0; i < nB; ++i)
-          evidence.confirmed_b.push_back({pathB[i].stmt, Z3_get_numeral_string(ctx, model.eval(clock[nA + i], true))});
-      }
+      auto model = query.get_model();
+      outcome.evidence = export_counterexample(funcA, funcB, startup, pathA, pathB,
+          cache_init, cache_a, cache_b, clock, replay_offsets, model);
       return outcome;
     }
     solver_unknown |= result == z3::unknown;
