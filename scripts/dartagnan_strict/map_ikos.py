@@ -131,6 +131,8 @@ def initial_sources(replay, memory_bindings, ir_events):
         if ar['kind'] != 'load':
             continue
         address = step['encoded_address']
+        if address['object'].get('kind') != 'global':
+            continue
         region = (address['object']['id'], int(address['offset']), int(address['width']))
         t = ar.get('result', {}).get('type', {})
         regions.setdefault(region, set()).add(t.get('bits') if t.get('kind') == 'integer' else None)
@@ -232,6 +234,48 @@ def translate(replay, ir_hash, ir_events):
     if remaining:
         raise ValueError('unmapped thread traces: ' + ','.join(remaining))
     bound, omitted, mapped_steps, claims = {}, [], {}, {}
+    heap_bindings = []
+    heaps = {}
+    for trace in traces.values():
+        for step in trace['steps']:
+            obj = step.get('encoded_address', {}).get('object', {})
+            if obj.get('kind') != 'heap':
+                continue
+            sid = obj.get('allocation')
+            if sid in heaps:
+                if heaps[sid][1] != obj:
+                    raise ValueError('inconsistent heap object claim')
+                continue
+            occurrences = [(t, i) for t in traces.values() for i, s in enumerate(t['steps'])
+                           if s['statement'] == sid and 'synthetic_event' not in s]
+            if obj.get('owner') != 'main' or obj.get('occurrence') != 1 or len(occurrences) != 1:
+                raise ValueError('heap requires one actual main allocation')
+            owner, index = occurrences[0]
+            ar = instructions[sid]
+            operands = ar.get('operands', [])
+            callee = exact_function(replay['program'], owner, index, operands[0]) if operands else None
+            fn = replay['program']['functions'].get(callee, {})
+            extent = int(obj['extent'])
+            if (threads[owner['id']] != 0 or ar.get('abstract_initializer') or ar['kind'] != 'call'
+                    or callee != 'ar.libc.malloc' or not fn.get('declaration') or len(operands) != 2
+                    or ar.get('result', {}).get('type', {}).get('kind') != 'pointer'
+                    or operands[1].get('kind') != 'integer' or int(operands[1]['value']) != extent
+                    or operands[1]['type'].get('bits') != replay['program']['pointer_bits']
+                    or not 0 < extent <= 1048576):
+                raise ValueError('unmapped malloc ABI/extent')
+            sites = [s for s, stmt in instructions.items() if stmt['kind'] == 'call'
+                     and not stmt.get('abstract_initializer') and same_source(stmt, ar)]
+            matches = [e for e in ir_events if e['thread'] == 0 and same_source(ar, e)
+                       and e.get('heap_extent') == extent]
+            if sites != [sid] or len(matches) != 1:
+                raise ValueError('ambiguous/unmapped allocation source occurrence')
+            e = matches[0]
+            if e['id'] in bound:
+                raise ValueError('distinct heap allocations collapse to one event')
+            heaps[sid] = e, obj
+            bound[e['id']] = e
+            claims[e['id']] = dict(allocation_extent=extent)
+            heap_bindings.append(dict(trace=owner['id'], step=index, reference_event=e['id'], extent=extent))
     memory_bindings = []
     nondet_bindings = []
     for name, trace in traces.items():
@@ -245,6 +289,8 @@ def translate(replay, ir_hash, ir_events):
             address = step.get('encoded_address', {})
             obj = address.get('object', {})
             kind = ar['kind']
+            if kind == 'call' and step['statement'] in heaps:
+                continue
             if kind == 'call' and 'encoded_result' in step and not ar.get('abstract_initializer'):
                 callee = exact_function(replay['program'], trace, index, ar['operands'][0])
                 fn = replay['program']['functions'].get(callee, {})
@@ -277,13 +323,19 @@ def translate(replay, ir_hash, ir_events):
                         claims[e['id']] = {'nondet_value': str(value % (1 << bits)), 'nondet_width': bits}
                         nondet_bindings.append(dict(trace=name, step=index, reference_event=e['id'], callee=callee))
                         continue
-            if kind not in ('load', 'store') or obj.get('kind') != 'global':
-                omitted.append(dict(trace=name, step=index, kind=kind, reason='not a mapped global memory access'))
+            if kind not in ('load', 'store') or obj.get('kind') not in ('global', 'heap'):
+                omitted.append(dict(trace=name, step=index, kind=kind, reason='not a mapped global/heap memory access'))
+                continue
+            access_type = ar.get('result', {}).get('type', {}) if kind == 'load' else ar['operands'][1]['type']
+            if heaps and access_type.get('kind') == 'pointer':
+                # Dat3M's pointer storage is 64-bit even for C ILP32.
+                omitted.append(dict(trace=name, step=index, kind=kind, reason='pointer storage/value binding omitted in heap partial validation'))
                 continue
             token = 'load(' if kind == 'load' else 'store('
             matches = [e for e in ir_events if e['thread'] == threads[name] and same_source(ar, e)
                        and token in e['code']]
-            named = [e for e in matches if re.search(r'\b' + re.escape(obj['id']) + r'\b', e['code'])]
+            named = ([e for e in matches if re.search(r'\b' + re.escape(obj['id']) + r'\b', e['code'])]
+                     if obj['kind'] == 'global' else [])
             if named:
                 matches = named
             else:
@@ -314,7 +366,11 @@ def translate(replay, ir_hash, ir_events):
                 raise ValueError('dynamic occurrences collapse to one reference event')
             bound[e['id']] = e
             mapped_steps[name, index] = e['id']
-            claim = dict(object=obj['id'], offset=address['offset'], width=address['width'])
+            claim = dict(offset=address['offset'], width=address['width'])
+            if obj['kind'] == 'heap':
+                claim.update(heap_allocation=heaps[obj['allocation']][0]['id'], heap_extent=obj['extent'])
+            else:
+                claim['object'] = obj['id']
             if occurrence is not None:
                 claim['memory_occurrence'] = occurrence
             memory_bindings.append(dict(trace=name, step=index, reference_event=e['id'],
@@ -365,6 +421,7 @@ def translate(replay, ir_hash, ir_events):
     return cert, dict(scope='PARTIAL_FIXED_MEMORY_MODEL', threads=threads,
                       mapped_memory_events=len(memory_bindings), omitted_steps=omitted,
                       creation_bindings=creation_bindings,
+                      heap_bindings=heap_bindings,
                       memory_bindings=memory_bindings,
                       nondet_bindings=nondet_bindings,
                       initial_bindings=initial_bindings,

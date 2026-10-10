@@ -1,0 +1,178 @@
+{
+  "reference_commit": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+  "report_sha256": "5aa864c7608c314c1d50bd6c0f2b82aa076c3958208979c9ccd382d839160c40",
+  "input_sha256": "a5d5458e3d8cf05130899060969ec8c39906a1485e870f571d92651debe03df7",
+  "rows": [
+    {
+      "report_index": 0,
+      "pair_id": 0,
+      "full_counterexample_validated": false,
+      "scope": "PARTIAL_FIXED_MEMORY_MODEL",
+      "threads": {
+        "a": 0,
+        "b": 1
+      },
+      "mapped_memory_events": 2,
+      "omitted_steps": [
+        {
+          "trace": "a",
+          "step": 0,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 1,
+          "kind": "allocate",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 2,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 3,
+          "kind": "store",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 5,
+          "kind": "unary",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 6,
+          "kind": "store",
+          "reason": "pointer storage/value binding omitted in heap partial validation"
+        },
+        {
+          "trace": "a",
+          "step": 7,
+          "kind": "call",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "a",
+          "step": 8,
+          "kind": "load",
+          "reason": "pointer storage/value binding omitted in heap partial validation"
+        },
+        {
+          "trace": "a",
+          "step": 9,
+          "kind": "pointer_shift",
+          "reason": "not a mapped global/heap memory access"
+        },
+        {
+          "trace": "b",
+          "step": 0,
+          "kind": "load",
+          "reason": "pointer storage/value binding omitted in heap partial validation"
+        },
+        {
+          "trace": "b",
+          "step": 1,
+          "kind": "pointer_shift",
+          "reason": "not a mapped global/heap memory access"
+        }
+      ],
+      "creation_bindings": [
+        {
+          "trace": "b",
+          "parent_trace": "a",
+          "creator_step": 7,
+          "reference_event": 7,
+          "occurrence": null,
+          "pre_unroll_id": 13
+        }
+      ],
+      "heap_bindings": [
+        {
+          "trace": "a",
+          "step": 4,
+          "reference_event": 2,
+          "extent": 4
+        }
+      ],
+      "memory_bindings": [
+        {
+          "trace": "a",
+          "step": 10,
+          "reference_event": 10,
+          "occurrence": null,
+          "pre_unroll_id": 22
+        },
+        {
+          "trace": "b",
+          "step": 2,
+          "reference_event": 34,
+          "occurrence": null,
+          "pre_unroll_id": 4
+        }
+      ],
+      "nondet_bindings": [],
+      "initial_bindings": [],
+      "communication_bindings": [],
+      "communication_omissions": [],
+      "memory_orderings": [
+        {
+          "before": 34,
+          "after": 10
+        }
+      ],
+      "memory_order_omissions": [],
+      "unbound_claims": [
+        "CFG and call occurrence mapping",
+        "local values and nondet occurrences",
+        "synchronization history and identities",
+        "IKOS total schedule and rf choices"
+      ],
+      "result": {
+        "status": "SAT",
+        "returncode": 13,
+        "seconds": 1.7121823090001271,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/heap-binding-benchmark38/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_38-indexing_malloc.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "a5d5458e3d8cf05130899060969ec8c39906a1485e870f571d92651debe03df7",
+        "data_model": "32"
+      },
+      "corruption_probe": {
+        "status": "UNSAT_AT_BOUND",
+        "returncode": 0,
+        "seconds": 1.6661666320014774,
+        "command": [
+          "java",
+          "-Xmx2g",
+          "-cp",
+          "/tmp/ikos-recovery-2026-10-10/heap-binding-benchmark38/classes:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+          "com.dat3m.dartagnan.Dartagnan",
+          "cat/svcomp.cat",
+          "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_38-indexing_malloc.c",
+          "svcomp.properties",
+          "--property=DATARACEFREEDOM",
+          "--bound=2",
+          "--program.processing.skipAssertionsOfType=USER"
+        ],
+        "source_sha256": "a5d5458e3d8cf05130899060969ec8c39906a1485e870f571d92651debe03df7",
+        "data_model": "32"
+      }
+    }
+  ],
+  "warning": "Partial fixed-memory evidence; no full-counterexample verification claim"
+}

@@ -141,6 +141,8 @@ def events(path):
         if len(fields) == 9 and fields[8].startswith('init:'):
             _, name, offset, bits = fields[8].split(':')
             row['initial'] = dict(object=base64.b64decode(name).decode(), offset=int(offset), bits=int(bits))
+        if len(fields) == 9 and fields[8].startswith('heap:'):
+            row['heap_extent'] = int(fields[8].split(':')[1])
         rows.append(row)
     return lines[0], rows
 

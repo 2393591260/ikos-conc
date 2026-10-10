@@ -4,6 +4,7 @@
 > 最新 UNKNOWN 全量遍历及基线见 [逐任务恢复报告](ikos-bmc-unknown-sweep-2026-10-09.md)。
 > 当前冻结集回归：TP=82（标签确认、未全部独立验证）/ FP=0 / TN=697 / FN=0 / UNKNOWN=250 / 错误=0。
 > 不可变指针槽的实际发布及单次main分配身份恢复两项TP；heap读、一般动态分配仍有边界，见[地址与分配报告](ikos-bmc-main-heap-2026-10-10.md)。
+> 单次main堆对象已严格绑定参考Alloc，38的ILP32选中模型部分约束SAT且改值UNSAT；仍非完整验证，见[分配绑定](ikos-bmc-heap-binding-2026-10-10.md)。
 > 枚举中断时保留已完成前缀，在原第一轮之后利用同一10秒deadline的剩余预算查询；唯一恢复outer-race-3，见[完整前缀报告](ikos-bmc-completed-enumeration-2026-10-10.md)。
 > 默认初始化、实际持锁和有限虚假唤醒的condition前缀恢复一项TP，见[条件变量报告](ikos-bmc-condition-prefix-2026-10-10.md)；仍缺一般生命周期、属性及完整独立验证。
 > 有限global候选集交给实际地址编码，稳定恢复对象选择用例；全量77/78有波动，lu全量回退而隔离旧/新均FALSE，暂不声称净增长或速度收益，见[对象选择报告](ikos-bmc-global-choice-2026-10-10.md)。

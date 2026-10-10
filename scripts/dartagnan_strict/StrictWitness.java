@@ -11,6 +11,8 @@ import com.dat3m.dartagnan.program.event.core.MemoryCoreEvent;
 import com.dat3m.dartagnan.program.event.core.CondJump;
 import com.dat3m.dartagnan.program.event.core.Local;
 import com.dat3m.dartagnan.program.event.core.Init;
+import com.dat3m.dartagnan.program.event.core.Alloc;
+import com.dat3m.dartagnan.program.memory.MemoryObject;
 import com.dat3m.dartagnan.program.event.core.threading.ThreadCreate;
 import com.dat3m.dartagnan.program.misc.NonDetValue;
 import com.dat3m.dartagnan.program.event.metadata.MemoryOrder;
@@ -49,6 +51,8 @@ public final class StrictWitness {
             + "\t" + (unrolling == null ? -1 : unrolling.value())
             + "\t" + (e instanceof Local l && l.getExpr() instanceof NonDetValue
                 && l.getResultRegister().getType() instanceof IntegerType t ? "nondet:" + t.getBitWidth()
+                : e instanceof Alloc a && a.isHeapAllocation() && a.getAllocatedObject().hasKnownSize()
+                    ? "heap:" + a.getAllocatedObject().getKnownSize()
                 : e instanceof Init i && i.getBase().isStaticallyAllocated()
                     && i.getBase().getName() != null && i.getValue().getType() instanceof IntegerType t
                     ? "init:" + b64(i.getBase().getName()) + ":" + i.getOffset() + ":" + t.getBitWidth() : "");
@@ -98,7 +102,19 @@ public final class StrictWitness {
         var matches = c.getTask().getProgram().getMemory().getObjects().stream()
             .filter(o -> o.isStaticallyAllocated() && name.equals(o.getName())).toList();
         if (matches.size() != 1) throw new IllegalArgumentException("ambiguous/unknown static object: " + name);
-        var o = matches.get(0);
+        return objectAddress(c, e, matches.get(0), offset, width);
+    }
+    private static MemoryObject heapObject(Event e, String extent) {
+        if (!(e instanceof Alloc a) || !a.isHeapAllocation() || a.getThread().getId() != 0
+            || a.getThread().getEntry().getCreator() != null)
+            throw new IllegalArgumentException("not an implicit-main heap allocation");
+        var o = a.getAllocatedObject();
+        if (!o.isHeapAllocated() || o.getAllocationSite() != a || !o.hasKnownSize()
+            || o.getKnownSize() != new BigInteger(extent).intValueExact() || o.getKnownSize() <= 0)
+            throw new IllegalArgumentException("heap allocation extent/identity mismatch");
+        return o;
+    }
+    private static BooleanFormula objectAddress(EncodingContext c, MemoryCoreEvent e, MemoryObject o, String offset, String width) {
         int off = new BigInteger(offset).intValueExact(), bytes = Integer.parseInt(width);
         var accesses = e.getMemoryAccesses();
         if (accesses.size() != 1 || bytes <= 0 || off < 0 || !o.hasKnownSize()
@@ -170,9 +186,10 @@ public final class StrictWitness {
             int count = Integer.parseInt(p.getProperty("count"));
             if (count < 2 || count > 10000) throw new IllegalArgumentException("invalid event count");
             var boundIds = new HashSet<Integer>();
+            var heapIds = new HashSet<Integer>();
             for (int i = 0; i < count; ++i) {
                 String k = "event." + i + ".";
-                used.addAll(List.of(k + "id", k + "thread", k + "creator", k + "descriptor", k + "value", k + "address", k + "object", k + "offset", k + "width", k + "creation_occurrence", k + "memory_occurrence", k + "nondet_value", k + "nondet_width"));
+                used.addAll(List.of(k + "id", k + "thread", k + "creator", k + "descriptor", k + "value", k + "address", k + "object", k + "offset", k + "width", k + "creation_occurrence", k + "memory_occurrence", k + "nondet_value", k + "nondet_width", k + "heap_allocation", k + "heap_extent", k + "allocation_extent"));
                 Event e = event(p, k + "id", events);
                 if (!boundIds.add(e.getGlobalId())) throw new IllegalArgumentException("duplicate event");
                 var creator = e.getThread().getEntry().getCreator();
@@ -181,6 +198,7 @@ public final class StrictWitness {
                     || !b64(descriptor(e)).equals(p.getProperty(k + "descriptor")))
                     throw new IllegalArgumentException("event/instance/creation mismatch");
                 prover.addConstraint(c.execution(e));
+                if (p.containsKey(k + "allocation_extent")) heapObject(e, p.getProperty(k + "allocation_extent"));
                 if (p.containsKey(k + "creation_occurrence"))
                     creationOccurrence(c, prover, e, p.getProperty(k + "creation_occurrence"));
                 if (p.containsKey(k + "memory_occurrence"))
@@ -193,14 +211,23 @@ public final class StrictWitness {
                         throw new IllegalArgumentException("not a direct nondet local result");
                     prover.addConstraint(number(c, c.result(l).formula(), p.getProperty(k + "nondet_value")));
                 }
-                if (p.containsKey(k + "value") || p.containsKey(k + "address") || p.containsKey(k + "object") || p.containsKey(k + "offset") || p.containsKey(k + "width")) {
+                if (p.containsKey(k + "value") || p.containsKey(k + "address") || p.containsKey(k + "object") || p.containsKey(k + "offset") || p.containsKey(k + "width") || p.containsKey(k + "heap_allocation") || p.containsKey(k + "heap_extent")) {
                     if (!(e instanceof MemoryCoreEvent m)) throw new IllegalArgumentException("not a memory event");
                     if (p.containsKey(k + "value")) prover.addConstraint(number(c, c.value(m).formula(), p.getProperty(k + "value")));
                     if (p.containsKey(k + "address")) prover.addConstraint(number(c, c.address(m).formula(), p.getProperty(k + "address")));
-                    if (p.containsKey(k + "object") || p.containsKey(k + "offset") || p.containsKey(k + "width"))
+                    if (p.containsKey(k + "heap_allocation") || p.containsKey(k + "heap_extent")) {
+                        if (p.containsKey(k + "object") || !p.containsKey(k + "heap_extent")
+                            || !p.containsKey(k + "offset") || !p.containsKey(k + "width"))
+                            throw new IllegalArgumentException("incomplete/conflicting heap address claim");
+                        Event allocation = event(p, k + "heap_allocation", events);
+                        heapIds.add(allocation.getGlobalId());
+                        prover.addConstraint(objectAddress(c, m, heapObject(allocation, p.getProperty(k + "heap_extent")),
+                            p.getProperty(k + "offset"), p.getProperty(k + "width")));
+                    } else if (p.containsKey(k + "object") || p.containsKey(k + "offset") || p.containsKey(k + "width"))
                         prover.addConstraint(objectAddress(c, m, p.getProperty(k + "object"), p.getProperty(k + "offset"), p.getProperty(k + "width")));
                 }
             }
+            if (!boundIds.containsAll(heapIds)) throw new IllegalArgumentException("heap allocation event is unbound");
             Event a = event(p, "target_a", events), b = event(p, "target_b", events);
             if (!boundIds.contains(a.getGlobalId()) || !boundIds.contains(b.getGlobalId())
                 || !(a instanceof MemoryCoreEvent ma) || !(b instanceof MemoryCoreEvent mb))
