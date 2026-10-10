@@ -1,0 +1,121 @@
+{
+  "audit_date": "2026-10-10",
+  "source_commit": "b3e6706efd1eaf9e69e128d8235d50b8add680e6",
+  "analyzer_changed": false,
+  "ikos_analyzer_sha256": "a88dc47be73510ddb380bbb9b842d2ce448f96755d99a29a72192732900f90ff",
+  "baseline_scope": "saved frozen 1029 ILP32 tasks; not rerun for this review",
+  "saved_baseline": {
+    "TP": 106,
+    "FP": 0,
+    "TN": 696,
+    "FN": 0,
+    "UNKNOWN": 227,
+    "error": 0
+  },
+  "experiments": {
+    "c_inputs": 19,
+    "ikos_runs": 76,
+    "dartagnan_runs": 38,
+    "goblint_runs": 38,
+    "bits": [
+      32,
+      64
+    ],
+    "ikos_bmc": [
+      false,
+      true
+    ],
+    "demote_in_both_modes": true,
+    "fn_mechanisms": 6
+  },
+  "confirmed_fn_cases": [
+    "distinct-field-locks",
+    "transitive-publication",
+    "dynamic-entry",
+    "atomic-guard-refresh",
+    "join-upper-bound",
+    "sentinel-writer-union"
+  ],
+  "safe_controls": [
+    "same-field-lock-control",
+    "publication-after-join-control",
+    "join-writer-control"
+  ],
+  "case_sha256": {
+    "docs/artifacts/ai-audit-2026-10-10/cases/atomic-guard-refresh.c": "7afa5fde611025fc73e941f5c5c114fbf7a54d711dc167d4baeb89c683b15039",
+    "docs/artifacts/ai-audit-2026-10-10/cases/atomic-no-local-store-control.c": "b74de8691d3ff159d9eba5a165e5f1f3b03f862c950f75bec28b7fbaba484f60",
+    "docs/artifacts/ai-audit-2026-10-10/cases/atomic-volatile-control.c": "5b0a0914ea17a541fc5c6f28a15715d4e9a34c726d4fc72b6d04c0f6582b375b",
+    "docs/artifacts/ai-audit-2026-10-10/cases/branch-release-union.c": "137bdf02fea14bb3a5e92369820f80e893488e0045ff14c16b75d93620d95be0",
+    "docs/artifacts/ai-audit-2026-10-10/cases/direct-entry-control.c": "db46be8e9270a0311bbc525741c6cd5b0efc0974ab224588a3dad8ee2926fa7e",
+    "docs/artifacts/ai-audit-2026-10-10/cases/direct-publication-control.c": "0ff7124df91c3fcb159b0a8033ece4015bc9c92cfa3320bc698bb55b7434616b",
+    "docs/artifacts/ai-audit-2026-10-10/cases/distinct-field-locks.c": "990176961437674070f2bdd0c057887c6bfb36a68c8e4c5c1b33cdfeef6643a3",
+    "docs/artifacts/ai-audit-2026-10-10/cases/dynamic-entry.c": "576245edded48f0414f7e1aacd8b3250f7651d6dd7e0185d24f088bc8cc91171",
+    "docs/artifacts/ai-audit-2026-10-10/cases/initial-pointer-source.c": "80db437eb93ac1c9408cf4666fe44a8572749ac6959dbeee2d092ec294a91a65",
+    "docs/artifacts/ai-audit-2026-10-10/cases/join-inert-control.c": "4d67379c57277bc2d239b6748dfd7e1c05418f81fb21fe865f9652061d0c2b48",
+    "docs/artifacts/ai-audit-2026-10-10/cases/join-upper-bound.c": "89e36b2a10e24cbadf2f6d3bd7a1340a7cd925215d58e5a653fd2639060f4553",
+    "docs/artifacts/ai-audit-2026-10-10/cases/join-writer-control.c": "5782a6524d2699ceac0eabe3123eaaac6c9d5dec071745627e381f5b95fcb2d1",
+    "docs/artifacts/ai-audit-2026-10-10/cases/publication-after-join-control.c": "30dd634d17518d13a77ee36ec78cd8e63c4f606544491a37f4287cafb8c9263d",
+    "docs/artifacts/ai-audit-2026-10-10/cases/renamed-field-locks.c": "ec2441de758d918be95a8eb568ec6397357a5ecbf70ea215af50b4bf475e244f",
+    "docs/artifacts/ai-audit-2026-10-10/cases/same-field-lock-control.c": "d11e922dae9aef8174e3c006cf4d9774146db50bd413eb8dad302fc7682a430f",
+    "docs/artifacts/ai-audit-2026-10-10/cases/sentinel-renamed-writers.c": "8834fd80b11802c84c804146d59346a79f83862b619fef4b9ee81062053162f0",
+    "docs/artifacts/ai-audit-2026-10-10/cases/sentinel-writer-union.c": "039e7394b2da21fd112ab152630b361d0a1c0c9db1ecff378ecdbb2573212148",
+    "docs/artifacts/ai-audit-2026-10-10/cases/transitive-publication.c": "00fd35290f771f0c76c06f4299330b8d8b6a35e30dd3431d96e54c386dc58ca3",
+    "docs/artifacts/ai-audit-2026-10-10/cases/unlocked-field-control.c": "323750d8f3c981e35b3396523e54542e0d5f19932650126a2583a9044c55df4b"
+  },
+  "expected_verdict_source": "manual source reasoning and explicit finite race prefixes in audit document, not official benchmark YAML",
+  "reference_scope": {
+    "dartagnan": {
+      "version": "4.3.1",
+      "pinned_source_revision": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+      "revision_provenance": "existing fixed local source archive, not a live git checkout",
+      "engine": "native com.dat3m.dartagnan.Dartagnan; no strict probe or witness adapter",
+      "bound": 3,
+      "property": "DATARACEFREEDOM",
+      "jar_sha256": "e7e63dd6815f26b4b9f3b160899cf809cb4de6db86fbf2e1796bfd6e5ab422f6",
+      "cat_sha256": "1406a3a18741c0a73a8f9d46cda20ba87a06237318b7ac06e00319e32574affb",
+      "properties_sha256": "983ad58e49f57a0581402cdfbf71797395f7a0596108b86d4d029618a00e841c",
+      "environment": {
+        "DAT3M_HOME": "/home/ruan/dartagnan-svcomp2026/dartagnan",
+        "CFLAGS": "-fgnu89-inline -m32 or -m64, matching each job",
+        "DAT3M_OUTPUT": "per-job temporary directory",
+        "strict_probe_envs_unset": [
+          "IKOS_REFERENCE_PROBE",
+          "IKOS_STRICT_CERTIFICATE",
+          "IKOS_STRICT_EVENT_DUMP"
+        ]
+      }
+    },
+    "goblint": {
+      "source_revision": "bb55b70d91290992629ba3d073185c10cdf356e6",
+      "binary_sha256": "48798699f87ee0401ec2e4f21f23a6e4e740da8bc431cf58c0eb3168fc4219d6",
+      "conf_sha256": "11c0559470eb869bc8ce22a0b646f494d072b6b33de80d8f4fdb0af805d953e6",
+      "property_sha256": "31df8a776884387789d347fbc389a98caeea2fcff0755f232a6a22da09dc8cbb",
+      "caveats": [
+        "Every ILP32 run warned Machine definition not available for selected architecture: unsupported reference configuration.",
+        "dynamic-entry returned native true alongside an explicit Unsound warning on both ABIs: not sound confirmation.",
+        "Race warning plus UNKNOWN is a may-result, not a concrete witness."
+      ]
+    }
+  },
+  "ikos_defaults": {
+    "machine_integer_domain": "interval",
+    "default_provenance": "installed ikos/args.py:247",
+    "timeout_seconds": 35,
+    "diagnostics_env_unset": true
+  },
+  "ikos_source_sha256": {
+    "analyzer/src/checker/data_race.cpp": "6a0b646e664be0ab41eb10b9811d163c9804b89b611c3199828d41e29977073c",
+    "analyzer/src/analysis/value/thread_modular.cpp": "11fa9af10d4796e747dbdad83fb5715a4b725a2ecea6bb603548e0823b22300f",
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp": "9d61edbab0e376cc280cbbc7226da2534a9a6a81a1437f619e908def2128aa53",
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/numerical.hpp": "dd803a983268b4a58ccd7edbda50fb41a97d2407b836dbf876743b1d8e402d77",
+    "core/include/ikos/core/domain/concurrent_global_env.hpp": "f70c5aa57d1bcb31c90204a5898c1740095c25641d0ec9cf9ecdfa19e9a94dec",
+    "core/include/ikos/core/domain/lockset/lockset_domain.hpp": "1d849c5931496b29c3bb3d26ab7d9f70d3cb7b487e7b32c3739f501b09fde092"
+  },
+  "sentinel_debug_provenance": {
+    "source_sha256": "039e7394b2da21fd112ab152630b361d0a1c0c9db1ecff378ecdbb2573212148",
+    "original_log_sha256": "b78e327d032229b8b54cf24f1578cc227ae995a4a62251a5aba7f39b0c1a91ac",
+    "saved_excerpt": "sentinel-excerpt.txt",
+    "original_lines": "116-153",
+    "source_probe_added": false
+  }
+}
