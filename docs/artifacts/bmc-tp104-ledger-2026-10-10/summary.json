@@ -1,6 +1,6 @@
 {
-  "analyzer_commit": "9d9cf39",
-  "analyzer_sha256": "53e4f1369d9a9567f2c245cf2d8b59b1eba84bc86d31ec8560f7934392344763",
+  "analyzer_commit": "48d36a2",
+  "analyzer_sha256": "0a741e12b80f9984b7b52c4f16d703bf126cc0ba7a654f7ffc3f779a8fbed6ff",
   "tasks": 301,
   "current_unknown": 229,
   "reference_counts": {
@@ -35,19 +35,16 @@
   },
   "observed_reasons": {
     "ai_candidate_bounds": {
-      "racy": 12,
+      "racy": 13,
       "safe": 10
     },
     "sc_read_from": {
-      "racy": 25,
+      "racy": 26,
       "safe": 20
     },
     "smt_unsat": {
-      "racy": 15,
+      "racy": 16,
       "safe": 17
-    },
-    "prefix_address": {
-      "racy": 2
     },
     "address_base": {
       "racy": 1
@@ -87,6 +84,9 @@
       "safe": 16,
       "racy": 18
     },
+    "prefix_address": {
+      "racy": 1
+    },
     "activation_deferred": {
       "safe": 25,
       "racy": 35
@@ -99,12 +99,12 @@
       "safe": 23,
       "racy": 24
     },
-    "offset_prefilter": {
-      "safe": 5
-    },
     "transitive_thread_order": {
       "safe": 11,
       "racy": 3
+    },
+    "offset_prefilter": {
+      "safe": 5
     },
     "mixed_atomic": {
       "safe": 2
@@ -165,7 +165,7 @@
       "safe": 2
     }
   },
-  "reference_refresh": "Most hash-matching historical records retained; two restored cases freshly checked on both ABIs.",
+  "reference_refresh": "Hash-matching historical records retained; two attribute cases and malloc_struct freshly run on both ABIs; explicit reference-native value probes recorded.",
   "remaining_global_obligations": [
     "Full source/witness validation of selected executions.",
     "Proof of all SAFE filters and C/LLVM definedness premises.",
