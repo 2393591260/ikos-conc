@@ -190,9 +190,10 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
         }
         event.base = address.base; event.const_off = address.const_off;
         event.var_id = address.var_id; event.var_before = address.var_before; event.coeff = address.coeff;
-        auto* type = core::dyn_cast< ar::PointerType >(call->argument(argument_index)->type());
-        if (type == nullptr || type->pointee()->is_opaque()) return false;
-        event.width = call->bundle()->data_layout().store_size_in_bytes(type->pointee()).to< std::uint64_t >();
+        std::uint64_t alignment;
+        if (!synchronization_layout(call, argument_index, event.width, alignment)) {
+          record(diagnostics, "mutex_storage_layout", event.stmt); return false;
+        }
         if (event.synthetic_condition && event.var_id != 0) return false;
         if (event.var_id == 0 && (event.const_off < 0 || event.const_off + event.width > size)) return false;
         auto id = lock_ids.emplace(std::make_pair(address.base, address.const_off), lock_ids.size() + 1);
@@ -256,7 +257,14 @@ inline bool check_race(const std::vector< BmcEvent >& inputA,
             !pointer_on_path(call->argument(index), path, i, root, argument, address, &allocation_origin)) {
           record(diagnostics, "library_storage_identity", call); return false;
         }
-        address.width = call->bundle()->data_layout().store_size_in_bytes(type->pointee()).to< std::uint64_t >();
+        if (opaque) {
+          std::uint64_t alignment;
+          if (!synchronization_layout(call, index, address.width, alignment)) {
+            record(diagnostics, "library_storage_layout", call); return false;
+          }
+        } else {
+          address.width = call->bundle()->data_layout().store_size_in_bytes(type->pointee()).to< std::uint64_t >();
+        }
         library_storage.push_back({address, &path, opaque});
       }
     }

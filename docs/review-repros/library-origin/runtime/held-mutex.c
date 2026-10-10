@@ -4,6 +4,7 @@ pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 void *reader(void *unused) {
   assert(pthread_mutex_lock(&mutex)==0);
   assert(mutex.__data.__lock!=0);
+  assert(mutex.__data.__owner!=0);
   assert(pthread_mutex_unlock(&mutex)==0);
   return 0;
 }

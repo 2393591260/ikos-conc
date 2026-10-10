@@ -10,7 +10,7 @@
 
 > 原始整数global的真实字节来源可拼接混合宽度读，9类正例恢复确认；普通同宽快速路径保留，冻结集逐项不变，见[字节SC值流](ikos-bmc-byte-rf-2026-10-10.md)。
 
-> mutex内部状态遗漏造成的错误FALSE已修复，隐式库输出不能冒充静态读源；冻结集逐项不变，见[库值来源](ikos-bmc-library-origin-2026-10-10.md)。
+> mutex 内部字段的库值来源门已进一步修正 AR opaque 指针造成的 1 字节 footprint；owner 字段假反例退回 UNKNOWN，见[完整控制宽度](ikos-bmc-sync-storage-width-2026-10-10.md)。历史初版见[库值来源](ikos-bmc-library-origin-2026-10-10.md)。
 
 > pre-main constructor遗漏造成的错误FALSE已收紧为UNKNOWN，冻结集逐项不变；固定参考也遗漏该初始化，见[构造函数审查](ikos-bmc-constructors-2026-10-10.md)。
 

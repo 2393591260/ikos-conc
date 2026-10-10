@@ -1,0 +1,198 @@
+[
+  {
+    "case": "disjoint-handle-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "disjoint-handle-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1,
+      "sc_same_path_read_from": 1
+    }
+  },
+  {
+    "case": "handle-renamed-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "assume_value": 2,
+      "library_read_origin": 2
+    }
+  },
+  {
+    "case": "handle-renamed-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "assume_value": 2,
+      "library_read_origin": 2
+    }
+  },
+  {
+    "case": "handle-unsupported",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "assume_value": 2,
+      "library_read_origin": 2
+    }
+  },
+  {
+    "case": "handle-unsupported",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "assume_value": 2,
+      "library_read_origin": 2
+    }
+  },
+  {
+    "case": "mutex-helper-control",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "opaque_library_storage": 2
+    }
+  },
+  {
+    "case": "mutex-helper-control",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "opaque_library_storage": 2
+    }
+  },
+  {
+    "case": "mutex-owner-control",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "opaque_library_storage": 2
+    }
+  },
+  {
+    "case": "mutex-owner-control",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "opaque_library_storage": 2
+    }
+  },
+  {
+    "case": "mutex-owner-helper-control",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "opaque_library_storage": 2
+    }
+  },
+  {
+    "case": "mutex-owner-helper-control",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "opaque_library_storage": 2
+    }
+  },
+  {
+    "case": "mutex-plain-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1
+    }
+  },
+  {
+    "case": "mutex-plain-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "sat": 1
+    }
+  },
+  {
+    "case": "mutex-state-control",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "opaque_library_storage": 2
+    }
+  },
+  {
+    "case": "mutex-state-control",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "opaque_library_storage": 2
+    }
+  },
+  {
+    "case": "symbolic-disjoint-fields-race",
+    "bits": 32,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 5,
+      "not_searched_after_confirmation": 2,
+      "sat": 1,
+      "sc_read_from": 1,
+      "target_not_reached": 1
+    }
+  },
+  {
+    "case": "symbolic-disjoint-fields-race",
+    "bits": 64,
+    "verdict": "The program is definitely UNSAFE",
+    "counts": {
+      "ai_candidate_bounds": 1,
+      "integer_operation": 5,
+      "not_searched_after_confirmation": 2,
+      "sat": 1,
+      "sc_read_from": 1,
+      "target_not_reached": 1
+    }
+  },
+  {
+    "case": "symbolic-mutex-owner-control",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "opaque_library_storage": 2
+    }
+  },
+  {
+    "case": "symbolic-mutex-owner-control",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "opaque_library_storage": 2
+    }
+  },
+  {
+    "case": "symbolic-mutex-state-control",
+    "bits": 32,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "opaque_library_storage": 2
+    }
+  },
+  {
+    "case": "symbolic-mutex-state-control",
+    "bits": 64,
+    "verdict": "The program is potentially UNSAFE",
+    "counts": {
+      "opaque_library_storage": 2
+    }
+  }
+]

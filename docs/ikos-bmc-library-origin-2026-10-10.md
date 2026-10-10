@@ -1,5 +1,8 @@
 # BMC 隐式库写入的值来源边界（2026-10-10）
 
+> 后续发现初版 AR opaque 指针仅计算 1 字节 footprint，仍漏过 owner 字段。
+> 已另行修复，当前结论以[完整控制宽度](ikos-bmc-sync-storage-width-2026-10-10.md)为准；本文保留历史实验。
+
 ## 已复现问题与适用环境
 
 reader成功取得默认glibc mutex，读取`mutex.__data.__lock`，release后仅在

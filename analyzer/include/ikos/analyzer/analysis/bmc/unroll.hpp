@@ -13,6 +13,7 @@
 #include <functional>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/GlobalVariable.h>
+#include <llvm/IR/Module.h>
 
 #include "diagnostics.hpp"
 
@@ -380,6 +381,25 @@ inline bool thread_exit_call(ar::CallBase* call) {
          !declaration->isVarArg() && declaration->arg_size() == 1 && declaration->getReturnType()->isVoidTy() &&
          declaration->getFunctionType()->getParamType(0)->isPointerTy() && source->getType()->isVoidTy() &&
          source->arg_size() == 1 && source->getArgOperand(0)->getType()->isPointerTy();
+}
+
+// AR synchronization intrinsics erase pointee types to i8*. Recover the
+// original call's complete control-storage layout, including trailing padding.
+inline bool synchronization_layout(ar::CallBase* call, unsigned argument,
+                                   std::uint64_t& width, std::uint64_t& alignment) {
+  auto* source = call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+  if (source == nullptr || argument >= source->arg_size()) return false;
+  auto* pointer = llvm::dyn_cast< llvm::PointerType >(source->getArgOperand(argument)->getType());
+  if (pointer == nullptr || pointer->isOpaque()) return false;
+  auto* object = pointer->getPointerElementType();
+  if (!object->isSized() || object->isIntegerTy(8)) return false;
+  const auto& layout = source->getModule()->getDataLayout();
+  auto size = layout.getTypeAllocSize(object);
+  if (size.isScalable() || size.getFixedValue() == 0) return false;
+  width = size.getFixedValue();
+  alignment = layout.getABITypeAlign(object).value();
+  return true;
 }
 
 // These summaries do not touch existing user memory or hide synchronization.
