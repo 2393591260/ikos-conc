@@ -1,0 +1,94 @@
+[
+  {
+    "task": "c/goblint-regression/13-privatized_04-priv_multi_true.i",
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "32bit",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/13-privatized_04-priv_multi_true.i"
+    ],
+    "source_sha256": "d5772eac83993f999ed7a0d2c72e283c734e18136b4020af8f8e407255c20c04",
+    "status": "TRUE",
+    "returncode": 0,
+    "seconds": 0.101,
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: true"
+    ]
+  },
+  {
+    "task": "c/goblint-regression/13-privatized_67-pthread_cond_wait_true.i",
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "32bit",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/13-privatized_67-pthread_cond_wait_true.i"
+    ],
+    "source_sha256": "4f5c1949da3ffd7703b26279578bf3cad55c86e8b0ffaff69f49645cdd541f53",
+    "status": "TRUE",
+    "returncode": 0,
+    "seconds": 0.086,
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: true"
+    ]
+  },
+  {
+    "task": "c/goblint-regression/13-privatized_67-pthread_cond_wait_unknown_1_neg.i",
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "32bit",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/13-privatized_67-pthread_cond_wait_unknown_1_neg.i"
+    ],
+    "source_sha256": "78eedbb170ccb94e306b53f35c5dd71f86d003c1abe4d157fc2c720e38b8df88",
+    "status": "TRUE",
+    "returncode": 0,
+    "seconds": 0.093,
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: true"
+    ]
+  },
+  {
+    "task": "c/goblint-regression/13-privatized_67-pthread_cond_wait_unknown_1_pos.i",
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/goblint-ref/goblint",
+      "--conf",
+      "/home/ruan/goblint-analyzer/conf/ldv-races.json",
+      "--set",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--set",
+      "exp.architecture",
+      "32bit",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/13-privatized_67-pthread_cond_wait_unknown_1_pos.i"
+    ],
+    "source_sha256": "1cd82b96c01a730247618eab1464d47c03eec9013c1d245312913e94981f2bce",
+    "status": "TRUE",
+    "returncode": 0,
+    "seconds": 0.089,
+    "unsound": false,
+    "diagnostics": [
+      "SV-COMP result: true"
+    ]
+  }
+]

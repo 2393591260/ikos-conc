@@ -888,3 +888,34 @@ BMC TP97→104、TN643不变、UNKNOWN288→281，FP/FN0、error1。
 [对照](artifacts/ai-p0-2026-10-10/detach/fixtures-after.json)、
 [7个选中执行](artifacts/ai-p0-2026-10-10/detach/executions.json)、
 [全量配对](artifacts/ai-p0-2026-10-10/detach/paired.json)。
+
+
+### 9.18 精度：经过核实的 POSIX sleep 声明
+
+由4个真实safe-label UNKNOWN开始核对源码：priv_multi的A/B各受mutex_A/mutex_B保护，
+cond_wait三个变体对g的访问均持mut；值断言的真假不属于本轮no-data-race属性。
+共同精度损失是sleep被unknown-extern效果gate挡住。校准Goblint四项TRUE、无Unsound；
+libraryFunctions.ml:394的sleep模型不访问应用内存，返回未知seconds。
+POSIX2024明确线程暂停，multi-threaded sleep不借用SIGALRM；不释放用户mutex，
+也不建立HB。信号/取消注册仍走各自现有未覆盖调用边界，不能由纯sleep隐藏回调。
+
+仅准确匹配declared sleep、非variadic、一个32bit整数参数和32bit整数返回的AR合同，
+复用无内存副作用的unknown-return transfer。返回值保持不确定；不改锁集，不加同步边，
+不把sleep(N)当“另一个线程必已结束”。自定义body继续分析，错原型/相似名字保守处理。
+没有把sleep加入BMC leaf/value编码，经过sleep的反例前缀仍须独立补足调用语义。
+
+build/install一致；48次双ABI/双模式/改名/helper/锁/返回守卫/信号/错原型对照通过，
+原审查76次、句柄64次与旧BMC20次通过。未持共同锁的例保留UNKNOWN；
+可疑返回守卫没有被常量0强制删掉。新Goblint十项对照无Unsound，安全3类TRUE，
+两类may-race UNKNOWN；不会把参考UNKNOWN误称TP。
+
+1029完整顺序配对仅恢复上述4项：AI TN643→647、UNKNOWN385→381；
+BMC TP104不变、TN643→647、UNKNOWN281→277，FP/FN0、error1。
+此收益是准确调用效果覆盖，不冒称实现了Goblint完整PBR或digest框架。
+证据：[汇总](artifacts/ai-p0-2026-10-10/sleep/summary.json)、
+[合同](artifacts/ai-p0-2026-10-10/sleep/contracts.json)、
+[对照](artifacts/ai-p0-2026-10-10/sleep/fixtures-after.json)、
+[校准参考](artifacts/ai-p0-2026-10-10/sleep/goblint.json)、
+[四个参考结果](artifacts/ai-p0-2026-10-10/sleep/corpus-reference.json)、
+[源码充分前提](artifacts/ai-p0-2026-10-10/sleep/corpus-proof.json)、
+[全量](artifacts/ai-p0-2026-10-10/sleep/paired.json)。

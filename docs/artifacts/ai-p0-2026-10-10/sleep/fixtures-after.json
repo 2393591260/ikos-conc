@@ -1,0 +1,516 @@
+[
+  {
+    "bits": 32,
+    "case": 0,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 0,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 0,
+    "renamed": 1,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 0,
+    "renamed": 1,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "renamed": 1,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "renamed": 1,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is definitely UNSAFE",
+    "boundaries": 0,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "6cd65985eb653aa5770b70b2ce059cd6641c26b0466ef4c22c2816d767c84929",
+        "certificate_sha256": "8d86cbb70f62fb8016118af091789814bd9468672b1d747be5999419c7c07b9d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 9,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 9,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 9,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "renamed": 1,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "renamed": 1,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "renamed": 1,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "renamed": 1,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is definitely UNSAFE",
+    "boundaries": 0,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e837102d24995b8fe3ee8d9baed01e6105293b9141c14c2168439507275cfcaa",
+        "certificate_sha256": "90cf6b6c4f4fb9e93b09c099009b92f4e2ea9c547b8480a12b5e9a05fc3ab4bd",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 9,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 0,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 9,
+    "renamed": 0,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 9,
+    "renamed": 0,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "boundaries": 1,
+    "executions": []
+  }
+]

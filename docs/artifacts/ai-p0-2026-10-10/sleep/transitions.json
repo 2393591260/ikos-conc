@@ -1,0 +1,30 @@
+[
+  {
+    "task": "c/goblint-regression/13-privatized_04-priv_multi_true.i",
+    "before_ai": "Unknown",
+    "after_ai": "Safe",
+    "before_bmc": "Unknown",
+    "after_bmc": "Safe"
+  },
+  {
+    "task": "c/goblint-regression/13-privatized_67-pthread_cond_wait_true.i",
+    "before_ai": "Unknown",
+    "after_ai": "Safe",
+    "before_bmc": "Unknown",
+    "after_bmc": "Safe"
+  },
+  {
+    "task": "c/goblint-regression/13-privatized_67-pthread_cond_wait_unknown_1_neg.i",
+    "before_ai": "Unknown",
+    "after_ai": "Safe",
+    "before_bmc": "Unknown",
+    "after_bmc": "Safe"
+  },
+  {
+    "task": "c/goblint-regression/13-privatized_67-pthread_cond_wait_unknown_1_pos.i",
+    "before_ai": "Unknown",
+    "after_ai": "Safe",
+    "before_bmc": "Unknown",
+    "after_bmc": "Safe"
+  }
+]

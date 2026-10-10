@@ -2219,6 +2219,21 @@ public:
       }
     }
 
+    // POSIX sleep changes scheduling, not application memory or held locks.
+    // Signal/callback registrations retain their own uncovered-effect gates.
+    if (this->_ctx.opts.enable_thread_modular && func_name == "sleep" &&
+        !fun->type()->is_var_arg() && fun->num_parameters() == 1 &&
+        call->num_arguments() == 1) {
+      auto* returned = dyn_cast< ar::IntegerType >(fun->type()->return_type());
+      auto* formal = dyn_cast< ar::IntegerType >(fun->type()->param_type(0));
+      auto* actual = dyn_cast< ar::IntegerType >(call->argument(0)->type());
+      if (returned && formal && actual && returned->bit_width() == 32 &&
+          formal->bit_width() == 32 && actual->bit_width() == 32) {
+        this->exec_unknown_call(call, false, false, false, false);
+        return;
+      }
+    }
+
     // Default initialization and destruction touch only the runtime object,
     // under the valid opaque-pthread-object contract used by lock transfer.
     if (this->_ctx.opts.enable_thread_modular &&
