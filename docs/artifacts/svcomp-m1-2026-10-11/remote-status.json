@@ -1,0 +1,147 @@
+{
+  "checked_date": "2026-10-11",
+  "fmtools": {
+    "url": "https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/merge_requests/1147",
+    "state": "opened",
+    "merged_at": null,
+    "pipeline": "https://gitlab.com/ruanronghui/fm-tools/-/pipelines/2928828641",
+    "pipeline_status": "failed",
+    "jobs": [
+      {
+        "id": 17079360621,
+        "name": "py-fm-tools-lint",
+        "status": "failed",
+        "failure_reason": "stuck_pending_no_matching_runners"
+      },
+      {
+        "id": 17079360620,
+        "name": "py-fm-tools-reuse",
+        "status": "failed",
+        "failure_reason": "stuck_pending_no_matching_runners"
+      },
+      {
+        "id": 17079360618,
+        "name": "build-pages",
+        "status": "failed",
+        "failure_reason": "stuck_pending_no_matching_runners"
+      },
+      {
+        "id": 17079360616,
+        "name": "check-file-reuse",
+        "status": "failed",
+        "failure_reason": "stuck_pending_no_matching_runners"
+      },
+      {
+        "id": 17079360614,
+        "name": "check-file-conventions",
+        "status": "failed",
+        "failure_reason": "stuck_pending_no_matching_runners"
+      },
+      {
+        "id": 17079360603,
+        "name": "check-dois",
+        "status": "failed",
+        "failure_reason": "stuck_pending_no_matching_runners"
+      },
+      {
+        "id": 17079360602,
+        "name": "check-scripts-format",
+        "status": "failed",
+        "failure_reason": "stuck_pending_no_matching_runners"
+      },
+      {
+        "id": 17079360567,
+        "name": "check-data-format",
+        "status": "failed",
+        "failure_reason": "stuck_pending_no_matching_runners"
+      },
+      {
+        "id": 17079360496,
+        "name": "check-data-schema",
+        "status": "failed",
+        "failure_reason": "stuck_pending_no_matching_runners"
+      },
+      {
+        "id": 17079360492,
+        "name": "py-fm-tools-scripts-format",
+        "status": "failed",
+        "failure_reason": "stuck_pending_no_matching_runners"
+      },
+      {
+        "id": 17048282611,
+        "name": "check-pages",
+        "status": "skipped",
+        "failure_reason": null
+      },
+      {
+        "id": 17048282610,
+        "name": "smoke-test",
+        "status": "skipped",
+        "failure_reason": null
+      },
+      {
+        "id": 17048282609,
+        "name": "check-archives-2024",
+        "status": "skipped",
+        "failure_reason": null
+      },
+      {
+        "id": 17048282608,
+        "name": "check-archives-2025",
+        "status": "skipped",
+        "failure_reason": null
+      },
+      {
+        "id": 17048282607,
+        "name": "check-archives-2026",
+        "status": "skipped",
+        "failure_reason": null
+      },
+      {
+        "id": 17048282606,
+        "name": "check-installed-required-packages-2024",
+        "status": "skipped",
+        "failure_reason": null
+      },
+      {
+        "id": 17048282605,
+        "name": "check-installed-required-packages-2025",
+        "status": "skipped",
+        "failure_reason": null
+      },
+      {
+        "id": 17048282604,
+        "name": "check-installed-required-packages-2026",
+        "status": "skipped",
+        "failure_reason": null
+      },
+      {
+        "id": 17048282603,
+        "name": "check-valid-required-packages-2023",
+        "status": "skipped",
+        "failure_reason": null
+      },
+      {
+        "id": 17048282602,
+        "name": "check-valid-required-packages-2024",
+        "status": "skipped",
+        "failure_reason": null
+      }
+    ]
+  },
+  "benchexec": {
+    "url": "https://github.com/sosy-lab/benchexec/pull/1324",
+    "state": "open",
+    "merged_at": null,
+    "updated_at": "2026-10-03T18:09:22Z",
+    "local_adapter_requires_sync": true
+  },
+  "schema": {
+    "merge_request": 1112,
+    "merged_at_utc": "2026-10-10T20:46:00Z",
+    "schema_sha256": "3a79056f9de8583c5f703716d18f62de9c25dc73cd6fb143311cd777c021911e",
+    "local_entry_sha256": "fbe2620c0f2a11e45b159bcc07a5518e06f585964ec85a05cff11bd23412b790",
+    "local_entry_valid": true
+  },
+  "external_actions_performed": []
+}

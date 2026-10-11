@@ -1,0 +1,983 @@
+[
+  {
+    "task": "c/goblint-regression/00-sanity_09-include.c",
+    "witness_sha256": "7f93a37f35146e113ab1baa344a1e74a922b3de8b7806f62c2d1c08cb5ccf9f9",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.892,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 23 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/03-practical_07-nonterm.c",
+    "witness_sha256": "0533ec1b10e494088743e1f7ad2b6a5fd3068f62d8ba7fc8889c3e7bbb786282",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.859,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 25 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/03-practical_08-nonterm1.c",
+    "witness_sha256": "3746c8d6169a668fc96f3494e372cca9db47e2962652a8bbfb77de683b861825",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.932,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 36 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/03-practical_15-exit_problems.c",
+    "witness_sha256": "128dc4348401dbf14b7a42fd987f9a020f04b0fd6631a13d4568df1ad740e8b3",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.921,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 33 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_01-simple_rc.c",
+    "witness_sha256": "ca188006d9633fb1aa8f46e938ff4e732da55ba89feaed792b1d12d007148426",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.589,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 24 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_03-munge_rc.c",
+    "witness_sha256": "f2b1e84dad3d313c7030ceb7664ee0e4f68f3522d0d37ca55873c3d38cbfaa44",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.62,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 29 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_06-ps_rc.c",
+    "witness_sha256": "9e120dbfedc6bf97a17270d6d953f97710a86a3e3b5c3dd4e2f6c79c70d251e5",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.635,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 30 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_09-ptrmunge_rc.c",
+    "witness_sha256": "f04bdfc88635382d9de9ead7d75d545745fbcfcc8f8e9a9e0203e276500219e3",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.647,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 29 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_11-ptr_rc.c",
+    "witness_sha256": "c9e63f6cbc9d627e88ab337458b4a99a0ab61d7abb9a90ecd7b57c3b30aeeaf3",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.633,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 25 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_14-funarg_rc.c",
+    "witness_sha256": "8b5cdab2b5848f1ffac5ad63288099133b207f323b1d34f76ce82f790602d3df",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.606,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 29 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_16-ps_add1_rc.c",
+    "witness_sha256": "b2574467c888acb5b7d1e7e67a9edc9adc354cd2ca71b01e3d853c0998e630d2",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.624,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 27 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_19-call_by_ptr_rc.c",
+    "witness_sha256": "8783d04771548e7f1272440973d76d941307a26f40bf204fb130dd5c3eaba3f9",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.631,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 40 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_21-sound_base.c",
+    "witness_sha256": "645747e3041da8c40f940b15e23400a69cf505d00398f3edb6b0f8dc8898871b",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.641,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 25 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_23-sound_unlock.c",
+    "witness_sha256": "ffcee04e16cc31685ce3c98c197c6dea789694666c058f2d1a7bf37a8ae8138d",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.637,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 35 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_24-sound_lock.c",
+    "witness_sha256": "ee1b5d3d805ce5dedc4d7882cd2a434704c40660ba634c3f749a9021888aa9c3",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.686,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 29 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_25-single_acc.c",
+    "witness_sha256": "e328f64f389286aa1f5f09a79824ef4e9c62037f98cf72d00f86dba7a07f2cdb",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.557,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 20 and column OptionalInt[41]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_27-base_rc.c",
+    "witness_sha256": "e59ac85f5f2341c2b47c1c2525bf9d40f60f0c1291694af94b0b7fd6dc2480cf",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.627,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 39 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_37-indirect_rc.c",
+    "witness_sha256": "57864842098cb264f114d7d12e62ff16677ee28dd044ac4ec8333189a03a180b",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.569,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 27 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_38-indexing_malloc.c",
+    "witness_sha256": "f5e299a792f7d81e5ccee6be0688eb297f9130f1d15b75b283acafb4aad6a862",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.7,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 22 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_47-fun_write.c",
+    "witness_sha256": "65a0152090145eeaf0c9cfb22027e4b3f8d49dfcf539f45476f9a1b404b5396d",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.637,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 28 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_50-funptr_rc.c",
+    "witness_sha256": "616eb33fb3aa23f06b8262ec80646c6041f60e0bf802e6ab21fe304d47cf5324",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.653,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 29 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_55-pt_rwlock_rr.c",
+    "witness_sha256": "eff6945e0e6fe07be594faef1aa02e8a692f515f20882d9459b41030200edd4e",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.617,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 26 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_01-idx_rc.c",
+    "witness_sha256": "44c58bf0e0291efcf7cb8cb612c065c23add244f6f9c0bbbae8e8a189e2591b3",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.605,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 25 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_03-fld_rc.c",
+    "witness_sha256": "b6a87a9b0320e49ad822925f6cdf50d8f80e52fb89e5bd20c12d9cf08b805c87",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.589,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 29 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_05-glob_idx_rc.c",
+    "witness_sha256": "e8789241a477224cf4ea3ff091ab7782ab04a0bfdede978c0cd7fe414c61a152",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.568,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 19 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_07-glob_fld_rc.c",
+    "witness_sha256": "9acdb86b2b1e6a10adba42e5d60fb4a11ac0f8f317aa87b8fcd09c78369a226b",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.558,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 22 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_08-glob_fld_2_rc.c",
+    "witness_sha256": "86aff2ed733e26e691e47ad83f6daeabf27dd9bf342370363067a7a33867a81c",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.628,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 22 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_09-idxsense_rc.c",
+    "witness_sha256": "0f5aaf929b4b475226fd47695ae2c7c1b093fbee9e0acf18fcbaf61395e7597a",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.622,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 25 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_11-fldsense_rc.c",
+    "witness_sha256": "d94167fd9c1941abbd71d47cdb63e4517cb34610fecddc6cddcb2f7259620490",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.544,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 25 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_13-idxunknown_lock.c",
+    "witness_sha256": "1ab89cf972cd0b7aa0d8f17e8c06f60ef476da636927d27fffffc83afc4adf08",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.573,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 33 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_14-idxunknown_access.c",
+    "witness_sha256": "68217b86b061cac95aef0272c56458ce9467c7a255d6244f5bc8a9bd484b9fe0",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.746,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 27 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_15-fldunknown_access.c",
+    "witness_sha256": "69c19d3af1aa795bbd8291fa6f714314df0a2395360296a91b9f2f965e9ff8bc",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.716,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 28 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_16-idxunknown_unlock.c",
+    "witness_sha256": "6d0e51af95a1e6dc7fa5a60ce6d3e3b1968f3e16956c4fc1f61986aa754d3f5e",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.671,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 36 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/06-symbeq_03-funloop_simple.c",
+    "witness_sha256": "8ea3b93ab8c58e4253d8a893a34bce1ec09ccb8b9f10bf43353f1efe04248ab2",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.681,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 35 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/06-symbeq_04-funloop_hard1.c",
+    "witness_sha256": "a4f752377a000d3db3bd3d3c3d6fea6f0c8a47470bc48b5ef4085aa8453cd1f4",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.713,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 34 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/06-symbeq_09-tricky_address4.c",
+    "witness_sha256": "7a90a7c932ca9a37614ac23eb9f83edbd4dfd3d43130691febce336287f8bb71",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.701,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 40 and column OptionalInt[40]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/06-symbeq_10-equ_rc.c",
+    "witness_sha256": "30c4a39211e930dea00240a1f1abfb1648b226fa455a2d5e03c1008ac84c535e",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.624,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 53 and column OptionalInt[37]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/goblint-regression/10-synch_02-thread_nonunique.c",
+    "witness_sha256": "0105fedb22be1edb795d7ce77e535d139bda2be6f2d151bfbeb6f12f99ca9efd",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.621,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 22 and column OptionalInt[45]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/ldv-races/race-1_2b-join.i",
+    "witness_sha256": "b53efa828ac00abfd696ec5385383e7ab202fb2a3881e09e6daca81558398a88",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.726,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 1708 and column OptionalInt[60]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/ldv-races/race-1_3b-join.i",
+    "witness_sha256": "76eab4bf390db9ffca2d1da1fc2db327ba087e107c0abf8373dec7e68dad7877",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.743,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 1708 and column OptionalInt[60]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/ldv-races/race-2_2b-container_of.i",
+    "witness_sha256": "da152e7904e9e06b2fb3f64e6642c30ea22f8f2483b16a720b33a344cc44bf43",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.726,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 3921 and column OptionalInt[57]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/ldv-races/race-3_2b-container_of-global.i",
+    "witness_sha256": "6236bc77a578c63b31a44d48a0cc8665c439e44bd4011ec108154979ede990c4",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.722,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 3924 and column OptionalInt[59]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-C-DAC/pthread-demo-datarace-2.i",
+    "witness_sha256": "2b7e8ad8f48f0cd91efe3301953a9d5beffce09633fa45392330bc130e7a73b6",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.725,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 1336 and column OptionalInt[87]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-atomic/dekker-b-unfair.i",
+    "witness_sha256": "3e0fb944cf35319eadeecf0ed76f2d421c22779aa22114d32fb3778f377d4c52",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.633,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 725 and column OptionalInt[33]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-atomic/dekker-b.i",
+    "witness_sha256": "3329e526d015c1b0dee456ce716cbe71caae9c7c6c5173384c27fad59b403e95",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.63,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 725 and column OptionalInt[33]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-atomic/lamport-b.i",
+    "witness_sha256": "60300983116c679aabc396c082910cb259d80e4e96f59c6cba406d27a572827f",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.621,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 731 and column OptionalInt[33]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-atomic/peterson-b.i",
+    "witness_sha256": "18c86870e0109c077aa5a471e7cdcf624c92c8feef5d135e523f6c3fdf779578",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.546,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 697 and column OptionalInt[33]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-atomic/read_write_lock-1b.i",
+    "witness_sha256": "f86d9ff0db785f57add92d08c789c32906c5ba0a1010734b67b46b1b81448477",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.546,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 691 and column OptionalInt[35]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-atomic/read_write_lock-2b.i",
+    "witness_sha256": "bd182ed9de3fcb0802ed05cb718a9bc734981468a3510984c50d214d59dbf0d0",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.6,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 715 and column OptionalInt[35]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-atomic/scull.i",
+    "witness_sha256": "a0d4011997f158c6487038e5fabb790562e69067633389e2f7d5d70c9c07635e",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.774,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 928 and column OptionalInt[35]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-atomic/szymanski-b.i",
+    "witness_sha256": "7078beb24baa54c33a4b0a93f622da87f1e90f019f5fdb0ff10e46a42ed6035f",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.577,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 710 and column OptionalInt[33]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-deagle/airline-10.i",
+    "witness_sha256": "720ee4be5885f4dbc1db4e4a74e76d771d6180395061fad7e7c9ce9d1f480398",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.559,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 747 and column OptionalInt[63]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-deagle/airline-15.i",
+    "witness_sha256": "2f0c629bd9f0687c59e87d5c7e965988c8cec2c401cedc72ac0416b2ba187060",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.593,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 747 and column OptionalInt[63]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-deagle/airline-20.i",
+    "witness_sha256": "4115ee3e2abb8a317c15fa8e8c1ca789b614b9edb20841072fc9be4d797e0bc3",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.58,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 747 and column OptionalInt[63]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-deagle/airline-25.i",
+    "witness_sha256": "cd7bd9d30edf52399ae5a33c8fa165f9a134a7daa8cadde6c8409b1bb1bc0c9b",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.601,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 747 and column OptionalInt[63]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-deagle/airline-5.i",
+    "witness_sha256": "db77c1120d4047601378c3f459bb00d850d60b66916fe64aa8b37b3dad638429",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.609,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 747 and column OptionalInt[63]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-divine/condvar_spurious_wakeup.i",
+    "witness_sha256": "0a72842e5cf6f3ddf7ce6a99a316523f6ebf7ff86cab0b3e4f26e0c3bfdb6d4e",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.594,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 712 and column OptionalInt[58]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-divine/ring_2w1r-2.i",
+    "witness_sha256": "5eaba894b8149c77dc8153aa75a645652e96926be2dc30821206577b3494ac06",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.768,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 1075 and column OptionalInt[59]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-driver-races/char_generic_nvram_read_nvram_write_nvram-race.i",
+    "witness_sha256": "35a14e034990a0bc4fee145b93966ca338b5842417ec0c13b1d2232462bd7e85",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 3.792,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 6868 and column OptionalInt[92]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/01_inc.i",
+    "witness_sha256": "7a1e4633fcf9c759b0312755ada3ff198c67083c04768994bb37f039edb16fa9",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.779,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 733 and column OptionalInt[42]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/09_fmaxsym-race.i",
+    "witness_sha256": "7536394b5412703a10ca76d5aa9c4d3f3f16d2bc15a03d5ef99a69dd96e6cc1e",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.749,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 719 and column OptionalInt[42]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/11_fmaxsymopt-race.i",
+    "witness_sha256": "9bf23bf3a892e224b41fcfd574f484ae6e6d6ddcb2180102998e626f6e621c87",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.635,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 723 and column OptionalInt[42]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/13_unverif.i",
+    "witness_sha256": "c60c0998759b83271533fab3dd70b6353ffeca7b7904cae2e3782684905b0266",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.604,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 709 and column OptionalInt[34]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/17_szymanski.i",
+    "witness_sha256": "70a2ef184992b3893f8cdc212d5da111e6ef2deac4f06f821d8078e5eee62c1b",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.701,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 725 and column OptionalInt[32]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/23_lu-fig2.fixed.i",
+    "witness_sha256": "f0fe94dbcad3e7a971fc3cd85653b8d7a846c5fa988f6348079e18fe5ab5751f",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.673,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 734 and column OptionalInt[32]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/27_Boop_simple_vf.i",
+    "witness_sha256": "b965639e53d55f0c6b9c45c09e7c5db9c683ced239776ab5b6cabb47f4cf53ba",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.636,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 745 and column OptionalInt[31]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/30_Function_Pointer3_vs.i",
+    "witness_sha256": "5396287a7586c18983c111b2af63f93f6badc55a5c5a9d997fc9de3ee628f2d8",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.635,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 733 and column OptionalInt[32]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/32_pthread5_vs.i",
+    "witness_sha256": "74255604944b1310d2cb21d7dacb1a37af6c5aba16976da4b1263c4e2e7a9f48",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.63,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 736 and column OptionalInt[32]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/39_rand_lock_p0_vs-b.i",
+    "witness_sha256": "9e190e60e868892839476dbac995bfebc9fb541d32cee01e306f25c39b7266b2",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.695,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 725 and column OptionalInt[42]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/41_FreeBSD_abd_kbd_sliced.i",
+    "witness_sha256": "8025d8e1f20e7ceaa8db077ad3e99344a45220c69585a50696bb8c4166f540b1",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.728,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 743 and column OptionalInt[41]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/43_NetBSD_sysmon_power_sliced_2.i",
+    "witness_sha256": "724fc936ddc76aa957e485facb4e7c4bd4b256f8f9afb5b01288c36c1d2719f5",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.839,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 816 and column OptionalInt[41]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/45_monabsex1_vs-b.i",
+    "witness_sha256": "b1ab2ba7ee25701148401c230248c308a85b13c6cff14a96fe544e713e70a39d",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.608,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 698 and column OptionalInt[41]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/46_monabsex2_vs-b.i",
+    "witness_sha256": "1aac6310f408cd139c6004e164dd3a8645faaeba0bcddda2ad5f02c8ba0e56c2",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.631,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 696 and column OptionalInt[41]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/47_ticket_lock_hc_backoff_vs.i",
+    "witness_sha256": "e61da6c4ea35feaba507ae7e04efaa0075ed1300b2d549e6582a57e0f0deb6d9",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.648,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 711 and column OptionalInt[63]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-ext/48_ticket_lock_low_contention_vs-b.i",
+    "witness_sha256": "d263174455fc7a6493a24f1eca4982ffa80fe570401328a42e591a620bb38437",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.631,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 709 and column OptionalInt[63]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-lit/fk2012.i",
+    "witness_sha256": "4f6cfd229c3172b4674916517d99abf073f58b7262e2efe2c0706ee0efeb2a0c",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.787,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 1069 and column OptionalInt[39]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-lit/fkp2013-1.i",
+    "witness_sha256": "59ae5b24c87793bf48bed1031147133160d14dd8e3bbadf6698ff8d0f0664e37",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.648,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 712 and column OptionalInt[35]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-lit/fkp2013-2.i",
+    "witness_sha256": "4818077c9792c1bf07c44f62514ca83dcbcce8b361bbe4d332b9ed86cecba4c7",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.568,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 712 and column OptionalInt[35]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-lit/fkp2013_variant-1.i",
+    "witness_sha256": "7f50d4692613c49605043a9bae99d7ce6d849a4ae773f144771d318360f453ff",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.569,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 715 and column OptionalInt[35]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-lit/fkp2013_variant-2.i",
+    "witness_sha256": "e8286454e1566282d6071ce44c78d59e5f6a57f02f2433f996a04c20a0e41c4a",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.602,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 715 and column OptionalInt[35]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-lit/fkp2014.i",
+    "witness_sha256": "63cd1fce9bda0cba504a32a15a592e3003be55b237bd603251cefebbeb29bf84",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.595,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 722 and column OptionalInt[30]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-lit/qw2004-1.i",
+    "witness_sha256": "8ee09e19df60531ab977ad026dcec851d49cf61fea00cff5bd71d0434bae5769",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.59,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 748 and column OptionalInt[42]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-lit/qw2004-2.i",
+    "witness_sha256": "868d2d74bc54e4a150c06d5ecc92820fdca3eb048dfd9ae188c9b7ae29c109db",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.644,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 760 and column OptionalInt[42]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-lit/qw2004_variant.i",
+    "witness_sha256": "20c5a1680ad75bc71b5ffbeab82c45284b8c109e844519ef88064b759a262c59",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.637,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 743 and column OptionalInt[42]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-nondet/nondet-array-1.i",
+    "witness_sha256": "59adc45f8a76256a14973c56177c88cab1e8e3cf25fa7a2e3255e85914010f59",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.643,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 703 and column OptionalInt[36]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-nondet/nondet-array-2.i",
+    "witness_sha256": "9036be6f671d9c61a7fb744790ddef42bca957beafde0df510bd3d2a87298d45",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.59,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 703 and column OptionalInt[36]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-nondet/nondet-loop-bound-1.i",
+    "witness_sha256": "bbbd949d653a0362f80b038e49bc004d0227300591d5a9d8871d00f36a3d8ed7",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.579,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 706 and column OptionalInt[35]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-nondet/nondet-loop-bound-2.i",
+    "witness_sha256": "ea143df503669ceccddd789d3af1e39c87a03d0a01a85466a6e4c40cd1b6ff89",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.625,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 706 and column OptionalInt[35]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-nondet/nondet-loop-bound-variant-1.i",
+    "witness_sha256": "b0ab63e7ef9baed5dfe52f9e75b82bce97a0625d377a21cafa538c3c385c3486",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.602,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 712 and column OptionalInt[33]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-nondet/nondet-loop-bound-variant-2.i",
+    "witness_sha256": "56554f3e443d2cddc46d6233159e27fbcbb94fc6d684e918e1ef348ecfb1656f",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.671,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 712 and column OptionalInt[33]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race-2.i",
+    "witness_sha256": "71395c4c24bcb3cd77baa377e2369a894034c00f3351e6f484d7bff6544ad99c",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.635,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 717 and column OptionalInt[59]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race-3.i",
+    "witness_sha256": "6acee84d92dd07888f0a693bec949ff84d52ef9eba73687d522bb814e1b1cc74",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.575,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 717 and column OptionalInt[59]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race-5.i",
+    "witness_sha256": "6fb228693534d950e1d45bcd0749aa2a45a43dddf67a96e712191281472b747e",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.595,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 709 and column OptionalInt[59]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race.i",
+    "witness_sha256": "feb2d297a90bb666a463490c80742ad91ec0b336f353c1ac614adad6ec3dc69b",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.593,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 709 and column OptionalInt[59]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-outer-race-2.i",
+    "witness_sha256": "873890ee4a0b179499049d25bfc9dcf78cf4ae1410854565f13f3654f3c6368b",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.578,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 708 and column OptionalInt[59]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-outer-race-3.i",
+    "witness_sha256": "dc78aeb711f92aa4d2917391860b08d2bfd4c46fc5b86324b52dc5d31774e527",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.549,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 708 and column OptionalInt[59]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-outer-race.i",
+    "witness_sha256": "0b86f145e0098465feca9acb1590b1b7ccadc1c725de17caf80d1d1d84b0ec3a",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.534,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 701 and column OptionalInt[59]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread/fib_safe-10-racy.i",
+    "witness_sha256": "99eb128f8c6f3288cce8e01f7c80a4aa634841932a3bfd9601408fe327a30bc5",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.641,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 721 and column OptionalInt[52]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread/fib_safe-11-racy.i",
+    "witness_sha256": "44ba119fcbb3c2a36a4f4a19cea7f8fcfbf182d6d6c6e9e52ca83122f99a0330",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.607,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 721 and column OptionalInt[52]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread/fib_safe-12-racy.i",
+    "witness_sha256": "aa482cb39bc1c8e104ce60a6b3da379b513aa31a7d225ac4f90d9e1242a49d46",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.595,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 721 and column OptionalInt[52]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread/fib_safe-5-racy.i",
+    "witness_sha256": "09344a099a348f510f506c29a08ec6fade4bf5a1547b6a0e6624c922b7fd4cd7",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.595,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 721 and column OptionalInt[52]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread/fib_safe-6-racy.i",
+    "witness_sha256": "2eba7e67a86facf33720a833359e5d2d87341eff18bf64869c7f06c0eeba9c4a",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.546,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 721 and column OptionalInt[52]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread/fib_safe-7-racy.i",
+    "witness_sha256": "7cdd81f3eb931332719bd229bfe73a14ded0f2e0a6bd048494b30d8994427d2d",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.541,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 721 and column OptionalInt[52]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread/fib_unsafe-10-racy.i",
+    "witness_sha256": "29f2ae48192d9f0a698ff8fe73928bfedecb33655f8442b18c96e8a9c6b6018f",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.565,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 721 and column OptionalInt[52]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread/fib_unsafe-11-racy.i",
+    "witness_sha256": "18efe0622d0ee3563c049e80a83b93a2db7e8e5655d4250262436f16ff388d6c",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.57,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 721 and column OptionalInt[52]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread/fib_unsafe-12-racy.i",
+    "witness_sha256": "6a619f4b604609451adb8b79f96bb281b65e9d929a732060afeb31b431768f55",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.588,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 721 and column OptionalInt[52]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread/fib_unsafe-5-racy.i",
+    "witness_sha256": "e9420141df23faf8ea7b07e00d702f73e59ebb4516976130c6b9cbfdce315a69",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.597,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 721 and column OptionalInt[52]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread/fib_unsafe-6-racy.i",
+    "witness_sha256": "b9ffc081f0fdbdbcc10d67a99ddb17762d3ee6a69c7f6f3d17ac34bd5044433e",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.565,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 721 and column OptionalInt[52]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  },
+  {
+    "task": "c/pthread/fib_unsafe-7-racy.i",
+    "witness_sha256": "e73eff89bdd80cf979529ea2bb3b73d2fc130409e48ccafb80b14b8a6fb5e046",
+    "returncode": 0,
+    "status": "UNSUPPORTED_CREATE_LOCATION",
+    "validator_verdict": null,
+    "seconds": 1.581,
+    "reason": "Error: Invalid configuration (Cannot parse witness: No CFAEdge could be matched for the function enter waypoint passing line 721 and column OptionalInt[52]) (AutomatonWitnessViolationV2Parser.handleFunctionEnter, SEVERE)"
+  }
+]

@@ -1,7 +1,7 @@
 # SV-COMP 2027 参赛指南
 
 本文统一维护注册、归档、runner 与 witness 验收。**官网日期及部分 GitLab 状态于 2026-10-11 复核**；
-BenchExec PR、旧 ZIP 和历史 validator 记录保留各自实际核验日期，未当作今日验收。
+本轮 MR/PR、候选归档与现代 validator 已实际核验；旧 ZIP 和历史 validator 保留各自日期，未当作今日验收。
 外部要求和状态须在操作前重新确认。
 本地分析能力与最新基线见 [阅读入口](README.md#baseline)，不能用旧 ZIP 的成功检查替代新版本验收。
 
@@ -70,7 +70,7 @@ Goblint/ESBMC 当时没有额外清单。IKOS 只返回入口在按 program_file
 固定的新验证包也已通过真实 Tool API 的 1029 项回归，与直接分析逐项一致：TP=109、TN=678、UNKNOWN=241、1 项超时，FP/FN=0。
 依据：[包入口全量](artifacts/svcomp-m1-2026-10-11/packaged-baseline.json)、[逐任务](artifacts/svcomp-m1-2026-10-11/packaged-paired.json)。
 验证包支持含空格路径和项目外 cwd；仅声明依赖的新 Ubuntu 24.04 断网/只读容器通过双架构 smoke/P0。
-这些检查尚不代表源 witness 或官方 CI 已通过；最终交付 ZIP 的源码身份另行固定。
+最终交付 ZIP 的源码身份和同包检查见 §3；源 witness 与官方 CI 仍分别待验收。
 
 新 jury member 必须具有贡献身份并向组织者报备。用户已邮件回复 GitLab 用户名。
 Jan Strejček 的 10/9 回复明确：**10/12 前所需注册动作已完成；Dirk 将处理 CI；下一节点是 10/20 前 MR 合并。**
@@ -78,7 +78,24 @@ Jan Strejček 的 10/9 回复明确：**10/12 前所需注册动作已完成；D
 官方 CI、合并与资格分别记录；仅加入 GitLab 项目不等于拥有所有 CI runner 权限。
 
 <a id="package"></a>
-## 3. 工具归档：历史实物与新版本边界
+## 3. 工具归档：当前候选与历史实物
+
+**当前 M1 本地候选已固定，尚未上传或获官方接受。**
+归档：[ikos-conc-m1-20261011.zip](/home/ruan/ikos-conc-m1-20261011.zip)，大小 `160292014` bytes，
+SHA256 `9bbef705b69a65d287d336fbe4699e3a3c498316a0a68dd95de3633dc18864a4`，源码提交 `7e5ed7a`。
+BUILD-INFO 记录打包时干净的已跟踪源码、384 个运行文件及条目/adapter/package 指纹；
+用户其他未跟踪文件不属于该实物，不据此声称工作区完全无文件。
+与1029项实际验证包相比，运行文件及权限逐项相同；差异限于身份记录与补齐的Pygments许可。
+Pygments 2.19.2 的338个自带 Python 文件与官方wheel逐字节一致，许可来自该wheel。
+最终 ZIP 重新解压后通过项目外含空格路径、断网/只读 Ubuntu 24.04 的双架构 race/safe smoke 和20条P0观察；
+13个动态二进制/库无未解析依赖。真实BenchExec容器收取了`witness.yml`，但本机无CPU/内存cgroup权限，
+不能称官方资源验收通过。
+证据：[归档与BUILD-INFO](artifacts/svcomp-m1-2026-10-11/final-package.json)、
+[运行/依赖/隔离检查](artifacts/svcomp-m1-2026-10-11/runtime-acceptance.json)、
+[同包P0观察](artifacts/svcomp-m1-2026-10-11/final-p0-observations.json)。
+
+旧的项目内ZIP未覆盖。上传时使用上述新文件，同步现有MR/PR及公开源码，
+再核对Zenodo公开hash和CI实际取用的包。严格源级witness核验未通过的原因见§5，不能被本地标签结果替代。
 
 Zenodo 记录：[23122650](https://zenodo.org/records/23122650)，concept DOI 为 23122649。
 以下都是 **2026-10-09 保存的实物证据**，不是当前分析器发布凭证。
@@ -147,7 +164,7 @@ witness 原子写入成功后才转发 FALSE；清除旧 witness，报告/AST/�
 | --- | --- | --- |
 | WitnessLint 格式检查 | schema/结构与部分源位置约束 | 历史 smoke 默认模式通过；strict 模式报 `Unknown waypoint type target`，正式 release strict AST 路径缺 target 分支。不能称 strict 通过。 |
 | IKOS 独立 AR 执行检查 | 在导出 AR、明确 API 合同下重新执行动态实例、值源、字节地址和同步，检验所选竞争 | 当前执行记录见 [BMC 手册](ikos-bmc-complete.md#validation)；它不直接验证最终 witness/source 映射。 |
-| 独立源级 witness validator | 按输入源码、witness 及实际配置重建被指定实例/约束限定的竞争 | 旧 GraphML validator 接受损坏线程 ID 的校准失败；本地 CPAchecker 4.2.2 对 2.2 解析异常。不能称最终官方验收已通过。 |
+| 独立源级 witness validator | 按输入源码、witness 及实际配置重建被指定实例/约束限定的竞争 | 旧GraphML校准失败；本轮现代CPA开发版已构建运行，创建列号不兼容且接受非竞争目标，严格校准失败。109份原包witness均因创建位置解析受阻，源级接受数为0。 |
 
 [verification training](https://sv-comp.sosy-lab.org/2027/results/results-verified/)、
 [validation training](https://sv-comp.sosy-lab.org/2027/results/results-validated/)、
@@ -155,24 +172,53 @@ witness 原子写入成功后才转发 FALSE；清除旧 witness，报告/AST/�
 是 preliminary 运行。当时表实际使用 GraphML v1、CPAchecker 4.2.2/Dartagnan 4.3.1/UAutomizer 0.3.1；
 不能据此确定 2027 最终 2.2 validator。
 
-CPAchecker 开发源码固定 `bd91e2fd933ac2704dc240089774db4e5ec877da` 可见 2.2 版本识别、
-创建 waypoint/thread ID/multi-target 解析、`validate_data_race_concurrency` 集成测试及
-`violation-witness-validation-datarace.properties` 配置。这是源码证据，当时没有构建运行该开发版。
-下一次验收固定一个实际支持功能的可执行版本，先做线程 ID/目标/值约束损坏的负校准，
-再测真实输出，并与最终官方配置对齐。Dartagnan 另找一个 race 不自动验证 IKOS 的具体 witness。
+本轮已构建并运行CPAchecker开发源码 `bd91e2fd933ac2704dc240089774db4e5ec877da`，
+Java21.0.12.1、MathSAT5.6.11。版本打印`4.2.2-unknown`来自无Git元数据的源码归档，
+不能把它当成官方发布的4.2.2。4549个原始src/config文件与上游归档核对一致，未修改验证算法。
+构建所用编译器launcher/依赖与命令保存在校准证据；这也不是最终官方指定配置。
+
+| 实际校准 | validator结果 | 结论 |
+| --- | --- | --- |
+| 正式规范的创建右括号列号 | 无匹配CFAEdge，解析失败 | 固定规范要求`)`，此源码`AstCfaRelation.getColumnOfFunctionCallParenthesis`却计算`(` |
+| 唯一创建调用所在行省略可选列号 | FALSE | 此最小正例能匹配；仅为校准副本，没有修改原包witness |
+| 目标线程ID99 / 创建者ID99 / 矛盾约束`0` / 两个目标均属主线程 | TRUE | 这些损坏不能匹配见证；这里TRUE表示未找到见证约束的违例，不是IKOS的SAFE结论 |
+| 将子线程目标从`shared=1`移到随后`return 0` | FALSE | 错目标仍接受，不能证明指定的两个访问构成竞争 |
+
+最后一项的源码依据：`DataRaceTransferRelation`保留此前发现的`hasDataRace`；
+`AutomatonWitnessViolationV2Parser.handleIntermediateTarget/handleTarget`匹配位置与线程，
+最终断言检查违例状态，没有把竞争访问身份严格绑定到两个目标。
+固定2.2指南的no-data-race节要求最终两个target标记竞争访问，因此这项校准确实必要。
+这不说明最小程序无竞争，也不直接说明IKOS的所选执行错误；它说明该validator不足以提供所需独立证明。
+
+109份不可变验证包的**原始witness**均已实际尝试：109项`UNSUPPORTED_CREATE_LOCATION`，
+严格源级接受0项；保留逐任务原因，不把解析失败记成见证被语义反驳。
+没有为通过检查一律删除创建列号：默认列指第一个匹配位置，多调用/同一行/多行时可能错误绑定。
+证据：[7项正负校准、最小源码和完整见证](artifacts/svcomp-m1-2026-10-11/validator-calibration.json)、
+[109项实际源验证](artifacts/svcomp-m1-2026-10-11/validator-source-results.json)。
+实际命令使用`--violation-witness-validation --spec <no-data-race.prp> --witness <witness.yml> --32`，
+由根配置路由到`violation-witness-validation-datarace.properties`，不只指定后者而遗漏路由选项。
+
+下一外部条件是组织者确认最终2.2 validator/版本/配置，并修复上述位置与目标绑定限制；
+新版本先复测校准，再验证真实输出。必要时另评估独立源级检查，不能通过降低校准标准制造通过。
+Dartagnan另找一个race也不能替代对IKOS具体witness的核验。
 
 <a id="checklist"></a>
 ## 6. 下一次发布检查表
 
-以下未勾选项针对**下一次发布**，不否认历史局部检查。自动化成功和组织者接受分别记录。
+以下针对当前M1候选。勾选本地工程项不表示官方接受。
 
-- [ ] 合并后的 schema、本地/远端类别、官方 CI 和资格状态分别核对；注册动作已完成。
-- [ ] 本地 FM 条目与远端一致；MR pipeline 原因明确并通过；BenchExec PR 内容一致且合并。
-- [ ] 当前源码构建/install hash 一致；语义回归、AI+BMC 配对、新 FALSE 执行检查有版本化证据。
-- [ ] 新 ZIP 指纹、BUILD-INFO、组件许可、真实入口/P0/双架构/重定位/干净依赖检查通过。
-- [ ] adapter 的 bin 定位、搬运路径、属性限制和未知/超时/非零退出映射核对。
-- [ ] witness 2.2 格式与严格实例绑定的源级验收完成；能力边界和未验证项明确。
-- [ ] 用户替换/上传 ZIP 后公开 hash 核对，CI 重取新实物，提交及参赛资格得到确认。
+- [x] 合并后的FM schema校验本地条目；MR/PR与失败原因实际核对，注册动作已完成。
+- [x] 当前构建/install/包中二进制hash一致；AI与AI+BMC基线和包入口全量逐项配对，既有AR执行证据保留。
+- [x] 新ZIP/BUILD-INFO/组件许可/入口/P0/双架构/重定位/断网依赖检查完成。
+- [x] 当前本地adapter定位、搬运路径、属性限制与UNKNOWN/超时/非零退出映射检查完成。
+- [x] 109份witness通过固定2.2 schema；动态实例/源位置定向检查和现代validator校准有证据。
+- [ ] 严格绑定指定访问对的独立源级witness验收：当前validator校准失败且原包创建列号解析受阻。
+- [ ] 用户同步现有FM MR、BenchExec PR及公开源码，替换Zenodo ZIP后核对公开hash和CI重取实物。
+- [ ] 官方runner实际成功、MR/PR合并及参赛资格确认；本地资源隔离不能替代官方验收。
+
+本地候选已达到M1的可控工程冻结出口；**M1外部/源级验收出口仍未关闭**。
+不为等待官方支持而宣称通过，也不在本轮加入M2/M3精度机制。
+远端状态证据见[MR/PR与jobs](artifacts/svcomp-m1-2026-10-11/remote-status.json)。
 
 本地标签分可参考 FALSE +1、TRUE +2、错 FALSE −16、错 TRUE −32、UNKNOWN 0 的历史规则；
 最终得分还受 witness/类别和当版官方规则影响，不能把 README 标签计数直接叫比赛得分。
@@ -206,6 +252,7 @@ CPAchecker 开发源码固定 `bd91e2fd933ac2704dc240089774db4e5ec877da` 可见 
 
 - [提交复核原始页面/schema/MR/PR/实物指纹](artifacts/svcomp-submission-2026-10-09/)。
 - [重封装、容器/重定位 smoke、P0、linter、旧 CPA 异常及现代源码参照](artifacts/svcomp-repackage-2026-10-09/)。
+- [M1包入口配对、格式/实例、现代validator校准与最终实物](artifacts/svcomp-m1-2026-10-11/)。
 - [历史类别声明说明](../svcomp/category-structure-mr.md)及 [reference 导航](../svcomp/reference/README.md)
   仅用于解释既有材料；当前注册要求从本指南和当版官网核对。
 

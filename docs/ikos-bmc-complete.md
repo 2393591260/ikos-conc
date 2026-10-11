@@ -678,10 +678,14 @@ Dartagnan24ACCEPT，另2对实例歧义拒导出。
 不能断言只是翻转顺序就修好。其源码探针仍找到真实data竞争。
 源码投影把相邻行强制成CAT hb，而IKOS总调度先后不等于该关系，是已知不匹配。
 
-CPAchecker4.2.2解析正式YAML2.2 violation_sequence失败，没有验证结论。
-现代CPA源码`bd91e2fd…`仅是实现参照，不代表已构建运行或官方指定版本。
-正式并发witness2.2验收须固定真正支持它的validator及BenchExec配置，再校准坏实例/值/地址/目标。
-现有ACCEPT不等于官方验收。
+历史CPAchecker4.2.2发布版解析正式YAML2.2 violation_sequence失败。
+10/11已构建运行现代CPA开发源码`bd91e2fd933ac2704dc240089774db4e5ec877da`，
+其创建调用列号按左括号匹配，固定2.2规范要求右括号；109份原包witness均因此解析受阻。
+最小正例省略唯一创建的可选列号后可接受，坏线程ID/矛盾约束被拒；但将竞争目标移到
+后续`return 0`仍被接受，严格指定访问对校准失败。该版本不是官方指定validator，
+也不能提供当前109个标签TP的独立源级接受证据。
+完整校准、源码依据和交付边界统一见[参赛指南§5](SVCOMP2027-参赛指南.md#witness)。
+AR ACCEPT、格式通过与源级接受仍分别记录；现有ACCEPT不等于官方验收。
 
 ### 10.4 Dartagnan 指定候选研究接口
 
