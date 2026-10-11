@@ -1,6 +1,6 @@
 # category-structure.yml MR — 声明 IKOS-ConC **opt-in** 只参加 C.no-data-race
 
-> **历史方案。** 2026-10-09 官方 submission 页面已不要求 category-structure MR，而要求在 FM-Tools 中声明类别，并等待 schema MR !1112。当前行动以 [提交复核](../docs/SVCOMP2027-提交复核-2026-10-09.md)为准。
+> **历史方案。** 2026-10-09 官方 submission 页面已不要求 category-structure MR，而要求在 FM-Tools 中声明类别，并等待 schema MR !1112。当前行动以 [参赛指南（外部状态须重新核对）](../docs/SVCOMP2027-参赛指南.md#registration)为准。
 
 仓库：`gitlab.com/sosy-lab/sv-comp/bench-defs`
 文件：`benchmark-defs/category-structure.yml`

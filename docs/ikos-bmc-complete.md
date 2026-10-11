@@ -16,68 +16,23 @@
 <a id="current"></a>
 ## 1. 当前状态与任务范围
 
-目标是参加 SV-COMP 2027 的基础 no-data-race 类别。2027 官方目标清单尚未固定，
-目前使用 `/home/ruan/sv-benchmarks-2026` 的冻结版本
-`0a254fdddcfe24949be9edd47f8d609462eb52fb` 回归。
-`svcomp_race_test.py` 的现有扫描集合为 **1029 项，全部 ILP32**。
-双架构最小回归不等于做过 LP64 全量；这 1029 项也不自动等于官方 2027 类别全集。
-仓库技能此前递归扫描还发现 `todo/` 下额外一个 YAML，是否属于比赛任务须由官方清单确定。
+最新基线、二进制、任务人口和剩余 UNKNOWN 只维护在 [README](README.md#current)。
+本手册描述候选驱动的受限 pthread/SC 有界确认器；2027 官方 manifest 尚未固定。
+本地 2026 扫描集合全部 ILP32，定向双架构回归不等于 LP64 全量。
 
-**第一版已完成本节约定的工程验收**。最近分析器行为提交为 `8c0ec5a`；
-最后的发布提交仅更新文档和小型证据。安装二进制 SHA256：
-`a88dc47be73510ddb380bbb9b842d2ce448f96755d99a29a72192732900f90ff`。
-这些指纹用于复核已保存实验，不代表以后构建的二进制必须具有同一 hash。
+BMC 第一版于 2026-10-10 完成有限执行/结果接口、共享回调、受限 join、独立 AR 检查
+与 AI 事实使用契约；后续 AI 正确性和精度工作也改变候选和确认能力。
+§12 的第一版验收和 §14 的阶段数字是历史证据，不是当前基线。
+最近扩展包括隐式 main 的共享栈对象及借助 AI 生命周期证书的 helper 发布，见 §5。
 
-**后续 AI 审查发现六类 SAFE 漏报机制**，在冻结集外的最小程序中，
-ILP32/LP64、BMC 开关两侧均复现；见
-[正确性审查](ikos-ai-soundness-audit-2026-10-10.md)。
-F1 过滤已撤销、F3 未覆盖线程体已保守回退、F5 模糊 join 已收紧、F6 写摘要已取并集，
-F4 已加入整数读时干扰，F2 已保守收紧私有对象排除，原六类回归均通过；
-后续发现的多源指针读取 FN 已修复；耦合摘要重算和最终检查变更回退已实施，
-once控制对象身份漏报已修复；共享byte操作已加入完整global标量发布和其他布局UNKNOWN边界。
-heap通配字段遗漏及大偏移锁身份碰撞已修复；未知extern/未展开internal已加覆盖边界，
-递归遗漏访问已回退，声明合同和15项TN回退归因见优化计划§9.13。外部原子库已加覆盖边界；普通GCC-looking定义不再凭名字注入伪锁，见§9.14。
-库buffer效果已加边界，局部%n与zero-byte read续行已修复，见§9.15；
-句柄数值观察与伪造join来源已加保守边界，见§9.16；detach的不透明身份消费已恢复7项确认并逐执行回放，见§9.17；完整身份值流与其余SAFE前提仍需核实。POSIX sleep覆盖恢复4个TN，见§9.18；NULL状态的当前线程退出恢复6个TN，见§9.19；指针对象表示的逐字节写入旧摘要FN已以global/heap字节重叠失效修复，完整配对无逐任务变化，见§9.20；最新1029项BMC结果为
-TP104/TN658/UNKNOWN266/error1/FP0/FN0（2026-10-11：AI verifier atomic 合同统一见优化计划§9.22，create may-output弱更新见§9.24，访问地址与mutex对应证明恢复1个TN见§9.25，仿射数组对应再恢复3个TN见§9.26；标签计数不替代独立执行验证）。实施状态和全量配对见
-[优化计划 §9](ikos-ai-optimization-plan-2026-10-10.md#9-实施进度与配对证据)。
-下表 FN=0 仍是这 1029 项的历史观测，不能据此宣称当前分析器普遍无漏报。
-BMC 无法补救上游遗漏访问或删除候选；下一步应先修这些 AI 前提，
-再按[优化计划](ikos-ai-optimization-plan-2026-10-10.md)恢复精度。
-[双向反馈研究方案](ikos-ai-bmc-feedback-research-2026-10-10.md)另列待实现设计，
-不改变本文的 BMC 有界 UNSAT 不证明 SAFE 的契约。
+TP 是与 YAML 标签一致的 FALSE；独立 AR ACCEPT 是另一种证据。
+检查以可信前端、导出快照和明确 API 合同为前提，不等于官方源码/witness2.2 验收，
+不证明所有 SAT 模型或全部 SAFE 过滤。正常分析器导出证据仍标 UNVALIDATED，
+离线验收另存。不能由冻结集 FP/FN=0 宣称全语言 soundness。
 
-| 2026 冻结集，BMC + demote | TP | FP | TN | FN | UNKNOWN | error |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 第一版开始 | 104 | 0 | 696 | 0 | 229 | 0 |
-| 第一版完成 | **106** | **0** | **696** | **0** | **227** | **0** |
-
-最终普通/诊断运行各1029项，jobs4、每项30秒，逐任务判定完全一致。
-**TP仍指与YAML标签一致的FALSE；106项的132组所选执行另外全部获独立AR检查ACCEPT。**
-两种证据分别记录，标签命中不能验证模型。AR检查独立执行CFG、动态实例、值/地址、
-字节读源和同步，但以可信前端/快照和明确API合同为前提，**不是官方C/witness2.2验收**，
-也不证明所有可能SAT模型、全部SAFE过滤或完整C/LLVM definedness。
-正常分析器仍将导出证据标为UNVALIDATED，离线验收结果单独存储。
-
-最新发布证据：[全量诊断配对](artifacts/bmc-v1-final-2026-10-10/diagnostic-paired.json)、
-[132组执行验收](artifacts/bmc-v1-final-2026-10-10/execution-results.json)、
-[执行汇总](artifacts/bmc-v1-final-2026-10-10/execution-summary.json)。
-剩余[227项UNKNOWN台账](artifacts/bmc-v1-final-2026-10-10/unknown-results.json)与
-[汇总](artifacts/bmc-v1-final-2026-10-10/unknown-summary.json)保存当前诊断、
-结构化结果/度量、源代码位置、历史参考与尝试记录、下一步语义义务。
-成功使用的bounds、rf、整数编码等观测不直接当作失败原因；阻塞/预算类别可以重叠。
-本轮没有重新逐源码人工研究227项；台账是新诊断与已核实历史研究的衔接，
-后续实施仍须按§11.1选具体文件核实实际前提。
-
-| 当前UNKNOWN的固定参考历史结果 | FAIL | TIMEOUT | ERROR | PASS | UNKNOWN |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| 数量 | 99 | 73 | 25 | 29 | 1 |
-
-全部参考记录沿用前先核对输入SHA256；**不是227次新的Dartagnan分析**。
-FAIL是参考找到竞争，不能证明IKOS所选模型；99个FAIL也不是可承诺恢复的TP数。
-旧[TP104阶段台账](artifacts/bmc-tp104-ledger-2026-10-10/results.json)301条是历史集合，
-包含当时229项UNKNOWN、69项后来恢复的标签TP和3项抽象SAFE，不再代表当前状态。
-第一版停止于有限语义、独立检查、AI契约/实测及可追踪能力边界，详见§12.1。
+安全 UNKNOWN 进入 [AI 路线](ikos-ai-complete.md#roadmap)，竞争 UNKNOWN 按标签筛选历史台账。
+固定参考 FAIL 只帮助选任务，不证明 IKOS 具体模型；有界 PASS 不证明无界安全。
+参考状态、实际阻塞和已尝试机制都要绑定输入 hash/架构/预算，不能用旧分桶预测可恢复数量。
 
 <a id="contract"></a>
 ## 2. 判定契约与参考理论
@@ -324,7 +279,7 @@ SMT 冲突要求同一真实对象且
 字段 offset 不能替代未知基址证明；失败提取不得继续查缺少同址约束的 SAT。
 
 有限非空 global/可支持 heap may 集合可以提供候选；实际路径解析 base 和动态 allocation。
-TOP、TLS、未知基址和复杂指针来源仍保守。
+TOP、未支持的 TLS 来源、未知基址和复杂指针来源仍保守。
 `06-symbeq_10-equ_rc` 恢复来自 main 实际选 B、worker 锁 A 却写 B；
 不是因为 may-alias 就确认同对象。
 
@@ -333,11 +288,17 @@ TOP、TLS、未知基址和复杂指针来源仍保守。
 指针沿本次实际调用参数、赋值/cast 和实际 Return 到达定义追踪；重复 helper 不能混用返回。
 解析到无寿命证明的局部返回地址时拒绝，调用者局部透传也尚有保守边界。
 
-global pointer slot 的读取只在不可变发布子集支持：原 LLVM 全部 users 证明没有逃逸/其他写者，
-唯一真实 store 位于所选 main 前缀且早于所有 create，读不早于发布。
-纯 AR 地址 cast 可归一化到 pointer global、offset0、无变量下标；
-局部/内部字段/非零偏移/未知来源不放行。这修复结构体和 unsigned slot 的通用前端表示差异，
-不是一般共享 pointer rf/co。unsigned 最小正例已恢复，相应 unsupported fixture 已改名。
+global pointer slot 的不可变发布需要：完整 users/逃逸检查、唯一真实完整指针 store、
+所有相关 create 位于发布之后、实际 load 不早于发布。纯 AR 地址 cast 可归一化到
+pointer global、offset0、无变量下标；非零偏移、未知来源等仍保守。
+这不是一般共享 pointer rf/co，也不能从 AI 的无序 initializer 区间猜实际发布值。
+
+后续支持 helper 内初始化时，checker 向 `CandidateFacts` 提供 `single_execution` 合同：
+静态唯一、无环的调用生命周期根植于隐式 main，实际 helper 形参绑定到本次实参；
+slot 不逃逸且仅有一次实际 full pointer store，在所有相关 create 前执行。
+AI 证书证明生命周期，BMC 仍展开实际 store/地址和取值，并导出供独立检查的执行。
+不能把“函数只出现一次”当全局 single execution；重复调用、递归、slot 逃逸或其他写者拒绝。
+证据见 [helper publication](artifacts/ai-precision-2026-10-11/publication/summary.json)。
 
 ### 5.3 单次 main allocation
 
@@ -349,6 +310,15 @@ global pointer slot 的读取只在不可变发布子集支持：原 LLVM 全部
 单次 main 堆写和有真实来源的同宽堆整数读已支持；worker/helper 动态分配、重复站点、
 free、一般寿命、可变槽和 heap pointer rf 尚未完成。
 `09-regions` 列表需要这些能力，不能仅凭参考 FAIL 就开放对象门。
+
+### 5.4 隐式 main 的共享栈
+
+单次实际 Allocate 位于隐式 main 的活动 frame，先于所选 creates，main 在竞争前缀中仍存活。
+实际线程实参、唯一外部指针链及 helper 绑定解析到同一对象，load/store 复用字节 SC 来源。
+因此不能把“stack”一概视为每线程私有，也不能把任意名为 main 的 callee 栈当共享对象。
+子线程私下调用 main、已返回 frame、重复 allocation 或未证实的链继续不确认。
+双架构正例/反例/损坏执行和比赛配对见
+[main-stack](artifacts/ai-precision-2026-10-11/main-stack/summary.json)。
 
 <a id="threads"></a>
 ## 6. 线程激活、动态调用与完成端点
@@ -630,22 +600,16 @@ owner offset8假反例在TP102基线外仍能复现，冻结集FP0没检出；�
 这些新反例说明“先确认没有任何正确性问题再开始精度”无法仅靠有限基准完成；
 工程上持续审查明确前提，发现缺陷优先修复，精度增量同时补足证据。
 
-上游专门审查仍按其跨模块主题维护，BMC结论已收拢在此：
-[创建实例](ikos-creation-instance-audit-2026-10-10.md)、
-[TLS](ikos-tls-identity-audit-2026-10-10.md)、
-[锁分配身份](ikos-lock-allocation-identity-2026-10-10.md)、
-[干扰宽度](ikos-interference-width-audit-2026-10-10.md)、
-[单次执行](ikos-single-execution-2026-10-09.md)、
-[结构偏移](ikos-structural-offset-2026-10-09.md)、
-[stdio](ikos-stdio-effects-2026-10-09.md)、
-[sem输出](ikos-sem-value-2026-10-09.md)、
-[同步参数效果](ikos-sync-effects-2026-10-09.md)。
+上游 SAFE 规则、这些专项的前提/回退及复现统一见
+[AI 手册](ikos-ai-complete.md#safe-rules)与 [证据索引](ikos-ai-complete.md#evidence)。
+BMC 不能恢复被上游漏掉的访问或误删的候选。
 
 ### 9.3 TN 回退与前端归因
 
 35→58曾有11个TN退UNKNOWN，与更保守动态实例/joined覆盖和aggregate干扰有关，不能只报+23TP。
 简单正答计数TRUE+2/FALSE+1净+1，不是正式比赛得分，后者还依赖官方集合/witness。
-其后stdio保守覆盖退4TN，单次执行证明恢复3TN；锁入口摘要另退1TN，当前TN696。
+历史上 stdio 保守覆盖退4TN，单次执行证明恢复3TN，锁入口摘要另退1TN；
+这些是第一版时期的转移，后续 SAFE 审查/恢复见 AI 手册，最新 TN 只看 README。
 
 **`mark_internal_inline` 的独立 A/B 已完成**：只撤回 remove NoInline，其他管线相同，
 两端1029项逐项一致TP58/TN698，历史11项均UNKNOWN。
@@ -802,7 +766,7 @@ join 和 stdio stream 同步；命名/verifier atomic 检查完整边界与不�
 128 ACCEPT、1 UNSUPPORTED、0 REJECT；103项全部所选组通过，另1项的函数指针
 非简单初值尚未导入。没有将这一项计为假反例，也没有把它计为已验证。
 
-**最终发布重新导出并检查当前106项的全部132组：132 ACCEPT、0 REJECT、0 UNSUPPORTED。**
+**2026-10-10 第一版最终发布检查当时106项的132组：132 ACCEPT、0 REJECT、0 UNSUPPORTED。**
 共享函数初值/真实callee、stdio目标顺序等后续机制都已包含在这次最终证据中；
 不是沿用初始128组验收来覆盖新增模型。见[最终汇总](artifacts/bmc-v1-final-2026-10-10/execution-summary.json)
 和[逐组记录](artifacts/bmc-v1-final-2026-10-10/execution-results.json)。
@@ -817,6 +781,10 @@ AR调用/atomic边界更正，不能据此撤回6个TP。stdio保留POSIX stream
 `c430b1d07824db796008688f5d768bb04b7086a33c468ee7630a5e9a8d6422ec`。
 `evidence.hpp` 从查询函数分离所选证据导出；纯序列化改动build/install、P0双架构、
 诊断开关对照、1029全量均通过，TP104/TN696/UNKNOWN229不变，无逐任务转移。
+
+2026-10-11 后续重新导出的全部当前执行结论见 [README](README.md#current)。
+隐式 main 栈、helper 发布和递归类型诊断已加入导出/检查边界；递归类型诊断修复只解决
+快照序列化，不能称新增语义或 verdict 收益。新增确认不能沿用第一版132组结论。
 
 复现：
 
@@ -930,8 +898,8 @@ python3 scripts/dartagnan_strict/test_indirect_addresses.py
 `log::debug/info/...`返回void；流式日志用`log::msg()`。
 稳定顺序按语义值/源身份而不是指针地址，防止ASLR改变搜索。
 
-后续BMC设计、状态、实验结论和todo只更新本文对应小节，证据索引增加同阶段条目，
-不再新建一篇平行BMC报告。跨模块SAFE理论仍放专门架构文档，本文记录影响和链接。
+后续 BMC 机制与证据只更新本文；SAFE/干扰/反向反馈更新 AI 手册，
+最新基线更新 README，工程命令更新开发速查。不再增加平行阶段 Markdown。
 
 <a id="roadmap"></a>
 ## 12. 第一版验收、后续范围与结束条件
@@ -985,7 +953,7 @@ python3 scripts/dartagnan_strict/test_indirect_addresses.py
 | 受限join完成 | 实际创建句柄匹配无副作用return-NULL子线程；20个双架构案例，比赛106→106 | `539a0b4` |
 | stdio查询正确性 | 排除会建立目标HB的stream顺序，保留合法其他顺序；8个双架构案例和串行坏证据拒绝 | `b8a2762` |
 | AI契约与可测协同 | 依赖覆盖、数值证书适用条件；普通metrics/跨轮累积；10输入60次消融 | `8c0ec5a` |
-| 最终发布 | 1029普通/诊断逐项相同；106项132组AR ACCEPT；227项UNKNOWN有记录 | 本次文档/小型JSON提交 |
+| 第一版最终发布 | 1029普通/诊断逐项相同；106项132组AR ACCEPT；当时227项UNKNOWN有记录 | 历史文档/小型JSON |
 
 本版只新增两个比赛TP：`04-mutex_27-base_rc.c`与
 `char_generic_nvram_read_nvram_write_nvram-race.i`，均有固定版Dartagnan竞争依据。
@@ -999,7 +967,7 @@ AI提供may候选/对象范围、AR布局/精确初值、受限局部no-wrap证�
 尚无全局大幅加速、更快于Dartagnan或显著减少依赖规模的证据（§3.1）。
 字段化干扰、嵌套保护、条件化may/must摘要仍是后续工作，未混入第一版成果。
 
-**本版在这里结束**：具备有限候选确认、可独立核对的所选执行、AI使用契约/受控测量、
+**第一版当时在这里结束**：具备有限候选确认、可独立核对的所选执行、AI使用契约/受控测量、
 可复现基线和完整当前UNKNOWN记录。这个停止点是已授权工程范围完成，
 不意味着全部UNKNOWN不可恢复、所有正确性问题已证明不存在或普遍分析能力到达上限。
 一般 K 线程/堆图/寿命、弱内存、公平性、CAT 引擎和官方 witness2.2 验收可留到后续版本。
@@ -1063,72 +1031,35 @@ NVRAM第一次被检查器拒绝是快照遗漏合法variadic元数据，补足�
 [执行检查](artifacts/bmc-v1-shared-callback-2026-10-10/summary.json)，
 [变体](artifacts/bmc-v1-shared-callback-2026-10-10/fixtures.json)。
 
-### 12.3 第一版后仍需哪些语义
+### 12.3 后续语义与停止条件
 
-当前227项全部有记录，下一版按具体参考竞争及其实际缺口选择任务，而非统一扩大BMC。
-以下是台账里需核实的义务类别，**可重叠，也不是预计新增TP**：
+当前竞争 UNKNOWN 数量和参考状态见 README；旧混合台账包含安全任务，不能整表当竞争池。
+按以下真实缺口选择有限通用子集，记录参考竞争、实际 AR、阻塞及前提，不承诺新增 TP 数：
 
-| 义务类别 | 涉及当前UNKNOWN项 | 实施前提/边界 |
-| --- | ---: | --- |
-| 动态创建/激活 | 167 | 真实entry、实参、创建occurrence及祖先前缀；deferred试验不等于已建模 |
-| 搜索预算/展开 | 83 | 保留旧成功路径，测query/event成本；不把超时解释为语义不可实现 |
-| 对象/地址身份 | 52 | 实际allocation/stack/TLS实例、偏移、extent及寿命，不能用may别名替代 |
-| API字节效果 | 9 | calloc/memset/memcpy等的初始化、复制、大小/重叠及定义性合同 |
-| 动态allocation | 8 | 超出pre-spawn main单次分配的具体发生次数、失败、发布与寿命 |
-| 非惰性子线程join | 10 | 实际句柄和第三线程完整终止/副作用，不能把join绑定任意另一端 |
+| 方向 | 必须补足的前提 |
+| --- | --- |
+| 动态创建/激活 | 真实 entry、实参、创建 occurrence 与祖先前缀；静态 site 不等于唯一线程 |
+| 对象/地址 | worker/helper 动态 allocation、栈/TLS、extent、失败、发布与寿命 |
+| 字节 API | calloc/memset/memcpy 的真实大小、重叠、初始化与定义性合同 |
+| 有副作用第三线程 join | 实际句柄、完整终止和相关读写，不能任选另一端或假完成 |
+| 同步/操作 | 有限失败返回、原子/RMW 闭包、AR 操作/调用与机器定义性 |
+| 搜索/IKOS 事实 | 保留旧成功路径；同语义、同 bounds 消融查询/事件/时间/内存，不用预算代替来源 |
 
-另有63项含未支持调用效果、34项含AR操作/定义性、35项涉及atomic查询覆盖等义务；
-它们和上述类别重叠。67项记录了有界UNSAT/guard/实例顺序等查询义务，
-不能据此承诺有竞争，也不能将已有正确约束放松。明细/例句见当前台账。
-字段化干扰与嵌套保护的SAFE精度需单独A/B，历史TN退步仍保留在§9.3。
-官方任务清单、正式validator与BenchExec合同确定后再做比赛外部验收。
+TN 的嵌套保护/发布相关性独立见 [AI 后续机制](ikos-ai-complete.md#roadmap)。
+真正 BMC→AI 归纳反馈仍是研究设计，不能消费普通候选有界 UNSAT 证明 SAFE。
+每轮结束于通用机制前提明确、最小正反变体/相关回归/全量配对和所选执行检查完成并提交；
+不可实现或零收益部分记录具体义务，不把暂停称为数学能力上限。
+官方 manifest、现代 validator 和实际 BenchExec 合同确定后再做外部验收。
 
 <a id="history"></a>
 ## 13. 阶段历史与不再采用的判断
 
-以下为不同版本/配置的已保存观察，当前状态只以§1为准。
-数字之间不可跳过源码/预算/任务指纹直接估计因果或上限；对应小型证据见§14。
+历史成绩变化和逐提交因果保留在 Git 及 §14 的小型 JSON，不再复制整条流水账。
+需要记住的架构变化是：A0 封自由 load → 实际值源/激活收紧 → 有来源 SC/调用/同步恢复 →
+结构化执行与独立检查 → AI 覆盖审查及受限协同。各阶段任务/预算不同，不能拿旧数字估上限。
 
-| 阶段 | TP前→后 | TN后 | UNKNOWN后 | 关键机制/代价 |
-| --- | --- | ---: | ---: | --- |
-| A0、A1 v1 | 80→50→52 | 709 | 267 | 封自由load，开放真nondet；error1 |
-| 地址A1 | 52→53 | 709 | 266 | 地址与guard共值；仅恢复1项，非预估6项；error1 |
-| 候选/激活审查 | 53→27 | 709 | 292 | 新scull，撤回27旧确认；error1 |
-| 正确性收紧 | 27→7 | 709 | 312 | 旧4保留、新3早期竞争；error1 |
-| 值/参数/SC恢复 | 7→35 | 709 | 285 | 原TP/TN保留，28恢复；error0 |
-| 参考驱动遍历 | 35→58 | 698 | 273 | 原35保留、23新增、11TN退UNKNOWN |
-| create返回、startup地址 | 58→59→60 | 698 | 271 | C-DAC成功guard、fmax初始化 |
-| 后续SAFE审查及仿射guard | 60→61 | 697 | 271 | stdio退4TN、单次执行恢复3TN；fmaxsymopt恢复 |
-| 命名atomic、内部目标 | 61→67→77 | 697 | 255 | 完整不可分割helper和目标尾部 |
-| global-choice / 创建审查 | 77→78（有波动） | 697 | 254 | 实际选B；lu/fmax回退与隔离记录保留 |
-| condition、完整前缀 | 78→79→80 | 697 | 252 | condition真恢复；outer-counter回退随后恢复 |
-| main单次heap、静态condition | 80→82→84 | 697 | 248 | 两对象任务、两个计数器 |
-| 小界限、atomic中间剪枝 | 84→85→86 | 697 | 246 | 新inner2/3但lu回退，后阶段恢复lu |
-| 终止/SC简化/确定guard/构造顺序 | 86→89→90 | 697 | 242 | 四fib新增、ticket全量回退随后恢复 |
-| 循环提示 | 90→92 | 697 | 240 | 两fib7 |
-| 锁入口覆盖/guard cache | 92→92 | 696 | 241 | 修新FN，嵌套锁TN退UNKNOWN；cache未增比赛TP |
-| 创建前写源SC简化 | 92→98 | 696 | 235 | 六fib，首轮ticket回退、复跑保留 |
-| constructor/库来源/byte rf/Join剪枝 | 98→98 | 696 | 235 | 正确性与通用能力，非比赛TP收益 |
-| 完整激活前缀 | 98→101 | 696 | 232 | 两nondet-array、ticket48；旧TP保留 |
-| heap整数读 | 101→101 | 696 | 232 | 有来源读，未采用无来源zero假设 |
-| 新激活排序 | 101→102 | 696 | 231 | fk恢复，先修外部创建mapper冲突 |
-| 同步真实控制宽度 | 102→102 | 696 | 231 | owner字段假反例收紧，冻结集不变 |
-| ERRORCHECK生命周期 | 102→104 | 696 | 229 | 两合法owned-unlock任务 |
-| pointer-slot纯cast、最终台账/回调probe | 104→104 | 696 | 229 | 通用cast恢复最小正例；回调仍方案 |
-| 第一版结构化结果、独立AR检查 | 104→104 | 696 | 229 | 分阶段提交；初始129组选中128 ACCEPT、1 UNSUPPORTED |
-| 第一版有限共享回调 | 104→106 | 696 | 227 | 实际指针值/SC来源/callee绑定；新增两比赛任务 |
-| 第一版受限join、stdio顺序、AI契约 | 106→106 | 696 | 227 | 通用最小反例/正确性/测量；无额外比赛TP增益 |
-| 第一版最终验收与UNKNOWN记录 | 106→106 | 696 | 227 | 最终132组AR ACCEPT；227项诊断/义务更新 |
-
-历史审查参考头10beda2、A1/早期阶段51b795c，最初多轮未提交diff后由用户分8个commit
-整理e8bab77…3e36320。后续独立阶段立即提交，不再以巨型diff交付。
-近期关键行为提交：控制宽度`1c698f2`、属性`9d9cf39`、cast`48d36a2`；
-台账`f1539d7`/`ea00a07`与方案`7daab30`不能当成行为增量。
-
-旧UNKNOWN表从296（原285+新增11）更新300（stdio等新增），再到301（嵌套锁回退）。
-历史TP61/77/80/82/90/98台账分别保留当时状态，不拿旧blocker排序当前任务。
-TP35→58原285处置为23恢复、135参考竞争仍未确认、23PASS、78TIMEOUT、21ERROR、1UNKNOWN、4参考/标签分歧；
-新增11项6PASS/5TIMEOUT。libvsync/cnalock及三个container_of分歧单列，不能盲目追随参考改IKOS。
+多轮未提交 diff 曾由用户拆为 e8bab77…3e36320，后续必须每个机制验证后独立提交。
+未知状态历史已多次更新，旧台账/参考标签分歧仍保留，不能盲目跟随参考改答案。
 
 明确撤回/修正：
 
@@ -1148,6 +1079,13 @@ TP35→58原285处置为23恢复、135参考竞争仍未确认、23PASS、78TIME
 probe/校准/所选模型与hash；它们的日期/数字是**历史阶段**，不是当前基线。
 原报告正文可从本次合并提交的父提交查看；不再维护平行Markdown。
 JSON中旧报告路径是不可改写的实验来源元数据，查结论请按本文章节和以下索引定位。
+
+### 后续 AI 协同与当前执行验收
+
+- [main-stack](artifacts/ai-precision-2026-10-11/main-stack/summary.json)：隐式 main 的真实共享栈对象。
+- [publication](artifacts/ai-precision-2026-10-11/publication/summary.json)：AI 生命周期合同用于实际 helper 发布。
+- [diagnostic-types](artifacts/ai-precision-2026-10-11/diagnostic-types/summary.json)：递归类型导出与重新检查，当前基线入口。
+- 上游覆盖/SAFE、双向反馈原型的零收益及后续 TN 工作：[AI 机制索引](ikos-ai-complete.md#evidence)。
 
 ### 第一版实现与发布
 

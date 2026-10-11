@@ -1,118 +1,86 @@
-# docs/ 文档索引与学习路线
+# IKOS-ConC：阅读入口与当前状态
 
-> 本目录是 IKOS **并发数据竞争检测**（DataRaceChecker）子系统的文档。
-> 索引分两半：**上半部分是学习路线**（新手按顺序走），**下半部分是速查表**（会了之后按目标找）。
->
-> 维护原则：根目录只留「当前工作实时相关」的文档；历史快照、已落地设计、官方翻译一律进 `archive/`。
+这里维护并发扩展的六份文档。原生 IKOS 的安装、数值域和模块说明仍在
+[项目 README](../README.md)、[原生概览](../doc/OVERVIEW.md)及各模块 README。
 
-2026-10-10 抽象解释审查与待批准方案：
+## 从哪里开始
 
-- [正确性审查](ikos-ai-soundness-audit-2026-10-10.md)：六类已复现的 SAFE 漏报、对照与源码/论文依据。
-- [优化计划](ikos-ai-optimization-plan-2026-10-10.md)：先修覆盖，再做保护集、字段/关系精度与性能。
-- [AI/BMC 双向反馈研究](ikos-ai-bmc-feedback-research-2026-10-10.md)：可行契约、已有研究、原型和停止条件。
+| 你要了解什么 | 阅读入口 |
+| --- | --- |
+| 项目怎样从 C 程序得到 SAFE / FALSE / UNKNOWN | [整体架构](concurrency-architecture.md#pipeline)，再看贯穿示例 |
+| 抽象解释怎样覆盖线程干扰、证明安全 | [AI 手册](ikos-ai-complete.md#principles)，按需读线程、对象、锁与正确性合同 |
+| BMC 怎样利用 IKOS 信息确认真实竞争 | [BMC 手册](ikos-bmc-complete.md#architecture)，再看值流与执行检查 |
+| 修改代码、构建、调试和验证 | [开发速查](dev-gotchas.md#workflow) |
+| 注册、包装、运行及 witness 外部验收 | [参赛指南](SVCOMP2027-参赛指南.md) |
+| 已实现与待研究的双向反馈、论文证据缺口 | [AI/BMC 协同](ikos-ai-complete.md#feedback) |
 
-这三篇属于跨模块审查/研究；BMC 当前实现仍以 [complete 文档](ikos-bmc-complete.md) 为唯一维护入口。
+理解代码先读整体架构；深入某个问题时只读 AI 或 BMC 的对应章节。
+手册按“原理 → 实现位置 → 前提与失败回退 → 证据 → 下一步”组织，
+无需先读完历史实验。
 
----
+<a id="current"></a>
+<a id="baseline"></a>
+## 当前可复核基线
 
-## 一、学习路线（新手按顺序，标【难度】【前置】【读完会什么】）
+以下是 **2026-10-11 已保存的实验**，不是本次文档整理重新运行的结果。
+分析器代码状态为 `a2623c3b1f0934a0c095e116b9d944288a4a470f`；
+安装二进制 SHA256 为
+`b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02`。
 
-> 不用一次读完。前 3 个阶段（约 1~2 小时）读完就能「看懂代码 + 知道每条判定逻辑为什么存在」；
-> 阶段 4 是动手前必扫；「参考」按需查。
+任务集合为 `/home/ruan/sv-benchmarks-2026`，revision
+`0a254fdddcfe24949be9edd47f8d609462eb52fb`，本地扫描 1029 项、全部 ILP32，
+4 jobs、每项外层 30 秒。2027 官方目标 manifest 尚未固定；
+定向 LP64 回归不能称为 LP64 全量。
 
-### 阶段 0 —— 这项目在干嘛（5 分钟）
+| 比赛判定模式 | TP | TN | FP | FN | UNKNOWN | error/timeout |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| AI，demote，BMC 关闭 | 0 | 678 | 0 | 0 | 350 | 1 |
+| AI + BMC，demote | 109 | 678 | 0 | 0 | 241 | 1 |
 
-| 文档 | 难度 | 读什么 |
-|---|---|---|
-| `../CLAUDE.md` | ⭐ | 全读：红线 FN=0、怎么 build / 跑测试、关键文件表 |
+109 个标签 TP 对应重新导出的 137 条所选执行，全部独立 AR ACCEPT。
+检查范围为导出的 AR、可信前端与明确库合同；尚非官方源程序/witness 验收，
+不认证全部 SAFE 规则，也不穷尽所有 SAT 模型。
+有限基准 FP/FN 为零不能作为全语言 soundness 定理。
 
-读完你会：知道「宁可多报不漏报」是铁律，知道改完要同步 install。
+证据：[汇总](artifacts/ai-precision-2026-10-11/diagnostic-types/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-11/diagnostic-types/paired.json)、
+[逐执行检查](artifacts/ai-precision-2026-10-11/diagnostic-types/current-tp-executions.json)。
+唯一失败项是安全标签的 `nsc-ircc` 驱动外层超时，未计成 UNKNOWN。
 
-### 阶段 1 —— 数据竞争怎么被检测出来的（核心，先懂「为什么」）
+## 下一步去哪里查
 
-| 文档 | 难度 | 读什么 | 跳过 |
-|---|---|---|---|
-| [ikos-race-theory-mapping.md](ikos-race-theory-mapping.md) | ⭐⭐ | 开头「红线」→ §2.0 总览表（16 个语义能力一眼扫）→ §2.4 两层判定架构 → §3.1 能力边界 | §2.1.x 各模块细节、§3.2 缺口、参考文献 |
+- 安全 UNKNOWN 115 项，24 项有正常 Goblint TRUE 参考，91 项参考未证实。
+  [安全台账](artifacts/ai-precision-2026-10-11/unknown-ledger/ledger.json)保存状态及历史诊断指纹。
+  TN 工作入口为 [AI 后续机制](ikos-ai-complete.md#roadmap)。
+- 竞争 UNKNOWN 126 项，历史 Dartagnan 参考为 FAIL 95、TIMEOUT 15、ERROR 13、有界 PASS 3。
+  [混合历史台账](artifacts/bmc-v1-final-2026-10-10/unknown-results.json)同时含安全和竞争任务，
+  看 `current_bmc`/`current_ai` 字段及标签筛选，不能把全部 227 行称为竞争池或新参考运行。
+  TP 工作入口为 [BMC 后续机制](ikos-bmc-complete.md#roadmap)。
+- 已有 AI→BMC 的能力及局部查询减少证据；真正 BMC→AI 归纳精化、
+  整体优于参考工具及大幅提速仍需验证。
 
-读完你会：理解抽象解释判 SAFE、BMC 确认竞争、UNKNOWN 表达能力边界的两层架构。
-有限测试中的 FN/FP 为零不等于普遍 soundness 证明；当前基线和证据范围统一见 [BMC 文档](ikos-bmc-complete.md#current)。
+## 文档与证据的维护边界
 
-### 阶段 2 —— 代码怎么组织（要动手必读）
+| 内容 | 唯一维护位置 |
+| --- | --- |
+| 最新实验基线和总数 | 本页 `current`；原始依据在对应 JSON |
+| 全流程、模块职责、上游扩展位置 | 整体架构 |
+| SAFE、干扰、线程摘要及反向反馈义务 | AI 手册 |
+| FALSE、SMT、所选执行及 BMC 扩展 | BMC 手册 |
+| 构建、调试、回归、提交纪律 | 开发速查 |
+| 外部赛事规则和发布状态 | 参赛指南，注明实际核验日期 |
 
-| 文档 | 难度 | 读什么 |
-|---|---|---|
-| [ikos-architecture-survey.md](ikos-architecture-survey.md) | ⭐⭐ | 第一部分「原生流水线」+ 第二部分「并发改动清单」（哪些是我们加的、侵入内核没） |
-| [concurrency-architecture.md](concurrency-architecture.md) | ⭐⭐⭐ | §1 五层分层 → §2 写/读数据流 → §4 判定 10 闸门（改代码时回来查文件:行号） |
+实现状态写成“已实现 / 保守封堵 / 待实现 / 待验证”；新修复更新机制所在章节，
+不再新增日期化 Markdown 或在正文追加整轮流水账。
+历史实验必须有版本、输入、配置与证据范围；撤回的机制和零收益实验也保留简短结论。
+跨手册使用链接，避免反复复制“最新数字”。
 
-读完你会：能把「一个访问从 Load 语句 → AccessRecord → 成对判定 → 报 RACE/UNKNOWN」这条链路在代码里指出来。
+`review-repros/`、小型 `artifacts/`、必要 CSV 和 UNKNOWN 台账继续保留；
+原始大日志、数据库和二进制不作为阅读入口。旧报告正文可从 Git 历史取回：
 
-### 阶段 3 —— BMC 怎么找回竞争（进阶，可选）
+```bash
+git show a2623c3:docs/ikos-ai-optimization-plan-2026-10-10.md
+git show a2623c3:docs/archive/ikos-5b-mutex-hb-soundness.md
+```
 
-| 文档 | 难度 | 读什么 |
-|---|---|---|
-| [ikos-bmc-complete.md](ikos-bmc-complete.md) | ⭐⭐ | 先读 §1–3 当前状态/判定契约/架构；按任务读 §4–8 值、对象、线程、同步、搜索；§10 验证，§11–12 流程与待办 |
-
-读完你会：知道 demote 成 UNKNOWN 的候选如何经有界前缀和 Z3 确认 FALSE，以及确认所需的语义前提和证据边界。
-
-### 阶段 4 —— 动手改代码前（必扫一遍）
-
-| 文档 | 难度 | 读什么 |
-|---|---|---|
-| [dev-gotchas.md](dev-gotchas.md) | ⭐ | 22 条全扫（重点：#1 同步 install、#3 锁集 MAY/MUST 极性、#5 全局变量 type/points-to、#20 fixpoint dirty 收敛） |
-
----
-
-## 二、按目标速查（已经会了，只想查某件事）
-
-| 我要…… | 去读 |
-|---|---|
-| 改竞态判定逻辑（为什么报/不报） | `concurrency-architecture.md` §4 闸门 + `theory-mapping.md` §2.1.x 对应模块 |
-| 加/改一个同步语义（锁/原子/cond/sem） | `theory-mapping.md` §2.1.x 对应小节 + 对应模块的 soundness 核验点 |
-| 找回更多 TP（BMC 方向） | [BMC 扩展计划与结束条件](ikos-bmc-complete.md#roadmap) |
-| 按 Dartagnan 的具体差异用例逐步扩展 BMC | [逐用例实施流程](ikos-bmc-complete.md#workflow) |
-| 查询全部 UNKNOWN 的参考结论、恢复情况及剩余语义 | [当前台账与任务范围](ikos-bmc-complete.md#current) |
-| 验证 BMC 反例并查看下一步方案 | [反例与 witness 验证](ikos-bmc-complete.md#validation) |
-| 回收 lost-TN（SAFE 方向） | `theory-mapping.md` §3.2 的 235 UNKNOWN 拆桶 |
-| 查某个 FP/FN 的历史根因 | `archive/`（fn-root-cause / fp-classification 的原始快照） |
-| 准备 SV-COMP 提交 | `SVCOMP2027-最终核验清单.md`（打勾）+ `SVCOMP2027-干净环境检测流程.md` |
-| 区分「我们的改动」vs「上游基线」 | `ikos-upstream-diff.md` |
-| 了解 MHP 规划（未落地） | `ikos-mhp-design.md` |
-
----
-
-## 三、全量索引（按功能，供参考）
-
-### 理论
-- [ikos-race-theory-mapping.md](ikos-race-theory-mapping.md) —— 理论总纲：A/B/C 分类、soundness、两层判定架构、235 UNKNOWN 拆桶
-
-### 架构
-- [ikos-architecture-survey.md](ikos-architecture-survey.md) —— 原生 vs 并发「宽」入门
-- [concurrency-architecture.md](concurrency-architecture.md) —— 并发子系统「深」代码（文件:行号锚点）
-- [ikos-upstream-diff.md](ikos-upstream-diff.md) —— 本地 vs 上游源码 diff 客观清单
-
-### 设计
-- [ikos-bmc-complete.md](ikos-bmc-complete.md) —— **BMC 唯一维护入口**：当前实现、语义契约、Dartagnan 参照、正确性修复、模型验证、逐用例流程、待办与历史证据
-- [ikos-mhp-design.md](ikos-mhp-design.md) —— ⚠️ MHP 设计（未实施，仅供思路）
-- [dev-gotchas.md](dev-gotchas.md) —— 22 条踩坑清单
-
-### SV-COMP 2027 参赛
-- [SVCOMP2027-参赛指南.md](SVCOMP2027-参赛指南.md) —— 提交总入口（日期/计分/提交物）
-- [SVCOMP2027-最终核验清单.md](SVCOMP2027-最终核验清单.md) —— 提交前打勾（代码实查版）
-- [SVCOMP2027-干净环境检测流程.md](SVCOMP2027-干净环境检测流程.md) —— 考官视角免 Docker 流程
-
-### 复现用例
-- [fp-repros/](fp-repros/) —— 8 个 FP 最小复现 `.c`，改动后做最小回归
-
-### 归档（archive/，只读）
-历史快照（fn-root-cause / fp-classification / verification-report / goblint×2 对比 / cpachecker）、
-已落地设计（condvar / 5b-mutex-hb）、官方页面翻译（规则/提交页/基准页/FAQ）。
-数字已过时，结论已并入上方活跃文档。
-
----
-
-## 维护约定
-
-- 归档 = `git mv` 进 `archive/`，**不改内容**（快照的价值就在「冻结在那一刻」）。
-- 合并 = 结论并入活跃文档后 `git rm`（原始内容由 git 历史保留）。
-- 引用具体 commit/数字时写清 commit，避免「数字从哪来」说不清。
-- 删除/移动前用 `rg` 全库查引用；BMC 报告统一更新 complete 对应小节，不新增平行文档。
+这些原文是历史材料，其结论需要对应版本和实际语义依据。

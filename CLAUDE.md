@@ -11,7 +11,7 @@
 
 面对一个靶点文件，在输出重构方案前按 4 步串行，禁止跳步：
 
-1. **理论推演**：读目标 `.c`，对照 `docs/ikos-race-theory-mapping.md`，在关键检查点（发射/接收/黑板同步/解引用）推演出「理论上应得的 points-to / 干扰集 / 锁集状态」。
+1. **理论推演**：读目标 `.c`，对照 `docs/ikos-ai-complete.md`（AI）与 `docs/ikos-bmc-complete.md`（BMC），在关键检查点（发射/接收/黑板同步/解引用）推演出「理论上应得的 points-to / 干扰集 / 锁集状态」。
 2. **探针设计**：想清楚在哪个类哪个函数插桩；探针必须 env-gated（`getenv("IKOS_XXX")`）、用完即删（零残留）。
 3. **观测与偏差**：跑真实二进制抓日志，对比「理论预期 vs 实际值」，指出在哪一步坍缩/断层（例：预期 DynAlloc、实际空集）。
 4. **证据驱动**：基于 (1)(2)(3) 的铁证给出最小 diff；先 A/B 验证 FN=0 再落地。若某条规则经探针证明已成束缚，可破例，但要在提案里给出数据与新思路。
@@ -25,10 +25,10 @@
 5. **Must-Lattice**：must 锁集 join=交集、⊤=空；`meet(TOP, x)=x` 是恒等元。
 6. **确定性**：集合遍历按值/名字排序，别按指针排序（引入 ASLR 依赖）。
 
-## 构建（必须同步 install，否则「改了没反应」）
+## 构建（从项目根执行并同步 install）
 
 ```bash
-cd build && cmake --build . --target ikos-analyzer -j"$(nproc)"
+cmake --build build --target ikos-analyzer -j"$(nproc)"
 cp build/analyzer/ikos-analyzer install/bin/ikos-analyzer
 # 改前端 python（args.py/analyzer.py）还要同步 install/libexec/lib/python3.12/site-packages/ikos/
 ```
@@ -54,7 +54,7 @@ python3 svcomp_race_test.py   # SV-COMP 2026 冻结集全量（默认 /home/ruan
 | `core/include/.../concurrent_global_env.hpp` | 全局黑板：site_id 注册表、堆指针黑板、join summary |
 | `analyzer/src/analysis/value/thread_modular.cpp` | thread-modular 驱动：两层 fixpoint + 黑板 |
 
-## 已验证的踩坑提醒（完整 22 条在 `docs/dev-gotchas.md`）
+## 已验证的踩坑提醒（执行流程和完整约定在 `docs/dev-gotchas.md`）
 
 1. 改完必须同步 install 目录，否则「改了没反应」且易误判成别的问题。
 2. `log::debug/info/...` 是 `void(StringRef)`，**不能 `<<`**；要流式用 `log::msg()`。
@@ -62,13 +62,13 @@ python3 svcomp_race_test.py   # SV-COMP 2026 冻结集全量（默认 /home/ruan
 4. 探针要 env-gated 且用完删。
 5. 全局变量：`type()` 返回**指针**类型（判断值类型用 `pointee()`）；全局 points-to 不在 entry invariant 里。
 6. fixpoint 中「只改内容、不置 `_is_dirty`」的副结构会提前收敛 → 读端读到 stale 值。
-7. 已建模同步调用（pthread_create/once/cond）不能同时走 checker 的 extern-call 写合成。
+7. 已建模控制存储不重复合成未知库写；create 句柄输出、timeout 输入和 getter 输出等真实用户访问仍必须覆盖。
 8. worklist 按指针 `std::sort` 有 ASLR 不确定性，按函数名 sort。
 
 ## 文档索引
 
-- `docs/README.md` —— 文档导航（新人按里面的「学习路线」阶段 0~4 走：红线 → 理论总纲 §2.0/§2.4 → 架构 → BMC → 踩坑）
-- `docs/dev-gotchas.md` —— 完整 22 条踩坑清单
+- `docs/README.md` —— 文档导航（六份维护文档的唯一入口：整体架构 → AI/BMC 对应章节 → 开发速查）
+- `docs/dev-gotchas.md` —— 构建、调试、回归、提交与踩坑速查
 
 ## 工作偏好
 

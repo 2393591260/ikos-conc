@@ -1,140 +1,165 @@
-# SV-COMP 2027 参赛指南（事实已核查官方站点）
+# SV-COMP 2027 参赛指南
 
-> **本文保留历史信息，当前流程以 [2026-10-09 提交复核](SVCOMP2027-提交复核-2026-10-09.md)及官网为准。** 最新注册截止为 10 月 12 日；类别声明拟迁入 FM-Tools，官方已不要求 category-structure MR；不能沿用旧见证验收和得分结论。
+本文统一维护注册、归档、runner 与 witness 验收。**外部事实最后核对于 2026-10-09**；
+本次文档整理没有重新访问官网、远端 MR/PR 或 Zenodo。外部要求和状态须在操作前重新确认。
+本地分析能力与最新基线见 [阅读入口](README.md#baseline)，不能用旧 ZIP 的成功检查替代新版本验收。
 
-> 本文件所有事实均来自官方站点 `https://sv-comp.sosy-lab.org/2027/`（首页 / `rules.php` / `submission.php`），
-> 于 2026-09-28 用 curl 抓取原文核对。取代之前的交接报告与使用说明。
+<a id="requirements"></a>
+## 1. 目标与官方入口
 
-## 1. 基本信息（已核查）
+当前目标是 `C.no-data-race.Concurrency`，不是自动参加全部并发性质。
+数据模型来自任务 YAML，不能一律采用宿主位宽。2027 任务集合未固定前，使用本地 2026 冻结集回归。
+程序 → YAML（输入、属性、期望结果、数据模型）→ 类别任务集合，是评估口径；
+不得自行把 `.i` 换成同名 `.c` 后仍声称测试了原任务。
 
-| 项 | 内容 |
-|---|---|
-| 届数 | 第 16 届 SV-COMP（International Competition on Software Verification） |
-| 随会 | TACAS 2027 |
-| 地点 | 丹麦哥本哈根（Copenhagen, Denmark） |
-| 时间 | 2027 年 4 月（官网原文 `April ??, 2027`，**具体日期待定**） |
-| 主页 | https://sv-comp.sosy-lab.org/2027/ |
-| 规则 | https://sv-comp.sosy-lab.org/2027/rules.php |
-| 提交 | https://sv-comp.sosy-lab.org/2027/submission.php |
-| 沟通 | Zulip（邮件联系组织者 Dirk Beyer / Jan Strejček 申请邀请）；邮件列表 sv-comp |
+| 官方入口 | 用途 |
+| --- | --- |
+| [主页与日期](https://sv-comp.sosy-lab.org/2027/) | 最新期限和公告 |
+| [submission](https://sv-comp.sosy-lab.org/2027/submission.php) | 当前注册/归档/集成流程 |
+| [rules](https://sv-comp.sosy-lab.org/2027/rules.php) | 性质、资源、判定和评分规则 |
+| [benchmarks](https://sv-comp.sosy-lab.org/2027/benchmarks.php) | 任务类别、训练集合与约定 |
+| [BenchExec 集成说明](https://github.com/sosy-lab/benchexec/blob/main/doc/tool-integration.md) | tool-info 与本地测试 |
+| [FAQ](https://sv-comp.sosy-lab.org/faq.txt) | 输出、版本、复现及见证核验 |
 
-## 2. 关键日期（已核查，逐条与官网一致）
+2026-10-09 的页面记录：注册 MR 创建截止 **10 月 12 日**，工具提交/CI 完成 **10 月 20 日**，
+任务冻结 11 月 3 日，合格通知 11 月 10 日，最终重提交 11 月 17 日；
+结果预计 12 月 4 日公布，参赛短文节点 12 月 17 日。旧报告中的 10 月 8 日注册截止已过时。
+短文提交要求以组织者后续通知为准，不沿用旧文档“必需/可选”的笼统判断。
 
-| 日期 | 节点 |
-|---|---|
-| 2026-07-31 ~ 08-09 | 公布 SV-COMP 2027 与支持的 witness 格式 |
-| **2026-10-08** | **工具注册截止**（建 merge request）+ 验证任务提交截止（sv-benchmarks 仓库 MR） |
-| **2026-10-20** | **工具提交截止**（所有 CI 检查须通过） |
-| 2026-11-03 | 验证任务冻结 |
-| 2026-11-10 | 合格工具通知 |
-| 2026-11-17 | 最终工具重提交截止（评估阶段开始） |
-| 2026-12-01 | 离线基准阶段完成、结果传达给参赛者 |
-| 2026-12-04 | 结果公开发布 |
-| 2026-12-17 | 参赛短文（competition contribution）提交 |
-| 2027-01-14 / 01-21 | 短文通知 / 定稿 |
+当时规则表：no-data-race 不支持 correctness witness；violation witness 为 **2.2 或更高**，
+文件名 `witness.yml`。其他性质的 witness 要求不同。见证资源表曾列 2 处理单元/7 GB、
+违例验证 90 秒/正确性验证 300 秒；正式运行时从当版规则和 benchmark XML 核对，
+不与本地 analyzer 的 30 秒实验预算混用。
 
-> 当前距注册截止（10-08）约 10 天。
+<a id="registration"></a>
+## 2. 注册和本地集成
 
-## 3. 目标类别与 witness 要求（已核查 rules.php 表格）
+需要工具 ZIP/Zenodo DOI、FM-Tools 工具条目与参赛声明、BenchExec tool-info。
+当时 submission 页面已不要求另开 category-structure MR；类别仍需声明，拟迁入 FM-Tools schema。
 
-| 类别 | 正确性 witness | 违反性 witness |
-|---|---|---|
-| **C.no-data-race（主目标）** | **not supported** | **2.2** |
-| C.unreach-call.Concurrency（可选） | 2.1+ | 2.2 |
-| C.no-overflow.Concurrency（可选） | 2.1+ | 2.2 |
-| C.valid-memsafety.Concurrency（可选） | not supported | 2.2（demo mode，仅 valid-deref/valid-free） |
+| 提交 | 2026-10-09 的观测 | 下一次须核对 |
+| --- | --- | --- |
+| [FM-Tools !1147](https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/merge_requests/1147) | opened，最近 pipeline failed，`ci_must_pass` | 失败 job 的实际原因、权限/runner、最新 schema、是否合并 |
+| [BenchExec #1324](https://github.com/sosy-lab/benchexec/pull/1324) | open，15 checks passed，无 review | PR 内容是否与本地相同、集成测试、review/merge |
+| [schema !1112](https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/merge_requests/1112) | opened | 今日是否合并或有组织者迁移安排；不能把旧状态当今日事实 |
+| category-structure !677 | 当时未取得其状态 | 已有 MR 是否需调整由组织者确认；它不再是当时页面必需的新提交 |
 
-- witness 为 YAML 格式，文件名固定 `witness.yml`，交给 witness validator 校验有效性。
-- **资源上限**：2 处理单元、7GB 内存；违反性 witness 90s（=验证时间的 10%）、正确性 witness 300s（33%）。
+本地配置入口：
 
-## 4. 参赛需提交的 4 部分（已核查 submission.php，自 2026 起简化）
+- [fm-tools-entry.yml](../svcomp/fm-tools-entry.yml)：当前有 `track: Verification`、
+  `categories: C.no-data-race.Concurrency`，描述 AI + 有界 Z3 确认，不宣称普遍 FP/FN 为零。
+  字段能写入本地不证明远端 schema/CI 已接受。
+- [ikos-conc.py](../benchexec/tools/ikos-conc.py)：从任务传递数据模型，运行 bundled
+  `svcomp_witness.py`，映射 SAFE/definitely UNSAFE/UNKNOWN，并拒绝非零退出或超时作为正常结果。
+  当前 `find_executable("ikos")` 未显式指定 `bin`；归档根定位须实测。
+  当前未明确拒绝其他属性；只注册 no-data-race 不等于适配器具备通用属性支持。
+- [打包脚本](../svcomp/package.py)、[见证包装器](../svcomp_witness.py)、
+  [本地运行模拟](../svcomp/bench-exec-sim.py)。模拟不能替代官方 runner。
 
-1. **Zenodo 工具归档**（`.zip`）：单一顶层目录（非 tarbomb），含 `LICENSE`、`README`、`smoketest.sh`（对内置示例运行、exit 0）+ 全部可执行文件与依赖；stdout/stderr ≤ 2MB；支持 `--version`；自包含、任意路径可运行、断网可跑；不含 `.git`/源码/`__MACOSX`/多余测试。上传 Zenodo 得 DOI。
-2. **FM-Tools 条目** `<tool_id>.yml`：version（Zenodo DOI）、参赛声明、jury member（须是贡献开发者，且名字出现在项目页/论文/提交记录，或经组织者批准）、标签 `meta_tool`（若元验证器）/ `ai`（若用 LLM）、描述。MR 只在 `smoketest.sh` exit 0 时才合并。
-3. **BenchExec tool-info 模块**：加入 BenchExec 仓库，负责拼命令行、解析输出判定结果、取版本。
-4. **category-structure.yml 的 MR**：声明参加哪些类别（`C.no-data-race`；用 opt-out/opt-in 控制子类别）。
+`required_ubuntu_packages` 是系统包安装声明；`program_files()`/`REQUIRED_PATHS` 是工具搬运清单。
+不需要把整个 `/usr/lib` 放进归档。不同现存 adapter 的清单不同：CPAchecker 明列 bin/JAR/native/config，
+Goblint/ESBMC 当时没有额外清单。IKOS 只返回入口在按 program_files 搬运时可能不足；
+完整 FM 容器内运行是否失败则须实际检查。自带 APRON、LLVM/Z3 与系统库要保持 ABI/版本一致。
 
-## 5. 其他已核查要点
+新 jury member 必须具有贡献身份并向组织者报备。用户已邮件回复 GitLab 用户名、再次跟进，
+当时等待组织者确认；本文不推断现在已获得 runner 权限。
+可在 MR 的 pipeline/job 查看是否存在可启动任务、matching runner 与失败日志；
+无法操作时通过已加入的 Zulip/邮件询问。仅加入 GitLab 项目不等于拥有所有 CI runner 权限。
 
-- **无需 EasyChair**（2026 起取消）：纯工具提交即可；短文在结果公布后另行提交。
-- **上届工具自动注册为 inactive**：本工具为全新，无此问题。
-- **工具标签**：用 LLM/AI 须标 `ai`；元验证器标 `meta_tool`（本工具预计都不是）。
-- **新 jury member 需向组织者报备邮箱**。
-- **合格条件**：FM-Tools 里 flags 正确 + 归档含合格 LICENSE + 与其他工具在概念/实现上有差异 + 有贡献 jury member。
+<a id="package"></a>
+## 3. 工具归档：历史实物与新版本边界
 
-## 6. 待办清单（按优先级，逐步操作）
+Zenodo 记录：[23122650](https://zenodo.org/records/23122650)，concept DOI 为 23122649。
+以下都是 **2026-10-09 保存的实物证据**，不是当前分析器发布凭证。
 
-### 已完成（代码侧，2026-09-29 提交）
+| 实物 | 指纹与结论 |
+| --- | --- |
+| 当时公开旧 ZIP | 95,356,370 bytes，MD5 `232bc0f5ab3d0b710c2752e3d858c428`；解压后仍复现 exclusive-flag FP、published-before-init FN、overlapping-widths FN（双架构）。 |
+| 本地重封装 ZIP | 149,398,460 bytes，SHA256 `b06a6b850bed78562626d21f5c8d008b5ea35409308bf6b82830a3d7a2856b34`，MD5 `87a17d9490aab3490f10a7951ecd516b`。 |
+| 重封装 analyzer | SHA256 `3043999b0e36620f977aeb8d397afeb3921bc4d445d78df5945eb80ccbd8424c`；不是 README 当前二进制。 |
 
-- [x] **P0 审计现有包装器**：结论 a半✅（缺属性文件，P3 兜底）b✅ c❌。详见 P1~P4。
-- [x] **P1 结果包装器**：`benchexec/tools/ikos-conc.py`（与 P3 合流），固定 `--analyses=race --concurrency=auto`，映射 TRUE/FALSE(no-data-race)/UNKNOWN；`--format=no` 控 stdout 体量。
-- [x] **P2 witness 生成器**：`svcomp_witness.py` 把竞态报告转格式 2.2 `witness.yml`（`function_enter` 注册线程 + 2 个 `target` 结尾段）；过官方基础 witnesslint（exit 0）。`data_race.cpp` 侧补了每个访问的 `line/column/file` + `thread_creations`。
-- [x] **P3 BenchExec 模块**：`benchexec/tools/ikos-conc.py`（`executable/version/cmdline/determine_result`），tool id `ikos-conc`；`cmdline()` 跑 `svcomp_witness.py`，报 FALSE 自动写 witness。
-- [x] **P4 自包含归档**：`svcomp/package.py` 产出 `ikos-conc.zip`（120MB）：打包 APRON+LLVM-14、settings 可重定位、wrapper 用系统 python3、smoketest.sh exit 0。已解压到干净目录验证 `--version` + 竞态分析 + witness 全通。
+当时重封装核对：单顶层目录、无检查到的 git/cache/db/cpp 残留；项目外换 cwd/路径运行；
+正式 wrapper 的 race/safe × ILP32/LP64 smoke；全新 Ubuntu 24.04 仅声明包与 unzip；
+P0 双架构 20 条观察与修复基线一致。退出码非零不能靠输出 unsafe 字符串通过 smoke。
+包内补了 BUILD-INFO、修改说明和自带组件许可；源码补充 tar.gz 不是 FM 的执行 ZIP。
+该轮没有重新跑全量，沿用同 analyzer hash 的先前实验，不能说完成了最新 109 TP 版本的包装验收。
 
-### 提交进度（2026-10-04 更新）
+Zenodo [manage-files](https://help.zenodo.org/docs/deposit/manage-files/#modify)
+当时允许发布后 30 天内通过 Edit files 做 minor corrections，保留同一记录 DOI；新建版本产生新版本 DOI。
+不要自动创建/上传版本。替换后核对公开文件 hash，并要求 CI 使用新实物；同 DOI 可能还有旧缓存。
+本轮没有发布或修改远端。
 
-- [x] **Zenodo 上传 + DOI**：`10.5281/zenodo.23122650`。
-- [x] **`svcomp/fm-tools-entry.yml` 全部填齐**（DOI / jury member Ronghui Ruan / gitlab `ruanronghui`），本地过 CI 同款 `check-data.py`。
-- [x] **三个 MR/PR 已提交**：fm-tools（`data/ikos-conc.yml`）、bench-defs（`category-structure.yml` opt-in）、BenchExec（`benchexec/tools/ikos-conc.py`，ruff+SPDX+import 已修）。
-- [x] **jury member 邮箱已报备**（Dirk 回复 + 发 Zulip 邀请）。
-- [ ] **回 Dirk 附 GitLab 用户名 `ruanronghui` + 加入 Zulip**。
-- [ ] **CI runner 问题**：fork pipeline 报 "no matching runners"（fork 无共享 runner，属基础设施，非文件问题）；确认 upstream MR pipeline 或联系组织者。
-- [ ] **Debug → Release 重建**（10-20 前）：当前是 Debug 构建，评测会慢，weaver 900s 超时大半由此而来。
+新发布归档应满足：单一顶层目录；合格 LICENSE、README、smoketest；支持 --version；
+必要工具组件/许可完整；任意路径、断网可运行；stdout/stderr 控制在官方上限内（当时 2 MB）；
+排除数据库、源码补丁、缓存和无关大测试。BUILD-INFO 记录源码、二进制、配置和组件指纹。
 
-### 提交前建议复核（我离线没核实的点）
+<a id="runner"></a>
+## 4. 干净环境与官方运行闭环
 
-- [x] **计分公式（已从 SV-COMP 2026 结果表 JSON 实提取核实）**：C.no-data-race 与 reachability **相反**——
-  - TRUE（证明无竞争）正确 = **+2**；FALSE（找到竞争）正确 = **+1**；FP（误报） = **−16**；FN（漏报） = **−32**；UNKNOWN = 0。
-  - 逻辑：证明「无竞争」要推理所有线程交错（更难，值 +2）；漏报是 soundness 问题（罚 −32 重于误报 −16）。
-- [ ] `required_ubuntu_packages` 清单：建议在 `ubuntu:24.04` 容器里跑一遍 `smoketest.sh` 验证（尤其 libppl/libboost/tbb 版本号）。
-- [x] `data_model`：已从任务 `.yml` 读 ILP32/LP64，`-m 32/64` 透传 clang + witness `data_model` 字段对齐（`28286aa` + `8048181`）。
+1. 固定候选源码提交，构建并同步 install；先完成语义回归/冻结集配对/所选执行检查。
+2. 打包到新的暂存目录，记录 ZIP/analyzer/前端 hash；不要用旧包覆盖验收记录。
+3. 在项目外解压，不同 cwd、不同绝对路径运行正式入口 smoke/P0/双架构见证生成。
+4. 用声明的 Ubuntu 24.04 包构建干净运行环境，确认断网和依赖/ABI；工具不能回读开发仓库。
+5. 安装对应 BenchExec 与此 adapter，从任务 YAML 生成固定 manifest/XML，传入属性及数据模型，
+   保存 command line、资源/退出码/判定及 witness；缺失属性文件须来自权威版本，不能自造评分任务。
+6. 在可用的正式 Linux cgroup/container 隔离下运行所选任务及全量，核对资源、文件白名单和输出限制。
+7. 对 violation witness 做格式和独立源级语义核验；最后提交远端并检查实际 CI 实物和日志。
 
-### 当前基线（2026 冻结集全量，1029 任务，**全部 ILP32**）
+Ubuntu VM 只能验证安装/执行环境，**不自动等于官方隔离与资源 enforcement**。
+`--no-container` 或本地模拟适合诊断，须在结论里标明；不要据此宣布官方 runner 通过。
+XML 使用 BenchExec 当前 schema 与任务文件列表；不要沿用旧报告里未经核验的容器豁免。
+官方 benchmark-defs、训练结果输出包含版本、运行命令、任务和 validator 信息，
+这些用于定位“用了哪个包/参数/见证”，比只看总分可靠。
 
-**提交模式（`--demote-race-to-unknown` + `IKOS_BMC_RECOVER=1`）实测：TP=85 / FP=0 / TN=709 / FN=0 / unknown=235 = 1503 分。** 红线 FN=0 守住，且 FP=0（两层判定架构，见 `docs/ikos-race-theory-mapping.md` §2.4）。
+<a id="witness"></a>
+## 5. Witness 2.2 与三层验证
 
-**得分（TRUE=+2 / FALSE=+1 / FP=−16 / FN=−32）演进**：
+正式格式：[SV-Witnesses 2.2](https://zenodo.org/records/21993990)，2026-08-18 发布；
+当时下载 ZIP MD5 `a1339c68eade4f5a194f67dc2342a1fd`。
+本地 2.2 生成器在多线程创建及多 target 上仍须严格核对实际实例与源位置。
+旧包装修正省略有争议的 function_enter 列号，不等于多行调用、宏、`.i`→`.c` 映射都正确。
 
-| 里程碑 | TP | FP | TN | FN | 得分 |
-|---|---|---|---|---|---|
-| 直报全部 race（无 demote） | — | 88 | 706 | 0 | 负（FP=−16 不可提交） |
-| `--demote-race-to-unknown` | 0 | 0 | 709 | 0 | 1418 |
-| + BMC 一期（8 个 sound 修复） | 64 | 0 | 706 | 0 | 1476 |
-| + helper 内联（fa3c4aa） | 85 | 0 | 706 | 0 | 1497 |
-| + cast 包裹线程函数（resolve_thread_function） | **85** | **0** | **709** | **0** | **1503** |
+| 层次 | 能证明什么 | 已保存的限制 |
+| --- | --- | --- |
+| WitnessLint 格式检查 | schema/结构与部分源位置约束 | 历史 smoke 默认模式通过；strict 模式报 `Unknown waypoint type target`，正式 release strict AST 路径缺 target 分支。不能称 strict 通过。 |
+| IKOS 独立 AR 执行检查 | 在导出 AR、明确 API 合同下重新执行动态实例、值源、字节地址和同步，检验所选竞争 | 当前执行记录见 [BMC 手册](ikos-bmc-complete.md#validation)；它不直接验证最终 witness/source 映射。 |
+| 独立源级 witness validator | 按输入源码、witness 及实际配置重建被指定实例/约束限定的竞争 | 旧 GraphML validator 接受损坏线程 ID 的校准失败；本地 CPAchecker 4.2.2 对 2.2 解析异常。不能称最终官方验收已通过。 |
 
-- 对比 SV-COMP 2026 no-data-race 官方榜：Goblint 1426（#1）、Goblint-Par 1422（#2）、**IKOS 1503**、Deagle 1352、UAutomizer 1295、Dartagnan 1186、CPAchecker 577。
-- 8 个 sound 修复（BMC 一期）：mutex 身份（`ac747e0`）、`__VERIFIER_atomic` 伪锁（`2f46dbc`）、both-held 锁门（`018715b`）、mutex 数组偏移 + 良性循环（`790df08`）、cond_wait=unlock+lock（`4278e6b`）、结构偏移回退（`1408afe`）、偏移区间相交别名门（`20d3a9e`）。以上是历史阶段记录；当前前提、修复与验证边界见 [BMC 统一文档](ikos-bmc-complete.md#correctness)。
-- 剩余 235 UNKNOWN 的拆桶（~150 lost-TP + ~85 lost-TN）与回收杠杆见 `ikos-race-theory-mapping.md` §3.2。
+[verification training](https://sv-comp.sosy-lab.org/2027/results/results-verified/)、
+[validation training](https://sv-comp.sosy-lab.org/2027/results/results-validated/)、
+[当时 race 验证表](https://sv-comp.sosy-lab.org/2027/results/results-validated/validation-of-violation-witnesses-v1.C.no-data-race.Concurrency.table.html)
+是 preliminary 运行。当时表实际使用 GraphML v1、CPAchecker 4.2.2/Dartagnan 4.3.1/UAutomizer 0.3.1；
+不能据此确定 2027 最终 2.2 validator。
 
-### 独特优势（已用 Dartagnan 逐文件 verdict 交叉验证）
+CPAchecker 开发源码固定 `bd91e2fd933ac2704dc240089774db4e5ec877da` 可见 2.2 版本识别、
+创建 waypoint/thread ID/multi-target 解析、`validate_data_race_concurrency` 集成测试及
+`violation-witness-validation-datarace.properties` 配置。这是源码证据，当时没有构建运行该开发版。
+下一次验收固定一个实际支持功能的可执行版本，先做线程 ID/目标/值约束损坏的负校准，
+再测真实输出，并与最终官方配置对齐。Dartagnan 另找一个 race 不自动验证 IKOS 的具体 witness。
 
-**① `__VERIFIER_atomic` 伪锁建模**：10 个文件 IKOS 报 FALSE（找到竞争 +1）、Dartagnan 报 UNKNOWN——`reorder_c11_bad-20/30/40/50`、`reorder_c11_good-30/40/50`、`06_ticket`、`07_rand`、`46_monabsex2_vs-b`。根因 = IKOS 把 `__VERIFIER_atomic_begin/end` 建模成伪锁（PSEUDO_ATOMIC_LOCK），Dartagnan 的 SC 模型处理不了这类竞争。
+<a id="checklist"></a>
+## 6. 下一次发布检查表
 
-**② double + 数组摘要域**（潜力，尚未落地）：`pthread-numerical-integration`（join-数组句柄 + double）Dartagnan 直接 CRASH（`Unsupported type in double`），goblint/CPAchecker 全 UNKNOWN；IKOS 用 APRON 天然支持 double、抽象解释框架适合分区数组域。详见 memory `join-array-double-unique-advantage`。
+以下未勾选项针对**下一次发布**，不否认历史局部检查。自动化成功和组织者接受分别记录。
 
-> 参见 memory `ikos-unique-10-over-dartagnan`、`remaining-tp-two-abstract-domain-gaps`（剩余 99 可学 TP 全卡在「别名 thread-id + 值域可行性」，= 第二期地址 SMT + 值域大工程）。
+- [ ] 官方截止、类别/schema、资格和 jury/runner 权限再次核对。
+- [ ] 本地 FM 条目与远端一致；MR pipeline 原因明确并通过；BenchExec PR 内容一致且合并。
+- [ ] 当前源码构建/install hash 一致；语义回归、AI+BMC 配对、新 FALSE 执行检查有版本化证据。
+- [ ] 新 ZIP 指纹、BUILD-INFO、组件许可、真实入口/P0/双架构/重定位/干净依赖检查通过。
+- [ ] adapter 的 bin 定位、搬运路径、属性限制和未知/超时/非零退出映射核对。
+- [ ] witness 2.2 格式与严格实例绑定的源级验收完成；能力边界和未验证项明确。
+- [ ] 用户替换/上传 ZIP 后公开 hash 核对，CI 重取新实物，提交及参赛资格得到确认。
 
-已落地的 sound FP 修复：
+本地标签分可参考 FALSE +1、TRUE +2、错 FALSE −16、错 TRUE −32、UNKNOWN 0 的历史规则；
+最终得分还受 witness/类别和当版官方规则影响，不能把 README 标签计数直接叫比赛得分。
 
-- **ILP32 bitcast-callee 修复（`ca1907f`，杠杆最大）**：32 位下 clang 给无原型函数 `__VERIFIER_atomic_begin/end` 的调用包 `bitcast`，`call->called()` 不再是 `FunctionPointerConstant`，原子伪锁识别失效 → 原子段全报 FP。把识别挪到 `exec_extern_call`（用已穿透 bitcast 的 `fun->name()`）。**FP 404→108**（TN 390→686），FN=0 不破。
-- **fresh 堆节点修复（`fc8339c`，C 桶）**：`malloc` 结果是线程私有（fresh）直到发布；lock集加 flow-sensitive 的 MUST `fresh` digest，存进全局/已发布堆字段/线程实参时移除。**FP 108→100**（TN 686→694），FN=0 不破（goblint region 域「fresh bullet」）。
-- **变量下标堆指针黑板修复（`ab07166`，E 桶 weaver）**：`B[i]=p`（变量 i）之前被 heap-pointer 黑板的 singleton 守卫跳过、读侧落回 memory 域 ⊤ → `B[i][j]` 全别名。非 singleton offset 打包成哨兵 0xFFFFFFFF、去掉两侧守卫，变量下标指针 JOIN 进黑板、读侧恢复。**FP 100→98**（TN 694→696），FN=0 不破（JOIN 是过近似，只多 FP 不漏 FN）。
-- **join 句柄修复（D 桶，FP 98→95）**：helper（`module_init`）里的 pthread_create 之前被 `build_thread_creators` 跳过 → create-HB 失效；全局 `pthread_t` 句柄不写 site id（handle-init 只认局部）→ join 读 [0,0]；条件 create 使句柄区间 [0,S] 非 singleton → join 落空。修法 = helper 反向可达性归因（地址被取→⊤ 全入口）、全局句柄写 site id、`[0,S]` 区间 join ub。收 race-1_1/1_2/1_3-join 共 3 个，FN=0 不破。
-- **join-then-create 修复（FP 95→91）**：父线程 join T 后再 create U 时，T 已终止、T 的访问 HB U 的访问，但子线程入口 joined 摘要为空。修法 = pthread_create 处记录父线程的 MUST joined 摘要（按 child+create_site 覆盖、读侧跨 site 取交集），子线程入口继承。收 bigshot_s/bigshot_s2/singleton/singleton_with-uninit-problems 共 4 个，FN=0 不破。
-- **stacksave/stackrestore 排除（FP 91→88）**：`llvm.stacksave/stackrestore`（VLA 清理）的参数是保存的栈指针（⊤），之前被当 extern 写合成 ⊤ Write、在函数出口与所有并发访问配对（reorder_5.c 的 main VLA 清理「竞争」setThread/checkThread 的原子 a/b）。排除后收 3 个，FN=0 不破。
-- `free()` 排除出 extern-call 写合成（`99b7c88`）——free 不通过指针写数据；
-- stdio 输出族（printf/fprintf/…）排除出写合成（`9d7edb6`）——其指针实参是流/格式串/要打印的值。
+<a id="evidence"></a>
+## 7. 证据与维护
 
-> ⚠️ 基线更正（2026-09-29 → 2026-09-30）：1029 个 no-data-race 任务**全是 ILP32**（无 LP64 任务）。此前 FP=173 是**默认 LP64（错误 arch）**测的；`-m32`（正确 ILP32）一度 FP=404 —— 根因不是「数值域退化」，而是上面那条 bitcast 让 `__VERIFIER_atomic_*` 识别全线失效。修完后正确 ILP32 的 108 FP **比错误 LP64 的 172 FP 还低**。
+- [提交复核原始页面/schema/MR/PR/实物指纹](artifacts/svcomp-submission-2026-10-09/)。
+- [重封装、容器/重定位 smoke、P0、linter、旧 CPA 异常及现代源码参照](artifacts/svcomp-repackage-2026-10-09/)。
+- [历史类别声明说明](../svcomp/category-structure-mr.md)及 [reference 导航](../svcomp/reference/README.md)
+  仅用于解释既有材料；当前注册要求从本指南和当版官网核对。
 
-> 说明：上面「已落地的 sound FP 修复」是 **demote+BMC 之前的直报模式**（FP 404→88）历史；提交模式经 demote+BMC 后 FP 已归 0。剩余的 235 UNKNOWN 拆桶见 `docs/ikos-race-theory-mapping.md` §3.2（weaver ⊤ points-to、无锁线性化、per-thread 槽位、互斥传递 HB、container_of 等）。注册/提交不看成绩，见 §5。
-
-## 7. 相关仓库
-
-- FM-Tools：https://gitlab.com/sosy-lab/benchmarking/fm-tools
-- BenchExec：https://github.com/sosy-lab/benchexec
-- sv-benchmarks：https://gitlab.com/sosy-lab/benchmarking/sv-benchmarks
-- bench-defs：https://gitlab.com/sosy-lab/sv-comp/bench-defs
-- witness 格式：https://github.com/sosy-lab/sv-witnesses
+旧指南、四篇注册快照及四篇官方全文翻译已合并必要信息后删除，原文可从 Git 历史获取。
+不把全文翻译持续复制成规则依据；需要新的性质/赛道时直接核对原文。
