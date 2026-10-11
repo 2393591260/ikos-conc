@@ -508,3 +508,17 @@ TN的protected interference不能直接使用当前中间写lock_partition。Gob
 落地，optional recursive AR文本格式崩溃单独处理。八组反馈原型零TN收益保持原版本范围。
 证据：[publication](artifacts/ai-precision-2026-10-11/publication/summary.json)、
 [消融](artifacts/ai-precision-2026-10-11/publication/ablation.json)。
+
+
+### 9.12 当前实证结论与研究边界（2026-10-11）
+
+优化计划§9.42独立修复AR递归类型的诊断格式：开启diagnostics可看到§9.41的AI单生命周期证书、
+startup rf和失败地址来源，四次旧崩溃消除；不是新的值流语义或TP贡献。完整1029仍
+TP109/TN678，当前109任务/137模型重新导出独立AR ACCEPT，源级witness范围未扩大。
+
+这轮可以支持的架构结论：共同线程/对象/调用证书能同时改善AI候选与BMC确认；已有AI事实组
+在真实helper发布双ABI消融中提供能力收益。不能支持的结论：大幅加速、完整digest/PBR移植、
+BMC反向增加TN的冻结集收益、并发归纳认证或论文新颖性。方案A/B的既有零TN消融保持历史范围。
+protected release及稳定pointer来源的单调摘要仍需单独实现/反例/dirty重算合同；不能借当前
+137条AR执行证据认证这些未实现规则。后续必须同时报TN、TP、UNKNOWN和代价，不以单边得分替代证明。
+证据：[diagnostic-types](artifacts/ai-precision-2026-10-11/diagnostic-types/summary.json)。

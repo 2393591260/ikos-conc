@@ -79,8 +79,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/02-base_25-malloc_race_cp.yml",
@@ -162,8 +162,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/02-base_26-malloc_struct.yml",
@@ -249,8 +249,8 @@
     "investigation": "docs/ikos-bmc-pointer-slot-casts-2026-10-10.md",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/04-mutex_20-stdfun_rc.yml",
@@ -341,8 +341,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/04-mutex_35-trylock_rc.yml",
@@ -425,8 +425,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/04-mutex_36-trylock_nr.yml",
@@ -509,8 +509,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/04-mutex_44-malloc_sound.yml",
@@ -600,8 +600,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/04-mutex_45-escape_rc.yml",
@@ -663,8 +663,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/06-symbeq_14-list_entry_rc.yml",
@@ -755,8 +755,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_01-list_rc.yml",
@@ -845,8 +845,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_03-list2_rc.yml",
@@ -916,8 +916,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_05-ptra_rc.yml",
@@ -1006,8 +1006,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_10-arraylist_rc.yml",
@@ -1096,8 +1096,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_12-arraycollapse_rc.yml",
@@ -1186,8 +1186,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_16-arrayloop_rc.yml",
@@ -1290,8 +1290,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_18-nested_rc.yml",
@@ -1380,8 +1380,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_20-arrayloop2_rc.yml",
@@ -1450,8 +1450,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_23-evilcollapse_rc.yml",
@@ -1520,8 +1520,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_26-alloc_region_rc.yml",
@@ -1610,8 +1610,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_28-list2alloc.yml",
@@ -1700,8 +1700,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/13-privatized_40-traces-ex-6_true.yml",
@@ -1766,8 +1766,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/28-race_reach_60-invariant_racefree.yml",
@@ -1907,8 +1907,8 @@
     },
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/28-race_reach_61-invariant_racing-2.yml",
@@ -2032,8 +2032,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/28-race_reach_90-arrayloop2_racing.yml",
@@ -2102,8 +2102,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/goblint-regression/28-race_reach_92-evilcollapse_racing.yml",
@@ -2165,8 +2165,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--media--platform--marvell-ccic--cafe_ccic.ko.cil-1.yml",
@@ -2275,8 +2275,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--media--platform--marvell-ccic--cafe_ccic.ko.cil-2.yml",
@@ -2385,8 +2385,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.yml",
@@ -2495,8 +2495,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Error",
     "current_bmc": "Error",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--w83977af_ir.ko.cil.yml",
@@ -2598,8 +2598,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--spi--spi-tegra20-slink.ko.cil.yml",
@@ -2708,8 +2708,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--usb--misc--adutux.ko.cil.yml",
@@ -2805,8 +2805,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_1-container_of.yml",
@@ -2889,8 +2889,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_2-container_of.yml",
@@ -2959,8 +2959,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_2b-container_of.yml",
@@ -3043,10 +3043,10 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Race Found",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json",
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json",
     "current_disposition": "RECOVERED_TP_AR_VALIDATED",
-    "current_model_evidence": "../ai-precision-2026-10-11/publication/current-tp-executions.json"
+    "current_model_evidence": "../ai-precision-2026-10-11/diagnostic-types/current-tp-executions.json"
   },
   {
     "task": "c/ldv-races/race-2_3-container_of.yml",
@@ -3115,8 +3115,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_3b-container_of.yml",
@@ -3199,8 +3199,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_4-container_of.yml",
@@ -3269,8 +3269,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_4b-container_of.yml",
@@ -3353,8 +3353,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_5-container_of.yml",
@@ -3423,8 +3423,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_5b-container_of.yml",
@@ -3507,8 +3507,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-races/race-3_1-container_of-global.yml",
@@ -3591,8 +3591,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-races/race-3_2-container_of-global.yml",
@@ -3661,8 +3661,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-races/race-3_2b-container_of-global.yml",
@@ -3745,10 +3745,10 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Race Found",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json",
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json",
     "current_disposition": "RECOVERED_TP_AR_VALIDATED",
-    "current_model_evidence": "../ai-precision-2026-10-11/publication/current-tp-executions.json"
+    "current_model_evidence": "../ai-precision-2026-10-11/diagnostic-types/current-tp-executions.json"
   },
   {
     "task": "c/ldv-races/race-4_1-thread_local_vars.yml",
@@ -3825,8 +3825,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/ldv-races/race-4_2-thread_local_vars.yml",
@@ -3903,8 +3903,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/arraylock.yml",
@@ -4028,8 +4028,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/bounded_mpmc_check_full.yml",
@@ -4091,8 +4091,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/bounded_spsc.yml",
@@ -4154,8 +4154,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/caslock.yml",
@@ -4268,8 +4268,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/cnalock.yml",
@@ -4382,8 +4382,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/hemlock.yml",
@@ -4496,8 +4496,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/hmcslock.yml",
@@ -4627,8 +4627,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/mcslock.yml",
@@ -4741,8 +4741,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/rec_mcslock.yml",
@@ -4855,8 +4855,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/rec_spinlock.yml",
@@ -4969,8 +4969,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/rec_ticketlock.yml",
@@ -5083,8 +5083,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/rwlock.yml",
@@ -5204,8 +5204,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/semaphore.yml",
@@ -5336,8 +5336,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/ticketlock.yml",
@@ -5450,8 +5450,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/ttaslock.yml",
@@ -5564,8 +5564,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/libvsync/twalock.yml",
@@ -5678,8 +5678,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-C-DAC/pthread-finding-k-matches.yml",
@@ -5792,8 +5792,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-C-DAC/pthread-numerical-integration.yml",
@@ -5909,8 +5909,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-atomic/dekker-unfair.yml",
@@ -5979,8 +5979,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-atomic/dekker.yml",
@@ -6049,8 +6049,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-atomic/gcd-2.yml",
@@ -6187,8 +6187,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-atomic/lamport.yml",
@@ -6293,8 +6293,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-atomic/peterson.yml",
@@ -6399,8 +6399,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-atomic/qrcu-1.yml",
@@ -6581,8 +6581,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-atomic/qrcu-2.yml",
@@ -6763,8 +6763,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-atomic/szymanski.yml",
@@ -6869,8 +6869,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-atomic/time_var_mutex.yml",
@@ -7014,8 +7014,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-complex/bounded_buffer.yml",
@@ -7112,8 +7112,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-complex/elimination_backoff_stack-race.yml",
@@ -7261,8 +7261,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-complex/elimination_backoff_stack.yml",
@@ -7410,8 +7410,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-complex/safestack_relacy.yml",
@@ -7479,8 +7479,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-complex/workstealqueue_mutex-1.yml",
@@ -7618,8 +7618,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-complex/workstealqueue_mutex-2.yml",
@@ -7757,8 +7757,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/floating_read-10.yml",
@@ -7863,8 +7863,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/floating_read-15.yml",
@@ -7972,8 +7972,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/floating_read-20.yml",
@@ -8081,8 +8081,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/floating_read-25.yml",
@@ -8190,8 +8190,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/floating_read-5.yml",
@@ -8296,8 +8296,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_bad-10.yml",
@@ -8366,8 +8366,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_bad-20.yml",
@@ -8436,8 +8436,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_bad-30.yml",
@@ -8506,8 +8506,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_bad-40.yml",
@@ -8576,8 +8576,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_bad-50.yml",
@@ -8646,8 +8646,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_good-10.yml",
@@ -8716,8 +8716,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_good-20.yml",
@@ -8786,8 +8786,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_good-30.yml",
@@ -8856,8 +8856,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_good-40.yml",
@@ -8926,8 +8926,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_good-50.yml",
@@ -8996,8 +8996,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-divine/barrier_2t.yml",
@@ -9167,8 +9167,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-divine/barrier_3t.yml",
@@ -9338,8 +9338,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-divine/condvar.yml",
@@ -9443,8 +9443,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-divine/divinefifo-bug_1w1r.yml",
@@ -9514,8 +9514,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-divine/divinefifo_1w1r.yml",
@@ -9585,8 +9585,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-divine/one_time_barrier_2t.yml",
@@ -9733,8 +9733,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-divine/one_time_barrier_3t.yml",
@@ -9881,8 +9881,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-divine/one_time_barrier_twice_2t.yml",
@@ -10029,8 +10029,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-divine/one_time_barrier_twice_3t.yml",
@@ -10177,8 +10177,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-divine/ring_1w1r-1.yml",
@@ -10240,8 +10240,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-divine/ring_1w1r-2.yml",
@@ -10303,8 +10303,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-divine/ring_2w1r-1.yml",
@@ -10387,8 +10387,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-divine/ring_2w1r-2.yml",
@@ -10471,10 +10471,10 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Race Found",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json",
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json",
     "current_disposition": "RECOVERED_TP_AR_VALIDATED",
-    "current_model_evidence": "../ai-precision-2026-10-11/publication/current-tp-executions.json"
+    "current_model_evidence": "../ai-precision-2026-10-11/diagnostic-types/current-tp-executions.json"
   },
   {
     "task": "c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_current-race.yml",
@@ -10543,8 +10543,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_set-race.yml",
@@ -10613,8 +10613,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_current_pc8736x_gpio_set-race.yml",
@@ -10683,8 +10683,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/04_incdec_cas-race.yml",
@@ -10804,8 +10804,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/05_tas.yml",
@@ -10916,8 +10916,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/06_ticket.yml",
@@ -11022,8 +11022,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/07_rand.yml",
@@ -11162,8 +11162,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/08_rand_cas-race.yml",
@@ -11308,8 +11308,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/08_rand_cas.yml",
@@ -11435,8 +11435,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/09_fmaxsym-zero.yml",
@@ -11594,8 +11594,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/10_fmaxsym_cas.yml",
@@ -11709,8 +11709,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/11_fmaxsymopt-zero.yml",
@@ -11854,8 +11854,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/12_fmaxsymopt_cas.yml",
@@ -11969,8 +11969,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack-race.yml",
@@ -12086,8 +12086,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack.yml",
@@ -12208,8 +12208,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longer-1-race.yml",
@@ -12325,8 +12325,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longer-1.yml",
@@ -12447,8 +12447,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longer-2-race.yml",
@@ -12564,8 +12564,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longer-2.yml",
@@ -12686,8 +12686,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longest-1-race.yml",
@@ -12803,8 +12803,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longest-1.yml",
@@ -12925,8 +12925,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longest-2-race.yml",
@@ -13042,8 +13042,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longest-2.yml",
@@ -13164,8 +13164,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas-race.yml",
@@ -13281,8 +13281,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas.yml",
@@ -13398,8 +13398,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longer-1-race.yml",
@@ -13515,8 +13515,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longer-1.yml",
@@ -13632,8 +13632,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longer-2-race.yml",
@@ -13749,8 +13749,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longer-2.yml",
@@ -13866,8 +13866,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longest-1-race.yml",
@@ -13983,8 +13983,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longest-1.yml",
@@ -14100,8 +14100,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longest-2-race.yml",
@@ -14217,8 +14217,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longest-2.yml",
@@ -14334,8 +14334,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/29_conditionals_vs.yml",
@@ -14410,8 +14410,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/33_double_lock_p1_vs.yml",
@@ -14532,8 +14532,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/34_double_lock_p2_vs.yml",
@@ -14654,8 +14654,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/36_stack_cas_p0_vs_concur-race.yml",
@@ -14776,8 +14776,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/36_stack_cas_p0_vs_concur.yml",
@@ -14898,8 +14898,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/37_stack_lock_p0_vs_concur-race.yml",
@@ -15020,8 +15020,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/37_stack_lock_p0_vs_concur.yml",
@@ -15142,8 +15142,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/38_rand_cas_vs_concur.yml",
@@ -15289,8 +15289,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/40_barrier_vf-b.yml",
@@ -15414,8 +15414,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/42_FreeBSD_rdma_addr_sliced.yml",
@@ -15534,8 +15534,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/43_NetBSD_sysmon_power_sliced-pthread.yml",
@@ -15668,8 +15668,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/43_NetBSD_sysmon_power_sliced.yml",
@@ -15794,8 +15794,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/44_Solaris_space_map_sliced.yml",
@@ -15911,8 +15911,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-ext/48_ticket_lock_low_contention_vs.yml",
@@ -16073,8 +16073,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-lit/sssc12.yml",
@@ -16136,8 +16136,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-lit/sssc12_variant.yml",
@@ -16199,8 +16199,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-index-race-2.yml",
@@ -16262,8 +16262,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-index-race.yml",
@@ -16325,8 +16325,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-index.yml",
@@ -16388,8 +16388,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-init-race.yml",
@@ -16478,8 +16478,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-init.yml",
@@ -16560,8 +16560,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-join-counter-2.yml",
@@ -16706,8 +16706,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-join-counter-race-2.yml",
@@ -16846,8 +16846,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-join-counter-race-3.yml",
@@ -16986,8 +16986,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-join-counter-race-4.yml",
@@ -17160,8 +17160,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-join-counter-race.yml",
@@ -17337,8 +17337,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-join-counter.yml",
@@ -17477,8 +17477,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-ptr-race.yml",
@@ -17540,8 +17540,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-ptr.yml",
@@ -17603,8 +17603,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-index-bitmask-race-2.yml",
@@ -17666,8 +17666,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-index-bitmask-race-3.yml",
@@ -17729,8 +17729,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-index-bitmask-race.yml",
@@ -17854,8 +17854,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-index-bitmask.yml",
@@ -17917,8 +17917,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-index-inc-race-2.yml",
@@ -17980,8 +17980,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-index-inc-race.yml",
@@ -18043,8 +18043,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-index-inc.yml",
@@ -18106,8 +18106,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-struct-in-array-race.yml",
@@ -18169,8 +18169,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-struct-in-array.yml",
@@ -18232,8 +18232,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-struct-race.yml",
@@ -18295,8 +18295,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-struct-tid-join.yml",
@@ -18385,8 +18385,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-struct-tid.yml",
@@ -18448,8 +18448,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-struct.yml",
@@ -18511,8 +18511,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/semaphore-posix-race-2.yml",
@@ -18574,8 +18574,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/semaphore-posix-race.yml",
@@ -18637,8 +18637,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/semaphore-posix.yml",
@@ -18700,8 +18700,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-const-race-2.yml",
@@ -18785,8 +18785,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-const-race-3.yml",
@@ -18877,8 +18877,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-const-race.yml",
@@ -18962,8 +18962,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-const.yml",
@@ -19047,8 +19047,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-dynamic-race-2.yml",
@@ -19137,8 +19137,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-dynamic-race-3.yml",
@@ -19234,8 +19234,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-dynamic-race.yml",
@@ -19324,8 +19324,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-dynamic.yml",
@@ -19414,8 +19414,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-binomial-race-2.yml",
@@ -19519,8 +19519,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-binomial-race-3.yml",
@@ -19624,8 +19624,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-binomial-race.yml",
@@ -19729,8 +19729,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-binomial.yml",
@@ -19834,8 +19834,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-counter-inner-2.yml",
@@ -19990,8 +19990,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-counter-inner-3.yml",
@@ -20146,8 +20146,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-counter-inner-race-4.yml",
@@ -20309,8 +20309,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-counter-inner.yml",
@@ -20472,8 +20472,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-counter-outer-race-4.yml",
@@ -20616,8 +20616,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-counter-outer.yml",
@@ -20760,8 +20760,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-local-pthread-value-cond.yml",
@@ -20823,8 +20823,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-local-value-dynamic.yml",
@@ -20886,8 +20886,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-local-value-race.yml",
@@ -20949,8 +20949,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/value-barrier-race.yml",
@@ -21026,8 +21026,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/value-barrier.yml",
@@ -21103,8 +21103,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread/bigshot_p.yml",
@@ -21200,8 +21200,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread/indexer.yml",
@@ -21271,8 +21271,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread/reorder_2-race.yml",
@@ -21355,8 +21355,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread/reorder_2.yml",
@@ -21431,8 +21431,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread/reorder_5-race.yml",
@@ -21515,8 +21515,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread/reorder_5.yml",
@@ -21591,8 +21591,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread/sigma.yml",
@@ -21687,8 +21687,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread/singleton-b.yml",
@@ -21779,8 +21779,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread/singleton.yml",
@@ -21871,8 +21871,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread/singleton_with-uninit-problems-b.yml",
@@ -21963,8 +21963,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread/singleton_with-uninit-problems.yml",
@@ -22055,8 +22055,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread/twostage_3-race.yml",
@@ -22139,8 +22139,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/pthread/twostage_3.yml",
@@ -22223,8 +22223,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/weaver/parallel-barrier-loop.wvr.yml",
@@ -22307,8 +22307,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/weaver/parallel-barrier.wvr.yml",
@@ -22391,8 +22391,8 @@
     "disposition": "reference_safe_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/weaver/parallel-parallel-sum-1-dsl.wvr.yml",
@@ -22475,8 +22475,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/weaver/parallel-parallel-sum-2.wvr.yml",
@@ -22559,8 +22559,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/weaver/parallel-parallel-sum-equiv.wvr.yml",
@@ -22643,8 +22643,8 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Safe",
     "current_bmc": "Safe",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/weaver/popl20-more-parray-copy.wvr.yml",
@@ -22720,8 +22720,8 @@
     "disposition": "reference_race_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   },
   {
     "task": "c/weaver/popl20-more-vector-add.wvr.yml",
@@ -22797,7 +22797,7 @@
     "disposition": "reference_inconclusive_remaining",
     "current_ai": "Unknown",
     "current_bmc": "Unknown",
-    "current_verdict_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
-    "current_verdict_evidence": "../ai-precision-2026-10-11/publication/paired.json"
+    "current_verdict_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/diagnostic-types/paired.json"
   }
 ]

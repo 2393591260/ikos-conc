@@ -14,7 +14,7 @@
 本节更新后续优先级；§2–8保留原设计与理论依据，§9保留各次实验的历史快照。
 不能把历史“尚未修复”、旧候选池或旧TN当作当前状态，也不能把设计项全部当作必须实现的大改。
 第一版已完成§9.33–34；用户批准第二版同时恢复TN与TP。当前§9.35–41的七个独立机制
-已验收，最新[配对证据](artifacts/ai-precision-2026-10-11/publication/summary.json)：
+已验收，最新[配对证据](artifacts/ai-precision-2026-10-11/diagnostic-types/summary.json)：
 冻结1029项ILP32，AI TN678/UNKNOWN350；BMC TP109/TN678/UNKNOWN241，均FP0/FN0/error1。
 当前109个TP重新导出的137条所选执行全部独立AR ACCEPT；这不是官方C/witness验证。
 全量与定向双ABI验证的范围分别记录，不称已完成双ABI全量。
@@ -1812,7 +1812,7 @@ StructType/PointerType无限递归；去掉该可选文本字段，保留完整�
 只有race-2_2b-container_of与ring_2w1r-2发生判定变化。所有source/YAML指纹匹配，build/install
 SHA256一致。本版108个TP重新导出136条所选模型，全部独立AR ACCEPT；这是AR/frontend/API
 范围，**不是官方源程序witness验证，也不是普遍soundness证明**。AI143.305s/BMC346.648s是一次
-顺序扫描，无加速结论。安全台账21恢复/115剩余不变；racy历史台账新增current字段，旧诊断
+顺序扫描，无加速结论。安全台账21恢复/115剩余不变；历史UNKNOWN台账新增current字段，旧诊断
 保留原指纹，不能称本轮重新逐一诊断全部UNKNOWN。
 
 后续双线：以单生命周期证书扩展helper的只读指针发布，另审计protected release值摘要。
@@ -1855,7 +1855,7 @@ post-spawn pointer-slot竞争，不能将其误称新增的pointee来源能力�
 完整1029：AI TN678/U350不变；BMC TP108/TN678/U242→TP109/TN678/U241，FP0/FN0/error1，
 仅上述冻结.i变化；source/YAML逐项匹配。当前109个TP重新导出137条模型，全部独立AR ACCEPT，
 仍是AR/frontend/显式API范围，不是官方C/witness验证。AI141.819s/BMC349.076s是一轮顺序观测，
-没有加速结论。safe台账115项保留，racy台账只刷新current判定/证据，历史诊断不冒充新扫描。
+没有加速结论。safe台账115项保留，历史UNKNOWN台账只刷新current判定/证据，历史诊断不冒充新扫描。
 
 开启optional diagnostics曾SIGSEGV：旧AR StructType→PointerType文本打印不能处理合法递归类型。
 正常分析与结构化回放均通过；已有独立C++递归类型dump重现signal11。该格式层问题将独立修复，
@@ -1869,3 +1869,56 @@ post-spawn pointer-slot竞争，不能将其误称新增的pointee来源能力�
 [事实组消融](artifacts/ai-precision-2026-10-11/publication/ablation.json)、
 [当前模型](artifacts/ai-precision-2026-10-11/publication/current-tp-executions.json)、
 [回归](artifacts/ai-precision-2026-10-11/publication/regressions.json)。
+
+
+### 9.42 递归AR类型诊断的独立修复与本轮出口（2026-10-11）
+
+§9.40–41的结构化回放已经不依赖AR文本，但optional diagnostics仍通过statement.dump打印
+合法递归类型。独立C++单递归结构dump在旧库signal11，真实双ABI单/相互递归的4次BMC诊断
+亦退出11。根因在AR StructType→PointerType→StructType图展开，不在solver或值流。
+
+在所属层`ar/src/semantic/type.cpp:StructType::dump`用thread-local展开栈检测当前递归链；
+重入时输出诊断占位`{...}`，离开时RAII pop，输出流抛异常仍恢复状态。不是全局visited集合，
+同一acyclic叶类型出现两次仍完整打印。独立unit覆盖self/mutual recursion、packed布局、
+重复acyclic类型的旧格式、ostream异常及两个线程分别重复打印。只改诊断格式，不改AR类型、
+DataLayout、前端导入、分析转移、BMC编码或物理对象身份。
+
+16项双ABI/AI-BMC观察全部正常，旧4次诊断崩溃变FALSE，6条所选AR执行ACCEPT；共同mutex
+对照仍SAFE。392项适用旧观察及原三反例通过；新二进制build/install相同。真实global-helper
+发布的4项事实组消融再开启diagnostics，均正常：关闭为prefix_address，启用观察到
+ai_single_execution与startup_read_from，UNKNOWN→FALSE，两条所选执行ACCEPT。事实组同时
+关闭数值facts，仍不声称单生命周期隔离或加速。
+
+完整1029前后**零判定变化**，AI TN678/U350，BMC TP109/TN678/U241/FP0/FN0/error1。
+唯一error仍为nsc-ircc的30秒外层timeout（安全标签），不是UNKNOWN或竞争。新的109个TP
+重新导出137条执行全部独立AR ACCEPT。AI141.955s/BMC344.423s只是一轮顺序观测。
+旧历史“optional诊断待修”的§9.40–41在本节结案；`{...}`是debug文本，不是可执行AR序列化，
+源级witness验证范围没有扩大。格式修复不计入TP/TN收益。
+
+**本轮验收出口**：五项AI机制累计TN661→678（守卫1、嵌套生命周期7、句柄来源3、条件存活5、
+真实共同mutex1）；两项BMC机制TP106→109；格式问题独立修复。每项分别build/install、
+正反变体、完整AI/BMC配对并提交，原三反例不回退。源码无需文件名/expected label分支，
+没有混入frontend改动。只更新约定三篇报告；小JSON证据入库，原始日志/数据库/二进制均在/tmp。
+
+当前安全UNKNOWN115项（24正常Goblint TRUE、91参考未证实），竞争UNKNOWN126项。
+历史227项UNKNOWN台账其实包含129个race-label与98个safe-label，不能把整个文件称为racy池；
+current字段核对完整扫描，剩余126个race-label中Dartagnan FAIL95、TIMEOUT15、ERROR13、
+有界PASS3。FAIL选择下一调查入口，PASS不能推翻race标签；旧参考/诊断保留其版本和hash，
+没有假称重新跑遍全部参考。另一个安全标签的历史Dartagnan FAIL仍是分歧，不作为新TP入口。
+
+下轮TN优先缺口是**保护相关release端值摘要**及**稳定指针来源的相关性**，TP则从95个正常
+参考FAIL中选择共享heap/循环/实例的缺口。具体需要：初始化与进行中写分开，记录完整MUST保护集，
+真实unlock发布局部端状态，内层加锁不能冲掉外层仍私有的值；迟发现未保护writer须dirty/replay。
+稳定pointer slot则不能把默认NULL与已发布偏移的无序join直接强更新成最近store，需要证明所有
+相关创建都在唯一发布之后且没有其他写/escape，并记录writer自身的单调may-value摘要。
+当前没实现这些接口，不能通过启用旧read_global_with_lockset或私有初始化捷径来补TN。
+它们是明确未完成的一般机制，不是已证明不能实现，也不是本轮“所有UNKNOWN都解决”的声明。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/diagnostic-types/summary.json)、
+[完整配对](artifacts/ai-precision-2026-10-11/diagnostic-types/paired.json)、
+[零变化](artifacts/ai-precision-2026-10-11/diagnostic-types/transitions.json)、
+[16项控制](artifacts/ai-precision-2026-10-11/diagnostic-types/fixtures.json)、
+[旧崩溃](artifacts/ai-precision-2026-10-11/diagnostic-types/before-fixtures.json)、
+[unit旧/新](artifacts/ai-precision-2026-10-11/diagnostic-types/after-unit.json)、
+[消融](artifacts/ai-precision-2026-10-11/diagnostic-types/ablation.json)、
+[当前模型](artifacts/ai-precision-2026-10-11/diagnostic-types/current-tp-executions.json)。

@@ -549,3 +549,18 @@ UNKNOWN→FALSE。全量仅新增1TP，TP109/TN678/U241/FP0/FN0/error1；本版1
 optional diagnostics的SIGSEGV另有C++递归type dump重现；这是既有文本格式问题，正常结构化
 模型不失败，待独立修复，不称已修复或将正常分析通过掩盖它。无新SAFE或release干扰规则。
 证据：[publication](artifacts/ai-precision-2026-10-11/publication/summary.json)。
+
+
+### 7.9 递归诊断打印结案与当前证据范围（2026-10-11）
+
+优化计划§9.42在AR type formatter的拥有层处理合法递归指针结构，检测当前展开链并输出
+诊断占位，thread-local与RAII保证并发隔离及异常清理；重复acyclic类型保留旧完整输出。
+独立unit、16次native双ABI观察、6条定向执行及392项旧观察通过，四次旧SIGSEGV消除。
+开启diagnostics的真实helper事实组消融也正常，关闭仍UNKNOWN、启用FALSE并独立AR ACCEPT。
+§7.7–8曾登记的诊断打印问题在此结案，不改变执行/分析/BMC语义。
+
+完整冻结1029零判定变化：TP109/TN678/U241/FP0/FN0/error1，唯一error仍是安全输入的外层timeout。
+新的109任务/137所选模型全部独立AR ACCEPT，build/install指纹一致。有限矩阵和AR/frontend/API
+回放仍不能代替全C/POSIXsoundness证明或官方witness验证；没有从bounded UNSAT推出SAFE。
+protected release、稳定pointer来源和一般动态实例仍是精度接口的开放项，不登记为已实现。
+证据：[diagnostic-types](artifacts/ai-precision-2026-10-11/diagnostic-types/summary.json)。

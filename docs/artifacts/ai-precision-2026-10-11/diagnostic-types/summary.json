@@ -1,0 +1,283 @@
+{
+  "baseline_commit": "24ce9c3",
+  "before_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
+  "analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+  "build_install_equal": true,
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "outer_timeout_seconds": 30,
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 350
+    },
+    "before_bmc": {
+      "TP": 109,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 241
+    },
+    "after_ai": {
+      "TP": 0,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 350
+    },
+    "after_bmc": {
+      "TP": 109,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 241
+    }
+  },
+  "times": [
+    {
+      "mode": "ai",
+      "returncode": 0,
+      "seconds": 141.9553684349812
+    },
+    {
+      "mode": "bmc",
+      "returncode": 0,
+      "seconds": 344.42315416800557
+    }
+  ],
+  "new_observations": 16,
+  "restored_FALSE_observations": 4,
+  "selected_directed_executions": 6,
+  "current_TP_validation": {
+    "tasks": 109,
+    "executions": 137,
+    "statuses": {
+      "ACCEPT": 137
+    },
+    "analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+    "validator_sha256": "e3bd4a44d1748107cc570daffeda822e6a7ecaf511b10000a5ed487d0c30043d",
+    "scope": "AR/frontend and explicit modeled APIs; not official C/witness validation"
+  },
+  "regression_counts": {
+    "bmc-main-stack": 72,
+    "bmc-pointer-publication": 60,
+    "main-heap": 26,
+    "sc-same-path": 46,
+    "ai-correctness": 76,
+    "ai-live-children": 92,
+    "old-bmc-32": 10,
+    "old-bmc-64": 10
+  },
+  "mechanism": "Cycle-safe AR StructType diagnostic printing with thread-local expansion stack and exception-safe cleanup; repeated acyclic types retain their full original output. No analyzer transfer or BMC solver semantics change.",
+  "boundaries": [
+    "The {...} marker is diagnostic text, not an executable AR source representation",
+    "Independent execution checks remain AR/frontend/API scope, not official C/witness validation",
+    "No new protected interference, general allocation identity domain, or measured speedup"
+  ],
+  "before_unit": {
+    "command": [
+      "g++",
+      "-I/usr/lib/llvm-14/include",
+      "-std=c++14",
+      "-fno-exceptions",
+      "-D_GNU_SOURCE",
+      "-D__STDC_CONSTANT_MACROS",
+      "-D__STDC_FORMAT_MACROS",
+      "-D__STDC_LIMIT_MACROS",
+      "-L/usr/lib/llvm-14/lib",
+      "-std=c++17",
+      "-fexceptions",
+      "-UNDEBUG",
+      "-O1",
+      "-Iar/include",
+      "-Icore/include",
+      "/tmp/ikos-ai-next-20261011/diagnostic-types/prepared/types.cpp",
+      "/home/ruan/ikos-conc/build/ar/libikos-ar.a",
+      "-o",
+      "/tmp/ikos-ai-next-20261011/diagnostic-types/before-unit",
+      "-lgmpxx",
+      "-lgmp",
+      "-lLLVM-14",
+      "-pthread"
+    ],
+    "returncode": -11,
+    "binary_sha256": "ef4b3d9606769798cc7879e8ad94bc908d69d64699537af3a78e572c34e8aea4",
+    "cpp_sha256": "ce5980d46ac0ec9a4ff0978d17cb4e2271f5b11f2209b01253c2fae59939696a",
+    "semantic_source_commit": "24ce9c3"
+  },
+  "unit_contracts": [
+    "self recursion",
+    "mutual recursion through packed struct",
+    "repeated acyclic type preserves exact output",
+    "cleanup after output stream exception",
+    "independent concurrent printing"
+  ],
+  "ai_fact_ablation": [
+    {
+      "bits": 32,
+      "ai_facts_enabled": false,
+      "source": "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-3_2b-container_of-global.i",
+      "verdict": "The program is potentially UNSAFE",
+      "executions": [],
+      "counts": {
+        "activation_small_bound": 10,
+        "prefix_address": 80
+      },
+      "statuses": [
+        "UNSUPPORTED"
+      ]
+    },
+    {
+      "bits": 32,
+      "ai_facts_enabled": true,
+      "source": "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-3_2b-container_of-global.i",
+      "verdict": "The program is definitely UNSAFE",
+      "executions": [
+        {
+          "group": 0,
+          "pair": 2,
+          "program_sha256": "81eed34d2ddd50125c702c0e4ff333b7f1a3125112b79d6baf3c9a64b856ed88",
+          "certificate_sha256": "f387f10a06d39bb97d9482a8fe7e6d4f36132741f335da30dd7078c08c093995",
+          "status": "ACCEPT",
+          "scope": "concrete_AR_prefix",
+          "exact_encoded_values": true,
+          "instances": [
+            1,
+            2
+          ],
+          "targets": [
+            {
+              "instance": 1,
+              "object": "stack:1:v3",
+              "offset": 24,
+              "width": 4,
+              "write": true,
+              "vc": {
+                "0": 46,
+                "1": 8
+              },
+              "atomic": false
+            },
+            {
+              "instance": 2,
+              "object": "stack:1:v3",
+              "offset": 24,
+              "width": 4,
+              "write": true,
+              "vc": {
+                "0": 48,
+                "2": 8
+              },
+              "atomic": false
+            }
+          ],
+          "steps": 64,
+          "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+        }
+      ],
+      "counts": {
+        "activation_small_bound": 10,
+        "ai_single_execution": 17,
+        "constant_guard_unsat": 12,
+        "sc_same_path_read_from": 4,
+        "smt_unsat": 8,
+        "startup_read_from": 26,
+        "integer_operation": 2,
+        "sat": 1,
+        "not_searched_after_confirmation": 7
+      },
+      "statuses": [
+        "CONFIRMED"
+      ]
+    },
+    {
+      "bits": 64,
+      "ai_facts_enabled": false,
+      "source": "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-3_2b-container_of-global.c",
+      "verdict": "The program is potentially UNSAFE",
+      "executions": [],
+      "counts": {
+        "activation_small_bound": 10,
+        "prefix_address": 80
+      },
+      "statuses": [
+        "UNSUPPORTED"
+      ]
+    },
+    {
+      "bits": 64,
+      "ai_facts_enabled": true,
+      "source": "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-3_2b-container_of-global.c",
+      "verdict": "The program is definitely UNSAFE",
+      "executions": [
+        {
+          "group": 0,
+          "pair": 2,
+          "program_sha256": "6bfac9892fb060aaebe40c517b2fdcb010c66d46bfeaf1db80652dd48f01596e",
+          "certificate_sha256": "4111e637b74bab1b974ff61b96f5fbea5a3c5d7957691131f056c4fc1ce95791",
+          "status": "ACCEPT",
+          "scope": "concrete_AR_prefix",
+          "exact_encoded_values": true,
+          "instances": [
+            1,
+            2
+          ],
+          "targets": [
+            {
+              "instance": 1,
+              "object": "stack:1:v3",
+              "offset": 40,
+              "width": 4,
+              "write": true,
+              "vc": {
+                "0": 46,
+                "1": 8
+              },
+              "atomic": false
+            },
+            {
+              "instance": 2,
+              "object": "stack:1:v3",
+              "offset": 40,
+              "width": 4,
+              "write": true,
+              "vc": {
+                "0": 48,
+                "2": 8
+              },
+              "atomic": false
+            }
+          ],
+          "steps": 64,
+          "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+        }
+      ],
+      "counts": {
+        "activation_small_bound": 10,
+        "ai_single_execution": 17,
+        "constant_guard_unsat": 12,
+        "sc_same_path_read_from": 4,
+        "smt_unsat": 8,
+        "startup_read_from": 26,
+        "integer_operation": 2,
+        "sat": 1,
+        "not_searched_after_confirmation": 7
+      },
+      "statuses": [
+        "CONFIRMED"
+      ]
+    }
+  ],
+  "log_sha256": {
+    "ai": "61ca89b5762fd3627012a49e485450217b38390e624653a8f602703126642e5f",
+    "bmc": "27476c4c2d440d08068f42bf464e2cfc21960f7806d4ecc399109d16c15d9a28"
+  }
+}

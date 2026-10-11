@@ -28,6 +28,6 @@
     "mixed atomic/non-atomic accesses": 4,
     "internal call effects not covered": 1
   },
-  "latest_verdict_evidence": "../publication/paired.json",
-  "latest_analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461"
+  "latest_verdict_evidence": "../diagnostic-types/paired.json",
+  "latest_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02"
 }

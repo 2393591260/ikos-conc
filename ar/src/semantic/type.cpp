@@ -41,6 +41,8 @@
  *
  ******************************************************************************/
 
+#include <algorithm>
+#include <vector>
 #include <ikos/ar/semantic/context.hpp>
 #include <ikos/ar/semantic/type.hpp>
 #include <ikos/ar/support/assert.hpp>
@@ -338,6 +340,18 @@ void StructType::set_packed(bool packed) {
 }
 
 void StructType::dump(std::ostream& o) const {
+  // Legal pointer fields can revisit this structure. Keep expansion local to
+  // this thread and restore it even when an output stream throws.
+  static thread_local std::vector< const StructType* > expanding;
+  if (std::find(expanding.begin(), expanding.end(), this) != expanding.end()) {
+    o << "{...}";
+    return;
+  }
+  expanding.push_back(this);
+  struct Pop {
+    std::vector< const StructType* >& stack;
+    ~Pop() { stack.pop_back(); }
+  } pop{expanding};
   if (this->_packed) {
     o << "<";
   }
