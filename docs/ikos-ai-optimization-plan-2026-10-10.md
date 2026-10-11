@@ -1168,3 +1168,65 @@ build/install一致，无 frontend 修改；本轮未测得加速或证明全部
 [修复前后](artifacts/ai-precision-2026-10-11/relative-mutex/fixture-transitions.json)、
 [参考结果](artifacts/ai-precision-2026-10-11/relative-mutex/reference.json)、
 [Goblint消融](artifacts/ai-precision-2026-10-11/relative-mutex/goblint-ablation.json)。
+
+
+### 9.26 精度：仿射数组地址与 mutex 对应（2026-10-11）
+
+入口是 Goblint 正常 TRUE 的 `06-symbeq_06-tricky_address1.c`、
+`06-symbeq_07-tricky_address2.c`、`06-symbeq_08-tricky_address3.c`。
+先检查源码及 AR，预测每次访问地址与对应锁地址共享数组根和下标系数、只差固定字段偏移。
+两参考工具在两个 ABI 均给出安全结果（Dartagnan 的 PASS 仅为其有界结果）；
+IKOS 原来因数组起始 offset 非单例，不能使用 §9.25 的等起点充分条件。
+
+本轮保留完整 PointerShift 字节系数及常量，逐访问证明所有 CFG 前驱路径在访问时仍持有
+`address + delta` 的 blocking mutex。对同一个非 TLS 具体 global，计算
+`p = gcd(2^pointer_bits, 所有字节系数)`；候选两侧取共同周期，两侧余数一致且 width 均不大于
+该周期时，字节重叠必推出起始地址相等。理由是共同周期整除地址空间大小，起点之差是周期
+的倍数，而相交字节相对位移之差的绝对值严格小于周期，故该差只能为零（也覆盖地址回绕）。
+因此同一数据地址加同一 delta 必为同一 mutex。这不是把“相同数组形状”直接当作同锁。
+精确起点的旧充分条件仍保留；heap summary、TLS、不同余数、过宽访问等不满足条件就保留候选。
+
+LP64 AR 对同一个 i 会分别生成两个 sext，不能仅比较转换结果的 SSA 指针。
+仅当输入与转换均有单一定义且定义块不可重访，才允许“相同输入、相同 sext/zext 操作、
+相同结果类型”对应；不会把 truncation、符号/零扩展混为一谈，不比较跨线程局部变量。
+中途任意 call、根/下标重绑定、未覆盖环和预算耗尽仍使证明失效。
+这利用 IKOS points-to/width、AR 值流和 CFG 提供充分条件，不引入 SMT 到 SAFE 判定，
+也不依赖 BMC UNSAT 或 benchmark 文件名。
+
+验证：56次新增双ABI/双模式（LP64另改名）、52次上一阶段、正确性76次、field/rwlock40次、
+mutex属性36次、旧BMC20次通过。新增负例含错字段锁、不同系数、helper解锁、截断后换元素、
+循环改下标、两个独立下标；确定 FALSE 的所选执行均独立 AR ACCEPT。
+合法有界截断 CASE9 仍 UNKNOWN，不为追回标签放宽转换规则。
+六个独立 BV 查询核对“重叠推出等起点”：32/64位及不等宽正例 UNSAT；不同余数、width超周期、
+周期不整除地址空间的反例 SAT。这只验证数学条件，不声称证明整个提取实现。
+
+68次 Goblint/Dartagnan 参考记录全部保留。特别核查 CASE7 的 ILP32 分歧：C 的
+`(char*)p + offsetof(item, mutex)` 与 `&p->mutex` 指向同一把锁，原生双ABI地址断言通过，
+ILP32 sizeof(item)=52、mutex偏移4；LP64为88、8。Dartagnan 7caef5c 的 TypeFactory 将指针
+固定为64位并自行计算 aggregate 对齐，ILP32处理后 IR 却使用 stride72、typed字段偏移8，
+同时保留 clang 的字节偏移4。导出的执行图确实在 items+4 和 items+8 获取两把“锁”，故其 FAIL
+不是该 C 程序真实反例。LP64原始记录及 bound3/5重跑均 PASS；ILP32两个bound均 FAIL。
+证据包含源码版本/摘录、二进制hash、IR及所选执行地址；没有修改参考工具去制造一致结果。
+CASE12的Dartagnan两ABI均60秒超时，保留为TIMEOUT。
+
+另记录既有前端能力边界：CASE10用64字节结构体写制造部分重叠，前驱及当前 ILP32均在
+byte-copy导入处 MachineInt宽度断言崩溃，LP64均UNKNOWN。此例从常规runner明确排除并单独
+配对记录，未把它宣称为语义测试通过；本轮不混入 frontend 修复。
+
+完整顺序1029配对仅三个上述任务 UNKNOWN→SAFE，无其余变化：
+AI TN655→658、UNKNOWN373→370；BMC TP104不变、TN655→658、UNKNOWN269→266；
+FP/FN0，error1仍为既有 nsc-ircc timeout。build/install一致。全量为冻结ILP32集合，
+双ABI覆盖限于定向回归和参考对照；没有宣称普遍0FN或已测得加速。
+加上§9.25，本次两轮累计TN654→658，BMC TP104保持。
+
+下一入口仍为跨 helper 的 mutex/data 关系（如 equ_proc_nr），必须绑定调用上下文并传播
+解锁/未知效果失效，不能直接把当前单函数证明搬过 call 边界。句柄两槽join的相关性、
+现有 byte-copy 前端崩溃也保持显式待办；对应修改各自验证、各自提交。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/affine-mutex/summary.json)、
+[1029配对](artifacts/ai-precision-2026-10-11/affine-mutex/paired.json)、
+[定向变体](review-repros/ai-affine-mutex/array.c)、
+[参考结果](artifacts/ai-precision-2026-10-11/affine-mutex/reference.json)、
+[地址模型分歧](artifacts/ai-precision-2026-10-11/affine-mutex/case7-reference-layout.json)、
+[数学核对](artifacts/ai-precision-2026-10-11/affine-mutex/lemma-results.json)、
+[前端边界](artifacts/ai-precision-2026-10-11/affine-mutex/byte-copy-boundary.json)。

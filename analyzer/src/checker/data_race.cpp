@@ -63,21 +63,81 @@ namespace analyzer {
 
 namespace {
 
-// Keep byte displacements: a field pattern is not a mutex identity by itself.
-bool constant_pointer_root(ar::Value* pointer, ar::Value*& root,
-                           core::ZNumber& displacement) {
-  displacement = 0;
+// Keep every byte coefficient and constant; indices from separate threads
+// never need to be equal, only each access and its own mutex must correspond.
+struct AffinePointer {
+  ar::Value* root = nullptr;
+  core::ZNumber displacement{0};
+  std::unordered_map< ar::InternalVariable*, core::ZNumber > coefficients;
+};
+
+bool acyclic_definition(ar::Statement* statement) {
+  if (statement == nullptr || statement->parent() == nullptr) return false;
+  auto* block = statement->parent();
+  std::vector< ar::BasicBlock* > pending(block->successor_begin(), block->successor_end());
+  std::unordered_set< ar::BasicBlock* > seen;
+  while (!pending.empty()) {
+    auto* next = pending.back();
+    pending.pop_back();
+    if (next == block || seen.size() >= 256) return false;
+    if (!seen.insert(next).second) continue;
+    pending.insert(pending.end(), next->successor_begin(), next->successor_end());
+  }
+  return true;
+}
+
+// Repeated extensions of one frozen value are equal. Keep the operation and
+// result type: sign extension, zero extension and truncation are not synonyms.
+ar::UnaryOperation* fixed_index_extension(ar::InternalVariable* variable) {
+  auto* cast = dyn_cast_or_null< ar::UnaryOperation >(unique_def(variable));
+  if (cast == nullptr ||
+      (cast->op() != ar::UnaryOperation::SExt && cast->op() != ar::UnaryOperation::ZExt) ||
+      !cast->operand()->type()->is_integer() || !variable->type()->is_integer())
+    return nullptr;
+  auto* input = dyn_cast< ar::InternalVariable >(cast->operand());
+  if (input == nullptr || !acyclic_definition(unique_def(input)) ||
+      !acyclic_definition(cast)) return nullptr;
+  return cast;
+}
+
+bool equal_pointer_indices(const AffinePointer& left, const AffinePointer& right) {
+  if (left.coefficients == right.coefficients) return true;
+  if (left.coefficients.size() != right.coefficients.size()) return false;
+  std::unordered_set< ar::InternalVariable* > matched;
+  for (const auto& x : left.coefficients) {
+    bool found = false;
+    auto* xc = fixed_index_extension(x.first);
+    for (const auto& y : right.coefficients) {
+      if (matched.count(y.first) || x.second != y.second) continue;
+      bool equal = x.first == y.first;
+      if (!equal && xc != nullptr) {
+        auto* yc = fixed_index_extension(y.first);
+        equal = yc != nullptr && xc->op() == yc->op() &&
+                xc->operand() == yc->operand() && x.first->type() == y.first->type();
+      }
+      if (equal) { matched.insert(y.first); found = true; break; }
+    }
+    if (!found) return false;
+  }
+  return true;
+}
+
+bool affine_pointer(ar::Value* pointer, AffinePointer& out) {
   for (unsigned depth = 0; depth < 32; ++depth) {
-    if (!pointer->type()->is_pointer()) return false;
+    if (!pointer->type()->is_pointer() || isa< ar::UndefinedConstant >(pointer) ||
+        isa< ar::NullConstant >(pointer)) return false;
     auto* variable = dyn_cast< ar::InternalVariable >(pointer);
-    if (variable == nullptr) { root = pointer; return true; }
+    if (variable == nullptr) { out.root = pointer; break; }
     auto* definition = unique_def(variable);
     if (auto* shift = dyn_cast_or_null< ar::PointerShift >(definition)) {
       for (auto i = shift->term_begin(); i != shift->term_end(); ++i) {
         auto term = *i;
-        auto* constant = dyn_cast< ar::IntegerConstant >(term.second);
-        if (constant == nullptr) return false;
-        displacement += term.first.to_z_number() * constant->value().to_z_number();
+        if (auto* constant = dyn_cast< ar::IntegerConstant >(term.second)) {
+          out.displacement += term.first.to_z_number() * constant->value().to_z_number();
+        } else if (auto* index = dyn_cast< ar::InternalVariable >(term.second)) {
+          if (!index->type()->is_integer()) return false;
+          out.coefficients[index] += term.first.to_z_number();
+        } else return false;
       }
       pointer = shift->pointer();
     } else if (auto* assignment = dyn_cast_or_null< ar::Assignment >(definition)) {
@@ -85,25 +145,34 @@ bool constant_pointer_root(ar::Value* pointer, ar::Value*& root,
     } else if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
       if (cast->op() != ar::UnaryOperation::Bitcast) return false;
       pointer = cast->operand();
-    } else {
-      root = pointer;
-      return true;
-    }
+    } else { out.root = pointer; break; }
   }
-  return false;
+  if (out.root == nullptr) return false;
+  for (auto i = out.coefficients.begin(); i != out.coefficients.end();) {
+    if (i->second == 0) i = out.coefficients.erase(i);
+    else ++i;
+  }
+  return true;
 }
+
+struct RelativeMutex {
+  core::ZNumber delta;
+  ar::GlobalVariable* global;
+  core::ZNumber period;
+  core::ZNumber residue;
+};
 
 // Prove every CFG route to this access retains a mutex at access+delta.
 // Rebinding, any intervening call (including unlock), and an uncovered cycle
 // invalidate the certificate. No equality between different thread locals is used.
-boost::optional< core::ZNumber > relative_mutex(const AccessRecord& access) {
+boost::optional< RelativeMutex > relative_mutex(const AccessRecord& access,
+                                               std::uint64_t pointer_bits) {
   ar::Value* pointer = nullptr;
   if (auto* load = dyn_cast< ar::Load >(access.stmt)) pointer = load->operand();
   if (auto* store = dyn_cast< ar::Store >(access.stmt)) pointer = store->pointer();
   if (pointer == nullptr) return boost::none;
-  ar::Value* root = nullptr;
-  core::ZNumber data_offset;
-  if (!constant_pointer_root(pointer, root, data_offset)) return boost::none;
+  AffinePointer data;
+  if (!affine_pointer(pointer, data)) return boost::none;
   std::unordered_set< ar::BasicBlock* > active;
   std::unordered_map< ar::BasicBlock*, boost::optional< core::ZNumber > > cache;
   unsigned budget = 256;
@@ -122,18 +191,21 @@ boost::optional< core::ZNumber > relative_mutex(const AccessRecord& access) {
         if (budget == 0) return boost::none;
         --budget;
         auto* statement = *--end;
-        if (statement->result_or_null() == root) return boost::none;
+        auto* result = statement->result_or_null();
+        auto* index = dyn_cast_or_null< ar::InternalVariable >(result);
+        if (result == data.root || (index != nullptr && data.coefficients.count(index) &&
+                                   fixed_index_extension(index) == nullptr))
+          return boost::none;
         if (auto* call = dyn_cast< ar::CallBase >(statement)) {
           auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
           if (!isa< ar::Call >(call) || target == nullptr ||
               !target->function()->is_declaration() ||
               target->function()->intrinsic_id() != ar::Intrinsic::PthreadMutexLock ||
               call->num_arguments() != 1) return boost::none;
-          ar::Value* mutex_root = nullptr;
-          core::ZNumber mutex_offset;
-          if (!constant_pointer_root(call->argument(0), mutex_root, mutex_offset) ||
-              mutex_root != root) return boost::none;
-          return mutex_offset - data_offset;
+          AffinePointer mutex;
+          if (!affine_pointer(call->argument(0), mutex) || mutex.root != data.root ||
+              !equal_pointer_indices(mutex, data)) return boost::none;
+          return mutex.displacement - data.displacement;
         }
       }
       if (block->num_predecessors() == 0) return boost::none;
@@ -150,7 +222,14 @@ boost::optional< core::ZNumber > relative_mutex(const AccessRecord& access) {
     if (stop == nullptr) cache.emplace(block, result);
     return result;
   };
-  return visit(access.stmt->parent(), access.stmt);
+  auto delta = visit(access.stmt->parent(), access.stmt);
+  if (!delta) return boost::none;
+  // PointerShift arithmetic is modulo the pointer width. Including 2^bits
+  // preserves congruence even when byte coefficient arithmetic wraps.
+  core::ZNumber period = core::ZNumber(1) << pointer_bits;
+  for (const auto& term : data.coefficients) period = core::gcd(period, term.second);
+  return RelativeMutex{*delta, dyn_cast< ar::GlobalVariable >(data.root),
+                       period, data.displacement};
 }
 
 // A fresh source nondet and its pure SSA expressions are independent of shared
@@ -696,11 +775,12 @@ DataRaceChecker::~DataRaceChecker() {
   };
 
   std::vector< PendingRacePair > all_pairs;
-  std::unordered_map< ar::Statement*, boost::optional< core::ZNumber > > relative_mutexes;
+  std::unordered_map< ar::Statement*, boost::optional< RelativeMutex > > relative_mutexes;
   auto mutex_delta = [&](const AccessRecord& access) {
     auto old = relative_mutexes.find(access.stmt);
     if (old == relative_mutexes.end())
-      old = relative_mutexes.emplace(access.stmt, relative_mutex(access)).first;
+      old = relative_mutexes.emplace(access.stmt, relative_mutex(
+          access, this->_ctx.bundle->data_layout().pointers.bit_width)).first;
     return old->second;
   };
 
@@ -1045,12 +1125,10 @@ DataRaceChecker::~DataRaceChecker() {
         continue;
       }
 
-      // Exact equal starts in concrete global objects plus equal relative
-      // mutex displacements imply the SAME mutex whenever the data alias.
-      // Merely overlapping byte ranges, TLS, heap summaries or TOP do not.
-      auto a_start = a.offset.singleton(), b_start = b.offset.singleton();
-      if (a.pts.is_set() && b.pts.is_set() && a.width != 0 && b.width != 0 &&
-          a_start && b_start && a_start->to_z_number() == b_start->to_z_number()) {
+      // Corresponding mutexes exclude conflicts only if overlap implies
+      // equal starts. Equal exact offsets suffice; matching byte congruences
+      // also suffice when both widths fit in the common modulus.
+      if (a.pts.is_set() && b.pts.is_set() && a.width != 0 && b.width != 0) {
         auto common = a.pts.meet(b.pts);
         bool concrete = !common.is_empty();
         for (auto* location : common) {
@@ -1062,7 +1140,20 @@ DataRaceChecker::~DataRaceChecker() {
         }
         if (concrete) {
           auto left = mutex_delta(a), right = mutex_delta(b);
-          if (left && right && *left == *right) continue;
+          if (left && right && left->delta == right->delta) {
+            auto a_start = a.offset.singleton(), b_start = b.offset.singleton();
+            if (a_start && b_start && a_start->to_z_number() == b_start->to_z_number())
+              continue;
+            if (left->global != nullptr && left->global == right->global &&
+                a.pts.size() == 1 && b.pts.size() == 1 && common.size() == 1 &&
+                cast< GlobalMemoryLocation >(*common.begin())->global_var() == left->global) {
+              auto period = core::gcd(left->period, right->period);
+              // The modulus divides the address-space size: even wrapping
+              // byte ranges cannot overlap at distinct congruent starts.
+              if (core::ZNumber(a.width) <= period && core::ZNumber(b.width) <= period &&
+                  ((left->residue - right->residue) % period) == 0) continue;
+            }
+          }
         }
       }
 

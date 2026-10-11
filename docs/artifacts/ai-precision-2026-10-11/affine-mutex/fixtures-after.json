@@ -1,0 +1,1024 @@
+[
+  {
+    "bits": 32,
+    "case": 0,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 0,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "b74bba388b4694fac84e1822e4850cc39a23f154c90b5c04e3d131f7a4941dc8",
+        "certificate_sha256": "a353f8ac0e54e495d3595f402dd8fa109b8d324593a37677d01d893fc91bd5e1",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:items",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 57
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:items",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 45,
+              "1": 13
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 70,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "a1613d2de07819592ded34bbf5fa100e4fb5d853c687dcb53ee437ab4a68a437",
+        "certificate_sha256": "6eff61b6bba3e45fb3df1f1f5d8e83b1897ab19850dfddcae3f7fc139664b3c6",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:items",
+            "offset": 156,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 60
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:items",
+            "offset": 156,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 45,
+              "1": 13
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 73,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "3d72c466a347a4f14472c7119375a68166e509a49fbd51e2ece3a5feef63494a",
+        "certificate_sha256": "861b05088a5e98d5e1c530206258102b224c940a39f6790adb679202cf7eab56",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:items",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 60
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:items",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 45,
+              "1": 13
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 73,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "b67665e156916072f5f09b23210293b7176493245f124c3bc495eb408f70b5ca",
+        "certificate_sha256": "7fd8b72e1855bc497881179c07fe054395d79356c884f519622dcd4862fd2d8a",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:items",
+            "offset": 52,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 59
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:items",
+            "offset": 52,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 45,
+              "1": 13
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 72,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f08cbb83ef5b207dcfeee83c84b10afdbf922c30ff9dcbf1c9c6713d1a7d2e2f",
+        "certificate_sha256": "81e612d1749b397ded0708e617a15490dc1ffd0ca646a7c4dc2efdf6c28a9bd6",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:items",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 62
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:items",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 59,
+              "1": 13
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 75,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 9,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 9,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 11,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 11,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 12,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 12,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 13,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 13,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "c54c6c082bb927693a2cb97052a1f5b6e4469f7cc6e6fdaca4ebc9a491d35034",
+        "certificate_sha256": "7e4a39b5847b4d51af3e4d3afded24460c479761c230aca4f4d19ba3b7db8994",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:items",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 64
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:items",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 46,
+              "1": 13
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 77,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 14,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 14,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "cb3a3174e5663edfaea21d3402ba1bf07418d71790a0d017bdade33ed07656cc",
+        "certificate_sha256": "7987b4cd938c66684b50f93e68d3eab375bae1713a7016cbeacbbc523a396e4f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:items",
+            "offset": 52,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 66
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:items",
+            "offset": 52,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 46,
+              "1": 13
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 79,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "b590d94ebbc84fdc3d77e782a0bd7ccac0e83068d549904918e4f4a2272954c7",
+        "certificate_sha256": "d4ef3fa320ea033d5f640fa02e38a39708471527d6a7ec2d011b038428cf1ccd",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 66
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 53,
+              "1": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 80,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "62a3a035eba79b8e103ec67f0af809042392561865de700588e7768c5bc941cc",
+        "certificate_sha256": "7ff699c21dfb2be19be40d34b5e139b403e4e34adeb2f5fe3f4e8a3e13a57fbf",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 264,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 70
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 264,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 53,
+              "1": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 84,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "c1910dff20140a65bc406de172d5ebbe815aeb1c4c30339395c5b9198cb60abf",
+        "certificate_sha256": "87536dadc74610655cb6a67157d3b55fc3db4a516e48fe14c054f58ecfceec30",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 70
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 53,
+              "1": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 84,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "5078c4e5335cfbc1efde66df2e19945c540ee256d424608805cd5405d83cf446",
+        "certificate_sha256": "e5c893166d86d5f635498ada2dee2d31ef3623e9767bc713df4788f6ba5ce7af",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 88,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 69
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 88,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 53,
+              "1": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 83,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "2a20fcf8ad0045d7eef855839ffdbe5d7b1b44c0b8c3f7c88cbbdbee5c507333",
+        "certificate_sha256": "a73162077c9c626a63a7b8fd1fc1cfee81f6efb33dc0685eaa87b4530a9413b4",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 71
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 68,
+              "1": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 85,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 9,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 9,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 11,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 11,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 12,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 12,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 13,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 13,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e22b39fbaa545a26ca1726670226ea59e0c3a1ec63d098f7a5acd391567183ac",
+        "certificate_sha256": "7a9668b634df2cd0c8c69fd5b6bf957860845b214df5a7d62434466fd9283b3f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 74
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 54,
+              "1": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 88,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 14,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 14,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "74e6ede9f3f73460ca80caa5e4b113fc7b69bb8c7fdfa6fe5a4e722c890f962d",
+        "certificate_sha256": "45689e9e674ede10a1696b37612622fb3531dc3746c7778c43fde7ecc4af25c1",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 88,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 76
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 88,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 54,
+              "1": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 90,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  }
+]

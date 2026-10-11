@@ -1,0 +1,130 @@
+[
+  {
+    "bits": 32,
+    "case": 0,
+    "mode": "ai",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 32,
+    "case": 0,
+    "mode": "bmc",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "mode": "ai",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "mode": "bmc",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "mode": "ai",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "mode": "bmc",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 32,
+    "case": 11,
+    "mode": "ai",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 32,
+    "case": 11,
+    "mode": "bmc",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "mode": "ai",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "mode": "bmc",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "mode": "ai",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "mode": "bmc",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "mode": "ai",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "mode": "bmc",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 64,
+    "case": 11,
+    "mode": "ai",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "bits": 64,
+    "case": 11,
+    "mode": "bmc",
+    "expected": "Safe",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  }
+]

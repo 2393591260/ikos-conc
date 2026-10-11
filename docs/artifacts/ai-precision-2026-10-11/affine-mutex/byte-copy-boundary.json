@@ -1,0 +1,84 @@
+[
+  {
+    "phase": "before",
+    "bits": 32,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/affine-mutex/old-ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=10",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-affine-mutex/array.c"
+    ],
+    "source_sha256": "c9d889dfb93f5a6fe0d2fa82d59e51cfd8f8d326148f0a04efd6ab80ac9624b4",
+    "expected": "Race Found",
+    "returncode": 6,
+    "verdict": "NO VERDICT",
+    "diagnostics": [
+      "analyzer-before: /home/ruan/ikos-conc/core/include/ikos/core/number/compatibility.hpp:60: void ikos::core::assert_compatible(const X&, const Y&) [with X = MachineInt; Y = MachineInt]: Assertion `(x.bit_width() == y.bit_width()) && (\"parameters have a different bit-width\")' failed.",
+      "old-ikos: error: exited with signal SIGIOT"
+    ]
+  },
+  {
+    "phase": "before",
+    "bits": 64,
+    "command": [
+      "/tmp/ikos-ai-p0-20261010-ePqDG0/affine-mutex/old-ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=10",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-affine-mutex/array.c"
+    ],
+    "source_sha256": "c9d889dfb93f5a6fe0d2fa82d59e51cfd8f8d326148f0a04efd6ab80ac9624b4",
+    "expected": "Race Found",
+    "returncode": 0,
+    "verdict": "The program is potentially UNSAFE",
+    "diagnostics": []
+  },
+  {
+    "phase": "after",
+    "bits": 32,
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=10",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-affine-mutex/array.c"
+    ],
+    "source_sha256": "c9d889dfb93f5a6fe0d2fa82d59e51cfd8f8d326148f0a04efd6ab80ac9624b4",
+    "expected": "Race Found",
+    "returncode": 6,
+    "verdict": "NO VERDICT",
+    "diagnostics": [
+      "ikos-analyzer: /home/ruan/ikos-conc/core/include/ikos/core/number/compatibility.hpp:60: void ikos::core::assert_compatible(const X&, const Y&) [with X = MachineInt; Y = MachineInt]: Assertion `(x.bit_width() == y.bit_width()) && (\"parameters have a different bit-width\")' failed.",
+      "ikos-frontend.py: error: exited with signal SIGIOT"
+    ]
+  },
+  {
+    "phase": "after",
+    "bits": 64,
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=10",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-affine-mutex/array.c"
+    ],
+    "source_sha256": "c9d889dfb93f5a6fe0d2fa82d59e51cfd8f8d326148f0a04efd6ab80ac9624b4",
+    "expected": "Race Found",
+    "returncode": 0,
+    "verdict": "The program is potentially UNSAFE",
+    "diagnostics": []
+  }
+]

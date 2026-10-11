@@ -1,0 +1,74 @@
+[
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_06-tricky_address1.c",
+    "bits": 32,
+    "mode": "ai",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_06-tricky_address1.c",
+    "bits": 32,
+    "mode": "bmc",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_06-tricky_address1.c",
+    "bits": 64,
+    "mode": "ai",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_06-tricky_address1.c",
+    "bits": 64,
+    "mode": "bmc",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_07-tricky_address2.c",
+    "bits": 32,
+    "mode": "ai",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_07-tricky_address2.c",
+    "bits": 32,
+    "mode": "bmc",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_07-tricky_address2.c",
+    "bits": 64,
+    "mode": "ai",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_07-tricky_address2.c",
+    "bits": 64,
+    "mode": "bmc",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_08-tricky_address3.c",
+    "bits": 32,
+    "mode": "ai",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_08-tricky_address3.c",
+    "bits": 32,
+    "mode": "bmc",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_08-tricky_address3.c",
+    "bits": 64,
+    "mode": "ai",
+    "verdict": "The program is SAFE"
+  },
+  {
+    "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/06-symbeq_08-tricky_address3.c",
+    "bits": 64,
+    "mode": "bmc",
+    "verdict": "The program is SAFE"
+  }
+]

@@ -1,0 +1,198 @@
+{
+  "source_revision": "7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+  "jar_sha256": "e7e63dd6815f26b4b9f3b160899cf809cb4de6db86fbf2e1796bfd6e5ab422f6",
+  "runs": [
+    {
+      "bits": 32,
+      "bound": 3,
+      "command": [
+        "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+        "-Xmx2g",
+        "-cp",
+        "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/ai-affine-mutex/array.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=3",
+        "--program.processing.skipAssertionsOfType=USER",
+        "--printer.afterProcessing=true",
+        "--witness=dot"
+      ],
+      "returncode": 13,
+      "result": [
+        "Result: FAIL",
+        "Reason: SVCOMP data race found"
+      ]
+    },
+    {
+      "bits": 64,
+      "bound": 3,
+      "command": [
+        "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+        "-Xmx2g",
+        "-cp",
+        "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/ai-affine-mutex/array.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=3",
+        "--program.processing.skipAssertionsOfType=USER",
+        "--printer.afterProcessing=true",
+        "--witness=dot"
+      ],
+      "returncode": 0,
+      "result": [
+        "Result: PASS"
+      ]
+    },
+    {
+      "bits": 32,
+      "bound": 5,
+      "command": [
+        "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+        "-Xmx2g",
+        "-cp",
+        "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/ai-affine-mutex/array.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=5",
+        "--program.processing.skipAssertionsOfType=USER",
+        "--printer.afterProcessing=true",
+        "--witness=dot"
+      ],
+      "returncode": 13,
+      "result": [
+        "Result: FAIL",
+        "Reason: SVCOMP data race found"
+      ]
+    },
+    {
+      "bits": 64,
+      "bound": 5,
+      "command": [
+        "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+        "-Xmx2g",
+        "-cp",
+        "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+        "com.dat3m.dartagnan.Dartagnan",
+        "cat/svcomp.cat",
+        "/home/ruan/ikos-conc/docs/review-repros/ai-affine-mutex/array.c",
+        "svcomp.properties",
+        "--property=DATARACEFREEDOM",
+        "--bound=5",
+        "--program.processing.skipAssertionsOfType=USER",
+        "--printer.afterProcessing=true",
+        "--witness=dot"
+      ],
+      "returncode": 0,
+      "result": [
+        "Result: PASS"
+      ]
+    }
+  ],
+  "native_layout": [
+    {
+      "bits": 32,
+      "command": [
+        "clang",
+        "-m32",
+        "/tmp/ikos-ai-p0-20261010-ePqDG0/affine-mutex/case7-probe/layout.c",
+        "-pthread",
+        "-o",
+        "/tmp/ikos-ai-p0-20261010-ePqDG0/affine-mutex/case7-probe/layout32"
+      ],
+      "output": "pointer=32 item=52 mutex_offset=4",
+      "returncode": 0
+    },
+    {
+      "bits": 64,
+      "command": [
+        "clang",
+        "-m64",
+        "/tmp/ikos-ai-p0-20261010-ePqDG0/affine-mutex/case7-probe/layout.c",
+        "-pthread",
+        "-o",
+        "/tmp/ikos-ai-p0-20261010-ePqDG0/affine-mutex/case7-probe/layout64"
+      ],
+      "output": "pointer=64 item=88 mutex_offset=8",
+      "returncode": 0
+    }
+  ],
+  "source_excerpts": {
+    "expression/type/TypeFactory.java:20": {
+      "sha256": "00100efce5480a7a8cddc4c4f79f412caf60336b8be3bd13e8b9232bc742e78e",
+      "lines": [
+        "",
+        "    private final VoidType voidType = new VoidType();",
+        "    private final BooleanType booleanType = new BooleanType();",
+        "    private final IntegerType pointerDifferenceType;",
+        "",
+        "    private final Normalizer typeNormalizer = new Normalizer();",
+        "",
+        "    private TypeFactory() {",
+        "        pointerDifferenceType = getIntegerType(64);//TODO insert proper pointer and difference types",
+        "    }"
+      ]
+    },
+    "expression/type/TypeFactory.java:104": {
+      "sha256": "00100efce5480a7a8cddc4c4f79f412caf60336b8be3bd13e8b9232bc742e78e",
+      "lines": [
+        "        if (!fields.isEmpty()) {",
+        "            offset = getMemorySizeInBytes(fields.get(0));",
+        "            offsets.add(0);",
+        "        }",
+        "        for (int i = 1; i < fields.size(); i++) {",
+        "            offset = paddedSize(offset, getAlignment(fields.get(i)));",
+        "            offsets.add(offset);",
+        "            offset += getMemorySizeInBytes(fields.get(i));",
+        "        }",
+        "        return offsets;",
+        "    }",
+        "",
+        "    public ArrayType getArrayType(Type element) {",
+        "        return getArrayType(element, -1, null, null);",
+        "    }"
+      ]
+    },
+    "parsers/program/visitors/VisitorLlvm.java:1086": {
+      "sha256": "dc4d37c5abfe71fe136439eb1d1ee739ff5747e0e550843a328494bc06c85497",
+      "lines": [
+        "    @Override",
+        "    public Expression visitPointerType(PointerTypeContext ctx) {",
+        "        parsedType = pointerType;",
+        "        return null;",
+        "    }",
+        "",
+        "    @Override",
+        "    public Expression visitStructType(StructTypeContext ctx) {",
+        "        final var fields = new ArrayList<Type>();",
+        "        for (final TypeContext typeContext : ctx.type()) {",
+        "            fields.add(parseType(typeContext));",
+        "        }",
+        "        parsedType = types.getAggregateType(fields);",
+        "        return null;"
+      ]
+    }
+  },
+  "processed_ir": [
+    "static [size=288, align=8]\titems\t{ 0: bv32(0), 8: bv32(0), 12: bv32(0), 16: bv32(0), 20: bv32(0), ... }",
+    "59:      bv64 r26 = &items + (sext (bv32 1:__r_nondet_int * bv32(72)) to bv64)",
+    "60:      bv64 r28 = bv64 r26 + bv64(4)",
+    "164:     bv64 r8 = &items + (sext (bv32 1:__r_nondet_int * bv32(72)) to bv64)",
+    "165:     bv64 r10 = bv64 r8 + bv64(8)"
+  ],
+  "selected_execution": [
+    "e18 [label=\"main:T0\\nE64 @array.c#90\\n0 = R(&items[size=288] + 4, ACQ)\"]",
+    "e24 [label=\"main:T0\\nE121 @array.c#108\\nW(&items[size=288], 2)\"]",
+    "e43 [label=\"work:T1\\nE169 @array.c#36\\n0 = R(&items[size=288] + 8, ACQ)\"]",
+    "e49 [label=\"work:T1\\nE226 @array.c#40\\nW(&items[size=288], 1)\"]"
+  ],
+  "conclusion": "ILP32 C layout has mutex offset4 and item stride52, while Dartagnan uses offset8/stride72 for typed GEP and preserves byte offset4 from clang. The model takes two different locks. LP64 is PASS in both original reference and bound3/bound5 repeats. Neither a reference FAIL nor PASS replaces the IKOS proof."
+}
