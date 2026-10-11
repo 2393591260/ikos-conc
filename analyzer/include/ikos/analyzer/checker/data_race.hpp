@@ -50,6 +50,7 @@
 #include <ikos/analyzer/analysis/memory_location.hpp>
 #include <ikos/analyzer/checker/checker.hpp>
 #include <ikos/core/domain/concurrent_global_env.hpp>
+#include <ikos/core/value/machine_int/congruence.hpp>
 
 namespace ikos {
 namespace analyzer {
@@ -166,6 +167,9 @@ struct AccessRecord {
   /// same thread (the "promoting" lock). A locked read holding one of these
   /// locks is ordered after this private init write.
   std::vector< std::uint64_t > promote_locks;
+  // Stable local may fact used only by the separate SAFE pair-exclusion query.
+  // Extern/synthetic accesses deliberately retain no numerical certificate.
+  boost::optional< core::machine_int::Congruence > offset_congruence = boost::none;
 
 };
 
@@ -228,6 +232,9 @@ private:
   core::machine_int::Interval resolve_offset(
       ar::Value* pointer, const value::AbstractDomain& inv) const;
 
+  boost::optional< core::machine_int::Congruence > resolve_offset_congruence(
+      ar::Value* pointer, const value::AbstractDomain& inv) const;
+
   /// \brief Struct-instance base offset of the given pointer operand
   /// (container_of inverse). A PointerShift result's BASE pointer offset is
   /// the containing struct/array element base; whole-object pointers fall
@@ -288,6 +295,10 @@ private:
 private:
   /// \brief Access digest collected during the analysis pass
   std::vector< AccessRecord > _accesses;
+
+  // Opt-in research configuration; native mode is the solver-free ablation.
+  bool _pair_exclusion_enabled = false;
+  bool _pair_exclusion_solver = false;
 
   // Conjunction across checked contexts; only shared-independent integer
   // computations may discharge a BMC definedness obligation.

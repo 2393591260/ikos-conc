@@ -13,7 +13,7 @@
 
 本节更新后续优先级；§2–8保留原设计与理论依据，§9保留各次实验的历史快照。
 不能把历史“尚未修复”、旧候选池或旧TN当作当前状态，也不能把设计项全部当作必须实现的大改。
-当前为§9.31跨helper精确上下文证书，最新[配对证据](artifacts/ai-precision-2026-10-11/helper-context/summary.json)：
+当前为§9.32可选AI候选覆盖查询的定向/默认验证，最新[配对证据](artifacts/ai-precision-2026-10-11/pair-feedback/summary.json)：
 冻结1029项ILP32，AI TN661/UNKNOWN367；BMC TP106/TN661/UNKNOWN261，均FP0/FN0/error1。
 全量与定向双ABI验证的范围分别记录，不称已完成双ABI全量。
 
@@ -1455,3 +1455,36 @@ FP/FN0/error1。三个TN来自上述安全入口；新增两个TP是`funloop_sim
 [实例对照](review-repros/ai-helper-mutex/helper.c)、
 [新TP执行](artifacts/ai-precision-2026-10-11/helper-context/gain-executions.json)、
 [旧搜索诊断](artifacts/ai-precision-2026-10-11/helper-context/gain-before-diagnostics.json)。
+
+
+### 9.32 研究原型 A：稳定 AI 地址事实上的覆盖查询（2026-10-11）
+
+新增独立`pair_exclusion.hpp`，只消费初始化指针在稳定AI检查点的offset interval/congruence、
+实际访问width、共同singleton非TLS global。extern/合成访问不带数值证书。两个局部may集合
+取独立笛卡尔积，地址用mod 2^pointer_bits：存在各自起点和宽度内byte使同址。任何真实
+重叠都满足该公式，因此UNSAT可排除候选；SAT只是抽象冲突，不产生FALSE。bottom/矛盾事实、
+对象或width不支持、超时/UNKNOWN/预算耗尽均保留候选，不利用空事实制造SAFE。
+
+实验开关`IKOS_AI_PAIR_EXCLUSION=1`先执行原生同余充分条件再SMT；`native`提供无solver
+消融，其他值关闭。可选`IKOS_AI_PAIR_EXCLUSION_REPORT`输出独立JSONL，包括事实、公式、
+抽象模型及统计，不混入BMC竞争执行。每checker至多8次请求、solver timeout20ms，累计
+200ms预检不是严格墙钟上限：context建立/清理、最后在途查询及调度还会耗时。默认关闭。
+
+C++14直接检查36条记录，其中256组固定种子的微小地址空间事实逐byte穷举；覆盖signed/
+unsigned/回绕、不同宽度、空/矛盾事实及预算。不称穷尽全部抽象事实。真实analyzer快照
+120项AI消融及120项BMC配置均通过，双ABI且LP64改名；确定FALSE所选执行独立AR ACCEPT。
+既有主回归在默认配置和显式强域+查询下通过（旧BMC观察runner另外维持原默认配置）。
+偶奇例由原生同余即可SAFE；稀疏`data[4*i]`(i∈[0,1])与`data[j]`(j∈[2,3])的interval/
+单纯native都不能排除，组合SMT确实UNSAT。共享下标、混合width、同入口双实例与wrap负例
+不SAFE；heap/TLS缺证书时不调用查询。
+
+默认完整1029 AI/BMC逐文件无变化：AI TN661/U367；BMC TP106/TN661/U261，FP/FN0/error1。
+本提交是明确能力边界的opt-in研究阶段；启用配置的冻结集消融正在运行，不把定向例恢复
+记成冻结集增益。首次非受控core测量中，Z3 context的毫秒成本明显高于原生微秒判断；
+目前没有全量加速主张。模型引导重算下一阶段单独提交，不能把本阶段称为BMC反向反馈。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/pair-feedback/summary.json)、
+[core](artifacts/ai-precision-2026-10-11/pair-feedback/core.json)、
+[真实快照/公式](artifacts/ai-precision-2026-10-11/pair-feedback/snapshots.json)、
+[定向输入](review-repros/ai-pair-feedback/feedback.c)、
+[BMC配置](artifacts/ai-precision-2026-10-11/pair-feedback/bmc-fixtures.json)。

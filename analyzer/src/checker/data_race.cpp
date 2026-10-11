@@ -44,6 +44,7 @@
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/analysis/bmc/bmc.hpp>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
+#include <ikos/analyzer/analysis/pair_exclusion.hpp>
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 #include <ikos/analyzer/analysis/pointer/function.hpp>
 #include <ikos/analyzer/support/cast.hpp>
@@ -53,6 +54,8 @@
 #include <ikos/core/domain/concurrent_global_env.hpp>
 
 #include <algorithm>
+#include <cstdlib>
+#include <fstream>
 #include <functional>
 #include <map>
 #include <sstream>
@@ -711,7 +714,12 @@ inline bool region_of(ar::Value* v, Context& ctx, CallContext* cc,
 
 } // end anonymous namespace
 
-DataRaceChecker::DataRaceChecker(Context& ctx) : Checker(ctx) {}
+DataRaceChecker::DataRaceChecker(Context& ctx) : Checker(ctx) {
+  const char* configured = std::getenv("IKOS_AI_PAIR_EXCLUSION");
+  const std::string mode = configured ? configured : "";
+  this->_pair_exclusion_enabled = mode == "1" || mode == "native";
+  this->_pair_exclusion_solver = mode == "1";
+}
 
 DataRaceChecker::~DataRaceChecker() {
   bool synthetic_handle_unsupported = false;
@@ -889,6 +897,76 @@ DataRaceChecker::~DataRaceChecker() {
   };
 
   std::vector< PendingRacePair > all_pairs;
+  unsigned exclusion_queries = 0, exclusion_native = 0, exclusion_smt = 0;
+  unsigned exclusion_sat = 0, exclusion_unknown = 0, exclusion_invalid = 0;
+  unsigned exclusion_eligible = 0, exclusion_budget = 0, exclusion_records = 0;
+  std::uint64_t exclusion_us = 0;
+  std::ofstream exclusion_report;
+  if (this->_pair_exclusion_enabled) {
+    if (const char* path = std::getenv("IKOS_AI_PAIR_EXCLUSION_REPORT")) {
+      exclusion_report.open(path, std::ios::app);
+      if (!exclusion_report) log::warning("Cannot open AI pair-exclusion evidence file");
+    }
+  }
+  auto record_exclusion = [&](std::size_t i, std::size_t j,
+                               const char* engine,
+                               const pair_exclusion::Result& result) {
+    if (!exclusion_report.is_open() || !exclusion_report || exclusion_records++ >= 64) return;
+    auto fact = [&](std::size_t index) {
+      const auto& a = this->_accesses[index];
+      JsonDict side;
+      side.put("access_id", index);
+      side.put("thread", a.thread_id);
+      side.put("width", std::to_string(a.width));
+      side.put("offset_bits", a.offset.bit_width());
+      side.put("offset_sign", a.offset.sign() == core::Signed ? "signed" : "unsigned");
+      side.put("bottom", a.offset.is_bottom() || a.offset_congruence->is_bottom());
+      if (!a.offset.is_bottom()) {
+        side.put("lo", a.offset.lb().to_z_number().str());
+        side.put("hi", a.offset.ub().to_z_number().str());
+      }
+      if (!a.offset_congruence->is_bottom()) {
+        side.put("modulus", a.offset_congruence->modulus().str());
+        side.put("residue", a.offset_congruence->residue().str());
+      }
+      if (auto location = source_location(a.stmt)) {
+        side.put("file", location.path().string());
+        side.put("line", static_cast< int >(location.line()));
+        side.put("column", static_cast< int >(location.column()));
+      }
+      return side;
+    };
+    const char* status = "UNKNOWN";
+    switch (result.status) {
+      case pair_exclusion::Status::Unsat: status = "UNSAT"; break;
+      case pair_exclusion::Status::Sat: status = "SAT"; break;
+      case pair_exclusion::Status::Unknown: break;
+      case pair_exclusion::Status::InvalidFacts: status = "INVALID_FACTS"; break;
+    }
+    JsonDict row;
+    row.put("contract", "stable-ai-offset-byte-overlap-v1");
+    row.put("engine", engine);
+    row.put("status", status);
+    row.put("pointer_bits", this->_ctx.bundle->data_layout().pointers.bit_width);
+    std::ostringstream object;
+    (*this->_accesses[i].pts.begin())->dump(object);
+    row.put("object", object.str());
+    row.put("a", fact(i));
+    row.put("b", fact(j));
+    row.put("reason", result.reason);
+    row.put("elapsed_us", result.elapsed_us);
+    if (!result.smtlib.empty()) row.put("smtlib", result.smtlib);
+    if (result.model) {
+      JsonDict model;
+      model.put("start_a", result.model->start_a.str());
+      model.put("start_b", result.model->start_b.str());
+      model.put("byte_a", result.model->byte_a.str());
+      model.put("byte_b", result.model->byte_b.str());
+      model.put("address", result.model->address.str());
+      row.put("abstract_model", model);
+    }
+    exclusion_report << row.str() << '\n';
+  };
   std::unordered_map< ar::Statement*,
       std::unordered_map< CallContext*, boost::optional< RelativeMutex > > > relative_mutexes;
   auto mutex_delta = [&](const AccessRecord& access) {
@@ -1273,6 +1351,46 @@ DataRaceChecker::~DataRaceChecker() {
         }
       }
 
+      // This query covers all offsets in the two independent stable AI facts;
+      // it is not a bounded-path BMC query. Unknown object/width/fact keeps may.
+      if (this->_pair_exclusion_enabled && a.offset_congruence && b.offset_congruence &&
+          a.width != 0 && b.width != 0 && a.pts.is_set() && b.pts.is_set() &&
+          a.pts.size() == 1 && b.pts.size() == 1 && *a.pts.begin() == *b.pts.begin()) {
+        auto* object = dyn_cast< GlobalMemoryLocation >(*a.pts.begin());
+        if (object != nullptr && !object->global_var()->is_thread_local()) {
+          ++exclusion_eligible;
+          pair_exclusion::AccessFacts left{a.offset, *a.offset_congruence, a.width};
+          pair_exclusion::AccessFacts right{b.offset, *b.offset_congruence, b.width};
+          auto bits = this->_ctx.bundle->data_layout().pointers.bit_width;
+          if (pair_exclusion::native_excludes(left, right, bits)) {
+            ++exclusion_native;
+            pair_exclusion::Result proof;
+            proof.status = pair_exclusion::Status::Unsat;
+            proof.reason = "byte difference excluded by common modular residue";
+            record_exclusion(i, j, "native-congruence", proof);
+            continue;
+          }
+          if (this->_pair_exclusion_solver) {
+            // Per-checker research budget; exhausting it cannot remove a pair.
+            if (exclusion_queries < 8 && exclusion_us < 200000) {
+              ++exclusion_queries;
+              auto result = pair_exclusion::check(left, right, bits, 20,
+                                                  exclusion_report.is_open() && bool(exclusion_report));
+              exclusion_us += result.elapsed_us;
+              record_exclusion(i, j, "smt", result);
+              if (result.status == pair_exclusion::Status::Unsat) {
+                ++exclusion_smt;
+                continue;
+              }
+              if (result.status == pair_exclusion::Status::Sat) ++exclusion_sat;
+              else if (result.status == pair_exclusion::Status::InvalidFacts)
+                ++exclusion_invalid;
+              else ++exclusion_unknown;
+            } else ++exclusion_budget;
+          }
+        }
+      }
+
       // Anchor the report to the Write (or to A if both are writes).
       ar::Statement* report_stmt =
           (a.kind == AccessKind::Write) ? a.stmt : b.stmt;
@@ -1336,6 +1454,23 @@ DataRaceChecker::~DataRaceChecker() {
       }
       all_pairs.push_back(std::move(pr));
     }
+  }
+
+  if (exclusion_report.is_open() && exclusion_report) {
+    JsonDict summary;
+    summary.put("contract", "stable-ai-offset-byte-overlap-v1");
+    summary.put("kind", "summary");
+    summary.put("eligible", exclusion_eligible);
+    summary.put("native_excluded", exclusion_native);
+    summary.put("solver_queries", exclusion_queries);
+    summary.put("smt_excluded", exclusion_smt);
+    summary.put("abstract_sat", exclusion_sat);
+    summary.put("unknown", exclusion_unknown);
+    summary.put("invalid_facts", exclusion_invalid);
+    summary.put("budget_skipped", exclusion_budget);
+    summary.put("query_elapsed_us", exclusion_us);
+    summary.put("record_limit", 64);
+    exclusion_report << summary.str() << '\n';
   }
 
   if (all_pairs.empty()) {
@@ -2089,6 +2224,16 @@ core::machine_int::Interval DataRaceChecker::resolve_offset(
     return off;
   }
   return core::machine_int::Interval::top(64, core::Signed);
+}
+
+boost::optional< core::machine_int::Congruence >
+DataRaceChecker::resolve_offset_congruence(
+    ar::Value* pointer, const value::AbstractDomain& inv) const {
+  if (!this->_pair_exclusion_enabled) return boost::none;
+  const ScalarLit& ptr = this->_lit_factory.get_scalar(pointer);
+  if (!ptr.is_pointer_var() || ptr.is_undefined() ||
+      !inv.first().normal().uninit_is_initialized(ptr.var())) return boost::none;
+  return inv.first().normal().pointer_offset_to_congruence(ptr.var());
 }
 
 std::uint64_t DataRaceChecker::instance_base_offset(
@@ -2938,7 +3083,8 @@ void DataRaceChecker::check_load(ar::Load* load,
                    load->is_atomic(),
                    provenance,
                    /*private_init=*/false,
-                   /*promote_locks=*/{}});
+                   /*promote_locks=*/{},
+                   this->resolve_offset_congruence(load->operand(), inv)});
 }
 
 void DataRaceChecker::check_store(ar::Store* store,
@@ -3022,7 +3168,8 @@ void DataRaceChecker::check_store(ar::Store* store,
                    store->is_atomic(),
                    provenance,
                    /*private_init=*/false,
-                   /*promote_locks=*/{}});
+                   /*promote_locks=*/{},
+                   this->resolve_offset_congruence(store->pointer(), inv)});
 }
 
 } // end namespace analyzer
