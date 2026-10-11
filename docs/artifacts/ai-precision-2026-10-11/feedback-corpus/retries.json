@@ -1,0 +1,191 @@
+[
+  {
+    "source_index": 58,
+    "profile": "guided",
+    "source": "c/goblint-regression/05-lval_ls_14-idxunknown_access.c",
+    "verdicts": [
+      "The program is potentially UNSAFE",
+      "The program is potentially UNSAFE"
+    ],
+    "returncodes": [
+      0,
+      0
+    ],
+    "same_ir": true,
+    "distinct_databases": true,
+    "pp_bc_sha256": "36d1d04893784d032b54c6839ab00a7f073c0097e4fb2dd98f35115536aba129",
+    "counts": {
+      "eligible": 6,
+      "native_excluded": 0,
+      "solver_queries": 6,
+      "smt_excluded": 0,
+      "abstract_sat": 6,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 0,
+      "query_elapsed_us": 71932
+    }
+  },
+  {
+    "source_index": 62,
+    "profile": "guided",
+    "source": "c/goblint-regression/06-symbeq_03-funloop_simple.c",
+    "verdicts": [
+      "The program is potentially UNSAFE",
+      "The program is potentially UNSAFE"
+    ],
+    "returncodes": [
+      0,
+      0
+    ],
+    "same_ir": true,
+    "distinct_databases": true,
+    "pp_bc_sha256": "596a458fe5dfe9e7d19b583bc0bf909b019a54b1396e93c97f6d1b35b4914c43",
+    "counts": {
+      "eligible": 6,
+      "native_excluded": 0,
+      "solver_queries": 6,
+      "smt_excluded": 0,
+      "abstract_sat": 6,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 0,
+      "query_elapsed_us": 76118
+    }
+  },
+  {
+    "source_index": 63,
+    "profile": "guided",
+    "source": "c/goblint-regression/06-symbeq_04-funloop_hard1.c",
+    "verdicts": [
+      "The program is potentially UNSAFE",
+      "The program is potentially UNSAFE"
+    ],
+    "returncodes": [
+      0,
+      0
+    ],
+    "same_ir": true,
+    "distinct_databases": true,
+    "pp_bc_sha256": "9242686edd1bebeeb675b94ffd12256a2f653afc218d1b2222abafe283d8c903",
+    "counts": {
+      "eligible": 6,
+      "native_excluded": 0,
+      "solver_queries": 6,
+      "smt_excluded": 0,
+      "abstract_sat": 6,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 0,
+      "query_elapsed_us": 82489
+    }
+  },
+  {
+    "source_index": 235,
+    "profile": "guided",
+    "source": "c/libvsync/hclhlock.i",
+    "verdicts": [
+      "The program is UNKNOWN",
+      "The program is UNKNOWN"
+    ],
+    "returncodes": [
+      0,
+      0
+    ],
+    "same_ir": true,
+    "distinct_databases": true,
+    "pp_bc_sha256": "371d97f7cca755fa758d2cc95eb48b52269d1718c970985b48a419f84620b7a6",
+    "counts": {
+      "eligible": 130,
+      "native_excluded": 30,
+      "solver_queries": 16,
+      "smt_excluded": 0,
+      "abstract_sat": 16,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 84,
+      "query_elapsed_us": 149393
+    }
+  },
+  {
+    "source_index": 274,
+    "profile": "guided",
+    "source": "c/pthread-complex/safestack_relacy.i",
+    "verdicts": [
+      "The program is potentially UNSAFE",
+      "The program is potentially UNSAFE"
+    ],
+    "returncodes": [
+      0,
+      0
+    ],
+    "same_ir": true,
+    "distinct_databases": true,
+    "pp_bc_sha256": "8e7859025ca6db751730191c33768250835648466e3977db90b738fb45f2c880",
+    "counts": {
+      "eligible": 150,
+      "native_excluded": 40,
+      "solver_queries": 16,
+      "smt_excluded": 0,
+      "abstract_sat": 16,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 94,
+      "query_elapsed_us": 161684
+    }
+  },
+  {
+    "source_index": 275,
+    "profile": "guided",
+    "source": "c/pthread-complex/workstealqueue_mutex-1.i",
+    "verdicts": [
+      "The program is potentially UNSAFE",
+      "The program is potentially UNSAFE"
+    ],
+    "returncodes": [
+      0,
+      0
+    ],
+    "same_ir": true,
+    "distinct_databases": true,
+    "pp_bc_sha256": "6215297222442467d611f3aae0120353874c3ffac366e7a788208f50c60f96e7",
+    "counts": {
+      "eligible": 388,
+      "native_excluded": 0,
+      "solver_queries": 16,
+      "smt_excluded": 0,
+      "abstract_sat": 16,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 372,
+      "query_elapsed_us": 159362
+    }
+  },
+  {
+    "source_index": 276,
+    "profile": "guided",
+    "source": "c/pthread-complex/workstealqueue_mutex-2.i",
+    "verdicts": [
+      "The program is potentially UNSAFE",
+      "The program is potentially UNSAFE"
+    ],
+    "returncodes": [
+      0,
+      0
+    ],
+    "same_ir": true,
+    "distinct_databases": true,
+    "pp_bc_sha256": "e091b5099c3b477eb375a7346f8575097e7b9efa6dcc4584fd95c5b52e6b6002",
+    "counts": {
+      "eligible": 388,
+      "native_excluded": 0,
+      "solver_queries": 16,
+      "smt_excluded": 0,
+      "abstract_sat": 16,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 372,
+      "query_elapsed_us": 190153
+    }
+  }
+]

@@ -1,0 +1,736 @@
+{
+  "contract": "first-version-feedback-ablation-v1",
+  "date": "2026-10-11",
+  "tasks": 1029,
+  "profiles": [
+    "weak",
+    "strong",
+    "native",
+    "query",
+    "weak-query",
+    "guided",
+    "weak-bmc",
+    "query-bmc"
+  ],
+  "jobs": 4,
+  "data_model": "ILP32",
+  "timeout": {
+    "harness_outer_seconds": 30,
+    "driver_remaining_timer_seconds": 28
+  },
+  "full_scans_sequential": true,
+  "analyzer_sha256": "8e6568504565803ccc58c924ff90bfb6f934b4bbd12a301637fe898ae9695ddf",
+  "matrix": {
+    "weak": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 661,
+      "FN": 0,
+      "error": 1,
+      "unknown": 367
+    },
+    "strong": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 661,
+      "FN": 0,
+      "error": 1,
+      "unknown": 367
+    },
+    "native": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 661,
+      "FN": 0,
+      "error": 1,
+      "unknown": 367
+    },
+    "query": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 661,
+      "FN": 0,
+      "error": 1,
+      "unknown": 367
+    },
+    "weak-query": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 661,
+      "FN": 0,
+      "error": 1,
+      "unknown": 367
+    },
+    "guided": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 661,
+      "FN": 0,
+      "error": 1,
+      "unknown": 367
+    },
+    "weak-bmc": {
+      "TP": 106,
+      "FP": 0,
+      "TN": 661,
+      "FN": 0,
+      "error": 1,
+      "unknown": 261
+    },
+    "query-bmc": {
+      "TP": 106,
+      "FP": 0,
+      "TN": 661,
+      "FN": 0,
+      "error": 1,
+      "unknown": 261
+    }
+  },
+  "configuration": {
+    "weak": {
+      "domain": "interval",
+      "query_mode": null,
+      "bmc": false,
+      "model_guided_retry": false
+    },
+    "strong": {
+      "domain": "interval-congruence",
+      "query_mode": null,
+      "bmc": false,
+      "model_guided_retry": false
+    },
+    "native": {
+      "domain": "interval-congruence",
+      "query_mode": "native",
+      "bmc": false,
+      "model_guided_retry": false
+    },
+    "query": {
+      "domain": "interval-congruence",
+      "query_mode": "1",
+      "bmc": false,
+      "model_guided_retry": false
+    },
+    "weak-query": {
+      "domain": "interval",
+      "query_mode": "1",
+      "bmc": false,
+      "model_guided_retry": false
+    },
+    "guided": {
+      "domain": "interval",
+      "query_mode": "1",
+      "bmc": false,
+      "model_guided_retry": true
+    },
+    "weak-bmc": {
+      "domain": "interval",
+      "query_mode": null,
+      "bmc": true,
+      "model_guided_retry": false
+    },
+    "query-bmc": {
+      "domain": "interval-congruence",
+      "query_mode": "1",
+      "bmc": true,
+      "model_guided_retry": false
+    }
+  },
+  "counts": {
+    "weak": {
+      "eligible": 0,
+      "native_excluded": 0,
+      "solver_queries": 0,
+      "smt_excluded": 0,
+      "abstract_sat": 0,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 0,
+      "query_elapsed_us": 0
+    },
+    "strong": {
+      "eligible": 0,
+      "native_excluded": 0,
+      "solver_queries": 0,
+      "smt_excluded": 0,
+      "abstract_sat": 0,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 0,
+      "query_elapsed_us": 0
+    },
+    "native": {
+      "eligible": 29303,
+      "native_excluded": 16834,
+      "solver_queries": 0,
+      "smt_excluded": 0,
+      "abstract_sat": 0,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 0,
+      "query_elapsed_us": 0
+    },
+    "query": {
+      "eligible": 29303,
+      "native_excluded": 16834,
+      "solver_queries": 1240,
+      "smt_excluded": 0,
+      "abstract_sat": 1240,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 11229,
+      "query_elapsed_us": 14311801
+    },
+    "weak-query": {
+      "eligible": 29303,
+      "native_excluded": 0,
+      "solver_queries": 1240,
+      "smt_excluded": 0,
+      "abstract_sat": 1240,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 28063,
+      "query_elapsed_us": 14085278
+    },
+    "guided": {
+      "eligible": 29840,
+      "native_excluded": 70,
+      "solver_queries": 1281,
+      "smt_excluded": 0,
+      "abstract_sat": 1281,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 28489,
+      "query_elapsed_us": 14630187
+    },
+    "weak-bmc": {
+      "eligible": 0,
+      "native_excluded": 0,
+      "solver_queries": 0,
+      "smt_excluded": 0,
+      "abstract_sat": 0,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 0,
+      "query_elapsed_us": 0
+    },
+    "query-bmc": {
+      "eligible": 29303,
+      "native_excluded": 16834,
+      "solver_queries": 1240,
+      "smt_excluded": 0,
+      "abstract_sat": 1240,
+      "unknown": 0,
+      "invalid_facts": 0,
+      "budget_skipped": 11229,
+      "query_elapsed_us": 13918648
+    }
+  },
+  "rounds": {
+    "weak": 1029,
+    "strong": 1029,
+    "native": 1029,
+    "query": 1029,
+    "weak-query": 1029,
+    "guided": 1036,
+    "weak-bmc": 1029,
+    "query-bmc": 1029
+  },
+  "transitions_vs_weak": {
+    "weak": 0,
+    "strong": 0,
+    "native": 0,
+    "query": 0,
+    "weak-query": 0,
+    "guided": 0,
+    "weak-bmc": 106,
+    "query-bmc": 106
+  },
+  "transitions_vs_weak_bmc": {
+    "weak-bmc": 0,
+    "query-bmc": 0
+  },
+  "resource_statistics": {
+    "weak": {
+      "wall_seconds": {
+        "sum": 1104.788071,
+        "p50": 0.77406,
+        "p95": 1.552635,
+        "max": 28.35098
+      },
+      "analysis_wall_seconds": {
+        "sum": 370.15442,
+        "p50": 0.096957,
+        "p95": 0.853752,
+        "max": 27.600435
+      },
+      "child_cpu_seconds": {
+        "sum": 383.118605,
+        "p50": 0.126253,
+        "p95": 0.835083,
+        "max": 25.652016
+      },
+      "child_peak_rss_kib": {
+        "sum": 208714196,
+        "p50": 202744,
+        "p95": 203040,
+        "max": 274756
+      }
+    },
+    "strong": {
+      "wall_seconds": {
+        "sum": 1117.836549,
+        "p50": 0.783971,
+        "p95": 1.570015,
+        "max": 28.277379
+      },
+      "analysis_wall_seconds": {
+        "sum": 383.208047,
+        "p50": 0.101641,
+        "p95": 0.871913,
+        "max": 27.597557
+      },
+      "child_cpu_seconds": {
+        "sum": 395.002168,
+        "p50": 0.129405,
+        "p95": 0.846328,
+        "max": 25.656602
+      },
+      "child_peak_rss_kib": {
+        "sum": 208708396,
+        "p50": 202740,
+        "p95": 203044,
+        "max": 276924
+      }
+    },
+    "native": {
+      "wall_seconds": {
+        "sum": 1119.37141,
+        "p50": 0.785385,
+        "p95": 1.621564,
+        "max": 28.295309
+      },
+      "analysis_wall_seconds": {
+        "sum": 379.934059,
+        "p50": 0.100514,
+        "p95": 0.881207,
+        "max": 27.598997
+      },
+      "child_cpu_seconds": {
+        "sum": 391.044036,
+        "p50": 0.125927,
+        "p95": 0.866791,
+        "max": 25.669445
+      },
+      "child_peak_rss_kib": {
+        "sum": 208705600,
+        "p50": 202736,
+        "p95": 202976,
+        "max": 278040
+      }
+    },
+    "query": {
+      "wall_seconds": {
+        "sum": 1139.589457,
+        "p50": 0.819298,
+        "p95": 1.593217,
+        "max": 28.298792
+      },
+      "analysis_wall_seconds": {
+        "sum": 396.721683,
+        "p50": 0.123582,
+        "p95": 0.870897,
+        "max": 27.589285
+      },
+      "child_cpu_seconds": {
+        "sum": 407.990126,
+        "p50": 0.149843,
+        "p95": 0.857617,
+        "max": 25.648955
+      },
+      "child_peak_rss_kib": {
+        "sum": 208705688,
+        "p50": 202736,
+        "p95": 203056,
+        "max": 273956
+      }
+    },
+    "weak-query": {
+      "wall_seconds": {
+        "sum": 1112.260324,
+        "p50": 0.79849,
+        "p95": 1.516647,
+        "max": 28.287192
+      },
+      "analysis_wall_seconds": {
+        "sum": 383.796675,
+        "p50": 0.120038,
+        "p95": 0.836673,
+        "max": 27.604601
+      },
+      "child_cpu_seconds": {
+        "sum": 399.056136,
+        "p50": 0.146622,
+        "p95": 0.816955,
+        "max": 26.790227
+      },
+      "child_peak_rss_kib": {
+        "sum": 208698676,
+        "p50": 202732,
+        "p95": 203056,
+        "max": 274892
+      }
+    },
+    "guided": {
+      "wall_seconds": {
+        "sum": 1133.918698,
+        "p50": 0.809549,
+        "p95": 1.522686,
+        "max": 28.300613
+      },
+      "analysis_wall_seconds": {
+        "sum": 389.424725,
+        "p50": 0.119815,
+        "p95": 0.837824,
+        "max": 27.588313
+      },
+      "child_cpu_seconds": {
+        "sum": 400.757204,
+        "p50": 0.145974,
+        "p95": 0.816583,
+        "max": 25.668506
+      },
+      "child_peak_rss_kib": {
+        "sum": 208718000,
+        "p50": 202732,
+        "p95": 203060,
+        "max": 274532
+      }
+    },
+    "weak-bmc": {
+      "wall_seconds": {
+        "sum": 1961.184797,
+        "p50": 0.877429,
+        "p95": 10.813405,
+        "max": 28.806069
+      },
+      "analysis_wall_seconds": {
+        "sum": 1204.325888,
+        "p50": 0.190769,
+        "p95": 10.102372,
+        "max": 27.609777
+      },
+      "child_cpu_seconds": {
+        "sum": 1154.210696,
+        "p50": 0.217132,
+        "p95": 9.365254,
+        "max": 25.67616
+      },
+      "child_peak_rss_kib": {
+        "sum": 208738472,
+        "p50": 202736,
+        "p95": 202952,
+        "max": 275912
+      }
+    },
+    "query-bmc": {
+      "wall_seconds": {
+        "sum": 1984.796919,
+        "p50": 0.896441,
+        "p95": 10.897088,
+        "max": 28.687279
+      },
+      "analysis_wall_seconds": {
+        "sum": 1232.903988,
+        "p50": 0.203572,
+        "p95": 10.188543,
+        "max": 27.622286
+      },
+      "child_cpu_seconds": {
+        "sum": 1180.250955,
+        "p50": 0.223345,
+        "p95": 9.444324,
+        "max": 25.655468
+      },
+      "child_peak_rss_kib": {
+        "sum": 208740108,
+        "p50": 202732,
+        "p95": 203056,
+        "max": 276840
+      }
+    }
+  },
+  "paired_p50_ratios_vs_weak": {
+    "strong": {
+      "wall_seconds": 1.013284,
+      "analysis_wall_seconds": 1.040813,
+      "child_cpu_seconds": 1.033263,
+      "child_peak_rss_kib": 0.99998
+    },
+    "native": {
+      "wall_seconds": 1.007211,
+      "analysis_wall_seconds": 1.027927,
+      "child_cpu_seconds": 1.019216,
+      "child_peak_rss_kib": 0.999961
+    },
+    "query": {
+      "wall_seconds": 1.029685,
+      "analysis_wall_seconds": 1.059359,
+      "child_cpu_seconds": 1.050513,
+      "child_peak_rss_kib": 0.99998
+    },
+    "weak-query": {
+      "wall_seconds": 1.007807,
+      "analysis_wall_seconds": 1.020372,
+      "child_cpu_seconds": 1.019208,
+      "child_peak_rss_kib": 0.99998
+    },
+    "guided": {
+      "wall_seconds": 1.023215,
+      "analysis_wall_seconds": 1.020042,
+      "child_cpu_seconds": 1.018214,
+      "child_peak_rss_kib": 0.999941
+    }
+  },
+  "independent_executions": {
+    "weak-bmc": {
+      "programs": 106,
+      "selected": 134,
+      "statuses": {
+        "ACCEPT": 134
+      }
+    },
+    "query-bmc": {
+      "programs": 106,
+      "selected": 134,
+      "statuses": {
+        "ACCEPT": 134
+      }
+    }
+  },
+  "ir_comparison": {
+    "method": "llvm-dis output, removing only the first ModuleID diagnostic pathname comment",
+    "tool": "LLVM (http://llvm.org/):\n  LLVM version 15.0.4\n  Optimized build.\n  Default target: x86_64-unknown-linux-gnu\n  Host CPU: znver3",
+    "raw_bitcode_mismatch_tasks": {
+      "weak": 0,
+      "strong": 201,
+      "native": 196,
+      "query": 198,
+      "weak-query": 210,
+      "guided": 200,
+      "weak-bmc": 204,
+      "query-bmc": 209
+    },
+    "normalized_ir_mismatch_tasks": {
+      "weak": 0,
+      "strong": 0,
+      "native": 0,
+      "query": 0,
+      "weak-query": 0,
+      "guided": 0,
+      "weak-bmc": 0,
+      "query-bmc": 0
+    },
+    "mismatches": []
+  },
+  "sweep_times": [
+    {
+      "profile": "strong",
+      "returncode": 0,
+      "wall_seconds": 292.4452815209952,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--ikos",
+        "/tmp/ikos-three-docs-20261011/experiments/wrapper",
+        "--demote",
+        "--jobs",
+        "4"
+      ]
+    },
+    {
+      "profile": "native",
+      "returncode": 0,
+      "wall_seconds": 292.6107200539991,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--ikos",
+        "/tmp/ikos-three-docs-20261011/experiments/wrapper",
+        "--demote",
+        "--jobs",
+        "4"
+      ]
+    },
+    {
+      "profile": "query",
+      "returncode": 0,
+      "wall_seconds": 297.789504579996,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--ikos",
+        "/tmp/ikos-three-docs-20261011/experiments/wrapper",
+        "--demote",
+        "--jobs",
+        "4"
+      ]
+    },
+    {
+      "profile": "query-bmc",
+      "returncode": 0,
+      "wall_seconds": 509.3204351210006,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--ikos",
+        "/tmp/ikos-three-docs-20261011/experiments/wrapper",
+        "--demote",
+        "--jobs",
+        "4"
+      ]
+    },
+    {
+      "profile": "weak",
+      "returncode": 0,
+      "wall_seconds": 288.9885523700068,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--ikos",
+        "/tmp/ikos-three-docs-20261011/experiments/wrapper",
+        "--demote",
+        "--jobs",
+        "4"
+      ]
+    },
+    {
+      "profile": "weak-query",
+      "returncode": 0,
+      "wall_seconds": 290.8804414240003,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--ikos",
+        "/tmp/ikos-three-docs-20261011/experiments/wrapper",
+        "--demote",
+        "--jobs",
+        "4"
+      ]
+    },
+    {
+      "profile": "guided",
+      "returncode": 0,
+      "wall_seconds": 296.36648850300116,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--ikos",
+        "/tmp/ikos-three-docs-20261011/experiments/wrapper",
+        "--demote",
+        "--jobs",
+        "4"
+      ]
+    },
+    {
+      "profile": "weak-bmc",
+      "returncode": 0,
+      "wall_seconds": 503.42755185900023,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--ikos",
+        "/tmp/ikos-three-docs-20261011/experiments/wrapper",
+        "--demote",
+        "--jobs",
+        "4"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "profile": "weak",
+      "source_index": 207,
+      "source": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.i",
+      "returncodes": [
+        14
+      ]
+    },
+    {
+      "profile": "strong",
+      "source_index": 207,
+      "source": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.i",
+      "returncodes": [
+        14
+      ]
+    },
+    {
+      "profile": "native",
+      "source_index": 207,
+      "source": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.i",
+      "returncodes": [
+        14
+      ]
+    },
+    {
+      "profile": "query",
+      "source_index": 207,
+      "source": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.i",
+      "returncodes": [
+        14
+      ]
+    },
+    {
+      "profile": "weak-query",
+      "source_index": 207,
+      "source": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.i",
+      "returncodes": [
+        14
+      ]
+    },
+    {
+      "profile": "guided",
+      "source_index": 207,
+      "source": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.i",
+      "returncodes": [
+        14
+      ]
+    },
+    {
+      "profile": "weak-bmc",
+      "source_index": 207,
+      "source": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.i",
+      "returncodes": [
+        14
+      ]
+    },
+    {
+      "profile": "query-bmc",
+      "source_index": 207,
+      "source": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.i",
+      "returncodes": [
+        14
+      ]
+    }
+  ],
+  "limitations": [
+    "Finite regression observations do not prove complete C/LLVM/POSIX soundness.",
+    "Independent execution acceptance covers concrete AR prefixes and explicit library contracts; not official C/witness validation.",
+    "Prototype repeatedly hashes a large analyzer. Wall times include integrity overhead; do not compare against production wrapper as speedup.",
+    "Child CPU excludes parent Python CPU. Max child RSS is cumulative maximum single child, not peak process-tree memory.",
+    "One sequential measurement per configuration, no noise/significance or broad speedup claim.",
+    "The generated ModuleID comment is the only text removed for cross-profile IR comparison; all retry rounds used exactly the same immutable bitcode bytes."
+  ],
+  "tool_hashes": {
+    "driver": "675197154983e15de06759a636272913acd600a1a82bc3def4e71b03564e715c",
+    "driver_runner": "2fc2a4a9f3e9df4f3aeb5dec52d2d0e1545b5cfbb32b54b1f4fc98f2e590fd1a",
+    "validator": "e3bd4a44d1748107cc570daffeda822e6a7ecaf511b10000a5ed487d0c30043d",
+    "sweep_validation": "98cf1895edd42c9b7d42fad343ed3ed266b14ef0b6ecb64e585199eed84c4a30",
+    "wrapper": "2dcf572e27542746fdea554b2861be15dbe835659b07c74b1295b8662aa4465b",
+    "experiment_runner": "66f78fb3a8d90a441919646b6dd0876737e6d12938eedc7a61ed5bf3e62a99a4",
+    "default_runner": "6a39ab15f1a48b2b506c5c5042c5bbb112c695964d2e8867cb8af3b055b3b24b",
+    "collector": "d3a2a49f8bfc6677121ed93be7e1f1c46fead71b6b069c2c45555703b99739f1",
+    "benchmark_harness": "7858ce8c9d8bbbd150041c70ecb7b394998ffa22b0ca4b5ab58a298620498d7d"
+  },
+  "final_checks": "final-checks.json"
+}

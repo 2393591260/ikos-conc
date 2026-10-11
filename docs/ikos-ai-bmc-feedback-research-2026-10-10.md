@@ -1,16 +1,17 @@
 # IKOS-ConC：抽象解释与 BMC 双向反馈的可行研究方案
 
-日期：2026-10-10，代码基线 `b3e6706`。这是有文献和当前接口依据的**待实现研究设计**，
-不是已有实验贡献、创新性认证或论文录用预测。
+日期：2026-10-10，审查代码基线 `b3e6706`。研究设计与第一版原型/消融结果分别记录；
+已实现A/B见§9，方案C及真正BMC执行反馈仍是设计，不是创新性认证或论文录用预测。
 前置问题见[正确性审查](ikos-ai-soundness-audit-2026-10-10.md)，工程顺序见[优化计划](ikos-ai-optimization-plan-2026-10-10.md)。
 
 **2026-10-11实施校准**：已复现FN已修复或保守封堵；优化计划§9.31恢复3TN/2TP，
 默认基线TP106/TN661/UNKNOWN261/FP0/FN0/error1。方案A的独立覆盖查询已实现并通过
-双ABI定向与默认全量验证，启用配置的消融仍在进行；方案B尚未提交，C尚未实施。
+双ABI定向与启用/关闭全量消融；B已实现同IR的模型选域重算。冻结集均无新增TN；
+保留默认关闭。C尚未实施，未将覆盖查询/数值域重算称为BMC执行反馈。
 可消费事实的局部合同见§9及优化计划§9.32，不默认整个AI已经获得普遍soundness证明。
 
 近期优化计划§9.25–26用原生地址/CFG充分条件恢复4个TN，并用独立BV查询核对重叠引理；
-这是可复用的事实来源和原型对照，**不是本篇方案A已经实现，更不是BMC反向反馈的贡献证据**。
+这是可复用的事实来源和原型对照，**不是本篇方案A的收益，更不是BMC反向反馈的贡献证据**。
 研究实验须额外比较原生充分条件、AI支持的SMT查询及真正模型引导精化的边际收益，
 不能把现有4个TN重新归因于尚未实现的反馈。参考工具的helper解锁误判与ILP32布局分歧
 也要求按具体合同核对，不能用参考TRUE或有界PASS认证AI事实。
@@ -319,26 +320,113 @@ interference pruning 和验证器组合的后续研究；若现有工具已做�
 以及你掌握的其他 AstréeA/并发组合论文；归纳定理和实际代码建议再由同行独立复核。
 若引入 C11 弱内存/复杂动态线程，需固定赛事/程序语义合同再扩展，不能靠缺规范的推测。
 
-这些帮助不是当前工程工作的阻塞条件。本篇仍是待验证的研究方案；
-分析器已按其他两份文档实施修复与精度恢复，本篇的新反馈机制后续按独立阶段实现、验证、提交。
+这些帮助不是当前工程工作的阻塞条件。第一版受限原型与消融已完成，见§9；
+真正BMC执行反馈、归纳认证与投稿论证仍须后续工作，不能用第一版工程验收替代。
 
 
-## 9. 原型实施与证据（2026-10-11，阶段 A）
+<a id="prototype-results"></a>
+## 9. 第一版原型、消融结果与停止结论（2026-10-11）
 
-方案A已经落地为明确opt-in的候选覆盖查询。接口、事实来源、支持边界、预算与默认全量
-配对见[优化计划§9.32](ikos-ai-optimization-plan-2026-10-10.md#932-研究原型-a稳定-ai-地址事实上的覆盖查询)。
-模块是独立的`pair_exclusion`，不从有限BMC的UNSAT推出SAFE。所有局部数值来源取独立may
-集合；同一个静态局部变量出现在不同线程时仍用不同起点，不人为加入跨线程相等。
+### 9.1 方案 A：覆盖查询的前提与实际边际收益
 
-目前有可复核的**机制证据**，尚无冻结集收益：真实快照中的稀疏地址结合区间/同余后，
-SMT新增证明；偶奇例由native已足够，不能重复归因于solver。混合宽度、两次worker实例、
-共享下标和wrap负例全部保留。独立微小地址空间穷举验证查询算术；它不替代AI输入事实
-正确性、LLVM前端或全语言soundness证明。
+方案A已实现为默认关闭的`pair_exclusion`。稳定AI检查点提供两个独立may offset
+interval/congruence、共同singleton非TLS global和实际width；模2^pointer_bits的byte重叠
+公式覆盖具体访问。UNSAT只排除当前候选，SAT只是抽象冲突，不产生竞争结论。
+不支持/矛盾/timeout/预算耗尽保留候选，不消费有限BMC UNSAT。接口、预算和证明方向见
+[优化计划§9.32](ikos-ai-optimization-plan-2026-10-10.md#feedback-a)。
 
-新增三个TN与两个TP来自§9.31的原生精确上下文锁证书，而非本方案A。后两任务的已互斥
-候选被AI排除后，BMC从424/430次无效UNSAT降到10次再确认真实竞争；双ABI所选执行AR
-ACCEPT。这提供AI→BMC候选优化的实证，不能算SMT→AI反馈，更不能作为全量速度数据。
+同静态变量在两个线程中仍用不同起点，不凭相同AR指针建立跨线程值相等。每checker最多
+8次SMT请求、solver timeout20ms和累计200ms预检；预检不是严格总wall cap。
+微小地址空间独立穷举、真实快照和双ABI正反变体已验证。稀疏地址例的interval/native不能
+排除、interval+congruence的SMT可以UNSAT；偶奇例native已足够，不能重复归因solver。
+共享下标、两次worker实例、混合width与wrap负例保留；heap/TLS缺证书不进入查询。
 
-启用A的full-set强/弱数值域、native/SMT和后续模型引导消融正在运行。默认完整配对保持
-TP106/TN661，不能以默认不开启功能时的零变化宣称开启配置已全量验收。研究结论等实验
-结束后在本篇更新，不再另建报告。
+本轮3TN/2TP来自原生精确上下文锁证书，**不是A的收益**。保护helper对排除后，两个任务
+从424/430次无效UNSAT降至10次再找到真正竞争，双ABI所选执行AR ACCEPT。这是已经存在的
+AI→BMC候选优化证据，未扩称全量速度收益。
+
+### 9.2 方案 B 的实际实现：查询模型选择数值域、重新收敛
+
+[scripts/ai_feedback.py](../scripts/ai_feedback.py)预处理一次、冻结`input.pp.bc`；初轮
+interval覆盖查询的SAT模型占据interval内部点时，最多追加一次interval-congruence。
+前后核对source/bitcode/analyzer hash，每轮是全新analyzer进程、全新DB。重算由完整现有AI
+pipeline执行，不复用弱域fixpoint。失败/超时保留初轮；成功轮的判定仍受原覆盖规则约束。
+
+模型只发出“可能丢失同余信息”的启发式提示：不作为assume/不变式，不删路径、不证明
+spuriousness。**这是query-model-guided numerical-domain retry/portfolio，不是CEGAR，
+不是BMC执行反向反馈，也没有实现新的predicate/pack域。** 真正路径模型引导分区仍未实现。
+这比原设计窄，但已经能通过对照检验“模型选域是否有因果效果”。
+
+24次定向观察覆盖双ABI和LP64改名、3个hint控制、2个失败重试。合成稀疏地址和偶奇例
+从初轮may-warning到第二轮SAFE，两轮使用同一bitcode；初轮错误SAT模型没有被假定为真。
+两个retry故障注入分别exit7/SIGALRM14，仍保留初轮未知判定。所有检查见
+[driver-checks.json](artifacts/ai-precision-2026-10-11/feedback-corpus/driver-checks.json)，
+命令见[优化计划§9.34](ikos-ai-optimization-plan-2026-10-10.md#feedback-b)。
+
+### 9.3 固定全集消融：机制有效，不等于任务集收益
+
+固定1029 ILP32任务、4 jobs、外层30秒，每配置顺序运行一次。同一installed analyzer、
+source/YAML集合与前端选项，BMC开启用环境变量存在，关闭用unset。各配置重新跑前端；
+同一任务的重算轮次则严格共享同一不可变IR。配置间bitcode原始hash及去掉唯一ModuleID
+路径注释后的`llvm-dis`比对均保存：原始字节部分不同，所有配置文本IR零差异。
+不以hash不同直接声称语义不同或相同。
+
+| 配置 | TN | TP | UNKNOWN | error | 全扫wall秒 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| interval，无查询 | 661 | 0 | 367 | 1 | 288.989 |
+| interval-congruence，无查询 | 661 | 0 | 367 | 1 | 292.445 |
+| 强域+native | 661 | 0 | 367 | 1 | 292.611 |
+| 强域+native/SMT | 661 | 0 | 367 | 1 | 297.790 |
+| interval+SMT | 661 | 0 | 367 | 1 | 290.880 |
+| 模型选域重算 | 661 | 0 | 367 | 1 | 296.366 |
+| 默认interval→BMC | 661 | 106 | 261 | 1 | 503.428 |
+| 强域查询→BMC | 661 | 106 | 261 | 1 | 509.320 |
+
+所有配置有限标签统计FP/FN=0。全部AI配置逐文件零判定变化，两个BMC配置逐文件一致。
+唯一error仍为`nsc-ircc.i`，是运行失败/超时而不是证明UNKNOWN；具体退出码见汇总。
+
+强域查询29303 eligible、16834 native排除、1240 SMT SAT、**0 SMT排除**，11229预算跳过。
+weak-query同样1240 SAT/0排除，28063预算跳过。模型引导仅7任务触发第二轮，总1036轮；
+多出70次native排除、41次SMT查询，仍零判定变化。逐任务列表及同IR证据见
+[retries.json](artifacts/ai-precision-2026-10-11/feedback-corpus/retries.json)。
+因此没有“全量TN提升”证据；native排除数多也不代表solver新增精度或总成本降低。
+
+每任务wall/analysis wall、child CPU及单child max RSS有配对中位数/95分位记录。
+query相对interval的analysis wall配对中位比约1.059，child CPU约1.051；guided约1.020/1.018。
+这些单次观测没有支持加速主张，也没有重复测量以估计噪声。脚本反复hash约184MB二进制，
+其完整性开销包含在wrapper wall，不能与普通production wrapper的wall直接比较为算法收益。
+child CPU**不含父Python CPU**；`RUSAGE_CHILDREN.ru_maxrss`是累计单child最大值，**不是进程树
+峰值内存**；本轮没有完整资源计量，不能据此提出端到端性能论文结论。
+
+默认134条以及强域查询134条所选AR执行均独立ACCEPT，各覆盖106个标签TP
+任务。检查包含真实有限前缀的动态实例、实际值/地址/width与同步顺序，程序/证书hash保留。
+没有只以expected=race证明模型真，也没有把强域所选模型替代默认模型核查。
+**ACCEPT的范围是AR/front-end快照及显式库合同，不是官方source/witness2.2验收。**
+SAFE正确性仍需覆盖契约，不能由这些FALSE执行检查认证。
+
+汇总及逐任务依据：[summary.json](artifacts/ai-precision-2026-10-11/feedback-corpus/summary.json)、
+[paired.json](artifacts/ai-precision-2026-10-11/feedback-corpus/paired.json)、
+[IR hashes](artifacts/ai-precision-2026-10-11/feedback-corpus/ir-hashes.json)、
+[测量](artifacts/ai-precision-2026-10-11/feedback-corpus/measurements.json)、
+[执行](artifacts/ai-precision-2026-10-11/feedback-corpus/executions.json)、
+[精确实验配置/脚本](artifacts/ai-precision-2026-10-11/feedback-corpus/reproduce.json)。
+每份JSON小于1MB；raw模型、DB、日志留在/tmp，未加入git。
+
+### 9.4 第一版的结论，以及为什么不继续扩大原型
+
+第一版完成了R0支持规则工程验收、R1覆盖查询、R2受限模型选域重算与配对消融。
+R1只在合成例提供新增SMT证明，R2在冻结集无收益，符合§8的停止条件：保留实验入口，
+默认关闭，不继续增加无依据的query/重算轮次。未承诺的R3并发归纳认证及投稿版R4仍未完成。
+
+可以证明可行的部分是：IKOS的稳定over-approx事实可以支持无界候选覆盖查询，
+查询模型可以不被相信而只用来选择更强域，重新收敛后再决定SAFE；现有原生锁证书也能
+减少BMC无效候选。**不能据此证明真正BMC→AI的双向闭环已经完成、存在新定理或整体提速。**
+
+若继续真正BMC执行反馈，必须定位一个路径/干扰模型对应的真实抽象精度损失，
+用其选择可维护的分区/pack并重新收敛，保存有无该hint的因果对照。若继续方案C，须建立
+init、每个本地step、完整环境interference闭包和依赖失效合同；仅有限SC前缀的UNSAT不够。
+当前基础域没有完整一般PBR/opaque句柄/heap来源合同，不能省略环境义务写成新soundness证明。
+
+这些是明确的后续工程/理论要求，**不是因为模型能力不足而宣称不可实现**。
+目前不需要用户补论文或作额外技术决策才能完成第一版。投稿方向/新支持语义及下一版本
+预算则应以后再定；不能让第一版原型的零收益变成承诺整套并发归纳框架的理由。

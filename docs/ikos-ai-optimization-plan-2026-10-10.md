@@ -13,7 +13,7 @@
 
 本节更新后续优先级；§2–8保留原设计与理论依据，§9保留各次实验的历史快照。
 不能把历史“尚未修复”、旧候选池或旧TN当作当前状态，也不能把设计项全部当作必须实现的大改。
-当前为§9.32可选AI候选覆盖查询的定向/默认验证，最新[配对证据](artifacts/ai-precision-2026-10-11/pair-feedback/summary.json)：
+当前完成§9.33逐文件台账及§9.34模型引导重算，启用消融见[反馈实验](artifacts/ai-precision-2026-10-11/feedback-corpus/summary.json)：
 冻结1029项ILP32，AI TN661/UNKNOWN367；BMC TP106/TN661/UNKNOWN261，均FP0/FN0/error1。
 全量与定向双ABI验证的范围分别记录，不称已完成双ABI全量。
 
@@ -24,7 +24,7 @@
 | 第一份审查的F1–F6及后续已复现FN | 原F1–F6、条件锁及整数表示指针发布已修复或封堵 | 不等于实现完整逃逸图、句柄来源域或证明全部SAFE规则 |
 | 剩余正确性审查义务 | 正确性篇§7已有16类工程验收与支持边界 | 不是完整C/POSIX证明；没有登记为已复现而未处理的本轮FN |
 | 第二份计划的精度恢复 | 原生证书及上下文绑定恢复TN654→661；当前132项safe-label UNKNOWN全部登记 | 未实现完整PBR/digest；38正常参考TRUE是后续一般机制入口，不是假称不能实现 |
-| 第三份双向反馈研究 | A原型定向/默认验收通过，启用消融与B重算实验进行中 | A是solver-aided AI，不是假称BMC执行反馈或归纳认证已完成 |
+| 第三份双向反馈研究 | A覆盖查询与B模型选域重算完成定向/冻结集消融；冻结集没有新增TN，默认关闭 | 属于solver-aided AI/启发式域重算；真正BMC执行反馈、并发归纳认证与论文创新性仍未证实 |
 
 §9.27新发现的整数表示指针发布FN已在§9.28处理；本阶段没有登记为已复现而未修的FN。
 这不等于逐项正确性验收或完整语言证明已完成。
@@ -46,25 +46,28 @@
 4. **性能测量前置，性能主张后置。** 下一机制同时记录可取得的阶段时间、候选数、
    重分析次数和内存；建立同配置配对后才讨论加速。缺指标先说明，不能用TN增长代替速度证据。
 
-### 0.3 近期顺序与阶段出口
+### 0.3 本轮执行顺序与阶段出口
 
 | 顺序 | 下一步 | 验收/停止节点 |
 | --- | --- | --- |
-| 1 | 整理剩余正确性结案表：当前有效的SAFE过滤、访问覆盖、摘要收敛及库合同；复用已有创建/TLS等审查证据，只核实未闭环项 | 每项列实现位置、支持前提、失败回退、证据及“已验收/保守封堵/待核实”；具体未覆盖行为先修或退UNKNOWN，不能只写“持续审查” |
-| 2 | 单独定位并处理§9.26 CASE10的ILP32结构体复制导入崩溃 | 修复语义并跑双ABI对照，或明确诊断为不支持并保留UNKNOWN；不能靠删断言/漏访问继续SAFE。若改frontend，独立AI/BMC全量A/B与commit |
-| 3 | 跨helper的锁/数据关系，以 `06-symbeq_13-equ_proc_nr.c` 为入口 | 在调用上下文绑定实参、数据地址与mutex，覆盖中途解锁/未知效果；至少一个真实任务恢复且负例保留，不满足时维持当前单函数边界 |
-| 4 | 句柄来源与join相关性，以§9.23全局句柄、§9.24双槽对照为入口，机制分开提交 | 覆盖初始化、本地/干扰来源、may-write及动态实例；错误join目标仍不能排除竞争。一个机制无一般证明则记录边界，不凭数值端点恢复 |
-| 5 | 根据剩余逐文件诊断选择保护摘要、字段/来源干扰或关系域，再做性能优化 | 只有明确缺口才引入对应机制；每轮有正反变体、同配置全量变化及代价记录，收益不足不扩成通用框架 |
+| 1，已完成 | 整理剩余正确性结案表：当前有效的SAFE过滤、访问覆盖、摘要收敛及库合同；复用已有创建/TLS等审查证据，只核实未闭环项 | 每项列实现位置、支持前提、失败回退、证据及“已验收/保守封堵/待核实”；具体未覆盖行为先修或退UNKNOWN，不能只写“持续审查” |
+| 2，已完成 | 单独定位并处理§9.26 CASE10的ILP32结构体复制导入崩溃 | 修复语义并跑双ABI对照，或明确诊断为不支持并保留UNKNOWN；不能靠删断言/漏访问继续SAFE。若改frontend，独立AI/BMC全量A/B与commit |
+| 3，已完成 | 跨helper的锁/数据关系，以 `06-symbeq_13-equ_proc_nr.c` 为入口 | 在调用上下文绑定实参、数据地址与mutex，覆盖中途解锁/未知效果；至少一个真实任务恢复且负例保留，不满足时维持当前单函数边界 |
+| 4，诊断完成、机制延期 | 句柄来源与join相关性，以§9.23全局句柄、§9.24双槽对照为入口，机制分开提交 | 覆盖初始化、本地/干扰来源、may-write及动态实例；错误join目标仍不能排除竞争。一个机制无一般证明则记录边界，不凭数值端点恢复 |
+| 5，原型消融完成 | 根据剩余逐文件诊断选择保护摘要、字段/来源干扰或关系域，再做性能优化 | 只有明确缺口才引入对应机制；每轮有正反变体、同配置全量变化及代价记录，收益不足不扩成通用框架 |
 
-表中任务正在实施，具体完成状态以§9的逐机制记录为准。
-纯文档修改只核对证据、链接和diff；有语义变化按§6做build/install/回归/全量并立即提交。
+本轮工程出口见§9.33–34：支持规则逐项结案，具体复现FN处理，参考驱动的一般机制
+恢复与配对完成；所有当前safe-label UNKNOWN有记录；反馈原型有正反例、实际消融和停止结论。
+没有把完整PBR/digest、动态句柄来源域、heap/lifetime和并发归纳认证冒充已实现，也没有把
+“成本大/本轮延期”写成“不能实现”。这些是下一版本的一般机制，而非第一版无限重写的要求。
 
-以§9.23的140项参考池逐项关联§9.26的最新paired.json：剩余safe-label UNKNOWN为135项，
-其中正常Goblint TRUE入口41项，另有UNKNOWN25、UNSUPPORTED33、TIMEOUT34、ERROR2。
-这是已有结果的重新关联，没有重跑参考工具；41不是可承诺恢复的TN，也不是只处理这41项。
-每轮重新关联台账，恢复项记录一般机制，剩余项记录参考边界、已定位缺口或待诊断，
-不能把“未实现”标成“IKOS不能实现”。第三份研究按已核实的事实接口局部进入原型，
-不消费未经核实的全局AI事实，也不要求先穷尽全部135个文件。
+当前136项台账包含4项恢复及132项safe-label UNKNOWN：正常Goblint TRUE38，UNKNOWN25、
+UNSUPPORTED33、TIMEOUT34、ERROR2。38是正常参考入口，不是可承诺增加的TN；其余94项是
+参考未证实，不是数学上不可能。全部重新运行IKOS诊断、核对source/YAML hash，8个heap项
+明确保留部分诊断边界。详细机制和后续证据要求见§9.33，不再沿用旧135/41快照当当前状态。
+
+以后有语义变化仍须build/install/正反回归/同配置全量并立即独立commit；
+纯文档和不改分析器的实验脚本不重复无关build。发现新具体FN仍优先修复。
 
 ## 1. 总体架构约束
 
@@ -1457,6 +1460,7 @@ FP/FN0/error1。三个TN来自上述安全入口；新增两个TP是`funloop_sim
 [旧搜索诊断](artifacts/ai-precision-2026-10-11/helper-context/gain-before-diagnostics.json)。
 
 
+<a id="feedback-a"></a>
 ### 9.32 研究原型 A：稳定 AI 地址事实上的覆盖查询（2026-10-11）
 
 新增独立`pair_exclusion.hpp`，只消费初始化指针在稳定AI检查点的offset interval/congruence、
@@ -1479,8 +1483,8 @@ unsigned/回绕、不同宽度、空/矛盾事实及预算。不称穷尽全部�
 不SAFE；heap/TLS缺证书时不调用查询。
 
 默认完整1029 AI/BMC逐文件无变化：AI TN661/U367；BMC TP106/TN661/U261，FP/FN0/error1。
-本提交是明确能力边界的opt-in研究阶段；启用配置的冻结集消融正在运行，不把定向例恢复
-记成冻结集增益。首次非受控core测量中，Z3 context的毫秒成本明显高于原生微秒判断；
+本提交当时是明确能力边界的opt-in研究阶段；启用配置的冻结集消融已在§9.34完成，
+没有新增TN，不把定向例恢复记成冻结集增益。首次非受控core测量中，Z3 context的毫秒成本明显高于原生微秒判断；
 目前没有全量加速主张。模型引导重算下一阶段单独提交，不能把本阶段称为BMC反向反馈。
 
 证据：[汇总](artifacts/ai-precision-2026-10-11/pair-feedback/summary.json)、
@@ -1524,3 +1528,54 @@ internal1；这些集合交叠，不能相加当作剩余任务数，也不能�
 [分桶](artifacts/ai-precision-2026-10-11/unknown-ledger/summary.json)、
 [新增参考](artifacts/ai-precision-2026-10-11/unknown-ledger/new-reference.json)、
 [工程规则清单](artifacts/ai-precision-2026-10-11/final-acceptance/inventory.json)。
+
+
+<a id="feedback-b"></a>
+### 9.34 研究原型 B：模型选域、同IR的新分析与完成节点（2026-10-11）
+
+新增可选实验驱动[scripts/ai_feedback.py](../scripts/ai_feedback.py)。前端只运行一次，
+冻结预处理bitcode；每轮启动全新analyzer和新DB。初轮interval地址覆盖查询中的抽象SAT
+模型若使用非单点interval的内部值，最多追加一次interval-congruence分析。模型只选择域，
+不会变成assume/不变式，不证明旧执行虚假，也不删候选。第二轮SAFE依靠新域的完整AI
+收敛及已有覆盖契约；第二轮错误/超时保留初轮。源、pp.bc和analyzer hash前后核对。
+同IR要求是**同一任务的各重算轮次**；独立配置仍分别调用前端，其逐配置一致性另有记录。
+
+这不是CEGAR/新的predicate pack，也不是BMC具体执行反向指导。准确名称是
+“abstract-query-model-guided numerical-domain retry”。不改production frontend或默认pipeline，
+第一版没有为了论文题名虚构方案C的init/step/环境闭包认证。
+
+复现定向验收：
+
+```bash
+python3 docs/review-repros/ai-pair-feedback/run_driver.py --output /tmp/ikos-feedback-driver-check
+python3 scripts/ai_feedback.py docs/review-repros/ai-pair-feedback/feedback.c \
+  --define CASE=1 --bits 64 --output /tmp/ikos-feedback-one
+```
+
+24次双ABI观察（LP64改名）、3个模型hint对照、2个失败重试对照通过。
+稀疏地址与偶奇合成例在同IR第二轮SAFE；共享下标、重叠宽度、同入口多实例及回绕负例
+不SAFE。exit7与SIGALRM14故障注入均保留初轮UNKNOWN；不同轮DB各自独立，IR hash相同。
+证据：[驱动检查](artifacts/ai-precision-2026-10-11/feedback-corpus/driver-checks.json)。
+
+冻结1029 ILP32、4 jobs、30秒外层时限，强/弱域、native/SMT及模型引导顺序消融完成。
+AI配置全部TN661/UNKNOWN367/FP0/FN0/error1；引导只对7任务追加一轮，1036轮且零判定变化。
+强域查询29303 eligible、16834 native排除、1240 SMT SAT、**0 SMT排除**，其余11229因预算
+未查询。弱域查询同样零SMT排除；引导第二轮亦无新增SMT排除。因此“查询机制可行”有
+合成证据，“冻结集精度或速度改善”没有依据；不扩大重算轮次、不开默认选项。
+
+默认AI→BMC与强域查询→BMC均TP106/TN661/UNKNOWN261/FP0/FN0/error1。
+这一次的可核实AI→BMC增益仍是§9.31的3TN/2TP和候选/UNSAT减少，不能归因于新反馈。
+所选AR执行的独立核查、各配置资源统计、配置间IR核对及局限见研究篇§9与以下最终证据。
+脚本反复hash大二进制带来明显完整性开销；全量wall不能当作生产wrapper速度比较。
+child CPU、累计单child max RSS也不是父进程+子树总CPU/峰值。仅一次顺序观测，未作显著性主张。
+
+**第一版在此结束**：三个文档分别完成支持范围工程审查、通用精度机制与逐文件台账、
+受限反馈原型与消融判定。余下PBR/digest、opaque线程句柄、heap/字符串、属性生命周期及
+机器算术守卫须各自作为下一版本独立机制；并发归纳认证须先补齐环境转移义务。
+它们没有被证明不可行，也没有被写成已完成。下一版本优先按§9.33的38正常参考入口选择
+一个可证明机制，先最小正反变体，再完整A/B；不通过放松覆盖门或恢复数值身份捷径提TN。
+
+最终证据：[全量汇总](artifacts/ai-precision-2026-10-11/feedback-corpus/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-11/feedback-corpus/paired.json)、
+[重算任务](artifacts/ai-precision-2026-10-11/feedback-corpus/retries.json)、
+[独立执行](artifacts/ai-precision-2026-10-11/feedback-corpus/executions.json)。

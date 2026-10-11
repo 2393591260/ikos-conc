@@ -1,0 +1,244 @@
+{
+  "hint_controls": 3,
+  "fixtures": [
+    {
+      "bits": 32,
+      "case": 0,
+      "verdict": "The program is SAFE",
+      "rounds": 2,
+      "pp_bc_sha256": "0c388b8ceb6b0646dec823e08ee4d3c04a80afd3627ac9f32e374919671ef865",
+      "model_used": true,
+      "wall_seconds": 1.3367806710011791
+    },
+    {
+      "bits": 32,
+      "case": 1,
+      "verdict": "The program is SAFE",
+      "rounds": 2,
+      "pp_bc_sha256": "513f959865d7e8ce79580b6462aa8dd12293b9dd93bf5cb3aa1f309dabb0a236",
+      "model_used": true,
+      "wall_seconds": 1.174285992005025
+    },
+    {
+      "bits": 32,
+      "case": 2,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 1,
+      "pp_bc_sha256": "df73ce59e5b8a5d4c070c5bdf44bc4ad96be2098cd1044ac2f8cbfd327272b2d",
+      "model_used": false,
+      "wall_seconds": 0.6480048119992716
+    },
+    {
+      "bits": 32,
+      "case": 3,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 2,
+      "pp_bc_sha256": "cc123c40eb2f8fe4bc0bd51b704f81e4800b8a618a784dc519a32996b0a775ef",
+      "model_used": true,
+      "wall_seconds": 1.1842262860009214
+    },
+    {
+      "bits": 32,
+      "case": 4,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 2,
+      "pp_bc_sha256": "cb0056daec39501ce34cccdc409a7b50a59dfb71c0b05b86e2d74c949fa2cdbb",
+      "model_used": true,
+      "wall_seconds": 1.1780387539911317
+    },
+    {
+      "bits": 32,
+      "case": 5,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 1,
+      "pp_bc_sha256": "43470c087515b52fe134b2861461589234f4efd09fd1d7aa5090578463c4de03",
+      "model_used": false,
+      "wall_seconds": 0.6718263889924856
+    },
+    {
+      "bits": 32,
+      "case": 6,
+      "verdict": "The program is SAFE",
+      "rounds": 1,
+      "pp_bc_sha256": "86b1a7328fa272dde52ede3028095f506de76e0baae5d755f9186d6cfd5189ed",
+      "model_used": false,
+      "wall_seconds": 0.6375927229964873
+    },
+    {
+      "bits": 32,
+      "case": 7,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 1,
+      "pp_bc_sha256": "894caf73b86eb20743ca3f27e9a3495c22f87638572c6dd709878f0c99b306de",
+      "model_used": false,
+      "wall_seconds": 0.6996516970102675
+    },
+    {
+      "bits": 32,
+      "case": 8,
+      "verdict": "The program is SAFE",
+      "rounds": 1,
+      "pp_bc_sha256": "942f6113af3d86a636cf2ded377ca1ccb26a5a2db917f0f3c0e0b5009d16e6b9",
+      "model_used": false,
+      "wall_seconds": 0.6627675630006706
+    },
+    {
+      "bits": 32,
+      "case": 10,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 2,
+      "pp_bc_sha256": "3601e11bd1cacb1bc9f79844e1e497b672ac6a8e3a69151f8aee798be3398dcc",
+      "model_used": true,
+      "wall_seconds": 1.1885917860054178
+    },
+    {
+      "bits": 32,
+      "case": 11,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 2,
+      "pp_bc_sha256": "a69cd1d3e2655674148c8f5c4e95672c40042bf6143810408250297b028a896a",
+      "model_used": true,
+      "wall_seconds": 1.1067850529943826
+    },
+    {
+      "bits": 32,
+      "case": 13,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 1,
+      "pp_bc_sha256": "051a53c0c939e112f09df358377d784c6f35201b5f761eef0c090ba84acc457d",
+      "model_used": false,
+      "wall_seconds": 0.665546436997829
+    },
+    {
+      "bits": 64,
+      "case": 0,
+      "verdict": "The program is SAFE",
+      "rounds": 2,
+      "pp_bc_sha256": "34ae10d23a0f5587295d9028b42b5fb1483b6d2dde9266eed7137cab866a9a65",
+      "model_used": true,
+      "wall_seconds": 1.1327182070090203
+    },
+    {
+      "bits": 64,
+      "case": 1,
+      "verdict": "The program is SAFE",
+      "rounds": 2,
+      "pp_bc_sha256": "c238ff90d04668d7c91b3238a21a341cbfdbe2808abb0322b715d9e987cfd8c6",
+      "model_used": true,
+      "wall_seconds": 1.1080185379978502
+    },
+    {
+      "bits": 64,
+      "case": 2,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 1,
+      "pp_bc_sha256": "973201262f44ca139ea341d281fbb75182af9f199d11b5772e980c9b9c0e44d3",
+      "model_used": false,
+      "wall_seconds": 0.6782809400028782
+    },
+    {
+      "bits": 64,
+      "case": 3,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 2,
+      "pp_bc_sha256": "affe1274f7ff735475f6382b1e8962570eef24c60190ab3e45dfc5d4989500de",
+      "model_used": true,
+      "wall_seconds": 1.1225098199938657
+    },
+    {
+      "bits": 64,
+      "case": 4,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 2,
+      "pp_bc_sha256": "74c6ba6d3cbd9f158773c09039a5686eba506950b83e2386982b084b58b8fcd6",
+      "model_used": true,
+      "wall_seconds": 1.1174518929910846
+    },
+    {
+      "bits": 64,
+      "case": 5,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 1,
+      "pp_bc_sha256": "a62660e9aa60745f57ce26372f45e6489a279f3f8d8d6eb4ddd2f75b93e6599d",
+      "model_used": false,
+      "wall_seconds": 0.6684752529981779
+    },
+    {
+      "bits": 64,
+      "case": 6,
+      "verdict": "The program is SAFE",
+      "rounds": 1,
+      "pp_bc_sha256": "871a03de2debb750e056103ddc1b0c209c61dabf92f0ed8c55ea871379bd4ae2",
+      "model_used": false,
+      "wall_seconds": 0.6274643399956403
+    },
+    {
+      "bits": 64,
+      "case": 7,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 1,
+      "pp_bc_sha256": "e65c2b209d03297d0ad11d46e09cfd65887e224e99d75b2831558776985f43b2",
+      "model_used": false,
+      "wall_seconds": 0.6475739869929384
+    },
+    {
+      "bits": 64,
+      "case": 8,
+      "verdict": "The program is SAFE",
+      "rounds": 1,
+      "pp_bc_sha256": "9a7181cd6e2b2c361aadec7a9c721d2d21c5c880f15687dca45eccc1959ae9b9",
+      "model_used": false,
+      "wall_seconds": 0.6795606749947183
+    },
+    {
+      "bits": 64,
+      "case": 10,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 2,
+      "pp_bc_sha256": "9b8ea4581ab51e46c31fda30f25f8e7b6caf7402c16c574280baf87a235c6185",
+      "model_used": true,
+      "wall_seconds": 1.1101003969961312
+    },
+    {
+      "bits": 64,
+      "case": 11,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 2,
+      "pp_bc_sha256": "f7b27e4413705c494ee19dc573cb88894e1a3be9293e66d0d86a6bce4977990b",
+      "model_used": true,
+      "wall_seconds": 1.126800104000722
+    },
+    {
+      "bits": 64,
+      "case": 13,
+      "verdict": "The program is potentially UNSAFE",
+      "rounds": 1,
+      "pp_bc_sha256": "e985e77d80eaecf6b14f572e9f2045e66c730d6ce3876ec3925fac84b9b8b70b",
+      "model_used": false,
+      "wall_seconds": 0.6821822230122052
+    }
+  ],
+  "failed_retries": [
+    {
+      "kind": "error",
+      "returncodes": [
+        0,
+        7
+      ],
+      "final_verdict": "The program is potentially UNSAFE",
+      "same_ir": true
+    },
+    {
+      "kind": "timeout",
+      "returncodes": [
+        0,
+        14
+      ],
+      "final_verdict": "The program is potentially UNSAFE",
+      "same_ir": true
+    }
+  ],
+  "driver_sha256": "675197154983e15de06759a636272913acd600a1a82bc3def4e71b03564e715c",
+  "runner_sha256": "2fc2a4a9f3e9df4f3aeb5dec52d2d0e1545b5cfbb32b54b1f4fc98f2e590fd1a",
+  "scope": "24 directed dual-ABI observations, 3 hint controls, 2 failed-retry fallbacks; same immutable pp.bc within every task."
+}
