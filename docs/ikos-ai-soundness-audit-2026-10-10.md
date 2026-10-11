@@ -517,3 +517,21 @@ AR执行独立ACCEPT。完整1029为TP106/TN672/U250/FP0/FN0/error1，仅3项安
 锁身份，仍UNKNOWN，不由这个规则放行。有限基准零误判不是普遍正确性证明，
 release端值干扰、完整POSIX失败与一般动态实例仍未因此实现。
 证据：[concrete-locks](artifacts/ai-precision-2026-10-11/concrete-locks/summary.json)。
+
+
+### 7.7 共享隐式main栈对象的FALSE前提（2026-10-11）
+
+优化计划§9.40新增BMC身份证明：同一实际Allocate在隐式main前缀中只执行一次，创建前已分配，
+main尚未返回。外部实参从create消费处解析，唯一动态def-use与helper实际调用绑定可证明时才
+采用该身份；其他main调用帧、返回helper栈和重复链不复用它。may-points-to不用于确认同址。
+目标及所有前缀访问另过extent/对齐；实际共享read必须有已定义SC来源，含未使用read，
+私有pthread句柄存储不误入共享rf。相斥shared selector不得分别取自由值。
+
+72项双ABI/双模式及846项旧观察通过，原三个反例逐项不变；legacy sem-value有一个前驱也失败的
+SAFE断言，12项显式配对无回退，未改断言。快照去除递归类型的无界文本打印，仅保留结构化语义；
+未使用recursive struct控制不会再使所选执行导出崩溃，不声称所有诊断打印器都已修复。
+冻结结果TP108/TN678/U242/FP0/FN0/error1。新增两项均有Dartagnan FAIL及真实双ABI所选执行
+依据；当前108个TP重新导出的136条模型全部独立AR ACCEPT。有限标签零误判与AR回放证据不能
+代替官方源程序witness验证、全C/POSIX证明或一般生命周期域。尚无新SAFE过滤语义或release值摘要。
+证据：[main-stack](artifacts/ai-precision-2026-10-11/main-stack/summary.json)、
+[当前模型](artifacts/ai-precision-2026-10-11/main-stack/current-tp-executions.json)。

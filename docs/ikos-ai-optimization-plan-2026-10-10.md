@@ -13,9 +13,10 @@
 
 本节更新后续优先级；§2–8保留原设计与理论依据，§9保留各次实验的历史快照。
 不能把历史“尚未修复”、旧候选池或旧TN当作当前状态，也不能把设计项全部当作必须实现的大改。
-第一版已完成§9.33–34；用户批准第二版以TN与共享并发语义为主。当前§9.35算术守卫
-恢复验收完成，最新[配对证据](artifacts/ai-precision-2026-10-11/guard-cancellation/summary.json)：
-冻结1029项ILP32，AI TN662/UNKNOWN366；BMC TP106/TN662/UNKNOWN260，均FP0/FN0/error1。
+第一版已完成§9.33–34；用户批准第二版同时恢复TN与TP。当前§9.35–40的六个独立机制
+已验收，最新[配对证据](artifacts/ai-precision-2026-10-11/main-stack/summary.json)：
+冻结1029项ILP32，AI TN678/UNKNOWN350；BMC TP108/TN678/UNKNOWN242，均FP0/FN0/error1。
+当前108个TP重新导出的136条所选执行全部独立AR ACCEPT；这不是官方C/witness验证。
 全量与定向双ABI验证的范围分别记录，不称已完成双ABI全量。
 
 ### 0.1 三份文档的完成状态
@@ -24,7 +25,7 @@
 | --- | --- | --- |
 | 第一份审查的F1–F6及后续已复现FN | 原F1–F6、条件锁及整数表示指针发布已修复或封堵 | 不等于实现完整逃逸图、句柄来源域或证明全部SAFE规则 |
 | 剩余正确性审查义务 | 正确性篇§7已有16类工程验收与支持边界 | 不是完整C/POSIX证明；没有登记为已复现而未处理的本轮FN |
-| 第二份计划的精度恢复 | 原生证书及上下文绑定恢复TN654→661；当前131项safe-label UNKNOWN全部登记（第一版132项又恢复1项） | 未实现完整PBR/digest；37正常参考TRUE是后续一般机制入口，不是假称不能实现 |
+| 第二份计划的精度恢复 | 第二版TN661→678、TP106→108；136项安全台账已恢复21、剩115项均有记录 | 未实现完整PBR/digest；24正常参考TRUE是后续一般机制入口，不是假称不能实现 |
 | 第三份双向反馈研究 | A覆盖查询与B模型选域重算完成定向/冻结集消融；冻结集没有新增TN，默认关闭 | 属于solver-aided AI/启发式域重算；真正BMC执行反馈、并发归纳认证与论文创新性仍未证实 |
 
 §9.27新发现的整数表示指针发布FN已在§9.28处理；本阶段没有登记为已复现而未修的FN。
@@ -62,10 +63,10 @@
 没有把完整PBR/digest、动态句柄来源域、heap/lifetime和并发归纳认证冒充已实现，也没有把
 “成本大/本轮延期”写成“不能实现”。这些是下一版本的一般机制，而非第一版无限重写的要求。
 
-当前136项台账包含4项恢复及132项safe-label UNKNOWN：正常Goblint TRUE38，UNKNOWN25、
-UNSUPPORTED33、TIMEOUT34、ERROR2。38是正常参考入口，不是可承诺增加的TN；其余94项是
-参考未证实，不是数学上不可能。全部重新运行IKOS诊断、核对source/YAML hash，8个heap项
-明确保留部分诊断边界。详细机制和后续证据要求见§9.33，不再沿用旧135/41快照当当前状态。
+当前136项台账已恢复21，余115项safe-label UNKNOWN：正常Goblint TRUE24、UNKNOWN25、
+UNSUPPORTED30、TIMEOUT34、ERROR2。24是正常参考入口，不是可承诺增加的TN；其余91项是
+参考未证实，不是数学上不可能。最新判定逐项匹配完整扫描及source/YAML指纹；历史诊断
+保留其原版本指纹，不称全部重新诊断。8个heap项仍有部分诊断边界，机制要求见§9.33。
 
 以后有语义变化仍须build/install/正反回归/同配置全量并立即独立commit；
 纯文档和不改分析器的实验脚本不重复无关build。发现新具体FN仍优先修复。
@@ -1777,3 +1778,54 @@ source/YAML指纹逐项匹配；本次144.774s/343.016s不构成配对加速实�
 [控制](artifacts/ai-precision-2026-10-11/concrete-locks/fixtures.json)、
 [真实配对](artifacts/ai-precision-2026-10-11/concrete-locks/real-paired.json)、
 [回归](artifacts/ai-precision-2026-10-11/concrete-locks/regressions.json)。
+
+
+### 9.40 第二版精度：隐式main的共享栈对象与SC来源（2026-10-11）
+
+Dartagnan原生bound=3对race-2_2b-container_of与race-3_2b-container_of-global均FAIL；
+只据此选调查入口。前者将main局部struct的字段地址作为线程实参，原BMC只承认global/heap
+目标，未把其真实分配身份传给同址与值流编码。新增`shared_main_local`：隐式main的同一
+Allocate须在选定创建之前只执行一次，前缀中main未返回；extent仍由DataLayout及固定分配
+证明。通过实际create的消费位置追溯实参，外部def-use链须唯一且只执行一次，helper形参
+须唯一调用绑定。子线程显式调用main产生的局部帧不共用这个身份，返回helper栈与重复链
+继续不确认。points-to只选择候选，不证明同一对象；SMT另证同对象、范围重叠、界内及对齐。
+
+实际被子线程访问的main对象才进入共享SC通道；main私有pthread句柄不进入这条rf规则。
+所有共享整型read（包括未使用read）须有真实已初始化的SC来源，初始store与另一线程write
+参与取值；不创造自由load。只读selector的相斥守卫、不同字段、join、私有局部、重复helper、
+改名/宽度变体及显式main帧对照均保留原语义边界。当前仍无通用分配实例域、helper发布证书
+或混合宽度共享read支持；writes-only的字节重叠仍可确认。
+
+真实输入曾SIGSEGV。gdb定位为ReplaySnapshot对**未使用递归C类型**做AR文本dump，
+StructType/PointerType无限递归；去掉该可选文本字段，保留完整结构化opcode/operand/type
+快照，不改前端或AR执行语义。CASE16专门覆盖未使用recursive struct；这是快照序列化修复，
+不声称修复所有AR文本打印入口。诊断文本仍有原打印器的限制。
+
+18case×2ABI×AI/BMC=72观察，18项新增FALSE、18条定向执行独立ACCEPT；846项旧观察通过，
+原三个反例双ABI与前驱逐项一致。legacy sem-value的local-output-control要求SAFE的断言
+在前驱同样失败，另外做12项双ABI前后配对，全部一致；明确登记已有保守UNKNOWN，不删除
+旧断言或把失败称通过。24项真实配对覆盖两个container入口及ring_2w1r-2：前者直接实参与
+环形队列均在双ABI恢复，global helper发布仍UNKNOWN。环形队列的两个写者共享main的Ring，
+对writer字段的SC来源及同一下标执行已经定义；新Dartagnan原生参考也FAIL。
+
+完整1029：AI TN678/U350不变；BMC TP106/TN678/U244→TP108/TN678/U242，FP0/FN0/error1，
+只有race-2_2b-container_of与ring_2w1r-2发生判定变化。所有source/YAML指纹匹配，build/install
+SHA256一致。本版108个TP重新导出136条所选模型，全部独立AR ACCEPT；这是AR/frontend/API
+范围，**不是官方源程序witness验证，也不是普遍soundness证明**。AI143.305s/BMC346.648s是一次
+顺序扫描，无加速结论。安全台账21恢复/115剩余不变；racy历史台账新增current字段，旧诊断
+保留原指纹，不能称本轮重新逐一诊断全部UNKNOWN。
+
+后续双线：以单生命周期证书扩展helper的只读指针发布，另审计protected release值摘要。
+Goblint bb55b70 `basePriv.ml:308–333`在加锁时导入未被别的held锁私有的值，解锁时发布当前
+protected状态；IKOS收集每个中间写的lock_partition不等价。至少需区分初始化、带完整保护
+集的进行中may-write、真实release端状态，并让后发现的未保护writer触发外层重算；未知效果、
+cond_wait与不支持layout须保守回退。不得把共同锁pair排除的TN收益归因于尚未实现的release机制。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/main-stack/summary.json)、
+[完整配对](artifacts/ai-precision-2026-10-11/main-stack/paired.json)、
+[变化](artifacts/ai-precision-2026-10-11/main-stack/transitions.json)、
+[72项控制](artifacts/ai-precision-2026-10-11/main-stack/fixtures.json)、
+[参考](artifacts/ai-precision-2026-10-11/main-stack/reference.json)、
+[当前TP执行](artifacts/ai-precision-2026-10-11/main-stack/current-tp-executions.json)、
+[旧回归](artifacts/ai-precision-2026-10-11/main-stack/regressions.json)、
+[legacy配对](artifacts/ai-precision-2026-10-11/main-stack/legacy-sem-paired.json)。

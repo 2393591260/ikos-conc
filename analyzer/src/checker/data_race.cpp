@@ -1862,7 +1862,8 @@ DataRaceChecker::~DataRaceChecker() {
       auto supported_objects = [](const PointsToSet& pts) {
         return pts.is_set() && !pts.is_empty() &&
                std::all_of(pts.begin(), pts.end(), [](MemoryLocation* location) {
-                 return isa< GlobalMemoryLocation >(location) || isa< DynAllocMemoryLocation >(location);
+                 return isa< GlobalMemoryLocation >(location) || isa< DynAllocMemoryLocation >(location) ||
+                        isa< LocalMemoryLocation >(location);
                });
       };
       bool global_candidates = supported_objects(a.pts) && supported_objects(b.pts);

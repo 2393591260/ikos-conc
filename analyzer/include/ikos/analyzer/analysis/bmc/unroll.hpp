@@ -50,6 +50,7 @@ struct BmcEvent {
   // var_id/coeff = 单个变量下标项 `coeff * var`（var_id==0 ⟹ 纯常量偏移）。
   // 提取失败时保持 base==0（调用方保守不确认）。
   ar::LocalVariable* local_base = nullptr;
+  bool shared_main_local = false; // One live allocation in the implicit main prefix.
   ar::CallBase* heap_allocation = nullptr; // One executed allocation in implicit main.
   core::ZNumber heap_extent{0};
   std::uint64_t base = 0;
@@ -261,7 +262,7 @@ inline bool symbolic_byte_offset(ar::Value* ptr, BmcEvent& ev) {
 }
 
 // Known object extent for prefix validity. Locals require one bounded stack
-// allocation; candidate objects still have to be globals.
+// allocation; cross-thread identity and lifetime need separate evidence.
 inline bool memory_extent(const BmcEvent& event, core::ZNumber& size) {
   if (event.heap_allocation != nullptr) {
     size = event.heap_extent;
@@ -779,6 +780,26 @@ inline ar::Store* published_pointer(ar::GlobalVariable* global,
   return found;
 }
 
+// A shared stack identity is an executed allocation in the implicit main
+// frame, before any selected spawn. Repeated/later/returned frames stay unknown.
+inline bool shared_main_allocation(ar::LocalVariable* local,
+                                    const std::vector< BmcEvent >& origin) {
+  if (local->function() == nullptr || local->function()->name() != "main") return false;
+  bool found = false, spawned = false;
+  for (std::size_t i = 0; i < origin.size(); ++i) {
+    const auto& event = origin[i];
+    if (auto* ret = core::dyn_cast< ar::ReturnValue >(event.stmt))
+      if (ret->code() == local->function()->body_or_null()) return false;
+    if (event.stmt->result_or_null() == local) {
+      if (found || spawned || !core::isa< ar::Allocate >(event.stmt) ||
+          invocation_call(origin, event.stmt->code(), i) != origin.size()) return false;
+      found = true;
+    }
+    spawned |= event.kind == EvKind::Create;
+  }
+  return found;
+}
+
 // Resolve pointers from executed definitions and actual helper/thread args.
 // Root arguments were consumed on the already checked creation prefix; only
 // constant global address chains may be followed outside the selected path.
@@ -790,10 +811,14 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
   const auto* definitions = &path;
   bool external = false;
   bool returned = false;
+  bool exact_external_chain = true;
   for (unsigned depth = 0; depth < 32; ++depth) {
     if (auto* global = core::dyn_cast< ar::GlobalVariable >(value)) {event.base = reinterpret_cast< std::uint64_t >(global); return true;}
     if (auto* local = core::dyn_cast< ar::LocalVariable >(value)) {
-      if (external || returned) return false; // returned stack lifetime is unproved
+      if (returned) return false;
+      event.shared_main_local = origins != nullptr && (external || definitions == origins) && exact_external_chain &&
+                                shared_main_allocation(local, *origins);
+      if (external && !event.shared_main_local) return false;
       event.local_base = local; return true;
     }
     auto* variable = core::dyn_cast< ar::InternalVariable >(value);
@@ -807,12 +832,48 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
       if (argument != nullptr) {value = argument; before = index; continue;}
       if (root_parameter(variable, root) && root_argument != nullptr) {
         value = root_argument; external = true;
-        if (origins != nullptr) {definitions = origins; before = origins->size();}
+        if (origins != nullptr) {
+          definitions = origins; before = origins->size();
+          // Capture the argument at its actual consumption, before later
+          // assignments. Identical arguments at multiple creates additionally
+          // need an unchanged def-use/context chain below.
+          bool matched = false;
+          for (std::size_t i = 0; i < origins->size(); ++i) {
+            const auto& creation = (*origins)[i];
+            auto* call = core::dyn_cast< ar::CallBase >(creation.stmt);
+            if (creation.kind == EvKind::Create && call != nullptr &&
+                creation.thread == reinterpret_cast< std::uint64_t >(root) &&
+                call->num_arguments() == 4 && call->argument(3) == root_argument) {
+              before = std::min(before, i); matched = true;
+            }
+          }
+          if (!matched) return false;
+        }
         continue;
       }
       return false;
     }
+    if (definition == nullptr && external && origins != nullptr) {
+      auto* argument = formal_argument(variable, *definitions, before, index);
+      if (argument != nullptr) {
+        auto* function = variable->code()->function_or_null();
+        unsigned calls = 0;
+        for (const auto& event : *origins) {
+          auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+          if (call != nullptr && exact_callee(call) == function) ++calls;
+        }
+        if (calls != 1) return false;
+        value = argument; before = index; continue;
+      }
+    }
     if (definition == nullptr) return false;
+    if (external && origins != nullptr) {
+      exact_external_chain &= unique_def_bmc(variable) == definition &&
+          std::count_if(origins->begin(), origins->end(), [&](const auto& event) {
+            return event.stmt == definition;
+          }) == 1;
+      if (!exact_external_chain) return false;
+    }
     if (!external || origins != nullptr) before = index;
     if (auto* shift = core::dyn_cast< ar::PointerShift >(definition)) {
       for (std::size_t i = 0; i < shift->num_terms(); ++i) {
@@ -916,7 +977,8 @@ inline bool successful_join_result(const BmcEvent& event) {
 inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
                                   Diagnostics* diagnostics = nullptr,
                                   ar::Function* root = nullptr,
-                                  ar::Value* root_argument = nullptr) {
+                                  ar::Value* root_argument = nullptr,
+                                  const std::vector< BmcEvent >* origins = nullptr) {
   std::function< bool(ar::Value*, std::size_t, unsigned) > defined;
   defined = [&](ar::Value* value, std::size_t before, unsigned depth) {
     if (depth >= 32 || core::isa< ar::UndefinedConstant >(value)) return false;
@@ -939,7 +1001,9 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
           if (core::isa< ar::Constant >(root_argument) || core::isa< ar::GlobalVariable >(root_argument))
             return !core::isa< ar::UndefinedConstant >(root_argument);
           BmcEvent address;
-          return pointer_on_path(variable, path, before, root, root_argument, address) && address.base != 0 && address.var_id == 0;
+          return pointer_on_path(variable, path, before, root, root_argument, address, origins) &&
+                 (address.base != 0 || address.heap_allocation != nullptr || address.shared_main_local) &&
+                 address.var_id == 0;
         }
       }
     } else {
@@ -950,8 +1014,8 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
     if (core::isa< ar::Allocate >(def)) return true;
     if (core::isa< ar::Load >(def)) {
       const auto& access = path[index];
-      // The encoder requires SC sources for every heap read, even unused ones.
-      if (access.base != 0 || access.heap_allocation != nullptr) return true;
+      // The encoder requires SC sources for shared reads, even unused ones.
+      if (access.base != 0 || access.heap_allocation != nullptr || access.shared_main_local) return true;
       if (access.local_base == nullptr || access.var_id != 0) return false;
       for (std::size_t j = index; j-- > 0;) {
         const auto& previous = path[j];

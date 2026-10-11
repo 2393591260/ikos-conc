@@ -28,6 +28,6 @@
     "mixed atomic/non-atomic accesses": 4,
     "internal call effects not covered": 1
   },
-  "latest_verdict_evidence": "../concrete-locks/paired.json",
-  "latest_analyzer_sha256": "16e10b615ec6364f38ae656e097ea2d4771b26b13084c14638696596083467c0"
+  "latest_verdict_evidence": "../main-stack/paired.json",
+  "latest_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d"
 }

@@ -475,3 +475,21 @@ init、每个本地step、完整环境interference闭包和依赖失效合同；
 这是共同语义层的精度恢复，不是执行witness→AI不变量的实验收益，不能计入此前
 八组反馈消融，也没有新的端到端加速结论。release摘要原型的前提仍需独立满足。
 证据：[concrete-locks](artifacts/ai-precision-2026-10-11/concrete-locks/summary.json)。
+
+
+### 9.10 AI对象信息与真实BMC分配身份的边界（2026-10-11）
+
+优化计划§9.40从AI的may-points-to候选进入BMC，实际创建前缀/AR分配/DataLayout共同证明隐式main
+共享栈对象的动态身份；SC来源、字节地址与界内条件仍由实际前缀编码。冻结TP106→108，TN678不变，
+当前108任务/136模型独立AR ACCEPT，验证范围不扩成官方源程序witness。它补齐IKOS已有对象信息
+与BMC地址/值流之间的接口，不是BMC→AI不变量反馈；现有八组反馈消融零TN收益仍有效。
+
+下一个具体机会是使用AI已有的单生命周期函数证书，许可helper中唯一、创建前实际执行的只读指针
+发布。只导入静态至多一次证书，不导入无序“初始化值”；结构唯一store、slot地址未逃逸、实际调用
+绑定和发布顺序仍需逐项确认，独立AR执行不信任该摘要而重走调用/对象/值。可用证书关闭对照观察
+是否恢复UNKNOWN，作为AI→BMC**能力收益**证据；速度仍需要另做同配置配对。
+
+TN的protected interference不能直接使用当前中间写lock_partition。Goblint `basePriv.ml:308–333`
+的acquire/真实release与已受其他锁私有的状态处理提供设计依据，IKOS还需补初始化、保护集、局部
+端状态及dirty/replay闭环。没有把bounded UNSAT当SAFE，没有宣称并发归纳认证已实现。
+证据：[main-stack](artifacts/ai-precision-2026-10-11/main-stack/summary.json)。

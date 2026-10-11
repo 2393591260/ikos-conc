@@ -1,0 +1,103 @@
+{
+  "baseline_commit": "a35cd90",
+  "before_analyzer_sha256": "16e10b615ec6364f38ae656e097ea2d4771b26b13084c14638696596083467c0",
+  "analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+  "build_install_equal": true,
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "outer_timeout_seconds": 30,
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 350
+    },
+    "before_bmc": {
+      "TP": 106,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 244
+    },
+    "after_ai": {
+      "TP": 0,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 350
+    },
+    "after_bmc": {
+      "TP": 108,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 242
+    }
+  },
+  "times": [
+    {
+      "mode": "ai",
+      "returncode": 0,
+      "seconds": 143.30495396099286
+    },
+    {
+      "mode": "bmc",
+      "returncode": 0,
+      "seconds": 346.64772554600495
+    }
+  ],
+  "new_observations": 72,
+  "restored_FALSE_observations": 18,
+  "selected_directed_executions": 18,
+  "current_TP_validation": {
+    "tasks": 108,
+    "executions": 136,
+    "statuses": {
+      "ACCEPT": 136
+    },
+    "analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "validator_sha256": "e3bd4a44d1748107cc570daffeda822e6a7ecaf511b10000a5ed487d0c30043d",
+    "scope": "AR/frontend and explicit modeled APIs; not official C/witness validation"
+  },
+  "regression_counts": {
+    "main-heap": 26,
+    "bmc-pointer-returns": 10,
+    "sc-same-path": 46,
+    "ai-concrete-locks": 48,
+    "ai-live-children": 92,
+    "ai-relative-mutex": 52,
+    "ai-affine-mutex": 60,
+    "ai-field-locks": 40,
+    "ai-handle-origin": 68,
+    "ai-handle-values": 64,
+    "ai-join-hulls": 24,
+    "ai-create-handle-alias": 32,
+    "creation-instance": 28,
+    "ai-nested-lifetime": 48,
+    "ai-conditional-guard": 48,
+    "ai-guard-cancellation": 64,
+    "ai-correctness": 76,
+    "old-bmc-32": 10,
+    "old-bmc-64": 10
+  },
+  "mechanism": "One live allocation in the implicit-main frame captured at a checked spawn argument or immutable main publication; same object, extent, alignment and defined SC rf. Other explicit main invocations retain private frame identities. Structured replay omits unsafe recursive AR type text dump.",
+  "boundaries": [
+    "Returned/repeated helper allocations remain unsupported",
+    "Mutable or repeated external argument definitions remain unsupported",
+    "Helper pointer publication requires separate single-lifetime certificate",
+    "Shared reads require defined supported SC sources; no free loads",
+    "Independent validation scope is AR/frontend/API, not official source/witness validation",
+    "sem-value legacy SAFE assertion already fails on baseline; twelve explicit paired observations match"
+  ],
+  "log_sha256": {
+    "ai": "4e6a9371bd96d9ce625c2625fc4f56e2093f6f93c766d6019c2ef8d68e7a95cf",
+    "bmc": "c5f69207b8c8d1f4b8a2f23cee32f35918705a2eb267db01766ab4e2e8e91afb"
+  }
+}

@@ -89,7 +89,8 @@ public:
   JsonDict statement(ar::Statement* stmt) {
     JsonDict out;
     out.put("abstract_initializer", abstract_initializer(stmt));
-    std::ostringstream text; stmt->dump(text); out.put("ar", text.str());
+    // Structured opcodes/operands carry semantics. Text dumps recurse without
+    // a bound through legal recursive C types, including unused declarations.
     out.put("block", _blocks.at(stmt->parent()));
     if (auto loc = source_location(stmt)) {
       out.put("file", loc.path().string()); out.put("line", loc.line()); out.put("column", loc.column());

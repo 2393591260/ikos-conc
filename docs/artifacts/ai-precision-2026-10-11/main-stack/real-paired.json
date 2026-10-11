@@ -1,0 +1,18 @@
+[
+{"stage":"before","task":"c/ldv-races/race-2_2b-container_of.i","bits":32,"mode":"ai","verdict":"The program is potentially UNSAFE","executions":[]},
+{"stage":"before","task":"c/ldv-races/race-2_2b-container_of.i","bits":32,"mode":"bmc","verdict":"The program is potentially UNSAFE","executions":[]},
+{"stage":"before","task":"c/ldv-races/race-2_2b-container_of.c","bits":64,"mode":"ai","verdict":"The program is potentially UNSAFE","executions":[]},
+{"stage":"before","task":"c/ldv-races/race-2_2b-container_of.c","bits":64,"mode":"bmc","verdict":"The program is potentially UNSAFE","executions":[]},
+{"stage":"before","task":"c/ldv-races/race-3_2b-container_of-global.i","bits":32,"mode":"ai","verdict":"The program is potentially UNSAFE","executions":[]},
+{"stage":"before","task":"c/ldv-races/race-3_2b-container_of-global.i","bits":32,"mode":"bmc","verdict":"The program is potentially UNSAFE","executions":[]},
+{"stage":"before","task":"c/ldv-races/race-3_2b-container_of-global.c","bits":64,"mode":"ai","verdict":"The program is potentially UNSAFE","executions":[]},
+{"stage":"before","task":"c/ldv-races/race-3_2b-container_of-global.c","bits":64,"mode":"bmc","verdict":"The program is potentially UNSAFE","executions":[]},
+{"stage":"after","task":"c/ldv-races/race-2_2b-container_of.i","bits":32,"mode":"ai","verdict":"The program is potentially UNSAFE","executions":[]},
+{"stage":"after","task":"c/ldv-races/race-2_2b-container_of.i","bits":32,"mode":"bmc","verdict":"The program is definitely UNSAFE","executions":[{"group":0,"pair":0,"program_sha256":"d37b4037b1f5ee4df5c9a30de573f1b385e8a4e7e7f09a17b9cf85c56b164ebf","certificate_sha256":"bce54467210c48e43f81d342a8408deda8e1916e9542871274876e1544d5a2c7","status":"ACCEPT","scope":"concrete_AR_prefix","exact_encoded_values":true,"instances":[1,2],"targets":[{"instance":1,"object":"stack:1:v3","offset":24,"width":4,"write":true,"vc":{"0":24,"1":7},"atomic":false},{"instance":2,"object":"stack:1:v3","offset":24,"width":4,"write":true,"vc":{"0":27,"2":7},"atomic":false}],"steps":41,"scope_limit":"AR/frontend and explicit library contracts; not source/witness validation"}]},
+{"stage":"after","task":"c/ldv-races/race-2_2b-container_of.c","bits":64,"mode":"ai","verdict":"The program is potentially UNSAFE","executions":[]},
+{"stage":"after","task":"c/ldv-races/race-2_2b-container_of.c","bits":64,"mode":"bmc","verdict":"The program is definitely UNSAFE","executions":[{"group":0,"pair":0,"program_sha256":"ac865559865ee98c96f264a7c8d08e06e21d948ac1a6709ed3b5dbde2352d71a","certificate_sha256":"85354556ba1cbae02c03aec61bbc959fb760a25c0c8b8bb6b3b8c262c8a4b917","status":"ACCEPT","scope":"concrete_AR_prefix","exact_encoded_values":true,"instances":[1,2],"targets":[{"instance":1,"object":"stack:1:v3","offset":40,"width":4,"write":true,"vc":{"0":24,"1":7},"atomic":false},{"instance":2,"object":"stack:1:v3","offset":40,"width":4,"write":true,"vc":{"0":27,"2":7},"atomic":false}],"steps":41,"scope_limit":"AR/frontend and explicit library contracts; not source/witness validation"}]},
+{"stage":"after","task":"c/ldv-races/race-3_2b-container_of-global.i","bits":32,"mode":"ai","verdict":"The program is potentially UNSAFE","executions":[]},
+{"stage":"after","task":"c/ldv-races/race-3_2b-container_of-global.i","bits":32,"mode":"bmc","verdict":"The program is potentially UNSAFE","executions":[]},
+{"stage":"after","task":"c/ldv-races/race-3_2b-container_of-global.c","bits":64,"mode":"ai","verdict":"The program is potentially UNSAFE","executions":[]},
+{"stage":"after","task":"c/ldv-races/race-3_2b-container_of-global.c","bits":64,"mode":"bmc","verdict":"The program is potentially UNSAFE","executions":[]}
+]

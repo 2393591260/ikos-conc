@@ -76,7 +76,11 @@
         "required": "The encoded bounded query is UNSAT; use the historical reference execution to identify a missing longer/other prefix or object/instance choice, without weakening valid constraints."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/02-base_25-malloc_race_cp.yml",
@@ -155,7 +159,11 @@
         "required": "The encoded bounded query is UNSAT; use the historical reference execution to identify a missing longer/other prefix or object/instance choice, without weakening valid constraints."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/02-base_26-malloc_struct.yml",
@@ -238,7 +246,11 @@
     ],
     "disposition": "reference_race_remaining",
     "reference_evidence": "docs/artifacts/bmc-pointer-slot-casts-2026-10-10/reference.json",
-    "investigation": "docs/ikos-bmc-pointer-slot-casts-2026-10-10.md"
+    "investigation": "docs/ikos-bmc-pointer-slot-casts-2026-10-10.md",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/04-mutex_20-stdfun_rc.yml",
@@ -326,7 +338,11 @@
         "required": "Establish the concrete address/base for the recorded operation and its effects; abstract base extraction failure must continue to block confirmation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/04-mutex_35-trylock_rc.yml",
@@ -406,7 +422,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/04-mutex_36-trylock_nr.yml",
@@ -486,7 +506,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/04-mutex_44-malloc_sound.yml",
@@ -573,7 +597,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/04-mutex_45-escape_rc.yml",
@@ -632,7 +660,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/06-symbeq_14-list_entry_rc.yml",
@@ -720,7 +752,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_01-list_rc.yml",
@@ -806,7 +842,11 @@
         "required": "Extend beyond single pre-spawn main allocation: bind this dynamic allocation occurrence, size/failure, uninitialized bytes, publication and lifetime; do not merge allocations by site."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_03-list2_rc.yml",
@@ -873,7 +913,11 @@
         "required": "Resolve the recorded executed pointer source, object instance, byte offset and extent; include possibly overlapping stores before confirming the target."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_05-ptra_rc.yml",
@@ -959,7 +1003,11 @@
         "required": "Extend beyond single pre-spawn main allocation: bind this dynamic allocation occurrence, size/failure, uninitialized bytes, publication and lifetime; do not merge allocations by site."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_10-arraylist_rc.yml",
@@ -1045,7 +1093,11 @@
         "required": "Extend beyond single pre-spawn main allocation: bind this dynamic allocation occurrence, size/failure, uninitialized bytes, publication and lifetime; do not merge allocations by site."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_12-arraycollapse_rc.yml",
@@ -1131,7 +1183,11 @@
         "required": "Extend beyond single pre-spawn main allocation: bind this dynamic allocation occurrence, size/failure, uninitialized bytes, publication and lifetime; do not merge allocations by site."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_16-arrayloop_rc.yml",
@@ -1231,7 +1287,11 @@
         "required": "Extend beyond single pre-spawn main allocation: bind this dynamic allocation occurrence, size/failure, uninitialized bytes, publication and lifetime; do not merge allocations by site."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_18-nested_rc.yml",
@@ -1317,7 +1377,11 @@
         "required": "Extend beyond single pre-spawn main allocation: bind this dynamic allocation occurrence, size/failure, uninitialized bytes, publication and lifetime; do not merge allocations by site."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_20-arrayloop2_rc.yml",
@@ -1383,7 +1447,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_23-evilcollapse_rc.yml",
@@ -1449,7 +1517,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_26-alloc_region_rc.yml",
@@ -1535,7 +1607,11 @@
         "required": "Extend beyond single pre-spawn main allocation: bind this dynamic allocation occurrence, size/failure, uninitialized bytes, publication and lifetime; do not merge allocations by site."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/09-regions_28-list2alloc.yml",
@@ -1621,7 +1697,11 @@
         "required": "Extend beyond single pre-spawn main allocation: bind this dynamic allocation occurrence, size/failure, uninitialized bytes, publication and lifetime; do not merge allocations by site."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/13-privatized_40-traces-ex-6_true.yml",
@@ -1683,7 +1763,11 @@
         "required": "The encoded bounded query is UNSAT; use the historical reference execution to identify a missing longer/other prefix or object/instance choice, without weakening valid constraints."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/28-race_reach_60-invariant_racefree.yml",
@@ -1820,7 +1904,11 @@
       ],
       "source_sha256": "ca8ac8d2a0a0bfcebfb7f99229747142c166641dd0f1bf091ac2b4ae67e9ee75",
       "data_model": "32"
-    }
+    },
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/28-race_reach_61-invariant_racing-2.yml",
@@ -1941,7 +2029,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/28-race_reach_90-arrayloop2_racing.yml",
@@ -2007,7 +2099,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/goblint-regression/28-race_reach_92-evilcollapse_racing.yml",
@@ -2066,7 +2162,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--media--platform--marvell-ccic--cafe_ccic.ko.cil-1.yml",
@@ -2172,7 +2272,11 @@
         "required": "Recorded selected instances are transitively ordered; seek a different executable instance/target choice, never remove required create/join synchronization."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--media--platform--marvell-ccic--cafe_ccic.ko.cil-2.yml",
@@ -2278,7 +2382,11 @@
         "required": "Recorded selected instances are transitively ordered; seek a different executable instance/target choice, never remove required create/join synchronization."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.yml",
@@ -2384,7 +2492,11 @@
         "required": "Recorded selected instances are transitively ordered; seek a different executable instance/target choice, never remove required create/join synchronization."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Error",
+    "current_bmc": "Error",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--w83977af_ir.ko.cil.yml",
@@ -2483,7 +2595,11 @@
         "required": "Recorded selected instances are transitively ordered; seek a different executable instance/target choice, never remove required create/join synchronization."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--spi--spi-tegra20-slink.ko.cil.yml",
@@ -2589,7 +2705,11 @@
         "required": "Recorded selected instances are transitively ordered; seek a different executable instance/target choice, never remove required create/join synchronization."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--usb--misc--adutux.ko.cil.yml",
@@ -2682,7 +2802,11 @@
         "required": "Recorded selected instances are transitively ordered; seek a different executable instance/target choice, never remove required create/join synchronization."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_1-container_of.yml",
@@ -2762,7 +2886,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_2-container_of.yml",
@@ -2828,7 +2956,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_2b-container_of.yml",
@@ -2908,7 +3040,13 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Race Found",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json",
+    "current_disposition": "RECOVERED_TP_AR_VALIDATED",
+    "current_model_evidence": "../ai-precision-2026-10-11/main-stack/current-tp-executions.json"
   },
   {
     "task": "c/ldv-races/race-2_3-container_of.yml",
@@ -2974,7 +3112,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_3b-container_of.yml",
@@ -3054,7 +3196,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_4-container_of.yml",
@@ -3120,7 +3266,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_4b-container_of.yml",
@@ -3200,7 +3350,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_5-container_of.yml",
@@ -3266,7 +3420,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-races/race-2_5b-container_of.yml",
@@ -3346,7 +3504,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-races/race-3_1-container_of-global.yml",
@@ -3426,7 +3588,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-races/race-3_2-container_of-global.yml",
@@ -3492,7 +3658,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-races/race-3_2b-container_of-global.yml",
@@ -3572,7 +3742,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-races/race-4_1-thread_local_vars.yml",
@@ -3646,7 +3820,11 @@
         "required": "Recorded selected instances are transitively ordered; seek a different executable instance/target choice, never remove required create/join synchronization."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/ldv-races/race-4_2-thread_local_vars.yml",
@@ -3720,7 +3898,11 @@
         "required": "Recorded selected instances are transitively ordered; seek a different executable instance/target choice, never remove required create/join synchronization."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/arraylock.yml",
@@ -3841,7 +4023,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/bounded_mpmc_check_full.yml",
@@ -3900,7 +4086,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/bounded_spsc.yml",
@@ -3959,7 +4149,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/caslock.yml",
@@ -4069,7 +4263,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/cnalock.yml",
@@ -4179,7 +4377,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/hemlock.yml",
@@ -4289,7 +4491,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/hmcslock.yml",
@@ -4416,7 +4622,11 @@
         "required": "Model the recorded API byte initialization/copy effects, exact size/extent, possible overlap, source definedness and allocation identity/failure/lifetime; do not infer zero from freeze_uninit."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/mcslock.yml",
@@ -4526,7 +4736,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/rec_mcslock.yml",
@@ -4636,7 +4850,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/rec_spinlock.yml",
@@ -4746,7 +4964,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/rec_ticketlock.yml",
@@ -4856,7 +5078,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/rwlock.yml",
@@ -4973,7 +5199,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/semaphore.yml",
@@ -5101,7 +5331,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/ticketlock.yml",
@@ -5211,7 +5445,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/ttaslock.yml",
@@ -5321,7 +5559,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/libvsync/twalock.yml",
@@ -5431,7 +5673,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-C-DAC/pthread-finding-k-matches.yml",
@@ -5541,7 +5787,11 @@
         "required": "Path enumeration reached its limit; prioritize equivalent prefixes with a preservation argument and measure explored paths/queries before separately increasing the bound."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-C-DAC/pthread-numerical-integration.yml",
@@ -5654,7 +5904,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-atomic/dekker-unfair.yml",
@@ -5720,7 +5974,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-atomic/dekker.yml",
@@ -5786,7 +6044,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-atomic/gcd-2.yml",
@@ -5920,7 +6182,11 @@
         "required": "Path enumeration reached its limit; prioritize equivalent prefixes with a preservation argument and measure explored paths/queries before separately increasing the bound."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-atomic/lamport.yml",
@@ -6022,7 +6288,11 @@
         "required": "Model the recorded atomic or synchronization operation with object/lifecycle/failure and applicable memory-order contracts; SC verifier atomic cannot substitute for C11 or hardware atomics."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-atomic/peterson.yml",
@@ -6124,7 +6394,11 @@
         "required": "Model the recorded atomic or synchronization operation with object/lifecycle/failure and applicable memory-order contracts; SC verifier atomic cannot substitute for C11 or hardware atomics."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-atomic/qrcu-1.yml",
@@ -6302,7 +6576,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-atomic/qrcu-2.yml",
@@ -6480,7 +6758,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-atomic/szymanski.yml",
@@ -6582,7 +6864,11 @@
         "required": "Model the recorded atomic or synchronization operation with object/lifecycle/failure and applicable memory-order contracts; SC verifier atomic cannot substitute for C11 or hardware atomics."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-atomic/time_var_mutex.yml",
@@ -6723,7 +7009,11 @@
         "required": "Include the executed startup write/read dependencies and exact initialization bytes; an abstract startup interval does not establish a read source."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-complex/bounded_buffer.yml",
@@ -6817,7 +7107,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-complex/elimination_backoff_stack-race.yml",
@@ -6962,7 +7256,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-complex/elimination_backoff_stack.yml",
@@ -7107,7 +7405,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-complex/safestack_relacy.yml",
@@ -7172,7 +7474,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-complex/workstealqueue_mutex-1.yml",
@@ -7307,7 +7613,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-complex/workstealqueue_mutex-2.yml",
@@ -7442,7 +7752,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/floating_read-10.yml",
@@ -7544,7 +7858,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/floating_read-15.yml",
@@ -7649,7 +7967,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/floating_read-20.yml",
@@ -7754,7 +8076,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/floating_read-25.yml",
@@ -7859,7 +8185,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/floating_read-5.yml",
@@ -7961,7 +8291,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_bad-10.yml",
@@ -8027,7 +8361,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_bad-20.yml",
@@ -8093,7 +8431,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_bad-30.yml",
@@ -8159,7 +8501,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_bad-40.yml",
@@ -8225,7 +8571,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_bad-50.yml",
@@ -8291,7 +8641,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_good-10.yml",
@@ -8357,7 +8711,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_good-20.yml",
@@ -8423,7 +8781,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_good-30.yml",
@@ -8489,7 +8851,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_good-40.yml",
@@ -8555,7 +8921,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-deagle/reorder_c11_good-50.yml",
@@ -8621,7 +8991,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-divine/barrier_2t.yml",
@@ -8788,7 +9162,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-divine/barrier_3t.yml",
@@ -8955,7 +9333,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-divine/condvar.yml",
@@ -9056,7 +9438,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-divine/divinefifo-bug_1w1r.yml",
@@ -9123,7 +9509,11 @@
         "required": "Enumerate finite feasible object choices with their executed pointer sources, offsets and lifetimes; do not pick an arbitrary element of a may set."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-divine/divinefifo_1w1r.yml",
@@ -9190,7 +9580,11 @@
         "required": "Enumerate finite feasible object choices with their executed pointer sources, offsets and lifetimes; do not pick an arbitrary element of a may set."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-divine/one_time_barrier_2t.yml",
@@ -9334,7 +9728,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-divine/one_time_barrier_3t.yml",
@@ -9478,7 +9876,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-divine/one_time_barrier_twice_2t.yml",
@@ -9622,7 +10024,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-divine/one_time_barrier_twice_3t.yml",
@@ -9766,7 +10172,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-divine/ring_1w1r-1.yml",
@@ -9825,7 +10235,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-divine/ring_1w1r-2.yml",
@@ -9884,7 +10298,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-divine/ring_2w1r-1.yml",
@@ -9964,7 +10382,11 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-divine/ring_2w1r-2.yml",
@@ -10044,7 +10466,13 @@
         "required": "Establish concrete stack/heap/TLS instance, extent and lifetime; allocation-site or may-points-to equality alone cannot establish same object."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Race Found",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json",
+    "current_disposition": "RECOVERED_TP_AR_VALIDATED",
+    "current_model_evidence": "../ai-precision-2026-10-11/main-stack/current-tp-executions.json"
   },
   {
     "task": "c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_current-race.yml",
@@ -10110,7 +10538,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_set-race.yml",
@@ -10176,7 +10608,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_current_pc8736x_gpio_set-race.yml",
@@ -10242,7 +10678,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/04_incdec_cas-race.yml",
@@ -10359,7 +10799,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/05_tas.yml",
@@ -10467,7 +10911,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/06_ticket.yml",
@@ -10569,7 +11017,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/07_rand.yml",
@@ -10705,7 +11157,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/08_rand_cas-race.yml",
@@ -10847,7 +11303,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/08_rand_cas.yml",
@@ -10970,7 +11430,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/09_fmaxsym-zero.yml",
@@ -11125,7 +11589,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/10_fmaxsym_cas.yml",
@@ -11236,7 +11704,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/11_fmaxsymopt-zero.yml",
@@ -11377,7 +11849,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/12_fmaxsymopt_cas.yml",
@@ -11488,7 +11964,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack-race.yml",
@@ -11601,7 +12081,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack.yml",
@@ -11719,7 +12203,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longer-1-race.yml",
@@ -11832,7 +12320,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longer-1.yml",
@@ -11950,7 +12442,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longer-2-race.yml",
@@ -12063,7 +12559,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longer-2.yml",
@@ -12181,7 +12681,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longest-1-race.yml",
@@ -12294,7 +12798,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longest-1.yml",
@@ -12412,7 +12920,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longest-2-race.yml",
@@ -12525,7 +13037,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/25_stack_longest-2.yml",
@@ -12643,7 +13159,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas-race.yml",
@@ -12756,7 +13276,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas.yml",
@@ -12869,7 +13393,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longer-1-race.yml",
@@ -12982,7 +13510,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longer-1.yml",
@@ -13095,7 +13627,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longer-2-race.yml",
@@ -13208,7 +13744,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longer-2.yml",
@@ -13321,7 +13861,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longest-1-race.yml",
@@ -13434,7 +13978,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longest-1.yml",
@@ -13547,7 +14095,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longest-2-race.yml",
@@ -13660,7 +14212,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/26_stack_cas_longest-2.yml",
@@ -13773,7 +14329,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/29_conditionals_vs.yml",
@@ -13845,7 +14405,11 @@
         "required": "The selected atomic pair was excluded under the current query contract; a different target/prefix or justified query extension is required, not arbitrary interleaving."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/33_double_lock_p1_vs.yml",
@@ -13963,7 +14527,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/34_double_lock_p2_vs.yml",
@@ -14081,7 +14649,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/36_stack_cas_p0_vs_concur-race.yml",
@@ -14199,7 +14771,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/36_stack_cas_p0_vs_concur.yml",
@@ -14317,7 +14893,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/37_stack_lock_p0_vs_concur-race.yml",
@@ -14435,7 +15015,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/37_stack_lock_p0_vs_concur.yml",
@@ -14553,7 +15137,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/38_rand_cas_vs_concur.yml",
@@ -14696,7 +15284,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/40_barrier_vf-b.yml",
@@ -14817,7 +15409,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/42_FreeBSD_rdma_addr_sliced.yml",
@@ -14933,7 +15529,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/43_NetBSD_sysmon_power_sliced-pthread.yml",
@@ -15063,7 +15663,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/43_NetBSD_sysmon_power_sliced.yml",
@@ -15185,7 +15789,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/44_Solaris_space_map_sliced.yml",
@@ -15298,7 +15906,11 @@
         "required": "Resolve the unsupported call in the recorded prefix and establish its executed callee/ABI and exact relevant effects; diagnostic example limit hid the specific call, so obtain a focused report before implementation."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-ext/48_ticket_lock_low_contention_vs.yml",
@@ -15456,7 +16068,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-lit/sssc12.yml",
@@ -15515,7 +16131,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-lit/sssc12_variant.yml",
@@ -15574,7 +16194,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-index-race-2.yml",
@@ -15633,7 +16257,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-index-race.yml",
@@ -15692,7 +16320,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-index.yml",
@@ -15751,7 +16383,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-init-race.yml",
@@ -15837,7 +16473,11 @@
         "required": "Model the recorded API byte initialization/copy effects, exact size/extent, possible overlap, source definedness and allocation identity/failure/lifetime; do not infer zero from freeze_uninit."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-init.yml",
@@ -15915,7 +16555,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-join-counter-2.yml",
@@ -16057,7 +16701,11 @@
         "required": "Model the recorded API byte initialization/copy effects, exact size/extent, possible overlap, source definedness and allocation identity/failure/lifetime; do not infer zero from freeze_uninit."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-join-counter-race-2.yml",
@@ -16193,7 +16841,11 @@
         "required": "Model the recorded API byte initialization/copy effects, exact size/extent, possible overlap, source definedness and allocation identity/failure/lifetime; do not infer zero from freeze_uninit."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-join-counter-race-3.yml",
@@ -16329,7 +16981,11 @@
         "required": "Model the recorded API byte initialization/copy effects, exact size/extent, possible overlap, source definedness and allocation identity/failure/lifetime; do not infer zero from freeze_uninit."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-join-counter-race-4.yml",
@@ -16499,7 +17155,11 @@
         "required": "Model the recorded API byte initialization/copy effects, exact size/extent, possible overlap, source definedness and allocation identity/failure/lifetime; do not infer zero from freeze_uninit."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-join-counter-race.yml",
@@ -16672,7 +17332,11 @@
         "required": "Model the recorded API byte initialization/copy effects, exact size/extent, possible overlap, source definedness and allocation identity/failure/lifetime; do not infer zero from freeze_uninit."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-join-counter.yml",
@@ -16808,7 +17472,11 @@
         "required": "Model the recorded API byte initialization/copy effects, exact size/extent, possible overlap, source definedness and allocation identity/failure/lifetime; do not infer zero from freeze_uninit."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-ptr-race.yml",
@@ -16867,7 +17535,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-array-ptr.yml",
@@ -16926,7 +17598,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-index-bitmask-race-2.yml",
@@ -16985,7 +17661,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-index-bitmask-race-3.yml",
@@ -17044,7 +17724,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-index-bitmask-race.yml",
@@ -17165,7 +17849,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-index-bitmask.yml",
@@ -17224,7 +17912,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-index-inc-race-2.yml",
@@ -17283,7 +17975,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-index-inc-race.yml",
@@ -17342,7 +18038,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-index-inc.yml",
@@ -17401,7 +18101,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-struct-in-array-race.yml",
@@ -17460,7 +18164,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-struct-in-array.yml",
@@ -17519,7 +18227,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-struct-race.yml",
@@ -17578,7 +18290,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-struct-tid-join.yml",
@@ -17664,7 +18380,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-struct-tid.yml",
@@ -17723,7 +18443,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/per-thread-struct.yml",
@@ -17782,7 +18506,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/semaphore-posix-race-2.yml",
@@ -17841,7 +18569,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/semaphore-posix-race.yml",
@@ -17900,7 +18632,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/semaphore-posix.yml",
@@ -17959,7 +18695,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-const-race-2.yml",
@@ -18040,7 +18780,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-const-race-3.yml",
@@ -18128,7 +18872,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-const-race.yml",
@@ -18209,7 +18957,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-const.yml",
@@ -18290,7 +19042,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-dynamic-race-2.yml",
@@ -18376,7 +19132,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-dynamic-race-3.yml",
@@ -18469,7 +19229,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-dynamic-race.yml",
@@ -18555,7 +19319,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-array-dynamic.yml",
@@ -18641,7 +19409,11 @@
         "required": "Establish this recorded callee/ABI and exact relevant return/memory/synchronization effects or expand its finite defined body; an unknown call must not disappear from the prefix."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-binomial-race-2.yml",
@@ -18742,7 +19514,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-binomial-race-3.yml",
@@ -18843,7 +19619,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-binomial-race.yml",
@@ -18944,7 +19724,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-binomial.yml",
@@ -19045,7 +19829,11 @@
         "required": "Locate the earlier failed statement/guard or exhausted CFG search before the recorded target; a may-access does not prove an executable target prefix."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-counter-inner-2.yml",
@@ -19197,7 +19985,11 @@
         "required": "Path enumeration reached its limit; prioritize equivalent prefixes with a preservation argument and measure explored paths/queries before separately increasing the bound."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-counter-inner-3.yml",
@@ -19349,7 +20141,11 @@
         "required": "Path enumeration reached its limit; prioritize equivalent prefixes with a preservation argument and measure explored paths/queries before separately increasing the bound."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-counter-inner-race-4.yml",
@@ -19508,7 +20304,11 @@
         "required": "Path enumeration reached its limit; prioritize equivalent prefixes with a preservation argument and measure explored paths/queries before separately increasing the bound."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-counter-inner.yml",
@@ -19667,7 +20467,11 @@
         "required": "Path enumeration reached its limit; prioritize equivalent prefixes with a preservation argument and measure explored paths/queries before separately increasing the bound."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-counter-outer-race-4.yml",
@@ -19807,7 +20611,11 @@
         "required": "Path enumeration reached its limit; prioritize equivalent prefixes with a preservation argument and measure explored paths/queries before separately increasing the bound."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-join-counter-outer.yml",
@@ -19947,7 +20755,11 @@
         "required": "Path enumeration reached its limit; prioritize equivalent prefixes with a preservation argument and measure explored paths/queries before separately increasing the bound."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-local-pthread-value-cond.yml",
@@ -20006,7 +20818,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-local-value-dynamic.yml",
@@ -20065,7 +20881,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/thread-local-value-race.yml",
@@ -20124,7 +20944,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/value-barrier-race.yml",
@@ -20197,7 +21021,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread-race-challenges/value-barrier.yml",
@@ -20270,7 +21098,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread/bigshot_p.yml",
@@ -20363,7 +21195,11 @@
         "required": "Model the recorded API byte initialization/copy effects, exact size/extent, possible overlap, source definedness and allocation identity/failure/lifetime; do not infer zero from freeze_uninit."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread/indexer.yml",
@@ -20430,7 +21266,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread/reorder_2-race.yml",
@@ -20510,7 +21350,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread/reorder_2.yml",
@@ -20582,7 +21426,11 @@
         "required": "Enumerate finite feasible object choices with their executed pointer sources, offsets and lifetimes; do not pick an arbitrary element of a may set."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread/reorder_5-race.yml",
@@ -20662,7 +21510,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread/reorder_5.yml",
@@ -20734,7 +21586,11 @@
         "required": "Enumerate finite feasible object choices with their executed pointer sources, offsets and lifetimes; do not pick an arbitrary element of a may set."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread/sigma.yml",
@@ -20826,7 +21682,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread/singleton-b.yml",
@@ -20914,7 +21774,11 @@
         "required": "Recorded selected instances are transitively ordered; seek a different executable instance/target choice, never remove required create/join synchronization."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread/singleton.yml",
@@ -21002,7 +21866,11 @@
         "required": "Recorded selected instances are transitively ordered; seek a different executable instance/target choice, never remove required create/join synchronization."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread/singleton_with-uninit-problems-b.yml",
@@ -21090,7 +21958,11 @@
         "required": "Recorded selected instances are transitively ordered; seek a different executable instance/target choice, never remove required create/join synchronization."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread/singleton_with-uninit-problems.yml",
@@ -21178,7 +22050,11 @@
         "required": "Recorded selected instances are transitively ordered; seek a different executable instance/target choice, never remove required create/join synchronization."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread/twostage_3-race.yml",
@@ -21258,7 +22134,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/pthread/twostage_3.yml",
@@ -21338,7 +22218,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/weaver/parallel-barrier-loop.wvr.yml",
@@ -21418,7 +22302,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/weaver/parallel-barrier.wvr.yml",
@@ -21498,7 +22386,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_safe_remaining"
+    "disposition": "reference_safe_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/weaver/parallel-parallel-sum-1-dsl.wvr.yml",
@@ -21578,7 +22470,11 @@
         "required": "Recorded selected instances are transitively ordered; seek a different executable instance/target choice, never remove required create/join synchronization."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/weaver/parallel-parallel-sum-2.wvr.yml",
@@ -21658,7 +22554,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/weaver/parallel-parallel-sum-equiv.wvr.yml",
@@ -21738,7 +22638,11 @@
         "required": "Recorded selected instances are transitively ordered; seek a different executable instance/target choice, never remove required create/join synchronization."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Safe",
+    "current_bmc": "Safe",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/weaver/popl20-more-parray-copy.wvr.yml",
@@ -21811,7 +22715,11 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_race_remaining"
+    "disposition": "reference_race_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   },
   {
     "task": "c/weaver/popl20-more-vector-add.wvr.yml",
@@ -21884,6 +22792,10 @@
         "required": "Bind the required pthread entry and argument to actual value sources and a finite creator occurrence/ancestry; scheduling an abstract may-spawn is insufficient."
       }
     ],
-    "disposition": "reference_inconclusive_remaining"
+    "disposition": "reference_inconclusive_remaining",
+    "current_ai": "Unknown",
+    "current_bmc": "Unknown",
+    "current_verdict_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+    "current_verdict_evidence": "../ai-precision-2026-10-11/main-stack/paired.json"
   }
 ]

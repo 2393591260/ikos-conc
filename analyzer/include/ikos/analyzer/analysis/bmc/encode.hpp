@@ -332,7 +332,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       if (auto* load = core::dyn_cast< ar::Load >(event.stmt)) pointer = load->operand();
       if (auto* store = core::dyn_cast< ar::Store >(event.stmt)) pointer = store->pointer();
       if (pointer != nullptr) {
-        event.base = 0; event.local_base = nullptr; event.const_off = 0; event.var_id = 0; event.coeff = 0;
+        event.base = 0; event.local_base = nullptr; event.shared_main_local = false; event.const_off = 0; event.var_id = 0; event.coeff = 0;
         event.heap_allocation = nullptr; event.heap_extent = 0;
         if (!pointer_on_path(pointer, path, i, root, argument, event, &allocation_origin)) {record(diagnostics, "prefix_address", event.stmt); return false;}
       }
@@ -386,10 +386,24 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     }
     return true;
   };
-  if (!prepare(startup, main, nullptr) || !prepare(pathA, funcA, argumentA) || !prepare(pathB, funcB, argumentB) ||
-      !prefix_values_defined(startup, diagnostics) ||
-      !prefix_values_defined(pathA, diagnostics, funcA, argumentA) ||
-      !prefix_values_defined(pathB, diagnostics, funcB, argumentB)) return Result(Status::Unsupported);
+  if (!prepare(startup, main, nullptr) || !prepare(pathA, funcA, argumentA) ||
+      !prepare(pathB, funcB, argumentB)) return Result(Status::Unsupported);
+  // Only actually accessed child objects use shared SC sources. Main's
+  // private handle storage keeps its existing modeled-create definedness.
+  std::unordered_set< ar::LocalVariable* > shared_stack;
+  for (const auto* path : {&pathA, &pathB}) {
+    auto* root = path == &pathA ? funcA : funcB;
+    if (root->name() == "main") continue;
+    for (const auto& event : *path)
+      if (event.shared_main_local) shared_stack.insert(event.local_base);
+  }
+  for (auto* path : {&startup, &pathA, &pathB})
+    for (auto& event : *path)
+      if (event.shared_main_local && !shared_stack.count(event.local_base))
+        event.shared_main_local = false;
+  if (!prefix_values_defined(startup, diagnostics) ||
+      !prefix_values_defined(pathA, diagnostics, funcA, argumentA, &allocation_origin) ||
+      !prefix_values_defined(pathB, diagnostics, funcB, argumentB, &allocation_origin)) return Result(Status::Unsupported);
 
   // Calls update handles and opaque synchronization storage without AR Stores.
   // Preserve their footprints so static initialization cannot masquerade as rf.
@@ -438,7 +452,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       const auto& output = storage.address;
       const bool same = access.base != 0 ? access.base == output.base :
           access.heap_allocation != nullptr ? access.heap_allocation == output.heap_allocation :
-          access.local_base != nullptr && path == storage.path && access.local_base == output.local_base;
+          access.local_base != nullptr && (path == storage.path ||
+              (access.shared_main_local && output.shared_main_local)) && access.local_base == output.local_base;
       // Fields in repeated records can be disjoint for every index. A common
       // stride plus nonwrapping, disjoint residues proves byte nonaliasing.
       core::ZNumber stride = access.var_id != 0 ? (access.coeff < 0 ? -access.coeff : access.coeff) : core::ZNumber(0);
@@ -761,14 +776,15 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       auto* type = core::dyn_cast< ar::IntegerType >(iv->type());
       const auto& access = path[definition_index];
       if (type == nullptr || abstract_initializer(def)) return false;
-      if (access.heap_allocation != nullptr &&
+      if ((access.heap_allocation != nullptr || access.shared_main_local) &&
           (access.var_id != 0 || access.width == 0 || access.width > 8 ||
            type->bit_width() != access.width * 8 ||
            access.const_off % load->bundle()->data_layout().abi_alignment(type) != 0)) return false;
       auto same_object = [&](const BmcEvent& write) {
         if (access.heap_allocation != nullptr) return write.heap_allocation == access.heap_allocation;
         if (access.base != 0) return write.base == access.base;
-        return access.local_base != nullptr && write.local_base == access.local_base;
+        return access.local_base != nullptr && write.local_base == access.local_base &&
+               (!access.shared_main_local || write.shared_main_local);
       };
       if (aliases_library(access, &path, false)) {
         record(diagnostics, "library_read_origin", load); return false;
@@ -913,7 +929,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           }
         }
       }
-      if (access.base != 0 || access.heap_allocation != nullptr) {
+      if (access.base != 0 || access.heap_allocation != nullptr || access.shared_main_local) {
         // malloc has no initialized source. Fold only actual stores to this
         // allocation, never stores to another heap object or a null local base.
         // The retained startup executes before either selected child. Fold
@@ -948,7 +964,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       std::vector< z3::expr > sources;
       struct Write {z3::expr time; z3::expr value; z3::expr matches;};
       std::vector< Write > writes;
-      bool ordered_sources = (access.base != 0 || access.heap_allocation != nullptr) && access.var_id == 0;
+      bool ordered_sources = (access.base != 0 || access.heap_allocation != nullptr || access.shared_main_local) && access.var_id == 0;
       const auto& other_path = prefix == "value_a_" ? pathB : pathA;
       auto* root = prefix == "value_a_" ? funcA : funcB;
       auto* other_root = prefix == "value_a_" ? funcB : funcA;
@@ -964,7 +980,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       auto collect = [&](const std::vector< BmcEvent >& events, ValueCache& values,
                          const std::string& label, std::size_t clock_start) {
         std::size_t begin = 0;
-        if (access.local_base != nullptr) {
+        if (access.local_base != nullptr && !access.shared_main_local) {
           if (&events != &path) return true;
           for (std::size_t j = 0; j < definition_index; ++j)
             if (events[j].stmt->result_or_null() == access.local_base) begin = j + 1;
@@ -1170,8 +1186,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                                 const std::string& prefix) {
     for (std::size_t i = 0; i < path.size(); ++i) {
       if (path[i].synthetic_condition) continue;
-      if (path[i].heap_allocation != nullptr && path[i].kind == EvKind::Read) {
-        // Even an unused heap read must have a defined actual SC source.
+      if ((path[i].heap_allocation != nullptr || path[i].shared_main_local) && path[i].kind == EvKind::Read) {
+        // Even an unused shared read must have a defined actual SC source.
         // Pointer or unsupported sources cannot become free malloc data.
         auto* load = core::cast< ar::Load >(path[i].stmt);
         z3::expr value(ctx);
@@ -1343,7 +1359,9 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     // 同址必须可证：base 提取失败（0）或 base 不同 → 缺失同址约束会让两访问被
     // 「假相邻」确认 → FP。保守不确认（UNKNOWN）。
     const bool same_heap = ea.heap_allocation != nullptr && ea.heap_allocation == eb.heap_allocation;
-    if (!same_heap && (ea.base == 0 || eb.base == 0 || ea.base != eb.base)) {
+    const bool same_stack = ea.shared_main_local && eb.shared_main_local &&
+                            ea.local_base != nullptr && ea.local_base == eb.local_base;
+    if (!same_heap && !same_stack && (ea.base == 0 || eb.base == 0 || ea.base != eb.base)) {
       record(diagnostics, "address_base", ea.base == 0 ? ea.stmt : eb.stmt);
       return Result(Status::Unsupported);
     }
@@ -1370,7 +1388,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         z3::expr offset(ctx);
         if (!encode_offset(e, offset, cache, prefix, i)) return false;
         s.add(offset >= 0 && offset + ctx.int_val(std::to_string(e.width).c_str()) <= ctx.int_val(size.str().c_str()));
-        if (e.heap_allocation != nullptr) {
+        if (e.heap_allocation != nullptr || e.shared_main_local) {
           auto* type = e.kind == EvKind::Read ? core::cast< ar::Load >(e.stmt)->result()->type()
                                             : core::cast< ar::Store >(e.stmt)->value()->type();
           const auto alignment = e.stmt->bundle()->data_layout().abi_alignment(type);
