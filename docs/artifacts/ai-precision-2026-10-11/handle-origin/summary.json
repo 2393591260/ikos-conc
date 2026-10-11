@@ -1,0 +1,83 @@
+{
+  "baseline_commit": "aa2f669",
+  "before_analyzer_sha256": "13c3ef6992b728c41f8f6f2d331e6a75ce560c1291557ede40b9caf9c7477cbc",
+  "analyzer_sha256": "821e8cc623cc0973c87d4509a07958a9d60edb5891b4c9b36e9ea3681d5df0b8",
+  "build_install_equal": true,
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "outer_timeout_seconds": 30,
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "TN": 669,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 359
+    },
+    "before_bmc": {
+      "TP": 106,
+      "TN": 669,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 253
+    },
+    "after_ai": {
+      "TP": 0,
+      "TN": 672,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 356
+    },
+    "after_bmc": {
+      "TP": 106,
+      "TN": 672,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 250
+    }
+  },
+  "times": [
+    {
+      "mode": "ai",
+      "returncode": 0,
+      "seconds": 137.05145630199695
+    },
+    {
+      "mode": "bmc",
+      "returncode": 0,
+      "seconds": 338.2740979329974
+    }
+  ],
+  "new_observations": 68,
+  "new_SAFE_observations": 16,
+  "new_selected_executions": 8,
+  "regression_counts": {
+    "ai-handle-values": 64,
+    "ai-join-hulls": 24,
+    "ai-create-handle-alias": 32,
+    "creation-instance": 28,
+    "ai-nested-lifetime": 48,
+    "ai-conditional-guard": 48,
+    "ai-guard-cancellation": 64,
+    "ai-correctness": 76,
+    "old-bmc-32": 10,
+    "old-bmc-64": 10
+  },
+  "mechanism": "Single nonescaping whole-scalar create writer, one creator lifetime, cross-context completion dominance, and proved zero-return definition/guard correlation. Other cases preserve ordinary interference.",
+  "boundaries": [
+    "Conditional create/join correlation after branch merge remains UNKNOWN",
+    "Forwarded conditional returns not summarized",
+    "Array/heap/escaped slots and multiple/unknown writers are not certified",
+    "Successful modeled pthread contract, not complete POSIX failure modeling"
+  ],
+  "scope": "Native dual-ABI minimal controls and three ILP32 real tasks with native .c LP64 companions; no new frozen TP, no fresh universal TP model-validation claim, no speedup claim; baseline pinned preceding full stock scans",
+  "log_sha256": {
+    "ai": "c2adeede096c644853a13b431ab96b42561e3374722888271a1b91e9b45db18a",
+    "bmc": "39a2a0f9f76741abd64f0069ae1b018977c1fdb52204d99fcae7cc36894c1a2b"
+  }
+}

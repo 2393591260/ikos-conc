@@ -31,6 +31,7 @@
 
 #include <ikos/analyzer/analysis/call_context.hpp>
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
+#include <ikos/analyzer/analysis/execution_engine/handle_origin.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
 #include <ikos/analyzer/analysis/memory_location.hpp>
 #include <ikos/analyzer/analysis/variable.hpp>
@@ -1372,6 +1373,15 @@ void on_load_integer_interference(E& eng,
       full_scalar = declared && declared->bit_width() == type->bit_width() &&
                     offset && offset->is_zero();
       if (full_scalar) {
+        if (env.is_synthetic_handle_slot(global)) {
+          auto sid = completed_handle_origin(eng, global->global_var(), s);
+          if (sid != 0) {
+            eng.data().normal().mem_write(
+                ptr.var(), core::Literal< Variable*, MemoryLocation* >::machine_int(
+                    core::MachineInt(sid, type->bit_width(), type->sign())), size);
+            return;
+          }
+        }
         external = env.read_global_interference(
             core::IndexableTraits< MemoryLocation* >::index(global),
             type->bit_width(), type->sign());

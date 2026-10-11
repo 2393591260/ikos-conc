@@ -481,3 +481,15 @@ DAT3M_HOME="$PWD" CFLAGS='-fgnu89-inline -m64' "$JAVA_BIN" -Xmx2g \
 完整1029：TP106/TN669/U253/FP0/FN0/error1。没有新冻结FALSE；历史第一版模型证据
 保留原版本范围。完整POSIX失败、opaque句柄及一般实例来源仍不属于这个证书。
 证据：[nested-lifetime](artifacts/ai-precision-2026-10-11/nested-lifetime/summary.json)。
+
+### 7.4 标量句柄完成来源的增量验收（2026-10-11）
+
+优化计划§9.37增加全bundle唯一非逃逸写入、单生命周期、实际调用上下文完成支配及
+零返回相关性证书。未知地址用途/写入/返回或预算失败保持旧近似；恢复的是现有合成
+handle token，不把整数区间端点或任意共享load当成真实句柄。join覆盖证明独立保留，
+同一静态创建点多次执行不能据此推出全部动态实例结束。完整POSIX失败尚未覆盖。
+68项双ABI/双模式控制、24项真实前后观察及全部相关旧回归通过；新定向FALSE的8条
+AR执行独立ACCEPT。完整1029为TP106/TN672/U250/FP0/FN0/error1，仅3项安全UNKNOWN
+恢复。标签零误判不等于普遍sound证明；第一版134条执行仍只支撑原版本所选模型。
+条件join的合并后关系和一般opaque来源仍有明确精度边界。
+证据：[handle-origin](artifacts/ai-precision-2026-10-11/handle-origin/summary.json)。

@@ -1660,3 +1660,40 @@ Goblint参考UNSUPPORTED，恢复依据为IKOS证书与独立源码控制例，�
 [真实任务及旧单次调用](artifacts/ai-precision-2026-10-11/nested-lifetime/extra-paired.json)、
 [回归](artifacts/ai-precision-2026-10-11/nested-lifetime/regressions.json)。
 下一机制是带真实来源与完成顺序的handle/create-return关联，再处理保护敏感干扰。
+
+### 9.37 第二版精度：已完成创建的标量句柄来源（2026-10-11）
+
+共同执行层增加受限来源证书：全局非TLS整型标量必须只有一个直接pthread_create
+全宽写入点，地址不逃逸；全bundle扫描拒绝其他写、部分访问、多写入及预算失败。
+仅初始化常量、全宽load及唯一零偏移pointer copy/bitcast可通过。正向精确地址证明与
+保守“可能提及地址”检测分开，深度超限只拒绝证书，不能建立writer身份。
+
+创建者须已有单生命周期证明；创建或其唯一普通caller须在实际调用上下文中支配load。
+条件创建额外证明全部零返回定义经过创建，以及观察路径上同一调用返回值等于零。
+数值变量被liveness遗忘时，采用原AR中支配观察的同源零等式；只剥同宽copy/bitcast
+及保零扩展，不剥截断、算术或未知返回。证书成立才把合成句柄槽恢复为该create-site
+的现有抽象token；动态实例覆盖仍由已有join/单次创建证明约束。失败保留普通干扰。
+这是当前成功pthread契约内的局部来源证书，并非完整POSIX失败语义或opaque句柄域。
+
+17case×2ABI×AI/BMC=68项，新恢复16项SAFE；缺join、错误返回关系、重建旧句柄、
+外部覆盖、重复创建及逃逸对照不SAFE；8条定向FALSE的所选AR执行独立ACCEPT。
+真实3个LDV join任务用冻结ILP32 .i及native .c的LP64伴随输入共24项前后观察均
+UNKNOWN→SAFE。旧handle64/join-hulls24/create-alias32/creation28/nested48/guard48/
+cancellation64/audit76/BMC20通过，旧BMC与前驱逐项相同；build/install一致。
+
+完整1029：AI TN669/U359→TN672/U356；BMC TP106/TN669/U253→TP106/TN672/U250，
+FP0/FN0/error1。仅race-1_1-join、race-1_2-join、race-1_3-join变化。前驱采用已保存
+同任务/source/YAML指纹的全量；本次AI137.051s/BMC338.274s，不据此声明加速。
+安全标签台账136项已恢复15项、剩121项，其中正常Goblint TRUE30项，其他91项参考
+不确定；历史诊断保留原指纹。没有新冻结TP，也没有重新验证本版本全部106所选模型。
+
+边界：条件创建后只在成功分支join、但访问在分支合并之后时，MAY spawned与MUST
+joined失去关联，仍UNKNOWN；转发条件返回、数组/堆/逃逸槽、多writer也保守。下一步
+评估独立MAY活跃子实例摘要，保留历史spawn记录，不因join parent隐式删除grandchild。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/handle-origin/summary.json)、
+[完整配对](artifacts/ai-precision-2026-10-11/handle-origin/paired.json)、
+[变化](artifacts/ai-precision-2026-10-11/handle-origin/transitions.json)、
+[68项控制](artifacts/ai-precision-2026-10-11/handle-origin/fixtures.json)、
+[真实双ABI配对](artifacts/ai-precision-2026-10-11/handle-origin/real-paired.json)、
+[回归](artifacts/ai-precision-2026-10-11/handle-origin/regressions.json)。

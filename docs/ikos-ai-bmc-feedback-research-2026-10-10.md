@@ -448,3 +448,12 @@ init、每个本地step、完整环境interference闭包和依赖失效合同；
 没有测量加速，也没有补齐digest实例域。余下句柄成功返回关系及release值摘要仍需
 各自的前提、反例和独立配对。八组零收益消融及第一版模型证据保持原版本范围。
 证据：[nested-lifetime](artifacts/ai-precision-2026-10-11/nested-lifetime/summary.json)。
+
+### 9.7 跨调用句柄来源证书（2026-10-11）
+
+优化计划§9.37把创建完成与成功返回的结构证据用于AI共享句柄load，恢复3项TN，
+当前TP106/TN672/U250。它改善共同线程身份及候选过滤基础，不是BMC执行向AI传递
+新不变量，不能计作反馈消融收益。证书只覆盖唯一非逃逸全局标量及已建模成功pthread
+契约；条件创建/join在合并点丢失关系仍需要独立活跃实例摘要，保护release摘要也未
+落地。无新冻结TP，无加速结论；八组反馈零收益及第一版执行证据保持原版本范围。
+证据：[handle-origin](artifacts/ai-precision-2026-10-11/handle-origin/summary.json)。

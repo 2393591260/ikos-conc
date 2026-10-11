@@ -2,23 +2,23 @@
   "original_pool": 135,
   "added_current_unknown": 1,
   "tracked": 136,
-  "recovered": 12,
-  "remaining": 124,
+  "recovered": 15,
+  "remaining": 121,
   "no_impossibility_claims": true,
   "remaining_reference_status": {
     "UNSUPPORTED": 30,
     "UNKNOWN": 25,
-    "TRUE": 33,
+    "TRUE": 30,
     "TIMEOUT": 34,
     "ERROR": 2
   },
   "dispositions": {
-    "RECOVERED_WITH_GENERAL_CERTIFICATE": 12,
-    "DEFERRED_GENERAL_MECHANISM": 33,
+    "RECOVERED_WITH_GENERAL_CERTIFICATE": 15,
+    "DEFERRED_GENERAL_MECHANISM": 30,
     "REFERENCE_NOT_PROVED": 91
   },
   "diagnosis_limit_rows": 8,
-  "summary_note": "All136 source/YAML identities checked against current complete scans; 33 normal TRUE entrances remain. Recovered nested tasks have fresh reports; unchanged diagnostic snapshots retain their older analyzer hashes. Eight heap diagnoses remain partial.",
+  "summary_note": "All136 task identities matched to complete current scans; 30 normal TRUE entrances remain. Three recovered handle tasks have fresh reports; unchanged diagnostic snapshots retain originating fingerprints.",
   "coverage_tasks": {
     "external call effects not covered": 36,
     "library memory effects not covered": 3,
@@ -28,6 +28,6 @@
     "mixed atomic/non-atomic accesses": 4,
     "internal call effects not covered": 1
   },
-  "latest_verdict_evidence": "../nested-lifetime/paired.json",
-  "latest_analyzer_sha256": "13c3ef6992b728c41f8f6f2d331e6a75ce560c1291557ede40b9caf9c7477cbc"
+  "latest_verdict_evidence": "../handle-origin/paired.json",
+  "latest_analyzer_sha256": "821e8cc623cc0973c87d4509a07958a9d60edb5891b4c9b36e9ea3681d5df0b8"
 }
