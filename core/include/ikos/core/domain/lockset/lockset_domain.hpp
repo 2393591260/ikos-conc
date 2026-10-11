@@ -35,7 +35,7 @@
 
 #include <ikos/core/domain/abstract_domain.hpp>
 #include <cstdint>
-#include <iosfwd>
+#include <ostream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -137,6 +137,10 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
   /// spawned yet (10-synch_13: main joins t1 then writes =2 before creating
   /// t2 — the name-level digest alone cannot tell t2 apart from t1).
   std::unordered_set< std::uint64_t > _spawned_instances;
+
+  // MAY direct children that can still be alive. History stays in spawned.
+  bool _live_top = true;
+  JoinedSet _live_children;
 
   /// \brief Allocation-site ids retained as fresh on all incoming paths.
   /// MUST component: join is intersection. Publication coverage is incomplete.
@@ -552,6 +556,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     return (_mutex_top || _mutex_locks.empty()) &&
            (_read_top || _read_locks.empty()) &&
            (_joined_top || _joined_threads.empty()) &&
+           _live_top &&
            (!_spawned_top && _spawned_threads.empty()) &&
            (!_signaled_top && _signaled_conds.empty()) &&
            (!_awaited_top && _awaited_conds.empty()) &&
@@ -568,6 +573,8 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     _joined_threads.clear();
     _spawned_threads.clear();
     _spawned_instances.clear();
+    _live_top = true;
+    _live_children.clear();
     _fresh_heap_nodes.clear();
     _signaled_conds.clear();
     _awaited_conds.clear();
@@ -584,6 +591,8 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     _joined_threads.clear();
     _spawned_threads.clear();
     _spawned_instances.clear();
+    _live_top = true;
+    _live_children.clear();
     _fresh_heap_nodes.clear();
     _signaled_conds.clear();
     _awaited_conds.clear();
@@ -620,6 +629,8 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
       _spawned_instances.insert(other._spawned_instances.begin(),
                                 other._spawned_instances.end());
     }
+    join_spawned(_live_top, _live_children,
+                 other._live_top, other._live_children);
     // Fresh heap nodes: MUST, join = intersection (fresh on both edges).
     for (auto it = _fresh_heap_nodes.begin();
          it != _fresh_heap_nodes.end();) {
@@ -684,6 +695,8 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
         }
       }
     }
+    meet_spawned(_live_top, _live_children,
+                 other._live_top, other._live_children);
     // Fresh heap nodes: MUST, meet = union (refinement adds freshness).
     _fresh_heap_nodes.insert(other._fresh_heap_nodes.begin(),
                              other._fresh_heap_nodes.end());
@@ -729,6 +742,8 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
                        _spawned_instances,
                        other._spawned_top,
                        other._spawned_instances) &&
+           spawned_leq(_live_top, _live_children,
+                       other._live_top, other._live_children) &&
            leq_digest(false,
                       _fresh_heap_nodes,
                       false,
@@ -771,6 +786,8 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
                       _spawned_instances,
                       other._spawned_top,
                       other._spawned_instances) &&
+           spawned_eq(_live_top, _live_children,
+                      other._live_top, other._live_children) &&
            eq_digest(false,
                      _fresh_heap_nodes,
                      false,
@@ -837,6 +854,16 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
       }
       o << t;
       first = false;
+    }
+    o << "} LiveChildren{";
+    if (_live_top) o << "⊤";
+    else {
+      bool first_live = true;
+      for (auto sid : _live_children) {
+        if (!first_live) o << ",";
+        o << sid;
+        first_live = false;
+      }
     }
     o << "} Signaled{";
     first = true;
@@ -1080,6 +1107,34 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     _spawned_instances.insert(sid);
   }
 
+  // Only a fresh thread entry establishes an empty direct-child history.
+  void initialize_live_children() {
+    if (_is_bottom) return;
+    _live_top = false;
+    _live_children.clear();
+  }
+
+  void add_live_child(std::uint64_t sid) {
+    if (!_is_bottom && !_live_top) _live_children.insert(sid);
+  }
+
+  // The caller must prove coverage of every dynamic instance at this site.
+  void remove_live_child(std::uint64_t sid) {
+    if (!_is_bottom && !_live_top) _live_children.erase(sid);
+  }
+
+  void set_live_children_top() {
+    if (_is_bottom) return;
+    _live_top = true;
+    _live_children.clear();
+  }
+
+  bool live_children_is_top() const { return _live_top; }
+
+  JoinedSet get_live_children() const {
+    return _is_bottom || _live_top ? JoinedSet{} : _live_children;
+  }
+
   /// \brief True iff heap node `idx` is provably FRESH (its pointer has not
   /// been stored into a cross-thread reachable location). A fresh node is
   /// thread-private, so its accesses cannot race (goblint region-domain "fresh
@@ -1115,6 +1170,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     if (_is_bottom) {
       return;
     }
+    set_live_children_top();
     _spawned_top = true;
     _spawned_threads.clear();
     _spawned_instances.clear();

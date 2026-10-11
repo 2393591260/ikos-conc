@@ -1,0 +1,84 @@
+{
+  "baseline_commit": "a76acc5",
+  "before_analyzer_sha256": "821e8cc623cc0973c87d4509a07958a9d60edb5891b4c9b36e9ea3681d5df0b8",
+  "analyzer_sha256": "42225bf0be056bc80cb4f05e6bdeebf217c52d067c5a4604b711d01ba4d3ca10",
+  "build_install_equal": true,
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "outer_timeout_seconds": 30,
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "TN": 672,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 356
+    },
+    "before_bmc": {
+      "TP": 106,
+      "TN": 672,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 250
+    },
+    "after_ai": {
+      "TP": 0,
+      "TN": 677,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 351
+    },
+    "after_bmc": {
+      "TP": 106,
+      "TN": 677,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 245
+    }
+  },
+  "times": [
+    {
+      "mode": "ai",
+      "returncode": 0,
+      "seconds": 147.75080295799125
+    },
+    {
+      "mode": "bmc",
+      "returncode": 0,
+      "seconds": 345.08649019300356
+    }
+  ],
+  "new_observations": 92,
+  "restored_SAFE_observations": 16,
+  "selected_directed_executions": 22,
+  "regression_counts": {
+    "ai-handle-origin": 68,
+    "ai-handle-values": 64,
+    "ai-join-hulls": 24,
+    "ai-create-handle-alias": 32,
+    "creation-instance": 28,
+    "ai-nested-lifetime": 48,
+    "ai-conditional-guard": 48,
+    "ai-guard-cancellation": 64,
+    "ai-correctness": 76,
+    "old-bmc-32": 10,
+    "old-bmc-64": 10
+  },
+  "mechanism": "Independent MAY live direct-child set; once-only exact joins kill only covered site instances; nonzero returned value excludes creations proved to return zero on every normal post-create exit. An unordered exclusion needs unique creator and full syntactic coverage of registered instances.",
+  "boundaries": [
+    "No transitive HB inference from inactive children; joining parent does not kill orphan grandchildren",
+    "Loop/multiple lifetime sites, ambiguous or unresolved creation, and incomplete creator coverage keep possible liveness",
+    "Two container_of tasks retain child/child lock-region candidates",
+    "Full POSIX failure behavior remains outside the successful modeled pthread contract"
+  ],
+  "scope": "Native dual-ABI controls plus seven real tasks: five restored on original frozen ILP32 inputs and native LP64 companions, two remain UNKNOWN. No new frozen TP or global model-revalidation claim; no measured speedup claim.",
+  "log_sha256": {
+    "ai": "7589543f6884a252ba0cfca259ee8cfc5336bb15fe1945e8dd22b8052edc9cb0",
+    "bmc": "391581ff32dac9136bc1b4d8d17e2bf820be88d3a1a9a270151e443c02d0585d"
+  }
+}

@@ -2,23 +2,23 @@
   "original_pool": 135,
   "added_current_unknown": 1,
   "tracked": 136,
-  "recovered": 15,
-  "remaining": 121,
+  "recovered": 20,
+  "remaining": 116,
   "no_impossibility_claims": true,
   "remaining_reference_status": {
     "UNSUPPORTED": 30,
     "UNKNOWN": 25,
-    "TRUE": 30,
+    "TRUE": 25,
     "TIMEOUT": 34,
     "ERROR": 2
   },
   "dispositions": {
-    "RECOVERED_WITH_GENERAL_CERTIFICATE": 15,
-    "DEFERRED_GENERAL_MECHANISM": 30,
+    "RECOVERED_WITH_GENERAL_CERTIFICATE": 20,
+    "DEFERRED_GENERAL_MECHANISM": 25,
     "REFERENCE_NOT_PROVED": 91
   },
   "diagnosis_limit_rows": 8,
-  "summary_note": "All136 task identities matched to complete current scans; 30 normal TRUE entrances remain. Three recovered handle tasks have fresh reports; unchanged diagnostic snapshots retain originating fingerprints.",
+  "summary_note": "All136 task identities matched to complete scans; five conditional-lifetime recoveries and two residual container lock diagnostics are fresh; unchanged diagnostic snapshots retain originating fingerprints.",
   "coverage_tasks": {
     "external call effects not covered": 36,
     "library memory effects not covered": 3,
@@ -28,6 +28,6 @@
     "mixed atomic/non-atomic accesses": 4,
     "internal call effects not covered": 1
   },
-  "latest_verdict_evidence": "../handle-origin/paired.json",
-  "latest_analyzer_sha256": "821e8cc623cc0973c87d4509a07958a9d60edb5891b4c9b36e9ea3681d5df0b8"
+  "latest_verdict_evidence": "../live-children/paired.json",
+  "latest_analyzer_sha256": "42225bf0be056bc80cb4f05e6bdeebf217c52d067c5a4604b711d01ba4d3ca10"
 }

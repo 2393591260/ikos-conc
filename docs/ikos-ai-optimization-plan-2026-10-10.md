@@ -1697,3 +1697,50 @@ joined失去关联，仍UNKNOWN；转发条件返回、数组/堆/逃逸槽、�
 [68项控制](artifacts/ai-precision-2026-10-11/handle-origin/fixtures.json)、
 [真实双ABI配对](artifacts/ai-precision-2026-10-11/handle-origin/real-paired.json)、
 [回归](artifacts/ai-precision-2026-10-11/handle-origin/regressions.json)。
+
+### 9.38 第二版精度：条件创建/join的活跃实例摘要（2026-10-11）
+
+历史MAY spawned与MUST joined分别正确，但合并“创建并join”和“没有创建”会丢失
+二者的关系。增加独立MAY live direct-child集合：create加入，已证明每个创建点单
+生命周期的精确join删除该sid；CFG join/widen取并、meet/narrow取交，TOP是真正未知，
+set_to_top/未解析create不能变成空集合，只有新的线程入口明确初始化为空。历史spawn
+不删；join parent不删除其未join的grandchild。增加独立集合的格/重置/合并断言。
+
+跨函数返回仍会合并创建分支，故非零返回的比较还须结构证书：创建后所有可达正常
+返回均为零。沿CFG跟踪返回operand最后一次定义是否为零，创建以前的值视为未知；
+非零/未知定义、预算超限或非保零转换均拒绝。对唯一单生命周期的非逃逸整型句柄
+writer，原调用结果非零才排除该次创建。它证明“未创建”，不是猜测失败状态或句柄。
+仅成功已建模pthread契约成立，未实现完整POSIX失败行为。
+
+checker使用“无活跃直接子实例”只排除并发：父须单实例，子每个site须单生命周期、
+直接创建者唯一，并要求静态creator扫描覆盖全部已登记sid；包装器解析可能漏出该
+扫描，覆盖不全时拒绝。此证明允许父访问在create之前或join之后，因此**不是方向
+确定的HB边**，不能混入joined_names、join退出摘要或向grandchild传递。
+
+23case×2ABI×AI/BMC=92项，16项UNKNOWN恢复SAFE；22条定向FALSE的所选AR执行
+独立ACCEPT。缺/错误/条件漏join、重建、多创建、返回值覆盖/截断、非零创建返回、
+未知start routine、孤儿grandchild及包装器额外创建来源均不SAFE。循环逐次join的
+安全对照保持UNKNOWN，不宣称一般重复实例已实现。旧handle-origin68、handles64、
+join-hulls24、create-alias32、creation28、nested48、guard48、cancellation64、audit76及
+BMC20通过；后者与前驱逐项一致。build/install一致。
+
+完整1029：AI TN672/U356→TN677/U351；BMC TP106/TN672/U250→TP106/TN677/U245，
+FP0/FN0/error1。只有race-2_2/2_3/2_4/2_5-container_of及race-3_2-container_of-global
+五项安全输入恢复；七个调查入口共56项真实前后双ABI/双模式观察，其中另外两项仍
+UNKNOWN。后两者父/子候选已消失，剩child/child的同具体锁key与数据region检查问题；
+不能把本次生命周期证书误报成解决全部container_of锁别名。冻结输入为ILP32 .i，
+LP64采用native .c伴随输入。台账136项已恢复20、剩116，正常参考TRUE25，其余91
+参考不确定。前驱复用已保存同source/YAML的全量，AI147.751s/BMC345.086s；无加速
+结论，无新冻结TP，也无全版本所选模型重新验证的声明。
+
+Goblint bb55b70的threadId.ml:CreatedThreads/MustBeSingleThreaded和threadIdDomain.ml:
+created/compose强调创建历史及父身份；本次另加MAY存活关系，未复制其digest算法或
+把MustJoined交集改成MAY。后续先审计具体同锁互斥与data-region启发式的关系；真正
+release端值/嵌套保护干扰仍须独立实现，不能使用现有包含中间写的lock_partition。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/live-children/summary.json)、
+[完整配对](artifacts/ai-precision-2026-10-11/live-children/paired.json)、
+[变化](artifacts/ai-precision-2026-10-11/live-children/transitions.json)、
+[92项控制](artifacts/ai-precision-2026-10-11/live-children/fixtures.json)、
+[真实配对](artifacts/ai-precision-2026-10-11/live-children/real-paired.json)、
+[回归](artifacts/ai-precision-2026-10-11/live-children/regressions.json)。

@@ -1022,6 +1022,9 @@ void exec_pthread_join(E& eng, ar::CallBase* call) {
     // The summary is the joined thread's exit digest, transitively closed
     // because this same site pulls the summary of whatever IT joined.
     ar::Function* f = env.site_func(sid);
+    if (f != nullptr && env.thread_instances_are_static(f->name())) {
+      eng.lockset().remove_live_child(sid);
+    }
     if (f != nullptr) {
       for (std::uint64_t t : env.get_join_summary(f)) {
         eng.lockset().add_joined_thread(t);
@@ -1832,6 +1835,7 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
   if (spawn_resolved) {
     sid = eng.ctx().concurrent_env.site_id(create_site);
     eng.lockset().add_spawned_instance(sid);
+    eng.lockset().add_live_child(sid);
     // Join-then-create HB: record the parent's MUST joined digest at this
     // create point so the child's entry can inherit it. A parent join of T
     // before this create means T terminated before the child — the child's

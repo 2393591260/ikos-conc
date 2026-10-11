@@ -146,6 +146,9 @@ struct AccessRecord {
   /// "May have spawned ANY thread" — the create-edge HB check MUST NOT skip
   /// when this is set, since the parent may well have spawned the child.
   bool spawned_is_top = false;
+  // MAY direct children at this access; TOP cannot establish nonconcurrency.
+  std::unordered_set< std::uint64_t > live_children;
+  bool live_children_is_top = true;
   /// \brief True when this access is an atomic load/store (C11 `_Atomic` /
   /// LLVM atomic). Two atomic accesses never race per the C11 definition, so
   /// the destructor exempts a pair when BOTH sides are atomic.

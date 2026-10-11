@@ -1523,6 +1523,7 @@ public:
     // detection in the TRUE branch (see concurrent_semantics.hpp).
     if (this->_ctx.opts.enable_thread_modular) {
       on_comparison_cond_lock(*this, s);
+      on_comparison_live_children(*this, s);
     }
 
     const ScalarLit& left = this->_lit_factory.get_scalar(s->left());

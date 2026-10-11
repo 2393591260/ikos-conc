@@ -1011,6 +1011,14 @@ DataRaceChecker::~DataRaceChecker() {
   // (after the non-unique write duplication above).
   std::vector< std::unordered_set< std::string > > joined_names(
       this->_accesses.size());
+  std::vector< std::unordered_set< std::string > > inactive_names(this->_accesses.size());
+  // Wrapper-resolved start routines are absent from this syntactic creator
+  // map. Require coverage of every registered site before using its uniqueness.
+  std::unordered_set< std::uint64_t > covered_create_sites;
+  for (const auto& creation : this->_thread_creations) {
+    if (auto* call = dyn_cast< ar::CallBase >(creation.stmt))
+      covered_create_sites.insert(this->_ctx.concurrent_env.site_id(call));
+  }
   std::unordered_set< std::string > single_instance_threads{"main"};
   {
     auto thread_funcs = this->_ctx.concurrent_env.get_all_thread_functions();
@@ -1042,6 +1050,14 @@ DataRaceChecker::~DataRaceChecker() {
         bool is_creator =
             cit != this->_thread_creators.end() &&
             cit->second.count(this->_accesses[k].thread_id) != 0;
+        const auto& access = this->_accesses[k];
+        bool inactive = is_creator && cit->second.size() == 1 &&
+                        single_instance_threads.count(access.thread_id) &&
+                        !access.live_children_is_top;
+        for (auto sid : instances)
+          inactive &= covered_create_sites.count(sid) &&
+                      !access.live_children.count(sid);
+        if (inactive) inactive_names[k].insert(f->name());
         bool all = true;
         for (std::uint64_t sid : instances) {
           bool joined_it = joined.count(sid) != 0;
@@ -1128,6 +1144,10 @@ DataRaceChecker::~DataRaceChecker() {
           a.is_unique_thread) {
         continue;
       }
+      // No direct child can be live: this is before create OR after join,
+      // never a directional/transitive HB edge or a claim about grandchildren.
+      if (inactive_names[i].count(b.thread_id) ||
+          inactive_names[j].count(a.thread_id)) continue;
       // Happens-before: A fully joined B (ALL instances of B's function) ⇒
       // B terminated before A's continuation. Instance-level: joining tids[0]
       // alone does NOT suppress tids[1]'s instance (28/29/30-join-array FN).
@@ -2953,7 +2973,9 @@ void DataRaceChecker::check_extern_call_effects(
                      joined,
                      spawned,
                      spawned_instances,
-                     spawned_is_top});
+                     spawned_is_top,
+                     inv.second().get_live_children(),
+                     inv.second().live_children_is_top()});
   }
 
   // Non-thread-safe libc functions: they read-modify-write a process-wide
@@ -2988,7 +3010,9 @@ void DataRaceChecker::check_extern_call_effects(
                      joined,
                      spawned,
                      spawned_instances,
-                     spawned_is_top});
+                     spawned_is_top,
+                     inv.second().get_live_children(),
+                     inv.second().live_children_is_top()});
   }
 
   // mem* functions read their scalar (non-pointer) arguments too: memset's
@@ -3022,7 +3046,9 @@ void DataRaceChecker::check_extern_call_effects(
                          joined,
                          spawned,
                          spawned_instances,
-                         spawned_is_top});
+                         spawned_is_top,
+                         inv.second().get_live_children(),
+                         inv.second().live_children_is_top()});
       }
     }
   }
@@ -3079,6 +3105,8 @@ void DataRaceChecker::check_load(ar::Load* load,
                    this->snapshot_spawned_threads(inv),
                    this->snapshot_spawned_instances(inv),
                    this->snapshot_spawned_is_top(inv),
+                   inv.second().get_live_children(),
+                   inv.second().live_children_is_top(),
                    load->is_atomic(),
                    provenance,
                    /*private_init=*/false,
@@ -3164,6 +3192,8 @@ void DataRaceChecker::check_store(ar::Store* store,
                    this->snapshot_spawned_threads(inv),
                    this->snapshot_spawned_instances(inv),
                    this->snapshot_spawned_is_top(inv),
+                   inv.second().get_live_children(),
+                   inv.second().live_children_is_top(),
                    store->is_atomic(),
                    provenance,
                    /*private_init=*/false,

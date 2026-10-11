@@ -239,6 +239,104 @@ inline bool zero_return_guard_dominates(ar::CallBase* caller, ar::Load* load,
   return false;
 }
 
+// On every normal exit reachable after this creation, the returned value is
+// zero. Track the last assignment to each return operand; unknown definitions
+// and budgets reject the certificate, including a nonzero value set earlier.
+inline bool handle_creation_returns_zero(ar::Statement* creation) {
+  auto* code = creation->code();
+  unsigned budget = 8192;
+  bool found_return = false;
+  for (auto* returns : *code) for (auto* statement : *returns) {
+    auto* ret = dyn_cast< ar::ReturnValue >(statement);
+    if (ret == nullptr) continue;
+    found_return = true;
+    if (!ret->has_operand()) return false;
+    auto* constant = dyn_cast< ar::IntegerConstant >(ret->operand());
+    auto* variable = dyn_cast< ar::InternalVariable >(ret->operand());
+    if (constant == nullptr && variable == nullptr) return false;
+    std::unordered_map< ar::BasicBlock*, unsigned > seen;
+    std::vector< std::pair< ar::BasicBlock*, bool > > pending;
+    auto process = [&](ar::BasicBlock* block, bool zero, bool suffix) {
+      bool started = !suffix;
+      for (auto* current : *block) {
+        if (budget-- == 0) return false;
+        if (!started) {
+          if (current == creation) started = true;
+          continue;
+        }
+        if (variable != nullptr && current->result_or_null() == variable) {
+          auto* assign = dyn_cast< ar::Assignment >(current);
+          auto* value = assign ? dyn_cast< ar::IntegerConstant >(assign->operand()) : nullptr;
+          zero = value != nullptr && value->value().is_zero();
+        }
+        if (current == ret && !(constant ? constant->value().is_zero() : zero))
+          return false;
+        if (isa< ar::ReturnValue >(current)) return true;
+      }
+      for (auto it = block->successor_begin(); it != block->successor_end(); ++it)
+        pending.emplace_back(*it, zero);
+      return true;
+    };
+    if (!process(creation->parent(), false, true)) return false;
+    while (!pending.empty()) {
+      auto item = pending.back(); pending.pop_back();
+      unsigned mask = item.second ? 2u : 1u;
+      if (seen[item.first] & mask) continue;
+      seen[item.first] |= mask;
+      if (!process(item.first, item.second, false)) return false;
+    }
+  }
+  return found_return;
+}
+
+// A nonzero result excludes a once-only creation whose every normal post-create
+// return is zero. Historical spawned facts are deliberately not removed.
+template < typename E >
+void on_comparison_live_children(E& eng, ar::Comparison* cmp) {
+  if (cmp->predicate() != ar::Comparison::SINE &&
+      cmp->predicate() != ar::Comparison::UINE) return;
+  ar::Value* value = cmp->left();
+  auto* constant = dyn_cast< ar::IntegerConstant >(cmp->right());
+  if (constant == nullptr) {
+    constant = dyn_cast< ar::IntegerConstant >(cmp->left());
+    value = cmp->right();
+  }
+  if (constant == nullptr || !constant->value().is_zero()) return;
+  ar::CallBase* caller = nullptr;
+  for (unsigned depth = 0; depth < 64; ++depth) {
+    auto* variable = dyn_cast< ar::InternalVariable >(value);
+    if (variable == nullptr) return;
+    auto* definition = unique_def(variable);
+    if (auto* call = dyn_cast_or_null< ar::CallBase >(definition)) {
+      caller = call; break;
+    }
+    if (auto* copy = dyn_cast_or_null< ar::Assignment >(definition)) {
+      if (!same_zero_return_source(value, copy->operand())) return;
+      value = copy->operand();
+    } else if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
+      if (!same_zero_return_source(value, cast->operand())) return;
+      value = cast->operand();
+    } else return;
+  }
+  auto* target = caller ? dyn_cast< ar::FunctionPointerConstant >(caller->called()) : nullptr;
+  if (target == nullptr || target->function()->is_declaration() ||
+      !handle_statement_dominates(caller, cmp)) return;
+  auto* function = target->function();
+  auto& env = eng.ctx().concurrent_env;
+  if (!env.function_executes_at_most_once(function)) return;
+  auto* bundle = function->bundle();
+  for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it) {
+    if (!(*it)->type()->pointee()->is_integer()) continue;
+    auto* creation = single_handle_writer(*it);
+    if (creation == nullptr || creation->code()->function_or_null() != function ||
+        !handle_creation_returns_zero(creation)) continue;
+    auto sid = env.site_id(creation);
+    auto* child = env.site_func(sid);
+    if (child != nullptr && env.thread_instances_are_static(child->name()))
+      eng.lockset().remove_live_child(sid);
+  }
+}
+
 // Certify a completed unique writer, including a caller's zero-return guard.
 // Failure leaves ordinary may-memory/interference and UNKNOWN unchanged.
 template < typename E >

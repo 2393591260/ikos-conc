@@ -457,3 +457,13 @@ init、每个本地step、完整环境interference闭包和依赖失效合同；
 契约；条件创建/join在合并点丢失关系仍需要独立活跃实例摘要，保护release摘要也未
 落地。无新冻结TP，无加速结论；八组反馈零收益及第一版执行证据保持原版本范围。
 证据：[handle-origin](artifacts/ai-precision-2026-10-11/handle-origin/summary.json)。
+
+### 9.8 不并发证书与方向HB的区别（2026-10-11）
+
+优化计划§9.38的新MAY活跃直接子实例摘要恢复5项TN，当前TP106/TN677/U245。
+“父在create前或join后”两者都排除竞争，但不能确定统一HB方向；实现把这一证书
+限制在pair排除，未输出为BMC同步边或退出join摘要。这可作为AI向BMC减少可疑对的
+共同语义改进，不能计作BMC→AI不变量收益。候选计数降低也不自动证明端到端加速；
+本次无新TP/性能消融，八组既有反馈消融和第一版模型证据保持原范围。release端值
+及嵌套保护干扰仍是后续机制，现有lock_partition不是release摘要。
+证据：[live-children](artifacts/ai-precision-2026-10-11/live-children/summary.json)。

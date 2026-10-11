@@ -493,3 +493,16 @@ AR执行独立ACCEPT。完整1029为TP106/TN672/U250/FP0/FN0/error1，仅3项安
 恢复。标签零误判不等于普遍sound证明；第一版134条执行仍只支撑原版本所选模型。
 条件join的合并后关系和一般opaque来源仍有明确精度边界。
 证据：[handle-origin](artifacts/ai-precision-2026-10-11/handle-origin/summary.json)。
+
+### 7.5 条件活跃实例的增量验收（2026-10-11）
+
+优化计划§9.38保留历史spawn与MUST join，另以MAY live direct-child的并集覆盖所有
+入边。精确join只有全动态实例覆盖时删除；非零返回路径排除创建须证明创建后全部
+正常返回为零，且创建者/句柄来源唯一。TOP、重复实例、未解析start或静态creator
+覆盖不全保守。空live仅在唯一直接创建者关系中证明不并发，不是方向确定的HB，
+不能传入transitive join或杀死孤儿后代。入口初始化与普通TOP重置已分开。
+92项双ABI/双模式、22条定向FALSE的所选AR执行、相关旧回归及冻结1029配对通过，
+当前TP106/TN677/U245/FP0/FN0/error1；新增5项TN，没有新冻结TP。两个container
+入口仍有子/子锁region候选，不由空live排除；一般实例/失败/来源覆盖界限仍保留。
+标签零误判是有限观察；第一版134条执行仍是原版本证据。
+证据：[live-children](artifacts/ai-precision-2026-10-11/live-children/summary.json)。

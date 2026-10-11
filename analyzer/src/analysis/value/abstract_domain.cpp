@@ -136,11 +136,13 @@ AbstractDomain make_bottom_abstract_value(Context& ctx) {
 }
 
 AbstractDomain make_initial_abstract_value(Context& ctx) {
+  auto threads = LocksetAbstractDomain::top();
+  threads.initialize_live_children();
   return AbstractDomain(
       /* first = */ DataAbstractDomain(make_top_memory_abstract_value(ctx),
                                        make_bottom_memory_abstract_value(ctx),
                                        make_bottom_memory_abstract_value(ctx)),
-      /* second = */ LocksetAbstractDomain::top());
+      /* second = */ std::move(threads));
 }
 
 } // end namespace value
