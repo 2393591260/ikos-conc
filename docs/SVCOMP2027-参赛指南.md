@@ -42,7 +42,7 @@ submission 页面已不要求另开 category-structure MR；类别仍需在 FM-T
 | 提交 | 最近实际观测 | 下一次须核对 |
 | --- | --- | --- |
 | [FM-Tools !1147](https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/merge_requests/1147) | 10/11：opened；失败 jobs 为 `stuck_pending_no_matching_runners`，smoke 跳过 | runner 恢复后的实际日志、是否合并；当前不能判为工具失败或通过 |
-| [BenchExec #1324](https://github.com/sosy-lab/benchexec/pull/1324) | 10/9：open，15 checks passed，无 review | PR 内容是否与本地相同、集成测试、review/merge |
+| [BenchExec #1324](https://github.com/sosy-lab/benchexec/pull/1324) | 10/11：仍 open；10/9 曾观察到 15 checks passed | 本地 adapter 修复须同步到 PR，重新集成测试、review/merge |
 | [schema !1112](https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/merge_requests/1112) | 已于 UTC 10/10 20:46 合并（上海 10/11 04:46） | 用合并后的 schema 校验本地和远端；不再等待该 MR |
 | category-structure !677 | 当时未取得其状态 | 已有 MR 是否需调整由组织者确认；它不再是当时页面必需的新提交 |
 
@@ -53,8 +53,8 @@ submission 页面已不要求另开 category-structure MR；类别仍需在 FM-T
   字段能写入本地不证明远端 schema/CI 已接受。
 - [ikos-conc.py](../benchexec/tools/ikos-conc.py)：从任务传递数据模型，运行 bundled
   `svcomp_witness.py`，映射 SAFE/definitely UNSAFE/UNKNOWN，并拒绝非零退出或超时作为正常结果。
-  当前 `find_executable("ikos")` 未显式指定 `bin`；归档根定位须实测。
-  当前未明确拒绝其他属性；只注册 no-data-race 不等于适配器具备通用属性支持。
+  10/11 修复：从归档根定位 `bin/ikos`，搬运 bin/lib/libexec/llvm/include；
+  明确拒绝其他属性、不支持的数据模型和多输入，任务数据模型优先于重复命令行选项。
 - [打包脚本](../svcomp/package.py)、[见证包装器](../svcomp_witness.py)、
   [本地运行模拟](../svcomp/bench-exec-sim.py)。模拟不能替代官方 runner。
 
@@ -62,6 +62,12 @@ submission 页面已不要求另开 category-structure MR；类别仍需在 FM-T
 不需要把整个 `/usr/lib` 放进归档。不同现存 adapter 的清单不同：CPAchecker 明列 bin/JAR/native/config，
 Goblint/ESBMC 当时没有额外清单。IKOS 只返回入口在按 program_files 搬运时可能不足；
 完整 FM 容器内运行是否失败则须实际检查。自带 APRON、LLVM/Z3 与系统库要保持 ABI/版本一致。
+
+本地 adapter 的真实 BenchExec 接口测试 5 组通过，`test_tool_info` 确认包根定位与搬运路径；
+工具源码/安装 Python 一致，构建与 install 同步后两个模式的冻结集结果逐项复现既有基线。
+依据见 [M1 直接分析配对](artifacts/svcomp-m1-2026-10-11/direct-baseline.json)、
+[双架构 P0 观察](artifacts/svcomp-m1-2026-10-11/p0-observations.json)。
+这些检查尚不代表新 ZIP、源 witness 或官方 CI 已通过。
 
 新 jury member 必须具有贡献身份并向组织者报备。用户已邮件回复 GitLab 用户名。
 Jan Strejček 的 10/9 回复明确：**10/12 前所需注册动作已完成；Dirk 将处理 CI；下一节点是 10/20 前 MR 合并。**
