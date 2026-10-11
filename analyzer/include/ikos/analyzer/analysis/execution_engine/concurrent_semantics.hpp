@@ -637,7 +637,9 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
       core::lockset::CondPolarity::HELD_IF_NONZERO;
   bool conditional_lock = false;
   ar::BasicBlock* branch_false_bb = nullptr; // false-branch block (for replay)
-  if (!read_lock && !trylock) {
+  auto* guard_function = call->code()->function_or_null();
+  if (!read_lock && !trylock && guard_function != nullptr &&
+      eng.ctx().concurrent_env.function_executes_at_most_once(guard_function)) {
     ar::BasicBlock* bb = call->parent();
     if (bb != nullptr && bb->num_predecessors() == 1) {
       ar::BasicBlock* pred = *bb->predecessor_begin();
@@ -686,21 +688,18 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
           // sibling `i != 0` (ne) ⇒ lock held iff i == 0 ⇒ ZERO.
           bool held_iff_nonzero = pred_eq;
           if (held_iff_nonzero) {
-            // NONZERO branch lock: canonicalize the guard (peel the affine
-            // i++/i-- chain so `if (i-1)` after `i++` resolves to `i`), and
-            // store the base AR variable pointer. The checker matches it
-            // against the access's OWN branch guard by SSA identity
-            // (04-mutex_17-ps_add1_nr.c / 04-mutex_07-ps_nr.c).
-            LinearIndex lin;
-            if (resolve_linear_index(cmp->left(), lin) && lin.coeff == 1 &&
-                lin.const_term == 0) {
-              branch_guard = lin.var_id;
+            // Only a fixed value's zero-preserving conversions can identify
+            // this predicate with the access guard. Truncation and arithmetic
+            // are distinct, and a static AR variable is not a dynamic call ID.
+            branch_guard = nonzero_guard_identity(cmp->left());
+            if (branch_guard != 0) {
               branch_polarity = core::lockset::CondPolarity::HELD_IF_NONZERO;
               conditional_lock = true;
             }
           } else {
             const Literal& g = eng.lit_factory().get(cmp->left());
-            if (g.is_scalar() && g.scalar().is_var()) {
+            if (g.is_scalar() && g.scalar().is_var() &&
+                nonzero_guard_identity(cmp->left()) != 0) {
               branch_guard = ikos::core::IndexableTraits< Variable* >::index(
                   g.scalar().var());
               branch_polarity = core::lockset::CondPolarity::HELD_IF_ZERO;

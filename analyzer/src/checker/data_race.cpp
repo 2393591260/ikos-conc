@@ -267,11 +267,14 @@ bool bmc_shared_independent_control(ar::Code* code) {
 }
 
 /// \brief Canonical branch guard of a statement directly guarded by an
-/// `if (guard)` branch: the base AR variable pointer (affine-peeled), or 0
+/// `if (guard)` branch: a fixed, zero-equivalent AR variable identity, or 0
 /// when the statement is not guarded this way. Mirrors the lock-side branch
 /// detection in numerical.hpp: the access sits in the TRUE branch, and the
 /// sibling (false branch) carries the Comparison `guard == 0`.
-std::uint64_t branch_guard_of(ar::Statement* stmt) {
+std::uint64_t branch_guard_of(ar::Statement* stmt, Context& ctx) {
+  auto* function = stmt->code()->function_or_null();
+  if (function == nullptr ||
+      !ctx.concurrent_env.function_executes_at_most_once(function)) return 0;
   ar::BasicBlock* bb = stmt->parent();
   if (bb == nullptr || bb->num_predecessors() != 1) {
     return 0;
@@ -313,12 +316,7 @@ std::uint64_t branch_guard_of(ar::Statement* stmt) {
     default:
       return 0;
   }
-  LinearIndex lin;
-  if (resolve_linear_index(cmp->left(), lin) && lin.coeff == 1 &&
-      lin.const_term == 0) {
-    return lin.var_id;
-  }
-  return 0;
+  return nonzero_guard_identity(cmp->left());
 }
 
 /// \brief Resolve a pointer to the stable_id of its underlying global, or 0
@@ -2805,7 +2803,7 @@ void DataRaceChecker::check_load(ar::Load* load,
                    call_context,
                    AccessKind::Read,
                    std::move(pts),
-                   this->snapshot_locks(inv, branch_guard_of(load)),
+                   this->snapshot_locks(inv, branch_guard_of(load, this->_ctx)),
                    this->snapshot_read_locks(inv),
                    off,
                    width,
@@ -2889,7 +2887,7 @@ void DataRaceChecker::check_store(ar::Store* store,
                    call_context,
                    AccessKind::Write,
                    std::move(pts),
-                   this->snapshot_locks(inv, branch_guard_of(store)),
+                   this->snapshot_locks(inv, branch_guard_of(store, this->_ctx)),
                    this->snapshot_read_locks(inv),
                    off,
                    width,

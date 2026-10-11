@@ -29,6 +29,8 @@
 #include <ikos/core/domain/concurrent_global_env.hpp>
 
 #include <cstdint>
+#include <unordered_set>
+#include <vector>
 
 namespace ikos {
 namespace analyzer {
@@ -65,6 +67,58 @@ inline ar::Statement* unique_def(ar::InternalVariable* iv) {
   return found;
 }
 
+/// Identity of a fixed integer's zero/nonzero predicate. This is a proof
+/// helper for conditional MUST locks, unlike the symbolic-index hint below.
+/// Extensions and same-width copies preserve zero; truncation and arithmetic
+/// remain distinct values. A definition in a cycle or a lowered phi can change
+/// while an older conditional fact is live and therefore has no such identity.
+/// The caller must additionally prove that the containing function executes
+/// at most once: AR variable identities do not distinguish repeated calls.
+inline std::uint64_t nonzero_guard_identity(ar::Value* value) {
+  for (unsigned depth = 0; depth < 32; ++depth) {
+    auto* variable = dyn_cast< ar::InternalVariable >(value);
+    if (variable == nullptr || !variable->type()->is_integer()) return 0;
+    auto* definition = unique_def(variable);
+    if (definition == nullptr) {
+      // An unassigned parameter is fixed within this single activation; a
+      // multi-definition phi is not. unique_def alone cannot distinguish them.
+      if (variable->code() == nullptr) return 0;
+      for (auto* block : *variable->code()) for (auto* statement : *block)
+        if (statement->result_or_null() == variable) return 0;
+      return reinterpret_cast< std::uint64_t >(variable);
+    }
+    auto* block = definition->parent();
+    if (block == nullptr) return 0;
+    std::vector< ar::BasicBlock* > pending(block->successor_begin(), block->successor_end());
+    std::unordered_set< ar::BasicBlock* > visited;
+    while (!pending.empty()) {
+      auto* next = pending.back(); pending.pop_back();
+      if (next == block || visited.size() >= 256) return 0;
+      if (!visited.insert(next).second) continue;
+      pending.insert(pending.end(), next->successor_begin(), next->successor_end());
+    }
+    ar::Value* operand = nullptr;
+    if (auto* assignment = dyn_cast< ar::Assignment >(definition)) {
+      operand = assignment->operand();
+    } else if (auto* cast = dyn_cast< ar::UnaryOperation >(definition)) {
+      if (cast->op() == ar::UnaryOperation::SExt ||
+          cast->op() == ar::UnaryOperation::ZExt ||
+          cast->op() == ar::UnaryOperation::Bitcast) operand = cast->operand();
+    }
+    if (operand == nullptr || !operand->type()->is_integer())
+      return reinterpret_cast< std::uint64_t >(variable);
+    auto* source = cast< ar::IntegerType >(operand->type());
+    auto* target = cast< ar::IntegerType >(variable->type());
+    if (auto* operation = dyn_cast< ar::UnaryOperation >(definition)) {
+      if (operation->op() == ar::UnaryOperation::Bitcast &&
+          source->bit_width() != target->bit_width()) return 0;
+      if (source->bit_width() > target->bit_width()) return 0;
+    } else if (source->bit_width() != target->bit_width()) return 0;
+    value = operand;
+  }
+  return 0;
+}
+
 /// \brief Base pointer of the PointerShift that defines `ptr` (container_of
 /// inverse), or nullptr when `ptr` is not the result of a PointerShift.
 inline ar::Value* pointershift_base(ar::Value* ptr) {
@@ -88,10 +142,11 @@ inline ar::Value* pointershift_base(ar::Value* ptr) {
 
 /// \brief Canonicalize an AR index value into a linear form
 /// `coeff * var + const_term` over a SINGLE canonical variable. Returns false
-/// when the value is not a clean affine form. Value-preserving casts
-/// (sext/zext/trunc/bitcast/ptr-int) and constant add/sub/mul are folded; a
-/// leaf (phi, load, call result) becomes `1*var + 0`. Bailing is the sound
-/// direction: the caller leaves the lock/data un-tagged (FP, never FN).
+/// when the value is not a clean affine form. Casts and constant add/sub/mul
+/// are folded as symbolic hints, without a machine-width preservation proof;
+/// a leaf (phi, load, call result) becomes `1*var + 0`. These hints must not
+/// establish MUST lock or guard equality: use nonzero_guard_identity for
+/// zero/nonzero predicates and full byte expressions for address proofs.
 inline bool resolve_linear_index(ar::Value* v, LinearIndex& out) {
   auto* iv = dyn_cast< ar::InternalVariable >(v);
   if (iv == nullptr) {

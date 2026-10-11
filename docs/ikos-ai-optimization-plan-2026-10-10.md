@@ -13,7 +13,7 @@
 
 本节更新后续优先级；§2–8保留原设计与理论依据，§9保留各次实验的历史快照。
 不能把历史“尚未修复”、旧候选池或旧TN当作当前状态，也不能把设计项全部当作必须实现的大改。
-代码基线 `25ef14b`，最新[配对证据](artifacts/ai-precision-2026-10-11/affine-mutex/summary.json)：
+当前为§9.27条件锁修复，最新[配对证据](artifacts/ai-precision-2026-10-11/conditional-guard/summary.json)：
 冻结1029项ILP32，AI TN658/UNKNOWN370；BMC TP104/TN658/UNKNOWN266，均FP0/FN0/error1。
 全量与定向双ABI验证的范围分别记录，不称已完成双ABI全量。
 
@@ -21,12 +21,12 @@
 
 | 工作 | 当前状态 | 不能据此推断的结论 |
 | --- | --- | --- |
-| 第一份审查的F1–F6及后续已复现FN | 已修复或以保守边界封堵，回归证据见§9 | 不等于实现完整逃逸图、句柄来源域或证明全部SAFE规则 |
+| 第一份审查的F1–F6及后续已复现FN | 原F1–F6及条件锁已修复；新发现整数表示指针发布FN待修 | 不等于实现完整逃逸图、句柄来源域或证明全部SAFE规则 |
 | 剩余正确性审查义务 | 尚缺逐规则、逐合同的整体验收记录 | 不能写成已全部结案；也不能把未作普遍证明写成还有已复现FN未修 |
 | 第二份计划的精度恢复 | 已进入实施；最近两轮TN654→658 | 未实现完整PBR/digest，也未证实加速 |
 | 第三份双向反馈研究 | 新的反向SAFE/归纳查询仍未实现 | 仿射地址的原生充分条件和离线数学核对不等于BMC反馈已落地 |
 
-当前有限证据中没有登记为“已复现而未处理”的FN；这不是一次新的全面源码审计。
+当前有已复现而未处理的整数表示指针发布FN，见§9.27；其修复优先于精度恢复。
 **工程P0出口与全语言soundness证明分开**：先对明确支持的范围逐项验收，
 前提不能覆盖的功能保留UNKNOWN；不以完成全项目形式化证明作为无限期停止优化的条件。
 优化中新发现具体FN，立即优先修复并独立提交，不能以“已进入精度阶段”为由推迟。
@@ -55,8 +55,8 @@
 | 4 | 句柄来源与join相关性，以§9.23全局句柄、§9.24双槽对照为入口，机制分开提交 | 覆盖初始化、本地/干扰来源、may-write及动态实例；错误join目标仍不能排除竞争。一个机制无一般证明则记录边界，不凭数值端点恢复 |
 | 5 | 根据剩余逐文件诊断选择保护摘要、字段/来源干扰或关系域，再做性能优化 | 只有明确缺口才引入对应机制；每轮有正反变体、同配置全量变化及代价记录，收益不足不扩成通用框架 |
 
-这些是后续任务，**本次文档调整没有完成表中1–5，也没有改变分析器行为**。
-已有纯文档修改只核对证据、链接和diff；有语义变化才按§6做build/install/回归/全量并立即提交。
+表中任务正在实施，具体完成状态以§9的逐机制记录为准。
+纯文档修改只核对证据、链接和diff；有语义变化按§6做build/install/回归/全量并立即提交。
 
 以§9.23的140项参考池逐项关联§9.26的最新paired.json：剩余safe-label UNKNOWN为135项，
 其中正常Goblint TRUE入口41项，另有UNKNOWN25、UNSUPPORTED33、TIMEOUT34、ERROR2。
@@ -1288,3 +1288,37 @@ FP/FN0，error1仍为既有 nsc-ircc timeout。build/install一致。全量为�
 [地址模型分歧](artifacts/ai-precision-2026-10-11/affine-mutex/case7-reference-layout.json)、
 [数学核对](artifacts/ai-precision-2026-10-11/affine-mutex/lemma-results.json)、
 [前端边界](artifacts/ai-precision-2026-10-11/affine-mutex/byte-copy-boundary.json)。
+
+
+### 9.27 正确性：条件锁守卫的零值等价与动态激活（2026-10-11）
+
+复现两条独立的假MUST持锁来源：`if ((unsigned char)i) lock(m); if (i) x=2`
+在i=256时不持锁，旧仿射剥层却把截断前后当作同一守卫；同一helper用不同实参调用时，
+旧静态AR变量身份又把前次条件锁关联到后次访问。两者均可把真实竞争过滤为SAFE。
+
+新增`nonzero_guard_identity`只沿保零的sext/zext及等宽赋值/bitcast规范化；截断、算术保留
+各自表达式身份。多定义phi、循环内可重访定义、扫描预算耗尽不提供证明。条件锁的建立与
+checker消费还要求包含函数可证至多执行一次；静态SSA地址不是动态调用实例。普通实际持锁
+仍按原锁域处理。旧`resolve_linear_index`只提供符号提示，其无机器宽度证明的代数化结果
+不能作为MUST guard/lock相等依据，注释同步更正。
+
+48次双ABI/双模式（LP64改名）前后对照中，16次旧FN全部消除；安全重复helper对照可能保守
+退UNKNOWN。24次Dartagnan参考（7竞争/5安全×2ABI）与源码推理一致，PASS只作有界参考。
+新增确定FALSE的执行均独立AR ACCEPT。既有审查76、相对锁52、仿射锁56、字段/rwlock40、
+属性36及旧BMC20次通过，build/install相同。
+
+完整1029顺序配对的总数不变：AI TN658/U370；BMC TP104/TN658/U266，FP/FN0/error1。
+但逐文件并非不变：`04-mutex_17-ps_add1_nr.c` SAFE→UNKNOWN（不再凭无宽度证明的算术
+等价建立条件锁）；`43_NetBSD_sysmon_power_sliced-pthread.i` UNKNOWN→SAFE。
+后者不满足单次激活门后回到普通实际持锁路径；仍需独立完善“执行lock分支同时保留MUST锁”
+的精度语义。不能用总计抵消掩盖这两项变化。
+
+审查中另复现整数表示指针发布FN：stack/TLS/heap、整数memcpy发布、整数字节复制回指针
+五类共20次旧SAFE。指针转整数未撤销private，整数转指针又用AbsoluteZero+offset丢失对象
+别名；单纯记录escape未必覆盖无显式inttoptr的byte-copy。此独立问题尚未包含在本提交，
+下一阶段优先修复，不宣称当前已无开放FN。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/conditional-guard/summary.json)、
+[逐文件变化](artifacts/ai-precision-2026-10-11/conditional-guard/transitions.json)、
+[最小变体](review-repros/ai-conditional-guard/guard.c)、
+[修复前后](artifacts/ai-precision-2026-10-11/conditional-guard/fixture-transitions.json)。
