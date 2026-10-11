@@ -1,93 +1,186 @@
 #!/usr/bin/env python3
-"""模拟 BenchExec 批量评测：用 tool-info 模块的 standalone 入口跑整个基准集。
+"""Exercise the real BenchExec tool API over frozen race tasks.
 
-svcomp_race_test.py 是直接跑 ikos；本脚本走 benchexec/tools/ikos-conc.py 的
-__main__（等价于 BenchExec 调 Tool.cmdline() + determine_result() 的路径：
-svcomp_witness.py wrapper + --format=json + witness 生成），更贴近 SV-COMP 里
-BenchExec 实际怎么调用我们。目的：确认 tool-info 集成路径和直接跑 ikos 得到
-的判决一致（TP/FP/TN/FN 对得上）。
-"""
+Uses per-task working directories and a process-group wall timeout. It does
+not replace official cgroup resource accounting or witness validation. Run
+with a Python environment containing BenchExec and PyYAML. Raw logs default
+to a temporary directory; keep compact summary.json/results.json as evidence."""
+
 import argparse
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import signal
+import tempfile
 import subprocess
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import svcomp_race_test as base  # 复用任务扫描
+import yaml
+from benchexec import util
+from benchexec.tools.template import BaseTool2
 
-TOOL_INFO = (Path(__file__).resolve().parent.parent /
-             "benchexec" / "tools" / "ikos-conc.py")
-IKOS = (Path(__file__).resolve().parent.parent /
-        "install" / "bin" / "ikos")
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+import svcomp_race_test as base
 
-# tool-info standalone 输出的三种（见 ikos-conc.py __main__ 的 print）
-VERDICT_MAP = {
-    "TRUE": base.VERDICT_SAFE,
-    "FALSE(no-data-race)": base.VERDICT_RACE,
-    "UNKNOWN": base.VERDICT_UNKNOWN,
-}
+spec = importlib.util.spec_from_file_location(
+    "ikos_conc_current", ROOT / "benchexec/tools/ikos-conc.py"
+)
+adapter = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(adapter)
 
 
-def run_one(src, data_model):
-    cmd = [sys.executable, str(TOOL_INFO), str(src),
-           "--data-model", data_model, "--ikos", str(IKOS), "--timeout", "120"]
-    try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=150)
-        lines = [l for l in proc.stdout.strip().splitlines() if l.strip()]
-        last = lines[-1] if lines else ""
-        return VERDICT_MAP.get(last, base.VERDICT_UNKNOWN)
-    except subprocess.TimeoutExpired:
-        return base.VERDICT_UNKNOWN
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def main(argv=None):
+def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("svbench", type=Path, nargs="?",
-                    default=Path("/home/ruan/sv-benchmarks-2026"))
-    ap.add_argument("--jobs", type=int, default=8)
+    ap.add_argument(
+        "svbench", type=Path, nargs="?", default=Path("/home/ruan/sv-benchmarks-2026")
+    )
+    ap.add_argument("--ikos", type=Path, default=ROOT / "install/bin/ikos")
+    ap.add_argument(
+        "--out",
+        type=Path,
+        help="Raw logs and JSON evidence; default: a new temporary directory",
+    )
+    ap.add_argument("--timeout", type=int, default=30)
+    ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--limit", type=int, default=0)
-    args = ap.parse_args(argv)
-
+    args = ap.parse_args()
+    if args.out is None:
+        args.out = Path(tempfile.mkdtemp(prefix="ikos-adapter-sweep-"))
+    args.out = args.out.resolve()
+    args.out.mkdir(parents=True, exist_ok=True)
+    wrapper_hash = sha(args.ikos.resolve().parent / "svcomp_witness.py")
+    bench = args.svbench.resolve()
     tasks = []
-    for d in base.CONCURRENCY_DIRS:
-        dd = args.svbench / "c" / d
-        if not dd.is_dir():
-            continue
-        for yml in sorted(dd.glob("*.yml")):
-            t = base.parse_task(yml)
-            if t:
-                tasks.append((yml, *t))
+    for directory in base.CONCURRENCY_DIRS:
+        for path in sorted((bench / "c" / directory).glob("*.yml")):
+            parsed = base.parse_task(path)
+            if parsed:
+                tasks.append((path, *parsed))
     tasks.sort(key=lambda t: str(t[0]))
     if args.limit:
         tasks = tasks[: args.limit]
-    print(f"Found {len(tasks)} no-data-race tasks", file=sys.stderr)
 
-    def work(t):
-        yml, src, expected, dm = t
-        return (str(src), expected, dm, run_one(src, dm))
+    def work(item):
+        task_yaml, source, expected, model = item
+        source = source.resolve()
+        data = yaml.safe_load(task_yaml.read_text())
+        prop = next(
+            p
+            for p in data["properties"]
+            if p["property_file"].endswith("no-data-race.prp")
+        )
+        property_file = (task_yaml.parent / prop["property_file"]).resolve()
+        task = BaseTool2.Task.with_files(
+            [str(source)], property_file=str(property_file), options=data["options"]
+        )
+        tool = adapter.Tool()
+        command = tool.cmdline(str(args.ikos.resolve()), [], task, None)
+        workdir = args.out / "raw" / (source.stem + "-" + sha(source)[:8])
+        workdir.mkdir(parents=True, exist_ok=True)
+        start = time.perf_counter()
+        timed_out = False
+        proc = subprocess.Popen(
+            command,
+            cwd=workdir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        )
+        try:
+            stdout, stderr = proc.communicate(timeout=args.timeout)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            os.killpg(proc.pid, signal.SIGKILL)
+            stdout, stderr = proc.communicate()
+        elapsed = time.perf_counter() - start
+        output = stdout + stderr
+        (workdir / "output.log").write_text(output)
+        code = (
+            util.ProcessExitCode.create(value=proc.returncode)
+            if proc.returncode >= 0
+            else util.ProcessExitCode.create(signal=-proc.returncode)
+        )
+        run = BaseTool2.Run(
+            command,
+            code,
+            BaseTool2.RunOutput(output.splitlines(True)),
+            "walltime" if timed_out else None,
+        )
+        verdict = tool.determine_result(run)
+        observed = {
+            "true": base.VERDICT_SAFE,
+            "false": base.VERDICT_RACE,
+            "unknown": base.VERDICT_UNKNOWN,
+        }.get(verdict, "Error (timeout)" if timed_out else "Error (unrecognized)")
+        if proc.returncode != 0 and not timed_out:
+            observed = "Error (exit %d)" % proc.returncode
+        witness = workdir / "witness.yml"
+        return dict(
+            task=str(source.relative_to(bench)),
+            yaml=str(task_yaml.relative_to(bench)),
+            expected=expected,
+            model=model,
+            source_sha256=sha(source),
+            yaml_sha256=sha(task_yaml),
+            property_sha256=sha(property_file),
+            command=command,
+            returncode=proc.returncode,
+            timed_out=timed_out,
+            adapter_verdict=verdict,
+            observed=observed,
+            wall_seconds=round(elapsed, 4),
+            output_bytes=len(output.encode()),
+            witness_sha256=sha(witness) if witness.exists() else None,
+            raw_directory=str(workdir),
+        )
 
     rows = []
-    with ThreadPoolExecutor(max_workers=args.jobs) as ex:
-        futs = [ex.submit(work, t) for t in tasks]
-        for fut in as_completed(futs):
-            rows.append(fut.result())
-
-    tp = fp = tn = fn = unk = 0
-    for path, expected, dm, v in rows:
-        if v == base.VERDICT_RACE and expected == base.VERDICT_RACE:
-            tp += 1
-        elif v == base.VERDICT_RACE and expected == base.VERDICT_SAFE:
-            fp += 1
-        elif v == base.VERDICT_SAFE and expected == base.VERDICT_SAFE:
-            tn += 1
-        elif v == base.VERDICT_SAFE and expected == base.VERDICT_RACE:
-            fn += 1
+    with ThreadPoolExecutor(max_workers=args.jobs) as executor:
+        for future in as_completed([executor.submit(work, t) for t in tasks]):
+            rows.append(future.result())
+            if len(rows) % 100 == 0:
+                print("completed", len(rows), "/", len(tasks), flush=True)
+    if sha(args.ikos.resolve().parent / "svcomp_witness.py") != wrapper_hash:
+        raise RuntimeError(
+            "Wrapper changed during the sweep; results cannot identify one version"
+        )
+    rows.sort(key=lambda r: r["task"])
+    counts = dict(tp=0, fp=0, tn=0, fn=0, unknown=0, error=0)
+    for r in rows:
+        v, e = r["observed"], r["expected"]
+        if v.startswith("Error"):
+            key = "error"
+        elif v == base.VERDICT_UNKNOWN or e == base.VERDICT_UNKNOWN:
+            key = "unknown"
+        elif v == base.VERDICT_RACE:
+            key = "tp" if e == v else "fp"
         else:
-            unk += 1
-
-    print(f"TP={tp} FP={fp} TN={tn} FN={fn} unknown={unk}")
-    print(f"score = TP*1 + TN*2 = {tp + tn * 2}")
+            key = "tn" if e == v else "fn"
+        counts[key] += 1
+    summary = dict(
+        counts=counts,
+        tasks=len(rows),
+        timeout=args.timeout,
+        jobs=args.jobs,
+        isolation="per-task working directory and process-group wall timeout; no cgroup accounting",
+        analyzer_sha256=sha(args.ikos.parent / "ikos-analyzer"),
+        wrapper_sha256=wrapper_hash,
+        adapter_sha256=sha(ROOT / "benchexec/tools/ikos-conc.py"),
+        max_output_bytes=max((r["output_bytes"] for r in rows), default=0),
+    )
+    (args.out / "results.json").write_text(json.dumps(rows, indent=2) + "\n")
+    (args.out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    print(json.dumps(summary, indent=2))
 
 
 if __name__ == "__main__":

@@ -56,7 +56,7 @@ submission 页面已不要求另开 category-structure MR；类别仍需在 FM-T
   10/11 修复：从归档根定位 `bin/ikos`，搬运 bin/lib/libexec/llvm/include；
   明确拒绝其他属性、不支持的数据模型和多输入，任务数据模型优先于重复命令行选项。
 - [打包脚本](../svcomp/package.py)、[见证包装器](../svcomp_witness.py)、
-  [本地运行模拟](../svcomp/bench-exec-sim.py)。模拟不能替代官方 runner。
+  [本地接口回归](../svcomp/bench-exec-sim.py)。它实际调用 Tool.cmdline/determine_result，逐任务隔离输出并区分 UNKNOWN、超时和非零退出；没有 cgroup 资源计量，不能替代官方 runner。
 
 `required_ubuntu_packages` 是系统包安装声明；`program_files()`/`REQUIRED_PATHS` 是工具搬运清单。
 不需要把整个 `/usr/lib` 放进归档。不同现存 adapter 的清单不同：CPAchecker 明列 bin/JAR/native/config，
@@ -67,7 +67,10 @@ Goblint/ESBMC 当时没有额外清单。IKOS 只返回入口在按 program_file
 工具源码/安装 Python 一致，构建与 install 同步后两个模式的冻结集结果逐项复现既有基线。
 依据见 [M1 直接分析配对](artifacts/svcomp-m1-2026-10-11/direct-baseline.json)、
 [双架构 P0 观察](artifacts/svcomp-m1-2026-10-11/p0-observations.json)。
-这些检查尚不代表新 ZIP、源 witness 或官方 CI 已通过。
+固定的新验证包也已通过真实 Tool API 的 1029 项回归，与直接分析逐项一致：TP=109、TN=678、UNKNOWN=241、1 项超时，FP/FN=0。
+依据：[包入口全量](artifacts/svcomp-m1-2026-10-11/packaged-baseline.json)、[逐任务](artifacts/svcomp-m1-2026-10-11/packaged-paired.json)。
+验证包支持含空格路径和项目外 cwd；仅声明依赖的新 Ubuntu 24.04 断网/只读容器通过双架构 smoke/P0。
+这些检查尚不代表源 witness 或官方 CI 已通过；最终交付 ZIP 的源码身份另行固定。
 
 新 jury member 必须具有贡献身份并向组织者报备。用户已邮件回复 GitLab 用户名。
 Jan Strejček 的 10/9 回复明确：**10/12 前所需注册动作已完成；Dirk 将处理 CI；下一节点是 10/20 前 MR 合并。**
@@ -126,10 +129,19 @@ XML 使用 BenchExec 当前 schema 与任务文件列表；不要沿用旧报告
 
 正式格式：[SV-Witnesses 2.2](https://zenodo.org/records/21993990)，2026-08-18 发布；
 当时下载 ZIP MD5 `a1339c68eade4f5a194f67dc2342a1fd`。
-本地 2.2 生成器在多线程创建及多 target 上仍须严格核对实际实例与源位置。
-当前 `build_witness` 按入口函数名及源顺序创建列表分配 ID，同入口取 `created[:2]`；
-嵌套/重复创建的实际动态实例需与 BMC 导出证据核对，不能直接用函数名猜测。
-旧包装修正省略有争议的 function_enter 列号，不等于多行调用、宏、`.i`→`.c` 映射都正确。
+10/11 修复生成器：从 `info.counterexample` 的动态 trace、`creator_trace/creator_step` 和时钟顺序
+建立注册与目标实例；包括此前已执行的非候选线程创建，不按入口函数名或源文件顺序猜 ID。
+`thread_id` 位于 **waypoint 层**，按固定 release 中第 k 个注册 waypoint 编号；创建 waypoint 属于创建者。
+复用实际 IKOS 的 Clang 配置/数据模型，用 AST 提取创建调用右括号和目标 full expression 的精确位置，
+将 debug 的 presumed 位置映射回输入文件物理行/列；`.i` 不改换为同名 `.c`。
+无法证明的宏端点、聚合初始化、复杂 linemarker 或实例绑定保守返回 UNKNOWN，非零退出。
+witness 原子写入成功后才转发 FALSE；清除旧 witness，报告/AST/写入失败不会泄露 FALSE。
+
+18 组定向测试通过；固定代码重新导出既有 **109/109** 确认报告，全部通过固定 2.2 schema。
+实际程序的主/子线程、同入口双实例和重复 helper 创建在两个 ABI 上生成 witness；互斥对照 SAFE，
+预处理输入的目标落在物理行 1463。依据：[映射检查](artifacts/svcomp-m1-2026-10-11/witness-mapping.json)、
+[逐任务实例](artifacts/svcomp-m1-2026-10-11/witness-instances.json)。
+这些证明导出和格式行为；源码级 validator 校准与执行验证分别记录，不能由 schema 通过推断。
 
 | 层次 | 能证明什么 | 已保存的限制 |
 | --- | --- | --- |
