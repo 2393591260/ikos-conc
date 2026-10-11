@@ -1,6 +1,6 @@
 {
   "ai-read-interference": 32,
-  "ai-write-union": 3,
+  "ai-write-union": 16,
   "ai-coupled-fixpoint": 40,
   "creation-instance": 28,
   "ai-create-handle-alias": 32,

@@ -407,7 +407,7 @@ DAT3M_HOME="$PWD" CFLAGS='-fgnu89-inline -m64' "$JAVA_BIN" -Xmx2g \
 | 耦合fixpoint | 所有可能写和pointer/heap/join摘要变化使依赖失效 | 每轮flush、语义dirty及最终检查变更回退；还没有独立通用post-fixpoint认证器 |
 | opt-in AI覆盖查询 | 稳定may interval/congruence、独立两个局部状态、共同非TLS global及准确width | 模块化byte公式UNSAT仅排除该候选；矛盾事实/超时/不支持保留。定向已验证，启用全量消融另见研究篇 |
 
-本次额外重查15个既有runner，共701次analyzer定向观察及相关核心单元检查通过。
+本次额外重查15个既有runner，共714次analyzer定向观察及相关核心单元检查通过。
 另两个历史runner的更强精度断言原样失败：`single-execution`要求loop-helper必须FALSE，
 `lock-allocation-identity`要求stack-main控制必须SAFE。在前驱`62e9015`二进制也同样失败。
 另按比赛模式完整核对11个输入×2ABI×AI/BMC×前后=88次，均满足“竞争不得SAFE、安全不得
