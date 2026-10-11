@@ -305,6 +305,10 @@ private:
   void translate_call(BasicBlockTranslation* bb_translation,
                       llvm::CallInst* call);
 
+  /// \brief Preserve an unsigned LLVM memory length in the AR size type
+  ar::Value* translate_memory_length(BasicBlockTranslation* bb_translation,
+                                     llvm::Value* length);
+
   /// \brief Translate a llvm::IntrinsicInst
   void translate_intrinsic_call(BasicBlockTranslation* bb_translation,
                                 llvm::IntrinsicInst* call);

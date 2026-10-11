@@ -1,0 +1,84 @@
+[
+  {
+    "bits": 32,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=10",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/copy-boundary/case10-before-32-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-affine-mutex/array.c"
+    ],
+    "returncode": 6,
+    "verdict": "NONE",
+    "diagnostic": [
+      "ikos-analyzer: /home/ruan/ikos-conc/core/include/ikos/core/number/compatibility.hpp:60: void ikos::core::assert_compatible(const X&, const Y&) [with X = MachineInt; Y = MachineInt]: Assertion `(x.bit_width() == y.bit_width()) && (\"parameters have a different bit-width\")' failed.",
+      "ikos-frontend.py: error: exited with signal SIGIOT"
+    ]
+  },
+  {
+    "bits": 32,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=10",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/copy-boundary/case10-before-32-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-affine-mutex/array.c"
+    ],
+    "returncode": 6,
+    "verdict": "NONE",
+    "diagnostic": [
+      "ikos-analyzer: /home/ruan/ikos-conc/core/include/ikos/core/number/compatibility.hpp:60: void ikos::core::assert_compatible(const X&, const Y&) [with X = MachineInt; Y = MachineInt]: Assertion `(x.bit_width() == y.bit_width()) && (\"parameters have a different bit-width\")' failed.",
+      "ikos-frontend.py: error: exited with signal SIGIOT"
+    ]
+  },
+  {
+    "bits": 64,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=10",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/copy-boundary/case10-before-64-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-affine-mutex/array.c"
+    ],
+    "returncode": 0,
+    "verdict": "The program is potentially UNSAFE",
+    "diagnostic": []
+  },
+  {
+    "bits": 64,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=10",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/copy-boundary/case10-before-64-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-affine-mutex/array.c"
+    ],
+    "returncode": 0,
+    "verdict": "The program is potentially UNSAFE",
+    "diagnostic": []
+  }
+]

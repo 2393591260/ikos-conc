@@ -13,7 +13,7 @@
 
 本节更新后续优先级；§2–8保留原设计与理论依据，§9保留各次实验的历史快照。
 不能把历史“尚未修复”、旧候选池或旧TN当作当前状态，也不能把设计项全部当作必须实现的大改。
-当前为§9.28指针表示修复，最新[配对证据](artifacts/ai-precision-2026-10-11/integer-escape/summary.json)：
+当前为§9.29前端复制长度修复，最新[配对证据](artifacts/ai-precision-2026-10-11/copy-boundary/summary.json)：
 冻结1029项ILP32，AI TN658/UNKNOWN370；BMC TP104/TN658/UNKNOWN266，均FP0/FN0/error1。
 全量与定向双ABI验证的范围分别记录，不称已完成双ABI全量。
 
@@ -1362,3 +1362,31 @@ AbsoluteZero+offset，与真实stack/TLS/heap对象不交。另一个没有显�
 [域检查](artifacts/ai-precision-2026-10-11/integer-escape/core.json)、
 [输入及runner](review-repros/ai-integer-pointer/publication.c)、
 [1029配对](artifacts/ai-precision-2026-10-11/integer-escape/paired.json)。
+
+
+### 9.29 前端独立阶段：无损导入 LLVM memory length（2026-10-11）
+
+§9.26 CASE10的ILP32结构体写触发长度宽度错误；在本阶段前驱`c9ef588`仍崩溃，LP64仍UNKNOWN。
+根因是memory intrinsic的LLVM整数长度宽度可以不同于module pointer宽度，旧导入直接用
+pointer-sized AR size_t期望类型，常量和动态值转换并不完整。LLVM15.0.4 LangRef允许任意
+integer length，内存长度按unsigned消费，不能按源推断的signedness符号扩展或直接截断。
+
+新增共享`translate_memory_length`供memcpy/memmove/memset使用：窄变量先等宽转unsigned再zext；
+窄/等宽常量保留unsigned数值；宽常量仅在active bits可表示时转到size_t。宽动态值或超界常量
+明确ImportError，不能truncate成短操作或0字节并漏掉访问。inline memcpy/memset经同一LLVM
+classof分派；unordered-atomic内存intrinsic仍是原独立支持边界。
+
+独立导入回归36项：旧12次断言、15次成功、9次显式错误；新30次无损成功、6次按预期拒绝
+ILP32宽动态/超界长度。成功结果检查AR参数确为ui32/ui64、255窄常量和LP64的4294967296
+保值、窄变量zero extension、无trunc/sext。拒绝属于导入/工具error，不能声称它返回分析UNKNOWN。
+原CASE10已恢复进常规仿射runner，四个ABI/模式现在均正常UNKNOWN；该例不再被排除。
+
+build两个target `ikos-analyzer`和`ikos-import`，分别同步install并核对一致。正确性、guard、
+integer、byte/publication、锁、属性和旧BMC回归通过。此提交只改frontend importer及相关回归；
+独立1029项AI/BMC全量逐文件无变化：TN658、BMC TP104、FP/FN0、error1保持。
+因此没有把此前前端改动的TN影响混在BMC/AI精度变化里。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/copy-boundary/summary.json)、
+[36项输入结果](artifacts/ai-precision-2026-10-11/copy-boundary/fixtures-after.json)、
+[CASE10前后](artifacts/ai-precision-2026-10-11/copy-boundary/case10-after.json)、
+[LLVM回归runner](review-repros/llvm-memory-length/run.py)。

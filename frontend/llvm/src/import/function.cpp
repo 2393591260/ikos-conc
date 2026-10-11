@@ -680,11 +680,31 @@ void FunctionImporter::translate_call(BasicBlockTranslation* bb_translation,
                               });
 }
 
+ar::Value* FunctionImporter::translate_memory_length(
+    BasicBlockTranslation* bb_translation, llvm::Value* length) {
+  auto* size_type = ar::IntegerType::size_type(this->_bundle);
+  auto bits = llvm::cast< llvm::IntegerType >(length->getType())->getBitWidth();
+  if (bits > size_type->bit_width()) {
+    auto* constant = llvm::dyn_cast< llvm::ConstantInt >(length);
+    if (constant == nullptr ||
+        constant->getValue().getActiveBits() > size_type->bit_width()) {
+      throw ImportError("memory intrinsic length is not representable in size_t");
+    }
+  }
+  if (auto* constant = llvm::dyn_cast< llvm::Constant >(length)) {
+    return _ctx.constant_imp->translate_cast_integer_constant(constant, size_type);
+  }
+  // LLVM lengths are unsigned, even when type inference made the source signed.
+  auto* source_type = ar::IntegerType::get(this->_context, bits, ar::Unsigned);
+  auto* value = this->translate_value(bb_translation, length, source_type);
+  if (source_type == size_type) return value;
+  return this->add_integer_casts(bb_translation, ar::cast< ar::Variable >(value), size_type);
+}
+
 void FunctionImporter::translate_intrinsic_call(
     BasicBlockTranslation* bb_translation, llvm::IntrinsicInst* call) {
   ar::IntegerType* si8_ty = ar::IntegerType::si8(this->_context);
   ar::PointerType* void_ptr_ty = ar::PointerType::get(this->_context, si8_ty);
-  ar::IntegerType* size_ty = ar::IntegerType::size_type(this->_bundle);
 
   if (_ctx.bundle_imp->ignore_intrinsic(call->getIntrinsicID())) {
     return; // ignored intrinsic (llvm.dbg.value, etc.)
@@ -698,7 +718,7 @@ void FunctionImporter::translate_intrinsic_call(
                                            void_ptr_ty);
 
     ar::Value* length =
-        this->translate_value(bb_translation, memcpy->getLength(), size_ty);
+        this->translate_memory_length(bb_translation, memcpy->getLength());
 
     auto stmt = ar::MemoryCopy::create(this->_bundle,
                                        dest,
@@ -719,7 +739,7 @@ void FunctionImporter::translate_intrinsic_call(
                                            void_ptr_ty);
 
     ar::Value* length =
-        this->translate_value(bb_translation, memmove->getLength(), size_ty);
+        this->translate_memory_length(bb_translation, memmove->getLength());
 
     auto stmt = ar::MemoryMove::create(this->_bundle,
                                        dest,
@@ -739,7 +759,7 @@ void FunctionImporter::translate_intrinsic_call(
         this->translate_value(bb_translation, memset->getValue(), si8_ty);
 
     ar::Value* length =
-        this->translate_value(bb_translation, memset->getLength(), size_ty);
+        this->translate_memory_length(bb_translation, memset->getLength());
 
     auto stmt = ar::MemorySet::create(this->_bundle,
                                       dest,

@@ -1,0 +1,108 @@
+{
+  "baseline_commit": "c9ef588",
+  "analyzer_sha256": "61cc24c25e348b33fc2f9fd43df9503e0e91a1b723d6221a3a6f9d8fd4267cfa",
+  "baseline_analyzer_sha256": "a956c389ebeab95b285ec7ebf92291bd5d1e5ba1cc0e920d5b6df295184e7a70",
+  "matrix": {
+    "after_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 658,
+      "FN": 0,
+      "error": 1,
+      "unknown": 370
+    },
+    "after_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 658,
+      "FN": 0,
+      "error": 1,
+      "unknown": 266
+    },
+    "before_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 658,
+      "FN": 0,
+      "error": 1,
+      "unknown": 370
+    },
+    "before_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 658,
+      "FN": 0,
+      "error": 1,
+      "unknown": 266
+    }
+  },
+  "tasks": 1029,
+  "jobs": 4,
+  "timeout_seconds": 30,
+  "data_model": "ILP32",
+  "full_scans_sequential": true,
+  "build_and_install_equal": true,
+  "observation_counts": {
+    "fixtures-before.json": 36,
+    "fixtures-after.json": 36,
+    "audit.json": 76,
+    "affine.json": 60,
+    "relative.json": 52,
+    "fields.json": 40,
+    "attributes.json": 36
+  },
+  "old_bmc_observations": 20,
+  "sweep_time": [
+    {
+      "mode": "ai",
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4"
+      ],
+      "returncode": 0,
+      "seconds": 146.42504850200203
+    },
+    {
+      "mode": "bmc",
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4"
+      ],
+      "returncode": 0,
+      "seconds": 360.6057147120009
+    }
+  ],
+  "log_sha256": {
+    "build.log": "81f684c0a92ee582bcda29dfbd8d91763813c3ab49f7125db6f086c97a7cb7b6",
+    "ai-full.log": "3557efd6bbaf660cac1761d609e79fd25a98e2e1e82687741b915f38aef01dee",
+    "bmc-full.log": "435a084a539699b7261d5df1ede62bf1e8e377161e9907d4d36eada23c066d8e"
+  },
+  "source_sha256": {
+    "frontend/llvm/src/import/function.cpp": "005ccadf96f83cd7b585bd32fabcdb829b384486985b739b2aa0d705208a35f6",
+    "frontend/llvm/src/import/function.hpp": "1bb04838ee831045268a35c84a5c59947e0c01a12d276883d2c35f2f15973ed9",
+    "docs/review-repros/llvm-memory-length/run.py": "14473a5e4eef7029ba3c2f70293bc69a6bed7cf23a31037d8b827a4f69687739",
+    "docs/review-repros/ai-affine-mutex/run.py": "eafb55de273ea7241a9de34dd8fa09287c48f1cebd434c712627663e97e25e73"
+  },
+  "proof_basis": "LLVM memory intrinsic lengths are unsigned integers of arbitrary bit width. Convert losslessly to the AR pointer-sized unsigned length: check wider constants before narrowing, zero-extend narrower variables, reject unrepresentable/dynamic wider values.",
+  "scope": "memcpy/memmove/memset and inline subclasses covered by the same LLVM class hierarchy; separate atomic intrinsics unchanged.",
+  "importer_observations": 36,
+  "importer_before": {
+    "assertion_failures": 12,
+    "successful_imports": 15,
+    "explicit_errors": 9
+  },
+  "importer_after": {
+    "successful_imports": 30,
+    "expected_unrepresentable_errors": 6
+  },
+  "importer_sha256": "2b48237c3afbe708c15547eb5019914be2964e21cd839ceba870ed315cad25a6",
+  "importer_build_install_equal": true,
+  "frontend_only": true,
+  "validation_note": "CASE10 added back to normal dual-ABI affine regression: old ILP32 crash -> current conservative UNKNOWN, LP64 UNKNOWN unchanged. A rejected unsupported length is an import/tool error, not an analyzer UNKNOWN claim."
+}

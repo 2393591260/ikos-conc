@@ -20,8 +20,7 @@ def main(args):
                        .replace('second', 'beta').replace('items', 'entries'))
     rows = []
     for bits in (32, 64):
-        # CASE 10 is recorded separately: the existing ILP32 byte-copy importer crashes.
-        for case in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14):
+        for case in range(15):
             for mode in ('ai', 'bmc'):
                 folder = args.output / f'{bits}-{case}-{mode}'
                 folder.mkdir()
