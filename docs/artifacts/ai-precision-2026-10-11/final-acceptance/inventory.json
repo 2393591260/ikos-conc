@@ -20,7 +20,7 @@
     },
     {
       "rule": "private-access",
-      "implementation": "data_race.cpp: check_load/check_store/is_shared",
+      "implementation": "data_race.cpp: check_load/check_store/touches_shared_memory",
       "premise": "Every possible cross-thread alias has been marked escaped; TOP is shared and heap is always retained.",
       "fallback": "Unknown points-to records a shared access; absent complete escape proof must not omit local/TLS.",
       "evidence_runners": [
@@ -218,11 +218,12 @@
       "implementation": "pair_exclusion.hpp: invalid_facts/native_excludes/check; data_race.cpp: resolve_offset_congruence/pair scan",
       "premise": "Stable independent local may interval+congruence, same concrete non-TLS global, initialized address, exact width, full access coverage. Modular byte equation covers all overlaps.",
       "fallback": "Bottom/inconsistent facts, unsupported object/width, timeout, UNKNOWN or exhausted budget retain pair; SAT is not an execution.",
-      "status": "directed/default validation passed; enabled frozen-set ablations pending",
+      "status": "Directed/default and enabled strong/weak/native/SMT frozen-set ablations passed; no extra corpus SAFE verdicts.",
       "evidence_runners": [
         "ai-pair-feedback"
       ],
-      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof.",
+      "enabled_corpus_evidence": "../feedback-corpus/summary.json"
     }
   ],
   "current_exact_runner_checks": [

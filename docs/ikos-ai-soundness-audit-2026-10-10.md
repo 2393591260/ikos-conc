@@ -12,6 +12,8 @@
 §9.30恢复实际阻塞加锁分支的普通MUST，48项正反变体及全量通过、冻结集无变化。
 §9.31精确普通调用上下文恢复3TN和2TP；新增TP的双ABI执行均独立AR ACCEPT。
 §7已汇总16类当前规则/覆盖通道的工程验收；已登记且可复现的FN均已修复或封堵。
+启用数值域/覆盖查询及模型选域原型的8组全量消融已完成；默认与强域查询各134条所选AR
+执行独立ACCEPT，分别覆盖106个TP任务。132项safe-label UNKNOWN已逐项记录，非全部解决。
 这不是全语言形式化证明，完整POSIX失败、opaque句柄来源及弱内存等仍有明确边界。
 当前阶段、开放任务与验收条件统一见[优化计划§0](ikos-ai-optimization-plan-2026-10-10.md#current-roadmap)。
 
@@ -38,7 +40,8 @@ ILP32/LP64、AI/BMC均误报SAFE；已在global/heap摘要层加入字节重叠�
 这些现象描述历史版本；当前仍不能以有限测试结果宣称普遍零FN。
 它们涉及访问过滤、对象逃逸、线程覆盖、读时干扰、join 身份和写摘要汇总。
 既有冻结集 `TP106/FP0/TN696/FN0/UNKNOWN227/error0` 是保存的有限测试结果，
-与本轮在集合外发现 FN 并不矛盾。本轮没有重新跑冻结集，也没有给所有 SAFE 规则完成证明。
+与原审查在集合外发现 FN 并不矛盾。原只读审查阶段没有重新跑冻结集；
+后续修复阶段已完整配对，仍没有给所有 SAFE 规则完成全语言证明。
 
 配套：[优化计划](ikos-ai-optimization-plan-2026-10-10.md)、
 [AI/BMC 双向反馈研究](ikos-ai-bmc-feedback-research-2026-10-10.md)。
@@ -405,7 +408,7 @@ DAT3M_HOME="$PWD" CFLAGS='-fgnu89-inline -m64' "$JAVA_BIN" -Xmx2g \
 | 旧private-init/region/TOP猜测 | 完整发布/别名/锁证明 | 不再作SAFE过滤；部分region/provenance注释标签仍保留，不能当成能力证明 |
 | 库/internal效果 | 全部读写、回调、同步及跨线程摘要覆盖 | 未覆盖extern/internal/byte效果警告；显式import拒绝是error，不假称UNKNOWN |
 | 耦合fixpoint | 所有可能写和pointer/heap/join摘要变化使依赖失效 | 每轮flush、语义dirty及最终检查变更回退；还没有独立通用post-fixpoint认证器 |
-| opt-in AI覆盖查询 | 稳定may interval/congruence、独立两个局部状态、共同非TLS global及准确width | 模块化byte公式UNSAT仅排除该候选；矛盾事实/超时/不支持保留。定向已验证，启用全量消融另见研究篇 |
+| opt-in AI覆盖查询 | 稳定may interval/congruence、独立两个局部状态、共同非TLS global及准确width | 模块化byte公式UNSAT仅排除该候选；矛盾事实/超时/不支持保留。定向及启用/关闭强弱域全量均验证，冻结集无新增TN；结果另见研究篇§9 |
 
 本次额外重查15个既有runner，共714次analyzer定向观察及相关核心单元检查通过。
 另两个历史runner的更强精度断言原样失败：`single-execution`要求loop-helper必须FALSE，
@@ -416,9 +419,11 @@ DAT3M_HOME="$PWD" CFLAGS='-fgnu89-inline -m64' "$JAVA_BIN" -Xmx2g \
 原非demote AI模式可能把may-warning标成definite error；本验收不把这种输出当作已验证竞争。
 
 最新默认1029冻结集：AI TN661/U367；BMC TP106/TN661/U261，FP/FN0/error1。
-本次恢复的两个TP另有双ABI、动态实例/值/地址/同步一致的独立AR执行ACCEPT，
-不是仅按YAML计数；也不是官方source witness验收。数值域/覆盖查询的启用全量结果仍由
-研究篇记录，不能用默认关闭时的结果认证启用配置。
+本次恢复的两个TP另有双ABI、动态实例/值/地址/同步一致的独立AR执行ACCEPT。
+随后默认interval→BMC与强域查询→BMC分别对全量106个TP任务的134条所选执行重新独立
+检查，均ACCEPT；并没有用强域的模型替代默认模型检查。它们不是仅按YAML计数，
+也不是官方source witness验收，更不认证SAFE覆盖。数值域/查询的8组启用消融结果见
+[研究篇§9](ikos-ai-bmc-feedback-research-2026-10-10.md#prototype-results)。
 
 已经没有登记为已复现而未处理的本轮FN；剩余**证明或能力义务**包括：完整POSIX失败及
 非默认属性、动态opaque handle值流、一般heap/lifetime/free冲突、完整C11弱内存、
@@ -430,3 +435,26 @@ DAT3M_HOME="$PWD" CFLAGS='-fgnu89-inline -m64' "$JAVA_BIN" -Xmx2g \
 [定向计数](artifacts/ai-precision-2026-10-11/final-acceptance/directed-counts.json)、
 [旧用例前后完整检查](artifacts/ai-precision-2026-10-11/final-acceptance/legacy-contracts.json)、
 [零变化](artifacts/ai-precision-2026-10-11/final-acceptance/legacy-transitions.json)。
+
+
+### 7.1 第一版结案及可复查的边界
+
+本轮工程验收完成，原审查六类FN与后续本轮具体漏报已修复或保守封堵，16类当前支持规则
+逐项记录实现、前提、失败回退和证据。已完成工程出口，不意味着项目支持全部C/POSIX，
+也不把有限FP/FN=0当作数学上的零漏报保证。
+
+最后build成功、build/install二进制hash相同；旧三机制及对照的双ABI20项观察和前驱结果
+逐项一致。714次额外既有runner观察、88次旧精度失败用例的前后性质检查都保留原记录；
+两个历史精度runner仍有必须FALSE/SAFE断言失败，不能改称“所有测试全绿”。
+所有当前safe-label UNKNOWN在第二篇的132项台账中有状态；正常参考TRUE38项需要下一版
+一般机制，94项参考未证实，8个heap诊断明确部分完成，不宣称已经排除所有潜在根因。
+
+反馈原型默认关闭。启用/关闭及强/弱数值域的全量验收支持“这些有限任务判定无退化”，
+不补齐基础AI所有语义的证明。模型只选择重算域；超时/失败保留初轮，模型不成为假设。
+未来要扩大SAFE能力，仍必须逐项满足访问覆盖、动态实例、字节对象、值来源与干扰闭包义务。
+
+最终证据：[8组配对与执行检查](artifacts/ai-precision-2026-10-11/feedback-corpus/summary.json)、
+[最终build/install/双ABI旧回归](artifacts/ai-precision-2026-10-11/feedback-corpus/final-checks.json)、
+[268条配置各自所选执行](artifacts/ai-precision-2026-10-11/feedback-corpus/executions.json)。
+保留的事实范围是AR前端快照及显式库合同；官方source/witness验证、一般POSIX失败/非默认
+生命周期、完整C11弱内存、通用归纳后解认证未完成。原型文档没有把这些延期项包装成已实现。
