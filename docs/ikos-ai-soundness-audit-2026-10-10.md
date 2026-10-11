@@ -506,3 +506,14 @@ AR执行独立ACCEPT。完整1029为TP106/TN672/U250/FP0/FN0/error1，仅3项安
 入口仍有子/子锁region候选，不由空live排除；一般实例/失败/来源覆盖界限仍保留。
 标签零误判是有限观察；第一版134条执行仍是原版本证据。
 证据：[live-children](artifacts/ai-precision-2026-10-11/live-children/summary.json)。
+
+### 7.6 具体共同mutex的增量验收（2026-10-11）
+
+优化计划§9.39删除具体同mutex排除后的冗余数据region限制。依据是确定持有同一
+实际mutex的互斥语义；正前提仍由强准入的具体(base,byte offset)、单对象及
+单分配生命周期证明建立。symbolic同key不直接作证，rwlock两侧shared不互斥。
+48项控制及旧锁/实例回归通过，10条定向FALSE所选AR执行独立ACCEPT；冻结集
+仅新增1TN，TP106/TN678/U244/FP0/FN0/error1。余下global-container任务没有held
+锁身份，仍UNKNOWN，不由这个规则放行。有限基准零误判不是普遍正确性证明，
+release端值干扰、完整POSIX失败与一般动态实例仍未因此实现。
+证据：[concrete-locks](artifacts/ai-precision-2026-10-11/concrete-locks/summary.json)。

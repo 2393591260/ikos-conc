@@ -1727,7 +1727,8 @@ BMC20通过；后者与前驱逐项一致。build/install一致。
 完整1029：AI TN672/U356→TN677/U351；BMC TP106/TN672/U250→TP106/TN677/U245，
 FP0/FN0/error1。只有race-2_2/2_3/2_4/2_5-container_of及race-3_2-container_of-global
 五项安全输入恢复；七个调查入口共56项真实前后双ABI/双模式观察，其中另外两项仍
-UNKNOWN。后两者父/子候选已消失，剩child/child的同具体锁key与数据region检查问题；
+UNKNOWN。后两者父/子候选已消失，剩child/child候选：一项有同具体锁key但被数据region
+检查拒绝，另一项没有已持锁身份；
 不能把本次生命周期证书误报成解决全部container_of锁别名。冻结输入为ILP32 .i，
 LP64采用native .c伴随输入。台账136项已恢复20、剩116，正常参考TRUE25，其余91
 参考不确定。前驱复用已保存同source/YAML的全量，AI147.751s/BMC345.086s；无加速
@@ -1744,3 +1745,35 @@ release端值/嵌套保护干扰仍须独立实现，不能使用现有包含中
 [92项控制](artifacts/ai-precision-2026-10-11/live-children/fixtures.json)、
 [真实配对](artifacts/ai-precision-2026-10-11/live-children/real-paired.json)、
 [回归](artifacts/ai-precision-2026-10-11/live-children/regressions.json)。
+
+### 9.39 第二版精度：具体同锁互斥与数据region解耦（2026-10-11）
+
+§9.38余下race-2_1-container_of的4个child/child对具有相同具体MUST mutex key，
+却因为lock_instance与access.instance启发式不同而留下。现有强锁准入已要求
+单对象、精确可表示字节偏移，动态/栈分配还要求无重复分配与单次函数激活；
+该key代表真实同一mutex。两段访问只要确定持有同一mutex且至少一侧为exclusive，
+就互斥，和数据是否属于mutex所在struct/element没有关系。删除额外data-region
+条件，保留具体key等值、symbolic key拒绝及RW read/read不互斥。不同锁instance
+由完整(base,offset) key区分，不能用“各自锁住各自对象”替代共同锁证明。
+
+48项native双ABI/双模式，恢复4项SAFE；不同锁/不同分配激活、worker私有栈锁、
+共享read-lock写入、提前unlock与条件漏锁对照不SAFE，10条定向FALSE所选AR执行
+独立ACCEPT。relative/affine/field、live92、handle-origin68和其余旧线程/守卫/审查
+及BMC20回归通过。16项真实配对：race-2_1的ILP32冻结.i与native LP64 .c恢复SAFE；
+race-3_1-container_of-global仍UNKNOWN，余10个child/child对的held集合为空。
+先前把两者都描述为“同key但region拒绝”不准确，§9.38与台账已更正；第二项是
+指针/锁准入的不同前提，不能凭安全标签补锁。
+
+完整1029：AI TN677/U351→TN678/U350；BMC TP106/TN677/U245→TP106/TN678/U244，
+FP0/FN0/error1，唯一变化为race-2_1。build/install一致，前驱保存扫描的所有
+source/YAML指纹逐项匹配；本次144.774s/343.016s不构成配对加速实验。台账已
+恢复21/136，余115，其中正常参考TRUE24、参考不确定91。没有新冻结TP，原版本
+134条模型证据不自动扩展到当前模型。真正protected release值摘要仍未落地，
+本次修的是锁互斥排除规则，不是把中间写摘要当作release不变量。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/concrete-locks/summary.json)、
+[完整配对](artifacts/ai-precision-2026-10-11/concrete-locks/paired.json)、
+[变化](artifacts/ai-precision-2026-10-11/concrete-locks/transitions.json)、
+[控制](artifacts/ai-precision-2026-10-11/concrete-locks/fixtures.json)、
+[真实配对](artifacts/ai-precision-2026-10-11/concrete-locks/real-paired.json)、
+[回归](artifacts/ai-precision-2026-10-11/concrete-locks/regressions.json)。

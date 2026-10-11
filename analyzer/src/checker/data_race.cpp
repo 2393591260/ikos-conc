@@ -1292,22 +1292,9 @@ DataRaceChecker::~DataRaceChecker() {
       // performed under rdlock races (04-mutex_55-pt_rwlock_rr.c). A
       // pure read-read data pair was already skipped above.
       //
-      // Each lock key packs (base stable_id << 32) | flat offset. A lock
-      // protects an access iff it is on a DIFFERENT object (a global/whole
-      // mutex — standard lockset semantics) OR on the SAME object AND SAME
-      // struct instance (container_of region, via the side table). A field
-      // lock on A[0].mutex must NOT protect A[1].datum
-      // (06-symbeq_14-list_entry_rc.c: `s++` advances the access past the
-      // locked instance).
-      auto lock_protects = [this](std::uint64_t key,
-                                  std::uint64_t base,
-                                  std::uint64_t instance) {
-        if ((key >> 32) != base) {
-          return true; // different object → global lock
-        }
-        return this->_ctx.concurrent_env.lock_instance(key) ==
-               instance;
-      };
+      // Equal concrete MUST mutex keys identify the same actual lock;
+      // mutual exclusion covers every memory object, independent of data
+      // region. Symbolic keys still require a separate equality proof.
       auto& env = this->_ctx.concurrent_env;
       auto protects_both = [&](const std::vector< std::uint64_t >& x,
                                const std::vector< std::uint64_t >& y) {
@@ -1325,8 +1312,7 @@ DataRaceChecker::~DataRaceChecker() {
             if (env.lock_symbolic_index(ly, by, sy)) {
               continue;
             }
-            if (lx == ly && lock_protects(lx, a.base, a.instance) &&
-                lock_protects(ly, b.base, b.instance)) {
+            if (lx == ly) {
               return true;
             }
           }

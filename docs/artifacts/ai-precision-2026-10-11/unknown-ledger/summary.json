@@ -2,23 +2,23 @@
   "original_pool": 135,
   "added_current_unknown": 1,
   "tracked": 136,
-  "recovered": 20,
-  "remaining": 116,
+  "recovered": 21,
+  "remaining": 115,
   "no_impossibility_claims": true,
   "remaining_reference_status": {
     "UNSUPPORTED": 30,
     "UNKNOWN": 25,
-    "TRUE": 25,
+    "TRUE": 24,
     "TIMEOUT": 34,
     "ERROR": 2
   },
   "dispositions": {
-    "RECOVERED_WITH_GENERAL_CERTIFICATE": 20,
-    "DEFERRED_GENERAL_MECHANISM": 25,
+    "RECOVERED_WITH_GENERAL_CERTIFICATE": 21,
+    "DEFERRED_GENERAL_MECHANISM": 24,
     "REFERENCE_NOT_PROVED": 91
   },
   "diagnosis_limit_rows": 8,
-  "summary_note": "All136 task identities matched to complete scans; five conditional-lifetime recoveries and two residual container lock diagnostics are fresh; unchanged diagnostic snapshots retain originating fingerprints.",
+  "summary_note": "All136 task identities matched to complete scans; one exact common-mutex recovery and residual ten no-held-lock container pairs have fresh diagnostics; unchanged snapshots retain originating fingerprints.",
   "coverage_tasks": {
     "external call effects not covered": 36,
     "library memory effects not covered": 3,
@@ -28,6 +28,6 @@
     "mixed atomic/non-atomic accesses": 4,
     "internal call effects not covered": 1
   },
-  "latest_verdict_evidence": "../live-children/paired.json",
-  "latest_analyzer_sha256": "42225bf0be056bc80cb4f05e6bdeebf217c52d067c5a4604b711d01ba4d3ca10"
+  "latest_verdict_evidence": "../concrete-locks/paired.json",
+  "latest_analyzer_sha256": "16e10b615ec6364f38ae656e097ea2d4771b26b13084c14638696596083467c0"
 }

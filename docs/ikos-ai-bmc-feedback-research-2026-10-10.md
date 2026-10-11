@@ -467,3 +467,11 @@ init、每个本地step、完整环境interference闭包和依赖失效合同；
 本次无新TP/性能消融，八组既有反馈消融和第一版模型证据保持原范围。release端值
 及嵌套保护干扰仍是后续机制，现有lock_partition不是release摘要。
 证据：[live-children](artifacts/ai-precision-2026-10-11/live-children/summary.json)。
+
+### 9.9 真实锁身份优先于数据region启发式（2026-10-11）
+
+优化计划§9.39让已有具体锁身份直接支撑互斥，恢复1TN，当前TP106/TN678/U244。
+它删去AI候选筛选中不必要的数据region条件；symbolic对象对应关系仍需证明。
+这是共同语义层的精度恢复，不是执行witness→AI不变量的实验收益，不能计入此前
+八组反馈消融，也没有新的端到端加速结论。release摘要原型的前提仍需独立满足。
+证据：[concrete-locks](artifacts/ai-precision-2026-10-11/concrete-locks/summary.json)。

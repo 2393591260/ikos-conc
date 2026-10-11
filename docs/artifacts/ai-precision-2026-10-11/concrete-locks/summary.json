@@ -1,0 +1,88 @@
+{
+  "baseline_commit": "9cd4dee",
+  "before_analyzer_sha256": "42225bf0be056bc80cb4f05e6bdeebf217c52d067c5a4604b711d01ba4d3ca10",
+  "analyzer_sha256": "16e10b615ec6364f38ae656e097ea2d4771b26b13084c14638696596083467c0",
+  "build_install_equal": true,
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "outer_timeout_seconds": 30,
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "TN": 677,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 351
+    },
+    "before_bmc": {
+      "TP": 106,
+      "TN": 677,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 245
+    },
+    "after_ai": {
+      "TP": 0,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 350
+    },
+    "after_bmc": {
+      "TP": 106,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 244
+    }
+  },
+  "times": [
+    {
+      "mode": "ai",
+      "returncode": 0,
+      "seconds": 144.7737287730124
+    },
+    {
+      "mode": "bmc",
+      "returncode": 0,
+      "seconds": 343.0163883220084
+    }
+  ],
+  "new_observations": 48,
+  "restored_SAFE_observations": 4,
+  "selected_directed_executions": 10,
+  "regression_counts": {
+    "ai-live-children": 92,
+    "ai-relative-mutex": 52,
+    "ai-affine-mutex": 60,
+    "ai-field-locks": 40,
+    "ai-handle-origin": 68,
+    "ai-handle-values": 64,
+    "ai-join-hulls": 24,
+    "ai-create-handle-alias": 32,
+    "creation-instance": 28,
+    "ai-nested-lifetime": 48,
+    "ai-conditional-guard": 48,
+    "ai-guard-cancellation": 64,
+    "ai-correctness": 76,
+    "old-bmc-32": 10,
+    "old-bmc-64": 10
+  },
+  "mechanism": "Exact equal concrete MUST mutex identities mutually exclude accesses to any data region; remove redundant access/lock instance-base condition. Symbolic mutex equality and rwlock read/read exclusions remain conservative.",
+  "boundaries": [
+    "Requires existing exact mutex identity admission and unique allocation lifetime proof",
+    "Symbolic keys remain excluded from equality shortcut",
+    "race-3_1-container_of-global retains child/child candidates without held mutex identities",
+    "No new release-value interference semantics or general allocation-instance domain"
+  ],
+  "scope": "48 native dual-ABI controls, old mutex/relative/affine/field and thread regressions; 16 real paired observations show one SAFE recovery and one retained UNKNOWN. No new frozen TP or speedup claim; preceding baseline pinned full scans.",
+  "log_sha256": {
+    "ai": "4ab753d4f75e13d0e0bdf7e9c09bd877f13b82c19ad16b4ad970a7d8d0a3ede4",
+    "bmc": "5d9cb5f805eda284ad97f1f0c64b788f375c202d9c0f53263a8157cbf502c1f6"
+  }
+}
