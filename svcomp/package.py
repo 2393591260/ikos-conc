@@ -325,17 +325,33 @@ def package(install_dir, out, llvm_root, apron_dir):
     def git_output(*args):
         return subprocess.check_output(["git", *args], text=True).strip()
 
-    binaries = ["bin/ikos-analyzer", "bin/ikos-pp", "bin/svcomp_witness.py"]
+    runtime_files = [
+        "bin/ikos-analyzer", "bin/ikos-pp", "bin/svcomp_witness.py",
+        "llvm/bin/clang", "llvm/bin/opt",
+        "llvm/lib/libLLVM-14.so.1", "llvm/lib/libclang-cpp.so.14",
+    ]
+    runtime_files.extend("bin/" + name for name in SCRIPTS)
+    runtime_files.extend("bin/" + script for script in SCRIPTS.values())
+    for root, _, files in os.walk(os.path.join(install, "libexec")):
+        runtime_files.extend(os.path.relpath(os.path.join(root, name), install)
+                             for name in files if name.endswith(".py"))
+    runtime_files.extend("lib/" + name for name in os.listdir(os.path.join(install, "lib"))
+                         if ".so" in name)
     build_info = {
         "created_at": datetime.now(timezone.utc).isoformat(),
         "repository": "https://github.com/2393591260/ikos-conc",
         "git_head": git_output("rev-parse", "HEAD"),
-        "working_tree_status": git_output("status", "--short"),
+        "working_tree_status": git_output("status", "--short", "--untracked-files=no"),
+        "working_tree_status_scope": "tracked files; unrelated untracked workspace files are not included",
         "sha256": {},
+        "integration_sha256": {},
     }
-    for binary in binaries:
-        with open(os.path.join(install, binary), "rb") as f:
-            build_info["sha256"][binary] = hashlib.sha256(f.read()).hexdigest()
+    for name in sorted(set(runtime_files)):
+        with open(os.path.join(install, name), "rb") as f:
+            build_info["sha256"][name] = hashlib.sha256(f.read()).hexdigest()
+    for name in ["svcomp/fm-tools-entry.yml", "benchexec/tools/ikos-conc.py", "svcomp/package.py"]:
+        with open(name, "rb") as f:
+            build_info["integration_sha256"][name] = hashlib.sha256(f.read()).hexdigest()
     with open(os.path.join(install, "BUILD-INFO.json"), "w") as f:
         json.dump(build_info, f, indent=2)
         f.write("\n")
