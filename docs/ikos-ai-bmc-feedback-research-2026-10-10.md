@@ -493,3 +493,18 @@ TN的protected interference不能直接使用当前中间写lock_partition。Gob
 的acquire/真实release与已受其他锁私有的状态处理提供设计依据，IKOS还需补初始化、保护集、局部
 端状态及dirty/replay闭环。没有把bounded UNSAT当SAFE，没有宣称并发归纳认证已实现。
 证据：[main-stack](artifacts/ai-precision-2026-10-11/main-stack/summary.json)。
+
+
+### 9.11 可复用AI生命周期证书的实证（2026-10-11）
+
+优化计划§9.41把ConcurrentGlobalEnv已有的静态single-lifetime函数证书按需提供给BMC。
+对helper只读slot发布，单次执行的摘要信息许可实际prefix来源，而不是复制Dartagnan的完整
+线程/分配机制。原生Dartagnan FAIL先选入口，最终竞争由真实调用、store、地址和SC编码构造，
+并独立AR重走prefix确认。冻结新增1TP，当前TP109/TN678；本版109任务/137模型全部AR ACCEPT。
+
+同源双ABI的事实组关闭/启用四观察为UNKNOWN→FALSE，说明AI信息确能扩展BMC的确认能力。
+开关同时关闭数值facts，尚非单生命周期隔离消融，也没有配对加速测量；不能从此宣称大幅
+快于Dartagnan、论文新颖性成立或真正BMC执行→AI不变量反馈已实现。release关系值摘要仍未
+落地，optional recursive AR文本格式崩溃单独处理。八组反馈原型零TN收益保持原版本范围。
+证据：[publication](artifacts/ai-precision-2026-10-11/publication/summary.json)、
+[消融](artifacts/ai-precision-2026-10-11/publication/ablation.json)。

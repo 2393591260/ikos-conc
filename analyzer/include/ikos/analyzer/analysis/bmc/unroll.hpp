@@ -51,6 +51,7 @@ struct BmcEvent {
   // 提取失败时保持 base==0（调用方保守不确认）。
   ar::LocalVariable* local_base = nullptr;
   bool shared_main_local = false; // One live allocation in the implicit main prefix.
+  bool single_function_execution = false; // Static lifetime certificate, not thread liveness.
   ar::CallBase* heap_allocation = nullptr; // One executed allocation in implicit main.
   core::ZNumber heap_extent{0};
   std::uint64_t base = 0;
@@ -741,7 +742,8 @@ inline bool main_allocation(ar::CallBase* call, const std::vector< BmcEvent >& p
 }
 
 // A pointer slot may be followed outside a worker only if its address never
-// escapes and its sole source store actually ran in main before all creates.
+// escapes and its sole source store actually ran before all creates. Helpers
+// additionally require the AI's static single-lifetime function certificate.
 inline ar::GlobalVariable* global_pointer_slot(ar::Value* value) {
   BmcEvent address;
   if (!symbolic_byte_offset(value, address) || address.base == 0 ||
@@ -760,8 +762,7 @@ inline ar::Store* published_pointer(ar::GlobalVariable* global,
     if (auto* load = llvm::dyn_cast< llvm::LoadInst >(user)) {
       if (load->getPointerOperand() != source || !load->getType()->isPointerTy()) return nullptr;
     } else if (auto* store = llvm::dyn_cast< llvm::StoreInst >(user)) {
-      if (store->getPointerOperand() != source || initialization != nullptr ||
-          store->getFunction()->getName() != "main") return nullptr;
+      if (store->getPointerOperand() != source || initialization != nullptr) return nullptr;
       initialization = store;
     } else return nullptr;
   }
@@ -773,8 +774,12 @@ inline ar::Store* published_pointer(ar::GlobalVariable* global,
     auto* store = core::dyn_cast< ar::Store >(origin[i].stmt);
     if (store == nullptr || !store->has_frontend() ||
         store->frontend< llvm::Value >() != initialization) continue;
-    if (spawned || found != nullptr || global_pointer_slot(store->pointer()) != global ||
-        invocation_call(origin, store->code(), i) != origin.size()) return nullptr;
+    if (spawned || found != nullptr || global_pointer_slot(store->pointer()) != global)
+      return nullptr;
+    if (store->code()->function_or_null() == nullptr) return nullptr;
+    if (store->code()->function()->name() == "main") {
+      if (invocation_call(origin, store->code(), i) != origin.size()) return nullptr;
+    } else if (!origin[i].single_function_execution) return nullptr;
     found = store; index = i;
   }
   return found;

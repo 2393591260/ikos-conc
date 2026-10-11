@@ -68,6 +68,16 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   }
   const std::vector< BmcEvent > empty_startup;
   auto startup = facts != nullptr ? facts->startup : empty_startup;
+  if (facts != nullptr && facts->single_execution) {
+    for (auto* path : {&startup, &pathA, &pathB}) for (auto& event : *path) {
+      auto* store = core::dyn_cast< ar::Store >(event.stmt);
+      auto* function = store != nullptr ? store->code()->function_or_null() : nullptr;
+      if (function != nullptr && function->name() != "main" && store->value()->type()->is_pointer()) {
+        event.single_function_execution = facts->single_execution(function);
+        if (event.single_function_execution) record(diagnostics, "ai_single_execution", store);
+      }
+    }
+  }
   auto* argumentA = created_argument(funcA, funcB->name() == "main" ? pathB : startup);
   auto* argumentB = created_argument(funcB, funcA->name() == "main" ? pathA : startup, funcA == funcB ? 1 : 0);
   const auto& allocation_origin = funcA->name() == "main" ? pathA : funcB->name() == "main" ? pathB : startup;

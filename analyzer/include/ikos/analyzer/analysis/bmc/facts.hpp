@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <functional>
 #include "unroll.hpp"
 
 namespace ikos { namespace analyzer { namespace bmc {
@@ -16,6 +17,9 @@ struct CandidateFacts {
   bool bounded_a = false, bounded_b = false;
   core::ZNumber lo_a{0}, hi_a{0}, lo_b{0}, hi_b{0};
   const std::map< ar::BinaryOperation*, bool >* no_wrap = nullptr;
+  // Direct, acyclic invocation chains rooted at implicit main; missing proof
+  // never licenses an external helper publication.
+  std::function< bool(ar::Function*) > single_execution;
 };
 
 } } }

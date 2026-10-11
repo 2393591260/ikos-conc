@@ -13,10 +13,10 @@
 
 本节更新后续优先级；§2–8保留原设计与理论依据，§9保留各次实验的历史快照。
 不能把历史“尚未修复”、旧候选池或旧TN当作当前状态，也不能把设计项全部当作必须实现的大改。
-第一版已完成§9.33–34；用户批准第二版同时恢复TN与TP。当前§9.35–40的六个独立机制
-已验收，最新[配对证据](artifacts/ai-precision-2026-10-11/main-stack/summary.json)：
-冻结1029项ILP32，AI TN678/UNKNOWN350；BMC TP108/TN678/UNKNOWN242，均FP0/FN0/error1。
-当前108个TP重新导出的136条所选执行全部独立AR ACCEPT；这不是官方C/witness验证。
+第一版已完成§9.33–34；用户批准第二版同时恢复TN与TP。当前§9.35–41的七个独立机制
+已验收，最新[配对证据](artifacts/ai-precision-2026-10-11/publication/summary.json)：
+冻结1029项ILP32，AI TN678/UNKNOWN350；BMC TP109/TN678/UNKNOWN241，均FP0/FN0/error1。
+当前109个TP重新导出的137条所选执行全部独立AR ACCEPT；这不是官方C/witness验证。
 全量与定向双ABI验证的范围分别记录，不称已完成双ABI全量。
 
 ### 0.1 三份文档的完成状态
@@ -25,7 +25,7 @@
 | --- | --- | --- |
 | 第一份审查的F1–F6及后续已复现FN | 原F1–F6、条件锁及整数表示指针发布已修复或封堵 | 不等于实现完整逃逸图、句柄来源域或证明全部SAFE规则 |
 | 剩余正确性审查义务 | 正确性篇§7已有16类工程验收与支持边界 | 不是完整C/POSIX证明；没有登记为已复现而未处理的本轮FN |
-| 第二份计划的精度恢复 | 第二版TN661→678、TP106→108；136项安全台账已恢复21、剩115项均有记录 | 未实现完整PBR/digest；24正常参考TRUE是后续一般机制入口，不是假称不能实现 |
+| 第二份计划的精度恢复 | 第二版TN661→678、TP106→109；136项安全台账已恢复21、剩115项均有记录 | 未实现完整PBR/digest；24正常参考TRUE是后续一般机制入口，不是假称不能实现 |
 | 第三份双向反馈研究 | A覆盖查询与B模型选域重算完成定向/冻结集消融；冻结集没有新增TN，默认关闭 | 属于solver-aided AI/启发式域重算；真正BMC执行反馈、并发归纳认证与论文创新性仍未证实 |
 
 §9.27新发现的整数表示指针发布FN已在§9.28处理；本阶段没有登记为已复现而未修的FN。
@@ -1829,3 +1829,43 @@ cond_wait与不支持layout须保守回退。不得把共同锁pair排除的TN�
 [当前TP执行](artifacts/ai-precision-2026-10-11/main-stack/current-tp-executions.json)、
 [旧回归](artifacts/ai-precision-2026-10-11/main-stack/regressions.json)、
 [legacy配对](artifacts/ai-precision-2026-10-11/main-stack/legacy-sem-paired.json)。
+
+
+### 9.41 第二版精度：AI生命周期证书用于helper发布（2026-10-11）
+
+以已确认Dartagnan FAIL的race-3_2b-container_of-global为入口。slot的唯一store在my_drv_probe，
+并非main本体；此前`published_pointer`拒绝它。复用ConcurrentGlobalEnv的
+`function_executes_at_most_once`静态证书，通过CandidateFacts的按需回调传给BMC；该证书证明
+根植隐式main的无环单次调用/create链，拒绝逃逸、递归、多调用及循环。它不是“当前仅一个活跃
+线程”，也不是从benchmark安全标签推断。
+
+BMC只在helper的实际pointer store事件上记录证书。仍要求LLVM slot用户覆盖只允许完整load及
+唯一store、地址不逃逸，实际origin中store只出现一次且早于创建；helper形参必须按执行的唯一
+调用绑定到实参。main直接发布保留原implicit frame限制。当前prefix地址、对象extent、SC来源和
+全部同步/值守卫合同不变；其他主调/重复调用不取得外部来源。未导入无序AI“初始化值”，独立
+AR回放也不依赖这条摘要，而执行实际store/call/load。
+
+15case×2ABI×AI/BMC=60观察，14项新增FALSE，合计16条所选AR执行ACCEPT；另一对为原先已有的
+post-spawn pointer-slot竞争，不能将其误称新增的pointee来源能力。重复/循环调用和slot地址
+逃逸保持UNKNOWN；只读selector相斥守卫、不同字段及共同锁对照不FALSE。918项旧观察及三反例
+双ABI通过，build/install一致。真实container双ABI前后16观察中global发布新增两条ACCEPT。
+`IKOS_BMC_DISABLE_AI_FACTS=1`关闭/启用的4项真实对照为UNKNOWN→FALSE，支持**AI事实组的能力
+收益**；该开关同时关闭bounds/no-wrap，不是仅生命周期的性能消融，不宣称加速。
+
+完整1029：AI TN678/U350不变；BMC TP108/TN678/U242→TP109/TN678/U241，FP0/FN0/error1，
+仅上述冻结.i变化；source/YAML逐项匹配。当前109个TP重新导出137条模型，全部独立AR ACCEPT，
+仍是AR/frontend/显式API范围，不是官方C/witness验证。AI141.819s/BMC349.076s是一轮顺序观测，
+没有加速结论。safe台账115项保留，racy台账只刷新current判定/证据，历史诊断不冒充新扫描。
+
+开启optional diagnostics曾SIGSEGV：旧AR StructType→PointerType文本打印不能处理合法递归类型。
+正常分析与结构化回放均通过；已有独立C++递归类型dump重现signal11。该格式层问题将独立修复，
+不计作本机制TP收益，也不混入前端/执行语义改动。下一TN缺口仍是protected release或稳定来源
+的关系损失；本次没有新增AI强更新、protected interference或把bounded UNSAT当SAFE。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/publication/summary.json)、
+[完整配对](artifacts/ai-precision-2026-10-11/publication/paired.json)、
+[变化](artifacts/ai-precision-2026-10-11/publication/transitions.json)、
+[60项控制](artifacts/ai-precision-2026-10-11/publication/fixtures.json)、
+[事实组消融](artifacts/ai-precision-2026-10-11/publication/ablation.json)、
+[当前模型](artifacts/ai-precision-2026-10-11/publication/current-tp-executions.json)、
+[回归](artifacts/ai-precision-2026-10-11/publication/regressions.json)。

@@ -535,3 +535,17 @@ SAFE断言，12项显式配对无回退，未改断言。快照去除递归类�
 代替官方源程序witness验证、全C/POSIX证明或一般生命周期域。尚无新SAFE过滤语义或release值摘要。
 证据：[main-stack](artifacts/ai-precision-2026-10-11/main-stack/summary.json)、
 [当前模型](artifacts/ai-precision-2026-10-11/main-stack/current-tp-executions.json)。
+
+
+### 7.8 helper发布的AI→BMC证明接口（2026-10-11）
+
+优化计划§9.41只导入静态单生命周期证书，不导入AI无序初始化值或活跃线程数量。slot地址
+未逃逸且唯一完整store、实际创建前执行、helper形参调用绑定仍由源码/执行prefix分别验证；
+多次/循环/逃逸调用没有证书，不放行外部pointer load。原同步、对象边界、SC与守卫保持。
+60观察中的16条定向执行ACCEPT，918项旧观察/三反例通过；四项事实组关闭/启用对照
+UNKNOWN→FALSE。全量仅新增1TP，TP109/TN678/U241/FP0/FN0/error1；本版109任务/137模型
+重新导出独立AR ACCEPT，source/witness范围未扩大。
+
+optional diagnostics的SIGSEGV另有C++递归type dump重现；这是既有文本格式问题，正常结构化
+模型不失败，待独立修复，不称已修复或将正常分析通过掩盖它。无新SAFE或release干扰规则。
+证据：[publication](artifacts/ai-precision-2026-10-11/publication/summary.json)。

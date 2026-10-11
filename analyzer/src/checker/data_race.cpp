@@ -1935,9 +1935,12 @@ DataRaceChecker::~DataRaceChecker() {
           ++group_attempts;
           --search_budget.candidates;
           bmc::CandidateFacts facts;
-          // Experimental ablation affects numerical BMC facts only. SAFE,
+          // Experimental ablation affects BMC value/lifetime facts only. SAFE,
           // candidate filtering, exact initialization and activation are retained.
           if (getenv("IKOS_BMC_DISABLE_AI_FACTS") == nullptr) {
+            facts.single_execution = [&](ar::Function* function) {
+              return this->_ctx.concurrent_env.function_executes_at_most_once(function);
+            };
             facts.no_wrap = &this->_bmc_no_wrap;
             facts.bounded_a = eff_interval(a, facts.lo_a, facts.hi_a);
             facts.bounded_b = eff_interval(b, facts.lo_b, facts.hi_b);

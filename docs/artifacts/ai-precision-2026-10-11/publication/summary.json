@@ -1,0 +1,233 @@
+{
+  "baseline_commit": "ab85afd",
+  "before_analyzer_sha256": "73db46ef5f89acc5f821d04170a388545cc24615fdca597fc2afdac7cb87749d",
+  "analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
+  "build_install_equal": true,
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "outer_timeout_seconds": 30,
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 350
+    },
+    "before_bmc": {
+      "TP": 108,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 242
+    },
+    "after_ai": {
+      "TP": 0,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 350
+    },
+    "after_bmc": {
+      "TP": 109,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 241
+    }
+  },
+  "times": [
+    {
+      "mode": "ai",
+      "returncode": 0,
+      "seconds": 141.819291901018
+    },
+    {
+      "mode": "bmc",
+      "returncode": 0,
+      "seconds": 349.0757705649885
+    }
+  ],
+  "new_observations": 60,
+  "restored_FALSE_observations": 14,
+  "selected_directed_executions": 16,
+  "current_TP_validation": {
+    "tasks": 109,
+    "executions": 137,
+    "statuses": {
+      "ACCEPT": 137
+    },
+    "analyzer_sha256": "a7169fe18b48fb115691175f5933ac5aadde3f452d5997f3b70791378296e461",
+    "validator_sha256": "e3bd4a44d1748107cc570daffeda822e6a7ecaf511b10000a5ed487d0c30043d",
+    "scope": "AR/frontend and explicit modeled APIs; not official C/witness validation"
+  },
+  "regression_counts": {
+    "bmc-main-stack": 72,
+    "main-heap": 26,
+    "bmc-pointer-returns": 10,
+    "sc-same-path": 46,
+    "ai-concrete-locks": 48,
+    "ai-live-children": 92,
+    "ai-relative-mutex": 52,
+    "ai-affine-mutex": 60,
+    "ai-field-locks": 40,
+    "ai-handle-origin": 68,
+    "ai-handle-values": 64,
+    "ai-join-hulls": 24,
+    "ai-create-handle-alias": 32,
+    "creation-instance": 28,
+    "ai-nested-lifetime": 48,
+    "ai-conditional-guard": 48,
+    "ai-guard-cancellation": 64,
+    "ai-correctness": 76,
+    "old-bmc-32": 10,
+    "old-bmc-64": 10
+  },
+  "mechanism": "AI single-lifetime invocation certificates license a helper pointer store actually executed before selected creates; LLVM slot-use coverage, sole store, concrete prefix binding and SC/address validity remain mandatory.",
+  "boundaries": [
+    "Repeated or escaped helper invocations do not establish single lifetime",
+    "Slot addresses must never escape and have exactly one static typed writer",
+    "Post-spawn publications cannot establish pre-spawn pointee provenance, but actual pointer-slot races may still be confirmed",
+    "No release-value interference semantics, generic object instance domain or source witness validation",
+    "Optional recursive AR diagnostic text printing still crashes; isolated owning-layer fix follows"
+  ],
+  "ai_fact_ablation": [
+    {
+      "bits": 32,
+      "ai_facts_enabled": false,
+      "source": "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-3_2b-container_of-global.i",
+      "verdict": "The program is potentially UNSAFE",
+      "executions": [],
+      "counts": {},
+      "statuses": [
+        "UNSUPPORTED"
+      ]
+    },
+    {
+      "bits": 32,
+      "ai_facts_enabled": true,
+      "source": "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-3_2b-container_of-global.i",
+      "verdict": "The program is definitely UNSAFE",
+      "executions": [
+        {
+          "group": 0,
+          "pair": 2,
+          "program_sha256": "81eed34d2ddd50125c702c0e4ff333b7f1a3125112b79d6baf3c9a64b856ed88",
+          "certificate_sha256": "f387f10a06d39bb97d9482a8fe7e6d4f36132741f335da30dd7078c08c093995",
+          "status": "ACCEPT",
+          "scope": "concrete_AR_prefix",
+          "exact_encoded_values": true,
+          "instances": [
+            1,
+            2
+          ],
+          "targets": [
+            {
+              "instance": 1,
+              "object": "stack:1:v3",
+              "offset": 24,
+              "width": 4,
+              "write": true,
+              "vc": {
+                "0": 46,
+                "1": 8
+              },
+              "atomic": false
+            },
+            {
+              "instance": 2,
+              "object": "stack:1:v3",
+              "offset": 24,
+              "width": 4,
+              "write": true,
+              "vc": {
+                "0": 48,
+                "2": 8
+              },
+              "atomic": false
+            }
+          ],
+          "steps": 64,
+          "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+        }
+      ],
+      "counts": {},
+      "statuses": [
+        "CONFIRMED"
+      ]
+    },
+    {
+      "bits": 64,
+      "ai_facts_enabled": false,
+      "source": "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-3_2b-container_of-global.c",
+      "verdict": "The program is potentially UNSAFE",
+      "executions": [],
+      "counts": {},
+      "statuses": [
+        "UNSUPPORTED"
+      ]
+    },
+    {
+      "bits": 64,
+      "ai_facts_enabled": true,
+      "source": "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-3_2b-container_of-global.c",
+      "verdict": "The program is definitely UNSAFE",
+      "executions": [
+        {
+          "group": 0,
+          "pair": 2,
+          "program_sha256": "6bfac9892fb060aaebe40c517b2fdcb010c66d46bfeaf1db80652dd48f01596e",
+          "certificate_sha256": "4111e637b74bab1b974ff61b96f5fbea5a3c5d7957691131f056c4fc1ce95791",
+          "status": "ACCEPT",
+          "scope": "concrete_AR_prefix",
+          "exact_encoded_values": true,
+          "instances": [
+            1,
+            2
+          ],
+          "targets": [
+            {
+              "instance": 1,
+              "object": "stack:1:v3",
+              "offset": 40,
+              "width": 4,
+              "write": true,
+              "vc": {
+                "0": 46,
+                "1": 8
+              },
+              "atomic": false
+            },
+            {
+              "instance": 2,
+              "object": "stack:1:v3",
+              "offset": 40,
+              "width": 4,
+              "write": true,
+              "vc": {
+                "0": 48,
+                "2": 8
+              },
+              "atomic": false
+            }
+          ],
+          "steps": 64,
+          "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+        }
+      ],
+      "counts": {},
+      "statuses": [
+        "CONFIRMED"
+      ]
+    }
+  ],
+  "log_sha256": {
+    "ai": "27b3fa807150ae7242cc14ed031790eedf52967dc151f6cfd786e975e3404364",
+    "bmc": "53b50d9ffb327279bcbc1967da9076c1d86936503036ddbf9601e23f6ccb9bae"
+  }
+}
