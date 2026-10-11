@@ -1,0 +1,442 @@
+[
+  {
+    "bits": 32,
+    "case": 0,
+    "status": "Result: FAIL",
+    "returncode": 13,
+    "seconds": 2.067215015005786,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "status": "Result: PASS",
+    "returncode": 0,
+    "seconds": 2.1143620980001288,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "status": "Result: PASS",
+    "returncode": 0,
+    "seconds": 2.0623588360031135,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "status": "Result: PASS",
+    "returncode": 0,
+    "seconds": 2.096712505997857,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "status": "Result: PASS",
+    "returncode": 0,
+    "seconds": 2.388615639996715,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "status": "Result: FAIL",
+    "returncode": 13,
+    "seconds": 2.310718127002474,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "status": "Result: FAIL",
+    "returncode": 13,
+    "seconds": 2.1451395580079406,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "status": "Result: FAIL",
+    "returncode": 13,
+    "seconds": 2.139706900998135,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "status": "Result: PASS",
+    "returncode": 0,
+    "seconds": 2.1663458130060462,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 9,
+    "status": "Result: FAIL",
+    "returncode": 13,
+    "seconds": 2.118098115999601,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 10,
+    "status": "Result: PASS",
+    "returncode": 0,
+    "seconds": 2.4873573619988747,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "status": "Result: FAIL",
+    "returncode": 13,
+    "seconds": 2.5444889920036076,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "status": "Result: PASS",
+    "returncode": 0,
+    "seconds": 2.1656610219943104,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "status": "Result: PASS",
+    "returncode": 0,
+    "seconds": 2.2481257820036262,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "status": "Result: PASS",
+    "returncode": 0,
+    "seconds": 2.2086428590118885,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "status": "Result: PASS",
+    "returncode": 0,
+    "seconds": 2.5683726319985,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "status": "Result: FAIL",
+    "returncode": 13,
+    "seconds": 2.1454732159909327,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "status": "Result: FAIL",
+    "returncode": 13,
+    "seconds": 2.144136464994517,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "status": "Result: FAIL",
+    "returncode": 13,
+    "seconds": 2.1185256039898377,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "status": "Result: PASS",
+    "returncode": 0,
+    "seconds": 2.0100719850015594,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 9,
+    "status": "Result: FAIL",
+    "returncode": 13,
+    "seconds": 2.0009211720025633,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 10,
+    "status": "Result: PASS",
+    "returncode": 0,
+    "seconds": 1.9810732850019122,
+    "command": [
+      "/tmp/ikos-reference-java/jdk/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+      "-Xmx2g",
+      "-cp",
+      "/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/dartagnan.jar:/home/ruan/dartagnan-svcomp2026/dartagnan/dartagnan/target/libs/*",
+      "com.dat3m.dartagnan.Dartagnan",
+      "cat/svcomp.cat",
+      "/tmp/ikos-three-docs-20261011/integer-escape/cases.c",
+      "svcomp.properties",
+      "--property=DATARACEFREEDOM",
+      "--bound=3",
+      "--program.processing.skipAssertionsOfType=USER"
+    ]
+  }
+]

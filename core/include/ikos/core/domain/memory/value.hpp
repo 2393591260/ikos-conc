@@ -1501,26 +1501,12 @@ public:
     // Update pointer sets
     //
 
-    auto rhs_ptr = PointerAbsValueT::bottom(1, Unsigned);
-    if (rhs.is_memory_location()) {
-      rhs_ptr =
-          PointerAbsValueT(Uninitialized::initialized(),
-                           Nullity::non_null(),
-                           PointsToSetT{rhs.memory_location()},
-                           IntInterval(MachineInt::zero(offset_ic.bit_width(),
-                                                        Unsigned)));
-    } else if (rhs.is_pointer_var()) {
-      rhs_ptr = this->_scalar.pointer_to_pointer(rhs.var());
-    } else {
-      // Right hand side is not a pointer, nothing else to do
-      return;
-    }
-
+    // Even a typed pointer store can splice a different pointer when byte
+    // ranges overlap. Exact cells keep their values; object-wide target sets
+    // need a separate representation/alignment proof before they can refine
+    // arbitrary subsequent pointer reads.
     for (MemoryLocationRef addr : addrs) {
-      PointerSetT pointer_set =
-          this->_pointer_sets.get(addr, offset_ic.bit_width(), Unsigned);
-      pointer_set.add(rhs_ptr);
-      this->_pointer_sets.set(addr, pointer_set);
+      this->_pointer_sets.forget(addr);
     }
   }
 
@@ -1741,23 +1727,11 @@ public:
     // Update pointer sets
     //
 
-    // Collect source pointer sets
-    auto src_pointer_set = PointerSetT::bottom(src_intv.bit_width(), Unsigned);
-    if (src_addrs.is_top()) {
-      src_pointer_set.set_to_top(); // Be sound
-    } else {
-      for (MemoryLocationRef addr : src_addrs) {
-        src_pointer_set.join_with(
-            this->_pointer_sets.get(addr, src_intv.bit_width(), Unsigned));
-      }
-    }
-
-    // Update destination pointer sets
+    // Byte splicing can form a pointer outside both the source and old
+    // destination target sets. Exact whole-cell copies above still retain
+    // their scalar pointer values; only the auxiliary reduction is forgotten.
     for (MemoryLocationRef addr : dest_addrs) {
-      PointerSetT dest_pointer_set =
-          this->_pointer_sets.get(addr, src_intv.bit_width(), Unsigned);
-      dest_pointer_set.join_with(src_pointer_set);
-      this->_pointer_sets.set(addr, dest_pointer_set);
+      this->_pointer_sets.forget(addr);
     }
   }
 
@@ -1804,7 +1778,7 @@ public:
     }
 
     if (addrs.is_top()) {
-      this->mem_forget_cells(); // Very conservative, but sound
+      this->mem_forget_all(); // Any object's pointer representation may change.
       return;
     }
 
@@ -1889,7 +1863,11 @@ public:
       }
     }
 
-    // Nothing to do for pointer sets
+    // A partial fill, even with zero, can construct a different valid pointer.
+    // Exact full-cell zero values remain available in the scalar domain.
+    for (MemoryLocationRef addr : addrs) {
+      this->_pointer_sets.forget(addr);
+    }
   }
 
 private:

@@ -1130,10 +1130,32 @@ public:
       } break;
       case ar::UnaryOperation::PtrToUI:
       case ar::UnaryOperation::PtrToSI: {
+        if (this->_ctx.opts.enable_thread_modular &&
+            !this->data().is_normal_flow_bottom() && rhs.scalar().is_pointer_var()) {
+          // Integer representations can publish the original object through
+          // stores, byte copies or arithmetic before a later pointer roundtrip.
+          this->_ctx.concurrent_env.record_possible_escape(
+              this->data().normal().pointer_to_points_to(rhs.scalar().var()));
+        }
         this->exec_ptr_to_int_conv(lhs.scalar(), rhs.scalar());
       } break;
       case ar::UnaryOperation::UIToPtr:
       case ar::UnaryOperation::SIToPtr: {
+        if (this->_ctx.opts.enable_thread_modular &&
+            !this->data().is_normal_flow_bottom()) {
+          auto value = rhs.scalar().is_machine_int()
+              ? IntInterval(rhs.scalar().machine_int())
+              : this->data().normal().int_to_interval(rhs.scalar().var());
+          auto exact = value.singleton();
+          if (!exact || !exact->is_zero()) {
+            // The scalar domain uses AbsoluteZero+offset for integer addresses.
+            // It cannot relate that cell back to a published stack/heap/global
+            // object, so neither disjoint points-to nor private-cell filters
+            // can establish race freedom for a nonzero roundtrip.
+            this->_ctx.concurrent_env.record_unmodeled_effect(
+                s, "integer-derived pointer aliasing is not modeled");
+          }
+        }
         this->exec_int_to_ptr_conv(lhs.scalar(), rhs.scalar());
       } break;
       case ar::UnaryOperation::Bitcast: {

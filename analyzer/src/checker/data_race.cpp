@@ -626,10 +626,26 @@ DataRaceChecker::~DataRaceChecker() {
   for (const auto& effect : this->_ctx.concurrent_env.unmodeled_effects()) {
     synthetic_handle_unsupported |=
         effect.second == "synthetic pthread handle representation not modeled";
+    ar::Statement* anchor = effect.first;
+    JsonDict info{{"unknown_reason", effect.second}};
+    if (!anchor->code()->is_function_body()) {
+      // The report schema requires a function statement; a global initializer
+      // can still invalidate coverage even when no access pair is collected.
+      info.put("effect_origin", "global initialization");
+      for (auto* entry : this->_ctx.opts.entry_points) {
+        if (!entry->is_definition()) continue;
+        for (auto* block : *entry->body()) {
+          for (auto* statement : *block) {
+            if (statement->has_frontend()) { anchor = statement; break; }
+          }
+          if (anchor->code()->is_function_body()) break;
+        }
+        if (anchor->code()->is_function_body()) break;
+      }
+    }
     this->_checks.insert(
         CheckKind::DataRace, CheckerName::DataRace, Result::Warning,
-        effect.first, this->_ctx.call_context_factory->get_empty(), {},
-        {{"unknown_reason", effect.second}});
+        anchor, this->_ctx.call_context_factory->get_empty(), {}, info);
   }
 
   // Temporary probe (env IKOS_BMC_DUMP): dump the BMC events (memory + mutex

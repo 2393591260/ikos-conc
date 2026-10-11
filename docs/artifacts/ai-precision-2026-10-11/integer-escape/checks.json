@@ -1,0 +1,119 @@
+[
+  {
+    "name": "guard",
+    "command": [
+      "python3",
+      "docs/review-repros/ai-conditional-guard/run.py",
+      "--output",
+      "/tmp/ikos-three-docs-20261011/integer-escape/guard"
+    ],
+    "returncode": 0,
+    "seconds": 22.477300673010177
+  },
+  {
+    "name": "bytes",
+    "command": [
+      "python3",
+      "docs/review-repros/ai-pointer-bytes/run.py",
+      "--output",
+      "/tmp/ikos-three-docs-20261011/integer-escape/bytes"
+    ],
+    "returncode": 0,
+    "seconds": 18.846950819002814
+  },
+  {
+    "name": "publication",
+    "command": [
+      "python3",
+      "docs/review-repros/ai-publication/run.py",
+      "--output",
+      "/tmp/ikos-three-docs-20261011/integer-escape/publication"
+    ],
+    "returncode": 0,
+    "seconds": 23.193760766997002
+  },
+  {
+    "name": "audit",
+    "command": [
+      "python3",
+      "docs/review-repros/ai-correctness/run.py",
+      "--fixed",
+      "F1",
+      "F2",
+      "F3",
+      "F4",
+      "F5",
+      "F6",
+      "--output",
+      "/tmp/ikos-three-docs-20261011/integer-escape/audit"
+    ],
+    "returncode": 0,
+    "seconds": 19.07441974399262
+  },
+  {
+    "name": "relative",
+    "command": [
+      "python3",
+      "docs/review-repros/ai-relative-mutex/run.py",
+      "--output",
+      "/tmp/ikos-three-docs-20261011/integer-escape/relative"
+    ],
+    "returncode": 0,
+    "seconds": 14.360855606006226
+  },
+  {
+    "name": "affine",
+    "command": [
+      "python3",
+      "docs/review-repros/ai-affine-mutex/run.py",
+      "--output",
+      "/tmp/ikos-three-docs-20261011/integer-escape/affine"
+    ],
+    "returncode": 0,
+    "seconds": 16.15193174900196
+  },
+  {
+    "name": "fields",
+    "command": [
+      "python3",
+      "docs/review-repros/ai-field-locks/run.py",
+      "--output",
+      "/tmp/ikos-three-docs-20261011/integer-escape/fields"
+    ],
+    "returncode": 0,
+    "seconds": 10.535946490999777
+  },
+  {
+    "name": "attributes",
+    "command": [
+      "python3",
+      "docs/review-repros/mutex-attributes/run.py",
+      "--output",
+      "/tmp/ikos-three-docs-20261011/integer-escape/attributes"
+    ],
+    "returncode": 0,
+    "seconds": 9.591782492003404
+  },
+  {
+    "name": "old32",
+    "command": [
+      "python3",
+      "docs/review-repros/bmc-2026-10-08/run.py",
+      "--bits",
+      "32"
+    ],
+    "returncode": 0,
+    "seconds": 3.111253958006273
+  },
+  {
+    "name": "old64",
+    "command": [
+      "python3",
+      "docs/review-repros/bmc-2026-10-08/run.py",
+      "--bits",
+      "64"
+    ],
+    "returncode": 0,
+    "seconds": 2.9624352530081524
+  }
+]

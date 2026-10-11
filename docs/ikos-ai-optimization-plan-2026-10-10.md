@@ -13,7 +13,7 @@
 
 本节更新后续优先级；§2–8保留原设计与理论依据，§9保留各次实验的历史快照。
 不能把历史“尚未修复”、旧候选池或旧TN当作当前状态，也不能把设计项全部当作必须实现的大改。
-当前为§9.27条件锁修复，最新[配对证据](artifacts/ai-precision-2026-10-11/conditional-guard/summary.json)：
+当前为§9.28指针表示修复，最新[配对证据](artifacts/ai-precision-2026-10-11/integer-escape/summary.json)：
 冻结1029项ILP32，AI TN658/UNKNOWN370；BMC TP104/TN658/UNKNOWN266，均FP0/FN0/error1。
 全量与定向双ABI验证的范围分别记录，不称已完成双ABI全量。
 
@@ -21,12 +21,13 @@
 
 | 工作 | 当前状态 | 不能据此推断的结论 |
 | --- | --- | --- |
-| 第一份审查的F1–F6及后续已复现FN | 原F1–F6及条件锁已修复；新发现整数表示指针发布FN待修 | 不等于实现完整逃逸图、句柄来源域或证明全部SAFE规则 |
+| 第一份审查的F1–F6及后续已复现FN | 原F1–F6、条件锁及整数表示指针发布已修复或封堵 | 不等于实现完整逃逸图、句柄来源域或证明全部SAFE规则 |
 | 剩余正确性审查义务 | 尚缺逐规则、逐合同的整体验收记录 | 不能写成已全部结案；也不能把未作普遍证明写成还有已复现FN未修 |
 | 第二份计划的精度恢复 | 已进入实施；最近两轮TN654→658 | 未实现完整PBR/digest，也未证实加速 |
 | 第三份双向反馈研究 | 新的反向SAFE/归纳查询仍未实现 | 仿射地址的原生充分条件和离线数学核对不等于BMC反馈已落地 |
 
-当前有已复现而未处理的整数表示指针发布FN，见§9.27；其修复优先于精度恢复。
+§9.27新发现的整数表示指针发布FN已在§9.28处理；本阶段没有登记为已复现而未修的FN。
+这不等于逐项正确性验收或完整语言证明已完成。
 **工程P0出口与全语言soundness证明分开**：先对明确支持的范围逐项验收，
 前提不能覆盖的功能保留UNKNOWN；不以完成全项目形式化证明作为无限期停止优化的条件。
 优化中新发现具体FN，立即优先修复并独立提交，不能以“已进入精度阶段”为由推迟。
@@ -1322,3 +1323,42 @@ checker消费还要求包含函数可证至多执行一次；静态SSA地址不�
 [逐文件变化](artifacts/ai-precision-2026-10-11/conditional-guard/transitions.json)、
 [最小变体](review-repros/ai-conditional-guard/guard.c)、
 [修复前后](artifacts/ai-precision-2026-10-11/conditional-guard/fixture-transitions.json)。
+
+
+### 9.28 正确性：整数发布与字节重建的指针表示（2026-10-11）
+
+`uintptr_t token=(uintptr_t)&local; address=token; create(worker); local=2;`
+与worker经address回转的写可以竞争。旧实现没有在ptrtoint时登记逃逸，inttoptr又使用
+AbsoluteZero+offset，与真实stack/TLS/heap对象不交。另一个没有显式inttoptr的路径是
+`memcpy(&shared_pointer,&token,sizeof token)`：内存域旧辅助pointer-set仍可把新表示收窄为NULL。
+这些不是单纯完备性损失，会从访问覆盖或points-to过滤制造SAFE。
+
+本轮在所属层统一处理：ptrtoint保守记录对象可能逃逸；活跃非零或未知inttoptr明确记录
+未覆盖别名效果，不能据AbsoluteZero证明竞争不存在。内存域write/copy/set写后撤销对象级
+辅助pointer-set约束，保留精确scalar cells；不再把旧目标或source∪destination当作任意
+新字节表示的上界。即使typed pointer store发生错位覆盖，也可拼出集合外地址，所以不能
+只针对integer RHS失效。TOP destination fill忘掉相关整个内存事实；确定零长度仍无操作。
+恢复带来源的精确表示需要独立provenance/布局证明，当前没有实现，也不禁用将来的精化。
+
+全局初始化中的非零转换同样必须保留覆盖警告。原报告schema只支持function statements，
+直接插入initializer会断言退出；现选择入口函数可报告语句作anchor，并保存
+`effect_origin=global initialization`。没有通过丢掉警告修复崩溃。
+
+48次双ABI/双模式（LP64改名）对照：5类竞争输入的20次旧SAFE全部退UNKNOWN；
+纯数值token、比较和零指针对照保持SAFE，合法私有roundtrip/锁/join控制有保守UNKNOWN损失。
+24次Dartagnan参考与源码预期相符，包含独立的全局常量初始化对照；其PASS仍只是有界参考。
+内存域C++14直接检查32项，旧header16失败→当前0失败，含整pointer复制/置零精确性、
+整数/部分typed写、部分byte复制/fill、未知长度/TOP目标和零长度控制。
+既有审查76、guard48、pointer-byte72、publication56、相对锁52、仿射锁56、字段40、属性36、
+旧BMC20次全部通过，build/install一致。中间曾暴露报告崩溃与typed-splice残留，修正后
+重新跑完整验证；中间结果未作为最终通过证据。
+
+最终1029顺序配对逐文件无变化：AI TN658/U370，BMC TP104/TN658/U266，FP/FN0/error1。
+这说明集合外正确性修复在该冻结集未产生观察到的精度损失，不等于语言级soundness证明。
+源码不依赖文件名、标签或某种benchmark形状。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/integer-escape/summary.json)、
+[前后变体](artifacts/ai-precision-2026-10-11/integer-escape/fixture-transitions.json)、
+[域检查](artifacts/ai-precision-2026-10-11/integer-escape/core.json)、
+[输入及runner](review-repros/ai-integer-pointer/publication.c)、
+[1029配对](artifacts/ai-precision-2026-10-11/integer-escape/paired.json)。
