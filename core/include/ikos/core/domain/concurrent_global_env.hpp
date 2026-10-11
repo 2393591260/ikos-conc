@@ -120,8 +120,8 @@ public:
   };
 
 private:
-  // A direct, acyclic, single-call chain from the implicit main invocation.
-  // Escaped addresses and explicit main calls invalidate that certificate.
+  // A direct-call/create chain with one acyclic invocation per edge, rooted
+  // at implicit main. Other address escapes and explicit main calls reject it.
   bool function_executes_once_locked(ar::Function* entry) {
     auto cached = _single_execution_cache.find(entry);
     if (cached != _single_execution_cache.end()) return cached->second;
@@ -151,8 +151,18 @@ private:
                 if (caller != nullptr || !isa< ar::FunctionPointerConstant >(call->called())) return false;
                 caller = call;
               }
-              for (auto it = call->arg_begin(); it != call->arg_end(); ++it)
-                if (mentions(mentions, *it, 0)) return false;
+              unsigned index = 0;
+              for (auto it = call->arg_begin(); it != call->arg_end(); ++it, ++index) {
+                if (!mentions(mentions, *it, 0)) continue;
+                auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+                // A literal start routine is an invocation edge, not an
+                // arbitrary callback escape. Prove its creator lifetime too.
+                if (caller != nullptr || index != 2 || call->num_arguments() != 4 ||
+                    !isa< ar::FunctionPointerConstant >(*it) || target == nullptr ||
+                    !target->function()->is_declaration() ||
+                    target->function()->name() != "pthread_create") return false;
+                caller = call;
+              }
             } else {
               for (auto it = statement->op_begin(); it != statement->op_end(); ++it)
                 if (mentions(mentions, *it, 0)) return false;
@@ -1275,8 +1285,8 @@ public:
     return count != _spawn_counts_by_name.end() && count->second == sites->second.size();
   }
 
-  // This direct, acyclic call-chain certificate excludes escaped/recursive
-  // functions and thread entries; one live thread is not one lifetime call.
+  // Direct-call/create chains prove one lifetime invocation. Escaped/recursive
+  // functions are rejected; one live thread is not one lifetime invocation.
   bool function_executes_at_most_once(ar::Function* function) {
     std::lock_guard< std::mutex > lock(_mutex);
     return function != nullptr && this->function_executes_once_locked(function);

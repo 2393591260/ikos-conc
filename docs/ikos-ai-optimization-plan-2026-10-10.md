@@ -1619,3 +1619,44 @@ binary指纹，不能冒充全部诊断又重跑了一遍。下一机制先检�
 [64项正反变体](artifacts/ai-precision-2026-10-11/guard-cancellation/fixtures.json)、
 [AR与双ABI真实任务](artifacts/ai-precision-2026-10-11/guard-cancellation/ar-excerpts.json)、
 [回归](artifacts/ai-precision-2026-10-11/guard-cancellation/regressions.json)。
+
+### 9.36 第二版精度：嵌套创建的单生命周期证明（2026-10-11）
+
+原证书只允许从隐式main出发的单次普通调用链，把线程入口作为任意地址逃逸拒绝。
+因此main仅创建一次parent、parent仅创建一次child时，child仍被当作可能重复创建；
+嵌套join无法覆盖其全部动态实例。现在仅把直接声明pthread_create的四参数调用中，
+第2号参数的字面FunctionPointerConstant视为调用边，并继续证明整个creator生命周期。
+每层仍要求唯一入边、调用点不在CFG环内，根必须为没有显式调用的隐式main。
+多创建、递归、重复helper、全局/aggregate逃逸、间接或bitcast入口及32层预算失败拒绝。
+这证明的是至多一次生命周期调用，不把“一次最多活着一个线程”当作唯一性。
+
+实现落在ConcurrentGlobalEnv的共同证书，供实例覆盖、join和固定激活守卫使用。
+Goblint bb55b70的threadId.ml及threadIdDomain.ml把父实例非唯一性传给子实例；本实现
+只是其在IKOS静态单入边范围内的受限证书，没有实现完整digest/opaque句柄来源域。
+前提仍是现有成功pthread模型和完整入口覆盖；未知API/生命周期保留UNKNOWN边界。
+
+48项native双ABI/双模式对照通过，12项UNKNOWN恢复SAFE；重复父实例、循环创建、
+递归helper、混合直接/线程调用、两次子创建及漏join的竞争对照均不SAFE。
+旧creation28、guard48、MUST48、算术64、handle64、join-hulls24、create-alias32、
+审查76及旧BMC20通过，旧BMC逐项等于前驱。另对旧single-execution的24项前后配对
+检查属性合同；其原有loop-helper要求FALSE及once-helper要求SAFE的精度断言仍不满足，
+不声称那个旧runner整体通过。确定FALSE的递归main所选AR执行独立ACCEPT。
+
+7个冻结变化：singleton两项、parallel-barrier两项、parallel-parallel-sum三项。
+每项做前后双配置/双模式检查，全部在其官方任务ILP32配置恢复SAFE。原始输入部分已
+按ILP32预处理，直接-m64不等于原生LP64任务；只有barrier两项也在该补充配置恢复，
+其余仍UNKNOWN，无假FALSE。新最小对照用原生头文件验证两个ABI。
+
+1029全量顺序AI/BMC：AI TN662/U366→TN669/U359；BMC TP106/TN662/U260→
+TP106/TN669/U253，FP/FN0/error1。源/YAML/manifest逐项哈希相同；nsc-ircc仍超时，
+未拼接局部重跑。前驱使用已固定的完整扫描，不宣称新配对速度收益。
+safe-label UNKNOWN124，其中正常Goblint TRUE33、参考未证明91；三项新增SAFE的
+Goblint参考UNSUPPORTED，恢复依据为IKOS证书与独立源码控制例，未把其参考标签当证明。
+本轮没有新冻结TP，也没有把第一版134条模型检查重新包装成本版所有模型验证。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/nested-lifetime/summary.json)、
+[7项变化](artifacts/ai-precision-2026-10-11/nested-lifetime/transitions.json)、
+[对照](artifacts/ai-precision-2026-10-11/nested-lifetime/fixtures.json)、
+[真实任务及旧单次调用](artifacts/ai-precision-2026-10-11/nested-lifetime/extra-paired.json)、
+[回归](artifacts/ai-precision-2026-10-11/nested-lifetime/regressions.json)。
+下一机制是带真实来源与完成顺序的handle/create-return关联，再处理保护敏感干扰。

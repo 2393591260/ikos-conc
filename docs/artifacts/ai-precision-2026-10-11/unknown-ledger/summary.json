@@ -2,23 +2,23 @@
   "original_pool": 135,
   "added_current_unknown": 1,
   "tracked": 136,
-  "recovered": 5,
-  "remaining": 131,
+  "recovered": 12,
+  "remaining": 124,
   "no_impossibility_claims": true,
   "remaining_reference_status": {
-    "UNSUPPORTED": 33,
+    "UNSUPPORTED": 30,
     "UNKNOWN": 25,
-    "TRUE": 37,
+    "TRUE": 33,
     "TIMEOUT": 34,
     "ERROR": 2
   },
   "dispositions": {
-    "REFERENCE_NOT_PROVED": 94,
-    "RECOVERED_WITH_GENERAL_CERTIFICATE": 5,
-    "DEFERRED_GENERAL_MECHANISM": 37
+    "RECOVERED_WITH_GENERAL_CERTIFICATE": 12,
+    "DEFERRED_GENERAL_MECHANISM": 33,
+    "REFERENCE_NOT_PROVED": 91
   },
   "diagnosis_limit_rows": 8,
-  "summary_note": "All136 source/YAML identities checked against latest full paired verdicts; 37 normal TRUE entrances remain. Diagnostic snapshots retain their originating analyzer hashes; eight heap diagnoses remain partial.",
+  "summary_note": "All136 source/YAML identities checked against current complete scans; 33 normal TRUE entrances remain. Recovered nested tasks have fresh reports; unchanged diagnostic snapshots retain their older analyzer hashes. Eight heap diagnoses remain partial.",
   "coverage_tasks": {
     "external call effects not covered": 36,
     "library memory effects not covered": 3,
@@ -28,6 +28,6 @@
     "mixed atomic/non-atomic accesses": 4,
     "internal call effects not covered": 1
   },
-  "latest_verdict_evidence": "../guard-cancellation/paired.json",
-  "latest_analyzer_sha256": "ae19882b48b91ae1de9b6d63b1357732218eb00ff01d8467b82cee03f1bb1521"
+  "latest_verdict_evidence": "../nested-lifetime/paired.json",
+  "latest_analyzer_sha256": "13c3ef6992b728c41f8f6f2d331e6a75ce560c1291557ede40b9caf9c7477cbc"
 }

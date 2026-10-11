@@ -440,3 +440,11 @@ init、每个本地step、完整环境interference闭包和依赖失效合同；
 [守卫证据](artifacts/ai-precision-2026-10-11/guard-cancellation/summary.json)。
 后续优先做共享动态身份与干扰合同，再检验BMC候选/成本收益；不凭基础AI新增TN宣布
 真正BMC执行→AI反馈已经实现。
+
+### 9.6 共享动态身份的嵌套调用证书（2026-10-11）
+
+优化计划§9.36把可证明单次的pthread_create调用边加入共同生命周期证书，恢复7项TN，
+当前TP106/TN669/U253。这是AI与BMC候选共用的身份基础改善，不是反馈原型的新增收益；
+没有测量加速，也没有补齐digest实例域。余下句柄成功返回关系及release值摘要仍需
+各自的前提、反例和独立配对。八组零收益消融及第一版模型证据保持原版本范围。
+证据：[nested-lifetime](artifacts/ai-precision-2026-10-11/nested-lifetime/summary.json)。

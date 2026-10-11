@@ -471,3 +471,13 @@ DAT3M_HOME="$PWD" CFLAGS='-fgnu89-inline -m64' "$JAVA_BIN" -Xmx2g \
 新定向FALSE的12条AR执行已独立ACCEPT；冻结集没有新TP。本次没有重新声称所有106任务
 的本次所选模型都重放过，第一版的134条默认所选执行仍是那个版本的证据。
 依据：[guard-cancellation](artifacts/ai-precision-2026-10-11/guard-cancellation/summary.json)。
+
+### 7.3 嵌套线程单生命周期证书验收（2026-10-11）
+
+优化计划§9.36允许字面pthread_create入口作为单次调用链的一条边，父生命周期仍须
+唯一且非循环，隐式main有显式入边、逃逸或多入边时拒绝。不是由运行时发现次序或
+“目前只见到一个线程”证明唯一。native双ABI正反例48项及旧相关回归通过，7项真实
+安全任务在其ILP32配置恢复；旧single-execution精度断言仍有缺口，另行配对记录。
+完整1029：TP106/TN669/U253/FP0/FN0/error1。没有新冻结FALSE；历史第一版模型证据
+保留原版本范围。完整POSIX失败、opaque句柄及一般实例来源仍不属于这个证书。
+证据：[nested-lifetime](artifacts/ai-precision-2026-10-11/nested-lifetime/summary.json)。
