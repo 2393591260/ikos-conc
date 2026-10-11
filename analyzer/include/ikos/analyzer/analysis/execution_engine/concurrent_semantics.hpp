@@ -628,8 +628,9 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
   // two successors) and the SIBLING successor carries the condition as a
   // Comparison (`i == 0`) that refines its path. So the lock — in the other
   // successor — is held iff that Comparison is FALSE. Record it as a
-  // HELD_IF_NONZERO/HELD_IF_ZERO conditional lock instead of a must-lock so
-  // the correlation survives the join (04-mutex_07-ps_nr.c FP). The checker
+  // HELD_IF_NONZERO/HELD_IF_ZERO conditional fact in addition to the held
+  // must-lock, so the correlation survives a join with the unlocked path.
+  // The checker
   // resolves it only when the guard's interval is a singleton matching the
   // polarity — the sound direction (unknown guard ⇒ lock not admitted).
   std::uint64_t branch_guard = 0;
@@ -717,8 +718,9 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
     } else if (trylock) {
       eng.lockset().add_cond_lock(cond_guard, la);
     } else if (conditional_lock) {
-      eng.lockset().add_cond_lock(branch_guard, la,
-                                                branch_polarity);
+      // This branch has executed the blocking acquisition.
+      eng.lockset().add_lock(la);
+      eng.lockset().add_cond_lock(branch_guard, la, branch_polarity);
       // Replay the correlation onto the FALSE branch too, so the
       // must-lockset intersection at the join PRESERVES it (both branches
       // carry the "m held iff guard!=0" fact; on the false branch guard==0

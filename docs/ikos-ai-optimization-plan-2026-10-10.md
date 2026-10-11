@@ -13,7 +13,7 @@
 
 本节更新后续优先级；§2–8保留原设计与理论依据，§9保留各次实验的历史快照。
 不能把历史“尚未修复”、旧候选池或旧TN当作当前状态，也不能把设计项全部当作必须实现的大改。
-当前为§9.29前端复制长度修复，最新[配对证据](artifacts/ai-precision-2026-10-11/copy-boundary/summary.json)：
+当前为§9.30条件加锁的实际MUST恢复，最新[配对证据](artifacts/ai-precision-2026-10-11/conditional-must/summary.json)：
 冻结1029项ILP32，AI TN658/UNKNOWN370；BMC TP104/TN658/UNKNOWN266，均FP0/FN0/error1。
 全量与定向双ABI验证的范围分别记录，不称已完成双ABI全量。
 
@@ -1390,3 +1390,29 @@ integer、byte/publication、锁、属性和旧BMC回归通过。此提交只改
 [36项输入结果](artifacts/ai-precision-2026-10-11/copy-boundary/fixtures-after.json)、
 [CASE10前后](artifacts/ai-precision-2026-10-11/copy-boundary/case10-after.json)、
 [LLVM回归runner](review-repros/llvm-memory-length/run.py)。
+
+
+### 9.30 精度：条件加锁分支同时保留实际 MUST（2026-10-11）
+
+`if (g) { lock(m); if (h) x=1; unlock(m); }`的内层访问实际持锁，旧实现因为识别了
+条件关联而只加入cond-lock，丢掉普通MUST。checker按最近守卫h查找时无法使用g的关联。
+现已在受支持的阻塞加锁分支同时加入普通MUST和条件事实：实际锁在合流时按交集消失，
+条件关系继续按原零值/单次激活契约保留；未加锁的兄弟分支没有实际MUST。
+trylock、读锁、属性/生命周期不支持边界均沿用原处理，不由这条恢复取得额外保证。
+
+审查持锁写的发布影响：`thread_modular.cpp`在外层每轮及最终检查后flush所有privatized
+队列，队列汇总所有可能写；没有因归到锁分区而吞掉无unlock的中间效果。
+48次双ABI/双模式（LP64改名）全部通过；16次嵌套守卫/helper/循环访问由UNKNOWN→SAFE。
+相关守卫原对照保持SAFE；不同守卫、提前解锁、未检查trylock、双方读锁写入和helper解锁
+负例均不SAFE，确定FALSE的所选执行独立AR ACCEPT。非默认属性仍UNKNOWN。
+20次Dartagnan有界参考与源码推理相符，循环例参考UNKNOWN，不把它解释成安全认证。
+既有正确性、指针/字节、条件锁、相对锁、仿射锁、字段/属性及旧BMC双ABI回归全部通过。
+
+完整1029顺序配对没有任务变化：AI TN658/U370；BMC TP104/TN658/U266，FP/FN0/error1。
+因此本阶段是有定向证据的通用精度修复，没有冻结集TN增益；NetBSD此前已在§9.27恢复，
+不重复计分。build/install一致，机制独立提交。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/conditional-must/summary.json)、
+[定向变化](artifacts/ai-precision-2026-10-11/conditional-must/fixture-transitions.json)、
+[输入](review-repros/ai-conditional-must/ownership.c)、
+[配对](artifacts/ai-precision-2026-10-11/conditional-must/paired.json)。

@@ -1,0 +1,229 @@
+{
+  "baseline_commit": "b085789",
+  "analyzer_sha256": "c741a3c2a4aeffd6d33e5fac6c16095525e8d105bc4a4f6c99f4ad12b39a5168",
+  "baseline_analyzer_sha256": "61cc24c25e348b33fc2f9fd43df9503e0e91a1b723d6221a3a6f9d8fd4267cfa",
+  "matrix": {
+    "after_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 658,
+      "FN": 0,
+      "error": 1,
+      "unknown": 370
+    },
+    "after_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 658,
+      "FN": 0,
+      "error": 1,
+      "unknown": 266
+    },
+    "before_ai": {
+      "TP": 0,
+      "FP": 0,
+      "TN": 658,
+      "FN": 0,
+      "error": 1,
+      "unknown": 370
+    },
+    "before_bmc": {
+      "TP": 104,
+      "FP": 0,
+      "TN": 658,
+      "FN": 0,
+      "error": 1,
+      "unknown": 266
+    }
+  },
+  "tasks": 1029,
+  "jobs": 4,
+  "timeout_seconds": 30,
+  "data_model": "ILP32",
+  "full_scans_sequential": true,
+  "build_and_install_equal": true,
+  "observation_counts": {
+    "fixtures-before.json": 48,
+    "fixtures-after.json": 48,
+    "reference.json": 20,
+    "audit.json": 76,
+    "affine.json": 60,
+    "relative.json": 52,
+    "fields.json": 40,
+    "attributes.json": 36
+  },
+  "old_bmc_observations": 20,
+  "sweep_time": [
+    {
+      "mode": "ai",
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4"
+      ],
+      "returncode": 0,
+      "seconds": 149.27244956301
+    },
+    {
+      "mode": "bmc",
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4"
+      ],
+      "returncode": 0,
+      "seconds": 359.91528422699776
+    }
+  ],
+  "log_sha256": {
+    "build.log": "3cd0ce7b9cb109a3694e5c5d271a83233830a546b5b966e992791d0bac112f14",
+    "ai-full.log": "e5a150b5379b24b5d5894101000ca6a7ecbf490fe86444ee4a6b829476345493",
+    "bmc-full.log": "79ec8069b815f533518a843bf8ed14f16f5e4a571dd8e48f65c40522476cae32"
+  },
+  "mechanism": "An executed supported blocking acquisition keeps ordinary MUST ownership plus conditional relation; unlocked sibling carries no actual ownership.",
+  "support": "Supported unique concrete blocking mutex under existing attribute/lifecycle coverage gates.",
+  "premises": [
+    "Ordinary MUST joins intersect across branch alternatives.",
+    "Conditional identity still satisfies fixed zero-equivalent single-activation guard contract.",
+    "Unlock removes ownership and publication queues join every possible write, including exit/fixpoint flush."
+  ],
+  "regressions": [
+    {
+      "name": "integer",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-integer-pointer/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/conditional-must/integer"
+      ],
+      "returncode": 0,
+      "seconds": 20.142025985987857
+    },
+    {
+      "name": "guard",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-conditional-guard/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/conditional-must/guard"
+      ],
+      "returncode": 0,
+      "seconds": 23.498059362987988
+    },
+    {
+      "name": "bytes",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-pointer-bytes/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/conditional-must/bytes"
+      ],
+      "returncode": 0,
+      "seconds": 20.37145914400753
+    },
+    {
+      "name": "publication",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-publication/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/conditional-must/publication"
+      ],
+      "returncode": 0,
+      "seconds": 22.651999494992197
+    },
+    {
+      "name": "audit",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-correctness/run.py",
+        "--fixed",
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "F6",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/conditional-must/audit"
+      ],
+      "returncode": 0,
+      "seconds": 18.00412234799296
+    },
+    {
+      "name": "relative",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-relative-mutex/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/conditional-must/relative"
+      ],
+      "returncode": 0,
+      "seconds": 13.194862999007455
+    },
+    {
+      "name": "affine",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-affine-mutex/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/conditional-must/affine"
+      ],
+      "returncode": 0,
+      "seconds": 17.568898636003723
+    },
+    {
+      "name": "fields",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-field-locks/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/conditional-must/fields"
+      ],
+      "returncode": 0,
+      "seconds": 9.94771773800312
+    },
+    {
+      "name": "attributes",
+      "command": [
+        "python3",
+        "docs/review-repros/mutex-attributes/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/conditional-must/attributes"
+      ],
+      "returncode": 0,
+      "seconds": 9.59305379599391
+    },
+    {
+      "name": "old32",
+      "command": [
+        "python3",
+        "docs/review-repros/bmc-2026-10-08/run.py",
+        "--bits",
+        "32"
+      ],
+      "returncode": 0,
+      "seconds": 3.070256544990116
+    },
+    {
+      "name": "old64",
+      "command": [
+        "python3",
+        "docs/review-repros/bmc-2026-10-08/run.py",
+        "--bits",
+        "64"
+      ],
+      "returncode": 0,
+      "seconds": 2.744759962995886
+    }
+  ],
+  "source_sha256": {
+    "docs/review-repros/ai-conditional-must/run.py": "c93713370c8f7b68b2bc2ca33f63d29ac8049a500ffbb075d7cb4050ce85c215",
+    "docs/review-repros/ai-conditional-must/ownership.c": "6ccc5c75ad73a3c6c481331e84f3a9629d22de454e71ca8c1311450a17ecd803"
+  },
+  "reference_limit": "Dartagnan bound3: 20 directed references, nondet-loop case9 UNKNOWN; PASS not an unbounded proof."
+}
