@@ -689,9 +689,8 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
           // sibling `i != 0` (ne) ⇒ lock held iff i == 0 ⇒ ZERO.
           bool held_iff_nonzero = pred_eq;
           if (held_iff_nonzero) {
-            // Only a fixed value's zero-preserving conversions can identify
-            // this predicate with the access guard. Truncation and arithmetic
-            // are distinct, and a static AR variable is not a dynamic call ID.
+            // Prove zero-equivalence at machine width and a fixed activation;
+            // a static AR variable is not a dynamic call ID.
             branch_guard = nonzero_guard_identity(cmp->left());
             if (branch_guard != 0) {
               branch_polarity = core::lockset::CondPolarity::HELD_IF_NONZERO;

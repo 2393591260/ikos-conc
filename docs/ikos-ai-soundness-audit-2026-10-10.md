@@ -403,7 +403,7 @@ DAT3M_HOME="$PWD" CFLAGS='-fgnu89-inline -m64' "$JAVA_BIN" -Xmx2g \
 | 双atomic | 两个真实AR atomic，定义的race性质不计该对 | mixed pair仍保留；不由此推断完整C11 weak-memory值/同步语义 |
 | byte区间不交 | 实际start范围及width覆盖访问 | ZNumber宽度运算，未知width不排除；依赖有效对象和表示边界 |
 | 实际共同锁 | 完整具体锁身份、可表示offset、有效成功持锁及互斥模式 | 大offset/实例/属性门、未知unlock撤销；read/read锁不能保护两个write |
-| 条件锁 | 固定值的零值等价和单次动态激活 | 截断/算术/phi/循环/重复helper拒绝身份；执行分支同时保留普通MUST |
+| 条件锁 | 固定值的零值等价和单次动态激活 | 同位宽常量零偏移按优化计划§9.35证明；跨宽度算术/截断/phi/循环/重复helper不剥层；执行分支保留普通MUST |
 | 相对锁 | 每条前缀保留data+delta的mutex，重叠可推出同start/mutex | 全局对象+stride/width引理；精确普通调用绑定，循环/未知call/unlock/rebind/预算均拒绝 |
 | 旧private-init/region/TOP猜测 | 完整发布/别名/锁证明 | 不再作SAFE过滤；部分region/provenance注释标签仍保留，不能当成能力证明 |
 | 库/internal效果 | 全部读写、回调、同步及跨线程摘要覆盖 | 未覆盖extern/internal/byte效果警告；显式import拒绝是error，不假称UNKNOWN |
@@ -458,3 +458,16 @@ DAT3M_HOME="$PWD" CFLAGS='-fgnu89-inline -m64' "$JAVA_BIN" -Xmx2g \
 [268条配置各自所选执行](artifacts/ai-precision-2026-10-11/feedback-corpus/executions.json)。
 保留的事实范围是AR前端快照及显式库合同；官方source/witness验证、一般POSIX失败/非默认
 生命周期、完整C11弱内存、通用归纳后解认证未完成。原型文档没有把这些延期项包装成已实现。
+
+
+### 7.2 第二版守卫证书的增量验收（2026-10-11）
+
+优化计划§9.35加入纯、固定单次激活的同位宽常量add/sub抵消；所有继续执行满足
+`result = source + delta mod 2^w`，只有delta=0时共享零值身份。截断/非零偏移/跨宽度
+抵消不获证书，循环/phi/重复调用及预算回退保留。AR no-wrap溢出会终止，不能把该证明
+用于溢出后任意行为；源码真实入口额外排除了INT_MAX。
+64项新双ABI/双模式对照、旧guard48/MUST48/原审查76/BMC20及全量通过。
+当前TP106/TN662/UNKNOWN260/FP0/FN0/error1，安全标签UNKNOWN131。
+新定向FALSE的12条AR执行已独立ACCEPT；冻结集没有新TP。本次没有重新声称所有106任务
+的本次所选模型都重放过，第一版的134条默认所选执行仍是那个版本的证据。
+依据：[guard-cancellation](artifacts/ai-precision-2026-10-11/guard-cancellation/summary.json)。

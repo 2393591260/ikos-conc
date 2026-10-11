@@ -69,12 +69,15 @@ inline ar::Statement* unique_def(ar::InternalVariable* iv) {
 
 /// Identity of a fixed integer's zero/nonzero predicate. This is a proof
 /// helper for conditional MUST locks, unlike the symbolic-index hint below.
-/// Extensions and same-width copies preserve zero; truncation and arithmetic
+/// Extensions, same-width copies and constant add/sub chains with zero total
+/// offset modulo their bit width preserve zero. Other arithmetic and truncation
 /// remain distinct values. A definition in a cycle or a lowered phi can change
 /// while an older conditional fact is live and therefore has no such identity.
 /// The caller must additionally prove that the containing function executes
 /// at most once: AR variable identities do not distinguish repeated calls.
 inline std::uint64_t nonzero_guard_identity(ar::Value* value) {
+  core::ZNumber offset{0};
+  std::uint64_t identity = 0;
   for (unsigned depth = 0; depth < 32; ++depth) {
     auto* variable = dyn_cast< ar::InternalVariable >(value);
     if (variable == nullptr || !variable->type()->is_integer()) return 0;
@@ -85,7 +88,8 @@ inline std::uint64_t nonzero_guard_identity(ar::Value* value) {
       if (variable->code() == nullptr) return 0;
       for (auto* block : *variable->code()) for (auto* statement : *block)
         if (statement->result_or_null() == variable) return 0;
-      return reinterpret_cast< std::uint64_t >(variable);
+      return offset == 0 ? reinterpret_cast< std::uint64_t >(variable)
+                         : identity;
     }
     auto* block = definition->parent();
     if (block == nullptr) return 0;
@@ -97,7 +101,33 @@ inline std::uint64_t nonzero_guard_identity(ar::Value* value) {
       if (!visited.insert(next).second) continue;
       pending.insert(pending.end(), next->successor_begin(), next->successor_end());
     }
+    if (offset == 0) identity = reinterpret_cast< std::uint64_t >(variable);
     ar::Value* operand = nullptr;
+    auto* target = cast< ar::IntegerType >(variable->type());
+    if (auto* binary = dyn_cast< ar::BinaryOperation >(definition)) {
+      const bool add = binary->op() == ar::BinaryOperation::SAdd ||
+                       binary->op() == ar::BinaryOperation::UAdd;
+      const bool sub = binary->op() == ar::BinaryOperation::SSub ||
+                       binary->op() == ar::BinaryOperation::USub;
+      auto* constant = dyn_cast< ar::IntegerConstant >(binary->right());
+      operand = binary->left();
+      if (add && constant == nullptr) {
+        constant = dyn_cast< ar::IntegerConstant >(binary->left());
+        operand = binary->right();
+      }
+      if ((!add && !sub) || constant == nullptr ||
+          !operand->type()->is_integer() ||
+          cast< ar::IntegerType >(operand->type())->bit_width() !=
+              target->bit_width() ||
+          constant->value().bit_width() != target->bit_width()) return identity;
+      // No-wrap operations trap on overflow; all continuing executions also
+      // satisfy the modular identity. Never assume an interval bound here.
+      auto delta = constant->value().to_z_number();
+      offset = (offset + (add ? delta : -delta)) %
+               (core::ZNumber{1} << target->bit_width());
+      value = operand;
+      continue;
+    }
     if (auto* assignment = dyn_cast< ar::Assignment >(definition)) {
       operand = assignment->operand();
     } else if (auto* cast = dyn_cast< ar::UnaryOperation >(definition)) {
@@ -106,13 +136,14 @@ inline std::uint64_t nonzero_guard_identity(ar::Value* value) {
           cast->op() == ar::UnaryOperation::Bitcast) operand = cast->operand();
     }
     if (operand == nullptr || !operand->type()->is_integer())
-      return reinterpret_cast< std::uint64_t >(variable);
+      return identity;
     auto* source = cast< ar::IntegerType >(operand->type());
-    auto* target = cast< ar::IntegerType >(variable->type());
     if (auto* operation = dyn_cast< ar::UnaryOperation >(definition)) {
       if (operation->op() == ar::UnaryOperation::Bitcast &&
           source->bit_width() != target->bit_width()) return 0;
       if (source->bit_width() > target->bit_width()) return 0;
+      if (source->bit_width() != target->bit_width() && offset != 0)
+        return identity;
     } else if (source->bit_width() != target->bit_width()) return 0;
     value = operand;
   }

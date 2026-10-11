@@ -2283,10 +2283,9 @@ std::vector< std::uint64_t > DataRaceChecker::snapshot_locks(
   // Resolve conditional locks. HELD_IF_ZERO (trylock / `if (!i) lock`): the
   // key is the guard Variable* index, held iff its interval is the singleton
   // {0} — trylock is the 04-mutex_35-trylock_rc.c FN fix. HELD_IF_NONZERO
-  // (`if (i) lock`): the key is the canonical (affine-peeled) base AR var
-  // pointer, held iff it SSA-identity-matches the access's own branch guard
-  // (the access executes iff its guard != 0) — 04-mutex_07-ps_nr /
-  // 04-mutex_17-ps_add1_nr.c FP fix.
+  // (`if (i) lock`): the key is a fixed, zero-equivalent AR value identity,
+  // including same-width constant add/sub cancellation. The access's branch
+  // must prove the same identity (and hence the same nonzero predicate).
   for (const auto& kv : inv.second().cond_locks()) {
     if (kv.second.polarity == core::lockset::CondPolarity::HELD_IF_ZERO) {
       Variable* guard = reinterpret_cast< Variable* >(kv.first);

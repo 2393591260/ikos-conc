@@ -13,8 +13,9 @@
 
 本节更新后续优先级；§2–8保留原设计与理论依据，§9保留各次实验的历史快照。
 不能把历史“尚未修复”、旧候选池或旧TN当作当前状态，也不能把设计项全部当作必须实现的大改。
-当前完成§9.33逐文件台账及§9.34模型引导重算，启用消融见[反馈实验](artifacts/ai-precision-2026-10-11/feedback-corpus/summary.json)：
-冻结1029项ILP32，AI TN661/UNKNOWN367；BMC TP106/TN661/UNKNOWN261，均FP0/FN0/error1。
+第一版已完成§9.33–34；用户批准第二版以TN与共享并发语义为主。当前§9.35算术守卫
+恢复验收完成，最新[配对证据](artifacts/ai-precision-2026-10-11/guard-cancellation/summary.json)：
+冻结1029项ILP32，AI TN662/UNKNOWN366；BMC TP106/TN662/UNKNOWN260，均FP0/FN0/error1。
 全量与定向双ABI验证的范围分别记录，不称已完成双ABI全量。
 
 ### 0.1 三份文档的完成状态
@@ -23,7 +24,7 @@
 | --- | --- | --- |
 | 第一份审查的F1–F6及后续已复现FN | 原F1–F6、条件锁及整数表示指针发布已修复或封堵 | 不等于实现完整逃逸图、句柄来源域或证明全部SAFE规则 |
 | 剩余正确性审查义务 | 正确性篇§7已有16类工程验收与支持边界 | 不是完整C/POSIX证明；没有登记为已复现而未处理的本轮FN |
-| 第二份计划的精度恢复 | 原生证书及上下文绑定恢复TN654→661；当前132项safe-label UNKNOWN全部登记 | 未实现完整PBR/digest；38正常参考TRUE是后续一般机制入口，不是假称不能实现 |
+| 第二份计划的精度恢复 | 原生证书及上下文绑定恢复TN654→661；当前131项safe-label UNKNOWN全部登记（第一版132项又恢复1项） | 未实现完整PBR/digest；37正常参考TRUE是后续一般机制入口，不是假称不能实现 |
 | 第三份双向反馈研究 | A覆盖查询与B模型选域重算完成定向/冻结集消融；冻结集没有新增TN，默认关闭 | 属于solver-aided AI/启发式域重算；真正BMC执行反馈、并发归纳认证与论文创新性仍未证实 |
 
 §9.27新发现的整数表示指针发布FN已在§9.28处理；本阶段没有登记为已复现而未修的FN。
@@ -1579,3 +1580,42 @@ child CPU、累计单child max RSS也不是父进程+子树总CPU/峰值。仅�
 [逐任务配对](artifacts/ai-precision-2026-10-11/feedback-corpus/paired.json)、
 [重算任务](artifacts/ai-precision-2026-10-11/feedback-corpus/retries.json)、
 [独立执行](artifacts/ai-precision-2026-10-11/feedback-corpus/executions.json)。
+
+
+### 9.35 第二版精度：固定激活下的机器位宽加减抵消（2026-10-11）
+
+入口是`04-mutex_17-ps_add1_nr.c`，正常Goblint TRUE仅作为调查入口。新AR观察确认：
+加锁判断为`%6!=0`，访问判断为`%15=(%6 sadd.nw 1) ssub.nw 1`，unlock判断为
+`%20=(%6 sadd.nw 1) sadd.nw -1`。源码先排除INT_MAX，三个谓词实际相同；旧守卫
+身份只允许cast/copy，因此保守地丢失了保护关系。
+
+在已有`nonzero_guard_identity`添加**同位宽常量add/sub的零偏移证书**：
+沿纯def-use链用ZNumber累计delta，归一化mod 2^w；只有delta为零时才采用内层固定值身份。
+非零偏移保留已经证明的外层身份，不当作base等价。宽度改变只在delta=0时跨越，
+因此`u32(0-1)`扩到u64再加1不会错误抵消；同位宽signed/unsigned bitcast保留位模式和零。
+不剥任意乘法/截断，也不把这个证明与无位宽`resolve_linear_index`提示混用。
+
+有no-wrap标记的AR运算在溢出时终止；每条继续执行也满足模等式，因此抵消不需要臆造
+区间/no-overflow假设。此性质不为溢出后的任意行为提供证明。unique def、非循环、单次
+函数激活及32层/256节点预算继续保留；phi、重复helper及预算失败仍不获得共同身份。
+修复在共同值身份层，transfer与checker共用，不依赖文件名、标签或某个加1形状。
+
+16个case×2ABI×AI/BMC=64观察，28项原UNKNOWN恢复SAFE；覆盖不同常量、常量左加、
+64位大常量、平台unsigned long、同位宽符号变化及逆运算出现在lock一侧。混合宽度、
+非零偏移、乘法回绕、phi、循环/重复helper负例不SAFE；12条确定FALSE的所选AR执行独立
+ACCEPT。narrow8中间截断的安全对照仍UNKNOWN，明确保留本版证明边界。
+真实冻结任务额外8项前后双ABI/双模式观察均UNKNOWN→SAFE。旧guard48、执行MUST48、
+原审查76及旧BMC20项通过；旧BMC观察与前驱逐项一致。build/install hash一致。
+
+1029 ILP32默认全量：AI TN661/U367→TN662/U366；BMC TP106/TN661/U261→TP106/TN662/U260，
+FP/FN0/error1。唯一变化为该安全任务。前驱复用同二进制/同source/YAML/同manifest的保存
+全量，不作为新配对性能实验；本次生产wrapper全扫139.63s/342.57s，未声称加速。
+当前safe-label UNKNOWN131，其中正常参考TRUE37；台账关联最新判定，未变化诊断保留原
+binary指纹，不能冒充全部诊断又重跑了一遍。下一机制先检查嵌套创建的单生命周期证书，
+之后再处理需要来源/返回相关性的全局句柄；完整opaque来源域仍未实现。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/guard-cancellation/summary.json)、
+[唯一冻结集变化](artifacts/ai-precision-2026-10-11/guard-cancellation/transitions.json)、
+[64项正反变体](artifacts/ai-precision-2026-10-11/guard-cancellation/fixtures.json)、
+[AR与双ABI真实任务](artifacts/ai-precision-2026-10-11/guard-cancellation/ar-excerpts.json)、
+[回归](artifacts/ai-precision-2026-10-11/guard-cancellation/regressions.json)。
