@@ -117,6 +117,28 @@ Zenodo [manage-files](https://help.zenodo.org/docs/deposit/manage-files/#modify)
 不要自动创建/上传版本。替换后核对公开文件 hash，并要求 CI 使用新实物；同 DOI 可能还有旧缓存。
 本轮没有发布或修改远端。
 
+网页上传中断时，可以在原记录的文件编辑草稿使用
+[API 上传脚本](../svcomp/zenodo_upload.py)。2026-10-12 核对的官方说明仍要求
+在发布后 30 天内开启 Edit published files，编辑草稿在原发布后 45 天内重新发布，DOI 不变。
+脚本依据 [InvenioRDM draft/files API](https://inveniordm.docs.cern.ch/reference/rest_api_drafts_records/)，
+先核对原记录/草稿 ID 与 DOI，再初始化文件、PUT 内容、commit 文件并核对远端大小/校验和；
+不新建版本、不删除已有完成文件、不自动发布。
+在 [Zenodo Applications](https://zenodo.org/account/settings/applications/) 创建带 `deposit:write`
+权限的 personal access token，在本机终端执行：
+
+```bash
+python3 /home/ruan/ikos-conc/svcomp/zenodo_upload.py \
+  --record 23122650 \
+  --file /home/ruan/ikos-conc-m1-20261011.zip \
+  --filename ikos-conc.zip
+```
+
+token 在脚本的隐藏输入提示中粘贴，不写入源码、命令或聊天。
+显示远端 checksum 验证通过后，在原上传页面检查并重新发布；公开实物仍需复核。
+脚本遇到临时连接/429/5xx 最多尝试三次，每次重传整文件，不承诺断点续传。
+当前六项离线协议/边界测试通过；尚无已认证 Zenodo 上传实测，403/404 或草稿权限问题
+需要依据实际返回排查，不能据此改用新版本或另建记录。
+
 新发布归档应满足：单一顶层目录；合格 LICENSE、README、smoketest；支持 --version；
 必要工具组件/许可完整；任意路径、断网可运行；stdout/stderr 控制在官方上限内（当时 2 MB）；
 排除数据库、源码补丁、缓存和无关大测试。BUILD-INFO 记录源码、二进制、配置和组件指纹。
