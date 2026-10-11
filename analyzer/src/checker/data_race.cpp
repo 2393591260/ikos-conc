@@ -155,6 +155,66 @@ bool affine_pointer(ar::Value* pointer, AffinePointer& out) {
   return true;
 }
 
+struct PointerCongruence {
+  ar::GlobalVariable* global = nullptr;
+  core::ZNumber period;
+  core::ZNumber residue{0};
+};
+
+// Resolve only the address congruence through exact actual/formal bindings.
+// Each unknown term independently weakens the modulus, so no equality between
+// caller/callee index values or distinct dynamic invocations is assumed.
+boost::optional< PointerCongruence > pointer_congruence(
+    ar::Value* pointer, CallContext* context, std::uint64_t pointer_bits) {
+  PointerCongruence out{nullptr, core::ZNumber(1) << pointer_bits, core::ZNumber(0)};
+  for (unsigned depth = 0; depth < 64; ++depth) {
+    if (!pointer->type()->is_pointer()) return boost::none;
+    if (auto* global = dyn_cast< ar::GlobalVariable >(pointer)) {
+      if (global->is_thread_local()) return boost::none;
+      out.global = global;
+      return out;
+    }
+    auto* variable = dyn_cast< ar::InternalVariable >(pointer);
+    if (variable == nullptr) return boost::none;
+    auto* definition = unique_def(variable);
+    if (auto* shift = dyn_cast_or_null< ar::PointerShift >(definition)) {
+      for (auto i = shift->term_begin(); i != shift->term_end(); ++i) {
+        auto term = *i;
+        if (auto* constant = dyn_cast< ar::IntegerConstant >(term.second)) {
+          out.residue += term.first.to_z_number() * constant->value().to_z_number();
+        } else if (isa< ar::InternalVariable >(term.second) &&
+                   term.second->type()->is_integer()) {
+          out.period = core::gcd(out.period, term.first.to_z_number());
+        } else return boost::none;
+      }
+      pointer = shift->pointer();
+    } else if (auto* assignment = dyn_cast_or_null< ar::Assignment >(definition)) {
+      pointer = assignment->operand();
+    } else if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
+      if (cast->op() != ar::UnaryOperation::Bitcast) return boost::none;
+      pointer = cast->operand();
+    } else {
+      auto* function = variable->code()->function_or_null();
+      if (definition != nullptr || function == nullptr || context == nullptr ||
+          context->empty()) return boost::none;
+      auto* call = context->call();
+      auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+      if (!isa< ar::Call >(call) || target == nullptr ||
+          target->function() != function) return boost::none;
+      // unique_def also returns null for multiple assignments, which are not
+      // an immutable formal parameter binding.
+      for (auto* block : *variable->code()) for (auto* statement : *block)
+        if (statement->result_or_null() == variable) return boost::none;
+      std::size_t i = 0;
+      while (i < function->num_parameters() && function->param(i) != variable) ++i;
+      if (i == function->num_parameters() || i >= call->num_arguments()) return boost::none;
+      pointer = call->argument(i);
+      context = context->parent();
+    }
+  }
+  return boost::none;
+}
+
 struct RelativeMutex {
   core::ZNumber delta;
   ar::GlobalVariable* global;
@@ -173,63 +233,103 @@ boost::optional< RelativeMutex > relative_mutex(const AccessRecord& access,
   if (pointer == nullptr) return boost::none;
   AffinePointer data;
   if (!affine_pointer(pointer, data)) return boost::none;
-  std::unordered_set< ar::BasicBlock* > active;
-  std::unordered_map< ar::BasicBlock*, boost::optional< core::ZNumber > > cache;
   unsigned budget = 256;
-  std::function< boost::optional< core::ZNumber >(ar::BasicBlock*, ar::Statement*) > visit;
-  visit = [&](ar::BasicBlock* block, ar::Statement* stop)
+  std::function< boost::optional< core::ZNumber >(
+      const AffinePointer&, ar::BasicBlock*, ar::Statement*, CallContext*, unsigned) > prove;
+  prove = [&](const AffinePointer& data, ar::BasicBlock* start,
+              ar::Statement* initial_stop, CallContext* context, unsigned depth)
       -> boost::optional< core::ZNumber > {
-    if (block == nullptr || budget == 0 || !active.insert(block).second) return boost::none;
-    if (stop == nullptr) {
-      auto old = cache.find(block);
-      if (old != cache.end()) { active.erase(block); return old->second; }
-    }
-    auto scan = [&]() -> boost::optional< core::ZNumber > {
-      auto end = stop ? std::find(block->begin(), block->end(), stop) : block->end();
-      if (stop && end == block->end()) return boost::none;
-      while (end != block->begin()) {
-        if (budget == 0) return boost::none;
-        --budget;
-        auto* statement = *--end;
-        auto* result = statement->result_or_null();
-        auto* index = dyn_cast_or_null< ar::InternalVariable >(result);
-        if (result == data.root || (index != nullptr && data.coefficients.count(index) &&
-                                   fixed_index_extension(index) == nullptr))
-          return boost::none;
-        if (auto* call = dyn_cast< ar::CallBase >(statement)) {
-          auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
-          if (!isa< ar::Call >(call) || target == nullptr ||
-              !target->function()->is_declaration() ||
-              target->function()->intrinsic_id() != ar::Intrinsic::PthreadMutexLock ||
-              call->num_arguments() != 1) return boost::none;
-          AffinePointer mutex;
-          if (!affine_pointer(call->argument(0), mutex) || mutex.root != data.root ||
-              !equal_pointer_indices(mutex, data)) return boost::none;
-          return mutex.displacement - data.displacement;
+    if (start == nullptr || depth >= 16) return boost::none;
+    auto* function = start->code()->function_or_null();
+    if (function == nullptr || (context != nullptr && context->contains(function)))
+      return boost::none;
+    std::unordered_set< ar::BasicBlock* > active;
+    std::unordered_map< ar::BasicBlock*, boost::optional< core::ZNumber > > cache;
+    std::function< boost::optional< core::ZNumber >(ar::BasicBlock*, ar::Statement*) > visit;
+    visit = [&](ar::BasicBlock* block, ar::Statement* stop)
+        -> boost::optional< core::ZNumber > {
+      if (block == nullptr || budget == 0 || !active.insert(block).second) return boost::none;
+      if (stop == nullptr) {
+        auto old = cache.find(block);
+        if (old != cache.end()) { active.erase(block); return old->second; }
+      }
+      auto scan = [&]() -> boost::optional< core::ZNumber > {
+        auto end = stop ? std::find(block->begin(), block->end(), stop) : block->end();
+        if (stop && end == block->end()) return boost::none;
+        while (end != block->begin()) {
+          if (budget == 0) return boost::none;
+          --budget;
+          auto* statement = *--end;
+          auto* result = statement->result_or_null();
+          auto* index = dyn_cast_or_null< ar::InternalVariable >(result);
+          if (result == data.root || (index != nullptr && data.coefficients.count(index) &&
+                                     fixed_index_extension(index) == nullptr))
+            return boost::none;
+          if (auto* call = dyn_cast< ar::CallBase >(statement)) {
+            auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+            if (!isa< ar::Call >(call) || target == nullptr ||
+                !target->function()->is_declaration() ||
+                target->function()->intrinsic_id() != ar::Intrinsic::PthreadMutexLock ||
+                call->num_arguments() != 1) return boost::none;
+            AffinePointer mutex;
+            if (!affine_pointer(call->argument(0), mutex) || mutex.root != data.root ||
+                !equal_pointer_indices(mutex, data)) return boost::none;
+            return mutex.displacement - data.displacement;
+          }
         }
-      }
-      if (block->num_predecessors() == 0) return boost::none;
-      boost::optional< core::ZNumber > delta;
-      for (auto p = block->predecessor_begin(); p != block->predecessor_end(); ++p) {
-        auto before = visit(*p, nullptr);
-        if (!before || (delta && *delta != *before)) return boost::none;
-        delta = before;
-      }
-      return delta;
+        if (block->num_predecessors() == 0) {
+          // Enter the exact ordinary caller only after checking the callee's
+          // whole prefix. This never carries a parent's lock into a new thread.
+          if (block != function->body()->entry_block() || context == nullptr ||
+              context->empty() || !data.coefficients.empty()) return boost::none;
+          auto* call = context->call();
+          auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+          if (!isa< ar::Call >(call) || target == nullptr || target->function() != function)
+            return boost::none;
+          auto* formal = dyn_cast< ar::InternalVariable >(data.root);
+          if (formal == nullptr || formal->code() != function->body()) return boost::none;
+          // A rebound parameter is not its caller's incoming actual value.
+          for (auto* bb : *function->body()) for (auto* statement : *bb)
+            if (statement->result_or_null() == formal) return boost::none;
+          std::size_t i = 0;
+          while (i < function->num_parameters() && function->param(i) != formal) ++i;
+          if (i == function->num_parameters() || i >= call->num_arguments()) return boost::none;
+          AffinePointer caller_data;
+          if (!affine_pointer(call->argument(i), caller_data)) return boost::none;
+          caller_data.displacement += data.displacement;
+          return prove(caller_data, call->parent(), call, context->parent(), depth + 1);
+        }
+        boost::optional< core::ZNumber > delta;
+        for (auto p = block->predecessor_begin(); p != block->predecessor_end(); ++p) {
+          auto before = visit(*p, nullptr);
+          if (!before || (delta && *delta != *before)) return boost::none;
+          delta = before;
+        }
+        return delta;
+      };
+      auto result = scan();
+      active.erase(block);
+      if (stop == nullptr) cache.emplace(block, result);
+      return result;
     };
-    auto result = scan();
-    active.erase(block);
-    if (stop == nullptr) cache.emplace(block, result);
-    return result;
+    return visit(start, initial_stop);
   };
-  auto delta = visit(access.stmt->parent(), access.stmt);
+  auto delta = prove(data, access.stmt->parent(), access.stmt, access.call_context, 0);
   if (!delta) return boost::none;
   // PointerShift arithmetic is modulo the pointer width. Including 2^bits
   // preserves congruence even when byte coefficient arithmetic wraps.
   core::ZNumber period = core::ZNumber(1) << pointer_bits;
   for (const auto& term : data.coefficients) period = core::gcd(period, term.second);
-  return RelativeMutex{*delta, dyn_cast< ar::GlobalVariable >(data.root),
-                       period, data.displacement};
+  auto* global = dyn_cast< ar::GlobalVariable >(data.root);
+  auto residue = data.displacement;
+  if (global == nullptr) {
+    if (auto origin = pointer_congruence(pointer, access.call_context, pointer_bits)) {
+      global = origin->global;
+      period = origin->period;
+      residue = origin->residue;
+    }
+  }
+  return RelativeMutex{*delta, global, period, residue};
 }
 
 // A fresh source nondet and its pure SSA expressions are independent of shared
@@ -789,11 +889,13 @@ DataRaceChecker::~DataRaceChecker() {
   };
 
   std::vector< PendingRacePair > all_pairs;
-  std::unordered_map< ar::Statement*, boost::optional< RelativeMutex > > relative_mutexes;
+  std::unordered_map< ar::Statement*,
+      std::unordered_map< CallContext*, boost::optional< RelativeMutex > > > relative_mutexes;
   auto mutex_delta = [&](const AccessRecord& access) {
-    auto old = relative_mutexes.find(access.stmt);
-    if (old == relative_mutexes.end())
-      old = relative_mutexes.emplace(access.stmt, relative_mutex(
+    auto& contexts = relative_mutexes[access.stmt];
+    auto old = contexts.find(access.call_context);
+    if (old == contexts.end())
+      old = contexts.emplace(access.call_context, relative_mutex(
           access, this->_ctx.bundle->data_layout().pointers.bit_width)).first;
     return old->second;
   };

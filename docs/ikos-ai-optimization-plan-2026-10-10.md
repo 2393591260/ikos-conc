@@ -13,8 +13,8 @@
 
 本节更新后续优先级；§2–8保留原设计与理论依据，§9保留各次实验的历史快照。
 不能把历史“尚未修复”、旧候选池或旧TN当作当前状态，也不能把设计项全部当作必须实现的大改。
-当前为§9.30条件加锁的实际MUST恢复，最新[配对证据](artifacts/ai-precision-2026-10-11/conditional-must/summary.json)：
-冻结1029项ILP32，AI TN658/UNKNOWN370；BMC TP104/TN658/UNKNOWN266，均FP0/FN0/error1。
+当前为§9.31跨helper精确上下文证书，最新[配对证据](artifacts/ai-precision-2026-10-11/helper-context/summary.json)：
+冻结1029项ILP32，AI TN661/UNKNOWN367；BMC TP106/TN661/UNKNOWN261，均FP0/FN0/error1。
 全量与定向双ABI验证的范围分别记录，不称已完成双ABI全量。
 
 ### 0.1 三份文档的完成状态
@@ -1416,3 +1416,42 @@ trylock、读锁、属性/生命周期不支持边界均沿用原处理，不由
 [定向变化](artifacts/ai-precision-2026-10-11/conditional-must/fixture-transitions.json)、
 [输入](review-repros/ai-conditional-must/ownership.c)、
 [配对](artifacts/ai-precision-2026-10-11/conditional-must/paired.json)。
+
+
+### 9.31 精度：精确调用上下文下的 helper 锁/数据证书（2026-10-11）
+
+以正常Goblint TRUE、IKOS UNKNOWN的两个funloop和`equ_proc_nr`为入口，检查实际AR与诊断：
+前两者在helper内部持对应字段锁，但形参根无法映射到global/stride；后者在caller加锁，
+callee入口原证明扫描即结束。当前不需要全局digest重写，而需要使用已经存在的精确CallContext。
+
+第一部分沿普通直接调用的actual/formal绑定恢复地址同余；未知整数项各自用gcd弱化modulus，
+包含2^pointer_bits，绝不把不同动态下标当作相等。第二部分在callee所有CFG前缀无解锁、
+未知调用或重绑定后，沿不可变指针形参继续验证对应caller前缀；callee局部下标不跨边界，
+递归、间接调用、pthread_create入口、未覆盖循环、深度16/语句256预算耗尽都拒绝证书。
+缓存由statement改为(statement,CallContext)，同一callee的持锁/未持锁调用不会共享结果。
+仍由现有对象/width/非TLS/global门检查重叠→同mutex的前提。
+
+这是checker的受限性质覆盖证书，调用绑定来自现有上下文；没有新增跨过程转移语义、
+函数效果摘要或一般PBR/digest。未知效果仍由所属execution engine/domain的覆盖门保留，
+不以语法扫描替代它们。48次双ABI/双模式（LP64改名）前后检查通过，16次UNKNOWN→SAFE；
+错误锁、提前/helper解锁、同callee混合调用、不同元素、条件加锁及形参重绑定负例均不SAFE。
+24次Dartagnan参考符合源码推理；有界PASS不作普遍证明。3个实际安全任务额外12次双ABI/
+双模式均SAFE，既有主回归与条件MUST48次通过，build/install一致。
+
+完整1029顺序配对：AI TN658/U370→TN661/U367；BMC TP104/TN658/U266→TP106/TN661/U261，
+FP/FN0/error1。三个TN来自上述安全入口；新增两个TP是`funloop_simple`和`funloop_hard1`。
+它们分别有锁外cache[5]更新、拿cache[4]锁更新cache[5]。修复前6个候选包括已互斥的helper
+访问，424/430次SMT UNSAT耗尽预算，真正竞争未搜索；修复后先排除保护对，剩3个候选，
+10次UNSAT后找到竞争。这是AI证书减少BMC无效搜索的实际架构收益，不是放松BMC值流。
+新TP的ILP32/LP64四条所选执行独立AR ACCEPT，包含动态实例、真实地址/width与精确编码值；
+验证范围是AR及库合同，不是官方source/witness认证。没有把两任务的查询下降扩称全量加速。
+
+另补查SAFE清单中的旧runner，`single-execution`的必须FALSE断言和`lock-allocation-identity`
+的stack控制必须SAFE断言在本阶段前驱二进制也失败：当前是既有保守UNKNOWN边界。它们未算
+“全部回归通过”，需在最终验收中同时登记功能损失与正确性检查，不能删除失败记录冒充通过。
+
+证据：[汇总](artifacts/ai-precision-2026-10-11/helper-context/summary.json)、
+[五项变化](artifacts/ai-precision-2026-10-11/helper-context/transitions.json)、
+[实例对照](review-repros/ai-helper-mutex/helper.c)、
+[新TP执行](artifacts/ai-precision-2026-10-11/helper-context/gain-executions.json)、
+[旧搜索诊断](artifacts/ai-precision-2026-10-11/helper-context/gain-before-diagnostics.json)。

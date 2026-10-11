@@ -1,0 +1,1714 @@
+[
+  {
+    "bits": 32,
+    "case": 0,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=0",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-0-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-0-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 0,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=0",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-0-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-0-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=1",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-1-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-1-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=1",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-1-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-1-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "99445e0980c8c32f5b7dad1d41f36d7aeff5e37dc15da284d5b25dce1ab0efd5",
+        "certificate_sha256": "9cb17682bd3a17f5af25c05d0785e6f6d15f5a4e380d9d8175ed943708ce4e35",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 60
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 48,
+              "1": 11
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 71,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=2",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-2-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-2-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=2",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-2-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-2-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "07d87cfa1e8405388a19b8db35bdabf811fd5f04a2d55b12d1ffde4a92e792ab",
+        "certificate_sha256": "339d7fbedd549dec262bcc56abc13095c922481439a9b040c8de1ef6b06c889d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 62
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 60,
+              "1": 11
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 73,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=3",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-3-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-3-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=3",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-3-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-3-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=4",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-4-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-4-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=4",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-4-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-4-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "9e019ce08e7fa1e847c87e970486a736f927181ee7fdfc6fd01cd356e8a5fda8",
+        "certificate_sha256": "49393c255e074c565629bdf256d559ab140db703f173517564168a6c4c8634e5",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 66
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 63,
+              "1": 11
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 77,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=5",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-5-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-5-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=5",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-5-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-5-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "21a01332fa249ca8330efb35b23749970f295a00097ed3ea93afb89816f1d21c",
+        "certificate_sha256": "0594625f4990b898e9a47ab67e6e27df6a1349e203580d41c0b9f654b5e35568",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 65
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 61,
+              "1": 11
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 76,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=6",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-6-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-6-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=6",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-6-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-6-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=7",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-7-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-7-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=7",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-7-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-7-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=8",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-8-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-8-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=8",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-8-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-8-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f7ba32629f0af0f245410963a3af84626d4a4205e436d4ac185eafa6fba807f3",
+        "certificate_sha256": "8c95458703996efc2f6b72ef983b90792a3d93c490d70cd30a1d8fe52b6bc446",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 64
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 49,
+              "1": 11
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 75,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 9,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=9",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-9-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-9-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 9,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=9",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-9-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-9-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "41b58af1c2a817011ad19a6a1097b997187e71a8f0ab59078cd10001192e14c2",
+        "certificate_sha256": "793031e338a0c0f185813185a747eb01f08ef3fe107b512b797fa98f6ff1f118",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 60
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 48,
+              "1": 11
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 71,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 10,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=10",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-10-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-10-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 10,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=10",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-10-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-10-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "b53fea2e8667a4f271c87feba1de950a453cad5d04d82f6f481291040c0d5787",
+        "certificate_sha256": "53e648932e3ed9489ea2aff4f275cbc3968fdba433f5e418a0b09d9713b1b05a",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 62
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 60,
+              "1": 11
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 73,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 11,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=11",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-11-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-11-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 11,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=11",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/32-11-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/32-11-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-helper-mutex/helper.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "4d27af57ad9883d1ccdcf6d8bca613e51e0776a8607c632562ca33dfc188e1de",
+        "certificate_sha256": "7becbb281d7ca15d0ea88e024650a444b2690ebf04b75a92b2a19256d60e51b3",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 69
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:entries",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 48,
+              "1": 11
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 80,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=0",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-0-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-0-ai/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=0",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-0-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-0-bmc/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=1",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-1-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-1-ai/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=1",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-1-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-1-bmc/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "3ec513e100108d3121874b72a00b81b12b60596e99af87fc514ce3ad1fcb56fe",
+        "certificate_sha256": "c44488c939e56b4c0af1ea11d5a8399e532fd3b8f4aaa7b847389b16b8b9cd29",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 69
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 56,
+              "1": 12
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 81,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=2",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-2-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-2-ai/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=2",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-2-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-2-bmc/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "54f0e37ce1070887597e66371afeea05e7cfe26e1f8dd1584c2f721988ee816a",
+        "certificate_sha256": "b8fb67805c4c1af90f9ef4b4666709901cdfc87e48e471552d51f15dc575cadb",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 71
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 69,
+              "1": 12
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 83,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=3",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-3-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-3-ai/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=3",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-3-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-3-bmc/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=4",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-4-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-4-ai/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=4",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-4-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-4-bmc/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ddad61a10268995266a378d42757b282069f737c10af2b2c655191090e6098ea",
+        "certificate_sha256": "f19a58a33276340a8c5d71082a75aff8eb3a43f4ccc33a295339573be504da67",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 75
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 72,
+              "1": 12
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 87,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=5",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-5-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-5-ai/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=5",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-5-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-5-bmc/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "0f2c5ff2777c7aec6f9e7e5840b068d92a56e1ca48ce6c52eaf34c17ee436b52",
+        "certificate_sha256": "b299dbc2777a304ded6deebb228ade32613e7e9787c3afb5315da05b9be2d189",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 74
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 70,
+              "1": 12
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 86,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=6",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-6-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-6-ai/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=6",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-6-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-6-bmc/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=7",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-7-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-7-ai/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=7",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-7-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-7-bmc/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=8",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-8-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-8-ai/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=8",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-8-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-8-bmc/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ffaf003cf8bf47a3d8e6dcf91563e5cd4ad0939890db0c93dcbc18e7533fdc4a",
+        "certificate_sha256": "59be46022a7e6203f7db4c0007295b0313edfe40b49705f578bba7b0892ef4e1",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 74
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 57,
+              "1": 12
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 86,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 9,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=9",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-9-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-9-ai/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 9,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=9",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-9-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-9-bmc/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "690a6ccee189cfbed78f6327be179c4a355cfebfdcdc8aaf56bd8b0e42b73316",
+        "certificate_sha256": "1c385dcb399e7c31f2e874cfdbd094875ce48da0c4712a7c01501c20f352548f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 69
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 56,
+              "1": 12
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 81,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 10,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=10",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-10-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-10-ai/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 10,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=10",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-10-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-10-bmc/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e646a600af4bf5172797f6d1d2bfa051b312f9683a6dbfb91427e3ab9b3f6132",
+        "certificate_sha256": "00ab366de4d68d6d9b288e3b5776b6e16d8bb5213809cbf6b0ad859e7f9427f7",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 71
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 69,
+              "1": 12
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 83,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 11,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=11",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-11-ai/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-11-ai/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 11,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=11",
+      "--format=json",
+      "--report-file=/tmp/ikos-three-docs-20261011/helper-context/before/64-11-bmc/report.json",
+      "-o",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/64-11-bmc/output.db",
+      "/tmp/ikos-three-docs-20261011/helper-context/before/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "c1698e92b1b2a41982c2b9fc9b06dde7a76f07a9ef8e291a8511c67dabe09d9f",
+        "certificate_sha256": "4dda2be555a32810aae94a9f53e6698899e6e8a171853130751b40b262925949",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 79
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:slots",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 56,
+              "1": 12
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 91,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  }
+]
