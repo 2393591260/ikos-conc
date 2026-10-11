@@ -3,7 +3,7 @@
 审查日期：2026-10-10。代码基线：`b3e6706efd1eaf9e69e128d8235d50b8add680e6`。
 最初审查阶段只做实验和保存文档，**当时没有修复分析器**；后续实施状态如下。
 
-**2026-10-11状态说明（条件锁及指针表示修复阶段）**：原F1–F6已经修复或保守封堵；
+**2026-10-11状态说明（支持范围的工程验收）**：原F1–F6已经修复或保守封堵；
 后续§9.24修复create对may-output逐目标强更新的FN，§9.25–26恢复4个TN，
 §9.27修复截断守卫及重复helper激活导致的条件锁假相关，新增48次检查中的16次旧漏报消除。
 §9.28继续修复整数表示指针发布FN：stack/TLS/heap等5类双ABI/双模式共20次旧SAFE已退UNKNOWN。
@@ -11,7 +11,8 @@
 该阶段1029项AI/BMC配对无判定变化；§9.29又独立修复无损memory length导入并恢复复制崩溃用例。
 §9.30恢复实际阻塞加锁分支的普通MUST，48项正反变体及全量通过、冻结集无变化。
 §9.31精确普通调用上下文恢复3TN和2TP；新增TP的双ABI执行均独立AR ACCEPT。
-剩余正确性义务尚需逐项整体验收，不能由此宣称普遍零FN。
+§7已汇总16类当前规则/覆盖通道的工程验收；已登记且可复现的FN均已修复或封堵。
+这不是全语言形式化证明，完整POSIX失败、opaque句柄来源及弱内存等仍有明确边界。
 当前阶段、开放任务与验收条件统一见[优化计划§0](ikos-ai-optimization-plan-2026-10-10.md#current-roadmap)。
 
 后续实施状态：F1 的 self-consistency 访问过滤已撤销，F3 已加入未覆盖线程体的 UNKNOWN 回退；
@@ -281,7 +282,7 @@ Miné §4.4.1 的 well-synchronized unlock 终值也不能移用到这个无锁�
 校准：`branch-release-union.c` 的同锁分支例当前正确报告 UNKNOWN / Race Found，参考 FAIL。
 因此本轮**没有证明所有 locked flush 或所有分支汇总都会漏报**，仅确认 sentinel 跨线程机制。
 
-## 3. 已查看的 SAFE 规则：哪些有根据，哪些仍缺证明
+## 3. 原审查基线的 SAFE 规则检查（当前验收见 §7）
 
 下表是源码审查结果，不能读作已完成全部形式化证明。
 
@@ -374,3 +375,58 @@ DAT3M_HOME="$PWD" CFLAGS='-fgnu89-inline -m64' "$JAVA_BIN" -Xmx2g \
 当时尚未实施六类修复；它们此后已处理，见文首与配套优化计划§9。
 全部SAFE规则证明、完整C/POSIX/弱内存规范审计及官方witness验收不能从本报告推出；
 后续工程验收范围按优化计划§0逐项登记，本报告不作发布时“已证明零FN”的声明。
+
+
+## 7. 支持范围的工程验收与剩余义务（2026-10-11）
+
+本轮工程P0出口是：已复现FN已处理；每个当前SAFE入口有明确前提、fallback和可复核
+证据；不覆盖的效果保留Warning/UNKNOWN或显式工具error；默认同配置全量配对完成。
+**并不是**对全部C/LLVM/POSIX、所有编译变换或任意动态生命周期完成soundness定理。
+当前明确支持的是经现有AR前端处理、常规有效/成功pthread合同下的no-data-race检查，
+竞争本身不因ISO C UB被排除；其他未定义行为与不支持语义单列边界。
+
+以下逐项查阅当前消费点及所属事实来源；“验收”指源码论证+针对性检查的工程状态。
+完整机器记录见[inventory.json](artifacts/ai-precision-2026-10-11/final-acceptance/inventory.json)。
+
+| 当前规则/通道 | 必须成立的前提 | 当前处理与证据 |
+| --- | --- | --- |
+| normal bottom | transfer、初始化、环境干扰及收敛覆盖全部支持状态 | 读时干扰/写并集/摘要变更检查；不是全部IR转移的形式证明 |
+| 私有访问 | 排除全部跨线程alias，TOP不能被当成私有 | heap fresh排除禁用，stack/TLS逃逸保守传播；整数发布及字节重建边界已处理 |
+| read/read | 只检测读写/写写，相关库及生命周期效果没有漏记 | 写/未知效果保留；free/lifetime一般语义未认证 |
+| 同一线程 | 同一动态实例或实例不可重叠，不能只比函数名 | 创建次数/静态生命周期证书；非unique访问复制保留self-race |
+| join HB | 有来源的确定动态目标、成功join及全部相关实例覆盖 | 区间端点捷径禁用；opaque数值/动态数组句柄保守拒绝 |
+| create HB | 确定祖先/直接creator、单次父实例及未spawn摘要 | 检查完整创建链及MAY摘要，未知线程体保留覆盖警告 |
+| may points-to不交 | 所有可能对象/别名均在集合内 | 多源/init/local/interference并集，TOP与所有对象配对，整数alias保留边界 |
+| 双atomic | 两个真实AR atomic，定义的race性质不计该对 | mixed pair仍保留；不由此推断完整C11 weak-memory值/同步语义 |
+| byte区间不交 | 实际start范围及width覆盖访问 | ZNumber宽度运算，未知width不排除；依赖有效对象和表示边界 |
+| 实际共同锁 | 完整具体锁身份、可表示offset、有效成功持锁及互斥模式 | 大offset/实例/属性门、未知unlock撤销；read/read锁不能保护两个write |
+| 条件锁 | 固定值的零值等价和单次动态激活 | 截断/算术/phi/循环/重复helper拒绝身份；执行分支同时保留普通MUST |
+| 相对锁 | 每条前缀保留data+delta的mutex，重叠可推出同start/mutex | 全局对象+stride/width引理；精确普通调用绑定，循环/未知call/unlock/rebind/预算均拒绝 |
+| 旧private-init/region/TOP猜测 | 完整发布/别名/锁证明 | 不再作SAFE过滤；部分region/provenance注释标签仍保留，不能当成能力证明 |
+| 库/internal效果 | 全部读写、回调、同步及跨线程摘要覆盖 | 未覆盖extern/internal/byte效果警告；显式import拒绝是error，不假称UNKNOWN |
+| 耦合fixpoint | 所有可能写和pointer/heap/join摘要变化使依赖失效 | 每轮flush、语义dirty及最终检查变更回退；还没有独立通用post-fixpoint认证器 |
+| opt-in AI覆盖查询 | 稳定may interval/congruence、独立两个局部状态、共同非TLS global及准确width | 模块化byte公式UNSAT仅排除该候选；矛盾事实/超时/不支持保留。定向已验证，启用全量消融另见研究篇 |
+
+本次额外重查15个既有runner，共701次analyzer定向观察及相关核心单元检查通过。
+另两个历史runner的更强精度断言原样失败：`single-execution`要求loop-helper必须FALSE，
+`lock-allocation-identity`要求stack-main控制必须SAFE。在前驱`62e9015`二进制也同样失败。
+另按比赛模式完整核对11个输入×2ABI×AI/BMC×前后=88次，均满足“竞争不得SAFE、安全不得
+确定FALSE”；前后判定完全一致。原失败记录保留在清单，没有通过删除断言冒充完整质量通过。
+`once-helper-join-control`/`sequential-helper-control`及stack-main等仍UNKNOWN，是现存精度边界。
+原非demote AI模式可能把may-warning标成definite error；本验收不把这种输出当作已验证竞争。
+
+最新默认1029冻结集：AI TN661/U367；BMC TP106/TN661/U261，FP/FN0/error1。
+本次恢复的两个TP另有双ABI、动态实例/值/地址/同步一致的独立AR执行ACCEPT，
+不是仅按YAML计数；也不是官方source witness验收。数值域/覆盖查询的启用全量结果仍由
+研究篇记录，不能用默认关闭时的结果认证启用配置。
+
+已经没有登记为已复现而未处理的本轮FN；剩余**证明或能力义务**包括：完整POSIX失败及
+非默认属性、动态opaque handle值流、一般heap/lifetime/free冲突、完整C11弱内存、
+全前端/抽象域证明与通用归纳后解认证。当前部分功能以保守Warning/error封堵，部分属于
+明确不支持的语言/API合同；不声称任意范围都已经被一个总gate完全覆盖。
+后续加入新语义仍需独立验收其访问、值、对象、实例及失效链，不能从本表继承普遍正确性。
+
+证据：[原始runner退出/支持义务](artifacts/ai-precision-2026-10-11/final-acceptance/inventory.json)、
+[定向计数](artifacts/ai-precision-2026-10-11/final-acceptance/directed-counts.json)、
+[旧用例前后完整检查](artifacts/ai-precision-2026-10-11/final-acceptance/legacy-contracts.json)、
+[零变化](artifacts/ai-precision-2026-10-11/final-acceptance/legacy-transitions.json)。

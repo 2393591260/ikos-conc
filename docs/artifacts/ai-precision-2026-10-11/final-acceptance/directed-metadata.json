@@ -1,0 +1,6 @@
+{
+  "analyzer_sha256": "3a515401d79ececbf5636b83aefec22d845c108aa2e961e0d17a0690e006c76d",
+  "source_basis": "helper-context mechanism following 62e9015; core SAFE transfer/domain/coverage regression recheck before optional pair-query integration",
+  "jobs": 2,
+  "scope": "Dual ABI directed checks; no complete-language proof; overlaps corpus sweep so not controlled speed measurement."
+}

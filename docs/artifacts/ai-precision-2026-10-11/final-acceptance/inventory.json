@@ -1,0 +1,450 @@
+{
+  "contract": "Engineering acceptance of explicit supported concurrency and property coverage; finite tests are not universal soundness.",
+  "modes": "--demote-race-to-unknown; BMC variable unset or explicitly enabled",
+  "date": "2026-10-11",
+  "rules": [
+    {
+      "rule": "normal-bottom",
+      "premise": "Normal abstract state is bottom only after conservative transfers and converged coupled summaries.",
+      "fallback": "Unmodeled reachable effects emit a property Warning; final-check summary changes invalidate SAFE.",
+      "evidence_runners": [
+        "ai-read-interference",
+        "ai-write-union",
+        "ai-coupled-fixpoint"
+      ],
+      "status": "reviewed dependency; not a proof of all LLVM/C transfers",
+      "required_followup": "Each newly added API/transfer must prove interference/initialization coverage; unsupported effect must warn before it can prune relevant execution. Existing finite tests do not prove all LLVM operations.",
+      "implementation_at_original_inventory": "data_race.cpp:1844",
+      "implementation": "data_race.cpp and/or execution_engine/concurrent_semantics.hpp: named rule in the current paired scan (original locations retained only as historical navigation)",
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "private-access",
+      "implementation": "data_race.cpp: check_load/check_store/is_shared",
+      "premise": "Every possible cross-thread alias has been marked escaped; TOP is shared and heap is always retained.",
+      "fallback": "Unknown points-to records a shared access; absent complete escape proof must not omit local/TLS.",
+      "evidence_runners": [
+        "ai-publication",
+        "ai-pointer-bytes",
+        "ai-integer-pointer"
+      ],
+      "status": "reviewed/guarded: heap never excluded as fresh; ptrtoint escape, TOP publication and raw-byte pointer invalidation validated",
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "read-read",
+      "premise": "Both accesses are reads, with no lifetime side effect represented as a read.",
+      "fallback": "Every store and conservative unknown external write remains eligible.",
+      "evidence_runners": [
+        "ai-correctness"
+      ],
+      "status": "local proof under modeled read/write race definition",
+      "implementation_at_original_inventory": "data_race.cpp:926",
+      "implementation": "data_race.cpp and/or execution_engine/concurrent_semantics.hpp: named rule in the current paired scan (original locations retained only as historical navigation)",
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "unique-thread",
+      "premise": "Same dynamic thread, or all instances of the entry are mutually non-overlapping; function/static create name alone is insufficient.",
+      "fallback": "Nonunique writes are duplicated to retain same-static-statement self-races.",
+      "evidence_runners": [
+        "creation-instance",
+        "single-execution",
+        "ai-create-handle-alias"
+      ],
+      "status": "reviewed static acyclic call-chain and exact sequential-create/join certificate; arbitrary dynamic lifetime identities unsupported",
+      "implementation_at_original_inventory": "data_race.cpp:791,919,930; concurrent_global_env.hpp:1236",
+      "implementation": "data_race.cpp and/or execution_engine/concurrent_semantics.hpp: named rule in the current paired scan (original locations retained only as historical navigation)",
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "join-hb",
+      "premise": "A provenance-checked singleton handle denotes completed dynamic instance(s); all static instances must be covered, or direct-creator access precedes not-yet-spawned instance.",
+      "fallback": "Ambiguous handles add no MUST join; nonstatic instances disable full-instance coverage.",
+      "evidence_runners": [
+        "ai-join-hulls",
+        "ai-handle-values",
+        "ai-create-handle-alias"
+      ],
+      "status": "bounded supported contract: successful valid join; full opaque handle value-flow unsupported",
+      "required_followup": "Complete opaque pthread_t representation, dynamic repeated-site identity and may-handle relational joins remain unsupported; do not infer identity from integer intervals or static function names.",
+      "implementation_at_original_inventory": "data_race.cpp:829,939,945; concurrent_semantics.hpp:976",
+      "implementation": "data_race.cpp and/or execution_engine/concurrent_semantics.hpp: named rule in the current paired scan (original locations retained only as historical navigation)",
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "create-hb",
+      "premise": "Unique lifetime of ancestor creator, unique direct creator for target, and MAY-spawn digest excludes child plus every intermediate ancestor.",
+      "fallback": "TOP spawned or unknown creator relations retain pair; uncovered entry emits Warning.",
+      "evidence_runners": [
+        "ai-thread-coverage",
+        "creation-instance",
+        "ai-coupled-fixpoint"
+      ],
+      "status": "reviewed conservative creator/ancestor scan; unknown indirect entry never proves SAFE",
+      "implementation_at_original_inventory": "data_race.cpp:968",
+      "implementation": "data_race.cpp and/or execution_engine/concurrent_semantics.hpp: named rule in the current paired scan (original locations retained only as historical navigation)",
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "points-to-disjoint",
+      "implementation": "data_race.cpp: pair scan; concurrent_semantics.hpp: on_load_pointer_restore",
+      "premise": "Points-to sets cover every concrete object alias.",
+      "fallback": "TOP pairs with every object; bottom represents no execution.",
+      "evidence_runners": [
+        "ai-pointer-sources",
+        "ai-pointer-bytes",
+        "ai-integer-pointer"
+      ],
+      "status": "reviewed/guarded: may points-to, all-source pointer restoration and representation boundary validated",
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "both-atomic",
+      "premise": "Both operations have actual atomic AR semantics; atomic/non-atomic overlap still conflicts.",
+      "fallback": "Mixed pair is retained as UNKNOWN unless supported confirmation exists.",
+      "evidence_runners": [
+        "ai-atomic-call-effects",
+        "ai-write-union"
+      ],
+      "status": "reviewed race-definition rule; full C11 weak-memory value semantics not claimed",
+      "required_followup": "Do not infer cross-thread HB or weak-memory safety from the two-atomic exemption. Unsupported value/synchronization behavior needs current coverage gates.",
+      "implementation_at_original_inventory": "data_race.cpp:1012",
+      "implementation": "data_race.cpp and/or execution_engine/concurrent_semantics.hpp: named rule in the current paired scan (original locations retained only as historical navigation)",
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "byte-disjoint",
+      "premise": "Start intervals plus actual store/load byte widths form non-overlapping ranges within same live object.",
+      "fallback": "Unknown width or TOP offset retains pair.",
+      "evidence_runners": [
+        "bmc-2026-10-08",
+        "ai-field-locks",
+        "interference-width"
+      ],
+      "status": "reviewed ZNumber upper-bound arithmetic; absolute-address cast boundary remains dependent",
+      "implementation_at_original_inventory": "data_race.cpp:1060",
+      "implementation": "data_race.cpp and/or execution_engine/concurrent_semantics.hpp: named rule in the current paired scan (original locations retained only as historical navigation)",
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "common-lock",
+      "premise": "Same concrete mutex identity with full representable offset and unique live object; both accesses have MUST exclusive/exclusive or exclusive/read ownership.",
+      "fallback": "Symbolic mutex IDs do not filter SAFE; unknown unlock drops all possibly released locks.",
+      "evidence_runners": [
+        "ai-lock-identities",
+        "lock-allocation-identity",
+        "mutex-attributes",
+        "ai-field-locks"
+      ],
+      "status": "reviewed supported successful blocking/default-attribute contract; unsupported effects warn",
+      "required_followup": "Default successful blocking mutex/RW contracts only; unfamiliar attributes/failure semantics and ambiguous object identity must lose MUST or emit explicit coverage Warning.",
+      "implementation_at_original_inventory": "data_race.cpp:1096; concurrent_semantics.hpp:53,111,489,789",
+      "implementation": "data_race.cpp and/or execution_engine/concurrent_semantics.hpp: named rule in the current paired scan (original locations retained only as historical navigation)",
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "conditional-lock",
+      "implementation": "symbolic_index.hpp: nonzero_guard_identity; concurrent_semantics.hpp: exec_pthread_mutex_lock; data_race.cpp: branch_guard_of",
+      "premise": "Exact zero/nonzero equivalence of a fixed value and one dynamic function activation; signed narrowing and arithmetic are not identities.",
+      "fallback": "Unsupported normalization/phi/cycle/repeated-call contexts preserve ordinary branch MUST analysis but disable correlation hoisting.",
+      "evidence_runners": [
+        "ai-conditional-guard",
+        "ai-conditional-must"
+      ],
+      "status": "reviewed/guarded: fixed zero-equivalent single-activation relation; executed blocking branch also retains ordinary MUST",
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "relative-lock",
+      "implementation": "data_race.cpp: affine_pointer/pointer_congruence/relative_mutex; pair scan",
+      "premise": "Every CFG route holds mutex at data+delta; conflicting global data overlap implies equal start via exact offsets or checked modular stride/width lemma.",
+      "fallback": "Calls/rebinding/cycles/budget exhaustion or summary/TLS objects reject certificate.",
+      "evidence_runners": [
+        "ai-relative-mutex",
+        "ai-affine-mutex",
+        "ai-helper-mutex"
+      ],
+      "status": "reviewed/guarded: local and exact ordinary direct-call contexts; global modular width certificate; all unknowns retain candidate",
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "disabled-rules",
+      "premise": "Private-init, region/self consistency and TOP-provenance guesses are not SAFE filters.",
+      "fallback": "Keep candidate.",
+      "evidence_runners": [
+        "bmc-2026-10-08",
+        "ai-correctness"
+      ],
+      "status": "closed by disabling insufficient premises",
+      "implementation_at_original_inventory": "data_race.cpp:1027,1178",
+      "implementation": "data_race.cpp and/or execution_engine/concurrent_semantics.hpp: named rule in the current paired scan (original locations retained only as historical navigation)",
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "external-effects",
+      "premise": "Analyzed definitions contribute actual accesses; exact library contracts cover runtime sync fields and constant-output calls; LLVM constant globals are immutable.",
+      "fallback": "Unknown extern/skipped body warnings block SAFE; non-runtime pointer arguments synthesize conservative writes.",
+      "evidence_runners": [
+        "ai-call-effects",
+        "ai-library-effects",
+        "ai-byte-effects",
+        "ai-thread-coverage"
+      ],
+      "status": "reviewed gate inventory; free/lifetime conflicts remain explicitly outside current property/object contract",
+      "required_followup": "Inventory every newly admitted external summary. Destruction/lifetime rules and arbitrary external implementations are outside reviewed valid-lifetime/no-data-race contract; no blanket claim of all-library coverage.",
+      "implementation_at_original_inventory": "data_race.cpp:2513-2766",
+      "implementation": "data_race.cpp and/or execution_engine/concurrent_semantics.hpp: named rule in the current paired scan (original locations retained only as historical navigation)",
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "coupled-fixpoint",
+      "implementation": "thread_modular.cpp: ThreadModularAnalysis::run; concurrent_global_env.hpp: summary joins/dirty/flush",
+      "premise": "Shared scalar/pointer/heap and MUST join summaries include all sources; any semantic change triggers replay, and final-check mutation fences SAFE.",
+      "fallback": "Late mutation yields explicit property Warning. Unsupported effects keep coverage Warning, not empty-proof SAFE.",
+      "status": "reviewed bounded engineering contract; no standalone formal post-fixpoint checker",
+      "evidence_runners": [
+        "ai-write-union",
+        "ai-read-interference",
+        "ai-pointer-sources",
+        "ai-coupled-fixpoint",
+        "ai-byte-effects",
+        "ai-pointer-bytes"
+      ],
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    },
+    {
+      "rule": "optional-ai-query",
+      "implementation": "pair_exclusion.hpp: invalid_facts/native_excludes/check; data_race.cpp: resolve_offset_congruence/pair scan",
+      "premise": "Stable independent local may interval+congruence, same concrete non-TLS global, initialized address, exact width, full access coverage. Modular byte equation covers all overlaps.",
+      "fallback": "Bottom/inconsistent facts, unsupported object/width, timeout, UNKNOWN or exhausted budget retain pair; SAT is not an execution.",
+      "status": "directed/default validation passed; enabled frozen-set ablations pending",
+      "evidence_runners": [
+        "ai-pair-feedback"
+      ],
+      "evidence_scope": "Existing committed per-mechanism paired evidence plus current directed recheck; not an exhaustive C/LLVM/POSIX proof."
+    }
+  ],
+  "current_exact_runner_checks": [
+    {
+      "name": "ai-read-interference",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-read-interference/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/ai-read-interference"
+      ],
+      "returncode": 0,
+      "seconds": 12.362694082999951
+    },
+    {
+      "name": "ai-write-union",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-write-union/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/ai-write-union"
+      ],
+      "returncode": 0,
+      "seconds": 8.84312254600809
+    },
+    {
+      "name": "ai-coupled-fixpoint",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-coupled-fixpoint/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/ai-coupled-fixpoint"
+      ],
+      "returncode": 0,
+      "seconds": 18.25798507798754
+    },
+    {
+      "name": "creation-instance",
+      "command": [
+        "python3",
+        "docs/review-repros/creation-instance/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/creation-instance"
+      ],
+      "returncode": 0,
+      "seconds": 6.098318616001052
+    },
+    {
+      "name": "single-execution",
+      "command": [
+        "python3",
+        "docs/review-repros/single-execution/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/single-execution"
+      ],
+      "returncode": 1,
+      "seconds": 0.7651659100083634
+    },
+    {
+      "name": "ai-create-handle-alias",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-create-handle-alias/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/ai-create-handle-alias"
+      ],
+      "returncode": 0,
+      "seconds": 7.118424229003722
+    },
+    {
+      "name": "ai-join-hulls",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-join-hulls/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/ai-join-hulls"
+      ],
+      "returncode": 0,
+      "seconds": 5.368552971005556
+    },
+    {
+      "name": "ai-handle-values",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-handle-values/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/ai-handle-values"
+      ],
+      "returncode": 0,
+      "seconds": 14.22364190701046
+    },
+    {
+      "name": "ai-thread-coverage",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-thread-coverage/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/ai-thread-coverage"
+      ],
+      "returncode": 0,
+      "seconds": 7.065721448991098
+    },
+    {
+      "name": "ai-pointer-sources",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-pointer-sources/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/ai-pointer-sources"
+      ],
+      "returncode": 0,
+      "seconds": 25.217650673992466
+    },
+    {
+      "name": "ai-atomic-call-effects",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-atomic-call-effects/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/ai-atomic-call-effects"
+      ],
+      "returncode": 0,
+      "seconds": 10.490557336001075
+    },
+    {
+      "name": "interference-width",
+      "command": [
+        "python3",
+        "docs/review-repros/interference-width/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/interference-width"
+      ],
+      "returncode": 0,
+      "seconds": 3.4513168150006095
+    },
+    {
+      "name": "ai-lock-identities",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-lock-identities/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/ai-lock-identities"
+      ],
+      "returncode": 0,
+      "seconds": 13.176942865000456
+    },
+    {
+      "name": "lock-allocation-identity",
+      "command": [
+        "python3",
+        "docs/review-repros/lock-allocation-identity/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/lock-allocation-identity"
+      ],
+      "returncode": 1,
+      "seconds": 2.3639892150094965
+    },
+    {
+      "name": "ai-call-effects",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-call-effects/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/ai-call-effects"
+      ],
+      "returncode": 0,
+      "seconds": 21.46180903200002
+    },
+    {
+      "name": "ai-library-effects",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-library-effects/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/ai-library-effects"
+      ],
+      "returncode": 0,
+      "seconds": 20.521076369986986
+    },
+    {
+      "name": "ai-byte-effects",
+      "command": [
+        "python3",
+        "docs/review-repros/ai-byte-effects/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/ai-byte-effects"
+      ],
+      "returncode": 0,
+      "seconds": 19.13958713201282
+    }
+  ],
+  "legacy_original_failures": [
+    {
+      "name": "single-execution",
+      "command": [
+        "python3",
+        "docs/review-repros/single-execution/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/single-execution"
+      ],
+      "returncode": 1,
+      "seconds": 0.7651659100083634
+    },
+    {
+      "name": "lock-allocation-identity",
+      "command": [
+        "python3",
+        "docs/review-repros/lock-allocation-identity/run.py",
+        "--output",
+        "/tmp/ikos-three-docs-20261011/acceptance/lock-allocation-identity"
+      ],
+      "returncode": 1,
+      "seconds": 2.3639892150094965
+    }
+  ],
+  "legacy_property_contract_observations": 88,
+  "legacy_property_contract_transitions": 0,
+  "legacy_expected_verdict_failures_preserved": true,
+  "limitations": [
+    "Default valid successful pthread contracts only; complete POSIX failure behavior not modeled.",
+    "Full C11 weak memory, arbitrary free/lifetime races and complete opaque handle provenance not certified.",
+    "Exact-context helper certificates are property proofs, not general function summaries.",
+    "No complete-language soundness theorem or official witness approval."
+  ]
+}

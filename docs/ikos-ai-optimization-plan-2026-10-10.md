@@ -22,9 +22,9 @@
 | 工作 | 当前状态 | 不能据此推断的结论 |
 | --- | --- | --- |
 | 第一份审查的F1–F6及后续已复现FN | 原F1–F6、条件锁及整数表示指针发布已修复或封堵 | 不等于实现完整逃逸图、句柄来源域或证明全部SAFE规则 |
-| 剩余正确性审查义务 | 尚缺逐规则、逐合同的整体验收记录 | 不能写成已全部结案；也不能把未作普遍证明写成还有已复现FN未修 |
-| 第二份计划的精度恢复 | 已进入实施；最近两轮TN654→658 | 未实现完整PBR/digest，也未证实加速 |
-| 第三份双向反馈研究 | 新的反向SAFE/归纳查询仍未实现 | 仿射地址的原生充分条件和离线数学核对不等于BMC反馈已落地 |
+| 剩余正确性审查义务 | 正确性篇§7已有16类工程验收与支持边界 | 不是完整C/POSIX证明；没有登记为已复现而未处理的本轮FN |
+| 第二份计划的精度恢复 | 原生证书及上下文绑定恢复TN654→661；当前132项safe-label UNKNOWN全部登记 | 未实现完整PBR/digest；38正常参考TRUE是后续一般机制入口，不是假称不能实现 |
+| 第三份双向反馈研究 | A原型定向/默认验收通过，启用消融与B重算实验进行中 | A是solver-aided AI，不是假称BMC执行反馈或归纳认证已完成 |
 
 §9.27新发现的整数表示指针发布FN已在§9.28处理；本阶段没有登记为已复现而未修的FN。
 这不等于逐项正确性验收或完整语言证明已完成。
@@ -1488,3 +1488,39 @@ unsigned/回绕、不同宽度、空/矛盾事实及预算。不称穷尽全部�
 [真实快照/公式](artifacts/ai-precision-2026-10-11/pair-feedback/snapshots.json)、
 [定向输入](review-repros/ai-pair-feedback/feedback.c)、
 [BMC配置](artifacts/ai-precision-2026-10-11/pair-feedback/bmc-fixtures.json)。
+
+
+### 9.33 UNKNOWN逐文件台账与工程P0出口（2026-10-11）
+
+把原135项safe-label UNKNOWN重新关联最新配对并重新运行AI诊断：原池4项已SAFE
+（3个helper及此前NetBSD），新加入guard收紧后的`04-mutex_17-ps_add1_nr`，共136项跟踪、
+当前132项UNKNOWN。每项source/YAML hash都核对、当前命令/ABI/二进制/诊断均登记；
+原诊断保留为历史快照，当前诊断取代旧判定。新增guard项用同一固定官方Goblint portfolio
+得到无Unsound的TRUE，源码INT_MAX退出排除increment overflow，但现有零值身份不折叠算术。
+恢复需要AR宽度/no-wrap/纯操作证明，不能复活旧无宽度仿射剥层。
+
+剩余132：正常参考TRUE38、UNKNOWN25、UNSUPPORTED33、TIMEOUT34、ERROR2。后94项是
+参考未证实，不能记成IKOS不可能；前38项已按源码/AR/真实诊断分桶，不能把“待做大机制”
+改写成“不能实现”。8个heap-list诊断明确只完成覆盖门及首批alias分析，未穷尽每个pair根因。
+这份台账的完成是每文件有真实状态及后续证据要求，不是宣布所有UNKNOWN已解决。
+
+| 当前一般缺口 | 实际入口/证据 | 本版处理与后续前提 |
+| --- | --- | --- |
+| opaque句柄来源/条件return/join相关性 | race-1/2/3系列global handle [0,1]、Joined{}；return partitioning消融无改善 | 保留UNKNOWN；需要create成功/来源与返回谓词的关系摘要，不能选区间上界 |
+| 动态创建链及join-loop覆盖 | singleton/weaver嵌套父线程被单次执行证书拒绝，数组join缺全部实例证明 | 保留UNKNOWN；应实现一般创建链/槽位provenance并加重复父实例/漏join负例 |
+| heap字段、发布与container/list alias | region池及8项部分诊断，synthetic-handle/byte/int-alias覆盖门交叠 | 不开private-init或猜region；需要对象可达性/字节来源与字段摘要闭包 |
+| 保护相关值干扰 | priv_inv及invariant_racefree读入所有transient may-write，额外路径可达 | 完整PBR/写中心摘要前先证明保护集和unlock发布合同；不丢锁外/其他保护锁写 |
+| 字符串copy跨线程效果 | bigshot两项只剩strcpy覆盖警告 | 常量源含NUL长度也需源读/目标写、干扰发布及pointer/handle失效；不能只白名单strcpy |
+| mutex属性/lifecycle | race_reach23/40的attr-init/settype/nondefault init警告 | BMC ERRORCHECK模型不是AI合同；需transfer/domain语义和失败/递归深度对照 |
+| 算术守卫等价 | 新guard项及截断/循环/helper负例 | 可做局部机器宽度证书；必须同时保留no-wrap/纯度及动态激活前提 |
+
+覆盖警告涉及任务数：extern36、library3、synthetic handle43、byte7、整数alias23、mixed atomic4、
+internal1；这些集合交叠，不能相加当作剩余任务数，也不能仅删覆盖门增加TN。
+台账保留明确的一般实施方向和未完成义务。本版没有因其实现成本大而声称数学上不可实现；
+完整PBR/digest、动态身份域和字符串/heap模型是后续独立机制，不是本轮隐含承诺的重写框架。
+工程P0的逐规则结案及旧runner精度损失见[正确性篇§7](ikos-ai-soundness-audit-2026-10-10.md#7-支持范围的工程验收与剩余义务2026-10-11)。
+
+证据：[136项完整台账](artifacts/ai-precision-2026-10-11/unknown-ledger/ledger.json)、
+[分桶](artifacts/ai-precision-2026-10-11/unknown-ledger/summary.json)、
+[新增参考](artifacts/ai-precision-2026-10-11/unknown-ledger/new-reference.json)、
+[工程规则清单](artifacts/ai-precision-2026-10-11/final-acceptance/inventory.json)。

@@ -1,0 +1,31 @@
+{
+  "original_pool": 135,
+  "added_current_unknown": 1,
+  "tracked": 136,
+  "recovered": 4,
+  "remaining": 132,
+  "no_impossibility_claims": true,
+  "remaining_reference_status": {
+    "UNSUPPORTED": 33,
+    "UNKNOWN": 25,
+    "TRUE": 38,
+    "TIMEOUT": 34,
+    "ERROR": 2
+  },
+  "dispositions": {
+    "REFERENCE_NOT_PROVED": 94,
+    "RECOVERED_WITH_GENERAL_CERTIFICATE": 4,
+    "DEFERRED_GENERAL_MECHANISM": 38
+  },
+  "diagnosis_limit_rows": 8,
+  "summary_note": "All136 inputs/source+YAML hashes/current AI verdicts checked; 38 normal TRUE entrances reviewed, eight heap diagnoses explicitly partial. No impossibility claim for deferred work.",
+  "coverage_tasks": {
+    "external call effects not covered": 36,
+    "library memory effects not covered": 3,
+    "synthetic pthread handle representation not modeled": 43,
+    "byte memory effects not fully modeled": 7,
+    "integer-derived pointer aliasing is not modeled": 23,
+    "mixed atomic/non-atomic accesses": 4,
+    "internal call effects not covered": 1
+  }
+}
