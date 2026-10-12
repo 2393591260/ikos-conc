@@ -17,7 +17,7 @@
   "ruff_version": "0.16.10",
   "ruff_config_url": "https://raw.githubusercontent.com/sosy-lab/benchexec/main/pyproject.toml",
   "ruff_config_sha256": "4e830009d27987c3441b680a742e41199c6c68044314e173b7432f1007ab695e",
-  "ruff_check": "PASS",
+  "ruff_check": "PASS in IKOS tree with copied config only; insufficient for BenchExec CI (see ruff_ci_followup)",
   "ruff_format_check": "PASS",
   "adapter_unit_tests": 8,
   "witness_unit_tests": 18,
@@ -76,6 +76,23 @@
     "head_repo": "2393591260/benchexec",
     "head_branch": "main",
     "head_sha": "f9e49429ab0a6684dd832288696564baec7fa543"
+  },
+  "ruff_ci_followup": {
+    "pr_head_before_fix": "c4e4453fb3294dbeb99a81f5257b21f379d5005c",
+    "before_adapter_sha256": "2ff26529797ca28c687becbac52148b9a823f38244dacb79b314ba3beeeb5541",
+    "after_adapter_sha256": "d36950d1c6a799f393b6cc9f152a2c178133bc107e35dce8489649f795b707ea",
+    "root_cause": "Ruff import classification depends on the source tree as well as the config. The copied-config IKOS check passed, but the same file and config in the complete BenchExec PR tree reproduced I001.",
+    "fix": "Group all three BenchExec imports together, starting with from benchexec import result",
+    "ruff_version": "0.16.10",
+    "verification_context": "Complete BenchExec source tree at the PR head, changing only benchexec/tools/ikos-conc.py",
+    "before_ruff_check_benchexec": "FAIL: exactly one I001, matching official CI",
+    "after_ruff_check_benchexec": "PASS",
+    "after_ruff_format_check_benchexec": "PASS: 247 files already formatted",
+    "adapter_unit_tests": "PASS: 8 tests using BenchExec from the PR source tree",
+    "non_import_ast_equal": true,
+    "import_ast_sets_equal": true,
+    "official_ci_acceptance": "Pending PR update and CI rerun",
+    "archive": "Existing archive is unchanged; this correction only reorders adapter imports"
   },
   "limits": [
     "Local full sweep uses a process-group timeout, not official cgroup resource accounting",
