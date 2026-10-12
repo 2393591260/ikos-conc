@@ -1916,6 +1916,7 @@ public:
     if (this->_ctx.opts.enable_thread_modular) {
       check_synthetic_handle_effect(*this, s, ptr);
       on_store_privatize(*this, s->value()->type(), ptr, val);
+      record_protected_scalar_write(*this, s, ptr, val);
       if (s->value()->type()->is_pointer() && val.is_scalar()) {
         const auto& rhs = val.scalar();
         if (rhs.is_pointer_var() || rhs.is_null())
@@ -2959,6 +2960,9 @@ public:
       return;
     }
 
+    if (this->_ctx.opts.enable_thread_modular && may_write_globals)
+      this->_ctx.concurrent_env.invalidate_mutex_values();
+
     if (may_write_globals) {
       // Forget all memory contents
       this->data().normal().mem_forget_all();
@@ -2971,27 +2975,24 @@ public:
           continue;
         }
 
-        Variable* ptr = nullptr;
+        this->init_global_operand(arg);
+        const auto& literal = this->_lit_factory.get_scalar(arg);
+        if (!literal.is_pointer_var()) continue;
+        Variable* ptr = literal.var();
         if (isa< ar::InternalVariable >(arg)) {
-          auto iv = cast< ar::InternalVariable >(arg);
-          ptr = this->_var_factory.get_internal(iv);
-
-          this->init_global_operand(arg);
           this->refine_addresses(ptr);
-        } else if (isa< ar::LocalVariable >(arg)) {
-          // An address-taken LOCAL passed by pointer (`foo(&id2)`): the
-          // extern may write through it, so forget the local's cell —
-          // otherwise a later pthread_join(id2) wrongly reads the pre-call
-          // handle value (51-threadjoins/07-trivial-unknowntid FN).
-          ptr = this->_var_factory.get_local(cast< ar::LocalVariable >(arg));
-        } else {
-          continue;
         }
 
         if (this->data().normal().nullity_is_null(ptr)) {
           continue; // Safe
-        } else if (ignore_unknown_write &&
+        }
+        if (this->_ctx.opts.enable_thread_modular &&
+            uncovered_mutex_value_write(*this, arg, literal))
+          this->_ctx.concurrent_env.invalidate_mutex_values();
+        if (ignore_unknown_write &&
                    this->data().normal().pointer_to_points_to(ptr).is_top()) {
+          if (auto* local = local_output_base(arg))
+            this->data().normal().mem_forget(this->_mem_factory.get_local(local));
           // Ignore side effect on the memory
           // See CheckKind::IgnoredCallSideEffectOnPointerParameter
           continue;
@@ -3295,6 +3296,14 @@ private:
       return;
     }
 
+    auto length = size.is_machine_int() ? IntInterval(size.machine_int())
+        : this->data().normal().int_to_interval(size.var());
+    if (this->_ctx.opts.enable_thread_modular && !length.is_bottom() &&
+        !length.ub().is_zero() && byte_source_is_shared(*this, ptr)) {
+      this->_ctx.concurrent_env.record_unmodeled_effect(
+          call, "shared random-byte memory effects not covered");
+    }
+
     if (this->data().normal().pointer_to_points_to(ptr.var()).is_top()) {
       // Ignore ikos.forget_memory, analysis could be unsound.
       // See CheckKind::UnknownMemoryAccess
@@ -3317,6 +3326,14 @@ private:
 
     if (!this->prepare_mem_access(ptr)) {
       return;
+    }
+
+    auto length = size.is_machine_int() ? IntInterval(size.machine_int())
+        : this->data().normal().int_to_interval(size.var());
+    if (this->_ctx.opts.enable_thread_modular && !length.is_bottom() &&
+        !length.ub().is_zero() && byte_source_is_shared(*this, ptr)) {
+      this->_ctx.concurrent_env.record_unmodeled_effect(
+          call, "shared random-byte memory effects not covered");
     }
 
     if (this->data().normal().pointer_to_points_to(ptr.var()).is_top()) {
@@ -4440,7 +4457,12 @@ private:
   /// After constructing the exception object with the throw argument value, the
   /// generated code calls the __cxa_throw runtime library routine. This routine
   /// never returns.
-  void exec_throw(ar::CallBase* /*call*/) { this->data().throw_exception(); }
+  void exec_throw(ar::CallBase* call) {
+    if (this->_ctx.opts.enable_thread_modular && !this->data().is_normal_flow_bottom())
+      this->_ctx.concurrent_env.record_unmodeled_effect(
+          call, "exception destructor effects not covered");
+    this->data().throw_exception();
+  }
 
   /// \brief Execute a call to libc++ begin catch
   ///
@@ -4472,7 +4494,11 @@ private:
   /// last point. Though implementation-defined, one possibility is for
   /// __cxa_rethrow() to set a flag in the handlerCount member of the exception
   /// header to mark an exception being rethrown.
-  void exec_end_catch(ar::CallBase* /*call*/) {}
+  void exec_end_catch(ar::CallBase* call) {
+    if (this->_ctx.opts.enable_thread_modular && !this->data().is_normal_flow_bottom())
+      this->_ctx.concurrent_env.record_unmodeled_effect(
+          call, "exception destructor effects not covered");
+  }
 
   /// @}
 public:

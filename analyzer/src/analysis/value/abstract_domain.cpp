@@ -138,6 +138,7 @@ AbstractDomain make_bottom_abstract_value(Context& ctx) {
 AbstractDomain make_initial_abstract_value(Context& ctx) {
   auto threads = LocksetAbstractDomain::top();
   threads.initialize_live_children();
+  threads.initialize_mutex_history();
   return AbstractDomain(
       /* first = */ DataAbstractDomain(make_top_memory_abstract_value(ctx),
                                        make_bottom_memory_abstract_value(ctx),

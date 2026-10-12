@@ -46,6 +46,7 @@
 #include <vector>
 
 #include <ikos/analyzer/analysis/context.hpp>
+#include <ikos/analyzer/analysis/execution_engine/protected_values.hpp>
 #include <ikos/analyzer/analysis/value/abstract_domain.hpp>
 #include <ikos/analyzer/analysis/value/global_variable.hpp>
 #include <ikos/analyzer/analysis/value/interprocedural/init_invariant.hpp>
@@ -291,6 +292,31 @@ void ThreadModularAnalysis::run() {
     }
   }
 
+  // Capture I once. Constructors/custom roots need a separate initialization
+  // coverage proof before they can use this first-acquisition subset.
+  bool ordinary_initialization = gv_ctors == nullptr && _ctx.opts.no_init_globals.empty();
+  for (auto* root : _ctx.opts.entry_points) ordinary_initialization &= root->name() == "main";
+  if (ordinary_initialization && !init_inv.first().normal().is_bottom()) {
+    for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it) {
+      auto* global = *it;
+      if (!protected_scalar_accesses(global)) continue;
+      auto* type = cast< ar::IntegerType >(global->type()->pointee());
+      auto* location = _ctx.mem_factory->get_global(global);
+      auto* pointer = _ctx.var_factory->get_global(global);
+      auto* temporary = _ctx.var_factory->create_unnamed_shadow(type);
+      auto literal = core::Literal< Variable*, MemoryLocation* >::machine_int_var(temporary);
+      auto observation = init_inv.first();
+      core::MachineInt size(bundle->data_layout().store_size_in_bytes(type),
+                            bundle->data_layout().pointers.bit_width, core::Unsigned);
+      observation.normal().pointer_assign(pointer, location, core::Nullity::non_null());
+      observation.normal().mem_read(literal, pointer, size);
+      auto initial = observation.normal().int_to_interval(temporary);
+      if (initial.is_bottom()) initial.set_to_top();
+      _ctx.concurrent_env.initialize_mutex_value(
+          core::IndexableTraits< MemoryLocation* >::index(location), initial);
+    }
+  }
+
   // ── Phase 2.5: Function pointer analysis ────────────────────────────
   // The FPA only runs under Procedural::Intraprocedural in the driver;
   // the thread-modular (concurrency) path needs its results for (a) the
@@ -303,6 +329,8 @@ void ThreadModularAnalysis::run() {
     fpa->run();
     _ctx.function_pointer = fpa; // process-lifetime; single-shot
   }
+
+  if (ordinary_initialization) _ctx.concurrent_env.enable_mutex_values();
 
   // ── Phase 3: Thread-modular worklist fixpoint ──────────────────────
   log::info("Starting global Worklist fixpoint iteration");

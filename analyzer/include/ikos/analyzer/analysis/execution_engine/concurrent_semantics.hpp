@@ -33,6 +33,7 @@
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 #include <ikos/analyzer/analysis/execution_engine/handle_origin.hpp>
 #include <ikos/analyzer/analysis/execution_engine/stable_publication.hpp>
+#include <ikos/analyzer/analysis/execution_engine/protected_values.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
 #include <ikos/analyzer/analysis/memory_location.hpp>
 #include <ikos/analyzer/analysis/variable.hpp>
@@ -421,6 +422,8 @@ void exec_pthread_cond_signal(E& eng, ar::CallBase* call, bool broadcast = false
 /// write's must-lock vanished, so the unlocked read no longer raced).
 template < typename E >
 void exec_pthread_cond_wait(E& eng, ar::CallBase* call) {
+  eng.ctx().concurrent_env.invalidate_mutex_values();
+  eng.lockset().record_possible_mutex_acquisition();
   // Resolve the cond address (arg0) to a (base, offset) key (mirroring the
   // mutex resolution below). Unresolvable → 0, so the queue + digest are
   // skipped (conservative: only loses precision).
@@ -491,6 +494,16 @@ template < typename E >
 void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
                              bool read_lock = false,
                              bool trylock = false) {
+  auto old_held = value_mutexes(eng);
+  const bool first_acquisition = !eng.lockset().may_ever_acquired_mutex() &&
+                                 eng.lockset().held_mutexes().empty();
+  auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+  const bool ordinary_mutex = target &&
+      (target->function()->name() == "pthread_mutex_lock" ||
+       target->function()->name() == "ar.pthread.mutex.lock");
+  if (!ordinary_mutex) eng.ctx().concurrent_env.invalidate_mutex_values();
+  eng.lockset().record_possible_mutex_acquisition();
+  bool precise_acquisition = false;
   // Get the mutex argument (first argument). An UNINITIALISED mutex pointer
   // is a dangling reference whose points-to is ⊤. Going BOTTOM here (the old
   // `uninit_assert_initialized`) would mark the whole path dead and silently
@@ -548,6 +561,7 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
                 offset_lock_key(base, poff.lb().to_z_number());
             if (key != 0) {
               acquired_addrs.push_back(key);
+              precise_acquisition = true;
               env.record_lock_instance(key, instance_base_offset(eng, mutex_arg));
             }
           } else {
@@ -713,6 +727,14 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
     }
   }
 
+  if (ordinary_mutex && precise_acquisition && !read_lock && !trylock &&
+      acquired_addrs.size() == 1 && first_acquisition) {
+    auto new_held = old_held;
+    new_held.insert(acquired_addrs.front());
+    refresh_protected_values(eng, new_held, true);
+  } else {
+    refresh_protected_values(eng, old_held, false);
+  }
   for (std::uint64_t la : acquired_addrs) {
     if (!read_lock && !trylock && eng.lockset().held_mutexes().count(la) != 0) {
       // ERRORCHECK may fail without increasing depth; NORMAL may block.
@@ -796,6 +818,11 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
 /// \brief Remove resolved locks and flush their deferred write queues.
 template < typename E >
 void exec_pthread_mutex_unlock(E& eng, ar::CallBase* call, bool also_read = false) {
+  auto before = value_mutexes(eng);
+  auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+  const bool ordinary_mutex = target &&
+      (target->function()->name() == "pthread_mutex_unlock" ||
+       target->function()->name() == "ar.pthread.mutex.unlock");
   // Get the mutex argument (first argument). An UNINITIALISED mutex pointer
   // is a dangling reference whose points-to is ⊤. Going BOTTOM here (the old
   // `uninit_assert_initialized`) would mark the whole path dead and silently
@@ -910,6 +937,13 @@ void exec_pthread_mutex_unlock(E& eng, ar::CallBase* call, bool also_read = fals
         eng.lockset().remove_read_lock(ra);
       }
     }
+  }
+
+  if (ordinary_mutex && !also_read && !released_unknown && released_addrs.size() == 1 &&
+      before.count(released_addrs.front()) != 0) {
+    publish_protected_release(eng, before, value_mutexes(eng));
+  } else {
+    eng.ctx().concurrent_env.invalidate_mutex_values();
   }
 
   // Flush deferred writes for resolved locks into their summary partitions.
@@ -1392,9 +1426,14 @@ void on_load_integer_interference(E& eng,
             return;
           }
         }
-        external = env.read_global_interference(
-            core::IndexableTraits< MemoryLocation* >::index(global),
-            type->bit_width(), type->sign());
+        auto addr = core::IndexableTraits< MemoryLocation* >::index(global);
+        auto held = value_mutexes(eng);
+        if (env.mutex_values_available() && env.has_mutex_value_cell(addr) && !held.empty()) {
+          external = env.read_mutex_ongoing(addr, held, type->bit_width(), type->sign());
+          if (external.is_bottom()) return; // no new interference; retain own memory.
+        } else {
+          external = env.read_global_interference(addr, type->bit_width(), type->sign());
+        }
       }
     }
   }
@@ -1886,7 +1925,16 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
     if (handle_lit.is_scalar()) {
       const auto& scalar_lit = handle_lit.scalar();
       if (scalar_lit.is_pointer_var()) {
+        if (uncovered_mutex_value_write(eng, handle_arg, scalar_lit)) {
+          eng.ctx().concurrent_env.record_unmodeled_effect(
+              call, "pthread_create handle output effects not covered");
+        }
         auto pts = eng.data().normal().pointer_to_points_to(scalar_lit.var());
+        if (pts.is_top()) {
+          // Local provenance excludes global writes, not stale local contents.
+          if (auto* local = local_output_base(handle_arg))
+            eng.data().normal().mem_forget(eng.ctx().mem_factory->get_local(local));
+        }
         if (pts.is_set()) {
           for (MemoryLocation* loc : pts) {
             Variable* var = nullptr;

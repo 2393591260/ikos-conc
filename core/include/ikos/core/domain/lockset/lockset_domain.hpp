@@ -104,6 +104,10 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
   /// True iff this value is ⊥ (unreachable code). Always propagates.
   bool _is_bottom = false;
 
+  // false proves no previous acquisition on this path; loss of MUST locks
+  // must never turn a later acquisition into a first-acquisition certificate.
+  bool _may_ever_acquired_mutex = true;
+
   /// Mutex digest: `_mutex_top` = ⊤ ("no info", the old `nullptr`); when
   /// false, `_mutex_locks` maps each must-held mutex address to its recursive
   /// depth (number of times held). A recursive mutex locked twice must survive
@@ -517,6 +521,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
   static LocksetDomain bottom() {
     LocksetDomain d;
     d._is_bottom = true;
+    d._may_ever_acquired_mutex = false;
     return d;
   }
 
@@ -539,6 +544,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
       return false;
     }
     return (_mutex_top || _mutex_locks.empty()) &&
+           _may_ever_acquired_mutex &&
            (_read_top || _read_locks.empty()) &&
            (_joined_top || _joined_threads.empty()) &&
            _live_top &&
@@ -550,6 +556,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
 
   void set_to_bottom() override {
     _is_bottom = true;
+    _may_ever_acquired_mutex = false;
     _mutex_top = _read_top = _joined_top = _cond_top = true;
     _spawned_top = false;
     _signaled_top = _awaited_top = false;
@@ -568,6 +575,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
 
   void set_to_top() override {
     _is_bottom = false;
+    _may_ever_acquired_mutex = true;
     _mutex_top = _read_top = _joined_top = _cond_top = true;
     _spawned_top = false;
     _signaled_top = _awaited_top = false;
@@ -593,6 +601,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
       *this = other;
       return;
     }
+    _may_ever_acquired_mutex |= other._may_ever_acquired_mutex;
     join_mutex(_mutex_top,
                _mutex_locks,
                other._mutex_top,
@@ -655,6 +664,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     if (this->_is_bottom) {
       return;
     }
+    _may_ever_acquired_mutex &= other._may_ever_acquired_mutex;
     meet_mutex(_mutex_top,
                _mutex_locks,
                other._mutex_top,
@@ -694,6 +704,8 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
                  other._awaited_top,
                  other._awaited_conds);
     meet_cond(_cond_top, _cond_locks, other._cond_top, other._cond_locks);
+    if (!_may_ever_acquired_mutex && !_mutex_top && !_mutex_locks.empty())
+      this->set_to_bottom();
   }
 
   void narrow_with(const LocksetDomain& other) override {
@@ -707,7 +719,8 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     if (other._is_bottom) {
       return false;
     }
-    return leq_mutex(_mutex_top,
+    return (!_may_ever_acquired_mutex || other._may_ever_acquired_mutex) &&
+           leq_mutex(_mutex_top,
                      _mutex_locks,
                      other._mutex_top,
                      other._mutex_locks) &&
@@ -751,7 +764,8 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     if (this->_is_bottom) {
       return true;
     }
-    return eq_mutex(_mutex_top,
+    return _may_ever_acquired_mutex == other._may_ever_acquired_mutex &&
+           eq_mutex(_mutex_top,
                     _mutex_locks,
                     other._mutex_top,
                     other._mutex_locks) &&
@@ -891,6 +905,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
       return;
     }
     _mutex_top = false;
+    _may_ever_acquired_mutex = true;
     ++_mutex_locks[lock_addr];
   }
 
@@ -929,6 +944,10 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     }
     return out;
   }
+
+  void initialize_mutex_history() { _may_ever_acquired_mutex = false; }
+  void record_possible_mutex_acquisition() { _may_ever_acquired_mutex = true; }
+  bool may_ever_acquired_mutex() const { return _may_ever_acquired_mutex; }
 
   /// \brief Snapshot of all held locks (= mutexes; the domain is single-tier).
   std::unordered_set< std::uint64_t > held_locks() const {

@@ -91,6 +91,56 @@ general free/lifetime 冲突尚未认证。
 相对字段偏移与 pointee 类型不能补足共同对象原点：
 union、嵌入子对象和未知 getter 可让“相对 4”与“相对 0”访问同一绝对字节。
 
+### 3.4 保护值与真实释放端点（M2）
+
+普通 may-write 摘要包括临界区的中间值。例如 writer 持 L 执行 `x=0; x=1; unlock(L)`，
+另一个持 L 的 reader 实际不能读到中间的 0；把全部写导入其守卫会制造不可达分支。
+不能反过来只取“分析中最后一次写”：不同路径、线程和外层迭代没有这种执行顺序。
+
+`protected_values.hpp` 与 `ConcurrentGlobalEnv` 新增三个单调通道：
+
+| 通道 | 内容与保护标签 | 消费规则 |
+| --- | --- | --- |
+| I[x] | 正常全局初始化结束时的整数区间 | 第一次取得 mutex 的入口候选值 |
+| O[x,H] | 每条可能 store 的值，H 为当时完整、可证明的 exclusive MUST mutex 集 | 仅当 H 与 reader 所持锁不相交时导入干扰 |
+| R[x,H_after] | 实际 unlock 前的本地内存，合并与 H_before 不相交的 O；标签为释放后仍持锁集合 | 第一次取得锁时导入与新锁集不相交的 release 值 |
+
+第一次精确取得普通 mutex 时，用 `I ∪ O_disjoint(H_new) ∪ R_disjoint(H_new)` 恢复整槽内存。
+覆盖理由分两种：共享值来自当前可并发的写，则由 O 覆盖；来自已结束的受保护片段，
+则由真实释放端点 R 覆盖。与新锁相交的进行中写不可能与已持锁 reader 同时发生。
+初始化和所有不受该锁排除的写仍保留，不能先假设程序无竞争。
+
+后续/嵌套 lock 保留本地值，只按取得新锁之前的 H 导入允许干扰；
+旧 H 为空时还弱合并 handoff。持锁 load 继续合并允许的 O，空 O 保留本地内存。
+R 不再混入 I 或旧 R：释放端点已经覆盖这些来源到当前点的转移。
+内层 unlock 后仍持外层 L 的端点标记 L，因此不会把外层临界区的中间值发布给另一个持 L 的线程。
+这些都是抽象状态摘要，不能作为新的源程序 store 或 BMC rf 事件。
+
+`LocksetDomain` 的 MAY 获取历史在真正初态为 false，首次可能获取后为 true；
+join 取 OR，meet 取 AND，参与 leq/equality/widen/narrow。丢失 MUST 锁不清除此历史，
+避免循环、条件分支或后续片段被误当成首次获取。未知同步及 cond_wait 撤销精化。
+符号锁地址与 verifier atomic 标记不作为本机制的真实 mutex handoff。
+
+整 bundle 静态证书只注册 defined、非 TLS 的整宽整数 global：所有取址使用必须为
+非 volatile/atomic 的整槽 load/store 或单一定义的透明零偏移别名。
+传参逃逸、部分字节写、未知别名和重定义形参均拒绝。构造函数、自定义初始化或非 main 根
+不启用该首次获取子集。未覆盖调用/创建、TOP 写及不支持 mutex 类型/成功条件撤销精化，
+回到完整 may-write board；真实效果缺口另由 coverage gate 阻止 SAFE。
+新保护标签即使数值不变也置 dirty，最终检查的迟到变化沿用既有重算/UNKNOWN 出口。
+
+已覆盖库输出还需区分 NULL、局部目的与可能全局目的。`local_output_base` 只沿 pointer
+copy/bitcast/PointerShift 返回实际 LocalVariable，显式拒绝 formal、load、call 和整数转换。
+在合法前端数据流及有效对象内存语义下，它证明直接写不别名 eligible global；
+它不证明整个局部对象私有、下标精确或未知调用的传递效果已覆盖。
+TOP 输出仍忘记该局部分配的 cells，避免精确旧 alias 保留陈旧条件/句柄。
+shared random-byte intrinsic、未知 create 输出和异常 destructor 的效果缺口保持 UNKNOWN。
+
+参考固定 Goblint `basePriv.ml` 的 ProtectionBasedPriv（933 起）的 protected/unprotected
+读写与 unlock 发布，特别是内层释放不应提前发布的条件；write-centered（1801 起）
+另有完整 W/P/V/L 历史。本实现使用 IKOS memory interval 与受限首次获取证书，
+没有照搬这些历史域，也不能称已实现完整 Goblint PBR 或 digest-driven 分析。
+定向回归见 `docs/review-repros/ai-release-values/`；全量证据见 §8。
+
 <a id="locks"></a>
 ## 4. 锁、线程身份与非并发证明
 
@@ -113,6 +163,10 @@ join 取交，因此 `A ⊑ B` 要求 A 包含 B 的全部事实，递归深度�
 故这不是仅影响诊断显示的问题。修复只改 MUST 比较，MAY 分量仍按正向包含。
 旧头文件上的新测试失败；修复后的 100 组域上下界/相等性检查及双架构锁回归通过。
 此项不表示整个混合锁/线程域及所有 POSIX 返回码均已形式化认证。
+仍需独立处理的域义务包括：`is_top()` 未检查 fresh heap 分量，
+`top()/set_to_top()` 的若干 MAY 历史仍使用入口空集，以及 conditional meet 对同 guard
+事实覆盖而非合并。它们尚未建立新的源级 FalseSAFE 复现，不能因此当成已证明无影响。
+本轮仅修复已定位的 MUST 序与添加获取历史，不将这项局部检查称为完整格认证。
 配对与回归证据见 [MUST ordering](artifacts/ai-precision-2026-10-12/must-order/summary.json)。
 1029 项 AI/BMC 全量逐任务判定均不变：AI TN=679，AI+BMC TP=109/TN=679，
 FP/FN=0、error=1；此修复没有以标签分数增长代替域正确性。
@@ -387,23 +441,41 @@ TP 109 不变、TN 678→679、UNKNOWN 241→240、FP/FN=0、error=1。
 本地原 Goblint 的 CIL 缺 GCC32 machine definition；重建独立 CIL/Goblint 后，
 原 24 个候选全部重新得到不带 Unsound 的 TRUE，见
 [参考记录](artifacts/ai-precision-2026-10-12/stable-publication/reference-24.json)。
-这不是官方 2027 Goblint binary 的成绩。M2 的两个 release 入口与其余候选尚待下一机制处理。
+这不是官方 2027 Goblint binary 的成绩。
 
-两个 release 入口：
-`13-privatized_03-priv_inv` 的临界区写 0 再写 1，
-`28-race_reach_60-invariant_racefree` 的外层 L 排除 worker，但内层 M 释放中间值。
-当前 `record_privatized_write` 记录中间写，不能当真实 release 摘要；
-未被用来证明保护读的 `read_global_with_lockset` 不能直接启用作快捷恢复。
+### M2：保护相关 release 端值（2026-10-12 已实现）
 
-候选设计需覆盖 initializer ∪ 不受所持锁排除的 ongoing writes ∪ 真实 release 值；
-已由外层锁私有的状态不能因获取内层锁被无条件刷新。
-unknown writes、cond_wait、未知 alias/布局/同步效果必须撤销相应精化；
-所有通道经 monotone join/widening 及 dirty/replay 收敛。
-这是待实现设计，尚不能称完整 PBR。
+两个入口均由 UNKNOWN 恢复 SAFE。`13-privatized_03-priv_inv` 的 I 为 1，
+main 在同一 mutex 下写 0 再写 1，真实 R 为 1，因此 worker 的 `x==1` 恒真，
+解锁后的 `x=-1` 不可达。`28-race_reach_60-invariant_racefree` 的 I 为 0；
+外层 mutex 排除 worker，内层 global lock 释放 x++ 的中间值时，R 仍带外层锁，
+不污染 worker；外层释放时 x-- 已恢复 0，因此 worker 的 `x==0` 恒真。
+修复 ILP32 环境的固定 Goblint 在两个源输入上也报告对应条件恒真及危险分支 dead code，
+见 [参考观察](artifacts/ai-precision-2026-10-12/release-values/reference-targets.json)。
+这些是实际断言/不可达诊断，不冒充 transfer-function 的逐次运行 trace。
 
-稳定 pointer 入口为 `race-3_1-container_of-global`；先确认来源/offset 第一次丢失，
-不能仅凭疑似 NULL 污染就采用最近 store 强更新。
-AI helper 生命周期证书与 BMC 发布支持不自动提供 AI 的 writer-specific pointer 摘要。
+机制和覆盖条件见 §3.4；原 `record_privatized_write` 仍属于 may-write 通道，
+新 R 只在真正 unlock 转移产生，没有把旧队列重新命名为 release 证明。
+`pthread_join(..., NULL)` 不触及共享标量，不再无条件撤销新摘要；
+局部输出的来源证书与 memory havoc 同时保持，TOP 共享输出仍走 coverage gate。
+
+新回归 72 次（ILP32/LP64、AI/BMC、改名/宽度变体及 exception bitcode），
+含嵌套锁、迟到未保护写、不同 mutex、条件锁、模糊 unlock、partial write、
+cond_wait、TOP random-byte/create 输出和局部/零长度对照。
+其中 10 次 FALSE 的所选执行均为独立 AR ACCEPT；获取历史、R 嵌套过滤、迟到标签 dirty
+及局部来源/formal/load/多定义边界另有域/AR 断言。原有读干扰、写并集、条件锁、锁身份、
+稳定发布、mutex attributes 和双架构 P0 检查通过，旧 pointer fixture CASE6 类型边界仍如上保留。
+
+1029 项同配置全量只有两个入口 UNKNOWN→SAFE：AI TN 679→681；
+AI+BMC TP 109 不变、TN 679→681、UNKNOWN 240→238、FP/FN=0、error=1。
+所有 109 个标签 TP 重新导出并检查 137 条所选执行，全部独立 AR ACCEPT；
+仍非官方源 witness 验收，也不证明所有 SAT model。
+AI/BMC 本轮墙钟为约 165/379 秒，只有一轮观察，不能推出性能优于旧版或参考工具。
+
+证据：[汇总](artifacts/ai-precision-2026-10-12/release-values/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-12/release-values/paired.json)、
+[定向回归](artifacts/ai-precision-2026-10-12/release-values/fixtures.json)、
+[所选执行](artifacts/ai-precision-2026-10-12/release-values/selected-executions.json)。
 
 阶段结束应是：机制前提可核实、正/反/变体通过、同配置 AI/BMC 全量配对、立即单机制提交，
 剩余案例有具体缺口。若路线无收益可停止扩张该原型，不等于整体优化完成或语义不可实现。
@@ -417,6 +489,7 @@ AI helper 生命周期证书与 BMC 发布支持不自动提供 AI 的 writer-sp
 
 | 原编号 | 机制或实验 | 原始依据 |
 | --- | --- | --- |
+| M2-release | 首次获取证书、实际释放端点及嵌套保护 | [记录](artifacts/ai-precision-2026-10-12/release-values/summary.json)、[目录](artifacts/ai-precision-2026-10-12/release-values/) |
 | <a id="ai-step-01"></a>01 | P0-F1：撤销 self-consistency 共同锁捷径 | [记录](artifacts/ai-p0-2026-10-10/f1/summary.json)、[目录](artifacts/ai-p0-2026-10-10/f1/) |
 | <a id="ai-step-02"></a>02 | P0-F3：未知线程体的覆盖回退 | [记录](artifacts/ai-p0-2026-10-10/f3/summary.json)、[目录](artifacts/ai-p0-2026-10-10/f3/) |
 | <a id="ai-step-03"></a>03 | P0-F5：join 只从确定句柄获得 MUST 完成信息 | [记录](artifacts/ai-p0-2026-10-10/f5/summary.json)、[目录](artifacts/ai-p0-2026-10-10/f5/) |

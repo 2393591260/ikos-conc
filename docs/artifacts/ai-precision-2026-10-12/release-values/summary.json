@@ -1,0 +1,176 @@
+{
+  "before_commit": "5e839fb",
+  "before_analyzer_sha256": "6c70620e49644d59b15f92d6474491a413f2f5a7dd73f0b3489d15f41ce59ec5",
+  "analyzer_sha256": "642f4424ba2c1398febfe3ff96b8deb53f942d3cc2f3e40db7bbc4c86b49e23c",
+  "wrapper_sha256": "e902b97ff2ca21fb2f5cc89a9b883fedfbe946722afcc45af8b9a3d58d64ae42",
+  "build_install_equal": true,
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp": "3c3d492cd7bd6b92532dce24fd18d49b9a75884e837a4e4b8079cad57055f624",
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/numerical.hpp": "f4146d76e002672fd5e0312319db2667b5b222c8f1b2da7afe06afa0d1b65870",
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/protected_values.hpp": "e723a015a9760ca9b0f2f7b3768db671b71216db74c7f6e40886b476a726323f",
+    "analyzer/src/analysis/value/abstract_domain.cpp": "da016de8ee68f8b22d7f757e1ce2b85a2638366b4307dcad1ac65198f5819fed",
+    "analyzer/src/analysis/value/thread_modular.cpp": "53a7fd6cfa8e5586e19c999f6e5ac71c907aa409fb937b9b9edf45bf476e6af7",
+    "core/include/ikos/core/domain/concurrent_global_env.hpp": "c4a868cbf815160255d20dcd338e542b5dac1e730905a93b7ee8e4f66fe3dbfd",
+    "core/include/ikos/core/domain/lockset/lockset_domain.hpp": "d7485eb89339d24df22f5570fb515df9413ec1535b5ca10aaaf252c56f3c5789"
+  },
+  "dataset_revision": "0a254fdddcfe24949be9edd47f8d609462eb52fb",
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "outer_timeout_seconds": 30,
+  "command": [
+    "python3",
+    "svcomp_race_test.py",
+    "--demote",
+    "--jobs",
+    "4",
+    "--timeout",
+    "30"
+  ],
+  "environment": {
+    "ai": {
+      "IKOS_BMC_RECOVER": "unset"
+    },
+    "bmc": {
+      "IKOS_BMC_RECOVER": "1"
+    }
+  },
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "TN": 679,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 349
+    },
+    "before_bmc": {
+      "TP": 109,
+      "TN": 679,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 240
+    },
+    "after_ai": {
+      "TP": 0,
+      "TN": 681,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 347
+    },
+    "after_bmc": {
+      "TP": 109,
+      "TN": 681,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 238
+    }
+  },
+  "times": [
+    {
+      "mode": "ai",
+      "exit": 0,
+      "seconds": 165.34105536599873,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    },
+    {
+      "mode": "bmc",
+      "exit": 0,
+      "seconds": 378.8331140980008,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    }
+  ],
+  "changed_false": 0,
+  "selected_validation": {
+    "tasks": 109,
+    "executions": 137,
+    "all_accept": true,
+    "scope": "selected AR execution/API contracts; not official source-witness acceptance or all-SAT certification"
+  },
+  "source_witness_acceptance": false,
+  "fixtures": {
+    "checks": 72,
+    "false_checks": 10,
+    "false_executions": 10,
+    "all_false_executions_accept": true,
+    "abis": [
+      32,
+      64
+    ],
+    "unit_assertions": "mutex history, meet, nested R, late-tag dirty, invalidation, local-root provenance and reassigned formal/load/multiple-def boundaries"
+  },
+  "regressions": [
+    {
+      "check": "ai-read-interference",
+      "checks": 32,
+      "exit": 0,
+      "summary_sha256": "3371064dcb51e65e392bcda10edf3bd88728983c8ce6f8db6b4723edba1c9f8b",
+      "evidence_scope": "targeted assertion suite; stable publication CASE6 remains old AR UNSUPPORTED load representation/type"
+    },
+    {
+      "check": "ai-write-union",
+      "checks": 16,
+      "exit": 0,
+      "summary_sha256": "a3417af5aad8e31b34f21e1d46f257858439c62a87e0c15e83aa9d681b2eadee",
+      "evidence_scope": "targeted assertion suite; stable publication CASE6 remains old AR UNSUPPORTED load representation/type"
+    },
+    {
+      "check": "ai-conditional-must",
+      "checks": 48,
+      "exit": 0,
+      "summary_sha256": "fa9d9f448f1bc76e1189f7ba17a5fc8ebdbbc1fd9f9a8f4fa68dfae2ab2f299e",
+      "evidence_scope": "targeted assertion suite; stable publication CASE6 remains old AR UNSUPPORTED load representation/type"
+    },
+    {
+      "check": "ai-lock-identities",
+      "checks": 20,
+      "exit": 0,
+      "summary_sha256": "6a41ba331bed6455beff20f99e7e1ca4c49cbc33c42e8885607ffc72ca364acf",
+      "evidence_scope": "targeted assertion suite; stable publication CASE6 remains old AR UNSUPPORTED load representation/type"
+    },
+    {
+      "check": "ai-stable-publication",
+      "checks": 44,
+      "exit": 0,
+      "summary_sha256": "86691332fbfe2ad0729f880e4b9bd0d0e9fd58e73087d8c437a6dcb5d4b76ad1",
+      "evidence_scope": "targeted assertion suite; stable publication CASE6 remains old AR UNSUPPORTED load representation/type"
+    },
+    {
+      "check": "mutex-attributes",
+      "checks": 38,
+      "exit": 0,
+      "summary_sha256": "5ac0b94534a393318faf53ccbea00946a00ab283131cfc0ab378bbf64314d03b",
+      "evidence_scope": "targeted assertion suite; stable publication CASE6 remains old AR UNSUPPORTED load representation/type"
+    }
+  ],
+  "p0": {
+    "checks": 20,
+    "asserted_against_baseline": true
+  },
+  "remaining_obligations": [
+    "whole mixed lockset lattice certification",
+    "general heap/region/publication provenance",
+    "general mutex attribute/failure semantics",
+    "official source-level witness validation"
+  ],
+  "performance_claim": false
+}

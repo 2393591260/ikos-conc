@@ -1,0 +1,146 @@
+[
+  {
+    "task": "c/goblint-regression/13-privatized_03-priv_inv.c",
+    "tool": "ai",
+    "code": 0,
+    "seconds": 0.267,
+    "verdict": [
+      "The program is SAFE"
+    ],
+    "unsound": false,
+    "cmd": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=$M2_SCRATCH/release-havoc-targets/13-privatized_03-priv_inv-ai/report.json",
+      "-o",
+      "$M2_SCRATCH/release-havoc-targets/13-privatized_03-priv_inv-ai/output.db",
+      "--display-ar",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/13-privatized_03-priv_inv.c"
+    ]
+  },
+  {
+    "task": "c/goblint-regression/13-privatized_03-priv_inv.c",
+    "tool": "bmc",
+    "code": 0,
+    "seconds": 0.259,
+    "verdict": [
+      "The program is SAFE"
+    ],
+    "unsound": false,
+    "cmd": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=$M2_SCRATCH/release-havoc-targets/13-privatized_03-priv_inv-bmc/report.json",
+      "-o",
+      "$M2_SCRATCH/release-havoc-targets/13-privatized_03-priv_inv-bmc/output.db",
+      "--display-ar",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/13-privatized_03-priv_inv.c"
+    ]
+  },
+  {
+    "task": "c/goblint-regression/28-race_reach_60-invariant_racefree.i",
+    "tool": "ai",
+    "code": 0,
+    "seconds": 0.275,
+    "verdict": [
+      "The program is SAFE"
+    ],
+    "unsound": false,
+    "cmd": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=$M2_SCRATCH/release-havoc-targets/28-race_reach_60-invariant_racefree-ai/report.json",
+      "-o",
+      "$M2_SCRATCH/release-havoc-targets/28-race_reach_60-invariant_racefree-ai/output.db",
+      "--display-ar",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/28-race_reach_60-invariant_racefree.i"
+    ]
+  },
+  {
+    "task": "c/goblint-regression/28-race_reach_60-invariant_racefree.i",
+    "tool": "bmc",
+    "code": 0,
+    "seconds": 0.213,
+    "verdict": [
+      "The program is SAFE"
+    ],
+    "unsound": false,
+    "cmd": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=$M2_SCRATCH/release-havoc-targets/28-race_reach_60-invariant_racefree-bmc/report.json",
+      "-o",
+      "$M2_SCRATCH/release-havoc-targets/28-race_reach_60-invariant_racefree-bmc/output.db",
+      "--display-ar",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/28-race_reach_60-invariant_racefree.i"
+    ]
+  },
+  {
+    "task": "c/ldv-races/race-3_1-container_of-global.i",
+    "tool": "ai",
+    "code": 0,
+    "seconds": 0.283,
+    "verdict": [
+      "The program is SAFE"
+    ],
+    "unsound": false,
+    "cmd": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=$M2_SCRATCH/release-havoc-targets/race-3_1-container_of-global-ai/report.json",
+      "-o",
+      "$M2_SCRATCH/release-havoc-targets/race-3_1-container_of-global-ai/output.db",
+      "--display-ar",
+      "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-3_1-container_of-global.i"
+    ]
+  },
+  {
+    "task": "c/ldv-races/race-3_1-container_of-global.i",
+    "tool": "bmc",
+    "code": 0,
+    "seconds": 0.282,
+    "verdict": [
+      "The program is SAFE"
+    ],
+    "unsound": false,
+    "cmd": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=$M2_SCRATCH/release-havoc-targets/race-3_1-container_of-global-bmc/report.json",
+      "-o",
+      "$M2_SCRATCH/release-havoc-targets/race-3_1-container_of-global-bmc/output.db",
+      "--display-ar",
+      "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-3_1-container_of-global.i"
+    ]
+  }
+]

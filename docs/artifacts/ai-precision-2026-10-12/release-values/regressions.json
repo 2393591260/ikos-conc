@@ -1,0 +1,44 @@
+[
+  {
+    "check": "ai-read-interference",
+    "checks": 32,
+    "exit": 0,
+    "summary_sha256": "3371064dcb51e65e392bcda10edf3bd88728983c8ce6f8db6b4723edba1c9f8b",
+    "evidence_scope": "targeted assertion suite; stable publication CASE6 remains old AR UNSUPPORTED load representation/type"
+  },
+  {
+    "check": "ai-write-union",
+    "checks": 16,
+    "exit": 0,
+    "summary_sha256": "a3417af5aad8e31b34f21e1d46f257858439c62a87e0c15e83aa9d681b2eadee",
+    "evidence_scope": "targeted assertion suite; stable publication CASE6 remains old AR UNSUPPORTED load representation/type"
+  },
+  {
+    "check": "ai-conditional-must",
+    "checks": 48,
+    "exit": 0,
+    "summary_sha256": "fa9d9f448f1bc76e1189f7ba17a5fc8ebdbbc1fd9f9a8f4fa68dfae2ab2f299e",
+    "evidence_scope": "targeted assertion suite; stable publication CASE6 remains old AR UNSUPPORTED load representation/type"
+  },
+  {
+    "check": "ai-lock-identities",
+    "checks": 20,
+    "exit": 0,
+    "summary_sha256": "6a41ba331bed6455beff20f99e7e1ca4c49cbc33c42e8885607ffc72ca364acf",
+    "evidence_scope": "targeted assertion suite; stable publication CASE6 remains old AR UNSUPPORTED load representation/type"
+  },
+  {
+    "check": "ai-stable-publication",
+    "checks": 44,
+    "exit": 0,
+    "summary_sha256": "86691332fbfe2ad0729f880e4b9bd0d0e9fd58e73087d8c437a6dcb5d4b76ad1",
+    "evidence_scope": "targeted assertion suite; stable publication CASE6 remains old AR UNSUPPORTED load representation/type"
+  },
+  {
+    "check": "mutex-attributes",
+    "checks": 38,
+    "exit": 0,
+    "summary_sha256": "5ac0b94534a393318faf53ccbea00946a00ab283131cfc0ab378bbf64314d03b",
+    "evidence_scope": "targeted assertion suite; stable publication CASE6 remains old AR UNSUPPORTED load representation/type"
+  }
+]

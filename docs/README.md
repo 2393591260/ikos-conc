@@ -23,9 +23,9 @@
 <a id="baseline"></a>
 ## 当前可复核基线
 
-以下是 **2026-10-12 稳定发布机制的全量配对实验**；源码与证据在该机制的单独提交中。
+以下是 **2026-10-12 release 端值机制的全量配对实验**；源码与证据在该机制的单独提交中。
 安装二进制 SHA256 为
-`a09a06a87f6880be90ce38128ca5dd5152ea1044ba8bb210c60fb65f99106329`。
+`642f4424ba2c1398febfe3ff96b8deb53f942d3cc2f3e40db7bbc4c86b49e23c`。
 
 任务集合为 `/home/ruan/sv-benchmarks-2026`，revision
 `0a254fdddcfe24949be9edd47f8d609462eb52fb`，本地扫描 1029 项、全部 ILP32，
@@ -34,23 +34,23 @@
 
 | 比赛判定模式 | TP | TN | FP | FN | UNKNOWN | error/timeout |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| AI，demote，BMC 关闭 | 0 | 679 | 0 | 0 | 349 | 1 |
-| AI + BMC，demote | 109 | 679 | 0 | 0 | 240 | 1 |
+| AI，demote，BMC 关闭 | 0 | 681 | 0 | 0 | 347 | 1 |
+| AI + BMC，demote | 109 | 681 | 0 | 0 | 238 | 1 |
 
 109 个标签 TP 对应重新导出的 137 条所选执行，全部独立 AR ACCEPT。
 检查范围为导出的 AR、可信前端与明确库合同；尚非官方源程序/witness 验收，
 不认证全部 SAFE 规则，也不穷尽所有 SAT 模型。
 有限基准 FP/FN 为零不能作为全语言 soundness 定理。
 
-证据：[汇总](artifacts/ai-precision-2026-10-12/stable-publication/summary.json)、
-[逐任务配对](artifacts/ai-precision-2026-10-12/stable-publication/paired.json)、
-[逐执行检查](artifacts/ai-precision-2026-10-11/diagnostic-types/current-tp-executions.json)。
+证据：[汇总](artifacts/ai-precision-2026-10-12/release-values/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-12/release-values/paired.json)、
+[逐执行检查](artifacts/ai-precision-2026-10-12/release-values/selected-executions.json)。
 唯一失败项是安全标签的 `nsc-ircc` 驱动外层超时，未计成 UNKNOWN。
 
 ## 下一步去哪里查
 
-- 安全 UNKNOWN 114 项；原 24 项已在修复 ILP32 环境的 Goblint 上全部复核 TRUE，
-  其中 1 项本轮已恢复 SAFE，余下 23 项仍待 M2 处置；另外 91 项参考未证实。
+- 安全 UNKNOWN 112 项；原 24 项已在修复 ILP32 环境的 Goblint 上全部复核 TRUE，
+  其中 3 项已恢复 SAFE，余下 21 项需其他机制；另外 91 项参考未证实。
   [安全台账](artifacts/ai-precision-2026-10-11/unknown-ledger/ledger.json)保存状态及历史诊断指纹。
   TN 工作入口为 [AI 后续机制](ikos-ai-complete.md#roadmap)。
 - 竞争 UNKNOWN 126 项，历史 Dartagnan 参考为 FAIL 95、TIMEOUT 15、ERROR 13、有界 PASS 3。
@@ -85,8 +85,8 @@
 M1的本地候选已于10/11固定：包入口1029项与当前基线逐项一致，双架构smoke/P0、重定位、
 断网依赖和2.2格式检查通过；候选包及证据见[参赛指南](SVCOMP2027-参赛指南.md#package)。
 严格源级validator因创建位置兼容与错误目标校准失败仍待验收，官方CI/MR/PR也未关闭。
-**本地工程出口完成不等于M1整体通过。** M1 冻结 ZIP 保持原样；M2 的稳定发布机制已独立验收，
-release 机制仍在执行，见 [AI M2 记录](ikos-ai-complete.md#roadmap)。
+**本地工程出口完成不等于M1整体通过。** M1 冻结 ZIP 保持原样；M2 的稳定发布和
+release 机制均已独立验收，见 [AI M2 记录](ikos-ai-complete.md#roadmap)。
 M0/M5的资料与写作并行；后续M2/M3每轮选择一个机制实施。
 首个 TN 入口见 [AI §8](ikos-ai-complete.md#roadmap)，TP 入口见 [BMC 后续机制](ikos-bmc-complete.md#roadmap)。
 M2 首批固定为两个 release 入口和一个稳定 pointer 入口，机制实现后再检查同桶候选。

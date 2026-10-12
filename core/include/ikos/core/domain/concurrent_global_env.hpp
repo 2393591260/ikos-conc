@@ -400,6 +400,13 @@ private:
   std::unordered_map< ar::Store*, PointerValue > _publication_pointer_board;
   std::map< std::pair< ar::GlobalVariable*, ar::Function* >, ar::Store* >
       _publication_certificates;
+
+  using MutexValueKey = std::pair< std::uint64_t, std::set< std::uint64_t > >;
+  std::map< std::uint64_t, machine_int::Interval > _mutex_initial_values;
+  std::map< MutexValueKey, machine_int::Interval > _mutex_ongoing_values;
+  std::map< MutexValueKey, machine_int::Interval > _mutex_release_values;
+  bool _mutex_values_enabled = false;
+  bool _mutex_values_invalidated = false;
   bool _unknown_pointer_write = false;
 
   /// \brief Reverse index of the pointer blackboard: the set of heap DynAlloc
@@ -1762,7 +1769,108 @@ public:
     return true;
   }
 
+  void initialize_mutex_value(std::uint64_t addr, const machine_int::Interval& value) {
+    std::lock_guard< std::mutex > lock(_mutex);
+    _mutex_initial_values.emplace(addr, value);
+  }
+
+  void enable_mutex_values() {
+    std::lock_guard< std::mutex > lock(_mutex);
+    _mutex_values_enabled = true;
+  }
+
+  void invalidate_mutex_values() {
+    std::lock_guard< std::mutex > lock(_mutex);
+    if (_mutex_values_enabled && !_mutex_values_invalidated) {
+      _mutex_values_invalidated = true;
+      _is_dirty = true;
+    }
+  }
+
+  bool mutex_values_available() const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    return mutex_values_available_nolock();
+  }
+
+  bool has_mutex_value_cell(std::uint64_t addr) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    return _mutex_initial_values.count(addr) != 0;
+  }
+
+  void join_mutex_ongoing(std::uint64_t addr,
+                         const std::unordered_set< std::uint64_t >& held,
+                         const machine_int::Interval& value) {
+    std::lock_guard< std::mutex > lock(_mutex);
+    if (!_mutex_values_enabled || _mutex_initial_values.count(addr) == 0 || value.is_bottom()) return;
+    join_mutex_value_nolock(_mutex_ongoing_values, addr, held, value);
+  }
+
+  void join_mutex_release(std::uint64_t addr,
+                         const std::unordered_set< std::uint64_t >& held,
+                         const machine_int::Interval& value) {
+    std::lock_guard< std::mutex > lock(_mutex);
+    if (!_mutex_values_enabled || _mutex_initial_values.count(addr) == 0 || value.is_bottom()) return;
+    join_mutex_value_nolock(_mutex_release_values, addr, held, value);
+  }
+
+  machine_int::Interval read_mutex_ongoing(
+      std::uint64_t addr, const std::unordered_set< std::uint64_t >& held,
+      std::uint64_t width, Signedness sign) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    if (!mutex_values_available_nolock()) return machine_int::Interval::top(width, sign);
+    auto result = machine_int::Interval::bottom(width, sign);
+    collect_mutex_values_nolock(_mutex_ongoing_values, addr, held, result);
+    return result;
+  }
+
+  machine_int::Interval read_mutex_handoff(
+      std::uint64_t addr, const std::unordered_set< std::uint64_t >& held,
+      std::uint64_t width, Signedness sign) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    auto initial = _mutex_initial_values.find(addr);
+    if (!mutex_values_available_nolock() || initial == _mutex_initial_values.end())
+      return machine_int::Interval::top(width, sign);
+    auto result = initial->second.cast(width, sign);
+    collect_mutex_values_nolock(_mutex_ongoing_values, addr, held, result);
+    collect_mutex_values_nolock(_mutex_release_values, addr, held, result);
+    return result;
+  }
+
 private:
+  bool mutex_values_available_nolock() const {
+    return _mutex_values_enabled && !_mutex_values_invalidated &&
+           !_unknown_pointer_write && _unmodeled_effects.empty() &&
+           _unmodeled_thread_creations.empty();
+  }
+
+  void join_mutex_value_nolock(std::map< MutexValueKey, machine_int::Interval >& board,
+                               std::uint64_t addr,
+                               const std::unordered_set< std::uint64_t >& held,
+                               const machine_int::Interval& value) {
+    MutexValueKey key{addr, {held.begin(), held.end()}};
+    auto inserted = board.emplace(key, value);
+    auto& current = inserted.first->second;
+    auto old = current;
+    if (!inserted.second) {
+      if (_global_iteration.load(std::memory_order_relaxed) > kWideningDelay)
+        current.widen_with(value);
+      else current.join_with(value);
+    }
+    if (inserted.second || !current.leq(old)) _is_dirty = true;
+  }
+
+  void collect_mutex_values_nolock(
+      const std::map< MutexValueKey, machine_int::Interval >& board,
+      std::uint64_t addr, const std::unordered_set< std::uint64_t >& held,
+      machine_int::Interval& result) const {
+    for (auto it = board.lower_bound({addr, {}});
+         it != board.end() && it->first.first == addr; ++it) {
+      bool excluded = false;
+      for (auto lock : it->first.second) excluded |= held.count(lock) != 0;
+      if (!excluded) result.join_with(it->second.cast(result.bit_width(), result.sign()));
+    }
+  }
+
   bool pointer_write_invalidates_nolock(std::uint64_t base,
                                         bool bounded_read,
                                         const ZNumber& read_lo,
@@ -1960,6 +2068,11 @@ public:
     _global_pointer_board.clear();
     _publication_pointer_board.clear();
     _publication_certificates.clear();
+    _mutex_initial_values.clear();
+    _mutex_ongoing_values.clear();
+    _mutex_release_values.clear();
+    _mutex_values_enabled = false;
+    _mutex_values_invalidated = false;
     _unknown_pointer_write = false;
     _global_pointer_targets.clear();
     _heap_pointer_board.clear();
