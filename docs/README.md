@@ -58,7 +58,7 @@
   也未得到可信 TRUE，见[复核与下一机制](artifacts/ai-precision-2026-10-12/next-bases/summary.json)。
   [本轮 24 项处置](artifacts/ai-precision-2026-10-12/readonly-array/dispositions-24.json)给出具体前提/缺口；
   [安全台账](artifacts/ai-precision-2026-10-11/unknown-ledger/ledger.json)保存当前判定和历史诊断指纹。
-  TN 工作入口为 [AI 后续机制](ikos-ai-complete.md#roadmap)。
+  M2 第一版已按阶段出口完成；TN 余项见 [AI 阶段出口与缺口](ikos-ai-complete.md#m2-exit)。
 - 竞争 UNKNOWN 126 项，历史 Dartagnan 参考为 FAIL 95、TIMEOUT 15、ERROR 13、有界 PASS 3。
   [混合历史台账](artifacts/bmc-v1-final-2026-10-10/unknown-results.json)同时含安全和竞争任务，
   看 `current_bmc`/`current_ai` 字段及标签筛选，不能把全部 227 行称为竞争池或新参考运行。
@@ -81,7 +81,7 @@
 | --- | --- | --- |
 | M0：共享基线与汇报材料 | 绑定源码、二进制、任务与配置；维护[论文论点/汇报提纲](ikos-ai-complete.md#publication) | 已有实验可追溯；标签、AR 执行与源 witness 三类证据分列；每个论点有依据和限制。当前主要实验已具备，本轮补齐路线与提纲 |
 | M1：首轮比赛交付 | adapter/依赖/新包；动态线程实例到源 witness 的映射；可运行的 2.2 validator 校准；官方 CI/MR | 本地出口：当前候选包可重定位、断网运行，语义/包/见证检查结果固定。外部出口：CI 实际通过、MR 合并；未取得源级验收时明确留待验收，不宣称通过。建议 10/18 内部冻结，10/20 官方提交 |
-| M2：AI 恢复 TN | 优先保护相关 release 端值，再查稳定 pointer 来源；按实际损失选字段、身份或关系机制 | 每个机制独立满足下面的执行流程；恢复的 SAFE 有覆盖/保守性依据；剩余入口有具体缺口。release 与 pointer 是优先顺序，一个路线受阻不阻止另一个 |
+| M2：AI 恢复 TN（第一版已完成） | release、稳定 pointer、库效果、句柄 seed、首次发布与只读数组机制已验收；TN 678→687，TP 109 保持 | 每个机制独立提交/全量配对，106 个安全 UNKNOWN 均有处置；15 个可信参考 TRUE 的具体 heap/区域/动态 join 前提仍留待 TN 专题，详见 [出口](ikos-ai-complete.md#m2-exit) |
 | M3：BMC 恢复 TP 与降低成本 | 从当前 UNKNOWN 中重新确认参考工具结果；实现可迁移的有限语义；用 AI 事实、依赖切片、复用减少确认工作 | 新 FALSE 有真实所选执行证据；新增源 witness 单独检查；裁剪有执行保持依据。逐项 A/B 同时报告 TN、TP、时间和失败，不靠增加界限冒充机制收益 |
 | M4：正式任务与最终比赛版本 | 跟进预跑；11/3 固定官方 2027 manifest；11/10 核对资格通知；候选包全量验收 | 2026 回归和 2027 目标分别统计；建议 11/15 内部冻结，11/17 最终提交。代码、包、登记指纹和官方使用实物一致；外部接受以实际通知为准 |
 | M5：研究论证与公平实验 | 从 M0 开始检索近邻、写受限语义和保持性义务；随 M2/M3 做机制消融；补公平工具对照和独立任务集 | 至少一个有用的通用机制，其与已有工作的区别、正确性条件和收益可核对；实验能排除配置/任务/资源差异等解释，artifact 可复现 |
@@ -91,15 +91,14 @@
 M1的本地候选已于10/11固定：包入口1029项与当前基线逐项一致，双架构smoke/P0、重定位、
 断网依赖和2.2格式检查通过；候选包及证据见[参赛指南](SVCOMP2027-参赛指南.md#package)。
 严格源级validator因创建位置兼容与错误目标校准失败仍待验收，官方CI/MR/PR也未关闭。
-**本地工程出口完成不等于M1整体通过。** M1 冻结 ZIP 保持原样；M2 首批已完成稳定发布和
-release 等精度机制验收及全部 24 项候选处置，并完成未知目的 Store 正确性修复。
-受限初始化发布证书再恢复一个 SAFE；只读 pointer-array 投影已单独验收，
-恢复最小正例但原始链表入口仍 UNKNOWN，见 [AI M2 记录](ikos-ai-complete.md#roadmap)。
-后续字符串与受限 pthread 初始化各恢复两个 SAFE，初始句柄 seed 再恢复一个；下一 TN 轮核实 heap pointer 来源/句柄存储覆盖，
-再查动态 join 数组；通用 heap-region 机制另定入口与预算。
-M0/M5的资料与写作并行；后续M2/M3每轮选择一个机制实施。
+**本地工程出口完成不等于M1整体通过。** M2 第一版已完成约定的受限机制与台账验收，
+[阶段记录](artifacts/ai-precision-2026-10-12/readonly-array/completion.json)列出 9 项净 SAFE 转移、
+独立提交证据和剩余 15 个可信参考入口的具体证明缺口。
+通用 heap-region、动态 join 全覆盖与普遍 SAFE 规则证明仍待完成，不能由阶段关闭推断。
+接下来按 M3 更新竞争入口的可信参考并做有限语义/AI 辅助成本优化；
+TN 后续专题沿用上述 15 个入口，M0/M5 的资料和写作继续并行。
 首个 TN 入口见 [AI §8](ikos-ai-complete.md#roadmap)，TP 入口见 [BMC 后续机制](ikos-bmc-complete.md#roadmap)。
-M2 首批固定为两个 release 入口和一个稳定 pointer 入口，机制实现后再检查同桶候选。
+M2 历史首批为两个 release 入口和一个稳定 pointer 入口，随后已检查同桶候选并更新处置。
 M3 每批固定一个语义桶及入口清单，先复核 Dartagnan，再决定实现范围；
 每批开工前明确预算和验收项，完成清单后提交，不在中途无声扩展成全部 UNKNOWN 工程。
 交付的内部日期、官方日期和外部未决项统一维护在[参赛日程](SVCOMP2027-参赛指南.md#schedule)。

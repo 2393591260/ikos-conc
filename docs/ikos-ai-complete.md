@@ -519,6 +519,51 @@ M6 先选具体损失，以模型/依赖作为分区或数值 pack 的选择线�
 | 关系/收敛优化 | guard/地址关系或过粗 widening | 先证实丢失位置，选择小 pack；环境关系与机器算术闭包成立 |
 | 依赖/稀疏枚举 | 全线程重算或大量互斥候选 | 未知依赖回退全相关集合，TOP bucket 完整配对，逐任务判定不变后测成本 |
 
+<a id="m2-exit"></a>
+### M2 第一版出口（2026-10-12 已完成）
+
+**完成的是约定的受限机制验收与剩余入口处置，不是全部 TN 能力或全部 SAFE 规则证明。**
+稳定发布、release 端值、字符串效果、受证 pthread 初始化、初始句柄 seed、首次发布 HB
+均已分别提交并复现收益；MUST 偏序、重复获取边界和未知目的 Store 的正确性修复也已验收。
+最后的只读 pointer-array 坐标已实现，最小正例恢复精度，但冻结集未增加 TN。
+本节以下保留各机制原理与历史分阶段证据，读者可按需要展开。
+
+从稳定发布前的同一 1029 项基线到当前，净转移恰为 **9 项 UNKNOWN→SAFE**：
+TN 678→687，TP 109 保持，FP/FN=0，UNKNOWN 241→232，error=1。
+没有新增退回 UNKNOWN 的冻结任务；每阶段有单独配对，不能把一次端到端计时当提速证明。
+最后一版 build/install 同步、64 次新双架构对照、216 次相关回归、20 次 P0、
+AI/BMC 全量与 109 项/137 条独立 AR 所选执行检查通过。
+详细矩阵、逐任务净转移和每个剩余入口的源码片段在
+[阶段验收记录](artifacts/ai-precision-2026-10-12/readonly-array/completion.json)；
+当前可执行指纹在 [README](README.md#current)。
+
+安全 UNKNOWN 仍有 106 项。24 个可信参考 TRUE 的入口恢复 9 个，余下 15 个已重新诊断
+并阅读具体程序；它们尚缺的机制如下，均保留 UNKNOWN，而不是标成“不能实现”：
+
+| 入口数量 | 已检查/尝试的具体路线 | 尚未满足的语义前提 |
+| ---: | --- | --- |
+| 1 | `list2_nr` 的 A/B 根发布与 next 字段源码/报告 | pre-create 多级 heap field 来源闭包，不能仅有根 pointer 证书 |
+| 1 | `arraylist` 的 array 坐标已实现；完整/仅初始化前缀的 debug 对照 | 跨线程可写 next 字段的值、表示、干扰和生命周期覆盖，sticky gate 仍有效 |
+| 4 | arraylist/arraycollapse/arrayloop/nested 的源码、固定参考及当前候选 | slot-index → 可达对象区域 → 实际 mutex 的对应；须证无跨槽 alias 和动态实例所有权 |
+| 8 | race_reach 链表分配/发布/遍历源码及当前候选 | 10000 次动态创建使现有 lifetime-once 证书不适用；需逐对象 freshness 与首次发布闭包 |
+| 1 | join 循环、显式 array 展开、独立 scalar 句柄及缺失/覆盖 join 对照 | 全部动态实例完成证书，加上非零槽偏移的 opaque handle 来源；单纯展开循环仍 UNKNOWN |
+
+其余 91 项已在修正 GCC32 的固定 Goblint 上重跑：UNSUPPORTED 30、UNKNOWN 25、
+TIMEOUT 34、ERROR 2。14 个带 Unsound 的 raw TRUE 已另试后续配置，仍无新增可信 TRUE。
+这些结果是记录预算内未证实，不是安全性质否定或能力不可能结论；旧来源诊断在台账中
+明确标为历史快照，未伪称本轮重新做过所有 transfer 探针。
+
+Goblint `region.ml` 的 bullet/region 查询依赖它自己的 allocation/escape 状态；
+`threadJoins.ml:50–62` 只把 singleton 且 unique 的 TID 加入 MUST joined，
+不能只移植“join 后安全”的结论。固定源码指纹已记入阶段记录。
+本轮 join 回归证实：四个独立 scalar 句柄可 SAFE，四个显式 array 槽仍因非零偏移来源门
+保守拒绝；原循环还缺四个动态实例的完成覆盖。缺最后 join、覆盖旧句柄的负例均未 SAFE。
+
+因此按原路线可进入 M3 的有限语义/成本优化；更一般 heap-region 与动态 join 是后续 TN
+专题的具体入口，已有源码、观测和前提，无需靠放宽 gate 强行完成。
+依赖稀疏化、普遍关系域增强及真正 BMC→AI 归纳精化也未在 M2 中实现。
+官方源 witness 验收、全语言 soundness 与公平优势实验继续按各自节点处理。
+
 ### M2：稳定指针发布（2026-10-12 已实现）
 
 `race-3_1-container_of-global.i` 的发布值是 main 栈对象的字段指针，ILP32 偏移为 24。
@@ -875,7 +920,6 @@ AR 保留 frontend GEP，可直接审查，无需先改 frontend 或新增 metad
 [配置/地址/LLVM 检查](artifacts/ai-precision-2026-10-12/next-bases/array-source.json)、
 [实施前提](artifacts/ai-precision-2026-10-12/next-bases/design.json)。
 
-<a id="evidence"></a>
 ### M2：只读指针数组的值投影（2026-10-12 已实现）
 
 实现见 `execution_engine/readonly_pointer_array.hpp`、Load 执行器和
@@ -921,6 +965,7 @@ error=1；109 个标签 TP 的 137 条所选执行重新独立 AR ACCEPT。
 [更新的 24 项处置](artifacts/ai-precision-2026-10-12/readonly-array/dispositions-24.json)。
 
 
+<a id="evidence"></a>
 ## 9. 按机制查证据
 
 以下索引保存历史实验的版本与转移；表中旧编号仅用于回溯原报告，不是阅读顺序。
