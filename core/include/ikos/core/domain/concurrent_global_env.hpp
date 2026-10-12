@@ -396,6 +396,12 @@ private:
   std::unordered_map< analyzer::MemoryLocation*, PointerValue >
       _global_pointer_board;
 
+  // Keep initializer alternatives out of a certified post-publication read.
+  std::unordered_map< ar::Store*, PointerValue > _publication_pointer_board;
+  std::map< std::pair< ar::GlobalVariable*, ar::Function* >, ar::Store* >
+      _publication_certificates;
+  bool _unknown_pointer_write = false;
+
   /// \brief Reverse index of the pointer blackboard: the set of heap DynAlloc
   /// locations (and any other targets) that some global pointer may point to.
   /// Consulted by `is_global_pointer_target` to classify a deref target as
@@ -1115,6 +1121,7 @@ public:
                   _unmodeled_thread_creations.end(), call) ==
         _unmodeled_thread_creations.end()) {
       _unmodeled_thread_creations.push_back(call);
+      _is_dirty = true;
     }
   }
 
@@ -1712,6 +1719,49 @@ public:
     }
   }
 
+  void record_unknown_pointer_write() {
+    std::lock_guard< std::mutex > lock(_mutex);
+    if (!_unknown_pointer_write) {
+      _unknown_pointer_write = true;
+      _is_dirty = true;
+    }
+  }
+
+  void join_publication_pointer(ar::Store* writer, const PointerValue& value) {
+    if (value.is_bottom()) return;
+    std::lock_guard< std::mutex > lock(_mutex);
+    join_pointer_summary_nolock(_publication_pointer_board, writer, value);
+  }
+
+  bool get_publication_certificate(ar::GlobalVariable* slot, ar::Function* worker,
+                                   ar::Store*& writer) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    auto found = _publication_certificates.find({slot, worker});
+    if (found == _publication_certificates.end()) return false;
+    writer = found->second;
+    return true;
+  }
+
+  void cache_publication_certificate(ar::GlobalVariable* slot, ar::Function* worker,
+                                     ar::Store* writer) {
+    std::lock_guard< std::mutex > lock(_mutex);
+    _publication_certificates.emplace(std::make_pair(slot, worker), writer);
+  }
+
+  bool get_publication_pointer(ar::Store* writer, analyzer::MemoryLocation* slot,
+                               PointerValue& value) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    if (_unknown_pointer_write || !_unmodeled_effects.empty() ||
+        !_unmodeled_thread_creations.empty() ||
+        pointer_write_invalidates_nolock(
+            IndexableTraits< analyzer::MemoryLocation* >::index(slot), true,
+            ZNumber(0), ZNumber(0), ZNumber(value.offset().bit_width() / 8))) return false;
+    auto found = _publication_pointer_board.find(writer);
+    if (found == _publication_pointer_board.end()) return false;
+    value = found->second;
+    return true;
+  }
+
 private:
   bool pointer_write_invalidates_nolock(std::uint64_t base,
                                         bool bounded_read,
@@ -1908,6 +1958,9 @@ public:
     _cond_waiters.clear();
     _cond_signal_epoch.clear();
     _global_pointer_board.clear();
+    _publication_pointer_board.clear();
+    _publication_certificates.clear();
+    _unknown_pointer_write = false;
     _global_pointer_targets.clear();
     _heap_pointer_board.clear();
     _pointer_writes.clear();

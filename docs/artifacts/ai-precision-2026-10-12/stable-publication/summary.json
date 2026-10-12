@@ -1,0 +1,90 @@
+{
+  "before_commit": "4dfa149",
+  "before_analyzer_sha256": "b59ea7fc87408a695d0ee712ad08878ada0ccd6b3c46768d8b265c9969553e02",
+  "analyzer_sha256": "a09a06a87f6880be90ce38128ca5dd5152ea1044ba8bb210c60fb65f99106329",
+  "build_install_equal": true,
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "outer_timeout_seconds": 30,
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 350
+    },
+    "before_bmc": {
+      "TP": 109,
+      "TN": 678,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 241
+    },
+    "after_ai": {
+      "TP": 0,
+      "TN": 679,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 349
+    },
+    "after_bmc": {
+      "TP": 109,
+      "TN": 679,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 240
+    }
+  },
+  "times": [
+    {
+      "mode": "ai",
+      "code": 0,
+      "seconds": 147.37292167800024
+    },
+    {
+      "mode": "bmc",
+      "code": 0,
+      "seconds": 349.1725463509997
+    }
+  ],
+  "changed_false": 0,
+  "source_witness_acceptance": false,
+  "fixtures": {
+    "executions": 44,
+    "pointer_byte_controls": 72,
+    "old_unsupported": [
+      {
+        "bits": 32,
+        "case": 6,
+        "status": "UNSUPPORTED",
+        "reason": "load representation/type"
+      },
+      {
+        "bits": 64,
+        "case": 6,
+        "status": "UNSUPPORTED",
+        "reason": "load representation/type"
+      }
+    ]
+  },
+  "reference": {
+    "goblint_revision": "bb55b70d91290992629ba3d073185c10cdf356e6",
+    "binary_sha256": "50259c0a6349240459e38fecceaf8c81dbe9f331c657328e30f295d7744982f5",
+    "vendored_cil_source": "/home/ruan/goblint-analyzer/_opam/.opam-switch/sources/goblint-cil",
+    "machine_model": "rebuilt GCC32: long=4 pointer=4",
+    "tasks": 24,
+    "normal_true": 24,
+    "original_parent_binary_has_missing_gcc32": true,
+    "official_2027_binary": false
+  },
+  "superseded_runs": {
+    "reason": "uncached per-load whole-bundle scan caused 3 extra timeouts; rejected, replaced by cached runs",
+    "used_for_current_numbers": false
+  }
+}

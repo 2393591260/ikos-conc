@@ -330,6 +330,42 @@ M6 先选具体损失，以模型/依赖作为分区或数值 pack 的选择线�
 | 关系/收敛优化 | guard/地址关系或过粗 widening | 先证实丢失位置，选择小 pack；环境关系与机器算术闭包成立 |
 | 依赖/稀疏枚举 | 全线程重算或大量互斥候选 | 未知依赖回退全相关集合，TOP bucket 完整配对，逐任务判定不变后测成本 |
 
+### M2：稳定指针发布（2026-10-12 已实现）
+
+`race-3_1-container_of-global.i` 的发布值是 main 栈对象的字段指针，ILP32 偏移为 24。
+原有 pointer board 的 NULL 本身以 bottom offset 表示；不能说它把 offset join 成了 `[0,24]`。
+损失发生在读取时保留初始内存、与 may-write 内存合流，子线程因而不能确定
+`container_of` 后的锁地址。原始诊断显示 callback 的锁取得数为 0；修复后该入口为 SAFE。
+
+实现见 `execution_engine/stable_publication.hpp`、`on_load_pointer_restore` 和
+`ConcurrentGlobalEnv` 的 publication writer board。它先证明整个 bundle 中的 slot 地址
+只用于整宽 pointer load/store 和透明零偏移别名；只有一个非 initializer writer，
+writer 函数生命周期至多调用一次，所在 BB 不在循环中。目标 worker 的全部地址使用
+必须是同一 BB、writer 后的 literal pthread_create；普通调用、独立 entry、逃逸及其他 writer 拒绝。
+AR 形参被重新赋值也拒绝，避免把隐式入参定义错当单一定义。
+
+所有到达 writer 的 RHS 逐次 join/widen，并以 dirty 驱动全局重算。
+认证 worker 对整槽的 singleton、offset=0 读取才强恢复该 writer 摘要：真实子线程一定在
+发布后运行，且没有后续覆盖，所以排除初始化值有依据。未知目标写、重叠字节写、
+未覆盖调用/创建撤销精化；最终检查中新变化仍走既有 UNKNOWN 出口。
+静态证书按 slot/worker 缓存，运行期摘要和失效条件不缓存为永久真。
+未经缓存的试跑导致三个 Weaver SAFE 超时，已拒绝该版本；缓存版恢复原判定。
+
+1029 项同配置配对仅有该入口 UNKNOWN→SAFE：AI TN 678→679；AI+BMC
+TP 109 不变、TN 678→679、UNKNOWN 241→240、FP/FN=0、error=1。
+双架构/改名/宽度变体 44 次、既有 pointer-byte 对照 72 次和 P0 均检查。
+新 FALSE 为 0。fixture CASE6 的 BMC FALSE 在基线与当前均为独立 AR
+`UNSUPPORTED: load representation/type`，明确作为旧类型边界，不能称已验证竞争。
+计时只是一轮墙钟观察，不构成性能优势结论。
+
+证据：[汇总](artifacts/ai-precision-2026-10-12/stable-publication/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-12/stable-publication/paired.json)、
+[回归](artifacts/ai-precision-2026-10-12/stable-publication/fixtures.json)。
+本地原 Goblint 的 CIL 缺 GCC32 machine definition；重建独立 CIL/Goblint 后，
+原 24 个候选全部重新得到不带 Unsound 的 TRUE，见
+[参考记录](artifacts/ai-precision-2026-10-12/stable-publication/reference-24.json)。
+这不是官方 2027 Goblint binary 的成绩。M2 的两个 release 入口与其余候选尚待下一机制处理。
+
 两个 release 入口：
 `13-privatized_03-priv_inv` 的临界区写 0 再写 1，
 `28-race_reach_60-invariant_racefree` 的外层 L 排除 worker，但内层 M 释放中间值。

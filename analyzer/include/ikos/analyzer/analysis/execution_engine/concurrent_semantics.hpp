@@ -32,6 +32,7 @@
 #include <ikos/analyzer/analysis/call_context.hpp>
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 #include <ikos/analyzer/analysis/execution_engine/handle_origin.hpp>
+#include <ikos/analyzer/analysis/execution_engine/stable_publication.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
 #include <ikos/analyzer/analysis/memory_location.hpp>
 #include <ikos/analyzer/analysis/variable.hpp>
@@ -1446,12 +1447,32 @@ void on_load_shared_uninit(E& eng,
 /// Join pointer may-writes through memory; retain every local/source alternative.
 template < typename E >
 void on_load_pointer_restore(E& eng,
+                             ar::Load* load,
                              const ScalarLit& ptr,
                              const ScalarLit& lhs,
                              const core::MachineInt& size) {
   auto sources = eng.data().normal().pointer_to_points_to(ptr.var());
   if (!sources.is_set()) return;
   auto& env = eng.ctx().concurrent_env;
+  auto offset = eng.data().normal().pointer_to_pointer(ptr.var()).offset().singleton();
+  if (sources.size() == 1 && offset && offset->is_zero() && lhs.var() != ptr.var() &&
+      size.to_z_number() == core::ZNumber(eng.data_layout().pointers.bit_width / 8) &&
+      load->code()->is_function_body()) {
+    auto* source = dyn_cast< GlobalMemoryLocation >(*sources.begin());
+    bool only_main_root = true;
+    for (auto* root : eng.ctx().opts.entry_points) only_main_root &= root->name() == "main";
+    if (source && only_main_root) {
+      auto* writer = stable_publication_writer(source->global_var(), load->code()->function(), env);
+      auto value = core::ConcurrentGlobalEnv::PointerValue::top(size.bit_width(), core::Unsigned);
+      if (writer && env.get_publication_pointer(writer, source, value)) {
+        eng.data().normal().pointer_assign_nondet(lhs.var());
+        eng.data().normal().pointer_refine(lhs.var(), value);
+        eng.data().normal().mem_write(ptr.var(), lhs, size);
+        eng.data().normal().scalar_forget(lhs.var());
+        return;
+      }
+    }
+  }
   auto alternatives = eng.data();
   bool changed = false;
   for (MemoryLocation* source : sources) {

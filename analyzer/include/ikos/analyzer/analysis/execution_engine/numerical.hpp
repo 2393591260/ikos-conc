@@ -1834,7 +1834,7 @@ public:
 
       if (this->_ctx.opts.enable_thread_modular && !s->is_volatile()) {
         on_load_integer_interference(*this, s, ptr, lhs, size);
-        if (lhs.is_pointer_var()) on_load_pointer_restore(*this, ptr, lhs, size);
+        if (lhs.is_pointer_var()) on_load_pointer_restore(*this, s, ptr, lhs, size);
       }
       if (!s->is_volatile()) {
         // Perform memory read in the value domain
@@ -1893,7 +1893,18 @@ public:
       return;
     }
 
-    if (this->data().normal().pointer_to_points_to(ptr.var()).is_top()) {
+    auto destinations = this->data().normal().pointer_to_points_to(ptr.var());
+    if (this->_ctx.opts.enable_thread_modular && destinations.is_set()) {
+      for (auto* location : destinations)
+        if (isa< AbsoluteZeroMemoryLocation >(location)) {
+          this->_ctx.concurrent_env.record_unknown_pointer_write();
+          this->_ctx.concurrent_env.record_unmodeled_effect(
+              s, "integer-address store may alias shared objects");
+        }
+    }
+    if (destinations.is_top()) {
+      if (this->_ctx.opts.enable_thread_modular)
+        this->_ctx.concurrent_env.record_unknown_pointer_write();
       // Ignore memory write, analysis could be unsound.
       // See CheckKind::IgnoredStore
       return;
@@ -1905,6 +1916,14 @@ public:
     if (this->_ctx.opts.enable_thread_modular) {
       check_synthetic_handle_effect(*this, s, ptr);
       on_store_privatize(*this, s->value()->type(), ptr, val);
+      if (s->value()->type()->is_pointer() && val.is_scalar()) {
+        const auto& rhs = val.scalar();
+        if (rhs.is_pointer_var() || rhs.is_null())
+          this->_ctx.concurrent_env.join_publication_pointer(
+              s, rhs.is_null() ? core::ConcurrentGlobalEnv::PointerValue::null(
+                                  this->_data_layout.pointers.bit_width, Unsigned)
+                              : this->data().normal().pointer_to_pointer(rhs.var()));
+      }
     }
 
     auto size =
