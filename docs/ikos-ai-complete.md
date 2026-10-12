@@ -62,6 +62,10 @@ global/heap pointer 读取保留初始化、本地与干扰来源；未知来源
 未知 offset、mixed width、字节 copy/set 和指针对象表示需要按字节重叠考虑。
 完整标量发布有受限支持，其他布局保留覆盖警告或显式不支持。
 
+目的 may-points-to 为 TOP 的普通 Store 也必须保留覆盖警告，即使尚未创建线程、
+写入持锁或没有候选对。该分支忘记本地内存并通知外层重算；共享旧摘要尚不能视为
+已完整失效，故当前以持久能力边界阻止 SAFE，不能称为已完成未知目的值模型。
+
 堆指针的精确字段与通配字段若可能重叠，读端必须合并两者；
 不能只查精确 key 而遗漏未知字段写。
 pointer 复制、NULL 复制和重叠字节写会使旧精确 pointer 摘要失效。
@@ -683,11 +687,50 @@ frontend 文件、BMC 编码及 join 身份规则均未改。
 [AR 来源边界](artifacts/ai-precision-2026-10-12/handle-seeds/pointer-origin-boundaries.json)、
 [所选执行](artifacts/ai-precision-2026-10-12/handle-seeds/selected-executions.json)。
 
+### M2：未知目的 Store 的正确性边界（2026-10-12 已修复）
+
+继续定位 `arraylist` 的 TOP heap 来源时，最小用例发现一个冻结集之外的真实 FN：
+`selected` 初始指向 `left`，main 经未知 `int **destination` 写入 `&right` 后创建线程，
+一个线程执行 `*selected=1`，另一个执行 `right=2`。合法选择
+`destination=&selected` 即有竞争，旧 AI/BMC 在两种位宽均报 SAFE。
+整数/字节守卫和函数指针改写、持锁写及 helper 变体又复现同类遗漏。
+
+根因在 `NumericalExecutionEngine::exec(Store)`：TOP 目的只置
+`record_unknown_pointer_write` 后返回，既未忘记本地 memory，也未登记遗漏的效果。
+普通 pointer getters、整数干扰和其他精化通道尚可恢复陈旧摘要，导致访问不可达或
+零候选。因此“没有候选对”不能证明没有竞争；仅修改某个 getter 也不构成完整修复。
+
+当前最小通用修复对并发模式下的全部 RHS 类型执行三步：保留 unknown-write/dirty，
+登记 `unknown destination write effects not covered`，再 `mem_forget_all`。
+既有 checker 独立于候选枚举输出这条持久 warning，demote 模式回退 UNKNOWN。
+这是未知足迹的支持边界；未完成 escaped-local、入口初始化、FPA、整数/指针黑板及
+强精化的统一失效证明前不能删除 warning。没有拓宽 heap/array 支持或修改 frontend。
+
+[回归](review-repros/ai-unknown-writes/run.py)包含 10 个情况：未知 pointer、整数、字节、
+heap 字段、函数指针、持锁、helper、浮点守卫，以及直接竞争和无修改安全对照。
+32/64 位共 40 次观察，LP64 使用改名输入；另有 20 次原生前缀断言验证合法目标选择，
+原生检查不运行竞争。六种旧 FN 形状共 24 次错误 SAFE 全部回退 UNKNOWN；
+直接竞争仍 AI UNKNOWN/BMC FALSE，无修改对照仍 SAFE。heap/浮点情况此前已 UNKNOWN，
+不把它们计为新修复 FN。新 FALSE 的所选执行均 AR ACCEPT。
+
+1029 项 AI/BMC 配对逐任务判定不变：AI TN=686，组合 TP=109/TN=686，
+FP/FN=0、UNKNOWN=233、error=1；137 条所选执行重新检查均 ACCEPT。
+这也说明冻结集 FP/FN 为零不能排除集合外的正确性缺口。
+相关 pointer-bytes/write-union/stable-publication 共 132 次观察及 P0 的 20 次观察通过；
+stable-publication CASE6 的两条历史执行检查仍为 `UNSUPPORTED: load representation/type`，
+不能将这一回归套件称为全部独立执行已验收。
+
+证据：[汇总](artifacts/ai-precision-2026-10-12/unknown-writes/summary.json)、
+[反例配对](artifacts/ai-precision-2026-10-12/unknown-writes/fixture-transitions.json)、
+[全量配对](artifacts/ai-precision-2026-10-12/unknown-writes/paired.json)、
+[所选执行](artifacts/ai-precision-2026-10-12/unknown-writes/selected-executions.json)、
+[24 项当前处置](artifacts/ai-precision-2026-10-12/unknown-writes/dispositions-24.json)。
+
 ### M2 首批出口与当前 24 个候选的处置
 
 三个固定入口均已恢复 SAFE；24 项的源/YAML 指纹、当前报告、逐任务 AI/BMC 判定、
 修正后的参考结果及语义前提已逐项更新到
-[处置记录](artifacts/ai-precision-2026-10-12/handle-seeds/dispositions-24.json)，
+[处置记录](artifacts/ai-precision-2026-10-12/unknown-writes/dispositions-24.json)，
 并同步原安全台账。后续字符串与 pthread 初始化各恢复两项，初始句柄 seed 再恢复一项，累计 8 项；
 余下 16 项仍为 UNKNOWN，具体缺口如下：
 
@@ -718,6 +761,7 @@ frontend 文件、BMC 编码及 join 身份规则均未改。
 
 | 原编号 | 机制或实验 | 原始依据 |
 | --- | --- | --- |
+| M2-unknown-write | TOP 普通 Store 的 memory havoc 与独立 coverage 回退，不宣称完整值模型 | [记录](artifacts/ai-precision-2026-10-12/unknown-writes/summary.json)、[目录](artifacts/ai-precision-2026-10-12/unknown-writes/) |
 | M2-pthread-init | 受限 glibc 初始化、opaque 存储闭包与有界效果 | [记录](artifacts/ai-precision-2026-10-12/pthread-initialization/summary.json)、[目录](artifacts/ai-precision-2026-10-12/pthread-initialization/) |
 | M2-handle-seed | 可信 main 初始抽象写，不过滤 TOP 或扩大 join 语义 | [记录](artifacts/ai-precision-2026-10-12/handle-seeds/summary.json)、[目录](artifacts/ai-precision-2026-10-12/handle-seeds/) |
 | M2-string | 未知长度字节效果、pointer bounds 失效及受限逃逸证书 | [记录](artifacts/ai-precision-2026-10-12/string-effects/summary.json)、[目录](artifacts/ai-precision-2026-10-12/string-effects/) |

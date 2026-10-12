@@ -1,0 +1,203 @@
+{
+  "before_commit": "77b4c23",
+  "before_analyzer_sha256": "e2832abda8a82b934ae40691f53534a27a6ad32d6abe052e4b5263e9ea81d3a7",
+  "analyzer_sha256": "10bc4d4660776122b39ecc78adcf280387b01441f4919e022c2cf1ddc44f16a6",
+  "wrapper_sha256": "e902b97ff2ca21fb2f5cc89a9b883fedfbe946722afcc45af8b9a3d58d64ae42",
+  "build_install_equal": true,
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/numerical.hpp": "7bd14e50341b7191fb7181a5314fe1513c7e5198d804a917285e2eb2af4d43b2"
+  },
+  "fixture_sha256": {
+    "docs/review-repros/ai-unknown-writes/writes.c": "eea2814b44f05d3b673730fc25ff8e63ffc7c0a4afdbaa051dc9b67f47850dd1",
+    "docs/review-repros/ai-unknown-writes/run.py": "b8eedf3e4bf08a3c5643a2e73bbfa58cdb6291c370fa15a33d6b848cc0ad7d82"
+  },
+  "frontend_modified": false,
+  "dataset_revision": "0a254fdddcfe24949be9edd47f8d609462eb52fb",
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "outer_timeout_seconds": 30,
+  "command": [
+    "python3",
+    "svcomp_race_test.py",
+    "--demote",
+    "--jobs",
+    "4",
+    "--timeout",
+    "30"
+  ],
+  "environment": {
+    "ai": {
+      "IKOS_BMC_RECOVER": "unset"
+    },
+    "bmc": {
+      "IKOS_BMC_RECOVER": "1"
+    }
+  },
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "TN": 686,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 342
+    },
+    "after_ai": {
+      "TP": 0,
+      "TN": 686,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 342
+    },
+    "before_bmc": {
+      "TP": 109,
+      "TN": 686,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 233
+    },
+    "after_bmc": {
+      "TP": 109,
+      "TN": 686,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 233
+    }
+  },
+  "times": [
+    {
+      "mode": "ai",
+      "exit": 0,
+      "seconds": 156.82220864600095,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    },
+    {
+      "mode": "bmc",
+      "exit": 0,
+      "seconds": 354.84409274000063,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    }
+  ],
+  "verdict_transitions": 0,
+  "performance_claim": false,
+  "timing_limit": "Serial full scans on a nonisolated workstation; fixtures/regressions may overlap AI scan. Not a controlled timing comparison.",
+  "fixtures": {
+    "checks": 40,
+    "before_checks": 40,
+    "source_identical_before_after": true,
+    "abis": [
+      32,
+      64
+    ],
+    "renamed_64bit": true,
+    "native_prefix_assertions": 20,
+    "before_false_safe_observations": 24,
+    "after_false_safe_observations": 0,
+    "reproduced_fn_cases": [
+      0,
+      3,
+      4,
+      6,
+      7,
+      8
+    ],
+    "scope": "Actual pointer/integer/byte/callback/locked/helper unknown writes; heap and floating guard boundary controls, direct race and untouched safe controls. Native prefixes stop before spawning racing threads."
+  },
+  "regressions": [
+    {
+      "suite": "ai-pointer-bytes",
+      "checks": 72,
+      "summary_sha256": "4577cdba25a1ef9459a3f0fd54f93cd30bcd9155269b140c6450d46ab55b2636",
+      "non_accept_executions": []
+    },
+    {
+      "suite": "ai-write-union",
+      "checks": 16,
+      "summary_sha256": "a3417af5aad8e31b34f21e1d46f257858439c62a87e0c15e83aa9d681b2eadee",
+      "non_accept_executions": []
+    },
+    {
+      "suite": "ai-stable-publication",
+      "checks": 44,
+      "summary_sha256": "b1a22ee90e3ddac99a81752b1e81c79a1aaa3c185fe72f4ffa8e1643713032f7",
+      "non_accept_executions": [
+        {
+          "bits": 32,
+          "case": 6,
+          "mode": "bmc",
+          "execution": {
+            "group": 3,
+            "pair": 2,
+            "program_sha256": "e52fb99545a3a3bb46d16812551d6f4dbc18106c0f1ee7cbf49e36bf2b876b2d",
+            "certificate_sha256": "c5baaff039b1768ab75aeb5579c69043782b9adac410684834233f0b7ee2eca8",
+            "status": "UNSUPPORTED",
+            "reason": "load representation/type"
+          }
+        },
+        {
+          "bits": 64,
+          "case": 6,
+          "mode": "bmc",
+          "execution": {
+            "group": 4,
+            "pair": 1,
+            "program_sha256": "0709fff11811cb846c1f805384640bf3efa0a42b7b716ac7d93ef919ba861539",
+            "certificate_sha256": "46582e946f50f860fe57296619c8f200ce1bf609b4649d83e0bc2219ee620108",
+            "status": "UNSUPPORTED",
+            "reason": "load representation/type"
+          }
+        }
+      ]
+    }
+  ],
+  "p0": {
+    "checks": 20,
+    "asserted_against_baseline": true
+  },
+  "selected_validation": {
+    "tasks": 109,
+    "executions": 137,
+    "all_accept": true,
+    "scope": "Selected AR/API execution checks; not official source-witness acceptance or all-SAT certification"
+  },
+  "source_witness_acceptance": false,
+  "safety_pool": {
+    "tracked": 136,
+    "recovered": 29,
+    "remaining": 107,
+    "selected_reference_true_remaining": 16,
+    "other_reference_unproved": 91
+  },
+  "semantic_boundary": {
+    "unknown_destination_write": "Persistent coverage warning plus local memory havoc. Ordinary getters/entry initialization/strong refinements are not all globally invalidated; do not remove warning without that proof.",
+    "no_candidate_safe_blocked": true
+  },
+  "remaining_obligations": [
+    "Complete unknown-store value/escape invalidation across all channels",
+    "Typed/aligned pointer slot provenance and initial alternatives",
+    "General heap/region/publication provenance",
+    "Dynamic join-array identity",
+    "Whole mixed-lockset lattice certification",
+    "Official source-level witness validation"
+  ]
+}

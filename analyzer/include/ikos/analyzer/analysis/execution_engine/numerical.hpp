@@ -1904,8 +1904,12 @@ public:
         }
     }
     if (destinations.is_top()) {
-      if (this->_ctx.opts.enable_thread_modular)
+      if (this->_ctx.opts.enable_thread_modular) {
         this->_ctx.concurrent_env.record_unknown_pointer_write();
+        this->_ctx.concurrent_env.record_unmodeled_effect(
+            s, "unknown destination write effects not covered");
+        this->data().normal().mem_forget_all();
+      }
       // Ignore memory write, analysis could be unsound.
       // See CheckKind::IgnoredStore
       return;

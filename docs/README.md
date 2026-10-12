@@ -23,9 +23,9 @@
 <a id="baseline"></a>
 ## 当前可复核基线
 
-以下是 **2026-10-12 初始句柄 seed 机制的全量配对实验**；源码与证据在该机制的单独提交中。
+以下是 **2026-10-12 未知目的 Store 正确性修复的全量配对实验**；源码与证据在该机制的单独提交中。
 安装二进制 SHA256 为
-`e2832abda8a82b934ae40691f53534a27a6ad32d6abe052e4b5263e9ea81d3a7`。
+`10bc4d4660776122b39ecc78adcf280387b01441f4919e022c2cf1ddc44f16a6`。
 
 任务集合为 `/home/ruan/sv-benchmarks-2026`，revision
 `0a254fdddcfe24949be9edd47f8d609462eb52fb`，本地扫描 1029 项、全部 ILP32，
@@ -42,16 +42,18 @@
 不认证全部 SAFE 规则，也不穷尽所有 SAT 模型。
 有限基准 FP/FN 为零不能作为全语言 soundness 定理。
 
-证据：[汇总](artifacts/ai-precision-2026-10-12/handle-seeds/summary.json)、
-[逐任务配对](artifacts/ai-precision-2026-10-12/handle-seeds/paired.json)、
-[逐执行检查](artifacts/ai-precision-2026-10-12/handle-seeds/selected-executions.json)。
+本轮六种最小反例形状的 24 次错误 SAFE 回退 UNKNOWN，冻结集逐任务判定不变；
+尚未完成未知写的全通道值失效模型，coverage 边界必须保留。
+证据：[汇总](artifacts/ai-precision-2026-10-12/unknown-writes/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-12/unknown-writes/paired.json)、
+[逐执行检查](artifacts/ai-precision-2026-10-12/unknown-writes/selected-executions.json)。
 唯一失败项是安全标签的 `nsc-ircc` 驱动外层超时，未计成 UNKNOWN。
 
 ## 下一步去哪里查
 
 - 安全 UNKNOWN 107 项；原 24 项已在修复 ILP32 环境的 Goblint 上全部复核 TRUE，
   其中 8 项已恢复 SAFE，余下 16 项需其他机制；另外 91 项参考未证实。
-  [本轮 24 项处置](artifacts/ai-precision-2026-10-12/handle-seeds/dispositions-24.json)给出具体前提/缺口；
+  [本轮 24 项处置](artifacts/ai-precision-2026-10-12/unknown-writes/dispositions-24.json)给出具体前提/缺口；
   [安全台账](artifacts/ai-precision-2026-10-11/unknown-ledger/ledger.json)保存当前判定和历史诊断指纹。
   TN 工作入口为 [AI 后续机制](ikos-ai-complete.md#roadmap)。
 - 竞争 UNKNOWN 126 项，历史 Dartagnan 参考为 FAIL 95、TIMEOUT 15、ERROR 13、有界 PASS 3。
