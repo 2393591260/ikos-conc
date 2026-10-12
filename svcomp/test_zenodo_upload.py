@@ -3,7 +3,9 @@
 import contextlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import io
+import json
 from pathlib import Path
+import shutil
 import tempfile
 import threading
 import unittest
@@ -75,10 +77,78 @@ class UploadTests(unittest.TestCase):
                               if progress else self.path.open("rb")) as stream:
                             response = session.put(url, data=stream, timeout=(5, 5))
                         self.assertEqual(response.status_code, 200)
+                    if shutil.which("curl"):
+                        api = Zenodo("fake-token", 23122650)
+                        with patch.object(api, "checked_url", return_value=url):
+                            self.assertEqual(api.upload_with_curl(url, self.path, progress=False), {})
             finally:
                 server.shutdown()
                 worker.join(timeout=5)
-        self.assertEqual(received, [(None, payload), (None, payload)])
+        count = 3 if shutil.which("curl") else 2
+        self.assertEqual(received, [(None, payload)] * count)
+
+    def test_curl_token_is_not_in_argv_and_response_errors_are_redacted(self):
+        api = Zenodo("fake-token", 23122650)
+
+        def run(command, **kwargs):
+            self.assertEqual(command[1:4], ["--disable", "--config", "-"])
+            self.assertNotIn(api.token, " ".join(command))
+            self.assertIn(api.token, kwargs["input"])
+            self.assertNotIn("--location", command)
+            self.assertNotIn("--insecure", command)
+            output = Path(command[command.index("--output") + 1])
+            output.write_text(json.dumps({"error": api.token}))
+            return Mock(returncode=0, stdout="403 16", stderr="")
+
+        with patch("zenodo_upload.shutil.which", return_value="/usr/bin/curl"), \
+                patch("zenodo_upload.subprocess.run", side_effect=run):
+            with self.assertRaises(UploadError) as caught:
+                api.upload_with_curl(self.file_url + "/content", self.path, progress=False)
+        self.assertEqual(caught.exception.status, 403)
+        self.assertNotIn(api.token, str(caught.exception))
+        self.assertIn("[redacted]", str(caught.exception))
+
+    def test_curl_upload_commits_and_verifies_without_publication(self):
+        api = Zenodo("fake-token", 23122650)
+
+        def request(method, url, **kwargs):
+            self.assertFalse("publish" in url or "versions" in url or method == "DELETE")
+            if url == self.files:
+                return {"enabled": True, "entries": [self.pending]}
+            self.assertIn(url, [self.file_url, self.pending["links"]["commit"]])
+            return self.complete
+
+        with patch.object(api, "request", side_effect=request), \
+                patch.object(api, "upload_with_curl", return_value=self.pending) as body:
+            upload(api, self.files, self.path, "tool.zip", self.digests,
+                   transport="curl", attempts=1, progress=False)
+        body.assert_called_once_with(self.pending["links"]["content"], self.path, progress=False)
+
+    def test_single_attempt_stops_or_recovers_after_lost_reply(self):
+        for current in (self.pending, self.complete):
+            with self.subTest(status=current["status"]):
+                api = Zenodo("fake-token", 23122650)
+                transmissions = []
+
+                def request(method, url, **kwargs):
+                    if url == self.files:
+                        return {"enabled": True, "entries": [self.pending]}
+                    if method == "PUT":
+                        transmissions.append(kwargs["data"].read())
+                        raise requests.ReadTimeout("Response lost")
+                    self.assertEqual(method, "GET")
+                    self.assertEqual(url, self.file_url)
+                    return current
+
+                with patch.object(api, "request", side_effect=request), \
+                        patch("zenodo_upload.time.sleep") as sleep:
+                    if current is self.complete:
+                        upload(api, self.files, self.path, "tool.zip", self.digests, attempts=1)
+                    else:
+                        with self.assertRaises(requests.ReadTimeout):
+                            upload(api, self.files, self.path, "tool.zip", self.digests, attempts=1)
+                    sleep.assert_not_called()
+                self.assertEqual(transmissions, [self.path.read_bytes()])
 
     def test_request_uses_explicit_upload_timeout(self):
         api = Zenodo("fake-token", 23122650)
@@ -171,6 +241,10 @@ class UploadTests(unittest.TestCase):
         with patch.object(api.session, "request") as call:
             with self.assertRaises(UploadError):
                 api.request("PUT", "https://other.example/file")
+            call.assert_not_called()
+        with patch("zenodo_upload.subprocess.run") as call:
+            with self.assertRaises(UploadError):
+                api.upload_with_curl("https://other.example/file", self.path)
             call.assert_not_called()
 
 
