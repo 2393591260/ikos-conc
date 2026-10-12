@@ -51,7 +51,8 @@
 
 - 安全 UNKNOWN 112 项；原 24 项已在修复 ILP32 环境的 Goblint 上全部复核 TRUE，
   其中 3 项已恢复 SAFE，余下 21 项需其他机制；另外 91 项参考未证实。
-  [安全台账](artifacts/ai-precision-2026-10-11/unknown-ledger/ledger.json)保存状态及历史诊断指纹。
+  [本轮 24 项处置](artifacts/ai-precision-2026-10-12/release-values/dispositions-24.json)给出具体前提/缺口；
+  [安全台账](artifacts/ai-precision-2026-10-11/unknown-ledger/ledger.json)保存当前判定和历史诊断指纹。
   TN 工作入口为 [AI 后续机制](ikos-ai-complete.md#roadmap)。
 - 竞争 UNKNOWN 126 项，历史 Dartagnan 参考为 FAIL 95、TIMEOUT 15、ERROR 13、有界 PASS 3。
   [混合历史台账](artifacts/bmc-v1-final-2026-10-10/unknown-results.json)同时含安全和竞争任务，
@@ -85,8 +86,8 @@
 M1的本地候选已于10/11固定：包入口1029项与当前基线逐项一致，双架构smoke/P0、重定位、
 断网依赖和2.2格式检查通过；候选包及证据见[参赛指南](SVCOMP2027-参赛指南.md#package)。
 严格源级validator因创建位置兼容与错误目标校准失败仍待验收，官方CI/MR/PR也未关闭。
-**本地工程出口完成不等于M1整体通过。** M1 冻结 ZIP 保持原样；M2 的稳定发布和
-release 机制均已独立验收，见 [AI M2 记录](ikos-ai-complete.md#roadmap)。
+**本地工程出口完成不等于M1整体通过。** M1 冻结 ZIP 保持原样；M2 首批已完成稳定发布和
+release 两个机制验收及全部 24 项候选处置，见 [AI M2 记录](ikos-ai-complete.md#roadmap)。
 M0/M5的资料与写作并行；后续M2/M3每轮选择一个机制实施。
 首个 TN 入口见 [AI §8](ikos-ai-complete.md#roadmap)，TP 入口见 [BMC 后续机制](ikos-bmc-complete.md#roadmap)。
 M2 首批固定为两个 release 入口和一个稳定 pointer 入口，机制实现后再检查同桶候选。

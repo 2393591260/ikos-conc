@@ -477,8 +477,31 @@ AI/BMC 本轮墙钟为约 165/379 秒，只有一轮观察，不能推出性能�
 [定向回归](artifacts/ai-precision-2026-10-12/release-values/fixtures.json)、
 [所选执行](artifacts/ai-precision-2026-10-12/release-values/selected-executions.json)。
 
-阶段结束应是：机制前提可核实、正/反/变体通过、同配置 AI/BMC 全量配对、立即单机制提交，
-剩余案例有具体缺口。若路线无收益可停止扩张该原型，不等于整体优化完成或语义不可实现。
+### M2 首批出口与全部 24 个候选的处置
+
+三个固定入口均已恢复 SAFE；24 项的源/YAML 指纹、当前报告、逐任务 AI/BMC 判定、
+修正后的参考结果及语义前提已逐项更新到
+[处置记录](artifacts/ai-precision-2026-10-12/release-values/dispositions-24.json)，
+并同步原安全台账。余下 21 项仍为 UNKNOWN，具体缺口如下：
+
+| 数量 | 候选机制 | 当前不能证明的条件 |
+| ---: | --- | --- |
+| 14 | heap region / freshness / publication（6 个 regions、8 个 race_reach） | 初始化到发布的覆盖闭包、list/slot 所有权与字段来源；实际报告仍有候选对，并有 handle coverage 缺口 |
+| 2 | handle 存储覆盖（ptra、arraylist） | 抽象 token 的 seed/output 存储与不透明身份来源；目前无残余候选对，仍不能仅删除 coverage gate |
+| 2 | mutex attribute effects（23-sound_unlock、40-trylock） | 真实初始化阶段属性效果及失败/所有权合同；目前只剩库覆盖警告 |
+| 1 | dynamic join array（thread-join-array-const） | 全部动态线程实例的 array-slot 来源和完成证书；main 的 joined digest 仍为空，保留两个候选对 |
+| 2 | strcpy byte effects（bigshot_s/s2） | 包含 NUL 的源读/目的写跨度、共享值发布与重叠失效；目前只剩库覆盖警告 |
+
+固定 Goblint 的六配置 portfolio 最终均 TRUE；join-array 前四配置为 UNKNOWN，
+第五配置才 TRUE，保留这一序列，不能说所有候选都由默认配置证明。
+这些缺口是现有实现/证书边界，不能据此声称 IKOS 无法实现对应机制。
+
+首批验收完成的依据是：两个机制分别提交，build/install 与双架构/P0 通过，
+两种模式全量配对，现有标签 TP 的所选执行重新检查，24 项都有明确去向。
+安全 UNKNOWN 仍有 112 项，其中本轮余下 21 项参考 TRUE，另 91 项参考未证实。
+后续 TN 轮优先从只剩库/句柄 coverage 的窄效果机制继续，通用 heap-region 算法另定预算。
+全语言 soundness、混合锁集域义务和官方源 witness 验收仍是各自独立的工作，
+不能由这次首批出口推断它们已完成。
 
 <a id="evidence"></a>
 ## 9. 按机制查证据
