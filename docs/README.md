@@ -23,9 +23,9 @@
 <a id="baseline"></a>
 ## 当前可复核基线
 
-以下是 **2026-10-12 未知目的 Store 正确性修复的全量配对实验**；源码与证据在该机制的单独提交中。
+以下是 **2026-10-12 初始化到首次发布 HB 证书的全量配对实验**；源码与证据在该机制的单独提交中。
 安装二进制 SHA256 为
-`10bc4d4660776122b39ecc78adcf280387b01441f4919e022c2cf1ddc44f16a6`。
+`4c39739778569233b6263fdda3f4b3a891592e2a5aa911c824747398abfc3567`。
 
 任务集合为 `/home/ruan/sv-benchmarks-2026`，revision
 `0a254fdddcfe24949be9edd47f8d609462eb52fb`，本地扫描 1029 项、全部 ILP32，
@@ -34,28 +34,29 @@
 
 | 比赛判定模式 | TP | TN | FP | FN | UNKNOWN | error/timeout |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| AI，demote，BMC 关闭 | 0 | 686 | 0 | 0 | 342 | 1 |
-| AI + BMC，demote | 109 | 686 | 0 | 0 | 233 | 1 |
+| AI，demote，BMC 关闭 | 0 | 687 | 0 | 0 | 341 | 1 |
+| AI + BMC，demote | 109 | 687 | 0 | 0 | 232 | 1 |
 
 109 个标签 TP 对应重新导出的 137 条所选执行，全部独立 AR ACCEPT。
 检查范围为导出的 AR、可信前端与明确库合同；尚非官方源程序/witness 验收，
 不认证全部 SAFE 规则，也不穷尽所有 SAT 模型。
 有限基准 FP/FN 为零不能作为全语言 soundness 定理。
 
-本轮六种最小反例形状的 24 次错误 SAFE 回退 UNKNOWN，冻结集逐任务判定不变；
-尚未完成未知写的全通道值失效模型，coverage 边界必须保留。
-证据：[汇总](artifacts/ai-precision-2026-10-12/unknown-writes/summary.json)、
-[逐任务配对](artifacts/ai-precision-2026-10-12/unknown-writes/paired.json)、
-[逐执行检查](artifacts/ai-precision-2026-10-12/unknown-writes/selected-executions.json)。
+本轮仅 `09-regions_02-list_nr.c` UNKNOWN→SAFE：证书核对动态新分配、发布前用途闭包、
+槽的完整初值/来源及读端实际 pointer Load 的 mutex handoff；不是恢复旧 private-init。
+既有未知写 coverage 边界继续保留，通用 heap/region 和生命周期证明尚未完成。
+证据：[汇总](artifacts/ai-precision-2026-10-12/init-publication/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-12/init-publication/paired.json)、
+[逐执行检查](artifacts/ai-precision-2026-10-12/init-publication/selected-executions.json)。
 唯一失败项是安全标签的 `nsc-ircc` 驱动外层超时，未计成 UNKNOWN。
 
 ## 下一步去哪里查
 
-- 安全 UNKNOWN 107 项；原 24 项已在修复 ILP32 环境的 Goblint 上全部复核 TRUE，
-  其中 8 项已恢复 SAFE，余下 16 项需其他机制；另外 91 项在修正 ILP32 的固定参考上
+- 安全 UNKNOWN 106 项；原 24 项已在修复 ILP32 环境的 Goblint 上全部复核 TRUE，
+  其中 9 项已恢复 SAFE，余下 15 项需其他机制；另外 91 项在修正 ILP32 的固定参考上
   全部重新运行，仍无新增可信 TRUE。14 项带 Unsound 的原始 TRUE 另试后续配置，
   也未得到可信 TRUE，见[复核与下一机制](artifacts/ai-precision-2026-10-12/next-bases/summary.json)。
-  [本轮 24 项处置](artifacts/ai-precision-2026-10-12/unknown-writes/dispositions-24.json)给出具体前提/缺口；
+  [本轮 24 项处置](artifacts/ai-precision-2026-10-12/init-publication/dispositions-24.json)给出具体前提/缺口；
   [安全台账](artifacts/ai-precision-2026-10-11/unknown-ledger/ledger.json)保存当前判定和历史诊断指纹。
   TN 工作入口为 [AI 后续机制](ikos-ai-complete.md#roadmap)。
 - 竞争 UNKNOWN 126 项，历史 Dartagnan 参考为 FAIL 95、TIMEOUT 15、ERROR 13、有界 PASS 3。
@@ -91,9 +92,9 @@ M1的本地候选已于10/11固定：包入口1029项与当前基线逐项一致
 断网依赖和2.2格式检查通过；候选包及证据见[参赛指南](SVCOMP2027-参赛指南.md#package)。
 严格源级validator因创建位置兼容与错误目标校准失败仍待验收，官方CI/MR/PR也未关闭。
 **本地工程出口完成不等于M1整体通过。** M1 冻结 ZIP 保持原样；M2 首批已完成稳定发布和
-release 等五个精度机制验收及全部 24 项候选处置，并完成未知目的 Store 正确性修复。
-下一轮先做受限初始化发布证书，再做有完整来源证明的只读 pointer-array 摘要；
-两者尚未实现，见 [AI M2 记录](ikos-ai-complete.md#roadmap)。
+release 等精度机制验收及全部 24 项候选处置，并完成未知目的 Store 正确性修复。
+本轮受限初始化发布证书再恢复一个 SAFE；下一轮做有完整来源证明的只读 pointer-array
+摘要或扩展受限来源闭包，均需单独验证，见 [AI M2 记录](ikos-ai-complete.md#roadmap)。
 后续字符串与受限 pthread 初始化各恢复两个 SAFE，初始句柄 seed 再恢复一个；下一 TN 轮核实 heap pointer 来源/句柄存储覆盖，
 再查动态 join 数组；通用 heap-region 机制另定入口与预算。
 M0/M5的资料与写作并行；后续M2/M3每轮选择一个机制实施。

@@ -42,6 +42,7 @@
  ******************************************************************************/
 
 #include <ikos/analyzer/checker/data_race.hpp>
+#include <ikos/analyzer/checker/init_publication.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/analysis/bmc/bmc.hpp>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
@@ -1091,6 +1092,7 @@ DataRaceChecker::~DataRaceChecker() {
   // serializes the two critical sections, and before promotion the object
   // is reachable only by its allocating thread (publication is itself a
   // locked write under that lock).
+  InitPublication init_publication(this->_ctx, this->_accesses);
   for (std::size_t i = 0; i < this->_accesses.size(); ++i) {
     AccessRecord& w = this->_accesses[i];
     if (w.kind != AccessKind::Write || !w.locks.empty() ||
@@ -1227,6 +1229,9 @@ DataRaceChecker::~DataRaceChecker() {
       // direct corollary of the C11 data-race definition, so it only removes
       // false positives, never a real race.
       if (a.is_atomic && b.is_atomic) {
+        continue;
+      }
+      if (init_publication.ordered(a, b) || init_publication.ordered(b, a)) {
         continue;
       }
       // Happens-before (private-init publication, 09-regions_02-list_nr.c):

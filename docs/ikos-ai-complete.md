@@ -80,6 +80,8 @@ F2 的发布父对象但漏掉可达子对象、后续 pointer 多来源和字�
 无完整 may 可达闭包时不排除 fresh heap；stack/TLS 指针发布后保守处理可达目标。
 不能从“不在已知边表里”证明不逃逸，也不能从首写/之后持锁证明首写之前未发布。
 旧 private-init 排除已禁用。
+受限初始化发布证书逐对核对分配/调用身份、首次发布前不逃逸、槽的完整来源
+及读端实际取值路径；不依赖旧 private-init 标记，见 §8 的实现与边界。
 
 TLS 声明对应每动态线程不同对象；自己的 TLS 访问可以独立，
 但经共享指针访问别的线程 TLS 必须保留对象来源。
@@ -726,17 +728,73 @@ stable-publication CASE6 的两条历史执行检查仍为 `UNSUPPORTED: load re
 [所选执行](artifacts/ai-precision-2026-10-12/unknown-writes/selected-executions.json)、
 [24 项当前处置](artifacts/ai-precision-2026-10-12/unknown-writes/dispositions-24.json)。
 
+### M2：初始化到首次发布的 HB 证书（2026-10-12 已实现）
+
+入口 `09-regions_02-list_nr.c` 中，worker 的 `init(p,7)` 尚未持锁，但 p 是本次
+malloc 返回的新对象；随后在 `A_mutex` 内写 `A->next=p`，再解锁。main 在同锁内
+读取 `A->next` 再读 datum。证明目标是：读者取得这个对象必须经过首次发布后的
+mutex handoff，而不是从“以后持锁”猜私有。
+
+实现为 `checker/init_publication.hpp::InitPublication`，在最终离线 pair 检查中消费
+AccessRecord 和已有调用/创建证书。只支持普通 Store 初始化、经普通 pointer Load
+取得对象的 Load 读端；没有修改 transfer、frontend 或 BMC 值编码。
+
+- 沿透明 copy/bitcast、常量偏移及真实 CallContext 的不可重定义 formal 绑定，
+  追溯到直接 LibcMalloc，核对 allocation call/context。分配所在函数至多执行一次、
+  分配块无回边；不把 allocation site 汇总当成单个动态对象。
+- allocation、该具体初始化/调用、首次 publication 同基本块且源语句依次发生。
+  publication 前对象别名只用于可追溯派生、scalar/NULL 初始化或受证 pure helper。
+  地址/表示存到其他内存、未知调用、load、整数转换、不可追溯 phi/下标均拒绝。
+  pure helper 只有一个 block，参数不可改写；写入为界内 constant offset scalar/NULL，
+  允许纯 scalar 运算和 canonical scalar nondet，不允许 pointer Load/逃逸。
+- publication 为整宽 pointer Store，RHS 是本次 allocation base 0。读端 address
+  必须来自实际 pointer Load，其对象/offset/width 与 publication 相同。source Load
+  与最终 reader 都持 publication 的同一个 physical exclusive lock，并有同块后续
+  普通 mutex_unlock；unlock 地址是完整 global mutex、offset 0。symbolic/pseudo lock
+  不足以建立本证书。
+- publication 槽的 container 也必须是单次、不回收的独立 LibcMalloc 分配；
+  `DynAlloc` 还包括 FILE 等对象，不能统一继承 malloc 生命周期合同。main 在全部
+  possible create 前给槽合法完整 pointer 初值；最终记录中全部可能重叠写只准同一
+  整槽的 NULL 或单次 malloc base。unknown、partial、byte、copy、其他 pointer 来源
+  或不确定 width 均拒绝。此轮支持这条闭合来源链，尚不支持任意 pointer graph。
+
+全局要求唯一 main 根、无 ctor/custom initialization、无未覆盖效果/线程体；
+整 bundle 拒绝 free/realloc 和 pointer/integer 表示转换。固定工作预算耗尽只保留 pair。
+证书只排除具体 initialization/context 的候选，不标整个 site 私有，不传播给子节点，
+不给后续无锁写同步。旧 `kEnablePrivateInit=false` 保持；allocator、may-points-to、
+MUST 持锁、动态唯一性和最终 effects 覆盖仍是它的使用前提。
+
+固定 Goblint 的 `region.ml:35–57` 查询 fresh bullet，`special:157–168` 产生分配
+bullet，`threadspawn:179–186` 发布 escape，是解释差异的参考逻辑。IKOS 此轮未移植
+region domain，而是使用局部 HB 充分条件；依据为合法新分配的独立性、发布前的
+用途闭包和 mutex release/acquire 排序。参考 TRUE 不代替这些前提。
+
+11 个 [定向情况](review-repros/ai-init-publication/run.py)双 ABI/两模式共 44 次观察：
+正确 init→publish 四次 UNKNOWN→SAFE；提前 publish、晚一次 helper 初始化、无锁
+publish、不同 source/lock、helper 泄漏均未变 SAFE。表示写、loop generation 和 free
+控制保留能力边界；LP64 同时改名。既有 unknown-write/pointer-bytes/write-union/
+stable-publication 共 172 次观察及 P0 20 次观察通过；stable-publication CASE6 的两条
+历史 `UNSUPPORTED: load representation/type` 仍单独列出。
+
+1029 项逐任务配对仅入口 UNKNOWN→SAFE：AI TN 686→687、UNKNOWN 342→341；
+组合 TP=109 不变、TN 686→687、UNKNOWN 233→232，FP/FN=0、error=1。
+109 项的 137 条所选执行重新独立 AR ACCEPT；这不是官方源 witness 或全语言证明。
+证据：[汇总](artifacts/ai-precision-2026-10-12/init-publication/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-12/init-publication/paired.json)、
+[反例配对](artifacts/ai-precision-2026-10-12/init-publication/fixture-transitions.json)、
+[所选执行](artifacts/ai-precision-2026-10-12/init-publication/selected-executions.json)。
+
 ### M2 首批出口与当前 24 个候选的处置
 
 三个固定入口均已恢复 SAFE；24 项的源/YAML 指纹、当前报告、逐任务 AI/BMC 判定、
 修正后的参考结果及语义前提已逐项更新到
-[处置记录](artifacts/ai-precision-2026-10-12/unknown-writes/dispositions-24.json)，
-并同步原安全台账。后续字符串与 pthread 初始化各恢复两项，初始句柄 seed 再恢复一项，累计 8 项；
-余下 16 项仍为 UNKNOWN，具体缺口如下：
+[处置记录](artifacts/ai-precision-2026-10-12/init-publication/dispositions-24.json)，
+并同步原安全台账。后续字符串与 pthread 初始化各恢复两项，初始句柄 seed 再恢复一项，
+初始化发布证书再恢复一项，累计 9 项；余下 15 项仍为 UNKNOWN，具体缺口如下：
 
 | 数量 | 候选机制 | 当前不能证明的条件 |
 | ---: | --- | --- |
-| 14 | heap region / freshness / publication（6 个 regions、8 个 race_reach） | 初始化到发布的覆盖闭包、list/slot 所有权与字段来源；实际报告仍有候选对，并有 handle coverage 缺口 |
+| 13 | heap region / freshness / publication（5 个 regions、8 个 race_reach） | 多来源/多步 pointer graph 闭包、list/slot 所有权与字段来源；实际报告仍有候选对，并有 handle coverage 缺口，单次初始化证书不能自动推广 |
 | 1 | handle 存储覆盖（arraylist） | 初始 seed 已覆盖；其余 TOP heap Load 的字节/类型来源仍未证，无残余候选对也不能删除 gate |
 | 1 | dynamic join array（thread-join-array-const） | 全部动态线程实例的 array-slot 来源和完成证书；main 的 joined digest 仍为空，保留两个候选对 |
 
@@ -746,13 +804,13 @@ stable-publication CASE6 的两条历史执行检查仍为 `UNSUPPORTED: load re
 
 首批验收完成的依据是：各机制分别提交，build/install 与双架构/P0 通过，
 两种模式全量配对，现有标签 TP 的所选执行重新检查，24 项都有明确去向。
-安全 UNKNOWN 仍有 107 项，其中本轮余下 16 项参考 TRUE，另 91 项参考未证实。
+安全 UNKNOWN 仍有 106 项，其中本轮余下 15 项参考 TRUE，另 91 项参考未证实。
 后续 TN 轮需恢复保守的 heap pointer 来源或证明 pointer-load 的存储布局，再处理动态 join array；
 通用 heap-region 算法仍须独立设计，不能靠放开 TOP 或仅凭参考 TRUE 清除告警。
 全语言 soundness、混合锁集域义务和官方源 witness 验收仍是各自独立的工作，
 不能由这次首批出口推断它们已完成。
 
-### M2 下一机制：参考复核与受限证书（2026-10-12，尚未实现）
+### M2 下一机制：实施前参考复核与剩余证书（2026-10-12）
 
 本轮将其余 91 个安全 UNKNOWN 在修正 GCC32 machine definition 的固定 Goblint 上
 重新运行：六配置 portfolio 每项 30 秒、3 jobs，得到 UNSUPPORTED 30、UNKNOWN 25、
@@ -763,8 +821,9 @@ TIMEOUT 34、ERROR 2，无新增可信 TRUE，也没有 machine-definition fallb
 超时与警告不证明不可实现；以上是本地固定版本/预算的观察，非官方 2027 工具结果。
 [参考证据](artifacts/ai-precision-2026-10-12/next-bases/references.json)保留命令、指纹和警告摘录。
 
-下一轮优先处理已有可信 TRUE 的 16 项，先实现下面一个受限机制再全量验收，
-不能把两个机制同时混入同一 behavioral commit。
+以下是实施前设计依据，当时有 16 项可信 TRUE 待恢复。初始化发布受限子集已按上一节
+单独实现与验收，余下 15 项；pointer-array 坐标及更广来源图尚未实现，
+不同机制不能混入同一 behavioral commit。
 
 **初始化到首次发布的 HB 证书。** 入口为 `09-regions_02-list_nr.c`：worker 的
 `malloc→init(p,7)→A->next=p→unlock(A_mutex)`，读端在同锁下经 `A->next` 读取 datum。
@@ -780,7 +839,8 @@ TIMEOUT 34、ERROR 2，无新增可信 TRUE，也没有 machine-definition fallb
 迟到效果，不能缓存早期“没看见逃逸”的结论。拒绝 TOP 读端、错误锁/来源、generation
 复用及晚初始化；不把证明传播给整个 allocation site、后续无锁写或子节点。
 现有 AccessRecord、allocation context、同块顺序和完整 pointer-write 失效是基础，
-完整证书和正反例验证仍待实现；旧 `private_init` 与宽松 `is_fresh_alloc` 不可复用。
+当前已实现上一节的更窄槽来源闭包；更广来源图、allocator/helper/生命周期支持仍需
+后续证明。旧 `private_init` 与宽松 `is_fresh_alloc` 不可复用。
 
 **初始化后只读的 pointer-array 摘要。** `arraylist` 在 interval、interval-congruence、
 DBM-congruence、octagon 和 widening-delay=10 下均 UNKNOWN、零候选，两个 coverage
@@ -803,9 +863,12 @@ one-past；该条件仅用于当前正常读取的值投影，不能追溯删除
 freeze/phi/select/额外位移。若这一局部 LLVM 合同不能建立，则先修 helper 布尔关系
 或证明实际 bounds，继续 UNKNOWN。原输入两 ABI 的八个 GEP 已重新核实并保存指纹；
 AR 保留 frontend GEP，可直接审查，无需先改 frontend 或新增 metadata。
-精确 LLVM 14.0.6 LangRef 文本未成功读到，已读的是 14.0.0 原文，实施前仍需核对版本。
+本轮已补读精确 LLVM 14.0.6 LangRef 的 Pointer Aliasing/GEP/Freeze/Capture 语义，
+[版本与原文指纹](artifacts/ai-precision-2026-10-12/init-publication/llvm-reference.json)可核对；
+实施前的旧设计只读到 14.0.0，历史 design.json 保留当时事实。数组转移仍未实现。
 
-这两项是有落点的受限设计，尚无新增 TN、保持性定理或性能收益。
+这段保留实施前设计证据；最新初始化发布 TN 收益见上一节，数组设计尚无新增 TN。
+两者均不构成全语言保持性定理或性能收益证明。
 验收需覆盖早发布/晚初始化、其他读源/锁、字节破坏、迟到 writer、布局伪装及双 ABI，
 再按既定 AI/BMC 配对和独立所选执行检查完成节点。
 证据：[汇总](artifacts/ai-precision-2026-10-12/next-bases/summary.json)、
@@ -821,6 +884,7 @@ AR 保留 frontend GEP，可直接审查，无需先改 frontend 或新增 metad
 
 | 原编号 | 机制或实验 | 原始依据 |
 | --- | --- | --- |
+| M2-init-publication | 单次分配、逐 context 首次发布闭包、确定槽来源与 physical mutex HB | [记录](artifacts/ai-precision-2026-10-12/init-publication/summary.json)、[目录](artifacts/ai-precision-2026-10-12/init-publication/) |
 | M2-next-bases | 91 项可信参考复核、14 项后续配置、受限发布/数组设计，尚无新语义 | [记录](artifacts/ai-precision-2026-10-12/next-bases/summary.json)、[目录](artifacts/ai-precision-2026-10-12/next-bases/) |
 | M2-unknown-write | TOP 普通 Store 的 memory havoc 与独立 coverage 回退，不宣称完整值模型 | [记录](artifacts/ai-precision-2026-10-12/unknown-writes/summary.json)、[目录](artifacts/ai-precision-2026-10-12/unknown-writes/) |
 | M2-pthread-init | 受限 glibc 初始化、opaque 存储闭包与有界效果 | [记录](artifacts/ai-precision-2026-10-12/pthread-initialization/summary.json)、[目录](artifacts/ai-precision-2026-10-12/pthread-initialization/) |

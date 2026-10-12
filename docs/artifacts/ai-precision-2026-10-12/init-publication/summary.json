@@ -1,0 +1,213 @@
+{
+  "before_commit": "f97a09a",
+  "before_semantic_commit": "c2479ab",
+  "before_analyzer_sha256": "10bc4d4660776122b39ecc78adcf280387b01441f4919e022c2cf1ddc44f16a6",
+  "analyzer_sha256": "4c39739778569233b6263fdda3f4b3a891592e2a5aa911c824747398abfc3567",
+  "wrapper_sha256": "e902b97ff2ca21fb2f5cc89a9b883fedfbe946722afcc45af8b9a3d58d64ae42",
+  "build_install_equal": true,
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/checker/init_publication.hpp": "a9bfbd1ca888bc1021bcf4c7012260835d035386e8651c56e7b5f36121fd35be",
+    "analyzer/src/checker/data_race.cpp": "facf20d91d528ce2236d3f4bb149f80da25d6cd333eaf8f6a13c50d2e26958f5"
+  },
+  "fixture_sha256": {
+    "docs/review-repros/ai-init-publication/publication.c": "64b5affe5fab48e94008e11c7a035b3ae5cb661bc1ea6032720edc1d30ccdf82",
+    "docs/review-repros/ai-init-publication/run.py": "e98837e590b7fc85da692644a81f5bccd482f75f13e22161a930b7279bacb6f2"
+  },
+  "frontend_modified": false,
+  "dataset_revision": "0a254fdddcfe24949be9edd47f8d609462eb52fb",
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "outer_timeout_seconds": 30,
+  "command": [
+    "python3",
+    "svcomp_race_test.py",
+    "--demote",
+    "--jobs",
+    "4",
+    "--timeout",
+    "30"
+  ],
+  "environment": {
+    "ai": {
+      "IKOS_BMC_RECOVER": "unset"
+    },
+    "bmc": {
+      "IKOS_BMC_RECOVER": "1"
+    }
+  },
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "TN": 686,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 342
+    },
+    "after_ai": {
+      "TP": 0,
+      "TN": 687,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 341
+    },
+    "before_bmc": {
+      "TP": 109,
+      "TN": 686,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 233
+    },
+    "after_bmc": {
+      "TP": 109,
+      "TN": 687,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 232
+    }
+  },
+  "times": [
+    {
+      "mode": "ai",
+      "exit": 0,
+      "seconds": 156.06552837100025,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    },
+    {
+      "mode": "bmc",
+      "exit": 0,
+      "seconds": 356.2169335100043,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    }
+  ],
+  "performance_claim": false,
+  "timing_limit": "Nonisolated workstation; not controlled timing comparison. Fixtures/regressions may overlap AI scan.",
+  "fixtures": {
+    "checks": 44,
+    "before_checks": 44,
+    "abis": [
+      32,
+      64
+    ],
+    "renamed_64bit": true,
+    "transitions": 4,
+    "scope": "First correct init/publication accepted; early publication, repeated late initializer, unprotected publication, wrong source/lock and helper escape retain candidates. Byte, nondet source, loop generation and free remain boundary controls; malloc-null prefixes excluded only by existing native memory semantics."
+  },
+  "regressions": [
+    {
+      "suite": "ai-unknown-writes",
+      "checks": 40,
+      "summary_sha256": "faff626074427a56d55ce0d58a2209df9c680f0a30c2aed58e66572d229aaf54",
+      "non_accept_executions": []
+    },
+    {
+      "suite": "ai-pointer-bytes",
+      "checks": 72,
+      "summary_sha256": "4577cdba25a1ef9459a3f0fd54f93cd30bcd9155269b140c6450d46ab55b2636",
+      "non_accept_executions": []
+    },
+    {
+      "suite": "ai-write-union",
+      "checks": 16,
+      "summary_sha256": "a3417af5aad8e31b34f21e1d46f257858439c62a87e0c15e83aa9d681b2eadee",
+      "non_accept_executions": []
+    },
+    {
+      "suite": "ai-stable-publication",
+      "checks": 44,
+      "summary_sha256": "de18896522c733b3d881b0e52a974a5ddee236e8a840e4cdaefe3b10f409e7ee",
+      "non_accept_executions": [
+        {
+          "bits": 32,
+          "case": 6,
+          "mode": "bmc",
+          "execution": {
+            "group": 3,
+            "pair": 2,
+            "program_sha256": "e52fb99545a3a3bb46d16812551d6f4dbc18106c0f1ee7cbf49e36bf2b876b2d",
+            "certificate_sha256": "c5baaff039b1768ab75aeb5579c69043782b9adac410684834233f0b7ee2eca8",
+            "status": "UNSUPPORTED",
+            "reason": "load representation/type"
+          }
+        },
+        {
+          "bits": 64,
+          "case": 6,
+          "mode": "bmc",
+          "execution": {
+            "group": 4,
+            "pair": 1,
+            "program_sha256": "56d7370a98a8afb8903c8170d9753a6bbdeaf9f64c05e017702c9170fb9b652f",
+            "certificate_sha256": "a4c388858515d1789d2519beecfc000f3a949aa4aa72f131735a6989164bc3f1",
+            "status": "UNSUPPORTED",
+            "reason": "load representation/type"
+          }
+        }
+      ]
+    }
+  ],
+  "p0": {
+    "checks": 20,
+    "asserted_against_baseline": true
+  },
+  "selected_validation": {
+    "tasks": 109,
+    "executions": 137,
+    "all_accept": true,
+    "scope": "Selected AR/API executions, not official source-witness acceptance or all-SAT certification"
+  },
+  "source_witness_acceptance": false,
+  "safety_pool": {
+    "tracked": 136,
+    "recovered": 30,
+    "remaining": 106,
+    "selected_reference_true_remaining": 15,
+    "other_reference_unproved": 91
+  },
+  "reference": {
+    "goblint_revision": "bb55b70d91290992629ba3d073185c10cdf356e6",
+    "binary_sha256": "50259c0a6349240459e38fecceaf8c81dbe9f331c657328e30f295d7744982f5",
+    "original_result_artifact": "../stable-publication/reference-24.json",
+    "input_unchanged": true,
+    "transfer_source": "src/analyses/region.ml:35-57,157-186",
+    "transplanted_region_domain": false
+  },
+  "certificate": {
+    "scope": "Per init Store/context and source Load pair",
+    "admitted": "Single lifetime allocation + closed same-block prepublication uses + pure initializer; full slot sources null/unique allocation and precreate seed; physical global mutex release/acquire; publication-slot container also requires canonical LibcMalloc, not arbitrary DynAlloc such as FILE",
+    "fallback": "Keep pair for unproved premise or fixed 65536-work budget exhaustion",
+    "old_private_init_enabled": false,
+    "context_is_dynamic_identity_only_under_once_proof": true,
+    "consumed_at_final_pair_check": true,
+    "does_not_modify_ai_values_or_bmc": true
+  },
+  "remaining_obligations": [
+    "Broader pointer graphs and initializer/call/branch/lifetime support",
+    "Readonly pointer-array value coordinate and complete layout/effects contract",
+    "General heap/region/publication provenance",
+    "Dynamic join-array identity",
+    "Whole mixed-lockset lattice certification",
+    "Official source-level witness validation"
+  ],
+  "llvm_reference": "llvm-reference.json"
+}
