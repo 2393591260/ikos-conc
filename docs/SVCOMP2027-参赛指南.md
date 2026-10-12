@@ -182,7 +182,7 @@ Zenodo [manage-files](https://help.zenodo.org/docs/deposit/manage-files/#modify)
 ```bash
 python3 /home/ruan/ikos-conc/svcomp/zenodo_upload.py \
   --record 23122650 \
-  --file /home/ruan/ikos-conc-m1-20261011.zip \
+  --file /home/ruan/ikos-conc-pr1324-20261012.zip \
   --filename ikos-conc.zip
 ```
 
@@ -190,10 +190,15 @@ token 在脚本的隐藏输入提示中粘贴，不写入源码、命令或聊�
 显示远端 checksum 验证通过后，在原上传页面检查并重新发布；公开实物仍需复核。
 脚本遇到临时连接/429/5xx 最多尝试三次，每次重传整文件，不承诺断点续传。
 发送时显示百分比、平均速度和估计剩余秒数；100% 表示 HTTP 客户端读取了文件内容，
-仍需服务端接受、commit 与远端校验才能认定上传完成。连接超时 20 秒、读响应超时 300 秒，
-这些不是整个上传的总时限。已启动的旧进程不会自动获得新的进度显示。
-当前七项离线协议/边界测试通过；尚无已完成认证 Zenodo 上传的实测，403/404 或草稿权限问题
-需要依据实际返回排查，不能据此改用新版本或另建记录。
+仍需服务端接受、commit 与远端校验才能认定上传完成。添加 `--no-progress` 可恢复普通文件流，
+关闭进度显示；远端校验与原 DOI 检查仍执行。
+普通 API 请求的连接超时为 20 秒、读响应超时为 300 秒；上传 PUT 两者均为 300 秒。
+本机 urllib3 在发送请求体后才切换到读超时，因此原来的 20 秒也可能触发上传写入超时。
+这些是阻塞等待限制，不是整个上传的总时限；延长等待不能保证解决 TLS EOF 或网络出口 403。
+当前十项离线协议/边界测试通过，包含 2 MiB 文件在本地 HTTP 服务上的有/无进度传输对比，
+收到的字节一致，均使用 Content-Length 而非 chunked 编码；这不验证真实 Zenodo 的 TLS 路径。
+尚无本轮已完成认证 Zenodo 上传的实测，403/404 或草稿权限问题需要依据实际返回排查，
+不能据此改用新版本或另建记录。
 
 新发布归档应满足：单一顶层目录；合格 LICENSE、README、smoketest；支持 --version；
 必要工具组件/许可完整；任意路径、断网可运行；stdout/stderr 控制在官方上限内（当时 2 MB）；

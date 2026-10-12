@@ -56,13 +56,13 @@ class Zenodo:
         self.session.headers.update({
             "Authorization": f"Bearer {token}", "Accept": "application/json"})
 
-    def request(self, method, url, **kwargs):
+    def request(self, method, url, *, timeout=(20, 300), **kwargs):
         url = urljoin("https://zenodo.org", url)
         parsed = urlsplit(url)
         if parsed.scheme != "https" or parsed.netloc != "zenodo.org":
             raise UploadError("Unexpected API host; token was not sent.")
         response = self.session.request(
-            method, url, timeout=(20, 300), allow_redirects=False, **kwargs
+            method, url, timeout=timeout, allow_redirects=False, **kwargs
         )
         if not 200 <= response.status_code < 300:
             detail = response.text[:800].replace(self.token, "[redacted]")
@@ -118,7 +118,7 @@ def matches(entry, size, digests):
     )
 
 
-def upload(api, files_url, path, filename, digests):
+def upload(api, files_url, path, filename, digests, *, progress=True):
     listing = api.request("GET", files_url)
     if not listing.get("enabled"):
         raise UploadError("Draft files are disabled; enable Edit published files first.")
@@ -137,9 +137,12 @@ def upload(api, files_url, path, filename, digests):
     for attempt in range(1, 4):
         try:
             print(f"Uploading {size} bytes, attempt {attempt}/3…", flush=True)
-            with ProgressReader(path.open("rb", buffering=0), size) as stream:
+            with (ProgressReader(path.open("rb", buffering=0), size)
+                  if progress else path.open("rb")) as stream:
+                # urllib3 sends the body before switching to the read timeout.
                 api.request("PUT", entry["links"]["content"], data=stream,
-                            headers={"Content-Type": "application/octet-stream"})
+                            headers={"Content-Type": "application/octet-stream"},
+                            timeout=(300, 300))
             print("Content transfer accepted; committing file…", flush=True)
             api.request("POST", entry["links"]["commit"])
             break
@@ -172,6 +175,8 @@ def main():
     parser.add_argument("--record", required=True, type=int)
     parser.add_argument("--file", required=True, type=Path)
     parser.add_argument("--filename", help="Remote name; defaults to the local filename")
+    parser.add_argument("--no-progress", action="store_true",
+                        help="use a plain file stream without progress reporting")
     args = parser.parse_args()
     path = args.file.resolve(strict=True)
     filename = args.filename or path.name
@@ -187,7 +192,8 @@ def main():
     if not token:
         raise UploadError("Empty token.")
     api = Zenodo(token, args.record)
-    upload(api, api.draft_files(args.record), path, filename, digests)
+    upload(api, api.draft_files(args.record), path, filename, digests,
+           progress=not args.no_progress)
     print(f"Upload complete. Review and publish the file-edit draft in your browser:\n"
           f"https://zenodo.org/uploads/{args.record}\n"
           "This script did not publish or create a version.", flush=True)

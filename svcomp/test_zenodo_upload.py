@@ -1,11 +1,13 @@
 """Offline checks for draft identity, upload integrity and retry boundaries."""
 
 import contextlib
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import io
 from pathlib import Path
 import tempfile
+import threading
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import requests
 
@@ -42,6 +44,69 @@ class UploadTests(unittest.TestCase):
             self.assertIs(request.body, stream)
             self.assertEqual(stream.read(4) + stream.read(), self.path.read_bytes())
             self.assertEqual(stream.sent, size)
+
+    def test_actual_http_body_is_identical_with_and_without_progress(self):
+        payload = bytes(range(256)) * 8192
+        self.path.write_bytes(payload)
+        received = []
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_PUT(self):
+                size = int(self.headers["Content-Length"])
+                received.append((self.headers.get("Transfer-Encoding"),
+                                 self.rfile.read(size)))
+                self.send_response(200)
+                self.send_header("Content-Length", "2")
+                self.end_headers()
+                self.wfile.write(b"{}")
+
+            def log_message(self, *args):
+                pass
+
+        with HTTPServer(("127.0.0.1", 0), Handler) as server:
+            worker = threading.Thread(target=server.serve_forever, daemon=True)
+            worker.start()
+            try:
+                with requests.Session() as session:
+                    session.trust_env = False
+                    url = f"http://127.0.0.1:{server.server_port}/content"
+                    for progress in (False, True):
+                        with (ProgressReader(self.path.open("rb", buffering=0), len(payload))
+                              if progress else self.path.open("rb")) as stream:
+                            response = session.put(url, data=stream, timeout=(5, 5))
+                        self.assertEqual(response.status_code, 200)
+            finally:
+                server.shutdown()
+                worker.join(timeout=5)
+        self.assertEqual(received, [(None, payload), (None, payload)])
+
+    def test_request_uses_explicit_upload_timeout(self):
+        api = Zenodo("fake-token", 23122650)
+        response = Mock(status_code=200)
+        response.json.return_value = {}
+        with patch.object(api.session, "request", return_value=response) as call:
+            api.request("GET", api.root)
+            self.assertEqual(call.call_args.kwargs["timeout"], (20, 300))
+            api.request("PUT", self.file_url + "/content", timeout=(300, 300))
+            self.assertEqual(call.call_args.kwargs["timeout"], (300, 300))
+
+    def test_no_progress_upload_uses_plain_stream_and_verifies_checksum(self):
+        api = Zenodo("fake-token", 23122650)
+        transmissions = []
+
+        def request(method, url, **kwargs):
+            if url == self.files:
+                return {"enabled": True, "entries": [self.pending]}
+            if method == "PUT":
+                self.assertNotIsInstance(kwargs["data"], ProgressReader)
+                self.assertEqual(kwargs["timeout"], (300, 300))
+                transmissions.append(kwargs["data"].read())
+                return self.pending
+            return self.complete
+
+        with patch.object(api, "request", side_effect=request):
+            upload(api, self.files, self.path, "tool.zip", self.digests, progress=False)
+        self.assertEqual(transmissions, [self.path.read_bytes()])
 
     def test_wrong_draft_identity_never_mutates(self):
         for wrong in ("id", "doi"):
