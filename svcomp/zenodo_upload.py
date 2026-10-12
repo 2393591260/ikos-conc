@@ -8,6 +8,7 @@ The owner must first enable Edit published files in the Zenodo web interface.
 import argparse
 import getpass
 import hashlib
+import io
 from pathlib import Path
 import sys
 import time
@@ -21,6 +22,30 @@ class UploadError(RuntimeError):
     def __init__(self, message, status=0):
         super().__init__(message)
         self.status = status
+
+
+class ProgressReader(io.BufferedReader):
+    """Report bytes read for sending; remote commit/checksum proves completion."""
+
+    def __init__(self, raw, total):
+        super().__init__(raw)
+        self.total = total
+        self.sent = 0
+        self.started = self.last_report = time.monotonic()
+
+    def read(self, size=-1):
+        data = super().read(size)
+        self.sent += len(data)
+        now = time.monotonic()
+        if data and (now - self.last_report >= 2 or self.sent == self.total):
+            rate = self.sent / max(now - self.started, 0.001)
+            remaining = int((self.total - self.sent) / rate)
+            print(f"Upload body: {100 * self.sent / self.total:.1f}% "
+                  f"({self.sent / 1048576:.1f}/{self.total / 1048576:.1f} MiB), "
+                  f"{rate / 1024:.1f} KiB/s, ETA ~{remaining}s",
+                  end="\n" if self.sent == self.total else "\r", flush=True)
+            self.last_report = now
+        return data
 
 
 class Zenodo:
@@ -112,9 +137,10 @@ def upload(api, files_url, path, filename, digests):
     for attempt in range(1, 4):
         try:
             print(f"Uploading {size} bytes, attempt {attempt}/3…", flush=True)
-            with path.open("rb") as stream:
+            with ProgressReader(path.open("rb", buffering=0), size) as stream:
                 api.request("PUT", entry["links"]["content"], data=stream,
                             headers={"Content-Type": "application/octet-stream"})
+            print("Content transfer accepted; committing file…", flush=True)
             api.request("POST", entry["links"]["commit"])
             break
         except (requests.RequestException, UploadError) as exc:
@@ -134,6 +160,7 @@ def upload(api, files_url, path, filename, digests):
             if current.get("status") == "completed" or attempt == 3:
                 raise
             time.sleep(5)
+    print("Checking remote size and checksum…", flush=True)
     current = api.request("GET", file_url)
     if not matches(current, size, digests):
         raise UploadError(f"Remote file verification failed: {current.get('checksum')!r}.")

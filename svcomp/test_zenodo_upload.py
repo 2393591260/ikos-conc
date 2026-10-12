@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import requests
 
-from zenodo_upload import UploadError, Zenodo, hashes, upload
+from zenodo_upload import ProgressReader, UploadError, Zenodo, hashes, upload
 
 
 class UploadTests(unittest.TestCase):
@@ -32,6 +32,16 @@ class UploadTests(unittest.TestCase):
 
     def run_upload(self, api):
         upload(api, self.files, self.path, "tool.zip", self.digests)
+
+    def test_progress_stream_preserves_body_and_content_length(self):
+        size = self.path.stat().st_size
+        with ProgressReader(self.path.open("rb", buffering=0), size) as stream:
+            request = requests.Request("PUT", self.file_url, data=stream).prepare()
+            self.assertEqual(request.headers["Content-Length"], str(size))
+            self.assertNotIn("Transfer-Encoding", request.headers)
+            self.assertIs(request.body, stream)
+            self.assertEqual(stream.read(4) + stream.read(), self.path.read_bytes())
+            self.assertEqual(stream.sent, size)
 
     def test_wrong_draft_identity_never_mutates(self):
         for wrong in ("id", "doi"):
