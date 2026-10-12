@@ -104,6 +104,19 @@ rwlock 的 shared/shared 不互斥；对写访问不能借两把 reader lock 排
 确切共同 mutex 可直接排除候选，不必额外要求数据 region 单例；
 但锁自身的具体身份仍须证明。原 self-consistency 不完整锁相等捷径已撤销。
 
+2026-10-12 的 release 摘要域测试查出既有 `LocksetDomain::leq` 的方向错误：
+mutex depth、read/joined、conditional ownership 和 fresh heap 是 MUST，
+join 取交，因此 `A ⊑ B` 要求 A 包含 B 的全部事实，递归深度不少于 B。
+旧 helper 却按正向包含比较，甚至不统一 TOP 与空 MUST map；
+`held.leq(no-held)` 为假、反向为真，与 join 上界冲突。
+局部 forward iterator 用 `after.leq(before)` 判断增长迭代是否结束，
+故这不是仅影响诊断显示的问题。修复只改 MUST 比较，MAY 分量仍按正向包含。
+旧头文件上的新测试失败；修复后的 100 组域上下界/相等性检查及双架构锁回归通过。
+此项不表示整个混合锁/线程域及所有 POSIX 返回码均已形式化认证。
+配对与回归证据见 [MUST ordering](artifacts/ai-precision-2026-10-12/must-order/summary.json)。
+1029 项 AI/BMC 全量逐任务判定均不变：AI TN=679，AI+BMC TP=109/TN=679，
+FP/FN=0、error=1；此修复没有以标签分数增长代替域正确性。
+
 ### 4.2 相对锁与 helper 上下文
 
 已有受限充分条件证明每条访问前缀持有 `data_address + delta` 的 mutex。

@@ -296,23 +296,17 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     return map == other;
   }
 
-  /// \brief Forward-subset test of a recursive-mutex digest (this ⊆ other),
-  /// depth-sensitive: every lock in `this` is in `other` at a depth no greater
-  /// (a shallower definitely-held count is a stronger claim).
+  /// \brief Reverse-subset order: more definitely held locks/depth is precise.
   static bool leq_mutex(
       bool top,
       const std::unordered_map< std::uint64_t, unsigned >& map,
       bool other_top,
       const std::unordered_map< std::uint64_t, unsigned >& other) {
-    if (top) {
-      return true;
-    }
-    if (other_top) {
-      return false;
-    }
-    for (const auto& kv : map) {
-      auto oit = other.find(kv.first);
-      if (oit == other.end() || kv.second > oit->second) {
+    if (other_top || other.empty()) return true;
+    if (top) return false;
+    for (const auto& kv : other) {
+      auto it = map.find(kv.first);
+      if (it == map.end() || it->second < kv.second) {
         return false;
       }
     }
@@ -333,21 +327,16 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     return set == other;
   }
 
-  /// \brief Forward-subset test of a single digest (this ⊆ other), mirroring
-  /// the historical `leq` semantics.
+  /// \brief Reverse-subset order for a MUST digest.
   template < typename Set >
   static bool leq_digest(bool top,
                          const Set& set,
                          bool other_top,
                          const Set& other) {
-    if (top) {
-      return true; // this was ⊤ (nullptr): no constraint
-    }
-    if (other_top) {
-      return false; // other was ⊤ (nullptr)
-    }
-    for (const auto& e : set) {
-      if (other.count(e) == 0) {
+    if (other_top || other.empty()) return true;
+    if (top) return false;
+    for (const auto& e : other) {
+      if (set.count(e) == 0) {
         return false;
       }
     }
@@ -497,20 +486,16 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     return map == other;
   }
 
-  /// \brief Forward-subset test of the conditional-lock digest.
+  /// \brief Reverse-subset order for conditional MUST ownership facts.
   static bool leq_cond(bool top,
                        const CondLockMap& map,
                        bool other_top,
                        const CondLockMap& other) {
-    if (top) {
-      return true;
-    }
-    if (other_top) {
-      return false;
-    }
-    for (const auto& kv : map) {
-      auto o = other.find(kv.first);
-      if (o == other.end() || o->second != kv.second) {
+    if (other_top || other.empty()) return true;
+    if (top) return false;
+    for (const auto& kv : other) {
+      auto it = map.find(kv.first);
+      if (it == map.end() || it->second != kv.second) {
         return false;
       }
     }
