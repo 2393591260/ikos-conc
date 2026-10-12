@@ -1,0 +1,522 @@
+[
+  {
+    "bits": 32,
+    "case": 0,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "expected": "Safe",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 0,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "expected": "Safe",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Race Found",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Race Found",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "byte memory effects not fully modeled",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "byte memory effects not fully modeled",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 9,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 9,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 10,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "library memory effects not covered",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 10,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "library memory effects not covered",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 11,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 11,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "mode": "ai",
+    "verdict": "The program is SAFE",
+    "expected": "Safe",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "mode": "bmc",
+    "verdict": "The program is SAFE",
+    "expected": "Safe",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Race Found",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Race Found",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "byte memory effects not fully modeled",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "byte memory effects not fully modeled",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 9,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 9,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 10,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "library memory effects not covered",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 10,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "library memory effects not covered",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 11,
+    "mode": "ai",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 11,
+    "mode": "bmc",
+    "verdict": "The program is potentially UNSAFE",
+    "expected": "Boundary",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  }
+]

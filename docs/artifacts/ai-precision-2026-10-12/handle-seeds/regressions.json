@@ -1,0 +1,79 @@
+[
+  {
+    "suite": "ai-handle-values",
+    "checks": 64,
+    "exit": 0,
+    "summary_sha256": "674837e4bf66384191e4417becb4a376e48ee4ad46d7c89335f5aeba7baebe41",
+    "non_accept_executions": []
+  },
+  {
+    "suite": "ai-handle-origin",
+    "checks": 68,
+    "exit": 0,
+    "summary_sha256": "7c871260f39606acc0617c34eb1b74d11765e3defda700811f915b2d2a8b0cdd",
+    "non_accept_executions": []
+  },
+  {
+    "suite": "ai-create-handle-alias",
+    "checks": 32,
+    "exit": 0,
+    "summary_sha256": "e20749ca1a20669aeb76fb2181a7e17b9395eba77757274e1b310731508bdf21",
+    "non_accept_executions": []
+  },
+  {
+    "suite": "ai-pthread-initialization",
+    "checks": 156,
+    "exit": 0,
+    "summary_sha256": "d9f67742e110f30aa015a7f3e3b99e677d35efd6e9e6b072f42cfe99537545e3",
+    "non_accept_executions": []
+  },
+  {
+    "suite": "ai-release-values",
+    "checks": 72,
+    "exit": 0,
+    "summary_sha256": "3d1bf177d5ca7d0d2a356e926b9ddb51b90dc666b9730d394f0a75401362bfd0",
+    "non_accept_executions": []
+  },
+  {
+    "suite": "ai-string-effects",
+    "checks": 68,
+    "exit": 0,
+    "summary_sha256": "15bd21a3ac818a8845b9a6298341893e114217bae255bf01d72991b061cd1725",
+    "non_accept_executions": []
+  },
+  {
+    "suite": "ai-stable-publication",
+    "checks": 44,
+    "exit": 0,
+    "summary_sha256": "0fc77ecb2d6a5f4403690dfca6235e9d9281587affb4bf13ef7b3105e8969c5d",
+    "non_accept_executions": [
+      {
+        "bits": 32,
+        "case": 6,
+        "group": 2,
+        "pair": 2,
+        "program_sha256": "e52fb99545a3a3bb46d16812551d6f4dbc18106c0f1ee7cbf49e36bf2b876b2d",
+        "certificate_sha256": "c5baaff039b1768ab75aeb5579c69043782b9adac410684834233f0b7ee2eca8",
+        "status": "UNSUPPORTED",
+        "reason": "load representation/type"
+      },
+      {
+        "bits": 64,
+        "case": 6,
+        "group": 3,
+        "pair": 1,
+        "program_sha256": "7d9fa216050838d49835be846ecaa758b5b0ca32bd6ee13a4f791080e8ab689f",
+        "certificate_sha256": "42868688cf8479d747a5d32cfdf1a83cba2e6a3b90fd80b112282d643155d491",
+        "status": "UNSUPPORTED",
+        "reason": "load representation/type"
+      }
+    ]
+  },
+  {
+    "suite": "ai-lock-identities",
+    "checks": 20,
+    "exit": 0,
+    "summary_sha256": "6a41ba331bed6455beff20f99e7e1ca4c49cbc33c42e8885607ffc72ca364acf",
+    "non_accept_executions": []
+  }
+]

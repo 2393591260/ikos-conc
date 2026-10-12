@@ -246,6 +246,21 @@ pthread_t 是内部身份令牌而非 POSIX 可观察整数。
 多 writer、数组/heap 槽、错误身份、数值观察及动态不透明来源保守拒绝。
 detach 不建立完成/HB，sleep 不证明别的线程已结束。
 
+`initial_main_handle_seed` 仅识别可信 frontend 的 `ikos.freeze_uninit` 初始化，
+目的为 main 入口中一次分配的完整整数 local，数组计数 1，points-to 精确 singleton、
+offset 0。LLVM Store 与 fresh nondet Call 都带标记，值/Alloca 身份一致、LLVM 和 AR
+均相邻，宽度匹配；nondet 为声明的 canonical 无参整数 intrinsic。
+唯一 main/空调用上下文、无前驱入口、无 ctor/自定义 globals/额外根、全局 initializer
+无调用，以及 Store 前只有上述无副作用 nondet 调用、spawned MAY 非 TOP 且为空，
+共同排除更早的线程身份产生。任何前提或预算不可证则沿用原检查。
+
+该初始抽象写不消费旧句柄值，因而可只豁免它自身的表示告警；正常 memory 转移和
+checker 的访问记录仍保留，也不更改 escaped、共享判定或之后的 TOP 告警。
+这项证书不证明地址私有、不赋予普通整数句柄有效性、不拓宽 join 身份语义。
+更广泛的 TOP 排除需要 pointer-load 存储的来源/布局证明：union 整数写、逐字节复制、
+堆 pointer 字段经整数指针覆盖后再读取，都可生成未知指针，实际 AR 无显式 inttoptr。
+私有 `read` 输入也可生成这种表示；仅检查显式地址逃逸或 pointer-return API 不足。
+
 独立 MAY live-child 摘要覆盖条件 create/join，join 合流取并，未知为 TOP。
 空 live 集只在直接 creator 唯一、相关注册点覆盖等前提下证明“不可能并发”；
 它不是方向 HB，也不能删除未完成的孙线程。条件 factory 的结果关联不能无限跨调用猜测。
@@ -633,28 +648,64 @@ AI/BMC 本轮 wall time 为约 154/356 秒，非隔离单轮观察，不作性�
 [存储闭包反例](artifacts/ai-precision-2026-10-12/pthread-initialization/storage-boundary.json)、
 [所选执行](artifacts/ai-precision-2026-10-12/pthread-initialization/selected-executions.json)。
 
+### M2：可信初始句柄 seed（2026-10-12 已实现）
+
+`09-regions_06-ptra_nr.i` 只有一个 coverage 告警，来自 main 最前面的合成 `pthread_t`
+初始化 Store；之后的普通 data 访问已由 `A_mutex` 和启动顺序覆盖。
+共享黑板的未知逃逸来源使旧 `is_escaped(local)` 无法证明私有，从而把这个无旧身份值
+消费的 frontend 写也当作句柄表示使用。新机制为 §4.4 的局部 seed 证书，只有该 Store
+表示告警可被豁免；不把逃逸 TOP 降级，不更改普通读写的内存或竞争访问记录。
+
+对 `ptra_nr.i` 和 `arraylist.c` 重新运行固定 ILP32 Goblint，均为 TRUE；没有新 transfer
+探针或官方 2027 binary 验证。`arraylist` 的 seed 告警消失，但三处 TOP heap Load
+告警仍在。原先考虑的“句柄地址不显式逃逸 + pointer-return API 白名单”被放弃：
+volatile union 的整数写再 pointer Load、堆 pointer 字段经整数指针覆盖的实际 AR
+都没有 inttoptr；heap 整数 alias 案例只作 AR 边界，不依赖其有效 C 语义。
+合法的字符表示复制与私有输入也可重建未知指针。
+要排除这些读写，须证明 pointer-load 存储的类型/字节来源或恢复保守的精确 points-to。
+
+48 项双架构/改名 AI/BMC 同源 A/B：安全控制从 UNKNOWN→SAFE，无锁控制不报 SAFE；
+数值观察、创建后覆盖、字节/表示复制、worker 参数逃逸、任意 pointer 来源、union、
+字节重建、heap 整数覆盖和私有输入保留 UNKNOWN，且仍有句柄表示 coverage 原因。
+已有八组相关回归 524 项、双架构 P0 20 项通过。旧 stable-publication CASE6 的两条
+AR UNSUPPORTED 仍保留，不包含在所选 FALSE 的 ACCEPT 声明中。
+
+1029 项配对只有 `ptra_nr.i` UNKNOWN→SAFE：AI TN 685→686；
+组合 TP=109 不变、TN 685→686、UNKNOWN 234→233、FP/FN=0、error=1。
+109 个标签 TP 重新导出的 137 条所选执行全部独立 AR ACCEPT；该范围不等于官方
+源 witness 验收或全语言证明。两种全量模式约 157/356 秒，非隔离单轮记录，不作提速结论。
+frontend 文件、BMC 编码及 join 身份规则均未改。
+
+证据：[汇总](artifacts/ai-precision-2026-10-12/handle-seeds/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-12/handle-seeds/paired.json)、
+[定向回归](artifacts/ai-precision-2026-10-12/handle-seeds/fixtures.json)、
+[参考输入复核](artifacts/ai-precision-2026-10-12/handle-seeds/reference-targets.json)、
+[AR 来源边界](artifacts/ai-precision-2026-10-12/handle-seeds/pointer-origin-boundaries.json)、
+[所选执行](artifacts/ai-precision-2026-10-12/handle-seeds/selected-executions.json)。
+
 ### M2 首批出口与当前 24 个候选的处置
 
 三个固定入口均已恢复 SAFE；24 项的源/YAML 指纹、当前报告、逐任务 AI/BMC 判定、
 修正后的参考结果及语义前提已逐项更新到
-[处置记录](artifacts/ai-precision-2026-10-12/pthread-initialization/dispositions-24.json)，
-并同步原安全台账。后续字符串与 pthread 初始化机制各再恢复两项，当前已恢复 7 项，
-余下 17 项仍为 UNKNOWN，具体缺口如下：
+[处置记录](artifacts/ai-precision-2026-10-12/handle-seeds/dispositions-24.json)，
+并同步原安全台账。后续字符串与 pthread 初始化各恢复两项，初始句柄 seed 再恢复一项，累计 8 项；
+余下 16 项仍为 UNKNOWN，具体缺口如下：
 
 | 数量 | 候选机制 | 当前不能证明的条件 |
 | ---: | --- | --- |
 | 14 | heap region / freshness / publication（6 个 regions、8 个 race_reach） | 初始化到发布的覆盖闭包、list/slot 所有权与字段来源；实际报告仍有候选对，并有 handle coverage 缺口 |
-| 2 | handle 存储覆盖（ptra、arraylist） | 抽象 token 的 seed/output 存储与不透明身份来源；目前无残余候选对，仍不能仅删除 coverage gate |
+| 1 | handle 存储覆盖（arraylist） | 初始 seed 已覆盖；其余 TOP heap Load 的字节/类型来源仍未证，无残余候选对也不能删除 gate |
 | 1 | dynamic join array（thread-join-array-const） | 全部动态线程实例的 array-slot 来源和完成证书；main 的 joined digest 仍为空，保留两个候选对 |
 
 固定 Goblint 的六配置 portfolio 最终均 TRUE；join-array 前四配置为 UNKNOWN，
 第五配置才 TRUE，保留这一序列，不能说所有候选都由默认配置证明。
 这些缺口是现有实现/证书边界，不能据此声称 IKOS 无法实现对应机制。
 
-首批验收完成的依据是：两个机制分别提交，build/install 与双架构/P0 通过，
+首批验收完成的依据是：各机制分别提交，build/install 与双架构/P0 通过，
 两种模式全量配对，现有标签 TP 的所选执行重新检查，24 项都有明确去向。
-安全 UNKNOWN 仍有 108 项，其中本轮余下 17 项参考 TRUE，另 91 项参考未证实。
-后续 TN 轮优先从只剩库/句柄 coverage 的窄效果机制继续，通用 heap-region 算法另定预算。
+安全 UNKNOWN 仍有 107 项，其中本轮余下 16 项参考 TRUE，另 91 项参考未证实。
+后续 TN 轮需恢复保守的 heap pointer 来源或证明 pointer-load 的存储布局，再处理动态 join array；
+通用 heap-region 算法仍须独立设计，不能靠放开 TOP 或仅凭参考 TRUE 清除告警。
 全语言 soundness、混合锁集域义务和官方源 witness 验收仍是各自独立的工作，
 不能由这次首批出口推断它们已完成。
 
@@ -668,6 +719,7 @@ AI/BMC 本轮 wall time 为约 154/356 秒，非隔离单轮观察，不作性�
 | 原编号 | 机制或实验 | 原始依据 |
 | --- | --- | --- |
 | M2-pthread-init | 受限 glibc 初始化、opaque 存储闭包与有界效果 | [记录](artifacts/ai-precision-2026-10-12/pthread-initialization/summary.json)、[目录](artifacts/ai-precision-2026-10-12/pthread-initialization/) |
+| M2-handle-seed | 可信 main 初始抽象写，不过滤 TOP 或扩大 join 语义 | [记录](artifacts/ai-precision-2026-10-12/handle-seeds/summary.json)、[目录](artifacts/ai-precision-2026-10-12/handle-seeds/) |
 | M2-string | 未知长度字节效果、pointer bounds 失效及受限逃逸证书 | [记录](artifacts/ai-precision-2026-10-12/string-effects/summary.json)、[目录](artifacts/ai-precision-2026-10-12/string-effects/) |
 | M2-release | 首次获取证书、实际释放端点及嵌套保护 | [记录](artifacts/ai-precision-2026-10-12/release-values/summary.json)、[目录](artifacts/ai-precision-2026-10-12/release-values/) |
 | <a id="ai-step-01"></a>01 | P0-F1：撤销 self-consistency 共同锁捷径 | [记录](artifacts/ai-p0-2026-10-10/f1/summary.json)、[目录](artifacts/ai-p0-2026-10-10/f1/) |

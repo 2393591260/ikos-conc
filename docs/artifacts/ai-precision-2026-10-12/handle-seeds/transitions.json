@@ -1,0 +1,13 @@
+[
+  {
+    "task": "c/goblint-regression/09-regions_06-ptra_nr.i",
+    "expected": "Safe",
+    "source_sha256": "c74b9abfd84bef3aa9e712193319c6938e59ac72c91a2b202dc32aee3a54e2e3",
+    "yaml": "c/goblint-regression/09-regions_06-ptra_nr.yml",
+    "yaml_sha256": "2a91cbf46a2ebe187f516572f38b351c753bc933badb13098fdb557dedda6f61",
+    "before_ai": "Unknown",
+    "before_bmc": "Unknown",
+    "after_ai": "Safe",
+    "after_bmc": "Safe"
+  }
+]

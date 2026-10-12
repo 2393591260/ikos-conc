@@ -21,6 +21,7 @@
 #pragma once
 
 #include <llvm/IR/Instruction.h>
+#include <llvm/IR/Instructions.h>
 
 #include <ikos/ar/semantic/code.hpp>
 #include <ikos/ar/semantic/statement.hpp>
@@ -207,9 +208,87 @@ bool touches_synthetic_handle(E& eng, const ScalarLit& pointer) {
 }
 
 template < typename E >
+bool initial_main_handle_seed(E& eng, ar::Statement* statement,
+                              const ScalarLit& pointer) {
+  auto* store = dyn_cast< ar::Store >(statement);
+  auto* source = store && store->has_frontend()
+      ? llvm::dyn_cast< llvm::StoreInst >(store->frontend< llvm::Value >()) : nullptr;
+  if (!source || !source->getMetadata("ikos.freeze_uninit") ||
+      source->isVolatile() || source->isAtomic() || !pointer.is_pointer_var()) return false;
+  auto* local = dyn_cast< ar::LocalVariable >(store->pointer());
+  auto* function = local ? local->function() : nullptr;
+  auto* type = local ? dyn_cast< ar::IntegerType >(local->type()->pointee()) : nullptr;
+  auto* variable = dyn_cast< ar::InternalVariable >(store->value());
+  auto* seed = variable ? dyn_cast_or_null< ar::CallBase >(unique_def(variable)) : nullptr;
+  auto* target = seed ? dyn_cast< ar::FunctionPointerConstant >(seed->called()) : nullptr;
+  auto canonical = [](ar::CallBase* call) {
+    auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+    return target && target->function()->is_declaration() &&
+        target->function()->intrinsic_id() == ar::Intrinsic::IkosNonDet &&
+        !target->function()->type()->is_var_arg() && target->function()->num_parameters() == 0 &&
+        call->num_arguments() == 0 && target->function()->type()->return_type()->is_integer();
+  };
+  auto* allocation_source = llvm::dyn_cast< llvm::AllocaInst >(source->getPointerOperand());
+  auto* seed_source = llvm::dyn_cast< llvm::CallInst >(source->getValueOperand());
+  auto* size = allocation_source
+      ? llvm::dyn_cast< llvm::ConstantInt >(allocation_source->getArraySize()) : nullptr;
+  if (!function || function->name() != "main" || !type || !seed || !target ||
+      !canonical(seed) || target->function()->type()->return_type() != variable->type() ||
+      !variable->type()->is_integer() ||
+      cast< ar::IntegerType >(variable->type())->bit_width() != type->bit_width() ||
+      !allocation_source || !size || !size->isOne() ||
+      !allocation_source->getAllocatedType()->isIntegerTy(type->bit_width()) ||
+      !seed_source || !seed_source->getMetadata("ikos.freeze_uninit") ||
+      source->getPrevNode() != seed_source || !seed->has_frontend() ||
+      seed->frontend< llvm::Value >() != seed_source ||
+      !seed_source->getCalledFunction() || !seed_source->getCalledFunction()->isDeclaration() ||
+      seed_source->getCalledFunction()->isVarArg() || seed_source->arg_size() != 0 ||
+      seed_source->getCalledFunction()->arg_size() != 0 ||
+      function->bundle()->global_or_null("ar.global_ctors") ||
+      !eng.ctx().opts.no_init_globals.empty() ||
+      !eng.ctx().concurrent_env.function_executes_at_most_once(function) ||
+      (eng.call_context() && !eng.call_context()->empty()) ||
+      eng.lockset().spawned_is_top() || !eng.lockset().get_spawned_instances().empty()) return false;
+  for (auto* root : eng.ctx().opts.entry_points) if (root != function) return false;
+  auto* entry = function->body()->entry_block();
+  if (entry->num_predecessors() != 0 || store->parent() != entry) return false;
+  auto points = eng.data().normal().pointer_to_pointer(pointer.var());
+  auto offset = points.offset().singleton();
+  if (!points.points_to().is_set() || points.points_to().size() != 1 ||
+      *points.points_to().begin() != eng.ctx().mem_factory->get_local(local) ||
+      !offset || !offset->is_zero()) return false;
+  unsigned budget = 8192;
+  for (auto it = function->bundle()->global_begin(); it != function->bundle()->global_end(); ++it)
+    if (auto* code = (*it)->initializer_or_null())
+      for (auto* block : *code) for (auto* item : *block) {
+        if (budget-- == 0 || isa< ar::CallBase >(item)) return false;
+      }
+  ar::Allocate* allocation = nullptr;
+  ar::Statement* previous = nullptr;
+  for (auto* item : *entry) {
+    if (budget-- == 0) return false;
+    if (item == store) return allocation && previous == seed;
+    if (item->result_or_null() == local) {
+      if (allocation) return false;
+      allocation = dyn_cast< ar::Allocate >(item);
+      auto* count = allocation ? dyn_cast< ar::IntegerConstant >(allocation->array_size()) : nullptr;
+      if (!allocation || !count || count->value().to_z_number() != 1 ||
+          allocation->allocated_type() != type || !allocation->has_frontend() ||
+          allocation->frontend< llvm::Value >() != allocation_source) return false;
+    }
+    if (auto* call = dyn_cast< ar::CallBase >(item)) if (!canonical(call)) return false;
+    previous = item;
+  }
+  return false;
+}
+
+template < typename E >
 void check_synthetic_handle_effect(E& eng, ar::Statement* statement,
                                    const ScalarLit& pointer,
                                    ar::InternalVariable* result = nullptr) {
+  // A fresh frontend seed in the initial main prefix consumes no handle value.
+  // Keep its memory/race effects and all later TOP/representation checks.
+  if (initial_main_handle_seed(eng, statement, pointer)) return;
   // A private slot cannot contain this frame's create token before any of
   // its associated sites may have executed. This includes ikos-pp's seed
   // store, even if unrelated initializers precede the actual create call.

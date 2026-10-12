@@ -23,9 +23,9 @@
 <a id="baseline"></a>
 ## 当前可复核基线
 
-以下是 **2026-10-12 pthread 初始化机制的全量配对实验**；源码与证据在该机制的单独提交中。
+以下是 **2026-10-12 初始句柄 seed 机制的全量配对实验**；源码与证据在该机制的单独提交中。
 安装二进制 SHA256 为
-`9134c21f5a737686b3da69b91094b15831d43ff2ef29f5bbeafe263cd5dc0bd2`。
+`e2832abda8a82b934ae40691f53534a27a6ad32d6abe052e4b5263e9ea81d3a7`。
 
 任务集合为 `/home/ruan/sv-benchmarks-2026`，revision
 `0a254fdddcfe24949be9edd47f8d609462eb52fb`，本地扫描 1029 项、全部 ILP32，
@@ -34,24 +34,24 @@
 
 | 比赛判定模式 | TP | TN | FP | FN | UNKNOWN | error/timeout |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| AI，demote，BMC 关闭 | 0 | 685 | 0 | 0 | 343 | 1 |
-| AI + BMC，demote | 109 | 685 | 0 | 0 | 234 | 1 |
+| AI，demote，BMC 关闭 | 0 | 686 | 0 | 0 | 342 | 1 |
+| AI + BMC，demote | 109 | 686 | 0 | 0 | 233 | 1 |
 
 109 个标签 TP 对应重新导出的 137 条所选执行，全部独立 AR ACCEPT。
 检查范围为导出的 AR、可信前端与明确库合同；尚非官方源程序/witness 验收，
 不认证全部 SAFE 规则，也不穷尽所有 SAT 模型。
 有限基准 FP/FN 为零不能作为全语言 soundness 定理。
 
-证据：[汇总](artifacts/ai-precision-2026-10-12/pthread-initialization/summary.json)、
-[逐任务配对](artifacts/ai-precision-2026-10-12/pthread-initialization/paired.json)、
-[逐执行检查](artifacts/ai-precision-2026-10-12/pthread-initialization/selected-executions.json)。
+证据：[汇总](artifacts/ai-precision-2026-10-12/handle-seeds/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-12/handle-seeds/paired.json)、
+[逐执行检查](artifacts/ai-precision-2026-10-12/handle-seeds/selected-executions.json)。
 唯一失败项是安全标签的 `nsc-ircc` 驱动外层超时，未计成 UNKNOWN。
 
 ## 下一步去哪里查
 
-- 安全 UNKNOWN 108 项；原 24 项已在修复 ILP32 环境的 Goblint 上全部复核 TRUE，
-  其中 7 项已恢复 SAFE，余下 17 项需其他机制；另外 91 项参考未证实。
-  [本轮 24 项处置](artifacts/ai-precision-2026-10-12/pthread-initialization/dispositions-24.json)给出具体前提/缺口；
+- 安全 UNKNOWN 107 项；原 24 项已在修复 ILP32 环境的 Goblint 上全部复核 TRUE，
+  其中 8 项已恢复 SAFE，余下 16 项需其他机制；另外 91 项参考未证实。
+  [本轮 24 项处置](artifacts/ai-precision-2026-10-12/handle-seeds/dispositions-24.json)给出具体前提/缺口；
   [安全台账](artifacts/ai-precision-2026-10-11/unknown-ledger/ledger.json)保存当前判定和历史诊断指纹。
   TN 工作入口为 [AI 后续机制](ikos-ai-complete.md#roadmap)。
 - 竞争 UNKNOWN 126 项，历史 Dartagnan 参考为 FAIL 95、TIMEOUT 15、ERROR 13、有界 PASS 3。
@@ -88,7 +88,7 @@ M1的本地候选已于10/11固定：包入口1029项与当前基线逐项一致
 严格源级validator因创建位置兼容与错误目标校准失败仍待验收，官方CI/MR/PR也未关闭。
 **本地工程出口完成不等于M1整体通过。** M1 冻结 ZIP 保持原样；M2 首批已完成稳定发布和
 release 两个机制验收及全部 24 项候选处置，见 [AI M2 记录](ikos-ai-complete.md#roadmap)。
-后续字符串与受限 pthread 初始化机制各恢复两个 SAFE；下一 TN 轮优先核实句柄存储覆盖，
+后续字符串与受限 pthread 初始化各恢复两个 SAFE，初始句柄 seed 再恢复一个；下一 TN 轮核实 heap pointer 来源/句柄存储覆盖，
 再查动态 join 数组；通用 heap-region 机制另定入口与预算。
 M0/M5的资料与写作并行；后续M2/M3每轮选择一个机制实施。
 首个 TN 入口见 [AI §8](ikos-ai-complete.md#roadmap)，TP 入口见 [BMC 后续机制](ikos-bmc-complete.md#roadmap)。

@@ -1,0 +1,116 @@
+[
+  {
+    "task": "c/goblint-regression/09-regions_06-ptra_nr.i",
+    "tool": "ai",
+    "code": 0,
+    "seconds": 0.209,
+    "verdict": [
+      "The program is SAFE"
+    ],
+    "unsound": false,
+    "cmd": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/handle-seed-targets/09-regions_06-ptra_nr-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/handle-seed-targets/09-regions_06-ptra_nr-ai/output.db",
+      "--display-ar",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_06-ptra_nr.i"
+    ],
+    "source_sha256": "c74b9abfd84bef3aa9e712193319c6938e59ac72c91a2b202dc32aee3a54e2e3",
+    "yaml_sha256": "2a91cbf46a2ebe187f516572f38b351c753bc933badb13098fdb557dedda6f61",
+    "log_sha256": "56a6eac51a1e5fb14827c3eeeadf1f4d55ca88ef6d6b62ad00149b99574ad31e"
+  },
+  {
+    "task": "c/goblint-regression/09-regions_06-ptra_nr.i",
+    "tool": "goblint",
+    "code": 0,
+    "seconds": 0.62,
+    "verdict": [
+      "SV-COMP result: true"
+    ],
+    "unsound": false,
+    "cmd": [
+      "python3",
+      "/home/ruan/ikos-work/m2-20261012/goblint-ref/scripts/sv-comp/goblint_runner.py",
+      "--portfolio-conf",
+      "/home/ruan/ikos-work/m2-20261012/portfolio.txt",
+      "--sets",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--sets",
+      "exp.architecture",
+      "32bit",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_06-ptra_nr.i"
+    ],
+    "source_sha256": "c74b9abfd84bef3aa9e712193319c6938e59ac72c91a2b202dc32aee3a54e2e3",
+    "yaml_sha256": "2a91cbf46a2ebe187f516572f38b351c753bc933badb13098fdb557dedda6f61",
+    "log_sha256": "0c0b685c64c604fa57f0c1d5502e18a053b88416c90cc1bf83325114d1e6556f",
+    "binary_sha256": "50259c0a6349240459e38fecceaf8c81dbe9f331c657328e30f295d7744982f5",
+    "source_revision": "bb55b70d91290992629ba3d073185c10cdf356e6",
+    "architecture": "rebuilt GCC32",
+    "official_2027_binary": false
+  },
+  {
+    "task": "c/goblint-regression/09-regions_09-arraylist.c",
+    "tool": "ai",
+    "code": 0,
+    "seconds": 0.248,
+    "verdict": [
+      "The program is potentially UNSAFE"
+    ],
+    "unsound": false,
+    "cmd": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/handle-seed-targets/09-regions_09-arraylist-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/handle-seed-targets/09-regions_09-arraylist-ai/output.db",
+      "--display-ar",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_09-arraylist.c"
+    ],
+    "source_sha256": "1250b991cc6af457c99698c8ecb919c369f7a178a8972aded6e4b48360bdf7f3",
+    "yaml_sha256": "be960770dc413324364cbc811565982cad395b100add951909ac1ccfd4a23c44",
+    "log_sha256": "606c92b69faaa443b9d7e7c1f5f91ef6652b0613dcd3a6da051fe4ec0811df88"
+  },
+  {
+    "task": "c/goblint-regression/09-regions_09-arraylist.c",
+    "tool": "goblint",
+    "code": 0,
+    "seconds": 0.195,
+    "verdict": [
+      "SV-COMP result: true"
+    ],
+    "unsound": false,
+    "cmd": [
+      "python3",
+      "/home/ruan/ikos-work/m2-20261012/goblint-ref/scripts/sv-comp/goblint_runner.py",
+      "--portfolio-conf",
+      "/home/ruan/ikos-work/m2-20261012/portfolio.txt",
+      "--sets",
+      "ana.specification",
+      "/home/ruan/goblint-analyzer/tests/sv-comp/no-data-race.prp",
+      "--sets",
+      "exp.architecture",
+      "32bit",
+      "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_09-arraylist.c"
+    ],
+    "source_sha256": "1250b991cc6af457c99698c8ecb919c369f7a178a8972aded6e4b48360bdf7f3",
+    "yaml_sha256": "be960770dc413324364cbc811565982cad395b100add951909ac1ccfd4a23c44",
+    "log_sha256": "e61ce40ecf423557c9050e88c2b458ea7a727d1e238d6248a7f4589e022a3b6f",
+    "binary_sha256": "50259c0a6349240459e38fecceaf8c81dbe9f331c657328e30f295d7744982f5",
+    "source_revision": "bb55b70d91290992629ba3d073185c10cdf356e6",
+    "architecture": "rebuilt GCC32",
+    "official_2027_binary": false
+  }
+]
