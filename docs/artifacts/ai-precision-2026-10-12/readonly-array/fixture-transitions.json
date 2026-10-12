@@ -1,0 +1,66 @@
+[
+  {
+    "suite": "array",
+    "bits": 32,
+    "case": 0,
+    "mode": "ai",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "suite": "array",
+    "bits": 32,
+    "case": 0,
+    "mode": "bmc",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "suite": "array",
+    "bits": 32,
+    "case": 7,
+    "mode": "ai",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "suite": "array",
+    "bits": 32,
+    "case": 7,
+    "mode": "bmc",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "suite": "array",
+    "bits": 64,
+    "case": 0,
+    "mode": "ai",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "suite": "array",
+    "bits": 64,
+    "case": 0,
+    "mode": "bmc",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "suite": "array",
+    "bits": 64,
+    "case": 7,
+    "mode": "ai",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  },
+  {
+    "suite": "array",
+    "bits": 64,
+    "case": 7,
+    "mode": "bmc",
+    "before": "The program is potentially UNSAFE",
+    "after": "The program is SAFE"
+  }
+]

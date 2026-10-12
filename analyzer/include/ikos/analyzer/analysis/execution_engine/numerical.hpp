@@ -1829,6 +1829,12 @@ public:
       const ScalarLit& lhs = result.scalar();
       ikos_assert_msg(lhs.is_var(), "left hand side is not a variable");
 
+      auto array_value = core::ConcurrentGlobalEnv::PointerValue::top(
+          size.bit_width(), core::Unsigned);
+      bool has_array_value = this->_ctx.opts.enable_thread_modular &&
+          !s->is_volatile() && lhs.is_pointer_var() && lhs.var() != ptr.var() &&
+          readonly_array_value(*this, s, ptr, array_value);
+
       if (this->_ctx.opts.enable_thread_modular) {
         check_synthetic_handle_effect(*this, s, ptr, s->result());
       }
@@ -1843,6 +1849,8 @@ public:
       } else {
         this->data().normal().scalar_assign_nondet(lhs.var());
       }
+
+      if (has_array_value) this->data().normal().pointer_refine(lhs.var(), array_value);
 
       // Uninit concurrency decoupling (see concurrent_semantics.hpp).
       if (this->_ctx.opts.enable_thread_modular && !s->is_volatile()) {

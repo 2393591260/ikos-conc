@@ -400,6 +400,7 @@ private:
   std::unordered_map< ar::Store*, PointerValue > _publication_pointer_board;
   std::map< std::pair< ar::GlobalVariable*, ar::Function* >, ar::Store* >
       _publication_certificates;
+  std::map< ar::GlobalVariable*, bool > _readonly_array_certificates;
 
   using MutexValueKey = std::pair< std::uint64_t, std::set< std::uint64_t > >;
   std::map< std::uint64_t, machine_int::Interval > _mutex_initial_values;
@@ -1740,6 +1741,31 @@ public:
     join_pointer_summary_nolock(_publication_pointer_board, writer, value);
   }
 
+  bool get_readonly_array_certificate(ar::GlobalVariable* array, bool& value) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    auto found = _readonly_array_certificates.find(array);
+    if (found == _readonly_array_certificates.end()) return false;
+    value = found->second;
+    return true;
+  }
+
+  void cache_readonly_array_certificate(ar::GlobalVariable* array, bool value) {
+    std::lock_guard< std::mutex > lock(_mutex);
+    _readonly_array_certificates.emplace(array, value);
+  }
+
+  // Only callers with a closed typed-array writer certificate may bypass the
+  // singleton footprint rule. The ordinary board supplies all Store may-values.
+  bool get_readonly_array_pointer(analyzer::MemoryLocation* array, PointerValue& value) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    if (_unknown_pointer_write || !_unmodeled_effects.empty() ||
+        !_unmodeled_thread_creations.empty()) return false;
+    value = PointerValue::null(value.offset().bit_width(), value.offset().sign());
+    auto found = _global_pointer_board.find(array);
+    if (found != _global_pointer_board.end()) value.join_with(found->second);
+    return true;
+  }
+
   bool get_publication_certificate(ar::GlobalVariable* slot, ar::Function* worker,
                                    ar::Store*& writer) const {
     std::lock_guard< std::mutex > lock(_mutex);
@@ -2068,6 +2094,7 @@ public:
     _global_pointer_board.clear();
     _publication_pointer_board.clear();
     _publication_certificates.clear();
+    _readonly_array_certificates.clear();
     _mutex_initial_values.clear();
     _mutex_ongoing_values.clear();
     _mutex_release_values.clear();

@@ -822,7 +822,7 @@ TIMEOUT 34、ERROR 2，无新增可信 TRUE，也没有 machine-definition fallb
 [参考证据](artifacts/ai-precision-2026-10-12/next-bases/references.json)保留命令、指纹和警告摘录。
 
 以下是实施前设计依据，当时有 16 项可信 TRUE 待恢复。初始化发布受限子集已按上一节
-单独实现与验收，余下 15 项；pointer-array 坐标及更广来源图尚未实现，
+单独实现与验收，余下 15 项；pointer-array 坐标的最新实施见下节；更广来源图尚未实现，
 不同机制不能混入同一 behavioral commit。
 
 **初始化到首次发布的 HB 证书。** 入口为 `09-regions_02-list_nr.c`：worker 的
@@ -865,9 +865,9 @@ freeze/phi/select/额外位移。若这一局部 LLVM 合同不能建立，则�
 AR 保留 frontend GEP，可直接审查，无需先改 frontend 或新增 metadata。
 本轮已补读精确 LLVM 14.0.6 LangRef 的 Pointer Aliasing/GEP/Freeze/Capture 语义，
 [版本与原文指纹](artifacts/ai-precision-2026-10-12/init-publication/llvm-reference.json)可核对；
-实施前的旧设计只读到 14.0.0，历史 design.json 保留当时事实。数组转移仍未实现。
+实施前的旧设计只读到 14.0.0，历史 design.json 保留当时事实。数组转移的最新状态见下一节。
 
-这段保留实施前设计证据；最新初始化发布 TN 收益见上一节，数组设计尚无新增 TN。
+这段保留实施前设计证据；最新初始化发布 TN 收益见上一节，数组实施仍无冻结集新增 TN。
 两者均不构成全语言保持性定理或性能收益证明。
 验收需覆盖早发布/晚初始化、其他读源/锁、字节破坏、迟到 writer、布局伪装及双 ABI，
 再按既定 AI/BMC 配对和独立所选执行检查完成节点。
@@ -876,6 +876,51 @@ AR 保留 frontend GEP，可直接审查，无需先改 frontend 或新增 metad
 [实施前提](artifacts/ai-precision-2026-10-12/next-bases/design.json)。
 
 <a id="evidence"></a>
+### M2：只读指针数组的值投影（2026-10-12 已实现）
+
+实现见 `execution_engine/readonly_pointer_array.hpp`、Load 执行器和
+`ConcurrentGlobalEnv`。没有新建另一个 heap domain：S 复用现有 global pointer board，
+其每次完整 pointer Store 的 RHS 已即时 join/widen 并置 dirty；查询时加入已证明的
+初始 NULL。S 是所有槽、所有可能写值的并集，不证明槽独占、对象新鲜或链表区域。
+
+静态前提为完整非 TLS homogeneous pointer array、LLVM NULL initializer、AR 对应的
+整对象 zero Store、唯一普通 main 入口及无 ctor/custom init。LLVM use 图与 AR 用途
+分别闭合，地址只能透明派生后作整宽 pointer Load/Store；字节/部分/bulk 写、地址逃逸、
+alias/phi/freeze/opaque transport 拒绝。全部非 initializer writer 必须在 main，任何
+possible create 的后继都不能到达 writer；helper/间接 create 和证明预算耗尽保守拒绝。
+实际访问必须是直接 `inbounds GEP @完整global,0,index`，叶类型为普通对象指针，
+LLVM/AR 元素数、整对象大小及指针宽度一致；不能用 struct 子数组或 bitcast 伪装布局。
+AR 指向类型的 signedness 视图可能不同，不能仅凭类型对象不相等拒绝正常整宽 Load。
+
+在 native/interference 读取前取得完整 S，读取后才对当前正常结果作交集投影。
+有定义的完整 inbounds 解引用排除 one-past；不收窄旧访问记录或删除竞争前缀。
+unknown write、unmodeled effect/create 出现即停止使用 S；静态证书可缓存，运行期有效性
+每次重查。现有 singleton footprint invalidator、memory forget 和 sticky warning 保持。
+源码没有路径名、标签或 benchmark 形状例外，也没有 frontend 改动。
+
+双架构 AI/BMC 共 64 次新回归，含改名、64-bit datum、无锁/不同锁、跨槽 alias、
+字节/bulk 破坏、helper escape、struct 布局伪装、晚初始化和晚发布。
+两个只读整数组正例有 8 次 UNKNOWN→SAFE；28 次竞争标签对照均未误判 SAFE。
+另复查未知写/字节/稳定发布/首次发布/写并集共 216 次以及 P0 20 次。
+既有 stable-publication CASE6 的两条 AR 类型边界仍保留，不能把整套回归称为 ACCEPT。
+
+原始 `09-regions_09-arraylist.c` 仍 UNKNOWN：原型探针曾观察到有限 array may-value，
+但完整程序的内层 heap 访问产生未覆盖效果，随后该投影停止使用；零候选不能消除告警。
+只保留 main 初始化前缀的 debug intrinsic 对照可以恢复有限 list/next 值，这不是原始任务
+通过的证据，也没有定位/解决所有跨线程 field transfer。需要闭合字段来源、干扰、表示与
+生命周期，不能撤销 warning 或重新启用 private_init 换取 TN。
+
+1029 项 AI/BMC 全量配对逐任务无变化：TP=109、TN=687、FP/FN=0、UNKNOWN=232、
+error=1；109 个标签 TP 的 137 条所选执行重新独立 AR ACCEPT。
+墙钟 AI 162.5 秒、BMC 364.4 秒，工作站非隔离运行，不据此宣称提速或变慢。
+该机制的收益是受限可复用能力和最小正例精度，冻结集 TN 增量为 0。
+证据：[汇总](artifacts/ai-precision-2026-10-12/readonly-array/summary.json)、
+[配对](artifacts/ai-precision-2026-10-12/readonly-array/paired.json)、
+[回归](artifacts/ai-precision-2026-10-12/readonly-array/fixtures.json)、
+[所选执行](artifacts/ai-precision-2026-10-12/readonly-array/selected-executions.json)、
+[更新的 24 项处置](artifacts/ai-precision-2026-10-12/readonly-array/dispositions-24.json)。
+
+
 ## 9. 按机制查证据
 
 以下索引保存历史实验的版本与转移；表中旧编号仅用于回溯原报告，不是阅读顺序。
@@ -884,6 +929,7 @@ AR 保留 frontend GEP，可直接审查，无需先改 frontend 或新增 metad
 
 | 原编号 | 机制或实验 | 原始依据 |
 | --- | --- | --- |
+| M2-readonly-array | 完整只读数组的 may-value 投影；原始链表入口仍 UNKNOWN，冻结集 TN 增量 0 | [记录](artifacts/ai-precision-2026-10-12/readonly-array/summary.json)、[目录](artifacts/ai-precision-2026-10-12/readonly-array/) |
 | M2-init-publication | 单次分配、逐 context 首次发布闭包、确定槽来源与 physical mutex HB | [记录](artifacts/ai-precision-2026-10-12/init-publication/summary.json)、[目录](artifacts/ai-precision-2026-10-12/init-publication/) |
 | M2-next-bases | 91 项可信参考复核、14 项后续配置、受限发布/数组设计，尚无新语义 | [记录](artifacts/ai-precision-2026-10-12/next-bases/summary.json)、[目录](artifacts/ai-precision-2026-10-12/next-bases/) |
 | M2-unknown-write | TOP 普通 Store 的 memory havoc 与独立 coverage 回退，不宣称完整值模型 | [记录](artifacts/ai-precision-2026-10-12/unknown-writes/summary.json)、[目录](artifacts/ai-precision-2026-10-12/unknown-writes/) |
