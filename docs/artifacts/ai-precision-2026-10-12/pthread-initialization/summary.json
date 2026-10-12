@@ -1,0 +1,254 @@
+{
+  "before_commit": "56ee2d6",
+  "before_analyzer_sha256": "e239952f141103d6c572ade170c8d8d7b2c29d95f576757bd38fb4b6958e6fc8",
+  "analyzer_sha256": "9134c21f5a737686b3da69b91094b15831d43ff2ef29f5bbeafe263cd5dc0bd2",
+  "wrapper_sha256": "e902b97ff2ca21fb2f5cc89a9b883fedfbe946722afcc45af8b9a3d58d64ae42",
+  "build_install_equal": true,
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp": "2a0195830ba8a5877da16b67e001e9613f81110dcbc356e12a70e0754ab50873",
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/numerical.hpp": "1e6fd20182d75fbde3925b6ec6bddbe829203e0260a6232cbe68dc13350cfb4a",
+    "analyzer/src/checker/data_race.cpp": "ee55fc274cc9d917393ae12f7e1b9044e65bdd3bff143dc9cdd345e16985a12d"
+  },
+  "fixture_sha256": {
+    "docs/review-repros/ai-pthread-initialization/init.c": "f8bcd56d398427b1a1213a7f50299c2fbd25c80ab0227a9ffe140dc1f2a93b9e",
+    "docs/review-repros/ai-pthread-initialization/run.py": "d9d5be79a609e6ef05046840f0996e06cab0fbf2f1a1f884a67fb158fd740023"
+  },
+  "dataset_revision": "0a254fdddcfe24949be9edd47f8d609462eb52fb",
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "outer_timeout_seconds": 30,
+  "command": [
+    "python3",
+    "svcomp_race_test.py",
+    "--demote",
+    "--jobs",
+    "4",
+    "--timeout",
+    "30"
+  ],
+  "environment": {
+    "ai": {
+      "IKOS_BMC_RECOVER": "unset"
+    },
+    "bmc": {
+      "IKOS_BMC_RECOVER": "1"
+    }
+  },
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "TN": 683,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 345
+    },
+    "after_ai": {
+      "TP": 0,
+      "TN": 685,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 343
+    },
+    "before_bmc": {
+      "TP": 109,
+      "TN": 683,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 236
+    },
+    "after_bmc": {
+      "TP": 109,
+      "TN": 685,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 234
+    }
+  },
+  "times": [
+    {
+      "mode": "ai",
+      "exit": 0,
+      "seconds": 153.72337221700218,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    },
+    {
+      "mode": "bmc",
+      "exit": 0,
+      "seconds": 355.6816203210001,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    }
+  ],
+  "before_times": [
+    {
+      "mode": "ai",
+      "exit": 0,
+      "seconds": 155.86160841799938,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    },
+    {
+      "mode": "bmc",
+      "exit": 0,
+      "seconds": 355.3876053589993,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    }
+  ],
+  "performance_claim": false,
+  "timing_limit": "Nonisolated workstation, serial AI/BMC scans after targeted regression. Times are observations, not a controlled speedup experiment.",
+  "changed_false": 0,
+  "selected_validation": {
+    "tasks": 109,
+    "executions": 137,
+    "all_accept": true,
+    "scope": "selected AR execution/API contracts; not official source-witness acceptance or all-SAT certification"
+  },
+  "source_witness_acceptance": false,
+  "fixtures": {
+    "checks": 156,
+    "abis": [
+      32,
+      64
+    ],
+    "native_controls": 2,
+    "false_checks": 4,
+    "false_executions": 4,
+    "all_false_executions_accept": true,
+    "before_checks": 156,
+    "source_identical_before_after": true,
+    "storage_boundary": "storage-boundary.json",
+    "scope": "Whole globals, renamed symbols/dual ABI; representation, all runtime slots, external library provenance, phase, robust/protocol and lifetime negatives; protected embedded/array controls"
+  },
+  "regressions": [
+    {
+      "check": "ai-release-values",
+      "checks": 72,
+      "exit": 0,
+      "summary_sha256": "ffcb88568cb1d0eb0ecc5c0fef54a471312974ab45117191e71a20b569c4ce0e",
+      "non_accept_executions": []
+    },
+    {
+      "check": "ai-string-effects",
+      "checks": 68,
+      "exit": 0,
+      "summary_sha256": "2256d49c0c5e7743c6ab8a2666448ab6abf64f0b849bc06dd704e96da6781a6a",
+      "non_accept_executions": []
+    },
+    {
+      "check": "ai-stable-publication",
+      "checks": 44,
+      "exit": 0,
+      "summary_sha256": "7e6ce78d782a76736582398a9b2d53d860396f875bd75a62894cfe1f32a9426f",
+      "non_accept_executions": [
+        {
+          "bits": 32,
+          "case": 6,
+          "group": 2,
+          "pair": 2,
+          "program_sha256": "e52fb99545a3a3bb46d16812551d6f4dbc18106c0f1ee7cbf49e36bf2b876b2d",
+          "certificate_sha256": "c5baaff039b1768ab75aeb5579c69043782b9adac410684834233f0b7ee2eca8",
+          "status": "UNSUPPORTED",
+          "reason": "load representation/type"
+        },
+        {
+          "bits": 64,
+          "case": 6,
+          "group": 3,
+          "pair": 1,
+          "program_sha256": "d838725dbbe8aadbad548785da51431cddb29aaa0e8c491b9d41d19646927796",
+          "certificate_sha256": "f1f9abd668883756162b6f8709e0977d4ce4a850bbd3ae73e89eeba60f01766d",
+          "status": "UNSUPPORTED",
+          "reason": "load representation/type"
+        }
+      ]
+    },
+    {
+      "check": "ai-conditional-must",
+      "checks": 48,
+      "exit": 0,
+      "summary_sha256": "252ee19b5b106266100ef1d1067bee835812827e5c0e11e3d1b91e6ceeeb752d",
+      "non_accept_executions": []
+    },
+    {
+      "check": "ai-lock-identities",
+      "checks": 20,
+      "exit": 0,
+      "summary_sha256": "6a41ba331bed6455beff20f99e7e1ca4c49cbc33c42e8885607ffc72ca364acf",
+      "non_accept_executions": []
+    },
+    {
+      "check": "mutex-attributes",
+      "checks": 38,
+      "exit": 0,
+      "summary_sha256": "a4649195436a38256287352db823d817d98426c3e03c77f19e2fd547fc178e29",
+      "non_accept_executions": []
+    },
+    {
+      "check": "ai-read-interference",
+      "checks": 32,
+      "exit": 0,
+      "summary_sha256": "3371064dcb51e65e392bcda10edf3bd88728983c8ce6f8db6b4723edba1c9f8b",
+      "non_accept_executions": []
+    },
+    {
+      "check": "ai-write-union",
+      "checks": 16,
+      "exit": 0,
+      "summary_sha256": "a3417af5aad8e31b34f21e1d46f257858439c62a87e0c15e83aa9d681b2eadee",
+      "non_accept_executions": []
+    }
+  ],
+  "p0": {
+    "checks": 20,
+    "asserted_against_baseline": true
+  },
+  "safety_pool": {
+    "tracked": 136,
+    "recovered": 28,
+    "remaining": 108,
+    "selected_reference_true_remaining": 17,
+    "other_reference_unproved": 91
+  },
+  "remaining_obligations": [
+    "whole mixed lockset lattice certification",
+    "local/field/helper opaque initialization",
+    "POSIX-general mutex failures and attributes",
+    "general heap/region/publication provenance",
+    "official source-level witness validation"
+  ]
+}

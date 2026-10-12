@@ -1,0 +1,24 @@
+[
+  {
+    "task": "c/goblint-regression/28-race_reach_23-sound_unlock_racing.i",
+    "expected": "Safe",
+    "source_sha256": "5c1f632db98267ccd924a3fe5a6c3aeb9e2efaa284be928aea18fc6f688690e8",
+    "yaml": "c/goblint-regression/28-race_reach_23-sound_unlock_racing.yml",
+    "yaml_sha256": "c17caea8472a0830c6b0eed736f3d360d92b92baba5e4a47a3a446ee87777e45",
+    "before_ai": "Unknown",
+    "before_bmc": "Unknown",
+    "after_ai": "Safe",
+    "after_bmc": "Safe"
+  },
+  {
+    "task": "c/goblint-regression/28-race_reach_40-trylock_racing.i",
+    "expected": "Safe",
+    "source_sha256": "6a5467924cd62a6d6301376f871a3fa704e759ac548ad813feae8f9d5b696103",
+    "yaml": "c/goblint-regression/28-race_reach_40-trylock_racing.yml",
+    "yaml_sha256": "62575a236f2f0fea7b8a38af1fb88da13ccd4d14c46de104ce60362f58c8453f",
+    "before_ai": "Unknown",
+    "before_bmc": "Unknown",
+    "after_ai": "Safe",
+    "after_bmc": "Safe"
+  }
+]

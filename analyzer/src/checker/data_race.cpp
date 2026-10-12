@@ -42,6 +42,7 @@
  ******************************************************************************/
 
 #include <ikos/analyzer/checker/data_race.hpp>
+#include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/analysis/bmc/bmc.hpp>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
 #include <ikos/analyzer/analysis/pair_exclusion.hpp>
@@ -2812,6 +2813,7 @@ void DataRaceChecker::check_extern_call_effects(
 
   auto* exact = bmc::exact_callee(call);
   const std::string callee_nm = exact != nullptr ? exact->name() : "";
+  const bool initialization = certified_pthread_initialization(call, this->_ctx);
   unsigned ignored_arguments = 0;
   if (exact != nullptr && exact->is_declaration()) {
     // Preserve the existing lifetime/stack handling separately from user buffers.
@@ -2822,59 +2824,10 @@ void DataRaceChecker::check_extern_call_effects(
 
     // Only runtime-managed sync slots are exempt. Attribute/timeout inputs and
     // caller-owned outputs remain conservative accesses; names alone are no gate.
-    struct SyncArguments {
-      const char* name;
-      std::size_t arity;
-      unsigned ignored;
-    };
-    static const SyncArguments summaries[] = {
-        {"pthread_mutex_lock", 1, 1}, {"pthread_mutex_unlock", 1, 1},
-        {"pthread_mutex_trylock", 1, 1}, {"pthread_mutex_timedlock", 2, 1},
-        {"pthread_mutex_init", 2, 1}, {"pthread_mutex_destroy", 1, 1},
-        {"pthread_mutex_consistent", 1, 1},
-        {"pthread_rwlock_rdlock", 1, 1}, {"pthread_rwlock_wrlock", 1, 1},
-        {"pthread_rwlock_unlock", 1, 1}, {"pthread_rwlock_tryrdlock", 1, 1},
-        {"pthread_rwlock_trywrlock", 1, 1}, {"pthread_rwlock_timedrdlock", 2, 1},
-        {"pthread_rwlock_timedwrlock", 2, 1}, {"pthread_rwlock_init", 2, 1},
-        {"pthread_rwlock_destroy", 1, 1},
-        {"pthread_spin_lock", 1, 1}, {"pthread_spin_unlock", 1, 1},
-        {"pthread_spin_trylock", 1, 1}, {"pthread_spin_init", 2, 1},
-        {"pthread_spin_destroy", 1, 1},
-        {"pthread_barrier_wait", 1, 1}, {"pthread_barrier_init", 3, 1},
-        {"pthread_barrier_destroy", 1, 1},
-        {"pthread_cond_wait", 2, 3}, {"pthread_cond_timedwait", 3, 3},
-        {"pthread_cond_signal", 1, 1}, {"pthread_cond_broadcast", 1, 1},
-        {"pthread_cond_init", 2, 1}, {"pthread_cond_destroy", 1, 1},
-        {"pthread_once", 2, 3},
-        // create writes arg0, reads attr arg1, and merely passes arg3 to the child.
-        {"pthread_create", 4, 12},
-        {"sem_init", 3, 1}, {"sem_destroy", 1, 1}, {"sem_wait", 1, 1},
-        {"sem_trywait", 1, 1}, {"sem_timedwait", 2, 1}, {"sem_post", 1, 1},
-        {"sem_close", 1, 1}, {"sem_getvalue", 2, 1}};
-    auto* returned = dyn_cast< ar::IntegerType >(exact->type()->return_type());
-    if (returned != nullptr && returned->bit_width() == 32 && returned->is_signed()) {
-      for (const auto& summary : summaries) {
-        if (exact->name() == summary.name && exact->num_parameters() == summary.arity &&
-            call->num_arguments() == summary.arity) {
-          ignored_arguments = summary.ignored;
-          break;
-        }
-      }
-      // AR intrinsics carry the contract even after source names are translated.
-      if (exact->intrinsic_id() == ar::Intrinsic::PthreadMutexLock ||
-          exact->intrinsic_id() == ar::Intrinsic::PthreadMutexUnlock) {
-        if (call->num_arguments() == 1) ignored_arguments = 1;
-      } else if (exact->intrinsic_id() == ar::Intrinsic::PthreadCreate) {
-        if (call->num_arguments() == 4) ignored_arguments = 12;
-      }
-      for (std::size_t i = 0; i < call->num_arguments() && i < 4; ++i) {
-        if ((ignored_arguments & (1u << i)) != 0 && !call->argument(i)->type()->is_pointer()) {
-          ignored_arguments = 0;
-          break;
-        }
-      }
-    }
+    ignored_arguments = synchronization_ignored_arguments(call, exact);
   }
+
+  if (initialization) ignored_arguments = 0;
 
   // Default to a Write per pointer argument; an exact strcpy source is Read.
   // Other libraries may read or write through it (scanf(&x), fgets, ...). The
@@ -2950,14 +2903,18 @@ void DataRaceChecker::check_extern_call_effects(
                      call_context,
                      exact != nullptr && argument_index == 1 &&
                              (exact->intrinsic_id() == ar::Intrinsic::LibcStrcpy ||
-                              exact->intrinsic_id() == ar::Intrinsic::LibcStrcpyCheck)
+                              exact->intrinsic_id() == ar::Intrinsic::LibcStrcpyCheck ||
+                              (initialization && callee_nm == "pthread_mutex_init"))
                          ? AccessKind::Read
                          : AccessKind::Write,
                      std::move(pts),
                      locks,
                      read_locks,
                      this->resolve_offset(arg, inv),
-                     /* width = */ 0,
+                     /* width = */ initialization
+                         ? (argument_index == 0 && callee_nm == "pthread_mutex_init"
+                                ? (this->_ctx.bundle->data_layout().pointers.bit_width == 32 ? 24u : 40u) : 4u)
+                         : 0u,
                      base,
                      instance,
                      has_region,

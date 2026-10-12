@@ -1,0 +1,71 @@
+{
+  "sources": [
+    {
+      "version": "2.39",
+      "file": "pthread_mutex_init.c",
+      "sha256": "4449e6f614edf7d477b04b59835bfd2926c76f3b50d9cf119694856fb46d305f",
+      "url": "https://raw.githubusercontent.com/bminor/glibc/glibc-2.39/nptl/pthread_mutex_init.c"
+    },
+    {
+      "version": "2.39",
+      "file": "pthread_mutex_lock.c",
+      "sha256": "adcdd2c12ce16a10b52c8a1005007b4dc0969e55e0c86096e598e128aad4ed3c",
+      "url": "https://raw.githubusercontent.com/bminor/glibc/glibc-2.39/nptl/pthread_mutex_lock.c"
+    },
+    {
+      "version": "2.39",
+      "file": "pthread_mutexattr_destroy.c",
+      "sha256": "b9381d09bfa4401619e9ec70579dc8952f1515774c38f1cc2f71c91e93406312",
+      "url": "https://raw.githubusercontent.com/bminor/glibc/glibc-2.39/nptl/pthread_mutexattr_destroy.c"
+    },
+    {
+      "version": "2.39",
+      "file": "pthread_mutexattr_init.c",
+      "sha256": "c1ad840e317cc1d1d8750c33739ce6018345771c6f042772061b3f76535cdc1d",
+      "url": "https://raw.githubusercontent.com/bminor/glibc/glibc-2.39/nptl/pthread_mutexattr_init.c"
+    },
+    {
+      "version": "2.39",
+      "file": "pthread_mutexattr_settype.c",
+      "sha256": "db9a0d2273103bf23a4bd82686cd0b21c5c5d3f4bef80219eb7c750a71b47f84",
+      "url": "https://raw.githubusercontent.com/bminor/glibc/glibc-2.39/nptl/pthread_mutexattr_settype.c"
+    },
+    {
+      "version": "2.42",
+      "file": "pthread_mutex_init.c",
+      "sha256": "1a74b1085ed959f80005c344b56ab8f00bd8c4f868443653dc3893e953d94c87",
+      "url": "https://raw.githubusercontent.com/bminor/glibc/glibc-2.42/nptl/pthread_mutex_init.c"
+    },
+    {
+      "version": "2.42",
+      "file": "pthread_mutex_lock.c",
+      "sha256": "4cdbffa73dabeb2431fec96a0066b9dc8c6f34b249adaba61e7492604f84d00e",
+      "url": "https://raw.githubusercontent.com/bminor/glibc/glibc-2.42/nptl/pthread_mutex_lock.c"
+    },
+    {
+      "version": "2.42",
+      "file": "pthread_mutexattr_destroy.c",
+      "sha256": "a73fa9adb3458501d8d38b6d7b8c7e25969b86afde0012d1250225e13a96010a",
+      "url": "https://raw.githubusercontent.com/bminor/glibc/glibc-2.42/nptl/pthread_mutexattr_destroy.c"
+    },
+    {
+      "version": "2.42",
+      "file": "pthread_mutexattr_init.c",
+      "sha256": "ba1a65a9b74884823ea240fdb5e8b701d3a6fcd3ff2a8536e708e6d1c72ab697",
+      "url": "https://raw.githubusercontent.com/bminor/glibc/glibc-2.42/nptl/pthread_mutexattr_init.c"
+    },
+    {
+      "version": "2.42",
+      "file": "pthread_mutexattr_settype.c",
+      "sha256": "558e9fd7d69810b1c4bff7facee450cd74d2e8b79ae16875fbee32a56caac82e",
+      "url": "https://raw.githubusercontent.com/bminor/glibc/glibc-2.42/nptl/pthread_mutexattr_settype.c"
+    }
+  ],
+  "native_glibc": "Ubuntu 2.39-0ubuntu8.9",
+  "native_controls": 2,
+  "abis": [
+    32,
+    64
+  ],
+  "premises": "Verified glibc x86 GNU runtime, whole typed global objects, initialized private/nonrobust/PRIO_NONE NORMAL or ERRORCHECK, one acyclic main-entry activation and closed storage consumers for every omitted runtime slot, unknown/external library provenance rejected; not POSIX-general failure semantics"
+}

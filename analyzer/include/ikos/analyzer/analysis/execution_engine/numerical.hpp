@@ -59,6 +59,7 @@
 #include <ikos/analyzer/analysis/execution_engine/engine.hpp>
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 #include <ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp>
+#include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
 #include <ikos/analyzer/analysis/liveness.hpp>
 #include <ikos/analyzer/analysis/option.hpp>
@@ -2290,6 +2291,34 @@ public:
            this->data().normal().nullity_is_null(status.var()))) {
         this->exec_unknown_call(call, false, false, false, false);
         this->data().set_normal_flow_to_bottom();
+        return;
+      }
+    }
+
+    if (this->_ctx.opts.enable_thread_modular &&
+        certified_pthread_initialization(call, this->_ctx)) {
+      this->init_global_operands(call);
+      const auto& dest = this->_lit_factory.get_scalar(call->argument(0));
+      if (!this->prepare_mem_access(dest)) return;
+      const bool mutex = func_name == "pthread_mutex_init";
+      auto* object = pthread_initialization_object(call->argument(0), mutex);
+      auto* location = this->_mem_factory.get_global(object);
+      auto pointer = this->data().normal().pointer_to_pointer(dest.var());
+      auto offset = pointer.offset().singleton();
+      if (pointer.points_to().is_set() && pointer.points_to().size() == 1 &&
+          *pointer.points_to().begin() == location && offset && offset->is_zero()) {
+        auto width = MachineInt(mutex ? (this->_data_layout.pointers.bit_width == 32 ? 24 : 40) : 4,
+                                this->_data_layout.pointers.bit_width, Unsigned);
+        this->data().normal().mem_forget_reachable(dest.var(), width);
+        this->_ctx.concurrent_env.record_pointer_write(
+            core::IndexableTraits< MemoryLocation* >::index(location), pointer.offset(),
+            width.to_z_number(), false);
+        this->_ctx.concurrent_env.record_privatized_write(
+            core::ConcurrentGlobalEnv::kNoLockPartitionAddr,
+            core::IndexableTraits< MemoryLocation* >::index(location),
+            core::machine_int::Interval::top(64, Signed));
+        // Only the destination is written; attribute input and lock facts remain.
+        this->exec_unknown_call(call, false, false, false, false);
         return;
       }
     }

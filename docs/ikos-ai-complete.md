@@ -273,6 +273,7 @@ Goblint 的 MHP 参照分成四类非并发条件：同一唯一实例、确定�
 | API/效果 | 当前需要保留的含义 | 边界 |
 | --- | --- | --- |
 | pthread_create | 写句柄输出、读取相关属性、透传线程参数并分析入口 | 透传 arg 不自动等于父线程写；输出不能整调用豁免 |
+| mutexattr init/settype/destroy、非 NULL mutex_init | 受限初始化证书下的目的写、属性输入读及不确定返回抽象 | 只支持完整全局对象、main 入口前缀、glibc NORMAL/ERRORCHECK；见下文 |
 | pthread_cond_wait / signal | wait 期间遗忘共享内存精度，保留返回后合法持锁/续行覆盖；signal/awaited 只作 MAY 观测 | 不从 signal 数量、epoch 或 MAY 队列建立确定跨线程 HB；完整失败和 mutex 属性另有边界 |
 | pthread_once | 按具体 control 身份至多一次、覆盖全部回调 | control offset/动态对象/未知回调不能按函数名合并 |
 | attr getter、sem_getvalue | 用户输出槽写 | 同步对象内部状态豁免不包括输出槽 |
@@ -286,6 +287,59 @@ Goblint 的 MHP 参照分成四类非并发条件：同一唯一实例、确定�
 
 上述仅陈述受限实现，完整 POSIX 失败、属性、回调及 free/lifetime 仍需独立验收。
 编译/导入明确拒绝是 error，不得声称都已经变成 UNKNOWN。
+
+### 5.1 受限的 pthread 初始化证书
+
+`pthread_initialization.hpp` 由数值引擎和 checker 共用，证明真实初始化效果与后续
+锁合同；没有为此新增共享状态域或更改 frontend。`certified_pthread_initialization`
+要求唯一的 main 根、无 ctor/自定义未初始化 globals、不可重入 main，以及无前驱的
+main 入口块。初始化调用必须位于该块最前面的调用前缀；只有 canonical 无参 nondet
+可以穿插，任何 lock/create/helper/其他调用之后再出现初始化都会拒绝整项证书。
+同块内初始化之后的 lock 是合法消费者，不按“同 basic block”一概拒绝。
+
+支持的对象是原始 LLVM 声明的完整非 TLS global，透明零偏移地址可以传递。
+核对 Linux GNU x86 的 ABI、外部声明/实参/C calling convention，实际 opaque 类型、
+分配大小与对齐；仅将用户 buffer cast 成 pthread 指针不能通过。
+attribute 大小为 4，mutex 在 ILP32/LP64 下为 24/40。
+`attr_init` 至多一次，之后可保持默认 NORMAL，或用常量 `settype(0/2)` 选择
+NORMAL/ERRORCHECK；`mutex_init` 每对象至多一次，输入必须是仍有效的受证属性。
+初始化完成后可销毁 attribute；mutex 的销毁、重建及其他属性操作不在此子集。
+
+证书扫描所有函数和 initializer，并与 checker 共用 `synchronization_ignored_arguments`
+的精确参数表。除受证初始化对象外，对每个被省略内部效果的 mutex/rwlock/cond/spin/
+barrier/once/sem 存储实参，枚举全部透明 Assignment/Bitcast/PointerShift 定义，收集
+所有 global/local 分配根；未知、形参、load 或调用结果来源拒绝。create 的回调及用户参数、
+once 的回调不属于这类存储。已有闭包不能仅因某个合流值带有已知对象的 may 标签而跳过
+另一路来源。局部、结构体字段和数组元素一律按整个分配保守关闭。
+
+前向 may-alias 闭包包含多定义 copy/bitcast；受证完整对象仍只允许零偏移 PointerShift，
+其他 runtime 分配的派生字段地址可继续追踪。attribute 只能由受证调用消费，受证 mutex
+只能由核实过的 lock/unlock/trylock 消费；其他存储只能出现在共享表的 runtime 参数位。
+角色混合、普通/raw 读写、表示复制和地址发布拒绝。全局初始化仅允许 RHS 递归不含
+这些对象地址的常量存储；local 的普通初始化写仍保守拒绝。
+
+普通读写缺少直接 Local/Global 原点、全局根仅为外部声明、pointer-valued load、整数转
+pointer，及未知原点的 pointer 调用实参也拒绝。外部库存储有无 AR body 的隐式写：
+例如 literal puts 仍可写 FILE 表示，不能仅关闭参数表中的同步存储就声称覆盖所有库状态。
+扫描/闭包预算 8192，耗尽走旧覆盖回退；依赖合法 C 对象/provenance，不涵盖越界跨分配
+或库符号 interposition。对象 ABI/生命周期认证仍只支持完整全局初始化；额外 runtime
+roots 的关闭没有赋予 locals/fields 更强的初始化成功语义。
+
+源码依据为核实过的 glibc 2.39/2.42：attr init 设默认标志；settype 保留 private、
+nonrobust、PRIO_NONE；上述 mutex init 因而不走协议/robust 失败分支，正常返回 0。
+NORMAL/ERRORCHECK 的阻塞获取具有相应所有权合同；ERRORCHECK 的自重入失败仍由
+既有重复获取 gate 处理，trylock 的零返回条件保持原样。NORMAL 的可选 no-elision 标志
+不改变这项初始化/所有权前提。不能用 POSIX 泛化解释这些无失败前提。
+代码仍把返回值抽象为 nondet，不由返回抽象反过来证明成功。
+
+引擎按实际对象宽度执行 `mem_forget_reachable(dest, size)`，发布精确范围的 pointer-write
+失效和 aggregate 初始化失效标记；闭包排除了任意 pointer 内容消费，不发布逃逸 TOP。
+mutex_init 的属性输入保留为 Read、4 字节；目的写为 24/40 字节，其他属性目的写为 4。
+checker 消费同一证书记录访问，不删除用户内存足迹。
+对象、生命周期、ABI 或闭包不可证时保留外部调用 coverage，返回 UNKNOWN。
+局部/字段/数组/helper 初始化、recursive/robust/protocol 及更一般 POSIX 失败是后续能力，
+此轮没有把它们视为已支持。
+源码指纹、native 合同与回归见 §8 的 pthread 初始化证据。
 
 2026-10-12 的静态 ERRORCHECK 对照确认一个旧漏报：第二次 `pthread_mutex_lock`
 返回 EDEADLK，不增加真实递归深度；模型却增加深度，随后一次 unlock 后仍留下 MUST，
@@ -541,19 +595,56 @@ AI+BMC TP 109 不变、TN 681→683、UNKNOWN 238→236、FP/FN=0、error=1。
 [定向回归](artifacts/ai-precision-2026-10-12/string-effects/fixtures.json)、
 [所选执行](artifacts/ai-precision-2026-10-12/string-effects/selected-executions.json)。
 
+### M2：受证 pthread 初始化（2026-10-12 已实现）
+
+`28-race_reach_23-sound_unlock_racing.i` / `40-trylock_racing.i` 的共享 data 始终由
+独立 `__global_lock` 保护。属性在 main 入口中初始化、选择 ERRORCHECK、用于初始化
+其他 mutex，然后才创建线程；原 UNKNOWN 是这些外部调用的效果缺口。
+固定 ILP32 Goblint 对相同 `.i` 新复核均 TRUE；本轮核对其库分类、attribute 赋值源码，
+没有运行 transfer 探针。Goblint 的 `sem.lock.fail` 默认 false，`MutexAttrDomain.of_int(2)`
+返回 TOP；它的 TRUE 是交叉参考，不是 IKOS 初始化成功前提的证明。
+真正依据为 §5.1 的 glibc 原实现、ABI/native 检查与完整存储使用证书。
+
+新回归 156 次（39 用例 × ILP32/LP64 × AI/BMC），修改前后 C 输入相同；
+包含 NORMAL 默认/显式设置、ERRORCHECK、公用锁与多定义 unlock 正例，以及
+未检查 trylock、不同锁、重复获取、局部/helper/循环/迟到初始化、raw 表示修改与复制、
+多定义别名写、aggregate 发布、pointer load、robust/protocol 和 constructor 等边界。
+unsupported 例仍有真实 coverage 原因；4 次 FALSE 的所选执行均为独立 AR ACCEPT。
+新增原始存储回归覆盖默认/结构体/数组 mutex、局部发布、spin/rwlock/cond/once/sem，
+以及外部 FILE 表示读取；结构体/数组默认 mutex 的普通受锁数据访问对照仍是 SAFE。
+提交前的初版曾对默认 mutex 的 owner 字节读误报 SAFE：只关闭新初始化对象遗漏了
+另一把锁的内部写。glibc 中非原子 owner 写与并发 unsigned-char 表示读确实可竞争，
+不是非法初始化或越界。扩展整个 runtime 存储闭包后回退 UNKNOWN；其他控制对象
+用例验证能力边界，不将每个边界用例都称为已证明真实竞争。
+2 次 native 控制确认大小、标志、初始化/销毁返回及 ERRORCHECK 的 EDEADLK 行为。
+已有八组相关回归 338 次、双架构 P0 20 次通过；旧 stable-publication CASE6 的两条
+AR `UNSUPPORTED load representation/type` 仍保留，不称其已独立验证。
+
+1029 项全量只有上述两项 UNKNOWN→SAFE：AI TN 683→685；
+AI+BMC TP 109 不变、TN 683→685、UNKNOWN 236→234、FP/FN=0、error=1。
+重新导出的 137 条所选执行来自 109 个标签 TP，全部独立 AR ACCEPT。
+AI/BMC 本轮 wall time 为约 154/356 秒，非隔离单轮观察，不作性能优势结论。
+该子集未修改 BMC 属性/失败编码；BMC 仍按自己的生命周期边界决定是否确认 FALSE。
+
+证据：[汇总](artifacts/ai-precision-2026-10-12/pthread-initialization/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-12/pthread-initialization/paired.json)、
+[定向回归](artifacts/ai-precision-2026-10-12/pthread-initialization/fixtures.json)、
+[runtime 原始依据](artifacts/ai-precision-2026-10-12/pthread-initialization/runtime-contracts.json)、
+[存储闭包反例](artifacts/ai-precision-2026-10-12/pthread-initialization/storage-boundary.json)、
+[所选执行](artifacts/ai-precision-2026-10-12/pthread-initialization/selected-executions.json)。
+
 ### M2 首批出口与当前 24 个候选的处置
 
 三个固定入口均已恢复 SAFE；24 项的源/YAML 指纹、当前报告、逐任务 AI/BMC 判定、
 修正后的参考结果及语义前提已逐项更新到
-[处置记录](artifacts/ai-precision-2026-10-12/string-effects/dispositions-24.json)，
-并同步原安全台账。后续字符串机制再恢复两项，当前已恢复 5 项，
-余下 19 项仍为 UNKNOWN，具体缺口如下：
+[处置记录](artifacts/ai-precision-2026-10-12/pthread-initialization/dispositions-24.json)，
+并同步原安全台账。后续字符串与 pthread 初始化机制各再恢复两项，当前已恢复 7 项，
+余下 17 项仍为 UNKNOWN，具体缺口如下：
 
 | 数量 | 候选机制 | 当前不能证明的条件 |
 | ---: | --- | --- |
 | 14 | heap region / freshness / publication（6 个 regions、8 个 race_reach） | 初始化到发布的覆盖闭包、list/slot 所有权与字段来源；实际报告仍有候选对，并有 handle coverage 缺口 |
 | 2 | handle 存储覆盖（ptra、arraylist） | 抽象 token 的 seed/output 存储与不透明身份来源；目前无残余候选对，仍不能仅删除 coverage gate |
-| 2 | mutex attribute effects（23-sound_unlock、40-trylock） | 真实初始化阶段属性效果及失败/所有权合同；目前只剩库覆盖警告 |
 | 1 | dynamic join array（thread-join-array-const） | 全部动态线程实例的 array-slot 来源和完成证书；main 的 joined digest 仍为空，保留两个候选对 |
 
 固定 Goblint 的六配置 portfolio 最终均 TRUE；join-array 前四配置为 UNKNOWN，
@@ -562,7 +653,7 @@ AI+BMC TP 109 不变、TN 681→683、UNKNOWN 238→236、FP/FN=0、error=1。
 
 首批验收完成的依据是：两个机制分别提交，build/install 与双架构/P0 通过，
 两种模式全量配对，现有标签 TP 的所选执行重新检查，24 项都有明确去向。
-安全 UNKNOWN 仍有 110 项，其中本轮余下 19 项参考 TRUE，另 91 项参考未证实。
+安全 UNKNOWN 仍有 108 项，其中本轮余下 17 项参考 TRUE，另 91 项参考未证实。
 后续 TN 轮优先从只剩库/句柄 coverage 的窄效果机制继续，通用 heap-region 算法另定预算。
 全语言 soundness、混合锁集域义务和官方源 witness 验收仍是各自独立的工作，
 不能由这次首批出口推断它们已完成。
@@ -576,6 +667,7 @@ AI+BMC TP 109 不变、TN 681→683、UNKNOWN 238→236、FP/FN=0、error=1。
 
 | 原编号 | 机制或实验 | 原始依据 |
 | --- | --- | --- |
+| M2-pthread-init | 受限 glibc 初始化、opaque 存储闭包与有界效果 | [记录](artifacts/ai-precision-2026-10-12/pthread-initialization/summary.json)、[目录](artifacts/ai-precision-2026-10-12/pthread-initialization/) |
 | M2-string | 未知长度字节效果、pointer bounds 失效及受限逃逸证书 | [记录](artifacts/ai-precision-2026-10-12/string-effects/summary.json)、[目录](artifacts/ai-precision-2026-10-12/string-effects/) |
 | M2-release | 首次获取证书、实际释放端点及嵌套保护 | [记录](artifacts/ai-precision-2026-10-12/release-values/summary.json)、[目录](artifacts/ai-precision-2026-10-12/release-values/) |
 | <a id="ai-step-01"></a>01 | P0-F1：撤销 self-consistency 共同锁捷径 | [记录](artifacts/ai-p0-2026-10-10/f1/summary.json)、[目录](artifacts/ai-p0-2026-10-10/f1/) |
