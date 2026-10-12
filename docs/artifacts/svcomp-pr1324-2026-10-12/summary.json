@@ -1,0 +1,86 @@
+{
+  "scope": "Local PR1324 integration verification; no remote write or official review/CI acceptance",
+  "before_commit": "e90ccc3",
+  "analyzer_sha256": "10bad24bc789fe8fbd515e2713f4d352cdcbadc3b20c5eca7f3f1ad08df722a5",
+  "build_install_equal": true,
+  "wrapper_sha256": "d27e26dffed8ce84548174c012e7cfbe7562fd392e04d0baf5c89d820d5fca1a",
+  "installed_wrapper_equal": true,
+  "adapter_sha256": "2ff26529797ca28c687becbac52148b9a823f38244dacb79b314ba3beeeb5541",
+  "source_sha256": {
+    "benchexec/tools/ikos-conc.py": "2ff26529797ca28c687becbac52148b9a823f38244dacb79b314ba3beeeb5541",
+    "svcomp_witness.py": "d27e26dffed8ce84548174c012e7cfbe7562fd392e04d0baf5c89d820d5fca1a",
+    "svcomp/package.py": "3acf5e9fcdbb7ea3d604ab4183dd2df24a52b2fc58013b43f6c9c9c4d6d2a885",
+    "svcomp/bench-exec-sim.py": "01b6dbc06881ce4b1e2b5744e672c5520a6006f2e1a1b24220caf3195697ee24",
+    "scripts/test_svcomp_adapter.py": "15ff1cf9c3ed3613fb3f4020c3e4195fb6d6500956112a9321120dfdabde66e2"
+  },
+  "benchexec_version": "3.35",
+  "ruff_version": "0.16.10",
+  "ruff_config_url": "https://raw.githubusercontent.com/sosy-lab/benchexec/main/pyproject.toml",
+  "ruff_config_sha256": "4e830009d27987c3441b680a742e41199c6c68044314e173b7432f1007ab695e",
+  "ruff_check": "PASS",
+  "ruff_format_check": "PASS",
+  "adapter_unit_tests": 8,
+  "witness_unit_tests": 18,
+  "official_test_tool_info": "PASS (no-container, relative tool directory)",
+  "tool_entry": "bin/svcomp_witness.py",
+  "tool_version": "3.5",
+  "single_input_only": true,
+  "wrapper_p0_checks": 10,
+  "wrapper_p0_matches_direct_bmc": true,
+  "packaged": {
+    "counts": {
+      "tp": 109,
+      "fp": 0,
+      "tn": 687,
+      "fn": 0,
+      "unknown": 232,
+      "error": 1
+    },
+    "tasks": 1029,
+    "timeout": 30,
+    "jobs": 4,
+    "isolation": "per-task working directory and process-group wall timeout; no cgroup accounting",
+    "analyzer_sha256": "10bad24bc789fe8fbd515e2713f4d352cdcbadc3b20c5eca7f3f1ad08df722a5",
+    "wrapper_sha256": "d27e26dffed8ce84548174c012e7cfbe7562fd392e04d0baf5c89d820d5fca1a",
+    "adapter_sha256": "d16fe5b4b4c4a66c887d465db1bf1a6508919cf387bc62da97ae0bb2b3b3391b",
+    "max_output_bytes": 116674
+  },
+  "packaged_transitions": 0,
+  "confirmed_label_tasks_with_witness": 109,
+  "final_adapter_vs_sweep": {
+    "sweep_sha256": "d16fe5b4b4c4a66c887d465db1bf1a6508919cf387bc62da97ae0bb2b3b3391b",
+    "final_sha256": "2ff26529797ca28c687becbac52148b9a823f38244dacb79b314ba3beeeb5541",
+    "difference": "Independent import order and Ruff formatting only",
+    "non_import_ast_equal": true,
+    "import_ast_sets_equal": true,
+    "full_sweep_adapter_saved": "sweep-adapter.py",
+    "final_adapter_units_and_tool_info_rechecked": true
+  },
+  "docker": {
+    "image": "ikos-conc:m1-runtime-20261011",
+    "image_id": "381f0f98529c97c193a7b19434325c1131f25ed5008fb666660c0bb34a8f90a0",
+    "network": "none",
+    "root_filesystem": "read-only",
+    "package_mount": "/opt/ikos package (read-only)",
+    "workdir": "private /tmp",
+    "abis": [
+      "ILP32",
+      "LP64"
+    ],
+    "race_safe_smoke": "PASS",
+    "log_sha256": "fb567abf3553150a7928c788f93290a79859525e648c75493535e8d6a2a48c5d"
+  },
+  "remote_pr": {
+    "url": "https://github.com/sosy-lab/benchexec/pull/1324",
+    "state": "open",
+    "head_repo": "2393591260/benchexec",
+    "head_branch": "main",
+    "head_sha": "f9e49429ab0a6684dd832288696564baec7fa543"
+  },
+  "limits": [
+    "Local full sweep uses a process-group timeout, not official cgroup resource accounting",
+    "Witness generation does not establish independent source-witness validity",
+    "Final archive identity/extraction tests recorded separately after committing code"
+  ],
+  "raw_logs_outside_git": "/home/ruan/ikos-work/pr1324-20261012"
+}

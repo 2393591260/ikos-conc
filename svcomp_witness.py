@@ -269,7 +269,7 @@ class SourceMap:
                 "DefaultStmt",
                 "AttributedStmt",
             }:
-                for child in (children if kind == "DoStmt" else children[-1:]):
+                for child in children if kind == "DoStmt" else children[-1:]:
                     add(child)
             if kind == "CallExpr" and children:
                 callee = children[0]
@@ -522,13 +522,24 @@ def build_witness(source, info, data_model, ikos="ikos"):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("source")
-    ap.add_argument("--ikos", default="ikos")
+    ap.add_argument("source", nargs="?")
+    ap.add_argument(
+        "--ikos",
+        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "ikos"),
+    )
+    ap.add_argument(
+        "--version", action="store_true", help="print the bundled IKOS version"
+    )
+    ap.add_argument("--property", help="SV-COMP property file (no-data-race)")
     ap.add_argument("--data-model", default="ILP32", choices=["LP64", "ILP32"])
     ap.add_argument("--out", default="witness.yml")
     args = ap.parse_args()
+    if not args.version and args.source is None:
+        ap.error("a source file is required unless --version is given")
     temporary_witness = None
     try:
+        if args.version:
+            return subprocess.call([args.ikos, "--version"])
         require(
             os.path.realpath(args.out) != os.path.realpath(args.source),
             "witness output must differ from the source",
@@ -537,6 +548,13 @@ def main():
             os.remove(args.out)
         except FileNotFoundError:
             pass
+        if args.property:
+            with open(args.property, encoding="utf-8") as f:
+                specification = re.sub(r"\s+", "", f.read())
+            require(
+                specification == "CHECK(init(main()),LTL(G!data-race))",
+                "only the no-data-race property is supported",
+            )
         require(
             os.path.splitext(args.source)[1] in {".c", ".i"},
             "only C .c/.i inputs are supported",

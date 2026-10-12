@@ -57,7 +57,11 @@ def main():
         args.out = Path(tempfile.mkdtemp(prefix="ikos-adapter-sweep-"))
     args.out = args.out.resolve()
     args.out.mkdir(parents=True, exist_ok=True)
-    wrapper_hash = sha(args.ikos.resolve().parent / "svcomp_witness.py")
+    tool = adapter.Tool()
+    executable = tool.executable(
+        BaseTool2.ToolLocator(tool_directory=str(args.ikos.resolve().parent.parent))
+    )
+    wrapper_hash = sha(Path(executable))
     bench = args.svbench.resolve()
     tasks = []
     for directory in base.CONCURRENCY_DIRS:
@@ -83,7 +87,7 @@ def main():
             [str(source)], property_file=str(property_file), options=data["options"]
         )
         tool = adapter.Tool()
-        command = tool.cmdline(str(args.ikos.resolve()), [], task, None)
+        command = tool.cmdline(executable, [], task, None)
         workdir = args.out / "raw" / (source.stem + "-" + sha(source)[:8])
         workdir.mkdir(parents=True, exist_ok=True)
         start = time.perf_counter()
@@ -120,8 +124,11 @@ def main():
         observed = {
             "true": base.VERDICT_SAFE,
             "false": base.VERDICT_RACE,
+            "false(no-data-race)": base.VERDICT_RACE,
             "unknown": base.VERDICT_UNKNOWN,
         }.get(verdict, "Error (timeout)" if timed_out else "Error (unrecognized)")
+        if timed_out:
+            observed = "Error (timeout)"
         if proc.returncode != 0 and not timed_out:
             observed = "Error (exit %d)" % proc.returncode
         witness = workdir / "witness.yml"
@@ -150,7 +157,7 @@ def main():
             rows.append(future.result())
             if len(rows) % 100 == 0:
                 print("completed", len(rows), "/", len(tasks), flush=True)
-    if sha(args.ikos.resolve().parent / "svcomp_witness.py") != wrapper_hash:
+    if sha(Path(executable)) != wrapper_hash:
         raise RuntimeError(
             "Wrapper changed during the sweep; results cannot identify one version"
         )

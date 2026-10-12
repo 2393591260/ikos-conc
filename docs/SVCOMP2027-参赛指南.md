@@ -1,7 +1,8 @@
 # SV-COMP 2027 参赛指南
 
 本文统一维护注册、归档、runner 与 witness 验收。**官网日期及部分 GitLab 状态于 2026-10-11 复核**；
-本轮 MR/PR、候选归档与现代 validator 已实际核验；旧 ZIP 和历史 validator 保留各自日期，未当作今日验收。
+2026-10-12 已按 BenchExec PR 审查修改本地接口并验收新候选；远端合并/上传状态仍须单独核对。
+旧 ZIP 和历史 validator 保留各自日期，未当作今日验收。
 外部要求和状态须在操作前重新确认。
 本地分析能力与最新基线见 [阅读入口](README.md#baseline)，不能用旧 ZIP 的成功检查替代新版本验收。
 
@@ -42,7 +43,7 @@ submission 页面已不要求另开 category-structure MR；类别仍需在 FM-T
 | 提交 | 最近实际观测 | 下一次须核对 |
 | --- | --- | --- |
 | [FM-Tools !1147](https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/merge_requests/1147) | 10/11：opened；失败 jobs 为 `stuck_pending_no_matching_runners`，smoke 跳过 | runner 恢复后的实际日志、是否合并；当前不能判为工具失败或通过 |
-| [BenchExec #1324](https://github.com/sosy-lab/benchexec/pull/1324) | 10/11：仍 open；10/9 曾观察到 15 checks passed | 本地 adapter 修复须同步到 PR，重新集成测试、review/merge |
+| [BenchExec #1324](https://github.com/sosy-lab/benchexec/pull/1324) | 10/12 API：open，head `2393591260/benchexec:main`，`f9e49429`；收到接口/可移植性审查 | 本地修改与新 ZIP 已准备，须更新现有 fork 分支、Zenodo 文件并重新检查 CI/review；本地通过不等于远端接受 |
 | [schema !1112](https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/merge_requests/1112) | 已于 UTC 10/10 20:46 合并（上海 10/11 04:46） | 用合并后的 schema 校验本地和远端；不再等待该 MR |
 | category-structure !677 | 当时未取得其状态 | 已有 MR 是否需调整由组织者确认；它不再是当时页面必需的新提交 |
 
@@ -52,9 +53,11 @@ submission 页面已不要求另开 category-structure MR；类别仍需在 FM-T
   `categories: C.no-data-race.Concurrency`，描述 AI + 有界 Z3 确认，不宣称普遍 FP/FN 为零。
   字段能写入本地不证明远端 schema/CI 已接受。
 - [ikos-conc.py](../benchexec/tools/ikos-conc.py)：从任务传递数据模型，运行 bundled
-  `svcomp_witness.py`，映射 SAFE/definitely UNSAFE/UNKNOWN，并拒绝非零退出或超时作为正常结果。
-  10/11 修复：从归档根定位 `bin/ikos`，搬运 bin/lib/libexec/llvm/include；
-  明确拒绝其他属性、不支持的数据模型和多输入，任务数据模型优先于重复命令行选项。
+  `bin/svcomp_witness.py`，由 `executable()` 指定实际入口，直接按 shebang 执行。
+  10/12 审查修复：版本查询使用 `_version_from_tool`；数据模型使用标准 task utility，
+  没有任务模型时 adapter 不添加 ILP32；属性交给包装器校验；非零退出/信号为 ERROR，
+  timeout 由 BenchExec 框架统一处理；判定按完整输出行匹配，明确竞争为 `false(no-data-race)`。
+  去掉 standalone/fallback/正则和误导注册注释；搬运 bin/lib/libexec/llvm/include 保持。
 - [打包脚本](../svcomp/package.py)、[见证包装器](../svcomp_witness.py)、
   [本地接口回归](../svcomp/bench-exec-sim.py)。它实际调用 Tool.cmdline/determine_result，逐任务隔离输出并区分 UNKNOWN、超时和非零退出；没有 cgroup 资源计量，不能替代官方 runner。
 
@@ -63,6 +66,21 @@ submission 页面已不要求另开 category-structure MR；类别仍需在 FM-T
 Goblint/ESBMC 当时没有额外清单。IKOS 只返回入口在按 program_files 搬运时可能不足；
 完整 FM 容器内运行是否失败则须实际检查。自带 APRON、LLVM/Z3 与系统库要保持 ABI/版本一致。
 
+**10/12 当前接口验收：** 8 组 adapter 与 18 组 witness 回归通过；
+Ruff 0.16.10 使用 BenchExec main 的配置检查与格式检查通过，BenchExec 3.35 的
+`test_tool_info` 以相对包路径运行，通过版本/命令/搬运清单检查。
+打包入口自动定位同目录 IKOS，有 executable bit、`--version` 与 `--property`；
+包装器仍拒绝非 no-data-race 属性和非 C `.c/.i` 输入，不在 adapter 复制这套语义。
+新入口的 1029 项全量与当前 M2 二进制逐任务一致：TP=109、TN=687、FP/FN=0、
+UNKNOWN=232、timeout=1；全部 109 个标签竞争结果生成 witness，但这不是独立源见证验收。
+双架构包入口 P0 10 条与已接受 BMC 观察一致，离线/只读 Ubuntu 24.04 与含空格迁移路径
+race/safe smoke 通过。记录见
+[PR 接口验收](artifacts/svcomp-pr1324-2026-10-12/summary.json)与
+[逐任务配对](artifacts/svcomp-pr1324-2026-10-12/packaged-paired.json)。
+全量后仅调整 adapter 的 import 排序与 Ruff 格式；独立 import 集与其余 AST 一致，
+保留运行时 adapter 源码指纹，最终版本的单测及官方接口测试重新检查。
+
+以下保留 **10/11 M1 历史候选** 的验收，不能作为 10/12 新归档的身份记录。
 本地 adapter 的真实 BenchExec 接口测试 5 组通过，`test_tool_info` 确认包根定位与搬运路径；
 工具源码/安装 Python 一致，构建与 install 同步后两个模式的冻结集结果逐项复现既有基线。
 依据见 [M1 直接分析配对](artifacts/svcomp-m1-2026-10-11/direct-baseline.json)、
@@ -80,7 +98,8 @@ Jan Strejček 的 10/9 回复明确：**10/12 前所需注册动作已完成；D
 <a id="package"></a>
 ## 3. 工具归档：当前候选与历史实物
 
-**当前 M1 本地候选已固定，尚未上传或获官方接受。**
+**10/11 M1 历史候选保留不覆盖。** 10/12 PR 修复新候选的归档指纹在本节新增记录中；
+用户之前的上传不代替新包校验，也没有在本轮自动修改远端。
 归档：[ikos-conc-m1-20261011.zip](/home/ruan/ikos-conc-m1-20261011.zip)，大小 `160292014` bytes，
 SHA256 `9bbef705b69a65d287d336fbe4699e3a3c498316a0a68dd95de3633dc18864a4`，源码提交 `7e5ed7a`。
 BUILD-INFO 记录打包时干净的已跟踪源码、384 个运行文件及条目/adapter/package 指纹；
@@ -235,7 +254,7 @@ Dartagnan另找一个race也不能替代对IKOS具体witness的核验。
 - [x] 合并后的FM schema校验本地条目；MR/PR与失败原因实际核对，注册动作已完成。
 - [x] 当前构建/install/包中二进制hash一致；AI与AI+BMC基线和包入口全量逐项配对，既有AR执行证据保留。
 - [x] 新ZIP/BUILD-INFO/组件许可/入口/P0/双架构/重定位/断网依赖检查完成。
-- [x] 当前本地adapter定位、搬运路径、属性限制与UNKNOWN/超时/非零退出映射检查完成。
+- [x] 10/12 本地 adapter 入口、搬运、任务模型、完整行判定与 ERROR 映射检查完成；属性由包装器检查，超时由框架处理。
 - [x] 109份witness通过固定2.2 schema；动态实例/源位置定向检查和现代validator校准有证据。
 - [ ] 严格绑定指定访问对的独立源级witness验收：当前validator校准失败且原包创建列号解析受阻。
 - [ ] 用户同步现有FM MR、BenchExec PR及公开源码，替换Zenodo ZIP后核对公开hash和CI重取实物。

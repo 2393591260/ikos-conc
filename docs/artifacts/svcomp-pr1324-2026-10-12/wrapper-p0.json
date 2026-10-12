@@ -1,0 +1,72 @@
+[
+  {
+    "model": "ILP32",
+    "source": "exclusive-flag.c",
+    "verdict": "The program is potentially UNSAFE",
+    "returncode": 0,
+    "witness": false
+  },
+  {
+    "model": "ILP32",
+    "source": "overlapping-widths-control.c",
+    "verdict": "The program is definitely UNSAFE",
+    "returncode": 0,
+    "witness": true
+  },
+  {
+    "model": "ILP32",
+    "source": "overlapping-widths.c",
+    "verdict": "The program is definitely UNSAFE",
+    "returncode": 0,
+    "witness": true
+  },
+  {
+    "model": "ILP32",
+    "source": "published-before-init-control.c",
+    "verdict": "The program is potentially UNSAFE",
+    "returncode": 0,
+    "witness": false
+  },
+  {
+    "model": "ILP32",
+    "source": "published-before-init.c",
+    "verdict": "The program is potentially UNSAFE",
+    "returncode": 0,
+    "witness": false
+  },
+  {
+    "model": "LP64",
+    "source": "exclusive-flag.c",
+    "verdict": "The program is potentially UNSAFE",
+    "returncode": 0,
+    "witness": false
+  },
+  {
+    "model": "LP64",
+    "source": "overlapping-widths-control.c",
+    "verdict": "The program is definitely UNSAFE",
+    "returncode": 0,
+    "witness": true
+  },
+  {
+    "model": "LP64",
+    "source": "overlapping-widths.c",
+    "verdict": "The program is definitely UNSAFE",
+    "returncode": 0,
+    "witness": true
+  },
+  {
+    "model": "LP64",
+    "source": "published-before-init-control.c",
+    "verdict": "The program is potentially UNSAFE",
+    "returncode": 0,
+    "witness": false
+  },
+  {
+    "model": "LP64",
+    "source": "published-before-init.c",
+    "verdict": "The program is potentially UNSAFE",
+    "returncode": 0,
+    "witness": false
+  }
+]

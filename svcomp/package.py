@@ -70,10 +70,11 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 trap 'exit 1' HUP INT TERM
 cd "$WORK"
-"$DIR/bin/ikos" --version
+"$DIR/bin/svcomp_witness.py" --version
+printf 'CHECK(init(main()), LTL(G ! data-race))\n' > "$WORK/no-data-race.prp"
 for model in ILP32 LP64; do
-  if ! output=$(python3 "$DIR/bin/svcomp_witness.py" \
-    --ikos "$DIR/bin/ikos" --data-model "$model" \
+  if ! output=$("$DIR/bin/svcomp_witness.py" \
+    --property "$WORK/no-data-race.prp" --data-model "$model" \
     --out "$WORK/race-$model.yml" "$DIR/examples/smoke.c" 2>&1); then
     printf '%s\n' "$output"
     exit 1
@@ -92,8 +93,8 @@ assert witness[0]["entry_type"] == "violation_sequence"
 assert witness[0]["metadata"]["format_version"] == "2.2"
 assert witness[0]["metadata"]["task"]["data_model"] == sys.argv[2]
 PY
-  if ! output=$(python3 "$DIR/bin/svcomp_witness.py" \
-    --ikos "$DIR/bin/ikos" --data-model "$model" \
+  if ! output=$("$DIR/bin/svcomp_witness.py" \
+    --property "$WORK/no-data-race.prp" --data-model "$model" \
     --out "$WORK/safe-$model.yml" "$DIR/examples/safe.c" 2>&1); then
     printf '%s\n' "$output"
     exit 1
@@ -158,6 +159,9 @@ to select it (default is 64-bit):
 
 The SV-COMP entry point (`bin/svcomp_witness.py`) takes `--data-model ILP32|LP64`
 and forwards it, recording the matching `data_model` in `witness.yml`.
+Its documented default is ILP32; BenchExec forwards the task model when present.
+The entry is executable, supports `--version`, and finds `ikos` in the same bin/.
+Pass `--property FILE.prp` to request no-data-race; other properties are rejected.
 
 ## SV-COMP integration
 
@@ -317,9 +321,9 @@ def package(install_dir, out, llvm_root, apron_dir):
     if not os.path.exists(os.path.join(install, "LICENSE.txt")):
         shutil.copy("LICENSE.txt", os.path.join(install, "LICENSE.txt"))
     # Bundle the SV-COMP entry point (verdict forwarding + witness generation)
-    # next to the `ikos` executable: the BenchExec tool-info module locates it
-    # via Path(executable).parent / "svcomp_witness.py".
+    # next to `ikos`; BenchExec runs this entry directly using its shebang.
     shutil.copy("svcomp_witness.py", os.path.join(install, "bin", "svcomp_witness.py"))
+    os.chmod(os.path.join(install, "bin", "svcomp_witness.py"), 0o755)
 
     # Record the concrete binaries; HEAD alone cannot identify a dirty build.
     def git_output(*args):
