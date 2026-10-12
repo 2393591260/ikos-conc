@@ -98,6 +98,40 @@ Jan Strejček 的 10/9 回复明确：**10/12 前所需注册动作已完成；D
 <a id="package"></a>
 ## 3. 工具归档：当前候选与历史实物
 
+**10/12 PR #1324 修复后的交付候选：**
+[ikos-conc-pr1324-20261012.zip](/home/ruan/ikos-conc-pr1324-20261012.zip)，
+大小 `163309116` bytes，SHA256
+`0a94cae6b4a0a7995849070533d389d6b3085c1b412eb1b1e658679705a5fc37`，
+源提交 `7329e4b`，打包时 tracked tree 干净，`bin/svcomp_witness.py` 权限 0755。
+包内全部 runtime fingerprints 与 BUILD-INFO 一致；analyzer/wrapper 与已跑全量的候选逐字节一致。
+最终 ZIP 解压后在项目外含空格路径、离线/只读 Ubuntu 24.04 再次通过双架构 race/safe smoke。
+归档身份见 [archive.json](artifacts/svcomp-pr1324-2026-10-12/archive.json)。
+该包包含当前已验收 M2 基线（TP109/TN687），不是旧 M1 的 TN678 二进制；旧 ZIP 保留。
+
+用户后续操作：
+
+1. 在已有 [BenchExec PR #1324](https://github.com/sosy-lab/benchexec/pull/1324) 的
+   `2393591260/benchexec:main` 分支，用本地 `benchexec/tools/ikos-conc.py` 更新同名文件，
+   不开新 PR；等待 Ruff、测试及 reviewer 复核。
+2. 将 IKOS-ConC 本地提交推送到公开源码分支，让 BUILD-INFO 的 `7329e4b` 可取得。
+3. 在原 Zenodo 记录 `23122650` 的 Edit files 草稿替换工具文件；上传文件名仍为
+   `ikos-conc.zip`，使用上述新归档，完成草稿保存/发布后核对公开文件校验和。
+   本轮没有创建新版本或写入远端。FM-Tools 条目的 DOI/版本/类别没有因本次接口修复改变。
+4. 通知现有 FM-Tools MR 中的新包校验和并重跑/请求重跑 CI，以排除同 DOI 的旧镜像缓存。
+   descriptor 文件无需仅为这次 adapter 修复改字段，但 CI 必须实际验证新包。
+
+可用现有上传脚本（token 隐藏输入，不在命令或消息中提供）：
+
+```bash
+python3 /home/ruan/ikos-conc/svcomp/zenodo_upload.py \
+  --record 23122650 \
+  --file /home/ruan/ikos-conc-pr1324-20261012.zip \
+  --filename ikos-conc.zip
+```
+
+脚本不会覆盖草稿中已完成的同名文件；若原文件仍在，应在 Zenodo Edit files 页面处理
+旧文件后再上传，并在完成后发布/保存草稿。保留 DOI 的条件与操作见本节后面的官方链接。
+
 **10/11 M1 历史候选保留不覆盖。** 10/12 PR 修复新候选的归档指纹在本节新增记录中；
 用户之前的上传不代替新包校验，也没有在本轮自动修改远端。
 归档：[ikos-conc-m1-20261011.zip](/home/ruan/ikos-conc-m1-20261011.zip)，大小 `160292014` bytes，

@@ -1,0 +1,30 @@
+{
+  "archive": "/home/ruan/ikos-conc-pr1324-20261012.zip",
+  "bytes": 163309116,
+  "sha256": "0a94cae6b4a0a7995849070533d389d6b3085c1b412eb1b1e658679705a5fc37",
+  "md5": "20de8b1b24a738c6ea1ce027a45d5b19",
+  "source_commit": "7329e4bbfb50a961ad241ea56dad5cc54a5abb79",
+  "source_clean_tracked": true,
+  "entry_mode": "0755",
+  "analyzer_sha256": "10bad24bc789fe8fbd515e2713f4d352cdcbadc3b20c5eca7f3f1ad08df722a5",
+  "wrapper_sha256": "d27e26dffed8ce84548174c012e7cfbe7562fd392e04d0baf5c89d820d5fca1a",
+  "adapter_sha256": "2ff26529797ca28c687becbac52148b9a823f38244dacb79b314ba3beeeb5541",
+  "zip_integrity": "PASS",
+  "extracted_runtime_file_hashes": "all match BUILD-INFO",
+  "identical_analyzer_and_wrapper_to_full_sweep": true,
+  "final_zip_smoke": {
+    "status": "PASS",
+    "image": "ikos-conc:m1-runtime-20261011",
+    "network": "none",
+    "root_and_package": "read-only",
+    "relocation": "/opt/ikos package",
+    "abis": [
+      "ILP32",
+      "LP64"
+    ],
+    "log_sha256": "9597f331b1e4388ff6ec89c943fd5b9c6d33ecc6a0a7295832885d5ed83ffabe"
+  },
+  "old_m1_archive_preserved_sha256": "9bbef705b69a65d287d336fbe4699e3a3c498316a0a68dd95de3633dc18864a4",
+  "remote_upload": false,
+  "remote_pr_update": false
+}
