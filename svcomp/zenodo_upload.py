@@ -8,13 +8,8 @@ The owner must first enable Edit published files in the Zenodo web interface.
 import argparse
 import getpass
 import hashlib
-import io
-import json
 from pathlib import Path
-import shutil
-import subprocess
 import sys
-import tempfile
 import time
 from urllib.parse import quote, urljoin, urlsplit
 import zipfile
@@ -28,30 +23,6 @@ class UploadError(RuntimeError):
         self.status = status
 
 
-class ProgressReader(io.BufferedReader):
-    """Report bytes read for sending; remote commit/checksum proves completion."""
-
-    def __init__(self, raw, total):
-        super().__init__(raw)
-        self.total = total
-        self.sent = 0
-        self.started = self.last_report = time.monotonic()
-
-    def read(self, size=-1):
-        data = super().read(size)
-        self.sent += len(data)
-        now = time.monotonic()
-        if data and (now - self.last_report >= 2 or self.sent == self.total):
-            rate = self.sent / max(now - self.started, 0.001)
-            remaining = int((self.total - self.sent) / rate)
-            print(f"Upload body: {100 * self.sent / self.total:.1f}% "
-                  f"({self.sent / 1048576:.1f}/{self.total / 1048576:.1f} MiB), "
-                  f"{rate / 1024:.1f} KiB/s, ETA ~{remaining}s",
-                  end="\n" if self.sent == self.total else "\r", flush=True)
-            self.last_report = now
-        return data
-
-
 class Zenodo:
     def __init__(self, token, record):
         self.token = token
@@ -60,17 +31,13 @@ class Zenodo:
         self.session.headers.update({
             "Authorization": f"Bearer {token}", "Accept": "application/json"})
 
-    def checked_url(self, url):
+    def request(self, method, url, **kwargs):
         url = urljoin("https://zenodo.org", url)
         parsed = urlsplit(url)
         if parsed.scheme != "https" or parsed.netloc != "zenodo.org":
             raise UploadError("Unexpected API host; token was not sent.")
-        return url
-
-    def request(self, method, url, *, timeout=(20, 300), **kwargs):
-        url = self.checked_url(url)
         response = self.session.request(
-            method, url, timeout=timeout, allow_redirects=False, **kwargs
+            method, url, timeout=(20, 300), allow_redirects=False, **kwargs
         )
         if not 200 <= response.status_code < 300:
             detail = response.text[:800].replace(self.token, "[redacted]")
@@ -80,48 +47,6 @@ class Zenodo:
             return response.json()
         except ValueError as exc:
             raise UploadError(f"API returned non-JSON content: {url}") from exc
-
-    def upload_with_curl(self, url, path, *, progress=True):
-        url = self.checked_url(url)
-        executable = shutil.which("curl")
-        if not executable:
-            raise UploadError("curl is not installed; use requests or install curl first.")
-        # Send the token through stdin, never through argv or a config file.
-        header = ("Authorization: Bearer " + self.token).replace("\\", "\\\\").replace('"', '\\"')
-        if "\n" in header or "\r" in header:
-            raise UploadError("Invalid token: newline characters are not allowed.")
-        config = f'header = "{header}"\n'
-        with tempfile.TemporaryDirectory(prefix="ikos-zenodo-response-") as temp:
-            response_path = Path(temp) / "response.json"
-            command = [
-                executable, "--disable", "--config", "-", "--http1.1",
-                "--connect-timeout", "30", "--max-time", "1800",
-                "--request", "PUT", "--upload-file", str(path),
-                "--header", "Content-Type: application/octet-stream",
-                "--header", "Accept: application/json",
-                "--output", str(response_path),
-                "--write-out", "%{http_code} %{size_upload}", "--show-error",
-                "--progress-bar" if progress else "--silent", url,
-            ]
-            result = subprocess.run(command, input=config, text=True,
-                                    stdout=subprocess.PIPE,
-                                    stderr=None if progress else subprocess.PIPE)
-            fields = result.stdout.split()
-            status = int(fields[0]) if fields and fields[0].isdigit() else 0
-            sent = fields[1] if len(fields) > 1 else "unknown"
-            print(f"curl reports {sent} bytes sent; HTTP {status:03d}.", flush=True)
-            if result.returncode:
-                detail = (result.stderr or "").replace(self.token, "[redacted]")[:800]
-                raise requests.ConnectionError(
-                    f"curl transfer failed (exit {result.returncode}): {detail}")
-            response = response_path.read_text(errors="replace")
-            if not 200 <= status < 300:
-                detail = response.replace(self.token, "[redacted]")[:800]
-                raise UploadError(f"HTTP {status}: {url}\n{detail}", status)
-            try:
-                return json.loads(response)
-            except ValueError as exc:
-                raise UploadError(f"API returned non-JSON content: {url}") from exc
 
     def draft_files(self, record):
         expected = f"10.5281/zenodo.{record}"
@@ -168,8 +93,7 @@ def matches(entry, size, digests):
     )
 
 
-def upload(api, files_url, path, filename, digests, *, progress=True,
-           transport="requests", attempts=3):
+def upload(api, files_url, path, filename, digests):
     listing = api.request("GET", files_url)
     if not listing.get("enabled"):
         raise UploadError("Draft files are disabled; enable Edit published files first.")
@@ -185,19 +109,12 @@ def upload(api, files_url, path, filename, digests, *, progress=True,
         entry = next(e for e in initialized["entries"] if e["key"] == filename)
     file_url = files_url.rstrip("/") + "/" + quote(filename, safe="")
     # PUT is retried with the full file. This does not promise byte-offset resume.
-    for attempt in range(1, attempts + 1):
+    for attempt in range(1, 4):
         try:
-            print(f"Uploading {size} bytes, attempt {attempt}/{attempts} ({transport})…", flush=True)
-            if transport == "curl":
-                api.upload_with_curl(entry["links"]["content"], path, progress=progress)
-            else:
-                with (ProgressReader(path.open("rb", buffering=0), size)
-                      if progress else path.open("rb")) as stream:
-                    # urllib3 sends the body before switching to the read timeout.
-                    api.request("PUT", entry["links"]["content"], data=stream,
-                                headers={"Content-Type": "application/octet-stream"},
-                                timeout=(300, 300))
-            print("Content transfer accepted; committing file…", flush=True)
+            print(f"Uploading {size} bytes, attempt {attempt}/3…", flush=True)
+            with path.open("rb") as stream:
+                api.request("PUT", entry["links"]["content"], data=stream,
+                            headers={"Content-Type": "application/octet-stream"})
             api.request("POST", entry["links"]["commit"])
             break
         except (requests.RequestException, UploadError) as exc:
@@ -209,15 +126,14 @@ def upload(api, files_url, path, filename, digests, *, progress=True,
             try:
                 current = api.request("GET", file_url)
             except (requests.RequestException, UploadError):
-                if attempt == attempts:
+                if attempt == 3:
                     raise
                 current = {}
             if matches(current, size, digests):
                 break
-            if current.get("status") == "completed" or attempt == attempts:
+            if current.get("status") == "completed" or attempt == 3:
                 raise
             time.sleep(5)
-    print("Checking remote size and checksum…", flush=True)
     current = api.request("GET", file_url)
     if not matches(current, size, digests):
         raise UploadError(f"Remote file verification failed: {current.get('checksum')!r}.")
@@ -229,12 +145,6 @@ def main():
     parser.add_argument("--record", required=True, type=int)
     parser.add_argument("--file", required=True, type=Path)
     parser.add_argument("--filename", help="Remote name; defaults to the local filename")
-    parser.add_argument("--no-progress", action="store_true",
-                        help="use a plain file stream without progress reporting")
-    parser.add_argument("--transport", choices=["requests", "curl"], default="requests",
-                        help="HTTP client for the file body (default: requests)")
-    parser.add_argument("--attempts", type=int, choices=[1, 2, 3], default=3,
-                        help="maximum full-file upload attempts (default: 3)")
     args = parser.parse_args()
     path = args.file.resolve(strict=True)
     filename = args.filename or path.name
@@ -250,8 +160,7 @@ def main():
     if not token:
         raise UploadError("Empty token.")
     api = Zenodo(token, args.record)
-    upload(api, api.draft_files(args.record), path, filename, digests,
-           progress=not args.no_progress, transport=args.transport, attempts=args.attempts)
+    upload(api, api.draft_files(args.record), path, filename, digests)
     print(f"Upload complete. Review and publish the file-edit draft in your browser:\n"
           f"https://zenodo.org/uploads/{args.record}\n"
           "This script did not publish or create a version.", flush=True)
