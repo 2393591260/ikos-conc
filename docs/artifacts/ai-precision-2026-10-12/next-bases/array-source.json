@@ -1,0 +1,241 @@
+{
+  "source_sha256": "1250b991cc6af457c99698c8ecb919c369f7a178a8972aded6e4b48360bdf7f3",
+  "analyzer_sha256": "10bc4d4660776122b39ecc78adcf280387b01441f4919e022c2cf1ddc44f16a6",
+  "experiments": [
+    {
+      "name": "interval",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "--display-ar",
+        "--format=json",
+        "--report-file=/home/ruan/ikos-work/m2-20261012/array-source-design/interval/report.json",
+        "-m",
+        "32",
+        "-o",
+        "/home/ruan/ikos-work/m2-20261012/array-source-design/interval/output.db",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_09-arraylist.c"
+      ],
+      "exit": 0,
+      "verdict": "The program is potentially UNSAFE",
+      "seconds": 0.281,
+      "reasons": [
+        "synthetic pthread handle representation not modeled",
+        "unknown destination write effects not covered"
+      ],
+      "candidate_pairs": 0,
+      "report_sha256": "bdf21824c34cbf5d79afa3a418d50681b0e3eedbec69d3981185f8af351f5cea"
+    },
+    {
+      "name": "interval-congruence",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "--display-ar",
+        "--format=json",
+        "--report-file=/home/ruan/ikos-work/m2-20261012/array-source-design/interval-congruence/report.json",
+        "-m",
+        "32",
+        "-o",
+        "/home/ruan/ikos-work/m2-20261012/array-source-design/interval-congruence/output.db",
+        "--domain=interval-congruence",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_09-arraylist.c"
+      ],
+      "exit": 0,
+      "verdict": "The program is potentially UNSAFE",
+      "seconds": 0.23,
+      "reasons": [
+        "synthetic pthread handle representation not modeled",
+        "unknown destination write effects not covered"
+      ],
+      "candidate_pairs": 0,
+      "report_sha256": "bdf21824c34cbf5d79afa3a418d50681b0e3eedbec69d3981185f8af351f5cea"
+    },
+    {
+      "name": "dbm-congruence",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "--display-ar",
+        "--format=json",
+        "--report-file=/home/ruan/ikos-work/m2-20261012/array-source-design/dbm-congruence/report.json",
+        "-m",
+        "32",
+        "-o",
+        "/home/ruan/ikos-work/m2-20261012/array-source-design/dbm-congruence/output.db",
+        "--domain=var-pack-dbm-congruence",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_09-arraylist.c"
+      ],
+      "exit": 0,
+      "verdict": "The program is potentially UNSAFE",
+      "seconds": 0.285,
+      "reasons": [
+        "synthetic pthread handle representation not modeled",
+        "unknown destination write effects not covered"
+      ],
+      "candidate_pairs": 0,
+      "report_sha256": "bdf21824c34cbf5d79afa3a418d50681b0e3eedbec69d3981185f8af351f5cea"
+    },
+    {
+      "name": "octagon",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "--display-ar",
+        "--format=json",
+        "--report-file=/home/ruan/ikos-work/m2-20261012/array-source-design/octagon/report.json",
+        "-m",
+        "32",
+        "-o",
+        "/home/ruan/ikos-work/m2-20261012/array-source-design/octagon/output.db",
+        "--domain=var-pack-apron-octagon",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_09-arraylist.c"
+      ],
+      "exit": 0,
+      "verdict": "The program is potentially UNSAFE",
+      "seconds": 0.358,
+      "reasons": [
+        "synthetic pthread handle representation not modeled",
+        "unknown destination write effects not covered"
+      ],
+      "candidate_pairs": 0,
+      "report_sha256": "bdf21824c34cbf5d79afa3a418d50681b0e3eedbec69d3981185f8af351f5cea"
+    },
+    {
+      "name": "widen-delay10",
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "--display-ar",
+        "--format=json",
+        "--report-file=/home/ruan/ikos-work/m2-20261012/array-source-design/widen-delay10/report.json",
+        "-m",
+        "32",
+        "-o",
+        "/home/ruan/ikos-work/m2-20261012/array-source-design/widen-delay10/output.db",
+        "--widening-delay=10",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_09-arraylist.c"
+      ],
+      "exit": 0,
+      "verdict": "The program is potentially UNSAFE",
+      "seconds": 0.296,
+      "reasons": [
+        "synthetic pthread handle representation not modeled",
+        "unknown destination write effects not covered"
+      ],
+      "candidate_pairs": 0,
+      "report_sha256": "bdf21824c34cbf5d79afa3a418d50681b0e3eedbec69d3981185f8af351f5cea"
+    }
+  ],
+  "source": "c/goblint-regression/09-regions_09-arraylist.c",
+  "note": "Configuration checks use the exact frozen source; address probes add only existing read-only/no-throw debug intrinsics, so remain separate inputs.",
+  "address_probe_source_sha256": "3d27f4bcaa8857db185362f888903a832cab7813eb8b1d328517fa0158290e60",
+  "address_probes": [
+    {
+      "bits": 32,
+      "log_sha256": "949539acf137b9d47450589d18ca49759a139a924321f75f1103a063efccc99c",
+      "loop_offset": [
+        0,
+        36
+      ],
+      "main_read_offset": "TOP",
+      "worker_read_offset": "TOP",
+      "instrumentation": "Three __ikos_print_values(address) calls and analyses=race,dbg; no assume or source guard rewrite"
+    },
+    {
+      "bits": 64,
+      "log_sha256": "40be80ede65f4ace511def9ffb64691b32a52eb250b725bcf5565f983e918e5c",
+      "loop_offset": [
+        0,
+        72
+      ],
+      "main_read_offset": "TOP",
+      "worker_read_offset": "TOP",
+      "instrumentation": "Three __ikos_print_values(address) calls and analyses=race,dbg; no assume or source guard rewrite"
+    }
+  ],
+  "llvm_accesses": [
+    {
+      "bits": 32,
+      "stdout_sha256": "ab61b0e3bcd14309a1bd7ac3539ae9848d5151407f9e065e5c59ca688769f9ae",
+      "geps": [
+        "%14 = getelementptr inbounds [10 x %struct.s*], [10 x %struct.s*]* @slot, i32 0, i32 %4, !dbg !104",
+        "%18 = getelementptr inbounds [10 x %struct.s*], [10 x %struct.s*]* @slot, i32 0, i32 %.0, !dbg !125",
+        "%20 = getelementptr inbounds [10 x %struct.s*], [10 x %struct.s*]* @slot, i32 0, i32 %.0, !dbg !128",
+        "%28 = getelementptr inbounds [10 x %struct.s*], [10 x %struct.s*]* @slot, i32 0, i32 %7, !dbg !138"
+      ],
+      "clang_command": [
+        "/usr/lib/llvm-14/bin/clang",
+        "-m32",
+        "-emit-llvm",
+        "-c",
+        "-O0",
+        "-Xclang",
+        "-disable-O0-optnone",
+        "-g",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_09-arraylist.c",
+        "-o",
+        "-"
+      ],
+      "pp_command": [
+        "/home/ruan/ikos-conc/install/bin/ikos-pp",
+        "-S",
+        "-opt=basic",
+        "-entry-points=main",
+        "-freeze-undef",
+        "-o",
+        "-",
+        "-"
+      ],
+      "cwd": "/home/ruan/ikos-conc"
+    },
+    {
+      "bits": 64,
+      "stdout_sha256": "f3b40cea36e06592997cefcbd290da723a7ba7f211e081a0f12d8930062a7227",
+      "geps": [
+        "%13 = getelementptr inbounds [10 x %struct.s*], [10 x %struct.s*]* @slot, i64 0, i64 %12, !dbg !98",
+        "%18 = getelementptr inbounds [10 x %struct.s*], [10 x %struct.s*]* @slot, i64 0, i64 %17, !dbg !119",
+        "%21 = getelementptr inbounds [10 x %struct.s*], [10 x %struct.s*]* @slot, i64 0, i64 %20, !dbg !122",
+        "%29 = getelementptr inbounds [10 x %struct.s*], [10 x %struct.s*]* @slot, i64 0, i64 %28, !dbg !132"
+      ],
+      "clang_command": [
+        "/usr/lib/llvm-14/bin/clang",
+        "-m64",
+        "-emit-llvm",
+        "-c",
+        "-O0",
+        "-Xclang",
+        "-disable-O0-optnone",
+        "-g",
+        "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_09-arraylist.c",
+        "-o",
+        "-"
+      ],
+      "pp_command": [
+        "/home/ruan/ikos-conc/install/bin/ikos-pp",
+        "-S",
+        "-opt=basic",
+        "-entry-points=main",
+        "-freeze-undef",
+        "-o",
+        "-",
+        "-"
+      ],
+      "cwd": "/home/ruan/ikos-conc"
+    }
+  ],
+  "tool_sha256": {
+    "clang14": "a5a890d36e03444eaafde70aa27d031e030908e92f4961f369b5e7ff3804b68e",
+    "ikos_pp": "5af52ab266091625988977d99e5dd3c356c0b425937934accb259ad38f144b6b"
+  }
+}

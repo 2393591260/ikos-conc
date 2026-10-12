@@ -752,6 +752,66 @@ stable-publication CASE6 的两条历史执行检查仍为 `UNSUPPORTED: load re
 全语言 soundness、混合锁集域义务和官方源 witness 验收仍是各自独立的工作，
 不能由这次首批出口推断它们已完成。
 
+### M2 下一机制：参考复核与受限证书（2026-10-12，尚未实现）
+
+本轮将其余 91 个安全 UNKNOWN 在修正 GCC32 machine definition 的固定 Goblint 上
+重新运行：六配置 portfolio 每项 30 秒、3 jobs，得到 UNSUPPORTED 30、UNKNOWN 25、
+TIMEOUT 34、ERROR 2，无新增可信 TRUE，也没有 machine-definition fallback。
+其中 14 项原始输出为 TRUE，但均有 `Unsound`；官方脚本式 portfolio 会在该 TRUE 上
+停止，不能将它们登记为已证明。因此另外尝试后续配置，每配置 30 秒、每项总预算
+90 秒，63 次配置运行最终仍为 UNSUPPORTED 5、TIMEOUT 9，无新增可信 TRUE。
+超时与警告不证明不可实现；以上是本地固定版本/预算的观察，非官方 2027 工具结果。
+[参考证据](artifacts/ai-precision-2026-10-12/next-bases/references.json)保留命令、指纹和警告摘录。
+
+下一轮优先处理已有可信 TRUE 的 16 项，先实现下面一个受限机制再全量验收，
+不能把两个机制同时混入同一 behavioral commit。
+
+**初始化到首次发布的 HB 证书。** 入口为 `09-regions_02-list_nr.c`：worker 的
+`malloc→init(p,7)→A->next=p→unlock(A_mutex)`，读端在同锁下经 `A->next` 读取 datum。
+证书只作用于具体 `init Store + CallContext` 的候选对。必须把 formal 沿真实实参
+追溯到直接 LibcMalloc，核对 allocation call/context、单次动态激活与生命周期；
+分配、初始化调用和首次发布按同基本块顺序且无回边。纯初始化 helper 仅支持界内
+常量 offset 的整 scalar/NULL 写。发布前全部 alias/表示使用必须闭合且不逃逸，
+发布 Store 持物理 exclusive L，并有后续普通 unlock；读端 pointer Load 必须确实
+读取相同 publication slot，源 Load 与最终访问都持 L。
+
+还须证明该槽在相关线程创建前有合法完整 pointer 初值、全部后续写/未知效果有覆盖，
+否则其他来源可能在正式发布前把对象暴露给读者。结构证明可缓存，最终消费时仍检查
+迟到效果，不能缓存早期“没看见逃逸”的结论。拒绝 TOP 读端、错误锁/来源、generation
+复用及晚初始化；不把证明传播给整个 allocation site、后续无锁写或子节点。
+现有 AccessRecord、allocation context、同块顺序和完整 pointer-write 失效是基础，
+完整证书和正反例验证仍待实现；旧 `private_init` 与宽松 `is_fresh_alloc` 不可复用。
+
+**初始化后只读的 pointer-array 摘要。** `arraylist` 在 interval、interval-congruence、
+DBM-congruence、octagon 和 widening-delay=10 下均 UNKNOWN、零候选，两个 coverage
+告警相同。现有只读 debug intrinsic 探针显示：循环写的偏移 ILP32 为 `[0,36]`、
+LP64 为 `[0,72]`，main/worker 的 j/i 读偏移却都为 TOP。所以仅调整数值域或放开
+pointer footprint invalidator 不能得到完整 pointer 值。
+
+最小候选实现是额外 array-smashing 坐标 S：完整非 TLS global `[N x pointer]`，
+typed NULL 初始化，main prefix 的每次完整 pointer Store 即时 `S←S⊔RHS`，
+含重复 site 的值扩大、dirty 与 widening；所有 possible create 后均不可到达任何 writer。
+数组地址用途、初值及所有写必须闭合；字节/部分/opaque/未知写永久撤销该坐标。
+Load 保留 native/interference 读取，再将结果与完整 S 相交，不能只弱写 source memory，
+也不能收窄旧 access records 或清除既有持久 warning。一般并发可写数组不属于此子集。
+
+为处理 TOP j/i，需要另一个已核验的访问前提：实际 LLVM Load/Store 的目的为直接
+`inbounds GEP @完整GlobalVariable,0,index`，完整 pointer leaf、真实 global 类型与
+GEP source type 一致，并核对 AR/LLVM 来源与布局。正常有定义的完整解引用不允许
+one-past；该条件仅用于当前正常读取的值投影，不能追溯删除此前竞争前缀。
+不能把较大 allocation 经 bitcast/GlobalAlias 伪装的子数组当完整数组，也不能接受
+freeze/phi/select/额外位移。若这一局部 LLVM 合同不能建立，则先修 helper 布尔关系
+或证明实际 bounds，继续 UNKNOWN。原输入两 ABI 的八个 GEP 已重新核实并保存指纹；
+AR 保留 frontend GEP，可直接审查，无需先改 frontend 或新增 metadata。
+精确 LLVM 14.0.6 LangRef 文本未成功读到，已读的是 14.0.0 原文，实施前仍需核对版本。
+
+这两项是有落点的受限设计，尚无新增 TN、保持性定理或性能收益。
+验收需覆盖早发布/晚初始化、其他读源/锁、字节破坏、迟到 writer、布局伪装及双 ABI，
+再按既定 AI/BMC 配对和独立所选执行检查完成节点。
+证据：[汇总](artifacts/ai-precision-2026-10-12/next-bases/summary.json)、
+[配置/地址/LLVM 检查](artifacts/ai-precision-2026-10-12/next-bases/array-source.json)、
+[实施前提](artifacts/ai-precision-2026-10-12/next-bases/design.json)。
+
 <a id="evidence"></a>
 ## 9. 按机制查证据
 
@@ -761,6 +821,7 @@ stable-publication CASE6 的两条历史执行检查仍为 `UNSUPPORTED: load re
 
 | 原编号 | 机制或实验 | 原始依据 |
 | --- | --- | --- |
+| M2-next-bases | 91 项可信参考复核、14 项后续配置、受限发布/数组设计，尚无新语义 | [记录](artifacts/ai-precision-2026-10-12/next-bases/summary.json)、[目录](artifacts/ai-precision-2026-10-12/next-bases/) |
 | M2-unknown-write | TOP 普通 Store 的 memory havoc 与独立 coverage 回退，不宣称完整值模型 | [记录](artifacts/ai-precision-2026-10-12/unknown-writes/summary.json)、[目录](artifacts/ai-precision-2026-10-12/unknown-writes/) |
 | M2-pthread-init | 受限 glibc 初始化、opaque 存储闭包与有界效果 | [记录](artifacts/ai-precision-2026-10-12/pthread-initialization/summary.json)、[目录](artifacts/ai-precision-2026-10-12/pthread-initialization/) |
 | M2-handle-seed | 可信 main 初始抽象写，不过滤 TOP 或扩大 join 语义 | [记录](artifacts/ai-precision-2026-10-12/handle-seeds/summary.json)、[目录](artifacts/ai-precision-2026-10-12/handle-seeds/) |

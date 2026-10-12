@@ -52,7 +52,9 @@
 ## 下一步去哪里查
 
 - 安全 UNKNOWN 107 项；原 24 项已在修复 ILP32 环境的 Goblint 上全部复核 TRUE，
-  其中 8 项已恢复 SAFE，余下 16 项需其他机制；另外 91 项参考未证实。
+  其中 8 项已恢复 SAFE，余下 16 项需其他机制；另外 91 项在修正 ILP32 的固定参考上
+  全部重新运行，仍无新增可信 TRUE。14 项带 Unsound 的原始 TRUE 另试后续配置，
+  也未得到可信 TRUE，见[复核与下一机制](artifacts/ai-precision-2026-10-12/next-bases/summary.json)。
   [本轮 24 项处置](artifacts/ai-precision-2026-10-12/unknown-writes/dispositions-24.json)给出具体前提/缺口；
   [安全台账](artifacts/ai-precision-2026-10-11/unknown-ledger/ledger.json)保存当前判定和历史诊断指纹。
   TN 工作入口为 [AI 后续机制](ikos-ai-complete.md#roadmap)。
@@ -89,7 +91,9 @@ M1的本地候选已于10/11固定：包入口1029项与当前基线逐项一致
 断网依赖和2.2格式检查通过；候选包及证据见[参赛指南](SVCOMP2027-参赛指南.md#package)。
 严格源级validator因创建位置兼容与错误目标校准失败仍待验收，官方CI/MR/PR也未关闭。
 **本地工程出口完成不等于M1整体通过。** M1 冻结 ZIP 保持原样；M2 首批已完成稳定发布和
-release 两个机制验收及全部 24 项候选处置，见 [AI M2 记录](ikos-ai-complete.md#roadmap)。
+release 等五个精度机制验收及全部 24 项候选处置，并完成未知目的 Store 正确性修复。
+下一轮先做受限初始化发布证书，再做有完整来源证明的只读 pointer-array 摘要；
+两者尚未实现，见 [AI M2 记录](ikos-ai-complete.md#roadmap)。
 后续字符串与受限 pthread 初始化各恢复两个 SAFE，初始句柄 seed 再恢复一个；下一 TN 轮核实 heap pointer 来源/句柄存储覆盖，
 再查动态 join 数组；通用 heap-region 机制另定入口与预算。
 M0/M5的资料与写作并行；后续M2/M3每轮选择一个机制实施。

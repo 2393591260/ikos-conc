@@ -1,0 +1,49 @@
+{
+  "source_parent_commit": "c2479ab",
+  "analyzer_sha256": "10bc4d4660776122b39ecc78adcf280387b01441f4919e022c2cf1ddc44f16a6",
+  "semantic_change": false,
+  "full_verdict_evidence": "../unknown-writes/paired.json",
+  "reference_portfolio": {
+    "tasks": 91,
+    "counts": {
+      "UNSUPPORTED": 30,
+      "UNKNOWN": 25,
+      "TIMEOUT": 34,
+      "ERROR": 2
+    },
+    "raw_true": 14,
+    "raw_true_without_unsound": 0,
+    "unreliable_raw_true_are_not_proved": true,
+    "scope": "Corrected local GCC32 pinned reference, 30s per whole six-config portfolio; not official 2027 binary/run"
+  },
+  "reliable_followup": {
+    "tasks": 14,
+    "counts": {
+      "UNSUPPORTED": 5,
+      "TIMEOUT": 9
+    },
+    "attempts": 63,
+    "new_reliable_true": 0,
+    "scope": "Force later configs after unreliable TRUE; 30s/config, 90s/task total, no impossibility claim"
+  },
+  "array_experiments": {
+    "configuration_checks": 5,
+    "all_unknown": true,
+    "actual_address_probe_abis": [
+      32,
+      64
+    ],
+    "llvm_geps_checked": 8,
+    "llvm_source_and_probe_are_distinct": true
+  },
+  "remaining_reference_true": 16,
+  "remaining_other_reference_unproved": 91,
+  "next_priority": [
+    "First complete source/effect certificate and implement only the admitted init-publication case",
+    "Add readonly pointer array coordinate with explicit initializer/layout/access/coverage proof",
+    "Separate general heap region and dynamic join-array work"
+  ],
+  "no_new_tn_claim": true,
+  "no_performance_claim": true,
+  "no_general_soundness_claim": true
+}
