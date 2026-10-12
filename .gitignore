@@ -7,6 +7,23 @@ install/
 *~
 .ycm_extra_conf.py
 
+# Local notes and Office documents (including uppercase extensions)
+/local/
+/docs/local/
+*.[dD][oO][cC]
+*.[dD][oO][cC][xX]
+*.[pP][pP][tT]
+*.[pP][pP][tT][xX]
+*.[xX][lL][sS]
+*.[xX][lL][sS][xX]
+
+# Temporary files and raw execution logs
+*.tmp
+*.bak
+*.orig
+*.rej
+*.log
+
 # Python
 *.pyc
 __pycache__
@@ -56,6 +73,13 @@ docs/artifacts/bmc-correctness-2026-10-09/tasks/
 docs/artifacts/bmc-precision-2026-10-09/tasks/
 
 # Packaging artifacts
+*.zip
+*.7z
+*.rar
+*.tar
+*.tgz
 *.tar.gz
+*.tar.bz2
+*.tar.xz
 *.sha256
 witness.yml
