@@ -1,0 +1,14 @@
+[
+  {
+    "bits": 32,
+    "compile": 0,
+    "exit": 0,
+    "output": "mutex=24 attr=4 errorcheck=2\n"
+  },
+  {
+    "bits": 64,
+    "compile": 0,
+    "exit": 0,
+    "output": "mutex=40 attr=4 errorcheck=2\n"
+  }
+]

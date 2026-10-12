@@ -714,6 +714,12 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
   }
 
   for (std::uint64_t la : acquired_addrs) {
+    if (!read_lock && !trylock && eng.lockset().held_mutexes().count(la) != 0) {
+      // ERRORCHECK may fail without increasing depth; NORMAL may block.
+      // A concrete address alone does not prove recursive acquisition success.
+      eng.ctx().concurrent_env.record_unmodeled_effect(
+          call, "repeated mutex acquisition type/success not covered");
+    }
     if (read_lock) {
       eng.lockset().add_read_lock(la);
     } else if (trylock) {
@@ -767,8 +773,8 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
 
   // Initialise the return value (int rc) to a non-deterministic int.
   // pthread_mutex_lock may legally return success (0) or specific error
-  // codes (EINVAL, EDEADLK, ENOMEM) — none of which affect the lockset
-  // semantics for our race analysis.
+  // codes. MUST ownership requires the supported successful-acquire contract;
+  // the return abstraction itself is not evidence of successful acquisition.
   if (call->has_result()) {
     const Literal& ret = eng.lit_factory().get(call->result());
     if (ret.is_scalar()) {

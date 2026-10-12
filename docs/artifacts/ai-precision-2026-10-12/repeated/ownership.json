@@ -1,0 +1,1386 @@
+[
+  {
+    "bits": 32,
+    "case": 0,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=0",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-0-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-0-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 0,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=0",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-0-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-0-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=1",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-1-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-1-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=1",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-1-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-1-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "a8d81adb8e6e38b5914cfb8c6d709555d75ae29bd929231bc461a6cbe94ab688",
+        "certificate_sha256": "25a37281a429335269bcc8dc35894a9a5a6d1989b0c2c1d8fa5acbaa2f168c8f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:payload",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 12
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:payload",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 15,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=2",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-2-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-2-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=2",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-2-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-2-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "07c562d94c1aee44abfc21998424d6b4ed05827eff5f890503ac81691dca1bcd",
+        "certificate_sha256": "4c94c8a56c8834e3e2d14b8924d9523ab685d4609e5525a41c652f9916c4e4f3",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:payload",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:payload",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 19,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=3",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-3-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-3-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=3",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-3-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-3-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=4",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-4-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-4-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=4",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-4-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-4-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=5",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-5-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-5-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=5",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-5-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-5-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "1895cdf59c2afcd514023fc7b16ce57be480a4f45a3ef4f7b5cf281c731a27b8",
+        "certificate_sha256": "755e410093bd2b997a4887903e6770fd95ed4d5d21aefc80c4e9fad517a4d8c3",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:payload",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:payload",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 17,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=6",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-6-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-6-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=6",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-6-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-6-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=7",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-7-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-7-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=7",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-7-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-7-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=8",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-8-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-8-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=8",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-8-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-8-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ae97775b82e92ca644f19fc4ca0aa0137fbcab045b10b152cc3eceaecca0a85b",
+        "certificate_sha256": "0660abca106e99cbee9184000b5410c5c874cc105d40e98e75ecf674c942038c",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:payload",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 18
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:payload",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 15,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 21,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 32,
+    "case": 9,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=9",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-9-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-9-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 9,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=9",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-9-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-9-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 10,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=10",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-10-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-10-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 10,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=10",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-10-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-10-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 11,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=11",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-11-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-11-ai/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 11,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "32",
+      "-DCASE=11",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-11-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/32-11-bmc/output.db",
+      "/home/ruan/ikos-conc/docs/review-repros/ai-conditional-must/ownership.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=0",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-0-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-0-ai/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=0",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-0-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-0-bmc/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=1",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-1-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-1-ai/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=1",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-1-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-1-bmc/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "cc0532bb2534310a03d18e5884625e829bc316baf0119f0d3c77fded1c47fcce",
+        "certificate_sha256": "af823cf41b48419a5850291ea820d97416468aa05c95b9883e19ba78f3900cb6",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:cell",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 12
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:cell",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 15,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=2",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-2-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-2-ai/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=2",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-2-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-2-bmc/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "747a8cfb294f85e78d140dd7fd4c2e3f43200270ba078330b55378ec5c1f34f6",
+        "certificate_sha256": "daba567983f05e264055619011f21a7ca7206c816e9b3841e9d0da3a5073396d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:cell",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:cell",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 19,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=3",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-3-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-3-ai/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=3",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-3-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-3-bmc/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=4",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-4-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-4-ai/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=4",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-4-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-4-bmc/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=5",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-5-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-5-ai/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=5",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-5-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-5-bmc/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "bb5df6980448b48a5a380d6a1d0afe7932d83c357dd2c3f0243d976e6926c8f1",
+        "certificate_sha256": "edee12963c45bc73f2d769f215bebe30162326ad48b4dc181bf427ea6f1c113f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:cell",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:cell",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 17,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=6",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-6-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-6-ai/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=6",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-6-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-6-bmc/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=7",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-7-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-7-ai/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=7",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-7-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-7-bmc/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=8",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-8-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-8-ai/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=8",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-8-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-8-bmc/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is definitely UNSAFE",
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "5ef554d89ecb71923000cb763b541d82adfe1a765b8c85aff35bf20c48953f92",
+        "certificate_sha256": "b16c3d489825ae106f6c73bc09937a05645292f61469538e09381ee6f0b0967c",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:cell",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 18
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:cell",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 15,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 21,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "bits": 64,
+    "case": 9,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=9",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-9-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-9-ai/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 9,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=9",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-9-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-9-bmc/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 10,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=10",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-10-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-10-ai/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 10,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=10",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-10-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-10-bmc/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 11,
+    "mode": "ai",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=11",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-11-ai/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-11-ai/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 11,
+    "mode": "bmc",
+    "command": [
+      "/home/ruan/ikos-conc/install/bin/ikos",
+      "--analyses=race",
+      "--concurrency=auto",
+      "--demote-race-to-unknown",
+      "-m",
+      "64",
+      "-DCASE=11",
+      "--format=json",
+      "--report-file=/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-11-bmc/report.json",
+      "-o",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/64-11-bmc/output.db",
+      "/home/ruan/ikos-work/m2-20261012/repeated-ownership/renamed.c"
+    ],
+    "expected": "Safe",
+    "verdict": "The program is potentially UNSAFE",
+    "executions": []
+  }
+]

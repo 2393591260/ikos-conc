@@ -196,6 +196,16 @@ Goblint 的 MHP 参照分成四类非并发条件：同一唯一实例、确定�
 上述仅陈述受限实现，完整 POSIX 失败、属性、回调及 free/lifetime 仍需独立验收。
 编译/导入明确拒绝是 error，不得声称都已经变成 UNKNOWN。
 
+2026-10-12 的静态 ERRORCHECK 对照确认一个旧漏报：第二次 `pthread_mutex_lock`
+返回 EDEADLK，不增加真实递归深度；模型却增加深度，随后一次 unlock 后仍留下 MUST，
+把真实无锁写排除并返回 SAFE。glibc 的 ILP32/LP64 原生合同测试均确认该行为。
+现对已经 MUST 持有的 blocking mutex 再次 acquisition 记录未覆盖的类型/成功效果，
+阻止 SAFE，释放摘要也随之撤销。ERRORCHECK 竞争例与真实递归安全对照均为 UNKNOWN。
+这不是完整的 mutex-type/返回码语义；恢复这种安全对照需先证明类型、初始化、成功和 owner。
+见 [回归与配对](artifacts/ai-precision-2026-10-12/repeated/summary.json)。
+冻结集 1029 项两种模式的逐任务判定不变：TP=109/TN=679、FP/FN=0，
+UNKNOWN=240、error=1；该集合的零 FN 没有检测出这个集合外最小反例，不能代替语义审查。
+
 <a id="fixpoint"></a>
 <a id="safe-rules"></a>
 ## 6. 耦合不动点与 SAFE 验收合同

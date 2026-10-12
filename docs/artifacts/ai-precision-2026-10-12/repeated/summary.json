@@ -1,0 +1,87 @@
+{
+  "before_commit": "d730253ea1850d227f764ad5393fdc03d114497f",
+  "analyzer_sha256": "6c70620e49644d59b15f92d6474491a413f2f5a7dd73f0b3489d15f41ce59ec5",
+  "build_install_equal": true,
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "outer_timeout_seconds": 30,
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "TN": 679,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 349
+    },
+    "after_ai": {
+      "TP": 0,
+      "TN": 679,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 349
+    },
+    "before_bmc": {
+      "TP": 109,
+      "TN": 679,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 240
+    },
+    "after_bmc": {
+      "TP": 109,
+      "TN": 679,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 240
+    }
+  },
+  "transitions": 0,
+  "changed_false": 0,
+  "times": [
+    {
+      "mode": "ai",
+      "exit": 0,
+      "seconds": 140.4605057810004,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    },
+    {
+      "mode": "bmc",
+      "exit": 0,
+      "seconds": 347.56376593799996,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    }
+  ],
+  "minimum_case": {
+    "before": "SAFE on a real ERRORCHECK race",
+    "after": "UNKNOWN",
+    "native_contract_both_abis": "PASS",
+    "recursive_safe_control": "UNKNOWN; deliberately unsupported repeated acquisition"
+  },
+  "regressions": {
+    "attributes": 38,
+    "conditional_must": 48,
+    "static_repeated_modes": 8,
+    "p0_both_abis": 20
+  }
+}
