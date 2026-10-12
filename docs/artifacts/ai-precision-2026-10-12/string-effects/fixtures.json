@@ -1,0 +1,694 @@
+[
+  {
+    "bits": 32,
+    "case": 0,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 0,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 1,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 2,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 3,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 4,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "byte memory effects not fully modeled",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 5,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "byte memory effects not fully modeled",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 6,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 7,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "mode": "ai",
+    "expected": "Boundary",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "library memory effects not covered",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 8,
+    "mode": "bmc",
+    "expected": "Boundary",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "library memory effects not covered",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 9,
+    "mode": "ai",
+    "expected": "Boundary",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 9,
+    "mode": "bmc",
+    "expected": "Boundary",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 10,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 10,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 11,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 11,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 12,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 12,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 13,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 13,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 14,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 14,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 15,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 15,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 16,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "external call effects not covered",
+      "library memory effects not covered",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 32,
+    "case": 16,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "external call effects not covered",
+      "library memory effects not covered",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 0,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 1,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 2,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 3,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 4,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "byte memory effects not fully modeled",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 5,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "byte memory effects not fully modeled",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 6,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 7,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "mode": "ai",
+    "expected": "Boundary",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "library memory effects not covered",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 8,
+    "mode": "bmc",
+    "expected": "Boundary",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "library memory effects not covered",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 9,
+    "mode": "ai",
+    "expected": "Boundary",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 9,
+    "mode": "bmc",
+    "expected": "Boundary",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 10,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 10,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 11,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 11,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 12,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 12,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 13,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 13,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 14,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 14,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 15,
+    "mode": "ai",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 15,
+    "mode": "bmc",
+    "expected": "Safe",
+    "verdict": "The program is SAFE",
+    "reasons": [],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 16,
+    "mode": "ai",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "external call effects not covered",
+      "library memory effects not covered",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  },
+  {
+    "bits": 64,
+    "case": 16,
+    "mode": "bmc",
+    "expected": "Race Found",
+    "verdict": "The program is potentially UNSAFE",
+    "reasons": [
+      "external call effects not covered",
+      "library memory effects not covered",
+      "synthetic pthread handle representation not modeled"
+    ],
+    "executions": []
+  }
+]

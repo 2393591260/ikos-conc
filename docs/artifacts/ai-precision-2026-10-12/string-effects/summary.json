@@ -1,0 +1,236 @@
+{
+  "before_commit": "08c9c1b",
+  "before_analyzer_sha256": "642f4424ba2c1398febfe3ff96b8deb53f942d3cc2f3e40db7bbc4c86b49e23c",
+  "analyzer_sha256": "e239952f141103d6c572ade170c8d8d7b2c29d95f576757bd38fb4b6958e6fc8",
+  "wrapper_sha256": "e902b97ff2ca21fb2f5cc89a9b883fedfbe946722afcc45af8b9a3d58d64ae42",
+  "build_install_equal": true,
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp": "058ed39d8841284e70bde144fa25247ab28c4048560ca467cdb632dd973a0e61",
+    "analyzer/include/ikos/analyzer/analysis/execution_engine/numerical.hpp": "74c4bb7b9e7aa66bca7782c55ca5dd310b5879b819ed692cb1109490b14723ed",
+    "analyzer/src/checker/data_race.cpp": "99f715800853bfcfeee51bca7caf823bb5e3885fe72ddbb2ccdff8fd0187c596"
+  },
+  "fixture_sha256": {
+    "docs/review-repros/ai-string-effects/copy.c": "33dde45d18371935dc95f5058abf2ecdb0e4e3d4ec944522e3a26ef0dd100fd2",
+    "docs/review-repros/ai-string-effects/run.py": "4696154eca9c25465e028740267581a0f859faefdadf6a9e9939acac623cb314"
+  },
+  "source_diff_sha256": "2a9b7617b759402847fa409510ad15a49687fa6578a2f78922eb435b85b7d867",
+  "dataset_revision": "0a254fdddcfe24949be9edd47f8d609462eb52fb",
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "outer_timeout_seconds": 30,
+  "command": [
+    "python3",
+    "svcomp_race_test.py",
+    "--demote",
+    "--jobs",
+    "4",
+    "--timeout",
+    "30"
+  ],
+  "environment": {
+    "ai": {
+      "IKOS_BMC_RECOVER": "unset"
+    },
+    "bmc": {
+      "IKOS_BMC_RECOVER": "1"
+    }
+  },
+  "matrix": {
+    "before_ai": {
+      "TP": 0,
+      "TN": 681,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 347
+    },
+    "after_ai": {
+      "TP": 0,
+      "TN": 683,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 345
+    },
+    "before_bmc": {
+      "TP": 109,
+      "TN": 681,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 238
+    },
+    "after_bmc": {
+      "TP": 109,
+      "TN": 683,
+      "FP": 0,
+      "FN": 0,
+      "error": 1,
+      "unknown": 236
+    }
+  },
+  "times": [
+    {
+      "mode": "ai",
+      "exit": 0,
+      "seconds": 155.86160841799938,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    },
+    {
+      "mode": "bmc",
+      "exit": 0,
+      "seconds": 355.3876053589993,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    }
+  ],
+  "before_times": [
+    {
+      "mode": "ai",
+      "exit": 0,
+      "seconds": 165.34105536599873,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    },
+    {
+      "mode": "bmc",
+      "exit": 0,
+      "seconds": 378.8331140980008,
+      "command": [
+        "python3",
+        "svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ]
+    }
+  ],
+  "performance_claim": false,
+  "timing_limit": "Nonisolated workstation; AI scan overlapped regression checks and BMC scan briefly overlapped serial candidate diagnostics. Times are observations, not a speedup experiment.",
+  "changed_false": 0,
+  "selected_validation": {
+    "tasks": 109,
+    "executions": 137,
+    "all_accept": true,
+    "scope": "selected AR execution/API contracts; not official source-witness acceptance or all-SAT certification"
+  },
+  "source_witness_acceptance": false,
+  "fixtures": {
+    "checks": 68,
+    "abis": [
+      32,
+      64
+    ],
+    "native_controls": 6,
+    "false_checks": 0,
+    "boundary_notes": "CASE16 format/parse has existing coverage gates; UNKNOWN does not independently calibrate only the new no-pointer-exposure certificate. Baseline fixture sources not all identical."
+  },
+  "regressions": [
+    {
+      "check": "ai-byte-effects",
+      "checks": 96,
+      "exit": 0,
+      "summary_sha256": "beecc6507bae89bdcfe6ef9f3880ba99bf1bac2fcf2fa0f0ec70aba1920e38d4",
+      "non_accept_executions": []
+    },
+    {
+      "check": "ai-library-effects",
+      "checks": 100,
+      "exit": 0,
+      "summary_sha256": "957d6ef14456ebefd5909c3c102e8674636649f37c507da1ea588d6925983f83",
+      "non_accept_executions": []
+    },
+    {
+      "check": "ai-pointer-bytes",
+      "checks": 72,
+      "exit": 0,
+      "summary_sha256": "4577cdba25a1ef9459a3f0fd54f93cd30bcd9155269b140c6450d46ab55b2636",
+      "non_accept_executions": []
+    },
+    {
+      "check": "ai-pointer-sources",
+      "checks": 64,
+      "exit": 0,
+      "summary_sha256": "7e50fba43f9d2f05099e007b11e490076d7559fc99b1910da067913d0b799296",
+      "non_accept_executions": []
+    },
+    {
+      "check": "ai-stable-publication",
+      "checks": 44,
+      "exit": 0,
+      "summary_sha256": "74fe576f133cbae3d2dc99561824e3735ebdbf4c609d146076e36be27e5f1e1d",
+      "non_accept_executions": [
+        {
+          "bits": 32,
+          "case": 6,
+          "group": 2,
+          "pair": 2,
+          "program_sha256": "e52fb99545a3a3bb46d16812551d6f4dbc18106c0f1ee7cbf49e36bf2b876b2d",
+          "certificate_sha256": "c5baaff039b1768ab75aeb5579c69043782b9adac410684834233f0b7ee2eca8",
+          "status": "UNSUPPORTED",
+          "reason": "load representation/type"
+        },
+        {
+          "bits": 64,
+          "case": 6,
+          "group": 3,
+          "pair": 1,
+          "program_sha256": "7933bc1bf80e69b41a49fe48286050589cedeae20c9efc42b4230f1f42145e3d",
+          "certificate_sha256": "c7955514871a1be3872746780344cfaba134c01923d4b3ca2b6345d29787257f",
+          "status": "UNSUPPORTED",
+          "reason": "load representation/type"
+        }
+      ]
+    },
+    {
+      "check": "ai-release-values",
+      "checks": 72,
+      "exit": 0,
+      "summary_sha256": "548516451eea28824a52ae566b45351d3d0a403dd41136aaec1777ac05ffd27b",
+      "non_accept_executions": []
+    }
+  ],
+  "p0": {
+    "checks": 20,
+    "asserted_against_baseline": true
+  },
+  "safety_pool": {
+    "tracked": 136,
+    "recovered": 26,
+    "remaining": 110,
+    "selected_reference_true_remaining": 19,
+    "other_reference_unproved": 91
+  },
+  "remaining_obligations": [
+    "whole mixed lockset lattice certification",
+    "exact/general string values and pointer transport",
+    "general heap/region/publication provenance",
+    "general mutex attribute/failure semantics",
+    "official source-level witness validation"
+  ]
+}

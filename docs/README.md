@@ -23,9 +23,9 @@
 <a id="baseline"></a>
 ## 当前可复核基线
 
-以下是 **2026-10-12 release 端值机制的全量配对实验**；源码与证据在该机制的单独提交中。
+以下是 **2026-10-12 字符串效果机制的全量配对实验**；源码与证据在该机制的单独提交中。
 安装二进制 SHA256 为
-`642f4424ba2c1398febfe3ff96b8deb53f942d3cc2f3e40db7bbc4c86b49e23c`。
+`e239952f141103d6c572ade170c8d8d7b2c29d95f576757bd38fb4b6958e6fc8`。
 
 任务集合为 `/home/ruan/sv-benchmarks-2026`，revision
 `0a254fdddcfe24949be9edd47f8d609462eb52fb`，本地扫描 1029 项、全部 ILP32，
@@ -34,24 +34,24 @@
 
 | 比赛判定模式 | TP | TN | FP | FN | UNKNOWN | error/timeout |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| AI，demote，BMC 关闭 | 0 | 681 | 0 | 0 | 347 | 1 |
-| AI + BMC，demote | 109 | 681 | 0 | 0 | 238 | 1 |
+| AI，demote，BMC 关闭 | 0 | 683 | 0 | 0 | 345 | 1 |
+| AI + BMC，demote | 109 | 683 | 0 | 0 | 236 | 1 |
 
 109 个标签 TP 对应重新导出的 137 条所选执行，全部独立 AR ACCEPT。
 检查范围为导出的 AR、可信前端与明确库合同；尚非官方源程序/witness 验收，
 不认证全部 SAFE 规则，也不穷尽所有 SAT 模型。
 有限基准 FP/FN 为零不能作为全语言 soundness 定理。
 
-证据：[汇总](artifacts/ai-precision-2026-10-12/release-values/summary.json)、
-[逐任务配对](artifacts/ai-precision-2026-10-12/release-values/paired.json)、
-[逐执行检查](artifacts/ai-precision-2026-10-12/release-values/selected-executions.json)。
+证据：[汇总](artifacts/ai-precision-2026-10-12/string-effects/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-12/string-effects/paired.json)、
+[逐执行检查](artifacts/ai-precision-2026-10-12/string-effects/selected-executions.json)。
 唯一失败项是安全标签的 `nsc-ircc` 驱动外层超时，未计成 UNKNOWN。
 
 ## 下一步去哪里查
 
-- 安全 UNKNOWN 112 项；原 24 项已在修复 ILP32 环境的 Goblint 上全部复核 TRUE，
-  其中 3 项已恢复 SAFE，余下 21 项需其他机制；另外 91 项参考未证实。
-  [本轮 24 项处置](artifacts/ai-precision-2026-10-12/release-values/dispositions-24.json)给出具体前提/缺口；
+- 安全 UNKNOWN 110 项；原 24 项已在修复 ILP32 环境的 Goblint 上全部复核 TRUE，
+  其中 5 项已恢复 SAFE，余下 19 项需其他机制；另外 91 项参考未证实。
+  [本轮 24 项处置](artifacts/ai-precision-2026-10-12/string-effects/dispositions-24.json)给出具体前提/缺口；
   [安全台账](artifacts/ai-precision-2026-10-11/unknown-ledger/ledger.json)保存当前判定和历史诊断指纹。
   TN 工作入口为 [AI 后续机制](ikos-ai-complete.md#roadmap)。
 - 竞争 UNKNOWN 126 项，历史 Dartagnan 参考为 FAIL 95、TIMEOUT 15、ERROR 13、有界 PASS 3。
@@ -88,6 +88,7 @@ M1的本地候选已于10/11固定：包入口1029项与当前基线逐项一致
 严格源级validator因创建位置兼容与错误目标校准失败仍待验收，官方CI/MR/PR也未关闭。
 **本地工程出口完成不等于M1整体通过。** M1 冻结 ZIP 保持原样；M2 首批已完成稳定发布和
 release 两个机制验收及全部 24 项候选处置，见 [AI M2 记录](ikos-ai-complete.md#roadmap)。
+后续字符串效果机制再恢复两个 SAFE；下一 TN 轮优先核实句柄存储或 mutex 属性的窄效果合同。
 M0/M5的资料与写作并行；后续M2/M3每轮选择一个机制实施。
 首个 TN 入口见 [AI §8](ikos-ai-complete.md#roadmap)，TP 入口见 [BMC 后续机制](ikos-bmc-complete.md#roadmap)。
 M2 首批固定为两个 release 入口和一个稳定 pointer 入口，机制实现后再检查同桶候选。

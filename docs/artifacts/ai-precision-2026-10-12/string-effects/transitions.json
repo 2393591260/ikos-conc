@@ -1,0 +1,24 @@
+[
+  {
+    "task": "c/pthread/bigshot_s.i",
+    "expected": "Safe",
+    "source_sha256": "4d8c741fd238f074816319de9a9bd5d97cd9b35eb7f53a276be973ea0c31ecbe",
+    "yaml": "c/pthread/bigshot_s.yml",
+    "yaml_sha256": "f5e6b8f47f15724429ca2c8dd9ecda092b05635fb877c4363769273b8be8bd44",
+    "before_ai": "Unknown",
+    "before_bmc": "Unknown",
+    "after_ai": "Safe",
+    "after_bmc": "Safe"
+  },
+  {
+    "task": "c/pthread/bigshot_s2.i",
+    "expected": "Safe",
+    "source_sha256": "fa644cc26c2bb4f900e6af52233648196eb4dff503d36a50559ddcf2a4270ffb",
+    "yaml": "c/pthread/bigshot_s2.yml",
+    "yaml_sha256": "f7bc44d3a27cd325cbf70b1b37b1854965168a23d49330f9451c77a82985df37",
+    "before_ai": "Unknown",
+    "before_bmc": "Unknown",
+    "after_ai": "Safe",
+    "after_bmc": "Safe"
+  }
+]

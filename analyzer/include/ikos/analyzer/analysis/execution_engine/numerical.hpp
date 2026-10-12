@@ -3061,8 +3061,6 @@ private:
         if (nonzero_size(2)) may_write(1);
         break;
       case ar::Intrinsic::LibcGets:
-      case ar::Intrinsic::LibcStrcpy:
-      case ar::Intrinsic::LibcStrcpyCheck:
       case ar::Intrinsic::LibcStrcat:
       case ar::Intrinsic::LibcStrcatCheck:
       case ar::Intrinsic::LibcStrncat:
@@ -4164,13 +4162,16 @@ private:
       return;
     }
 
-    if (this->data().normal().pointer_to_points_to(dest.var()).is_top()) {
-      // Ignore strcpy, analysis could be unsound.
-      // See CheckKind::IgnoredCallSideEffectOnPointerParameter
-    } else {
-      // Do not keep track of the content
-      this->data().normal().mem_abstract_reachable(dest.var());
+    if (this->_ctx.opts.enable_thread_modular) {
+      check_synthetic_handle_effect(*this, call, dest);
+      check_synthetic_handle_effect(*this, call, src);
+      if (!publish_unknown_byte_effect(*this, call, dest)) {
+        this->_ctx.concurrent_env.record_unmodeled_effect(
+            call, "library memory effects not covered");
+      }
     }
+    // Abstracting cells alone preserves stale allocation pointer-set bounds.
+    this->data().normal().mem_forget_reachable(dest.var());
 
     if (call->has_result()) {
       const ScalarLit& lhs = this->_lit_factory.get_scalar(call->result());

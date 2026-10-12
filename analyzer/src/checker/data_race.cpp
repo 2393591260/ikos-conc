@@ -2876,8 +2876,8 @@ void DataRaceChecker::check_extern_call_effects(
     }
   }
 
-  // Synthesize ONE Write access per pointer argument: the library may
-  // read or write through it (scanf(&x), fgets(buf, ...), ...). The
+  // Default to a Write per pointer argument; an exact strcpy source is Read.
+  // Other libraries may read or write through it (scanf(&x), fgets, ...). The
   // record carries the same thread identity and lockset as an explicit
   // store at this program point would.
   std::string tid = this->current_thread_id(call, call_context);
@@ -2948,7 +2948,11 @@ void DataRaceChecker::check_extern_call_effects(
     this->_accesses.push_back(
         AccessRecord{call,
                      call_context,
-                     AccessKind::Write,
+                     exact != nullptr && argument_index == 1 &&
+                             (exact->intrinsic_id() == ar::Intrinsic::LibcStrcpy ||
+                              exact->intrinsic_id() == ar::Intrinsic::LibcStrcpyCheck)
+                         ? AccessKind::Read
+                         : AccessKind::Write,
                      std::move(pts),
                      locks,
                      read_locks,

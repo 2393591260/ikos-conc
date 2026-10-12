@@ -141,6 +141,43 @@ shared random-byte intrinsic、未知 create 输出和异常 destructor 的效�
 没有照搬这些历史域，也不能称已实现完整 Goblint PBR 或 digest-driven 分析。
 定向回归见 `docs/review-repros/ai-release-values/`；全量证据见 §8。
 
+### 3.5 未知长度字符串复制
+
+`exec_strcpy` 为精确 AR intrinsic `LibcStrcpy` / `LibcStrcpyCheck` 建立效果：
+源参数是 Read，目的参数是 Write，访问宽度未知，包含结尾 NUL。
+长度未知时不尝试保留字符串值；`mem_forget_reachable` 忘记每个可能目的分配的
+内存及 pointer-set bounds。旧 `mem_abstract_reachable` 只清 cells，会让之后的
+pointer load 继续被陈旧分配界限收窄。返回值仍是原目的指针。
+
+并发效果由 `publish_unknown_byte_effect` 发布：目的必须有非空、具体的 Local/Global/
+DynAlloc may-set；每个目标记录任意偏移、未知完整性的字节写，使重叠 pointer 来源失效。
+整数 global 按实际位宽/符号发布 TOP，aggregate global 使用失效标记清除旧初始化内容；
+受影响的保护值精化撤销。TOP/绝对地址/其他不支持目标保留库覆盖警告。
+源和目的仍检查合成 pthread 句柄表示，不能因支持字符串而消费损坏身份。
+
+**“源不含 pointer”不能证明不会产生 pointer。** 合法对齐对象中，`strcpy((char *)&p, "")`
+的 NUL 可改变 pointer 的最低地址字节，并产生另一个有效地址。默认效果因此发布任意
+逃逸目标；只有 `byte_copy_cannot_expose_pointers` 的整 bundle 证书成立才省略这项逃逸。
+证书并不省略上述内容 havoc 或字节写摘要。
+
+该证书排除所有可能的 pointer/aggregate 消费及表示传播：扫描函数体和 initializer，
+消费者地址须追溯到与目的分配不相交的直接 Local/Global 地址；formal、load、整数转换及
+不唯一的定义不算直接地址。普通非 pointer Store 必须写常量到直接分配，并把这些分配
+一并视为可能表示，以覆盖 `switch(copy[i])` 再写字符常量的控制依赖传播。
+唯一豁免是可信前端标记、由精确 intrinsic 生成的局部合成初始化。
+整数转 pointer、pointer extract、未知/间接调用、内联汇编、未闭合 transport 均拒绝证书。
+允许的外部 primitive 仅为已核实的 intrinsic/API；命名 pthread/`__assert_fail` 另核对
+非 vararg、参数数目、声明/实参类型及 ABI。两个扫描合用 8192 条语句预算，耗尽即拒绝。
+这些条件依赖合法前端数据流、可信 metadata、有效对象/provenance 与明确库合同；
+失败时发布逃逸 TOP，既有干扰与句柄覆盖检查继续阻止不充分的 SAFE。
+
+固定 Goblint `libraryFunctions.ml:37–39` 的 dest Write / src Read、`base.ml` 的
+`Strcpy`/`string_manipulation` 是参考实现依据；IKOS 此轮使用整分配保守 havoc，
+没有实现 Goblint 的精确字符串数组复制。仅检查过参考源码和已有定向 TRUE 结果，
+没有新增 Goblint transfer 运行探针。BMC 仍不支持复制效果所需的值/执行编码；
+AI 的 SAFE 收益不能当成 BMC 已能确认字符串相关反例。
+定向回归见 `docs/review-repros/ai-string-effects/`，实验范围及限制见 §8。
+
 <a id="locks"></a>
 ## 4. 锁、线程身份与非并发证明
 
@@ -477,12 +514,40 @@ AI/BMC 本轮墙钟为约 165/379 秒，只有一轮观察，不能推出性能�
 [定向回归](artifacts/ai-precision-2026-10-12/release-values/fixtures.json)、
 [所选执行](artifacts/ai-precision-2026-10-12/release-values/selected-executions.json)。
 
-### M2 首批出口与全部 24 个候选的处置
+### M2：字符串内存效果（2026-10-12 已实现）
+
+`bigshot_s.i` / `bigshot_s2.i` 的 main 先 join 分配线程，再创建、join 复制线程，
+最后读 `v[0]`；创建/join 历史已能排除并发，原先仅 `strcpy` 库效果未覆盖而 UNKNOWN。
+固定 ILP32 Goblint 对相同 `.i` 输入均返回 TRUE；空指针/断言诊断属于其他性质，
+此轮只评估 no-data-race。实现是 §3.5 的通用字节效果及受限无新 pointer 逃逸证书，
+没有按输入名删除警告，也没有新增字符串精确值域。
+
+68 项双架构、AI/BMC 定向检查包含并发复制、结尾 NUL、非零字段偏移、多个 may-target、
+修改共享整数守卫、TOP 目标、句柄字节写、mutable 源写冲突及 fortified 复制；
+32/64 位还有改名和不同守卫宽度变体。6 次 native 控制实际验证 NUL 改变 global/heap
+pointer 的有效表示及字符/控制依赖到 `%p` 的重建。格式化/解析用例同时受既有库覆盖
+gate 限制，其 UNKNOWN 不能单独证明新逃逸证书的拒绝分支有效。
+已有六组相关回归 448 项及双架构 P0 20 项通过；stable-publication CASE6 的两条执行
+仍是既有 AR `UNSUPPORTED load representation/type`，不包含在“全部 ACCEPT”声明中。
+
+1029 项全量配对只有两个字符串入口 UNKNOWN→SAFE：AI TN 681→683；
+AI+BMC TP 109 不变、TN 681→683、UNKNOWN 238→236、FP/FN=0、error=1。
+109 个标签 TP 重新导出的 137 条所选执行均为独立 AR ACCEPT。
+两模式全量 wall time 为 155.86 / 355.39 秒；工作站运行非隔离且短时并行了定向检查，
+这些是运行记录，不作为提速结论。BMC 对复制效果仍保留 unsupported 边界。
+
+证据：[汇总](artifacts/ai-precision-2026-10-12/string-effects/summary.json)、
+[逐任务配对](artifacts/ai-precision-2026-10-12/string-effects/paired.json)、
+[定向回归](artifacts/ai-precision-2026-10-12/string-effects/fixtures.json)、
+[所选执行](artifacts/ai-precision-2026-10-12/string-effects/selected-executions.json)。
+
+### M2 首批出口与当前 24 个候选的处置
 
 三个固定入口均已恢复 SAFE；24 项的源/YAML 指纹、当前报告、逐任务 AI/BMC 判定、
 修正后的参考结果及语义前提已逐项更新到
-[处置记录](artifacts/ai-precision-2026-10-12/release-values/dispositions-24.json)，
-并同步原安全台账。余下 21 项仍为 UNKNOWN，具体缺口如下：
+[处置记录](artifacts/ai-precision-2026-10-12/string-effects/dispositions-24.json)，
+并同步原安全台账。后续字符串机制再恢复两项，当前已恢复 5 项，
+余下 19 项仍为 UNKNOWN，具体缺口如下：
 
 | 数量 | 候选机制 | 当前不能证明的条件 |
 | ---: | --- | --- |
@@ -490,7 +555,6 @@ AI/BMC 本轮墙钟为约 165/379 秒，只有一轮观察，不能推出性能�
 | 2 | handle 存储覆盖（ptra、arraylist） | 抽象 token 的 seed/output 存储与不透明身份来源；目前无残余候选对，仍不能仅删除 coverage gate |
 | 2 | mutex attribute effects（23-sound_unlock、40-trylock） | 真实初始化阶段属性效果及失败/所有权合同；目前只剩库覆盖警告 |
 | 1 | dynamic join array（thread-join-array-const） | 全部动态线程实例的 array-slot 来源和完成证书；main 的 joined digest 仍为空，保留两个候选对 |
-| 2 | strcpy byte effects（bigshot_s/s2） | 包含 NUL 的源读/目的写跨度、共享值发布与重叠失效；目前只剩库覆盖警告 |
 
 固定 Goblint 的六配置 portfolio 最终均 TRUE；join-array 前四配置为 UNKNOWN，
 第五配置才 TRUE，保留这一序列，不能说所有候选都由默认配置证明。
@@ -498,7 +562,7 @@ AI/BMC 本轮墙钟为约 165/379 秒，只有一轮观察，不能推出性能�
 
 首批验收完成的依据是：两个机制分别提交，build/install 与双架构/P0 通过，
 两种模式全量配对，现有标签 TP 的所选执行重新检查，24 项都有明确去向。
-安全 UNKNOWN 仍有 112 项，其中本轮余下 21 项参考 TRUE，另 91 项参考未证实。
+安全 UNKNOWN 仍有 110 项，其中本轮余下 19 项参考 TRUE，另 91 项参考未证实。
 后续 TN 轮优先从只剩库/句柄 coverage 的窄效果机制继续，通用 heap-region 算法另定预算。
 全语言 soundness、混合锁集域义务和官方源 witness 验收仍是各自独立的工作，
 不能由这次首批出口推断它们已完成。
@@ -512,6 +576,7 @@ AI/BMC 本轮墙钟为约 165/379 秒，只有一轮观察，不能推出性能�
 
 | 原编号 | 机制或实验 | 原始依据 |
 | --- | --- | --- |
+| M2-string | 未知长度字节效果、pointer bounds 失效及受限逃逸证书 | [记录](artifacts/ai-precision-2026-10-12/string-effects/summary.json)、[目录](artifacts/ai-precision-2026-10-12/string-effects/) |
 | M2-release | 首次获取证书、实际释放端点及嵌套保护 | [记录](artifacts/ai-precision-2026-10-12/release-values/summary.json)、[目录](artifacts/ai-precision-2026-10-12/release-values/) |
 | <a id="ai-step-01"></a>01 | P0-F1：撤销 self-consistency 共同锁捷径 | [记录](artifacts/ai-p0-2026-10-10/f1/summary.json)、[目录](artifacts/ai-p0-2026-10-10/f1/) |
 | <a id="ai-step-02"></a>02 | P0-F3：未知线程体的覆盖回退 | [记录](artifacts/ai-p0-2026-10-10/f3/summary.json)、[目录](artifacts/ai-p0-2026-10-10/f3/) |

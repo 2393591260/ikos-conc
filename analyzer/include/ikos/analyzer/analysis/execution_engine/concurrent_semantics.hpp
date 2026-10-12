@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <llvm/IR/Instruction.h>
+
 #include <ikos/ar/semantic/code.hpp>
 #include <ikos/ar/semantic/statement.hpp>
 #include <ikos/ar/semantic/value.hpp>
@@ -1784,6 +1786,191 @@ void publish_byte_effect(E& eng, const ScalarLit& dest, ar::Type* type) {
   eng.data().normal().mem_read(rhs, dest.var(), size);
   on_store_privatize(eng, type, dest, Literal(rhs));
   eng.data().normal().scalar_forget(tmp);
+}
+
+// Only direct allocation addresses can exclude consumption of copied bytes.
+inline ar::Value* direct_byte_object(ar::Value* value) {
+  for (unsigned depth = 0; depth != 32; ++depth) {
+    if (isa< ar::LocalVariable >(value) || isa< ar::GlobalVariable >(value)) return value;
+    auto* variable = dyn_cast< ar::InternalVariable >(value);
+    if (!variable || !variable->type()->is_pointer()) return nullptr;
+    if (auto* function = variable->code()->function_or_null()) {
+      for (auto it = function->param_begin(); it != function->param_end(); ++it)
+        if (*it == variable) return nullptr;
+    }
+    auto* definition = unique_def(variable);
+    if (auto* copy = dyn_cast_or_null< ar::Assignment >(definition)) {
+      value = copy->operand();
+    } else if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
+      if (cast->op() != ar::UnaryOperation::Bitcast) return nullptr;
+      value = cast->operand();
+    } else if (auto* shift = dyn_cast_or_null< ar::PointerShift >(definition)) {
+      value = shift->pointer();
+    } else return nullptr;
+  }
+  return nullptr;
+}
+
+// Reject every unproved pointer/aggregate consumer or byte transport. Content
+// havoc is still required: this certificate excludes new pointer edges only.
+inline bool byte_copy_cannot_expose_pointers(
+    ar::Bundle* bundle, ar::CallBase* copy,
+    const core::PointsToSet< MemoryLocation* >& points) {
+  // Constant stores can transport information through their control flow.
+  // Treat their entire allocations as additional possible representations.
+  std::unordered_set< ar::Value* > representations;
+  unsigned budget = 8192;
+  for (auto it = bundle->function_begin(); it != bundle->function_end(); ++it) {
+    auto* code = (*it)->body_or_null();
+    if (!code) continue;
+    for (auto* block : *code) for (auto* statement : *block) {
+      if (budget-- == 0) return false;
+      auto* store = dyn_cast< ar::Store >(statement);
+      if (!store || store->value()->type()->is_pointer()) continue;
+      auto* source = store->has_frontend()
+          ? llvm::dyn_cast< llvm::Instruction >(store->frontend< llvm::Value >()) : nullptr;
+      if (source && source->getMetadata("ikos.freeze_uninit")) {
+        auto* variable = dyn_cast< ar::InternalVariable >(store->value());
+        auto* seed = variable ? dyn_cast_or_null< ar::CallBase >(unique_def(variable)) : nullptr;
+        auto* target = seed ? dyn_cast< ar::FunctionPointerConstant >(seed->called()) : nullptr;
+        if (target && target->function()->intrinsic_id() == ar::Intrinsic::IkosNonDet &&
+            seed->num_arguments() == 0 &&
+            dyn_cast_or_null< ar::LocalVariable >(direct_byte_object(store->pointer()))) continue;
+      }
+      if (!isa< ar::Constant >(store->value()) || isa< ar::UndefinedConstant >(store->value())) return false;
+      auto* base = direct_byte_object(store->pointer());
+      if (!base) return false;
+      representations.insert(base);
+    }
+  }
+  auto disjoint = [&](ar::Value* value) {
+    if (isa< ar::NullConstant >(value) || isa< ar::FunctionPointerConstant >(value)) return true;
+    auto* base = direct_byte_object(value);
+    if (!base || representations.count(base)) return false;
+    for (MemoryLocation* loc : points) {
+      if (auto* global = dyn_cast< GlobalMemoryLocation >(loc)) {
+        if (base == global->global_var()) return false;
+      } else if (auto* local = dyn_cast< LocalMemoryLocation >(loc)) {
+        if (base == local->local_var()) return false;
+      }
+    }
+    return true;
+  };
+  // Other externs may turn scalar arguments into bytes/pointers (e.g. %p).
+  // Defined callees are scanned; the small primitive set has no such output.
+  auto covered_call = [&](ar::CallBase* call) {
+    auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+    if (!target) return false;
+    auto* function = target->function();
+    if (function->is_definition()) return true;
+    switch (function->intrinsic_id()) {
+      case ar::Intrinsic::IkosNonDet:
+      case ar::Intrinsic::IkosAssert:
+      case ar::Intrinsic::IkosAssume:
+      case ar::Intrinsic::LibcMalloc:
+      case ar::Intrinsic::LibcAbort:
+      case ar::Intrinsic::PthreadCreate:
+      case ar::Intrinsic::PthreadJoin:
+      case ar::Intrinsic::PthreadMutexLock:
+      case ar::Intrinsic::PthreadMutexUnlock: return true;
+      case ar::Intrinsic::LibcStrcpy:
+      case ar::Intrinsic::LibcStrcpyCheck: return true;
+      default: break;
+    }
+    if (function->num_parameters() != call->num_arguments() ||
+        function->type()->is_var_arg()) return false;
+    for (std::size_t i = 0; i < call->num_arguments(); ++i)
+      if (function->type()->param_type(i) != call->argument(i)->type()) return false;
+    auto* returned = dyn_cast< ar::IntegerType >(function->type()->return_type());
+    if (returned && returned->bit_width() == 32 && returned->is_signed()) {
+      const auto& name = function->name();
+      if (name == "pthread_create" && call->num_arguments() == 4) {
+        auto* start = dyn_cast< ar::PointerType >(call->argument(2)->type());
+        return call->argument(0)->type()->is_pointer() && call->argument(1)->type()->is_pointer() &&
+               start && start->pointee()->is_function() && call->argument(3)->type()->is_pointer();
+      }
+      if (name == "pthread_join" && call->num_arguments() == 2) {
+        auto* handle = dyn_cast< ar::IntegerType >(call->argument(0)->type());
+        return call->argument(1)->type()->is_pointer() &&
+               (call->argument(0)->type()->is_pointer() ||
+                (handle && handle->bit_width() == bundle->data_layout().pointers.bit_width));
+      }
+      if ((name == "pthread_mutex_lock" || name == "pthread_mutex_unlock") &&
+          call->num_arguments() == 1) return call->argument(0)->type()->is_pointer();
+    }
+    if (function->name() != "__assert_fail" || call->num_arguments() != 4 ||
+        !function->type()->return_type()->is_void()) return false;
+    for (auto i : {0u, 1u, 3u}) {
+      auto* pointer = dyn_cast< ar::PointerType >(call->argument(i)->type());
+      auto* byte = pointer ? dyn_cast< ar::IntegerType >(pointer->pointee()) : nullptr;
+      if (!byte || byte->bit_width() != 8) return false;
+    }
+    auto* line = dyn_cast< ar::IntegerType >(call->argument(2)->type());
+    return line && line->bit_width() == 32;
+  };
+  auto scan = [&](ar::Code* code) {
+    if (!code) return true;
+    for (auto* block : *code) for (auto* statement : *block) {
+      if (budget-- == 0) return false;
+      if (auto* cast = dyn_cast< ar::UnaryOperation >(statement)) {
+        if (cast->op() == ar::UnaryOperation::UIToPtr ||
+            cast->op() == ar::UnaryOperation::SIToPtr) return false;
+      } else if (auto* load = dyn_cast< ar::Load >(statement)) {
+        auto* type = load->result()->type();
+        if ((type->is_pointer() || type->is_aggregate()) && !disjoint(load->operand())) return false;
+      } else if (auto* extract = dyn_cast< ar::ExtractElement >(statement)) {
+        if (extract->result()->type()->is_pointer()) return false;
+      } else if (auto* call = dyn_cast< ar::CallBase >(statement)) {
+        if (!covered_call(call)) return false;
+        for (std::size_t i = 0; i < call->num_arguments(); ++i) {
+          if (call == copy && i == 0) continue;
+          auto* arg = call->argument(i);
+          if (arg->type()->is_aggregate() ||
+              (arg->type()->is_pointer() && !disjoint(arg))) return false;
+        }
+      }
+    }
+    return true;
+  };
+  for (auto it = bundle->function_begin(); it != bundle->function_end(); ++it)
+    if (!scan((*it)->body_or_null())) return false;
+  for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it)
+    if (!scan((*it)->initializer_or_null())) return false;
+  return true;
+}
+
+// Unknown-length copies havoc every possible destination allocation. Publish
+// matching interference instead of retaining typed values or pointer bounds.
+template < typename E >
+bool publish_unknown_byte_effect(E& eng, ar::CallBase* copy, const ScalarLit& dest) {
+  auto points = eng.data().normal().pointer_to_points_to(dest.var());
+  if (!points.is_set() || points.is_empty()) return false;
+  for (MemoryLocation* loc : points) {
+    if (!isa< LocalMemoryLocation >(loc) && !isa< GlobalMemoryLocation >(loc) &&
+        !isa< DynAllocMemoryLocation >(loc)) return false;
+  }
+  auto& env = eng.ctx().concurrent_env;
+  auto offset = core::machine_int::Interval::top(
+      eng.data_layout().pointers.bit_width, core::Unsigned);
+  for (MemoryLocation* loc : points) {
+    auto addr = core::IndexableTraits< MemoryLocation* >::index(loc);
+    // TOP offset records an unbounded write, including a terminating NUL.
+    env.record_pointer_write(addr, offset, core::ZNumber(1), false);
+    if (env.has_mutex_value_cell(addr)) env.invalidate_mutex_values();
+    if (auto* global = dyn_cast< GlobalMemoryLocation >(loc)) {
+      auto value = core::machine_int::Interval::top(64, core::Signed);
+      if (auto* type = dyn_cast< ar::IntegerType >(global->global_var()->type()->pointee())) {
+        value = core::machine_int::Interval::top(type->bit_width(), type->sign());
+      }
+      // Noninteger entries are markers for aggregate initializer invalidation.
+      env.record_privatized_write(
+          core::ConcurrentGlobalEnv::kNoLockPartitionAddr, addr, value);
+    }
+  }
+  // Partial bytes can create a pointer even from a pointer-free source.
+  if (!byte_copy_cannot_expose_pointers(eng.ctx().bundle, copy, points))
+    env.record_possible_escape(core::PointsToSet< MemoryLocation* >::top());
+  return true;
 }
 
 /// \brief pthread_create detection and modelling.
