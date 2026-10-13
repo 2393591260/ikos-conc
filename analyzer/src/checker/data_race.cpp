@@ -1647,17 +1647,31 @@ DataRaceChecker::~DataRaceChecker() {
   // site counts are not existence evidence; the retained guards are later
   // checked together with both workers' value/scheduling constraints.
   auto conditional_live_threads = [&](const std::string& thread_a, const std::string& thread_b,
-                                      unsigned loop_bound) {
+                                      unsigned loop_bound, bool extra_occurrences = false) {
     auto* main = this->_ctx.bundle->function_or_null("main");
     if (main == nullptr || !main->is_definition()) return false;
     std::map< std::string, unsigned > required{{thread_a, 1}, {thread_b, 1}};
     if (thread_a == thread_b) required[thread_a] = 2;
+    std::map< ar::Function*, unsigned > create_limits;
+    if (!extra_occurrences) {
+      for (const auto& entry : required) {
+        auto* function = this->_ctx.bundle->function_or_null(entry.first);
+        if (function == nullptr) return false;
+        create_limits.emplace(function, entry.second);
+      }
+    }
     auto& alternatives = activation_prefixes[std::minmax(thread_a, thread_b)];
     for (const auto& creation : this->_thread_creations) {
       if (search_budget.expired()) break;
       if (!required.count(creation.child)) continue;
-      for (unsigned occurrence = 1; occurrence <= 2; ++occurrence) {
-        auto result = bmc::unroll_to(main, creation.stmt, occurrence, loop_bound);
+      // An exact-count prefix cannot contain a later occurrence of this entry.
+      const unsigned occurrences = extra_occurrences ? 2 : required.at(creation.child);
+      for (unsigned occurrence = 1; occurrence <= occurrences; ++occurrence) {
+        if (extra_occurrences && search_budget.expired()) break;
+        // Activation below rejects every join. Stop unsupported join suffixes
+        // during construction instead of enumerating paths we cannot retain.
+        auto result = bmc::unroll_to(main, creation.stmt, occurrence, loop_bound, true,
+                                    extra_occurrences ? nullptr : &create_limits);
         // Exhaustion omits alternatives, not the complete prefixes already
         // emitted. Keep their target/guard/definedness/activation obligations.
         for (auto& path : result.paths) {
@@ -1703,7 +1717,13 @@ DataRaceChecker::~DataRaceChecker() {
                   event.const_off < 0 || event.const_off + event.width > size) {supported = false; break;}
             }
           }
-          if (supported && held.empty() && spawns == required && bmc::prefix_values_defined(path)) {
+          bool enough = spawns == required;
+          if (extra_occurrences) {
+            enough = true;
+            for (const auto& entry : required) enough &= spawns[entry.first] >= entry.second;
+          }
+          if (supported && held.empty() && enough &&
+              bmc::prefix_values_defined(path, nullptr, nullptr, nullptr, nullptr, extra_occurrences)) {
             alternatives.push_back(std::move(path));
             if (alternatives.size() == 8) return true;
           }
@@ -1719,25 +1739,30 @@ DataRaceChecker::~DataRaceChecker() {
   // Deferred groups emit once after their last retry, under the same deadline.
   std::set< std::string > deferred_groups;
   std::set< std::string > larger_activation_groups;
+  std::set< std::string > occurrence_groups;
   std::map< std::string, bmc::Result > deferred_results;
   std::map< std::string, JsonList > deferred_candidates;
   std::map< std::string, std::map< std::string, std::size_t > > deferred_counts;
   bool file_confirmed = false;
-  for (unsigned pass = 0; pass < 3; ++pass) {
-    if (pass == 2) {
+  for (unsigned pass = 0; pass < 4; ++pass) {
+    if (pass == 2 || pass == 3) {
       // A short startup is a search choice, not an activation/safety proof for
       // other prefixes. Retry deferred groups with the original larger bound.
       instance_proofs.clear();
       activation_prefixes.clear();
+      if (pass == 3) small_activation.clear();
     }
     if (pass != 0) {
       search_budget.probe_interrupted = true;
-      search_budget.candidates = 256;
-      search_budget.queries = 1024;
+      if (pass < 3) {
+        search_budget.candidates = 256;
+        search_budget.queries = 1024;
+      }
     }
     for (auto& kv : groups) {
     if ((pass == 1 && deferred_groups.count(kv.first) == 0) ||
-        (pass == 2 && larger_activation_groups.count(kv.first) == 0)) continue;
+        (pass == 2 && larger_activation_groups.count(kv.first) == 0) ||
+        (pass == 3 && occurrence_groups.count(kv.first) == 0)) continue;
     search_budget.saw_interrupted = false;
     const std::vector< std::size_t >& pair_indices = kv.second;
     if (pair_indices.empty()) {
@@ -1786,6 +1811,7 @@ DataRaceChecker::~DataRaceChecker() {
     std::map< std::string, std::size_t > reason_counts;
     if (pass != 0 && diagnostics_enabled) reason_counts = deferred_counts.at(kv.first);
     bool group_small_activation = false;
+    bool group_worker_pairs = false;
     std::vector< std::size_t > query_order;
     for (std::size_t i = 0; i < pair_indices.size(); ++i) query_order.push_back(i);
     // Legacy confirmations precede newly enabled activation alternatives
@@ -1804,6 +1830,14 @@ DataRaceChecker::~DataRaceChecker() {
         return priority(i) < priority(j);
       });
     }
+    // Held reports must still be emitted if another group succeeded or the
+    // unchanged file deadline expired before the new occurrence-only pass.
+    if (pass == 3 && (file_confirmed || search_budget.expired())) {
+      query_order.clear();
+      if (!file_confirmed) group_result.merge(bmc::Result(bmc::Status::BudgetExceeded));
+      if (diagnostics_enabled)
+        ++reason_counts[file_confirmed ? "not_searched_after_confirmation" : "search_budget"];
+    }
     std::size_t group_attempts = 0;
     for (std::size_t candidate_id : query_order) {
       if (!bmc_enabled && !diagnostics_enabled) {
@@ -1813,6 +1847,9 @@ DataRaceChecker::~DataRaceChecker() {
       const PendingRacePair& pr = all_pairs[pk];
       const AccessRecord& a = this->_accesses[pr.i];
       const AccessRecord& b = this->_accesses[pr.j];
+      const bool worker_pair = a.thread_id != "main" && b.thread_id != "main";
+      group_worker_pairs |= worker_pair;
+      if (pass == 3 && !worker_pair) continue;
       bmc::Result candidate_result(bmc::Status::NotSearched);
       bmc::Diagnostics diagnostics;
       bmc::Diagnostics* trace = diagnostics_enabled ? &diagnostics : nullptr;
@@ -1825,16 +1862,21 @@ DataRaceChecker::~DataRaceChecker() {
         }
       };
       // Evaluate independent eligibility gates even when another one fails.
-      if (a.thread_id != "main" && b.thread_id != "main") {
+      if (worker_pair) {
         auto key = std::minmax(a.thread_id, b.thread_id);
         auto proof = instance_proofs.find(key);
         if (proof == instance_proofs.end()) {
-          bool live = two_live_threads(a.thread_id, b.thread_id);
-          if (!live && pass < 2 && conditional_live_threads(a.thread_id, b.thread_id, 2)) {
-            live = true;
-            small_activation.insert(key);
+          bool live = false;
+          if (pass == 3) {
+            live = conditional_live_threads(a.thread_id, b.thread_id, 16, true);
+          } else {
+            live = two_live_threads(a.thread_id, b.thread_id);
+            if (!live && pass < 2 && conditional_live_threads(a.thread_id, b.thread_id, 2)) {
+              live = true;
+              small_activation.insert(key);
+            }
+            if (!live) live = conditional_live_threads(a.thread_id, b.thread_id, 16);
           }
-          if (!live) live = conditional_live_threads(a.thread_id, b.thread_id, 16);
           proof = instance_proofs.emplace(key, live).first;
         }
         gate(!proof->second, "thread_activation_unproven");
@@ -1956,14 +1998,69 @@ DataRaceChecker::~DataRaceChecker() {
                                           trace, &search_budget, &confirmed_creations, &facts));
             return candidate_result.confirmed();
           };
-          if (a.thread_id != "main" && b.thread_id != "main") {
-            for (const auto& startup : activation_prefixes.at(std::minmax(a.thread_id, b.thread_id))) {
-              facts.startup = startup;
-              if ((bmc_confirmed = confirm())) {
-                confirmed_creations.clear();
-                for (const auto& event : startup)
-                  if (event.kind == bmc::EvKind::Create) confirmed_creations.push_back(event.stmt);
-                break;
+          if (worker_pair) {
+            const auto& startups = activation_prefixes.at(std::minmax(a.thread_id, b.thread_id));
+            if (pass != 3) {
+              for (const auto& startup : startups) {
+                facts.startup = startup;
+                if ((bmc_confirmed = confirm())) {
+                  confirmed_creations.clear();
+                  for (const auto& event : startup)
+                    if (event.kind == bmc::EvKind::Create) confirmed_creations.push_back(event.stmt);
+                  break;
+                }
+              }
+            } else {
+              struct Selection {
+                std::size_t rank;
+                const std::vector< bmc::BmcEvent >* startup;
+                std::size_t a, b;
+              };
+              std::vector< Selection > selections;
+              bool more_occurrences = false;
+              for (const auto& startup : startups) {
+                // The cache key is unordered; count matching entries anew so
+                // candidate A/B orientation cannot swap the selected instances.
+                auto count = [&](ar::Function* entry) {
+                  return static_cast< std::size_t >(std::count_if(startup.begin(), startup.end(), [&](const auto& event) {
+                    return event.kind == bmc::EvKind::Create &&
+                           event.thread == reinterpret_cast< std::uint64_t >(entry);
+                  }));
+                };
+                const auto count_a = count(fa), count_b = count(fb);
+                more_occurrences |= count_a * count_b - (fa == fb ? count_a : 0) > 32;
+                std::size_t rank = 0;
+                for (std::size_t ia = 0; ia < count_a && rank < 32; ++ia) {
+                  for (std::size_t ib = 0; ib < count_b && rank < 32; ++ib) {
+                    if (fa == fb && ia == ib) continue;
+                    selections.push_back({rank++, &startup, ia, ib});
+                  }
+                }
+              }
+              // Give every retained startup its first choice before spending
+              // the same selection budget on another choice of an earlier one.
+              std::stable_sort(selections.begin(), selections.end(), [](const auto& x, const auto& y) {
+                return x.rank < y.rank;
+              });
+              facts.selected_worker_occurrences = true;
+              std::size_t occurrence_attempts = 0;
+              for (const auto& selection : selections) {
+                if (occurrence_attempts >= 32 || search_budget.expired() || search_budget.queries == 0) break;
+                facts.startup = *selection.startup;
+                facts.worker_a_occurrence = selection.a;
+                facts.worker_b_occurrence = selection.b;
+                ++occurrence_attempts;
+                bmc::record(trace, "selected_activation_occurrences");
+                if ((bmc_confirmed = confirm())) {
+                  confirmed_creations.clear();
+                  for (const auto& event : *selection.startup)
+                    if (event.kind == bmc::EvKind::Create) confirmed_creations.push_back(event.stmt);
+                  break;
+                }
+              }
+              if (!bmc_confirmed && (occurrence_attempts < selections.size() || more_occurrences)) {
+                bmc::record(trace, occurrence_attempts >= 32 ? "activation_selection_budget" : "search_budget");
+                candidate_result.merge(bmc::Result(bmc::Status::BudgetExceeded));
               }
             }
           } else bmc_confirmed = confirm();
@@ -2036,11 +2133,15 @@ DataRaceChecker::~DataRaceChecker() {
     }
 
     file_confirmed |= bmc_confirmed;
-    if (!bmc_confirmed && ((pass == 0 && search_budget.saw_interrupted) ||
-                          (pass == 1 && group_small_activation && !file_confirmed))) {
+    const bool legacy_deferred = (pass == 0 && search_budget.saw_interrupted) ||
+                                 (pass == 1 && group_small_activation && !file_confirmed);
+    const bool occurrence_deferred = pass < 3 && bmc_enabled && group_worker_pairs && !file_confirmed;
+    if (!bmc_confirmed && (legacy_deferred || occurrence_deferred)) {
       deferred_results[kv.first] = group_result;
-      if (pass == 0) deferred_groups.insert(kv.first);
-      else larger_activation_groups.insert(kv.first);
+      if (legacy_deferred) {
+        if (pass == 0) deferred_groups.insert(kv.first);
+        else larger_activation_groups.insert(kv.first);
+      } else occurrence_groups.insert(kv.first);
       if (diagnostics_enabled) {
         if (pass == 0) deferred_candidates.emplace(kv.first, candidate_diagnostics);
         deferred_counts[kv.first] = reason_counts;

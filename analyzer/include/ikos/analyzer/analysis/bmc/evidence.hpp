@@ -2,6 +2,7 @@
 
 #include "result.hpp"
 #include "function_values.hpp"
+#include "facts.hpp"
 #include "replay.hpp"
 
 namespace ikos { namespace analyzer { namespace bmc {
@@ -14,7 +15,8 @@ Counterexample export_counterexample(ar::Function* funcA, ar::Function* funcB,
     const std::vector< BmcEvent >& pathB, const ValueCache& cache_init,
     const ValueCache& cache_a, const ValueCache& cache_b,
     const std::vector< z3::expr >& clock,
-    const std::map< const BmcEvent*, z3::expr >& replay_offsets, z3::model& model, const FunctionValues* functions = nullptr) {
+    const std::map< const BmcEvent*, z3::expr >& replay_offsets, z3::model& model,
+    const FunctionValues* functions = nullptr, const CandidateFacts* facts = nullptr) {
   Counterexample evidence;
   auto& ctx = model.ctx();
   const auto nA = pathA.size(), nB = pathB.size();
@@ -76,12 +78,22 @@ Counterexample export_counterexample(ar::Function* funcA, ar::Function* funcB,
     if (id != "startup" && entry->name() != "main") {
       const auto& creator = funcA->name() == "main" ? pathA : funcB->name() == "main" ? pathB : startup;
       std::size_t occurrence = id == "b" && funcA == funcB ? 1 : 0;
-      for (std::size_t j = 0; j < creator.size(); ++j)
-        if (creator[j].kind == EvKind::Create && creator[j].thread == reinterpret_cast< std::uint64_t >(entry)) {
-          if (occurrence-- != 0) continue;
-          trace.put("creator_trace", funcA->name() == "main" ? "a" : funcB->name() == "main" ? "b" : "startup");
-          trace.put("creator_step", j); break;
-        }
+      std::size_t creation = creator.size();
+      if (facts != nullptr && facts->selected_worker_occurrences) {
+        occurrence = id == "a" ? facts->worker_a_occurrence : facts->worker_b_occurrence;
+        creation = created_occurrence(entry, creator, occurrence);
+        ikos_assert(creation != creator.size());
+      } else {
+        for (std::size_t j = 0; j < creator.size(); ++j)
+          if (creator[j].kind == EvKind::Create && creator[j].thread == reinterpret_cast< std::uint64_t >(entry)) {
+            if (occurrence-- != 0) continue;
+            creation = j; break;
+          }
+      }
+      if (creation != creator.size()) {
+        trace.put("creator_trace", funcA->name() == "main" ? "a" : funcB->name() == "main" ? "b" : "startup");
+        trace.put("creator_step", creation);
+      }
     }
     for (std::size_t i = 0; i < path.size(); ++i) {
       JsonDict step; step.put("statement", snapshot.statement_id(path[i].stmt));
@@ -116,10 +128,16 @@ Counterexample export_counterexample(ar::Function* funcA, ar::Function* funcB,
               ? JsonDict{{"kind", "heap"}, {"allocation", snapshot.statement_id(e.heap_allocation)},
                          {"owner", "main"}, {"occurrence", 1}, {"extent", e.heap_extent.str()}}
               : snapshot.value(e.base != 0 ? static_cast< ar::Value* >(reinterpret_cast< ar::GlobalVariable* >(e.base)) : e.local_base);
-          step.put("encoded_address", JsonDict{
+          JsonDict encoded_address{
               {"object", object},
               {"offset", offset != replay_offsets.end() ? std::string(Z3_get_numeral_string(ctx, model.eval(offset->second, true))) : e.const_off.str()},
-              {"width", e.width}});
+              {"width", e.width}};
+          if (e.kind == EvKind::Create) {
+            auto* call = core::cast< ar::CallBase >(e.stmt);
+            auto* type = core::cast< ar::PointerType >(call->argument(0)->type());
+            encoded_address.put("alignment", call->bundle()->data_layout().abi_alignment(type->pointee()).to< std::uint64_t >());
+          }
+          step.put("encoded_address", encoded_address);
         }
       }
       steps.add(step);

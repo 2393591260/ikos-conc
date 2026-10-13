@@ -37,7 +37,8 @@ inline bool atomic_query_barrier(const BmcEvent& event) {
 }
 
 struct GuardRejection {
-  unsigned path = 0; // 1 = A, 2 = B; startup/context-dependent rejection is not reusable.
+  unsigned path = 0; // 1 = A, 2 = B; these need the caller's read/write check.
+  bool startup_infeasible = false; // Only the fixed main-before-workers prefix.
   std::set< ar::GlobalVariable* > reads;
 };
 
@@ -81,8 +82,17 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       }
     }
   }
-  auto* argumentA = created_argument(funcA, funcB->name() == "main" ? pathB : startup);
-  auto* argumentB = created_argument(funcB, funcA->name() == "main" ? pathA : startup, funcA == funcB ? 1 : 0);
+  ThreadArgument argumentA = created_argument(funcA, funcB->name() == "main" ? pathB : startup);
+  ThreadArgument argumentB = created_argument(funcB, funcA->name() == "main" ? pathA : startup, funcA == funcB ? 1 : 0);
+  const bool selected_workers = facts != nullptr && facts->selected_worker_occurrences;
+  if (selected_workers &&
+      (funcA->name() == "main" || funcB->name() == "main" ||
+       (funcA == funcB && facts->worker_a_occurrence == facts->worker_b_occurrence) ||
+       !bind_created_argument(funcA, startup, facts->worker_a_occurrence, argumentA) ||
+       !bind_created_argument(funcB, startup, facts->worker_b_occurrence, argumentB))) {
+    record(diagnostics, "selected_creation_missing");
+    return Result(Status::Unsupported);
+  }
   const auto& allocation_origin = funcA->name() == "main" ? pathA : funcB->name() == "main" ? pathB : startup;
   using ObjectId = std::pair< std::uint64_t, core::ZNumber >;
   std::map< ObjectId, unsigned > attributes;
@@ -98,7 +108,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                             function->name() == "pthread_mutexattr_destroy" ||
                             (function->name() == "pthread_mutex_init" && call->num_arguments() == 2 &&
                              !core::isa< ar::NullConstant >(call->argument(1)));
-  auto attribute_lifecycle = [&](const std::vector< BmcEvent >& path, ar::Function* root, ar::Value* root_argument) {
+  auto attribute_lifecycle = [&](const std::vector< BmcEvent >& path, ar::Function* root, ThreadArgument root_argument) {
     if (!has_attributes) return true;
     bool spawned = false;
     std::vector< BmcEvent > used_mutexes;
@@ -231,11 +241,12 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   std::map< ConditionId, std::uint64_t > conditions;
   std::map< ConditionId, std::pair< const void*, std::size_t > > condition_origins;
   auto condition_address = [&](ar::CallBase* call, const auto& path, std::size_t before,
-                               ar::Function* root, ar::Value* argument, BmcEvent& address) {
+                               ar::Function* root, ThreadArgument argument, BmcEvent& address) {
     auto* type = core::dyn_cast< ar::PointerType >(call->argument(0)->type());
     core::ZNumber size;
     if (type == nullptr || type->pointee()->is_opaque() ||
-        !pointer_on_path(call->argument(0), path, before, root, argument, address) ||
+        !pointer_on_path(call->argument(0), path, before, root, argument, address,
+                         selected_workers ? &allocation_origin : nullptr) ||
         address.base == 0 || address.var_id != 0 || !memory_extent(address, size)) return false;
     address.width = call->bundle()->data_layout().store_size_in_bytes(type->pointee()).to< std::uint64_t >();
     auto alignment = call->bundle()->data_layout().abi_alignment(type->pointee());
@@ -244,7 +255,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
            address.const_off % alignment == 0 &&
            call->bundle()->data_layout().abi_alignment(global->type()->pointee()) >= alignment;
   };
-  auto condition_initializers = [&](const auto& path, ar::Function* root, ar::Value* argument) {
+  auto condition_initializers = [&](const auto& path, ar::Function* root, ThreadArgument argument) {
     bool spawned = false;
     for (std::size_t i = 0; i < path.size(); ++i) {
       spawned |= path[i].kind == EvKind::Create;
@@ -272,7 +283,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     record(diagnostics, "condition_initialization"); return Result(Status::Unsupported);
   }
   std::map< ConditionId, ConditionId > waiting_mutexes;
-  auto condition_uses = [&](const auto& path, ar::Function* root, ar::Value* argument, bool is_startup) {
+  auto condition_uses = [&](const auto& path, ar::Function* root, ThreadArgument argument, bool is_startup) {
     for (std::size_t i = 0; i < path.size(); ++i) {
       auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt);
       if (call == nullptr || !condition_call(call)) continue;
@@ -291,7 +302,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       if (origin.first == &path && i < origin.second) return false;
       if (name == "pthread_cond_wait") {
         BmcEvent mutex;
-        if (!pointer_on_path(call->argument(1), path, i, root, argument, mutex) ||
+        if (!pointer_on_path(call->argument(1), path, i, root, argument, mutex,
+                             selected_workers ? &allocation_origin : nullptr) ||
             mutex.base == 0 || mutex.var_id != 0) return false;
         ConditionId identity{mutex.base, mutex.const_off};
         auto binding = waiting_mutexes.emplace(ConditionId{address.base, address.const_off}, identity);
@@ -322,7 +334,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       }
   }
   std::map< std::pair< std::uint64_t, core::ZNumber >, std::uint64_t > lock_ids;
-  auto prepare = [&](std::vector< BmcEvent >& path, ar::Function* root, ar::Value* argument) {
+  auto prepare = [&](std::vector< BmcEvent >& path, ar::Function* root, ThreadArgument argument) {
     std::set< std::uint64_t > held;
     std::uint64_t symbolic_lock = 0;
     for (std::size_t i = 0; i < path.size(); ++i) {
@@ -357,7 +369,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         core::ZNumber size;
         auto argument_index = event.synthetic_condition ? 1u : 0u;
         if (call->num_arguments() != (event.synthetic_condition ? 2u : 1u) ||
-            !pointer_on_path(call->argument(argument_index), path, i, root, argument, address) ||
+            !pointer_on_path(call->argument(argument_index), path, i, root, argument, address,
+                             selected_workers ? &allocation_origin : nullptr) ||
             address.base == 0 || !memory_extent(address, size)) {
           record(diagnostics, "mutex_identity", event.stmt); return false;
         }
@@ -414,15 +427,22 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     for (auto& event : *path)
       if (event.shared_main_local && !shared_stack.count(event.local_base))
         event.shared_main_local = false;
-  if (!prefix_values_defined(startup, diagnostics) ||
+  if (!prefix_values_defined(startup, diagnostics, main, nullptr, nullptr, selected_workers) ||
       !prefix_values_defined(pathA, diagnostics, funcA, argumentA, &allocation_origin) ||
       !prefix_values_defined(pathB, diagnostics, funcB, argumentB, &allocation_origin)) return Result(Status::Unsupported);
 
   // Calls update handles and opaque synchronization storage without AR Stores.
   // Preserve their footprints so static initialization cannot masquerade as rf.
-  struct LibraryStorage {BmcEvent address; const void* path; bool opaque;};
+  struct LibraryStorage {
+    BmcEvent address;
+    const void* path;
+    bool opaque;
+    std::size_t occurrence;
+    std::uint64_t alignment;
+    bool deferred_create;
+  };
   std::vector< LibraryStorage > library_storage;
-  auto library_outputs = [&](const std::vector< BmcEvent >& path, ar::Function* root, ar::Value* argument) {
+  auto library_outputs = [&](std::vector< BmcEvent >& path, ar::Function* root, ThreadArgument argument) {
     for (std::size_t i = 0; i < path.size(); ++i) {
       const auto& event = path[i];
       if (event.synthetic_atomic || event.synthetic_condition) continue;
@@ -439,20 +459,37 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           !core::isa< ar::NullConstant >(call->argument(1))) arguments.push_back(1);
       for (auto index : arguments) {
         BmcEvent address;
+        std::uint64_t alignment = 0;
         auto* type = core::dyn_cast< ar::PointerType >(call->argument(index)->type());
         if (type == nullptr || type->pointee()->is_opaque() ||
             !pointer_on_path(call->argument(index), path, i, root, argument, address, &allocation_origin)) {
           record(diagnostics, "library_storage_identity", call); return false;
         }
         if (opaque) {
-          std::uint64_t alignment;
           if (!synchronization_layout(call, index, address.width, alignment)) {
             record(diagnostics, "library_storage_layout", call); return false;
           }
         } else {
           address.width = call->bundle()->data_layout().store_size_in_bytes(type->pointee()).to< std::uint64_t >();
         }
-        library_storage.push_back({address, &path, opaque});
+        const bool deferred_create = event.kind == EvKind::Create && address.var_id != 0;
+        if (deferred_create) {
+          core::ZNumber extent;
+          if (!selected_workers || &path != &startup ||
+              !symbolic_startup_create_output(path, i, path[i], extent, alignment)) {
+            record(diagnostics, "startup_create_output", call); return false;
+          }
+          address = path[i];
+        } else if (selected_workers && &path == &startup && event.kind == EvKind::Create) {
+          // Preserve the concrete output also when a loop index folded early.
+          auto& output = path[i];
+          output.base = address.base; output.local_base = address.local_base;
+          output.shared_main_local = address.shared_main_local;
+          output.heap_allocation = address.heap_allocation; output.heap_extent = address.heap_extent;
+          output.const_off = address.const_off; output.var_id = address.var_id;
+          output.var_before = address.var_before; output.coeff = address.coeff; output.width = address.width;
+        }
+        library_storage.push_back({address, &path, opaque, i, alignment, deferred_create});
       }
     }
     return true;
@@ -1030,6 +1067,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         // never a later startup store or an arbitrary fresh value.
         if (!known) {record(diagnostics, "startup_read_origin", load); return false;}
         s.add(out == initial);
+        // Substitute the same proved preceding value so impossible startup
+        // guards fail before retrying every worker-instance combination.
+        out = initial.simplify();
+        cache.find(key)->second = out;
         record(diagnostics, "startup_read_from", load);
         return true;
       }
@@ -1306,7 +1347,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
 
   auto assumptions = [&](const std::vector< BmcEvent >& path, ValueCache& cache, const std::string& prefix) {
     // A prepopulated cache may hide dependencies encoded for the other path.
-    // Startup is fixed within this query group, but is not itself cached as a rejection.
+    // A fixed startup contradiction can stop this group; worker rejections
+    // additionally need the read/write check in the caller.
     guard_reusable = prefix != "value_init_" && cache.empty();
     guard_reads.clear();
     for (std::size_t i = 0; i < path.size(); ++i) {
@@ -1331,6 +1373,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         guard = guard.simplify();
         if (guard.is_false()) {
           record(diagnostics, "constant_guard_unsat", e.stmt);
+          if (rejection != nullptr && selected_workers && prefix == "value_init_" && !unencodable)
+            rejection->startup_infeasible = true;
           if (rejection != nullptr && guard_reusable && !unencodable) {
             rejection->path = prefix == "value_a_" ? 1 : 2;
             rejection->reads = guard_reads;
@@ -1410,6 +1454,21 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       }
       return true;
     };
+    // Every deferred output, including dormant children's handles, must have
+    // a concrete valid slot in this same main-only startup execution.
+    for (const auto& storage : library_storage) {
+      if (!storage.deferred_create) continue;
+      const auto& event = startup[storage.occurrence];
+      core::ZNumber extent;
+      z3::expr offset(ctx);
+      if (storage.alignment == 0 || !memory_extent(event, extent) ||
+          !encode_offset(event, offset, cache_init, "value_init_", storage.occurrence))
+        return Result(Status::Unsupported);
+      s.add(offset >= 0 && offset + ctx.int_val(std::to_string(event.width).c_str()) <=
+            ctx.int_val(extent.str().c_str()));
+      s.add(z3::mod(offset, ctx.int_val(std::to_string(storage.alignment).c_str())) == 0);
+      record(diagnostics, "startup_create_offset", event.stmt);
+    }
     if (!valid_memory(pathA, cache_a, "value_a_") || !valid_memory(pathB, cache_b, "value_b_")) return Result(Status::Unsupported);
     auto ownership = [&](const std::vector< Section >& sections, const std::vector< BmcEvent >& path,
                          ValueCache& cache, const std::string& prefix) {
@@ -1517,7 +1576,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       auto model = query.get_model();
       auto export_start = std::chrono::steady_clock::now();
       outcome.evidence = export_counterexample(funcA, funcB, startup, pathA, pathB,
-          cache_init, cache_a, cache_b, clock, replay_offsets, model, &functions);
+          cache_init, cache_a, cache_b, clock, replay_offsets, model, &functions, facts);
       if (metrics != nullptr) metrics->evidence_us += std::chrono::duration_cast< std::chrono::microseconds >(
           std::chrono::steady_clock::now() - export_start).count();
       return outcome;

@@ -113,6 +113,7 @@ public:
       out.put("factors", factors);
     } else if (auto* alloc = core::dyn_cast< ar::Allocate >(stmt)) {
       out.put("kind", "allocate"); out.put("allocated_type", type(alloc->allocated_type()));
+      out.put("alignment", alloc->result()->alignment());
     } else if (auto* load = core::dyn_cast< ar::Load >(stmt)) {
       out.put("kind", "load"); out.put("alignment", load->alignment());
       out.put("atomic", load->is_atomic());
@@ -181,6 +182,7 @@ public:
     for (auto it = _bundle->global_begin(); it != _bundle->global_end(); ++it) {
       auto* global = *it; JsonDict object;
       object.put("type", type(global->type()->pointee())); object.put("thread_local", global->is_thread_local());
+      object.put("alignment", global->alignment());
       object.put("declaration", global->is_declaration()); JsonList stores;
       if (global->has_frontend() && global->type()->pointee()->is_pointer()) {
         auto* source = global->frontend< llvm::GlobalVariable >();

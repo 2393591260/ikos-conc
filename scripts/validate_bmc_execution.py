@@ -98,7 +98,8 @@ class Replay:
                 continue
             obj = 'global:' + name
             self.objects[obj] = dict(size=int(glob['type']['extent']), type=glob['type'], live=True,
-                                     variable=name, thread_local=glob['thread_local'])
+                                     variable=name, thread_local=glob['thread_local'],
+                                     alignment=glob.get('alignment'))
             self.memory[obj] = [None] * min(self.objects[obj]['size'], 1_000_000)
             if self.objects[obj]['size'] > 1_000_000:
                 self.memory[obj] = []
@@ -290,6 +291,21 @@ class Replay:
                 alignment is not None and layouts[argument].get('alignment') != alignment):
             raise Unsupported('library argument layout')
 
+    def thread_output_subobject(self, declared, offset, width):
+        kind = declared.get('kind')
+        if kind == 'integer':
+            return (offset == 0 and declared.get('bits') == self.program['pointer_bits'] and
+                    int(declared['size']) == width and int(declared['extent']) == width)
+        if kind == 'array':
+            stride = int(declared['element']['extent'])
+            return (stride > 0 and 0 <= offset < int(declared['count']) * stride and
+                    self.thread_output_subobject(declared['element'], offset % stride, width))
+        if kind == 'struct':
+            return any(int(field['offset']) <= offset < int(field['offset']) + int(field['type']['extent']) and
+                       self.thread_output_subobject(field['type'], offset - int(field['offset']), width)
+                       for field in declared['fields'])
+        return False
+
     def condition(self, pointer):
         obj, offset = self.region(pointer, 48)
         if pointer not in self.conditions:
@@ -314,11 +330,28 @@ class Replay:
             require(len(args) == 1 and isinstance(args[0], int) and args[0] != 0, 'false assume'); return UNDEFINED
         if name in ('pthread_create', 'ar.pthread.create'):
             require(len(args) == 4 and args[1] == ('null',0) and args[2][0] == 'function', 'create arguments')
-            self.library_layout(inst, 0, self.program['pointer_bits']//8)
-            target = args[2][1]; instance = self.next_instance; self.next_instance += 1
+            width = self.program['pointer_bits']//8
+            if self.program['pointer_bits'] not in (32, 64): raise Unsupported('thread handle ABI width')
+            self.library_layout(inst, 0, width, width)
             t = inst['operands'][1]['type'].get('pointee')
-            if t is None or t['kind'] != 'integer': raise Unsupported('thread output handle type')
-            self.store(args[0], instance, t)
+            if (t is None or t['kind'] != 'integer' or t['bits'] != self.program['pointer_bits'] or
+                    int(t['size']) != width): raise Unsupported('thread output handle type')
+            obj, offset = self.region(args[0], width, width)
+            if 'encoded_address' in step:
+                address = step['encoded_address']
+                require(address.get('alignment') == width, 'SMT thread output alignment mismatch')
+                meta = self.objects[obj]
+                base_alignment = meta.get('alignment')
+                if base_alignment is None: raise Unsupported('thread output object alignment missing')
+                require(isinstance(base_alignment, int) and not isinstance(base_alignment, bool) and
+                        base_alignment >= width and base_alignment % width == 0,
+                        'thread output object alignment')
+                # Follow declared subobjects, not a cast's destination type.
+                if not self.thread_output_subobject(meta.get('type', {}), offset, width):
+                    raise Unsupported('thread output declared object type')
+                self.encoded_address(step, args[0], width)
+            target = args[2][1]; instance = self.next_instance; self.next_instance += 1
+            self.store(args[0], instance, t, width)
             self.created[instance] = dict(function=target, argument=args[3], vc=dict(thread.vc),
                                           creator_trace=trace_id, creator_step=index, joined=False)
             for child_id, child in self.traces.items():
@@ -534,7 +567,8 @@ class Replay:
             count=values[0]; require(isinstance(count,int) and count>0, 'allocation count')
             obj='stack:'+str(frame.uid)+':'+inst['result']['id']; size=int(inst['allocated_type']['extent'])*count
             if size>1_000_000: raise Unsupported('large stack object')
-            self.objects[obj]=dict(size=size,type=inst['allocated_type'],live=True,variable=inst['result']['id'],thread_local=False)
+            self.objects[obj]=dict(size=size,type=inst['allocated_type'],live=True,variable=inst['result']['id'],
+                                   thread_local=False,alignment=inst.get('alignment'))
             self.memory[obj]=[None]*size; result=(obj,0)
         elif kind=='assign': result=values[0]
         elif kind=='unary':

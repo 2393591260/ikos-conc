@@ -1,6 +1,6 @@
 # IKOS BMC：当前实现、语义契约、验证与扩展计划
 
-更新：2026-10-11。本文是 BMC 的统一维护入口，合并原有设计、审查、精度恢复、
+更新：2026-10-13。本文是 BMC 的统一维护入口，合并原有设计、审查、精度恢复、
 参考工具、模型验证和 UNKNOWN 台账报告。实现事实、有限实验、历史记录和未实现方案
 分别说明；本文不是全项目 soundness 证明。原报告正文保留在 Git 历史，测试与小型证据仍在原路径。
 
@@ -348,6 +348,8 @@ may-multiplicity、静态 create site 数量、互斥分支内两个站点均不
 默认属性、合法输出槽、匹配 API/返回类型下选择成功创建；成功返回值为 signed32 的 0。
 失败分支不会与活跃 child 拼接；一般失败/属性语义仍未建完。
 startup 的共同初值、实际实参和条件与两路径一起编码，孩子可暂不调度。
+M3.1 增加显式创建实例选择和有来源的 main 栈数组句柄输出；全部额外创建继续保留，
+前提、搜索次序和反向控制见[本轮实现](#m3-design)。
 
 枚举耗尽仍保留真正完成的创建前缀。nondet-array 中 main 可创建两孩子后暂停，
 但原 n>=5 guard 必须成立，不能把循环上限改成2或假造退出。
@@ -1072,8 +1074,8 @@ TN 的嵌套保护/发布相关性独立见 [AI 后续机制](ikos-ai-complete.m
 <a id="m3-design"></a>
 ### 12.4 M3 实施顺序与设计门槛（2026-10-13）
 
-**状态：M3.0已完成；M3.1/M3.2仍待实现验收。** 固定入口为
-[126 个竞争 UNKNOWN](artifacts/bmc-m3-2026-10-13/baseline.json)。新 IKOS 诊断全部仍为 UNKNOWN；
+**状态：M3.0、M3.1已完成；M3.2仍待实现验收，M3整体未结束。** 固定入口为
+[初始126个竞争UNKNOWN](artifacts/bmc-m3-2026-10-13/baseline.json)。初始诊断均UNKNOWN，M3.1已恢复其中两项；
 参考运行的中断项已单独补跑为FAIL；完整126项为FAIL96、ERROR13、TIMEOUT14、PASS3，
 源/YAML及配置已核对，见[完整记录](artifacts/bmc-m3-2026-10-13/reference-complete/results.json)。
 诊断理由可重叠，76 项含 activation 阻断不等于可恢复 76 TP。本轮对 33 项作了具体源码
@@ -1086,31 +1088,48 @@ AI/BMC配对、109项137条执行检查及5项脚本测试通过。TP109→109/T
 FP/FN0，唯一超时未变；没有精度增益。旧注释与消融范围已修正，
 见[验收](artifacts/bmc-m3-2026-10-13/facts/summary.json)。后续优先推进实际UNKNOWN恢复。
 
-**M3.1：明确选中的创建 occurrence，允许额外子线程暂不调度。**
-首个入口为 YAML 指定的 `pthread-deagle/reorder_c11_{bad,good}-10.i`，固定参考两项均 FAIL。
+**M3.1：创建实例选择与有来源的创建地址已实现并验收。**
+首批入口为 YAML 指定的 `pthread-deagle/reorder_c11_{bad,good}-10.i`，固定参考两项均 FAIL。
 实际 `.i` 创建 10 个 setter 后再创建 checker；同名 `.c`/header 的参数不同，不能替换输入。
-当前 `conditional_live_threads` 要求 `spawns == required`，因此多余同入口创建会拒绝激活证明。
-基线AR探针还确认创建数组下标来自`load @i`，当前静态创建地址检查拒绝其符号偏移。
-仅改实例选择不足以恢复这两项；优先复用`value_init_`的真实读源/偏移编码，逐个约束
-创建输出的范围、对齐与ABI，保留独立地址检查，不给普通共享Load增加猜测常量分支。
+旧模式要求 `spawns == required`，同时拒绝句柄数组下标的 `load @i`，两项均 UNKNOWN。
+新版本两项均确认竞争并独立 AR ACCEPT：保留 11 次创建，所选实例为 checker 11 与 setter 1。
+实际 `svcomp_race_test.py` 双模式1029项配对：TP109→111、TN687不变、FP/FN0、
+UNKNOWN232→230，唯一超时未变；原TP/TN没有回退。111项重新导出的139条所选执行全部AR ACCEPT。
 
-- 首版只支持隐式 main 的完整 startup 与两个 worker。保留全部创建、句柄写入、守卫、
-  定义性和库效果；startup 无 join/等待、结束释放全部锁，所有子线程可暂不运行。
-  然后可搜索所选两个实例的有限前缀；竞争仍须完整值/地址/同步公式与执行检查确认，
-  不要求其他线程在此之前完成。
-- 增加一个明确的“创建 trace/step”选择，沿 `created_argument`、`pointer_on_path`、
-  `check_race`、`export_counterexample` 和 mapper 传递同一身份；目前各处独立按入口选第一个，
-  同入口双实例选前两个。不能只改 `==` 为 `>=`，更不能只改导出的线程编号。
-- 最小范围沿用现有可证明的实参来源；循环中重定义的参数须另有动态取值上下文，
-  不能用静态 `InternalVariable*` 或最后一次值替代。main/worker 的创建边与来源折叠另审，
-  不自动随这个 worker/worker 扩展开放。
-- 完整保留原有各组/startup/候选的第一轮搜索，再尝试新增 occurrence 组合；只在单组内
-  先查旧选择仍可能挤掉较后成功组。新增选择沿用总预算，旧成功保留以全量配对验收。
-  `A(&x), A(&y), B(&y)` 检验第二个 A，
-  同入口不同实例/不同实参、额外创建写句柄、startup 假守卫、未释放锁、join 阻塞和
-  篡改 creator_step 均进入正反控制。预算耗尽保留 UNKNOWN。
-- 先核对两项实际 AR 确有目标访问，再做 ILP32/LP64 最小变体、P0、全量 AI/BMC 配对及
-  全部新增/变化所选执行检查。`-20` 还有 startup 展开界问题，单列搜索能力，不计作本机制必得收益。
+实现沿现有流水线完成，不按文件名或标签开放语义：
+
+- `CandidateFacts` 保存按入口计数的实际创建序号，`ThreadArgument` 在相应创建时刻绑定实参。
+  `pointer_on_path`、`check_race` 和 `export_counterexample` 使用同一选择；证据在最终事件序列
+  重算 `creator_step`。同入口必须选择不同实例。循环中的指针赋值/bitcast 可沿已选动态定义
+  追溯，load、发布、调用和复杂指针偏移没有因此获得自由值。
+- 只扩展 main 完整 startup 后的 worker/worker 搜索。保留全部创建、句柄写入和守卫，
+  startup 无 Join/等待、结束释放全部锁；未选孩子在该有限执行中暂不调度。
+  main/worker 的交错模式及一般第三线程完成仍使用原有能力边界。
+- 新的符号创建输出仅支持 GNU/Linux x86 ILP32/LP64 下已核实的 `pthread_t` 布局、
+  main 一次分配且仍存活的同质栈数组、直接合法数组 GEP。复用 `value_init_` 编码真实前序写，
+  对每次创建（包括未调度孩子）约束输出范围和对齐；未知来源、越界、错误布局保持不确认。
+  创建输出仍为不透明库写，不能把后来读取的句柄数值当作自由整数或静态初值。
+- 独立 AR 检查从原始语句重新执行创建，核实输出对象、offset、width、alignment 及声明子对象；
+  快照补充实际对象对齐。新测试发现旧常量创建地址只查范围而漏查对齐：`array + 1 byte`
+  在两个 ABI 下都曾产生不合法的确认。现在补齐 ABI/基址/偏移对齐检查，回退 UNKNOWN。
+  该例用于检验定义良好的执行前缀，不伪称为合法 race-free benchmark 的 FP 标签。
+- 原三轮搜索之后再尝试新增实例组合，保持文件 deadline、候选数/查询数上限。
+  最多 8 条 startup，各 startup 的首个实例组合先获得机会，总共最多 32 个组合。
+  旧精确计数模式提前剪掉超额创建，创建前缀提前停止不支持的 Join；两者都只移除原本
+  必被该模式拒绝的路径。startup load 回填同一已证明的值表达式；确定为假的 startup 守卫
+  仅结束同一 startup 的 worker 搜索，不跨 startup 复用，不从 UNSAT 推出 SAFE。
+
+定向验收包含 80 次双架构 AI/BMC 运行：20 条确认执行全部 AR ACCEPT；改绑至错误的真实
+创建实例的 6 次变异，以及输出对象/偏移/宽度/对齐的 32 次损坏全部 REJECT。
+18 次最小例 UNKNOWN→有效 FALSE 是测试运行数，不能当作新增 18 个比赛 TP。
+P0 两架构 20 条观测逐项保持。两项真实输入的所选执行各含 105 步，全部创建均被保留。
+在最终单次探测中耗时约 3.13/0.41 秒；这不是重复测量的通用速度结论。
+`-20` 的展开界、一般符号句柄来源和有副作用的 Join 完成仍是独立缺口。
+证据：[验收汇总](artifacts/bmc-m3-2026-10-13/created-instances/summary.json)、
+[配对](artifacts/bmc-m3-2026-10-13/created-instances/paired.json)、
+[逐执行检查](artifacts/bmc-m3-2026-10-13/created-instances/selected-executions.json)、
+[源位置/实例映射](artifacts/bmc-m3-2026-10-13/created-instances/source-mapping.json)。
+实际映射保留11个注册段及目标线程11/1；它仍不是官方源级witness验证。
 
 **M3.2：有来源的句柄槽；随后分开处理 SAFE 完成证明与 BMC 辅助完成。**
 验收族是 `thread-join-array-const` 及三个 `-race` 变体（YAML 指定 `.i`）：安全版创建四个

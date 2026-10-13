@@ -1,0 +1,150 @@
+{
+  "stage": "M3.1: explicit worker creation occurrences and valid handle outputs",
+  "baseline_commit": "866bf3a",
+  "before_analyzer_sha256": "dd68ce473f87f9c8def006d369be48b639edfca7b442a416077d5568f4adb9a2",
+  "after_analyzer_sha256": "45dcc02604b817908085d007d2edda12227056cef246d6d504d6c958dc731fb8",
+  "dataset": "/home/ruan/sv-benchmarks-2026",
+  "dataset_revision": "0a254fdddcfe24949be9edd47f8d609462eb52fb",
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "timeout_seconds": 30,
+  "matrix": {
+    "ai": {
+      "before": {
+        "TP": 0,
+        "FP": 0,
+        "TN": 687,
+        "FN": 0,
+        "unknown": 341,
+        "error": 1,
+        "timeout": 1
+      },
+      "after": {
+        "TP": 0,
+        "FP": 0,
+        "TN": 687,
+        "FN": 0,
+        "unknown": 341,
+        "error": 1,
+        "timeout": 1
+      }
+    },
+    "bmc": {
+      "before": {
+        "TP": 109,
+        "FP": 0,
+        "TN": 687,
+        "FN": 0,
+        "unknown": 232,
+        "error": 1,
+        "timeout": 1
+      },
+      "after": {
+        "TP": 111,
+        "FP": 0,
+        "TN": 687,
+        "FN": 0,
+        "unknown": 230,
+        "error": 1,
+        "timeout": 1
+      }
+    }
+  },
+  "transitions": [
+    {
+      "task": "c/pthread-deagle/reorder_c11_bad-10.i",
+      "yaml": "c/pthread-deagle/reorder_c11_bad-10.yml",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "source_sha256": "10d5067d95273951a014725afb4753c98c29896d9675321f4fa3b00f339e7930",
+      "yaml_sha256": "1cab84ddf75530365cfecaa68b7a40f8edaf72c2e2a5df667aac625105315a7e",
+      "before_ai": "Unknown",
+      "before_bmc": "Unknown",
+      "after_ai": "Unknown",
+      "after_bmc": "Race Found"
+    },
+    {
+      "task": "c/pthread-deagle/reorder_c11_good-10.i",
+      "yaml": "c/pthread-deagle/reorder_c11_good-10.yml",
+      "expected": "Race Found",
+      "data_model": "ILP32",
+      "source_sha256": "053c2020ab3922d27be669eca0e75ac8051424727a4d2b2d1ab69540cc43f0a3",
+      "yaml_sha256": "4e03edae63fb462e0a58310d76d831fe81637799701fd80fb515fdda69b6544a",
+      "before_ai": "Unknown",
+      "before_bmc": "Unknown",
+      "after_ai": "Unknown",
+      "after_bmc": "Race Found"
+    }
+  ],
+  "fixtures": {
+    "runs": 80,
+    "phase": "candidate",
+    "analyzer_sha256": "45dcc02604b817908085d007d2edda12227056cef246d6d504d6c958dc731fb8",
+    "source_sha256": "b294bafca456f5997294c29d0f18e58cf7200a5a84c1f839fd18bcd5e2652dc7",
+    "verdicts": {
+      "Unknown": 48,
+      "Race Found": 20,
+      "Safe": 12
+    },
+    "executions": 20,
+    "rejected_mutations": 6,
+    "rejected_output_mutations": 32,
+    "known_baseline_violations": 0,
+    "scope": "Scalar and typed main stack-array handles; candidate FALSE must be AR ACCEPT; old misaligned-output rejection recorded explicitly; no source witness claim"
+  },
+  "selected_executions": {
+    "task_status_counts": {
+      "all_accepted": 111
+    },
+    "tasks": 111,
+    "tasks_with_selected_evidence": 111,
+    "executions": 139,
+    "status_counts": {
+      "ACCEPT": 139
+    },
+    "reason_counts": {
+      "accepted": 139
+    },
+    "scope": "Concrete AR execution with explicit API contracts; not official C/witness validation",
+    "validator_sha256": "745bd97ad9f3237fda6adb02dd810706007e0d6267d601048df938c8c0ebe591"
+  },
+  "p0": {
+    "observations": 20,
+    "all_match_previous": true,
+    "previous": "facts/p0-observations.json",
+    "analyzer_sha256": "45dcc02604b817908085d007d2edda12227056cef246d6d504d6c958dc731fb8"
+  },
+  "source_mapping": {
+    "tasks": 2,
+    "all_mapped": true,
+    "target_instances": [
+      11,
+      1
+    ],
+    "registrations_each": 11,
+    "mapper_sha256": "d27e26dffed8ce84548174c012e7cfbe7562fd392e04d0baf5c89d820d5fca1a",
+    "analyzer_rerun": false,
+    "clang_ast_extraction": true,
+    "official_source_validation": false
+  },
+  "validation_scope": "Finite concrete AR executions under frontend/snapshot/API contracts; source mapping is not official witness validation; finite benchmark zeros are not universal soundness.",
+  "correctness_prerequisite": "Baseline accepted a pthread_create output shifted by one byte in both ABIs. Actual ABI/base/offset alignment is now required; these invalid-prefix controls become UNKNOWN. They are not labeled race-free C benchmarks.",
+  "search_contract": "Original pass order retained; extra worker selections run last using remaining budgets. Every retained create including dormant children is modeled. Failed bounded searches never imply SAFE.",
+  "publication": "Published ZIP and remote PR/MR unchanged.",
+  "regression_evidence": "Final matrices/paired rows come from actual svcomp_race_test.py CLI. Earlier custom timing runner was interrupted; its partial BMC rows are excluded.",
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/bmc/bmc.hpp": "cd90e828dbc90b0c58b81044691a2d546d00a24e735def36f5acda0d311e3892",
+    "analyzer/include/ikos/analyzer/analysis/bmc/diagnostics.hpp": "6435d1493a768aa6d4292f1d505b698ba92d1ff9cf8b7f598aa3e54d9514f5b6",
+    "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp": "6f97dd114d6efdee62ba4b0aebac9211e197f754865798d48f886383a5c2c003",
+    "analyzer/include/ikos/analyzer/analysis/bmc/evidence.hpp": "5538316f80b6677be7a47c6fb1c287626d4c4fb40b22ae898e44c9495e3f87e7",
+    "analyzer/include/ikos/analyzer/analysis/bmc/facts.hpp": "8d847eb674c0c922bebe5c4c071a509e92bfedf587b52e55951efdf14d64d2e7",
+    "analyzer/include/ikos/analyzer/analysis/bmc/replay.hpp": "b232ca8a5f2d39af7b5679e02788648f0df0a297f3beb1b33d6c2737d12a663b",
+    "analyzer/include/ikos/analyzer/analysis/bmc/unroll.hpp": "de88577265e7eacdaa5165d29af62ee76bc462325ec7a65ab597c4c06f61e25c",
+    "analyzer/src/checker/data_race.cpp": "a68dbc389f92402efca5691ed7f3cc246e00f15c12a67792fc3c184fd3c819ca",
+    "scripts/summarize_unknowns.py": "abc1aacbaab7a004160a0084eab2fedaa5d67b8c965e9d6768e4510c24a08589",
+    "scripts/validate_bmc_execution.py": "745bd97ad9f3237fda6adb02dd810706007e0d6267d601048df938c8c0ebe591",
+    "docs/review-repros/bmc-created-instances/instances.c": "b294bafca456f5997294c29d0f18e58cf7200a5a84c1f839fd18bcd5e2652dc7",
+    "docs/review-repros/bmc-created-instances/run.py": "74f1bd83a1eb4469e074af5b1d290a20389668e4af2c56c5e7939aab30cfdea1"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "observations": 20,
+  "all_match_previous": true,
+  "previous": "facts/p0-observations.json",
+  "analyzer_sha256": "45dcc02604b817908085d007d2edda12227056cef246d6d504d6c958dc731fb8"
+}

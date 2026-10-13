@@ -1,0 +1,284 @@
+[
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-10.i",
+    "source_sha256": "10d5067d95273951a014725afb4753c98c29896d9675321f4fa3b00f339e7930",
+    "report_sha256": "52332f205f030bba649cede7e426e99f9cc07a768ba59d1f84772e6dc0c8ca5f",
+    "registrations": [
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-10.i",
+          "line": 705,
+          "column": 73
+        }
+      }
+    ],
+    "targets": [
+      {
+        "type": "target",
+        "action": "follow",
+        "thread_id": 11,
+        "location": {
+          "file_name": "reorder_c11_bad-10.i",
+          "line": 695,
+          "column": 6
+        }
+      },
+      {
+        "type": "target",
+        "action": "follow",
+        "thread_id": 1,
+        "location": {
+          "file_name": "reorder_c11_bad-10.i",
+          "line": 687,
+          "column": 3
+        }
+      }
+    ],
+    "status": "MAPPED",
+    "scope": "Existing generator plus Clang AST physical position mapping, not official C witness validation"
+  },
+  {
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-10.i",
+    "source_sha256": "053c2020ab3922d27be669eca0e75ac8051424727a4d2b2d1ab69540cc43f0a3",
+    "report_sha256": "328fdeaf04cd808bdae5cc1565bd91c4d9d349a3318afafa37d1a7c8f41fd9d1",
+    "registrations": [
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-10.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-10.i",
+          "line": 705,
+          "column": 73
+        }
+      }
+    ],
+    "targets": [
+      {
+        "type": "target",
+        "action": "follow",
+        "thread_id": 11,
+        "location": {
+          "file_name": "reorder_c11_good-10.i",
+          "line": 695,
+          "column": 6
+        }
+      },
+      {
+        "type": "target",
+        "action": "follow",
+        "thread_id": 1,
+        "location": {
+          "file_name": "reorder_c11_good-10.i",
+          "line": 687,
+          "column": 3
+        }
+      }
+    ],
+    "status": "MAPPED",
+    "scope": "Existing generator plus Clang AST physical position mapping, not official C witness validation"
+  }
+]

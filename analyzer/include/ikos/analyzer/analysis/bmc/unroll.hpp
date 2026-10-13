@@ -5,6 +5,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <iterator>
 #include <map>
@@ -12,6 +13,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <llvm/ADT/Triple.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/Module.h>
@@ -613,6 +615,49 @@ inline bool root_parameter(ar::InternalVariable* value, ar::Function* root) {
   return root != nullptr && root->is_definition() && root->num_parameters() == 1 && root->param(0) == value;
 }
 
+struct ThreadArgument {
+  ar::Value* value = nullptr;
+  bool exact_creation = false;
+  std::size_t creation_ordinal = 0;
+
+  ThreadArgument() = default;
+  ThreadArgument(std::nullptr_t) {}
+  ThreadArgument(ar::Value* argument) : value(argument) {}
+};
+
+// Ordinals count actual creates of this entry, not static call sites.
+inline std::size_t created_occurrence(ar::Function* child,
+                                      const std::vector< BmcEvent >& creator,
+                                      std::size_t ordinal) {
+  if (child == nullptr) return creator.size();
+  for (std::size_t i = 0; i < creator.size(); ++i) {
+    const auto& event = creator[i];
+    if (event.kind != EvKind::Create ||
+        event.thread != reinterpret_cast< std::uint64_t >(child)) continue;
+    if (ordinal-- != 0) continue;
+    auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+    auto* api = call != nullptr ? exact_callee(call) : nullptr;
+    if (api == nullptr || !api->is_declaration() || call->num_arguments() != 4 ||
+        !(api->name() == "pthread_create" || api->intrinsic_id() == ar::Intrinsic::PthreadCreate))
+      return creator.size();
+    auto* entry = core::dyn_cast< ar::FunctionPointerConstant >(call->argument(2));
+    return entry != nullptr && entry->function() == child ? i : creator.size();
+  }
+  return creator.size();
+}
+
+inline bool bind_created_argument(ar::Function* child,
+                                  const std::vector< BmcEvent >& creator,
+                                  std::size_t ordinal, ThreadArgument& out) {
+  out = ThreadArgument{};
+  const auto index = created_occurrence(child, creator, ordinal);
+  if (index == creator.size()) return false;
+  out.value = core::cast< ar::CallBase >(creator[index].stmt)->argument(3);
+  out.exact_creation = true;
+  out.creation_ordinal = ordinal;
+  return true;
+}
+
 inline ar::Value* created_argument(ar::Function* child,
                                    const std::vector< BmcEvent >& creator,
                                    unsigned instance = 0) {
@@ -810,13 +855,14 @@ inline bool shared_main_allocation(ar::LocalVariable* local,
 // constant global address chains may be followed outside the selected path.
 inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& path,
                              std::size_t before, ar::Function* root,
-                             ar::Value* root_argument, BmcEvent& event,
+                             ThreadArgument root_argument, BmcEvent& event,
                              const std::vector< BmcEvent >* origins = nullptr) {
   if (origins == nullptr && root != nullptr && root->name() == "main") origins = &path;
   const auto* definitions = &path;
   bool external = false;
   bool returned = false;
   bool exact_external_chain = true;
+  bool selected_argument_origin = false;
   for (unsigned depth = 0; depth < 32; ++depth) {
     if (auto* global = core::dyn_cast< ar::GlobalVariable >(value)) {event.base = reinterpret_cast< std::uint64_t >(global); return true;}
     if (auto* local = core::dyn_cast< ar::LocalVariable >(value)) {
@@ -835,8 +881,18 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
     if (definition == nullptr && !external) {
       auto* argument = formal_argument(variable, path, before, index);
       if (argument != nullptr) {value = argument; before = index; continue;}
-      if (root_parameter(variable, root) && root_argument != nullptr) {
-        value = root_argument; external = true;
+      if (root_parameter(variable, root) && root_argument.value != nullptr) {
+        value = root_argument.value; external = true;
+        if (root_argument.exact_creation) {
+          if (origins == nullptr) return false;
+          const auto creation = created_occurrence(root, *origins, root_argument.creation_ordinal);
+          if (creation == origins->size() ||
+              core::cast< ar::CallBase >((*origins)[creation].stmt)->argument(3) != root_argument.value)
+            return false;
+          definitions = origins; before = creation;
+          selected_argument_origin = true;
+          continue;
+        }
         if (origins != nullptr) {
           definitions = origins; before = origins->size();
           // Capture the argument at its actual consumption, before later
@@ -848,7 +904,7 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
             auto* call = core::dyn_cast< ar::CallBase >(creation.stmt);
             if (creation.kind == EvKind::Create && call != nullptr &&
                 creation.thread == reinterpret_cast< std::uint64_t >(root) &&
-                call->num_arguments() == 4 && call->argument(3) == root_argument) {
+                call->num_arguments() == 4 && call->argument(3) == root_argument.value) {
               before = std::min(before, i); matched = true;
             }
           }
@@ -873,10 +929,19 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
     }
     if (definition == nullptr) return false;
     if (external && origins != nullptr) {
-      exact_external_chain &= unique_def_bmc(variable) == definition &&
+      auto* copy = core::dyn_cast< ar::Assignment >(definition);
+      auto* cast = core::dyn_cast< ar::UnaryOperation >(definition);
+      // The selected create captures this occurrence; transparent forwarding
+      // follows operands before its definition even when the loop repeats it.
+      const bool forwarding = selected_argument_origin && definitions == origins &&
+          variable->type()->is_pointer() &&
+          ((copy != nullptr && copy->operand()->type() == variable->type()) ||
+           (cast != nullptr && cast->op() == ar::UnaryOperation::Bitcast &&
+            cast->operand()->type()->is_pointer()));
+      exact_external_chain &= forwarding || (unique_def_bmc(variable) == definition &&
           std::count_if(origins->begin(), origins->end(), [&](const auto& event) {
             return event.stmt == definition;
-          }) == 1;
+          }) == 1);
       if (!exact_external_chain) return false;
     }
     if (!external || origins != nullptr) before = index;
@@ -977,13 +1042,162 @@ inline bool successful_join_result(const BmcEvent& event) {
          returned->bit_width() == 32 && returned->is_signed();
 }
 
+inline bool create_output_layout(ar::CallBase* call, std::uint64_t& width,
+                                  std::uint64_t& alignment) {
+  auto* source = call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+  if (source == nullptr || source->arg_size() != 4 || source->getCallingConv() != llvm::CallingConv::C)
+    return false;
+  const auto bits = call->bundle()->data_layout().pointers.bit_width;
+  const llvm::Triple target(source->getModule()->getTargetTriple());
+  if (!target.isOSLinux() || target.getEnvironment() != llvm::Triple::GNU ||
+      !((target.getArch() == llvm::Triple::x86 && bits == 32) ||
+        (target.getArch() == llvm::Triple::x86_64 && bits == 64))) return false;
+  auto* native = llvm::dyn_cast< llvm::PointerType >(source->getArgOperand(0)->getType());
+  auto* pointer = core::dyn_cast< ar::PointerType >(call->argument(0)->type());
+  auto* integer = pointer != nullptr ? core::dyn_cast< ar::IntegerType >(pointer->pointee()) : nullptr;
+  return native != nullptr && !native->isOpaque() && native->getPointerElementType()->isIntegerTy(bits) &&
+         integer != nullptr && integer->bit_width() == bits &&
+         synchronization_layout(call, 0, width, alignment) && width == bits / 8 && alignment == bits / 8 &&
+         call->bundle()->data_layout().store_size_in_bytes(integer) == core::ZNumber(width) &&
+         call->bundle()->data_layout().abi_alignment(integer) == core::ZNumber(alignment);
+}
+
+inline bool constant_create_output_aligned(ar::CallBase* call, const BmcEvent& output) {
+  std::uint64_t width, alignment;
+  if (!create_output_layout(call, width, alignment) || output.const_off % alignment != 0) return false;
+  const auto& layout = call->bundle()->data_layout();
+  core::ZNumber base_alignment;
+  if (output.base != 0) {
+    auto* global = reinterpret_cast< ar::GlobalVariable* >(output.base);
+    base_alignment = global->has_alignment() ? core::ZNumber(global->alignment())
+                                             : layout.abi_alignment(global->type()->pointee());
+  } else if (output.local_base != nullptr) {
+    auto* local = output.local_base;
+    base_alignment = local->has_alignment() ? core::ZNumber(local->alignment())
+                                            : layout.abi_alignment(local->type()->pointee());
+  } else if (output.heap_allocation != nullptr && malloc_call(output.heap_allocation)) {
+    // The verified malloc contract aligns fundamental pthread_t on this ABI.
+    base_alignment = alignment;
+  } else return false;
+  return base_alignment >= alignment;
+}
+
+// Structural admission only: the encoder must prove the actual startup index,
+// bounds and alignment before SAT. This never licenses an interleaved main path.
+inline bool symbolic_startup_create_output(const std::vector< BmcEvent >& path,
+                                           std::size_t creation_index,
+                                           BmcEvent& output, core::ZNumber& extent,
+                                           std::uint64_t& alignment) {
+  if (creation_index >= path.size() || !successful_create_result(path[creation_index])) return false;
+  auto* call = core::cast< ar::CallBase >(path[creation_index].stmt);
+  auto* main = call->code()->function_or_null();
+  if (main == nullptr || main->name() != "main" ||
+      invocation_call(path, call->code(), creation_index) != path.size()) return false;
+  auto* source = call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+  auto* declaration = source != nullptr
+      ? llvm::dyn_cast< llvm::Function >(source->getCalledOperand()->stripPointerCasts()) : nullptr;
+  const auto bits = call->bundle()->data_layout().pointers.bit_width;
+  if (declaration == nullptr || !declaration->isDeclaration() || declaration->getName() != "pthread_create" ||
+      declaration->isVarArg() || declaration->arg_size() != 4 || source->arg_size() != 4 ||
+      source->getCallingConv() != llvm::CallingConv::C || declaration->getCallingConv() != llvm::CallingConv::C ||
+      source->getFunctionType() != declaration->getFunctionType() ||
+      !declaration->getReturnType()->isIntegerTy(32)) return false;
+  auto* entry = core::dyn_cast< ar::FunctionPointerConstant >(call->argument(2));
+  auto* child = entry != nullptr ? entry->function() : nullptr;
+  auto* native_child = llvm::dyn_cast< llvm::Function >(source->getArgOperand(2)->stripPointerCasts());
+  auto* callback = llvm::dyn_cast< llvm::PointerType >(declaration->getFunctionType()->getParamType(2));
+  if (child == nullptr || !child->is_definition() || child->num_parameters() != 1 ||
+      !child->param(0)->type()->is_pointer() || !child->type()->return_type()->is_pointer() ||
+      path[creation_index].thread != reinterpret_cast< std::uint64_t >(child) ||
+      native_child == nullptr || native_child->isVarArg() || native_child->arg_size() != 1 ||
+      native_child->getCallingConv() != llvm::CallingConv::C || !native_child->getReturnType()->isPointerTy() ||
+      !native_child->getFunctionType()->getParamType(0)->isPointerTy() ||
+      callback == nullptr || callback->isOpaque() || callback->getPointerElementType() != native_child->getFunctionType() ||
+      !declaration->getFunctionType()->getParamType(1)->isPointerTy() ||
+      !declaration->getFunctionType()->getParamType(3)->isPointerTy()) return false;
+  const llvm::Triple target(source->getModule()->getTargetTriple());
+  if (!target.isOSLinux() || target.getEnvironment() != llvm::Triple::GNU ||
+      !((target.getArch() == llvm::Triple::x86 && bits == 32) ||
+        (target.getArch() == llvm::Triple::x86_64 && bits == 64))) return false;
+  auto* native_pointer = llvm::dyn_cast< llvm::PointerType >(source->getArgOperand(0)->getType());
+  auto* handle_pointer = core::dyn_cast< ar::PointerType >(call->argument(0)->type());
+  auto* handle_type = handle_pointer != nullptr ? core::dyn_cast< ar::IntegerType >(handle_pointer->pointee()) : nullptr;
+  std::uint64_t width, required_alignment;
+  if (native_pointer == nullptr || native_pointer->isOpaque() ||
+      !native_pointer->getPointerElementType()->isIntegerTy(bits) ||
+      handle_type == nullptr || handle_type->bit_width() != bits ||
+      !synchronization_layout(call, 0, width, required_alignment) ||
+      width != bits / 8 || required_alignment != bits / 8) return false;
+  BmcEvent address;
+  core::ZNumber size;
+  if (!pointer_on_path(call->argument(0), path, creation_index, main, nullptr, address, &path) ||
+      address.base != 0 || address.heap_allocation != nullptr || address.local_base == nullptr ||
+      address.var_id == 0 || address.const_off != 0 || address.coeff != core::ZNumber(width) ||
+      !shared_main_allocation(address.local_base, path) || !memory_extent(address, size) ||
+      address.local_base->alignment() < required_alignment) return false;
+  auto* array = core::dyn_cast< ar::ArrayType >(address.local_base->type()->pointee());
+  if (array == nullptr || array->num_elements() == 0 ||
+      array->element_type() != handle_type ||
+      call->bundle()->data_layout().store_size_in_bytes(handle_type) != core::ZNumber(width)) return false;
+
+  // A direct typed array GEP excludes intermediate out-of-object pointer chains.
+  ar::Value* pointer = call->argument(0);
+  ar::PointerShift* shift = nullptr;
+  std::size_t before = creation_index;
+  for (unsigned depth = 0; depth < 16; ++depth) {
+    auto* variable = core::dyn_cast< ar::InternalVariable >(pointer);
+    if (variable == nullptr) return false;
+    std::size_t index = 0;
+    auto* definition = reaching_definition(variable, path, before, index);
+    if (definition == nullptr || definition->code() != main->body()) return false;
+    before = index;
+    if ((shift = core::dyn_cast< ar::PointerShift >(definition))) break;
+    if (auto* copy = core::dyn_cast< ar::Assignment >(definition)) {
+      if (copy->operand()->type() != variable->type()) return false;
+      pointer = copy->operand();
+    } else if (auto* cast = core::dyn_cast< ar::UnaryOperation >(definition)) {
+      if (cast->op() != ar::UnaryOperation::Bitcast || !cast->operand()->type()->is_pointer()) return false;
+      pointer = cast->operand();
+    } else return false;
+  }
+  if (shift == nullptr || shift->pointer() != address.local_base || shift->num_terms() != 2 ||
+      shift->term(0).first.to_z_number() != size || shift->term(1).first.to_z_number() != core::ZNumber(width)) return false;
+  auto* first = core::dyn_cast< ar::IntegerConstant >(shift->term(0).second);
+  auto* native_shift = shift->has_frontend()
+      ? llvm::dyn_cast< llvm::GetElementPtrInst >(shift->frontend< llvm::Value >()) : nullptr;
+  if (first == nullptr || !first->value().is_zero() || native_shift == nullptr ||
+      !native_shift->isInBounds() || native_shift->getNumIndices() != 2) return false;
+  auto* allocation = llvm::dyn_cast< llvm::AllocaInst >(native_shift->getPointerOperand());
+  auto* native_array = llvm::dyn_cast< llvm::ArrayType >(native_shift->getSourceElementType());
+  auto* native_first = llvm::dyn_cast< llvm::ConstantInt >(*native_shift->idx_begin());
+  if (allocation == nullptr || native_array == nullptr || native_first == nullptr || !native_first->isZero() ||
+      allocation->getAllocatedType() != native_array || !native_array->getElementType()->isIntegerTy(bits) ||
+      core::ZNumber(native_array->getNumElements()) != array->num_elements() || allocation->getAlign().value() < required_alignment)
+    return false;
+  bool same_allocation = false;
+  for (std::size_t i = 0; i < creation_index; ++i)
+    if (path[i].stmt->result_or_null() == address.local_base && path[i].stmt->has_frontend())
+      same_allocation = path[i].stmt->frontend< llvm::Value >() == allocation;
+  if (!same_allocation) return false;
+  output.base = address.base; output.local_base = address.local_base;
+  output.shared_main_local = address.shared_main_local;
+  output.heap_allocation = address.heap_allocation; output.heap_extent = address.heap_extent;
+  output.const_off = address.const_off; output.var_id = address.var_id;
+  output.var_before = address.var_before; output.coeff = address.coeff; output.width = width;
+  extent = size; alignment = required_alignment;
+  return true;
+}
+
 // Definedness is required even for values not used in guards/addresses.
 // This does not encode load values or establish read-from relations.
 inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
                                   Diagnostics* diagnostics = nullptr,
                                   ar::Function* root = nullptr,
-                                  ar::Value* root_argument = nullptr,
-                                  const std::vector< BmcEvent >* origins = nullptr) {
+                                  ThreadArgument root_argument = nullptr,
+                                  const std::vector< BmcEvent >* origins = nullptr,
+                                  bool defer_startup_create_offsets = false) {
   std::function< bool(ar::Value*, std::size_t, unsigned) > defined;
   defined = [&](ar::Value* value, std::size_t before, unsigned depth) {
     if (depth >= 32 || core::isa< ar::UndefinedConstant >(value)) return false;
@@ -1002,9 +1216,16 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
       if (def == nullptr) {
         auto* actual = formal_argument(variable, path, before, index);
         if (actual != nullptr) return defined(actual, index, depth + 1);
-        if (root_parameter(variable, root) && root_argument != nullptr) {
-          if (core::isa< ar::Constant >(root_argument) || core::isa< ar::GlobalVariable >(root_argument))
-            return !core::isa< ar::UndefinedConstant >(root_argument);
+        if (root_parameter(variable, root) && root_argument.value != nullptr) {
+          if (root_argument.exact_creation) {
+            if (origins == nullptr) return false;
+            const auto creation = created_occurrence(root, *origins, root_argument.creation_ordinal);
+            if (creation == origins->size() ||
+                core::cast< ar::CallBase >((*origins)[creation].stmt)->argument(3) != root_argument.value)
+              return false;
+          }
+          if (core::isa< ar::Constant >(root_argument.value) || core::isa< ar::GlobalVariable >(root_argument.value))
+            return !core::isa< ar::UndefinedConstant >(root_argument.value);
           BmcEvent address;
           return pointer_on_path(variable, path, before, root, root_argument, address, origins) &&
                  (address.base != 0 || address.heap_allocation != nullptr || address.shared_main_local) &&
@@ -1081,9 +1302,17 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
       // object. Null/unknown handles cannot establish a live child.
       if (pointer == nullptr || !core::isa< ar::IntegerType >(pointer->pointee()) ||
           !core::isa< ar::NullConstant >(call->argument(1)) ||
-          !pointer_on_path(call->argument(0), path, i, root, root_argument, output) || output.var_id != 0 ||
-          !memory_extent(output, extent) || output.const_off < 0 ||
-          output.const_off + call->bundle()->data_layout().store_size_in_bytes(pointer->pointee()) > extent) {
+          !pointer_on_path(call->argument(0), path, i, root, root_argument, output) ||
+          !memory_extent(output, extent)) {
+        record(diagnostics, "create_arguments", stmt);
+        return false;
+      }
+      std::uint64_t alignment;
+      if (output.var_id != 0 ?
+          (!defer_startup_create_offsets || !symbolic_startup_create_output(path, i, output, extent, alignment)) :
+          (output.const_off < 0 ||
+           output.const_off + call->bundle()->data_layout().store_size_in_bytes(pointer->pointee()) > extent ||
+           !constant_create_output_aligned(call, output))) {
         record(diagnostics, "create_arguments", stmt);
         return false;
       }
@@ -1364,6 +1593,8 @@ constexpr std::size_t MAX_PATHS = 256;
 constexpr std::size_t MAX_PATH_EVENTS = 1024;
 struct UnrollBudget {
   bool prune_join_prefix = false;
+  // Optional activation contract: retained creation counts only increase.
+  const std::map< ar::Function*, unsigned >* create_limits = nullptr;
   std::size_t steps = 0;
   unsigned loop_bound = 1;
   unsigned target_occurrence = 1;
@@ -1464,6 +1695,13 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
       }
       BmcEvent ev;
       if (classify_event(s, ev, &in_stack)) {
+        if (ev.kind == EvKind::Create && budget.create_limits != nullptr) {
+          auto limit = budget.create_limits->find(reinterpret_cast< ar::Function* >(ev.thread));
+          if (limit != budget.create_limits->end() &&
+              std::count_if(current.begin(), current.end(), [&](const auto& event) {
+                return event.kind == EvKind::Create && event.thread == ev.thread;
+              }) >= limit->second) return;
+        }
         if (ev.kind == EvKind::Join) {
           ev.join_completion = inert_join_source(core::cast< ar::CallBase >(s), current,
                                                  current.size(), ev.join_creation);
@@ -1609,7 +1847,8 @@ struct UnrollResult {
 inline UnrollResult unroll_to(
     ar::Function* func, ar::Statement* target,
     unsigned target_occurrence = 1, unsigned loop_bound = 1,
-    bool prune_join_prefix = false) {
+    bool prune_join_prefix = false,
+    const std::map< ar::Function*, unsigned >* create_limits = nullptr) {
   UnrollResult result;
   // A root invocation has no source call on which to attach the boundaries.
   if (named_verifier_atomic(func)) {
@@ -1623,6 +1862,7 @@ inline UnrollResult unroll_to(
   }
   UnrollBudget budget;
   budget.prune_join_prefix = prune_join_prefix;
+  budget.create_limits = create_limits;
   budget.target_occurrence = target_occurrence;
   budget.loop_bound = loop_bound;
   budget.root_target = target;

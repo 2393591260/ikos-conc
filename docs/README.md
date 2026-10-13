@@ -23,9 +23,9 @@
 <a id="baseline"></a>
 ## 当前可复核基线
 
-以下是 **2026-10-13 M3.0 分因素开关的全量配对实验**；默认分析结果与此前基线逐项一致。
+以下是 **2026-10-13 M3.1 创建实例与句柄输出的全量配对实验**；恢复两个 TP，原有 TP/TN 均保留。
 安装二进制 SHA256 为
-`dd68ce473f87f9c8def006d369be48b639edfca7b442a416077d5568f4adb9a2`。
+`45dcc02604b817908085d007d2edda12227056cef246d6d504d6c958dc731fb8`。
 
 任务集合为 `/home/ruan/sv-benchmarks-2026`，revision
 `0a254fdddcfe24949be9edd47f8d609462eb52fb`，本地扫描 1029 项、全部 ILP32，
@@ -35,17 +35,21 @@
 | 比赛判定模式 | TP | TN | FP | FN | UNKNOWN | error/timeout |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | AI，demote，BMC 关闭 | 0 | 687 | 0 | 0 | 341 | 1 |
-| AI + BMC，demote | 109 | 687 | 0 | 0 | 232 | 1 |
+| AI + BMC，demote | 111 | 687 | 0 | 0 | 230 | 1 |
 
-109 个标签 TP 对应重新导出的 137 条所选执行，全部独立 AR ACCEPT。
+111 个标签 TP 对应重新导出的 139 条所选执行，全部独立 AR ACCEPT。
 检查范围为导出的 AR、可信前端与明确库合同；尚非官方源程序/witness 验收，
 不认证全部 SAFE 规则，也不穷尽所有 SAT 模型。
 有限基准 FP/FN 为零不能作为全语言 soundness 定理。
 
-M3.0 修正消融范围、拆分开关与计数，没有新增 TP/TN；双架构80次定向检查通过，
-当前109项137条所选执行重新AR ACCEPT。证据：[汇总](artifacts/bmc-m3-2026-10-13/facts/summary.json)、
-[全量配对](artifacts/bmc-m3-2026-10-13/facts/paired.json)、
-[执行检查](artifacts/bmc-m3-2026-10-13/facts/selected-executions.json)。已发布ZIP保持原版本。
+M3.1 恢复 `reorder_c11_bad-10.i` 与 `reorder_c11_good-10.i`：明确选择创建实例，
+保留全部孩子和句柄输出，用真实 startup 前序写编码数组下标。
+同时修复常量创建地址漏查对齐的旧缺口。80次双架构定向检查、P0、实际全量脚本和
+139条所选执行检查通过；两项新增源见证映射保留11次创建及目标线程11/1，尚非官方验证。
+证据：[汇总](artifacts/bmc-m3-2026-10-13/created-instances/summary.json)、
+[全量配对](artifacts/bmc-m3-2026-10-13/created-instances/paired.json)、
+[执行检查](artifacts/bmc-m3-2026-10-13/created-instances/selected-executions.json)。已发布ZIP保持原版本。
+此前M3.0只修正实验因素与计数，没有精度收益，见[BMC手册](ikos-bmc-complete.md#m3-design)。
 此前只读指针数组投影恢复两组最小正例的双架构 SAFE；冻结集逐任务判定不变。
 前一轮首次发布证书恢复 `09-regions_02-list_nr.c`；通用 heap/region 与生命周期证明仍未完成。
 原始 `arraylist` 的内层 heap 访问仍触发 coverage gate，不能计作新增 TN。
@@ -63,13 +67,14 @@ M3.0 修正消融范围、拆分开关与计数，没有新增 TP/TN；双架构
   [本轮 24 项处置](artifacts/ai-precision-2026-10-12/readonly-array/dispositions-24.json)给出具体前提/缺口；
   [安全台账](artifacts/ai-precision-2026-10-11/unknown-ledger/ledger.json)保存当前判定和历史诊断指纹。
   M2 第一版已按阶段出口完成；TN 余项见 [AI 阶段出口与缺口](ikos-ai-complete.md#m2-exit)。
-- 竞争 UNKNOWN 126 项，10/13 新 Dartagnan 参考为 FAIL 96、TIMEOUT 14、ERROR 13、PASS 3，
+- 竞争 UNKNOWN 124 项。初始126项的10/13 Dartagnan参考为 FAIL 96、TIMEOUT 14、ERROR 13、PASS 3；
+  本轮恢复其中两个 FAIL，余下124项对应 FAIL 94、TIMEOUT 14、ERROR 13、PASS 3，
   见[完整参考记录](artifacts/bmc-m3-2026-10-13/reference-complete/summary.json)。FAIL不是IKOS执行验收。
   [混合历史台账](artifacts/bmc-v1-final-2026-10-10/unknown-results.json)同时含安全和竞争任务，
   看 `current_bmc`/`current_ai` 字段及标签筛选，不能把全部 227 行称为竞争池或新参考运行。
   TP 工作入口为 [BMC 后续机制](ikos-bmc-complete.md#roadmap)。
   10/13 已固定 [M3 输入/hash](artifacts/bmc-m3-2026-10-13/baseline.json)，完成 126 项新 IKOS
-  诊断；准备阶段中断的一项已经单独补跑。设计审查和M3.0完成，继续M3.1实现。
+  诊断；准备阶段中断的一项已经单独补跑。设计审查、M3.0和M3.1完成；M3整体尚未结束，后续见实际循环界与句柄/完成前提。
 - 已有 AI→BMC 的能力及局部查询减少证据；真正 BMC→AI 归纳精化、
   整体优于参考工具及大幅提速仍需验证。
 
@@ -112,14 +117,14 @@ M3 每批固定一个语义桶及入口清单，先复核 Dartagnan，再决定�
 
 ### 2026-10-13 设计审查的决策与实施顺序
 
-这轮只读源码、核对原论文并完善实施合同；没有修改分析器语义。设计完成不关闭 M3/M5/M6。
+以下保留实施前的设计审查路线；M3.1已另完成源码与全量验收。设计审查本身不关闭 M3/M5/M6。
 证据与实际审查范围见 [review.json](artifacts/strategic-design-2026-10-13/review.json)。
 
 | 顺序/所属节点 | 已形成的决策 | 恢复实施后的结束节点 |
 | --- | --- | --- |
 | 1：M0/M2/M3 合同 | 区分搜索提示、附加约束、定义性/生命周期证书、SAFE 排除；补清 AR 检查的可信边界 | 每项新消费有作用域、前提、失效与反例控制；SAFE dirty 覆盖和新增 FALSE 执行分别验收，见 [架构合同](concurrency-architecture.md#contracts) |
 | 2：M3.0 实验基础（已完成） | 独立数值/生命周期开关与计数，旧总开关保持原范围 | 80次定向、全量配对和137条执行检查通过；分因素210次正式测量，无新增TP/TN |
-| 3：M3.1 创建实例 | 首批选择两个 reorder-10 的真实 `.i`；显式创建 occurrence、完整 startup、未选孩子可暂不调度 | 两项各有验证过的执行或具体下一阻断，通用正反变体/全量配对通过；不靠增加界限宣称机制收益 |
+| 3：M3.1 创建实例（已完成） | 首批选择两个 reorder-10 的真实 `.i`；显式创建 occurrence、完整 startup、未选孩子可暂不调度 | 两项均恢复TP并AR ACCEPT，通用正反变体/全量配对通过，原TP/TN无回退；没有提高全局搜索界 |
 | 4：M3.2 + TN 专题 | 精确句柄槽来源先行；AI 全实例完成与 BMC 有副作用辅助完成各自实现 | 全 join、漏 join、隔项 join、覆盖句柄四类一起验收；三增量分别提交，详见 [M3 设计](ikos-bmc-complete.md#m3-design) |
 | 并行：M5/M7 | “静态分析加速 BMC”已有先例；论文主问题落在受限 AI 合同如何减少确认工作及其有效性 | 完成近邻差异、保持性义务、同语义消融与独立任务族；无成本收益则据实调整贡献，不预称新颖性，见 [论文设计](ikos-ai-complete.md#publication) |
 | 有条件：M6 | 剩余 15 个可信安全入口尚无已证实的纯数值合并损失；先不做泛化反馈 | 先准入一个真实损失，再试局部控制分区＋完整 AI 重算；无入口或不优于简单策略则记录负结果，见 [反馈试点](ikos-ai-complete.md#m6-design) |

@@ -15,6 +15,9 @@ namespace ikos { namespace analyzer { namespace bmc {
 // Source/alias/lifetime coverage still requires the complete chosen prefixes.
 struct CandidateFacts {
   std::vector< BmcEvent > startup;
+  bool selected_worker_occurrences = false;
+  // Matching-entry creation ordinals in startup; false preserves legacy choice.
+  std::size_t worker_a_occurrence = 0, worker_b_occurrence = 0;
   bool bounded_a = false, bounded_b = false;
   core::ZNumber lo_a{0}, hi_a{0}, lo_b{0}, hi_b{0};
   const std::map< ar::BinaryOperation*, bool >* no_wrap = nullptr;

@@ -1,0 +1,26 @@
+[
+  {
+    "task": "c/pthread-deagle/reorder_c11_bad-10.i",
+    "yaml": "c/pthread-deagle/reorder_c11_bad-10.yml",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "source_sha256": "10d5067d95273951a014725afb4753c98c29896d9675321f4fa3b00f339e7930",
+    "yaml_sha256": "1cab84ddf75530365cfecaa68b7a40f8edaf72c2e2a5df667aac625105315a7e",
+    "before_ai": "Unknown",
+    "before_bmc": "Unknown",
+    "after_ai": "Unknown",
+    "after_bmc": "Race Found"
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_good-10.i",
+    "yaml": "c/pthread-deagle/reorder_c11_good-10.yml",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "source_sha256": "053c2020ab3922d27be669eca0e75ac8051424727a4d2b2d1ab69540cc43f0a3",
+    "yaml_sha256": "4e03edae63fb462e0a58310d76d831fe81637799701fd80fb515fdda69b6544a",
+    "before_ai": "Unknown",
+    "before_bmc": "Unknown",
+    "after_ai": "Unknown",
+    "after_bmc": "Race Found"
+  }
+]

@@ -338,6 +338,12 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
       }
       GuardRejection rejection;
       outcome.merge(check_race(pA, pB, funcA, funcB, diagnostics, facts, &rejection, &outcome.metrics));
+      if (rejection.startup_infeasible) {
+        // Every worker alternative in this call shares the same startup;
+        // dormant children cannot repair its already-false concrete guard.
+        record(diagnostics, "constant_startup_guard_unsat");
+        return outcome;
+      }
       if (outcome.confirmed()) {
         if (creations != nullptr) {
           creations->clear();
