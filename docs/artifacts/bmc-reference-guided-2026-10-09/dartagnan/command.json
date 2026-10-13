@@ -1,8 +1,0 @@
-[
-  "java",
-  "-jar",
-  "svcomp/target/svcomp.jar",
-  "cat/svcomp.cat",
-  "--svcomp.property=/home/ruan/sv-benchmarks-2026/c/properties/no-data-race.prp",
-  "/home/ruan/sv-benchmarks-2026/c/goblint-regression/10-synch_02-thread_nonunique.c"
-]

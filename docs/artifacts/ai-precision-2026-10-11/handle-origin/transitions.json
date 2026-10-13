@@ -1,5 +1,0 @@
-[
-{"task":"c/ldv-races/race-1_1-join.i","expected":"Safe","source_sha256":"ab598119c4148bae0d8b880ae1fca3b30d4f7d9a1b46bb07e7f3565fa04f9e72","yaml":"c/ldv-races/race-1_1-join.yml","yaml_sha256":"fb2a0262566c53b5728b32c2a543da776ce8800ca38e4d533e35e5327c0c720d","before_ai":"Unknown","before_bmc":"Unknown","after_ai":"Safe","after_bmc":"Safe"},
-{"task":"c/ldv-races/race-1_2-join.i","expected":"Safe","source_sha256":"fd4c3d19582748238e9ca587d159d6e8fc23db581cd4de03be73dc785992e03f","yaml":"c/ldv-races/race-1_2-join.yml","yaml_sha256":"09fc59060f6e2d38715a86c2b391f50231ff32433ab3a283478c303d34c11df6","before_ai":"Unknown","before_bmc":"Unknown","after_ai":"Safe","after_bmc":"Safe"},
-{"task":"c/ldv-races/race-1_3-join.i","expected":"Safe","source_sha256":"8c7f2059024755e8d2127555397365a96bb56530f6a4795548fd916204307c42","yaml":"c/ldv-races/race-1_3-join.yml","yaml_sha256":"d1dba8ebf1743c777a1de33729d1b0e90cc8010549c9e8f982d3e29aa41e8db6","before_ai":"Unknown","before_bmc":"Unknown","after_ai":"Safe","after_bmc":"Safe"}
-]

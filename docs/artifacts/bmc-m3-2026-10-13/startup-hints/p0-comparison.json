@@ -1,6 +1,0 @@
-{
-  "observations": 20,
-  "all_match_previous": true,
-  "analyzer_sha256": "a20617e281b547f85a60eac4124fd217e1f1f95d56872414bb2da8f1e0dc6823",
-  "previous": "facts/p0-observations.json"
-}

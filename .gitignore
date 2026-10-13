@@ -9,7 +9,14 @@ install/
 
 # Local notes and Office documents (including uppercase extensions)
 /local/
-/docs/local/
+/docs/*
+!/docs/review-repros/
+!/docs/fp-repros/
+/skills/
+/CLAUDE.md
+/AGENTS.md
+/svcomp/reference/
+/svcomp/category-structure-mr.md
 *.[dD][oO][cC]
 *.[dD][oO][cC][xX]
 *.[pP][pP][tT]
@@ -60,17 +67,12 @@ verification_result.csv
 
 # Local tooling and external benchmark copies
 .claude/
+.codex/
 clean-sv-benchmarks/
 
 # CPAchecker run artifacts + packaged archive
 output/
 ikos-conc.zip
-
-# Large Codex evidence dirs (raw logs / task outputs, keep the .md summaries instead)
-docs/artifacts/bmc-unknown-sweep-2026-10-09/
-docs/artifacts/bmc-witness-validation-2026-10-09/
-docs/artifacts/bmc-correctness-2026-10-09/tasks/
-docs/artifacts/bmc-precision-2026-10-09/tasks/
 
 # Packaging artifacts
 *.zip

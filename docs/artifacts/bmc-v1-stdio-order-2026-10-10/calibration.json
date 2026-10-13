@@ -1,9 +1,0 @@
-{
-  "baseline_commit": "e40db83",
-  "finding": "The default selected certificate is accepted. A stream-ordered atomic-target completion admits old query clocks and read sources but orders targets via stdout.",
-  "ordered_certificate_check": {
-    "status": "REJECT",
-    "reason": "targets ordered by pthread synchronization"
-  },
-  "scope": "Analytic missing constraint plus concrete calibration; not a newly observed frozen-suite FP."
-}

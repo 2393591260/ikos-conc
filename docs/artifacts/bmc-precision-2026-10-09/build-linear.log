@@ -1,9 +1,0 @@
-[ 18%] Built target ikos-ar
-[ 25%] Built target ikos-llvm-to-ar
-[ 25%] Building CXX object analyzer/CMakeFiles/ikos-analyzer.dir/src/checker/data_race.cpp.o
-/home/ruan/ikos-conc/analyzer/src/checker/data_race.cpp: In member function ‘ikos::analyzer::DataRaceChecker::PointsToSet ikos::analyzer::DataRaceChecker::resolve_points_to(ikos::ar::Value*, const ikos::analyzer::value::AbstractDomain&) const’:
-/home/ruan/ikos-conc/analyzer/src/checker/data_race.cpp:1672:12: warning: unused variable ‘iv’ [-Wunused-variable]
- 1672 |   if (auto iv = dyn_cast< ar::InternalVariable >(pointer)) {
-      |            ^~
-[ 27%] Linking CXX executable ikos-analyzer
-[100%] Built target ikos-analyzer

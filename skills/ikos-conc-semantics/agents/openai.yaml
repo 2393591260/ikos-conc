@@ -1,4 +1,0 @@
-interface:
-  display_name: "IKOS Concurrency Semantics"
-  short_description: "Sound concurrent analysis and reproducible IKOS evaluation"
-  default_prompt: "Use $ikos-conc-semantics to improve IKOS concurrent analysis with explicit semantic assumptions and reproducible validation."

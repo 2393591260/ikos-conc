@@ -1,5 +1,13 @@
-IKOS
-====
+IKOS-ConC
+=========
+
+IKOS-ConC extends NASA IKOS with data-race analysis for concurrent C programs.
+It combines thread-modular abstract interpretation with bounded SMT confirmation
+of remaining race candidates. See [concurrent analysis](doc/CONCURRENCY.md) for
+usage, the implemented pipeline, and its supported boundaries.
+
+Build this checkout to use the concurrency extension. The upstream installation
+instructions and IKOS background below describe the original analyzer.
 
 [![License](https://img.shields.io/badge/license-NOSA%201.3-blue.svg)](LICENSE.pdf)
 [![Release](https://img.shields.io/badge/release-v3.5-orange.svg)](https://github.com/NASA-SW-VnV/ikos/releases/tag/v3.5)

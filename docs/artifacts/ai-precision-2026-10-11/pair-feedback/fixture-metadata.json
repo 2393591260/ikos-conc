@@ -1,7 +1,0 @@
-{
-  "fixture_sha256": "52453d4019a3f17ca96a9fe6889f2138d2aae03a399371dd89198813aef3f116",
-  "observations": 120,
-  "mode": "ai_only",
-  "exact_smt_models_are_executions": false,
-  "note": "Output facts and models are local AI overapproximations, not race witnesses."
-}

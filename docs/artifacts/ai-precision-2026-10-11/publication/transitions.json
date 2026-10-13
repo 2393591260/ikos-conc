@@ -1,3 +1,0 @@
-[
-{"task":"c/ldv-races/race-3_2b-container_of-global.i","expected":"Race Found","source_sha256":"20a87c920658ab1be3e1287b4219016d059cb655f966a0f7736d00edb2f76663","yaml":"c/ldv-races/race-3_2b-container_of-global.yml","yaml_sha256":"a0a5010f8c94381726b3d7afbf268fa9ae5a1f7e0413acc05b57b01d33d6a69d","before_ai":"Unknown","after_ai":"Unknown","before_bmc":"Unknown","after_bmc":"Race Found"}
-]
