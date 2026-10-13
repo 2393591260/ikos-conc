@@ -462,6 +462,49 @@ BMC 独立建立实际 store 来源、线程与对象身份。
 论文仍需近邻工作检索、明确保持性论证、AI-only/BMC/事实开关/反馈消融、
 公平参考工具比较和独立任务集。现有局部参考误判不证明整体支配。
 
+<a id="m6-design"></a>
+### M6 的准入与唯一首选试点（设计，尚未实现）
+
+2026-10-13 重新检查剩余 15 个可信 Goblint TRUE 的任务源码及已有当版诊断：
+12 个仍有 coverage 阻断；其余 3 个是两个 heap 节点/数组槽所有权与发布问题、一个动态
+join 完成问题。**尚无一项已经建立“语义覆盖完整，纯数值合并导致 UNKNOWN”的证据。**
+因此暂不为它们实现泛化 CEGAR；这不等于证明反馈永远无用。逐项来源、hash和缺口见
+[设计依据](artifacts/strategic-design-2026-10-13/review.json)。
+
+首选受限试点为 **BMC 依赖提示选择局部控制分区，AI 从初态重新求完整不动点**。
+实现基础已经存在：`memory::PartitioningDomain` 按整数变量维护分区，
+`numerical.hpp::exec_ikos_partitioning_var` 调用 `partitioning_set_variable` 选择分区变量。但是
+`value::AbstractDomain` 是 Data×Lockset，分区仅在 Data 内；共享黑板仍主要为区间和
+锁索引区间。这条小路线只能先解决局部值合并造成的不可达访问，不能恢复锁—值相关性、
+heap 所有权或关系式干扰。把数值域换强不自动解决这些问题。
+
+| 环节 | 下一轮可执行的要求 |
+| --- | --- |
+| 准入 | 先找到一个实际任务：访问/API/对象/线程覆盖成立，保存合并前后状态，确认首次精度损失；实际 AR 保留目标分支。现有 15 项尚未入选 |
+| BMC 输出 | 新增 advisory `LocalPartitionHint`：源/AR/配置身份、候选、查询状态/界限、控制和数据依赖、局部 selector 与作用区域。当前没有可直接消费的完整拒绝依赖协议，需先实现导出；UNSAT 时没有 SAT model，不编造模型值 |
+| AI 消费 | 同一不可变 IR 的分析策略 side table；在 selector 定义后、相关分支和精度损失之前设置分区键，让新一轮分支转移/join 保留相关性。现有 API 不会拆开已合并状态。新 Context/共享环境从初态重算；提示不注入 assume、不把查询状态当 MUST |
+| 首版界限 | 一轮重算、每函数一个稳定局部整数 selector、一个无环区域；按现有域的实际不交区间片段计数，总数不超过四。首例先证 unsigned selector∈[0,2]；一般余值也须覆盖，其补集可能需要多个区间，超限以 join 合并 |
+| 失效与回退 | 源/hash/位宽/定义或上下文不符则丢提示；共享 load、逃逸、selector 重定义等超出首版范围则拒绝或合并。保留初轮 UNKNOWN，不因失败返回 SAFE |
+
+保持性义务为：每次拆分穷尽其输入，覆盖全部真实初态和行为；每个转移/join/widening保持覆盖。
+精化后的不变量无需包含旧凸合并产生的虚假状态，否则就无法恢复精度。所有分区
+产生的写和线程入口都进入环境；整个线程模块化外层重新收敛，末轮 dirty 仍按既有规则
+回退。提示在一次分析内固定，分区数有限并沿用 sound widening，重算次数有限。
+公共持锁可以排除竞争，却不能排除相应 writer 的干扰（Digest 作者扩展版 §5.1 Remark 3）。
+不把先前一次 BMC 的写集合当完整环境，也不借旧证书跨摘要变化。
+
+最小诊断设计：三个局部分支在合并处分别令 `(b,x,y)` 为 `(0,0,0)`、`(1,1,2)`、
+`(2,2,1)`，随后仅在 `x==1 && y==1` 时写共享变量，另一线程无锁写它。
+区间/凸合并包含 `(x,y)=(1,1)`，实际三分支都不满足；按 b 保留分区可表达这一差别。
+将第三支改为 `(2,1,1)` 就成为真实竞争控制。**这是未编译、未实测的诊断设计**；若编译器
+已经消除目标分支，就不能拿它宣称 AI 恢复精度。遗漏第三分区、错误 selector、陈旧 ID、
+共享 selector、预算为零等坏提示都须保持覆盖；另做改名、宽度和已支持 helper 变体。
+
+试点必须与普通强域 portfolio、无条件分区、纯语法/依赖选区，以及“运行 BMC 但丢弃提示”
+比较，包含第一轮查询和重算的全部成本。只提高合成例、被更简单策略等成本覆盖、或一直
+没有真实抽象损失入口，则记录负结果结束该试点。找到实际入口且控制/全量/保持性通过后，
+才在未用于选择机制的任务族上检验泛化；不为完成“双向”叙事强行开展算法工程。
+
 <a id="publication"></a>
 ### 论文论点与汇报提纲
 
@@ -488,16 +531,52 @@ BMC 独立建立实际 store 来源、线程与对象身份。
 5. **近邻和贡献边界**：与 Miné、Goblint PBR/cluster/digest、Dartagnan 编码及 path focusing 的差别。
 6. **限制与下一节点**：残余 UNKNOWN、未支持语义和外部验收，区分比赛进展与研究结论。
 
-M5 的实验至少包含 AI-only、AI+BMC、单个有效事实/机制开关和固定版 Goblint/Dartagnan。
-保持输入、属性、数据模型与外部资源一致，记录内部界限/配置差异；
-另留未用于选机制的任务集，避免只在调参池上评价。
-成本包含完整管线，重复且交替顺序测量；同时记录候选/事件/query 数和进程树峰值内存。
-关闭 AI 事实仍有 AI 候选生成，不是不存在的“独立 BMC-only”基线。
+**本轮主研究问题（待证假设）**：线程模块化 AI 已支付的分析成本，能否通过作用域明确的
+候选排除/执行证书，在保留真实竞争执行的条件下，减少按需 BMC 的端到端确认成本？
+候选贡献是这类信息的生产—消费—失效合同及有效机制，不是笼统的“AI+BMC”。
+M6 是独立备选研究线，不能成为主线交付的前置条件。
 
-M6 先选具体损失，以模型/依赖作为分区或数值 pack 的选择线索；
-新 AI 必须重新完成含全部干扰的不动点，或通过 init/step/完整环境归纳检查，摘要变化后重查证书。
-继续的条件是有机制对照、保持性和泛化收益；只有合成例收益不够。
-无收益或前提成本过高则记录负结果并结束该原型，保留 AI→BMC 主线。
+已对照原文的最近邻限定如下；这不是穷尽文献检索，也没有认证新颖性：
+
+| 原工作与本轮阅读 | 已经解决的部分 | 对本项目论点的约束 |
+| --- | --- | --- |
+| Miné LMCS2012 §3.3/Thm3.3；SAS2021 privatization §2–5（既有阅读） | 线程模块化环境过近似、干扰闭包、保护相关值传播 | 不能把正确移植线程模块化/privatization 本身作为新算法 |
+| [Dartagnan CAV2019](https://hernanponcedeleon.github.io/pdfs/cav2019.pdf) §1、§3 | may/active 关系的双向依赖计算，结合 Andersen may-alias 压缩 CAT 的 SMT 关系编码；差集右操作数不能随意过近似 | 静态分析、按需关系或 alias 加速 BMC 已有先例。需证明 IKOS 的语义/上下文信息带来该配置尚无的有效收益 |
+| [CAAT OOPSLA2022](https://hernanponcedeleon.github.io/pdfs/oopsla2022.pdf) §1 | 惰性一致性理论求解；原文也比较 Deagle 的特定内存模型理论 | 不能把 Dartagnan 描述为只有全量急切 SMT；公平比较要固定实际 engine/method，而非只选旧慢配置 |
+| ESOP2023 clusters §1、Digest VMCAI2026 作者版 §3/§5 | 关系集群、历史兼容性、线程/锁/join 的非并发排除 | 通用 heap/history 或 lock-value 分区需独立域与覆盖义务；当前局部 Data 分区不是完整 digest 算法 |
+| SAS2011 path focusing §3.1–3.4 | SMT 选取逃出当前抽象状态的切点路径，全部闭包与 widening 支持归纳和终止 | BMC 辅助 AI 已有先例；候选有界 race UNSAT 不具有原算法的完整切点路径/环境覆盖 |
+
+M5 先固定如下实验矩阵，每行只回答一种因果问题：
+
+| 对照 | 固定内容 | 能回答什么 |
+| --- | --- | --- |
+| AI-only / AI+BMC | 同一前端、AI、任务与总资源 | 增量确认能力、全管线代价，以及 TN 是否回退 |
+| bounds / no-wrap 分别开关 | 相同生命周期证书、语义、界限、旧查询优先序 | 范围约束与定义性简化各自的成本；测 solver 与端到端，不能只给一个快例 |
+| single-execution/新实例机制开关 | 其他事实固定，记录支持范围差异 | 能力贡献及其成本；关闭后 UNKNOWN 不算同能力的速度对照 |
+| 某一候选排除机制开关 | 其余保守过滤、实际执行与预算固定 | 减少候选/查询的效益；完整记录新找到/未找到的执行，不能把不同答案只汇成时间比 |
+| 固定版 Goblint / Dartagnan | 输入/YAML/ABI/性质、机器/总资源；另列实际库/内存语义、配置与内部界限 | 工具能力和实际成本；Goblint may-warning 不算具体 FALSE，参考另一个 FAIL 不核验 IKOS 所选执行 |
+| M6 四类控制 | 同一 IR、环境覆盖、总资源，费用包括重算 | solver 指导是否优于普通强域/语法选区，见上节 |
+
+现有 `IKOS_BMC_DISABLE_AI_FACTS` 还关闭生命周期来源，需先按 [BMC §3.1](ikos-bmc-complete.md#architecture)
+纠正并拆分。没有现成的“完全移除 AI 仍同等功能的 IKOS BMC-only”，不能制造这个基线。
+新机制的能力实验与旧语义下的优化实验分别报告。
+
+先冻结配置和任务族：2026 集已经参与开发，不能重新随机划分后称盲测；2027 新增任务或
+另一独立来源也要排除同源参数变体/近重复并记录首次查看时间。变形回归验证通用性，
+不代替独立工作负载。语义可比子集按事先公开的 API/模型规则选取，并同时保留全任务视图，
+不能按谁更快或谁答对事后筛选。
+
+计时串行错峰，预热与正式运行分列，至少五轮交替/随机顺序，固定核心/内存/超时，
+记录硬件、版本、配置、进程树 CPU/峰值内存。报告每任务中位数及波动、同答共同完成项
+时间比、全部任务 solved/timeout/error 与不同答案；超时是删失结果，不能当精确耗时
+参与“普遍加速”均值。记录 AI/展开/编码/solver/证据成本与候选、事件、读源边、公式规模；
+现有顶层 assertion 数不等于 SMT AST 大小。新增仪表先核对开关不改判定。
+
+论文继续门槛是：至少一个通用机制有保持性论证、隔离因素后仍有效、收益不完全来自
+支持更少语义/增大预算，并在独立任务族复现。如果无成本收益但有经验证的能力扩展，
+据实转为精度/覆盖贡献；若近邻已覆盖且没有可辨认的增量，优先工具/经验短文，
+不声称首次双向分析、全面优于参考或普遍 soundness。原文版本、阅读范围与代码证据见
+[设计依据](artifacts/strategic-design-2026-10-13/review.json)。
 
 研究论文出口是可辨认的新颖贡献、精确条件下的论证、公平实验和可复现 artifact，
 不要求 UNKNOWN 清零或双向反馈成功。若新颖性尚不足，先完成如实描述能力的参赛工具/经验短文；
@@ -1062,9 +1141,12 @@ error=1；109 个标签 TP 的 137 条所选执行重新独立 AR ACCEPT。
 | [The digest framework](https://doi.org/10.1007/s10009-024-00773-y)，STTT 2024 | 有限阅读 §3 admissibility：历史兼容性不能排除真实执行 |
 | [Data Race Detection by Digest-Driven Abstract Interpretation](https://doi.org/10.1007/978-3-032-15700-3_15)，VMCAI 2026 | 实际阅读[作者扩展版](https://arxiv.org/abs/2511.11055)相关章节；完整付费正式版和 8.9GB artifact 实验未复现 |
 | Monniaux/Gonnord，[Using Bounded Model Checking to Focus Fixpoint Iterations](https://www-verimag.imag.fr/~monniaux/biblio/Monniaux_Gonnord_SAS2011.pdf)，SAS 2011 | 已读 §3.1–3.4/§4：完整切点路径精化/归纳；并发环境闭包需另证 |
+| Gavrilenko 等，[BMC for Weak Memory Models: Relation Analysis for Compact SMT Encodings](https://hernanponcedeleon.github.io/pdfs/cav2019.pdf)，CAV 2019 | 本轮读 §1/§3：may/active 关系、按需传播、may-alias 及差集方向；没有复现论文性能实验 |
+| Haas 等，[CAAT: Consistency as a Theory](https://hernanponcedeleon.github.io/pdfs/oopsla2022.pdf)，OOPSLA 2022，DOI 10.1145/3563292 | 本轮读 §1：惰性 SMT/一致性理论的动机、贡献与 Deagle 对照；未审完算法证明或复现实验 |
 
 阅读章节和 PDF/hash 见 [publications.json](artifacts/ai-audit-2026-10-10/publications.json)、
-[digest 来源](artifacts/ai-goblint-reference-2026-10-10/sources.json)。这次文档整理未重做论文实验。
+[digest 来源](artifacts/ai-goblint-reference-2026-10-10/sources.json)及
+[本轮设计依据](artifacts/strategic-design-2026-10-13/review.json)。这次设计审查未重做论文实验。
 
 固定 Goblint：/home/ruan/goblint-analyzer，commit bb55b70d91290992629ba3d073185c10cdf356e6。
 按任务读 basePriv.ml、mutexAnalysis.ml、threadId.ml/threadIdDomain.ml、mHPAnalysis.ml、commonPriv.ml、mCPAccess.ml。

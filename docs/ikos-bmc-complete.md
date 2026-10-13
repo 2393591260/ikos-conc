@@ -160,8 +160,12 @@ no-wrap 证书消费为 0；这是信息流观测，不是因果收益。
 消费的bounds/no-wrap数。跨deferred轮次累积结果、失败状态及计数；不是只报最后一轮。
 顶层assertion数量不等于内部AST/bit-vector复杂度，事件数也不是全程序事件数。
 `scripts/ablate_bmc.py`串行运行、交替A/B顺序和三次重复，保留逐项时间、最大RSS与所选
-执行验收。`IKOS_BMC_DISABLE_AI_FACTS`的存在只关闭BMC offset bounds和no-wrap消费，
-仍保留AI SAFE、may候选筛选、typed initializer和真实创建；不能称为关闭整个IKOS。
+执行验收。该历史数值消融保留AI SAFE、may候选筛选、typed initializer和真实创建。
+**当前开关范围已扩大**：`data_race.cpp` 在 `IKOS_BMC_DISABLE_AI_FACTS` 存在时还不传
+`single_execution`，可能使 helper 发布变为不支持。`scripts/ablate_bmc.py` 的说明和
+`retained` 字段尚只描述 bounds/no-wrap，不能沿用来声称当前运行是同能力的纯速度消融。
+以下历史数据仍以归档中的二进制为准；下一轮先拆分数值优化与生命周期证书的开关/计数，
+再分别测成本和能力。不将这个事实组开关称为关闭整个IKOS。
 
 10输入60次受控运行：7个比赛标签TP、2个UNKNOWN、1个最小正例，A/B判定完全一致，
 所有所选执行AR ACCEPT。局部unsigned-char推广后加1的unused结果，AI证明范围[1,256]
@@ -1054,6 +1058,79 @@ TN 的嵌套保护/发布相关性独立见 [AI 后续机制](ikos-ai-complete.m
 每轮结束于通用机制前提明确、最小正反变体/相关回归/全量配对和所选执行检查完成并提交；
 不可实现或零收益部分记录具体义务，不把暂停称为数学能力上限。
 官方 manifest、现代 validator 和实际 BenchExec 合同确定后再做外部验收。
+
+<a id="m3-design"></a>
+### 12.4 M3 实施顺序与设计门槛（2026-10-13）
+
+**状态：设计已审查，以下扩展尚未实现或验证收益。** 固定入口为
+[126 个竞争 UNKNOWN](artifacts/bmc-m3-2026-10-13/baseline.json)。新 IKOS 诊断全部仍为 UNKNOWN；
+参考运行留下 125 份有效结果（FAIL 95、ERROR 13、TIMEOUT 14、PASS 3）及一份中断文件，
+不能称 126 项新参考完成。恢复实施时仅补缺失项，并按配置/hash核对后合并。
+诊断理由可重叠，76 项含 activation 阻断不等于可恢复 76 TP。本轮对 33 项作了具体源码
+归因，其余还需继续逐项检查；[设计依据](artifacts/strategic-design-2026-10-13/review.json)
+保留实际审查范围。
+
+**M3.0：先隔离证据与开销。** 将 bounds、no-wrap 和 single-execution 的消费分别记录，
+让纯数值消融保持生命周期能力。测试原查询顺序与原支持范围、helper 发布能力对照，
+再跑 [AI 手册的实验矩阵](ikos-ai-complete.md#publication)。这一步不能承诺 TP 增长。
+同时修正 `facts.hpp` 的“缺证明只损失优化”、checker 开头的不同静态语句要求、
+join HB 方向和旧 private-init 注释；这些是本轮已核对的文字滞后，不是新复现的误判。
+
+**M3.1：明确选中的创建 occurrence，允许额外子线程暂不调度。**
+首个入口为 YAML 指定的 `pthread-deagle/reorder_c11_{bad,good}-10.i`，固定参考两项均 FAIL。
+实际 `.i` 创建 10 个 setter 后再创建 checker；同名 `.c`/header 的参数不同，不能替换输入。
+当前 `conditional_live_threads` 要求 `spawns == required`，因此多余同入口创建会拒绝激活证明。
+
+- 首版只支持隐式 main 的完整 startup 与两个 worker。保留全部创建、句柄写入、守卫、
+  定义性和库效果；startup 无 join/等待、结束释放全部锁，所有子线程可暂不运行。
+  然后可搜索所选两个实例的有限前缀；竞争仍须完整值/地址/同步公式与执行检查确认，
+  不要求其他线程在此之前完成。
+- 增加一个明确的“创建 trace/step”选择，沿 `created_argument`、`pointer_on_path`、
+  `check_race`、`export_counterexample` 和 mapper 传递同一身份；目前各处独立按入口选第一个，
+  同入口双实例选前两个。不能只改 `==` 为 `>=`，更不能只改导出的线程编号。
+- 最小范围沿用现有可证明的实参来源；循环中重定义的参数须另有动态取值上下文，
+  不能用静态 `InternalVariable*` 或最后一次值替代。main/worker 的创建边与来源折叠另审，
+  不自动随这个 worker/worker 扩展开放。
+- 完整保留原有各组/startup/候选的第一轮搜索，再尝试新增 occurrence 组合；只在单组内
+  先查旧选择仍可能挤掉较后成功组。新增选择沿用总预算，旧成功保留以全量配对验收。
+  `A(&x), A(&y), B(&y)` 检验第二个 A，
+  同入口不同实例/不同实参、额外创建写句柄、startup 假守卫、未释放锁、join 阻塞和
+  篡改 creator_step 均进入正反控制。预算耗尽保留 UNKNOWN。
+- 先核对两项实际 AR 确有目标访问，再做 ILP32/LP64 最小变体、P0、全量 AI/BMC 配对及
+  全部新增/变化所选执行检查。`-20` 还有 startup 展开界问题，单列搜索能力，不计作本机制必得收益。
+
+**M3.2：有来源的句柄槽；随后分开处理 SAFE 完成证明与 BMC 辅助完成。**
+验收族是 `thread-join-array-const` 及三个 `-race` 变体（YAML 指定 `.i`）：安全版创建四个
+并全部 join；竞争版分别少 join、隔项 join、覆盖槽后遗失旧实例。安全版属于剩余可信
+Goblint TRUE，三个竞争版已有新 Dartagnan FAIL，适合同时检验 TN 与 TP 所需的不同义务。
+
+| 独立增量 | 最小接口与负责层 | 验收与拒绝条件 |
+| --- | --- | --- |
+| 精确句柄槽来源 | 创建/转移保留对象、字节 offset、width 和覆盖写代次；BMC 用实际 occurrence，AI 保留 MAY 来源与唯一性条件 | 从固定长度 main 栈数组、完整 typed 写开始；未知别名/部分写/数值伪句柄使来源失效。不能把重复 site 的 singleton 当唯一动态线程 |
+| AI 全实例完成证书（TN 专题） | `concurrent_semantics` / `ConcurrentGlobalEnv` / checker；证明全部可能创建及成功完成，不消费有界路径数量 | 全 join 安全版与漏 join/覆写控制同时验收；循环范围、失败和句柄覆盖无法全称证明时保留 UNKNOWN |
+| BMC 有副作用辅助完成 | 在所选执行中纳入每个被 join 实例的完整有限终止路径，统一其读写、值源、同步及实际 handle；扩展证据和独立检查 | 当前只允许无副作用辅助返回。不能只加入一条“已完成”边；递归 join、所需第三线程无法闭合或路径不终止时 UNKNOWN |
+
+这三项分别设计/提交。第二项不是 BMC→AI 反馈；第三项需要从 startup/A/B 的局部约定
+逐步变成有限 trace 集，先列全所有 `a/b`、first-create、`value_init_` 消费点再改。
+该验收族的目标是 main 的最终读与未 join 的 worker，另有最多四个需要完成的孩子；
+必须保持一个真实 main frame/continuation，并把目标 worker 和辅助 trace 分别绑定实际
+creator_step。M3.1 的 worker/worker startup 扩展不能自动提供这些能力。
+AI 证明的是所有**能到达 join 后访问的执行**中相关实例均已完成，不必证明每个孩子在
+所有执行中最终终止；BMC 则须给出所选执行里各次 join 所需的真实有限终止前缀。
+这比 M3.1 大，只有精确槽来源和真实完成前缀都过门槛才实施。动态 heap 句柄、
+符号长度、整数指针往返、任意 K 线程/弱内存不是此次顺带开放的能力。
+
+**初值合同的已校准边界。** `02-base_24/25/26-malloc*` 三项虽参考 FAIL，当前可竞争排序
+需在真实初始化前读取 x 并传给 LLVM `noundef` 的 printf 参数；Dartagnan 固定实现的
+未初始化读/printf 合同不同。这不能作为放自由 load 的理由，也不能泛称所有 malloc
+未初始化读取都是同一种 C UB。四个初始化对照双架构中，显式初始化竞争为 FALSE 且
+所选执行 AR ACCEPT，两个安全对照未误确认；calloc 竞争仍 UNKNOWN、参考 FAIL。
+见 [控制结果](artifacts/bmc-m3-2026-10-13/initial-controls.json)。calloc 可作独立有限扩展，
+但先确认真实任务确实调用它、参考可用且没有更早的身份缺口；声明里出现名字不算调用。
+
+M3 的阶段出口仍是：126 项均有当版结果和具体处置；入选机制逐项实现验收或记录未满足的
+义务；完成能隔离因果的成本实验并提交。新 FALSE、保留 UNKNOWN、参考失败和语义不兼容
+分别记录。设计完成不等于 M3 完成，不以清空 UNKNOWN、达到预定 TP 数或普遍快于参考工具为出口。
 
 <a id="history"></a>
 ## 13. 阶段历史与不再采用的判断

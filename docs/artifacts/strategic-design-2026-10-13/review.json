@@ -1,0 +1,2183 @@
+{
+  "date": "2026-10-13",
+  "status": "DESIGN_REVIEW_COMPLETE_IMPLEMENTATION_PENDING",
+  "scope": "Code/primary-source design review, not all-language soundness proof, no new full benchmark/precision/performance claim. M3 execution paused by user; M1 external/source validation remains open.",
+  "code_head": "dbbb23abd007b3488825d1cd19e63fbd1be6a5a0",
+  "setup_commit": "688839c",
+  "baseline": {
+    "tasks": 1029,
+    "TP": 109,
+    "TN": 687,
+    "FP": 0,
+    "FN": 0,
+    "unknown": 232,
+    "timeout": 1,
+    "scope": "previous accepted finite baseline, not rerun by this audit"
+  },
+  "analyzer_sha256": "10bad24bc789fe8fbd515e2713f4d352cdcbadc3b20c5eca7f3f1ad08df722a5",
+  "code_sha256": {
+    "analyzer/src/checker/data_race.cpp": "facf20d91d528ce2236d3f4bb149f80da25d6cd333eaf8f6a13c50d2e26958f5",
+    "analyzer/include/ikos/analyzer/analysis/bmc/facts.hpp": "095d6aa7a344f177b2d3a9967442866d95950dd5842fdd8c924d4d495ab0037f",
+    "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp": "2eaef93e9d4ddd8cec395cbf2238a30f0da932bb8fa081a93ac37349da35e494",
+    "analyzer/include/ikos/analyzer/analysis/bmc/unroll.hpp": "8cdf630cf91e6ecfa906d236f0ffb2d90b4764a3f18a933a3fee196c7b23ecb1",
+    "analyzer/include/ikos/analyzer/analysis/bmc/evidence.hpp": "9b78f2826c74447c5c6b8c0b9b77b813ac54aab9df789121f02579c7ea16d805",
+    "analyzer/include/ikos/analyzer/analysis/pair_exclusion.hpp": "6454aa7123b61d1ae2c961ff07f85ce0dd6f957f99caec10368d7b3128e98717",
+    "analyzer/src/analysis/value/thread_modular.cpp": "53a7fd6cfa8e5586e19c999f6e5ac71c907aa409fb937b9b9edf45bf476e6af7",
+    "analyzer/include/ikos/analyzer/analysis/value/abstract_domain.hpp": "542a75fbcb82fbced1cfa841de33e08bdf2407612f13e02a3d5acec4358cbc70",
+    "core/include/ikos/core/domain/memory/partitioning.hpp": "a946719f740f9d75f3bf093baa0443b8d4d3cf966efc1301c3bf0ff015457eb0",
+    "scripts/validate_bmc_execution.py": "e3bd4a44d1748107cc570daffeda822e6a7ecaf511b10000a5ed487d0c30043d",
+    "scripts/sweep_bmc_execution.py": "98cf1895edd42c9b7d42fad343ed3ed266b14ef0b6ecb64e585199eed84c4a30",
+    "scripts/ablate_bmc.py": "903d5aeec2e9e14a31d12da0be79ea3e21b0f6da0db9f7a4ad5d72e53a9737ad"
+  },
+  "primary_sources": [
+    {
+      "name": "path-focusing",
+      "pages": 20,
+      "pdf_sha256": "2e4bf820c6edb2ae86124787ba03f82e98a410b6b1f69d32982be242fca1f8e8",
+      "text_sha256": "5f7179c537071712db00f91a85fc8c2dd8294cb94ae43dc69f5ef24abbb3f43d",
+      "title": "Using Bounded Model Checking to Focus Fixpoint Iterations",
+      "url": "https://www-verimag.imag.fr/~monniaux/biblio/Monniaux_Gonnord_SAS2011.pdf",
+      "doi": "10.1007/978-3-642-23702-7_27",
+      "sections_consulted": "3.1-3.4, PDF pp6-10; closure/termination, not concurrency theorem",
+      "scope": "Relevant original text consulted; paper experiments not reproduced"
+    },
+    {
+      "name": "mine2012",
+      "pages": 63,
+      "pdf_sha256": "5ec9df3d588bcf46bb37c6675b08456955d13fc39b3eb0ec02a2e1a87b77bd5a",
+      "text_sha256": "57a268571b2958165d9a47ae6daee4b502d75551d8ca04d84d040dc88d8000df",
+      "title": "Static Analysis of Run-Time Errors in Embedded Real-Time Parallel C Programs",
+      "url": "https://lmcs.episciences.org/799/pdf",
+      "doi": "10.2168/LMCS-8(1:26)2012",
+      "sections_consulted": "3.3, Figures12/13, equation3.6 and Theorem3.3, PDF pp15-17",
+      "scope": "Relevant original text consulted; paper experiments not reproduced"
+    },
+    {
+      "name": "digest2026",
+      "pages": 29,
+      "pdf_sha256": "489c895dd74e6aab1528369fa88403dce705916d15f885a6bfda1a24dbf91fc9",
+      "text_sha256": "ea1aece2acbac07e697f1402ed7f52496613ecce2ca09439835c45d7b0e9fb1c",
+      "title": "Data Race Detection by Digest-Driven Abstract Interpretation (author extended version v2)",
+      "url": "https://arxiv.org/pdf/2511.11055v2",
+      "doi": "10.1007/978-3-032-15700-3_15",
+      "sections_consulted": "3, 5.1 Remark3, 5.2; admissibility vs race exclusion",
+      "scope": "Relevant original text consulted; paper experiments not reproduced"
+    },
+    {
+      "name": "cluster2023",
+      "pages": 31,
+      "pdf_sha256": "df9a3cf4b2f5b1f02a6c85d2726cebe9b0070f244f9c5a2e6b3c4295c518f669",
+      "text_sha256": "f37d9d0956d6eda55a6ac4f64fc0fbeb7add89e674e03d2554ac6eb2b302b2fc",
+      "title": "Clustered Relational Thread-Modular Abstract Interpretation with Local Traces",
+      "url": "https://link.springer.com/content/pdf/10.1007/978-3-031-30044-8_2.pdf",
+      "doi": "10.1007/978-3-031-30044-8_2",
+      "sections_consulted": "1: motivation, cluster and2-decomposable limitations; earlier detailed reading in prior publications.json",
+      "scope": "Relevant original text consulted; paper experiments not reproduced"
+    },
+    {
+      "name": "dartagnan-relation2019",
+      "pages": 10,
+      "pdf_sha256": "3f18949f5853d0be4b6f7a5b384936262bafd4f521345f851db21892b5f884de",
+      "text_sha256": "2ffa6ab74631ed16cdbbc5eacb625d47271d3e0fca58da87d6966d5547e89653",
+      "title": "BMC for Weak Memory Models: Relation Analysis for Compact SMT Encodings",
+      "url": "https://hernanponcedeleon.github.io/pdfs/cav2019.pdf",
+      "doi": null,
+      "sections_consulted": "1 and3, PDF pp1-3/5-6: may/active relations, alias and subtraction direction",
+      "scope": "Relevant original text consulted; paper experiments not reproduced"
+    },
+    {
+      "name": "caat2022",
+      "pages": 31,
+      "pdf_sha256": "b732546e86857be60c7122b69d55884e7e79253ee2430c1a63c2c7c5513761aa",
+      "text_sha256": "8eae49bfb8a7480a5249f32596ba679e215cfd591a82d364030a8be26a38e357",
+      "title": "CAAT: Consistency as a Theory",
+      "url": "https://hernanponcedeleon.github.io/pdfs/oopsla2022.pdf",
+      "doi": "10.1145/3563292",
+      "sections_consulted": "1, PDF pp1-4: lazy SMT motivation/contribution/Deagle comparison; not full algorithm proof audit",
+      "scope": "Relevant original text consulted; paper experiments not reproduced"
+    }
+  ],
+  "contract_review": {
+    "scope": "Read-only focused AI/BMC semantic-contract and trusted-base design review. No new analyzer soundness counterexample established; no source changes or benchmark runs.",
+    "head": "dbbb23abd007b3488825d1cd19e63fbd1be6a5a0",
+    "baseline": {
+      "tasks": 1029,
+      "TP": 109,
+      "TN": 687,
+      "FP": 0,
+      "FN": 0,
+      "unknown": 232,
+      "timeout": 1,
+      "scope": "previous accepted finite baseline, not rerun by this audit"
+    },
+    "demonstrated_mismatches": [
+      {
+        "refs": [
+          "docs/ikos-bmc-complete.md:163-164",
+          "scripts/ablate_bmc.py:89",
+          "analyzer/src/checker/data_race.cpp:1946-1952"
+        ],
+        "issue": "Ablation described as only bounds/no_wrap but disables single_execution."
+      },
+      {
+        "refs": [
+          "analyzer/include/ikos/analyzer/analysis/bmc/facts.hpp:13-14",
+          "analyzer/include/ikos/analyzer/analysis/bmc/unroll.hpp:782"
+        ],
+        "issue": "Missing-facts-only-optimizations comment overstates current capability preservation."
+      },
+      {
+        "refs": [
+          "analyzer/src/checker/data_race.cpp:834-850",
+          "analyzer/src/checker/data_race.cpp:1131-1158"
+        ],
+        "issue": "Stale explanatory preamble says different static statements necessary and reverses joined HB direction; implementation supports same-statement distinct instances and uses termination-before-continuation."
+      },
+      {
+        "refs": [
+          "analyzer/src/checker/data_race.cpp:1087-1094",
+          "analyzer/src/checker/data_race.cpp:1237-1249"
+        ],
+        "issue": "Legacy private_init prepass comment still states the disproved nonpublication premise, although old rule is disabled and separate InitPublication now exists."
+      }
+    ],
+    "obligations": [
+      {
+        "id": "C1",
+        "priority": "P0-evidence",
+        "topic": "Fact classes and truthful ablation scope",
+        "classification": "demonstrated documentation/measurement-contract mismatch; no analyzer counterexample established",
+        "observation": "IKOS_BMC_DISABLE_AI_FACTS disables single_execution in addition to offset bounds and no_wrap. single_execution admits immutable helper publication, so this flag now removes supported semantics as well as optional numerical constraints. Existing ablation script requires identical verdicts but labels the toggle numerical-only.",
+        "references": [
+          "analyzer/src/checker/data_race.cpp:1943-1953",
+          "analyzer/include/ikos/analyzer/analysis/bmc/facts.hpp:9-22",
+          "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp:71-78",
+          "analyzer/include/ikos/analyzer/analysis/bmc/unroll.hpp:755-785",
+          "scripts/ablate_bmc.py:75-91",
+          "docs/ikos-bmc-complete.md:160-177"
+        ],
+        "minimal_contract": "Separate execution preconditions/startup and at-most-once lifetime certificates from optional numerical facts. Preserve the former for a same-capability speed ablation; alternatively explicitly call the existing flag all-certificate ablation and permit/report supported-verdict losses. Record consumed single_execution count alongside bounds/no_wrap.",
+        "tests": [
+          "Existing helper publication positive with at-most-once certificate enabled/disabled; expect capability loss to be counted rather than interpreted as speedup",
+          "Existing ai-facts/unused-local.c with only numerical facts disabled; same verdict and AR ACCEPT",
+          "Compare paths, prefixes, queries, model validation, time/RSS under serial alternating repeats"
+        ],
+        "go": "Every ablation report lists actual fields disabled and separates capability effect from cost effect.",
+        "no_go": "Use current flag to claim equivalent full semantic coverage or broad numerical-AI speedup."
+      },
+      {
+        "id": "C2",
+        "priority": "P0-interface",
+        "topic": "Offset facts have two different semantic consumers",
+        "classification": "unproved provenance/coverage obligation; current code shows explicit fallbacks, not a demonstrated defect",
+        "observation": "AccessRecord offset intervals are consumed first by an unbounded candidate-deletion rule, then again as conjuncts in a bounded execution query. Their hazards differ: incorrect SAFE filtering can lose a race; extra BMC constraints ordinarily lose witnesses, provided unsupported/UNSAT remains UNKNOWN. CandidateFacts currently carries bare booleans/bounds, no access key, common object, epoch or proof identity.",
+        "references": [
+          "analyzer/src/checker/data_race.cpp:1274-1289",
+          "analyzer/src/checker/data_race.cpp:1890-1914",
+          "analyzer/src/checker/data_race.cpp:1943-1953",
+          "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp:1437-1455",
+          "analyzer/include/ikos/analyzer/analysis/bmc/facts.hpp:15-22",
+          "docs/ikos-bmc-complete.md:179-192"
+        ],
+        "minimal_contract": "Document or type an AccessBounds fact keyed by access/abstract context and concrete-base interpretation, carrying pointer width, byte width and stable-analysis epoch. Scope covers every dynamic occurrence represented by that AccessRecord. No shared-load interval may become a concrete load equality; actual rf remains mandatory.",
+        "tests": [
+          "Two threads update a shared index so a stale initial index hull would remove overlap",
+          "Overlapping widths at unequal starts, unknown width, pointer wrap and signed/unsigned offset variants",
+          "Same statement in two thread instances and helper call contexts with different offsets",
+          "Disable only optional BMC bounds and require supported successful executions remain AR ACCEPT"
+        ],
+        "go": "A SAFE-deleting consumer has a coverage argument; a BMC bound is a constraint with explicit UNKNOWN fallback, never an RF source.",
+        "no_go": "Feed a path-local/stale/shared-value interval into global candidate deletion or use it as a real initialized value."
+      },
+      {
+        "id": "C3",
+        "priority": "P0-interface",
+        "topic": "No-wrap certificates replace executable definedness obligations",
+        "classification": "restricted proof implementation present; all-context/transform stability remains a proof obligation",
+        "observation": "Producer conjoins proofs across checked contexts, rejects loads/formals/phi and shared-dependent control, and proves add/sub/mul ranges. Consumer skips prefix arithmetic encoding on true proof, while demanded results still encode exactly. A wrong proof can admit undefined execution, so this field is part of FALSE trusted base, not just a harmless search hint.",
+        "references": [
+          "analyzer/src/checker/data_race.cpp:340-372",
+          "analyzer/src/checker/data_race.cpp:2118-2149",
+          "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp:1194-1225",
+          "analyzer/include/ikos/analyzer/checker/data_race.hpp:306-308"
+        ],
+        "minimal_contract": "Bind proof to AR operation/opcode/type/no_wrap and immutable program revision; state valid for every occurrence/context the BMC can select. Record source/control restrictions and epoch of checked contexts. Missing or invalid proof must execute the exact arithmetic/definedness check. Do not extend to shared-origin expressions until stable interference premises exist.",
+        "tests": [
+          "Existing unused-local unsigned-char promotion positive",
+          "Signed max + 1 unused result must not be validated as a defined prefix",
+          "Same helper invoked from one safe and one overflowing context",
+          "Shared guard/load, repeated loop occurrence, changed ABI, phi and redefined formals must invalidate rather than reuse an irrelevant proof"
+        ],
+        "go": "Proof premises match selected operation and all reachable contexts; positive/control/variant and independent AR arithmetic checks pass.",
+        "no_go": "Treat the absence of a checked bad context as proof of all dynamic contexts, or cache an AR-pointer proof across program transformation."
+      },
+      {
+        "id": "C4",
+        "priority": "P0-lifetime",
+        "topic": "At-most-once function is not object freshness or liveness",
+        "classification": "restricted implementation present; extensions require additional distinct premises",
+        "observation": "ConcurrentGlobalEnv scans whole bundle for a unique direct call/create chain rooted in implicit main, excluding cycles/address escape. BMC uses it only alongside an actual pre-spawn store to a pointer slot with unique LLVM store; published_pointer refuses multiple actual occurrences. Those separate checks are necessary. Singleton abstract allocation must never stand in for dynamic allocation identity.",
+        "references": [
+          "core/include/ikos/core/domain/concurrent_global_env.hpp:122-195",
+          "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp:71-78",
+          "analyzer/include/ikos/analyzer/analysis/bmc/unroll.hpp:755-800",
+          "analyzer/include/ikos/analyzer/analysis/bmc/evidence.hpp:115-122"
+        ],
+        "minimal_contract": "Keep at-most-once invocation, actual allocation occurrence, slot single writer, publication-before-create, and frame/allocation lifetime as separate predicates. Static certificate cache assumes immutable closed-world bundle and supported entry roots. Export actual dynamic identities for validation.",
+        "tests": [
+          "single-execution/once-helper-join-control.c vs repeated-helper-race.c, loop-helper-race.c, escaped-helper-race.c, main-recursive-race.c",
+          "Publication after create vs before create",
+          "Two malloc calls of same shape and helper stack escape after return"
+        ],
+        "go": "Every lifetime shortcut combines all required predicates and exact current-program evidence.",
+        "no_go": "Use function uniqueness alone as nonescape/freshness, or static call site as globally unique dynamic allocation."
+      },
+      {
+        "id": "C5",
+        "priority": "P0-SAFE",
+        "topic": "Coupled fixpoint and late-summary invalidation",
+        "classification": "existing safeguard verified by source; completeness of dependency inventory not proved in this finite audit",
+        "observation": "Global iterations flush all partitions and repeat on dirty; thread exit join summaries participate. Final check replay can mutate summaries and adds an UNKNOWN warning if dirty. This avoids treating stale access snapshots as a safety proof. Every future summary affecting values, thread existence/order, aliases or coverage must join this convergence protocol.",
+        "references": [
+          "analyzer/src/analysis/value/thread_modular.cpp:350-468",
+          "analyzer/src/analysis/value/thread_modular.cpp:479-523",
+          "analyzer/src/analysis/value/thread_modular.cpp:570-590",
+          "core/include/ikos/core/domain/concurrent_global_env.hpp:1491-1504",
+          "core/include/ikos/core/domain/concurrent_global_env.hpp:2048-2064"
+        ],
+        "minimal_contract": "Inventory each shared summary with lattice order, join/widen, dependencies, dirty trigger and reset lifetime. Export stable epoch/read-only snapshot for final checking; any semantic mutation invalidates the epoch and triggers recomputation or UNKNOWN. MAY and MUST changes both count even when numeric values stay unchanged.",
+        "tests": [
+          "Existing ai-coupled-fixpoint/replay.c and summary.cpp",
+          "Change only MUST join summary, protection label or unknown-effect coverage while keeping numeric board unchanged",
+          "Discover a new thread or escaping write during final property replay; no SAFE until reconverged"
+        ],
+        "go": "All semantic shared channels have convergence hooks; final checks observe one stable snapshot or produce UNKNOWN.",
+        "no_go": "Add cached relation/publication/escape facts outside dirty/equality/reset handling, or silence final replay mutation."
+      },
+      {
+        "id": "C6",
+        "priority": "P0-SAFE-feedback",
+        "topic": "SAFE filtering and solver feedback need all-execution coverage",
+        "classification": "architectural distinction already implemented; global completeness proof not supplied",
+        "observation": "Checker filters points-to, width-aware offsets, thread instances/order, actual locks and publication before BMC. Optional pair_exclusion uses independently overapproximating offset/congruence facts over all bytes modulo pointer space; SAT is not a race, UNSAT can remove only the covered pair. Ordinary BMC failure retains warning under demote mode. Effects/thread bodies lacking coverage also emit warning without requiring an access pair.",
+        "references": [
+          "analyzer/src/checker/data_race.cpp:726-759",
+          "analyzer/src/checker/data_race.cpp:1126-1215",
+          "analyzer/src/checker/data_race.cpp:1218-1404",
+          "analyzer/src/checker/data_race.cpp:2085-2091",
+          "analyzer/include/ikos/analyzer/analysis/pair_exclusion.hpp:19-26",
+          "analyzer/include/ikos/analyzer/analysis/pair_exclusion.hpp:53-105",
+          "analyzer/include/ikos/analyzer/analysis/pair_exclusion.hpp:138-180",
+          "analyzer/include/ikos/analyzer/analysis/bmc/result.hpp:12-24"
+        ],
+        "minimal_contract": "Keep BoundedSearchOutcome distinct from PairExclusionProof. A deletion proof names both covered access sets, object/width/model and stable facts. For future BMC-to-AI refinement, candidate predicates must be independently validated as inductive across initialization, local steps and all interference before impacting SAFE. An unsat core of a bounded trace is only a trace exclusion.",
+        "tests": [
+          "Existing ai-pair-feedback/test_pair_exclusion.cpp and feedback.c",
+          "Same static instruction in distinct dynamic threads; join one of multiple instances; recursive shared-reader locks",
+          "Width zero, incompatible/empty facts, wrap, budget zero and solver unknown retain candidate",
+          "Known racy file whose particular bounded path is UNSAT must remain UNKNOWN, never SAFE"
+        ],
+        "go": "Unbounded overapprox coverage certificate or verified inductive strengthening exists; finite fixtures are validation not proof.",
+        "no_go": "Promote bounded UNSAT, reference PASS, missing candidate from uncovered code, or one schedule without a race to global safety."
+      },
+      {
+        "id": "C7",
+        "priority": "P0-evidence-TCB",
+        "topic": "Independent AR replay is independent of SMT, not independent of translation",
+        "classification": "documented trust boundary; report pipeline source binding is weaker than command-line checker",
+        "observation": "Replay independently executes CFG/calls/memory/threads and checks targets using vector clocks and concrete byte values. But program snapshot is exported by analyzer, sharing AR, frontend layout and explicit API contracts. validate_report removes the program from the same result and recomputes its hash; sweep records source hash separately. CLI verifies input_sha256. Thus current AR ACCEPT is not an independent source-to-AR check, and validator is offline, not an analyzer verdict gate.",
+        "references": [
+          "scripts/validate_bmc_execution.py:1-7",
+          "scripts/validate_bmc_execution.py:79-110",
+          "scripts/validate_bmc_execution.py:163-173",
+          "scripts/validate_bmc_execution.py:525-599",
+          "scripts/validate_bmc_execution.py:602-645",
+          "scripts/validate_bmc_execution.py:655-667",
+          "scripts/sweep_bmc_execution.py:12-30",
+          "scripts/sweep_bmc_execution.py:45-59",
+          "analyzer/include/ikos/analyzer/analysis/bmc/replay.hpp:89-200",
+          "analyzer/include/ikos/analyzer/analysis/bmc/evidence.hpp:23-26",
+          "analyzer/include/ikos/analyzer/analysis/bmc/result.hpp:79-83"
+        ],
+        "minimal_contract": "Evidence manifest binds source/YAML/preprocessed bitcode/AR snapshot hashes, compiler options/version, model/API contract and selected execution. Trusted exporter and frontend remain declared TCB until independently checked translation/source witness exists. Count label correctness, AR acceptance and official source validation separately. For every new recovery require all selected models checked, and corruption tests.",
+        "tests": [
+          "scripts/test_bmc_execution.py already mutates program hash, target instance, creator, offset/width, values, rf and synthetic markers",
+          "Add distinct source/flags/ABI manifest mismatch negative tests in report-sweep path",
+          "If snapshot is modified and rehashed, record that this tests the trusted-input boundary rather than claiming the hash authenticates source semantics",
+          "Unhandled op/API and missing evidence classified UNSUPPORTED, not validated"
+        ],
+        "go": "Claims remain conditional AR feasibility; full source proof claims require additional independent translation/source binding.",
+        "no_go": "Describe 109 label TPs or AR ACCEPT as all-SAT soundness proof or official witness acceptance."
+      },
+      {
+        "id": "C8",
+        "priority": "P1-semantics-matrix",
+        "topic": "One explicit memory/definedness/library contract per analysis result",
+        "classification": "supported-subset boundary, no newly demonstrated correctness bug",
+        "observation": "Current BMC uses strict SC clocks/latest-write selection and supported pthread/verifier contracts; AR replay has matching explicit library and initialized-byte assumptions. Agreement between two implementations cannot justify an incorrect common model. Reference Dartagnan may accept execution under different initial-memory/printf semantics, as the M3 malloc controls show.",
+        "references": [
+          "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp:511-524",
+          "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp:944-1064",
+          "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp:1194-1225",
+          "scripts/validate_bmc_execution.py:26-38",
+          "scripts/validate_bmc_execution.py:163-173",
+          "scripts/validate_bmc_execution.py:305-342",
+          "docs/ikos-bmc-complete.md:90-99",
+          "docs/ikos-bmc-complete.md:258-267"
+        ],
+        "minimal_contract": "Record property/memory model, C-to-LLVM defined-prefix convention, target ABI, allocation failure/initialization, pthread return behavior and supported library side effects. Reference confirmation is a triage condition; transferring a mechanism requires compatible premises. Unknown/unsupported semantics retains UNKNOWN.",
+        "tests": [
+          "M3 heap-initialized-race vs heap-initialized-guard-safe vs calloc-initialized-race across ILP32/LP64",
+          "Atomic ordinary-memory distinction and multiple initial writes",
+          "Printf synchronization/side effects, malloc uninitialized bytes and noundef value escape",
+          "Reference disagreement classified by semantic premise before implementing a general extension"
+        ],
+        "go": "Source/model contracts are explicitly matched and minimum positive/control/variant has the same interpretation in encoder and replay.",
+        "no_go": "Create free load values to match reference FAIL or claim SC fragment covers all C11 weak-memory behavior."
+      }
+    ],
+    "priorities": [
+      "Correct ablation/claim scope and record TCB now in existing manuals.",
+      "Before semantics extension define precise facts/occurrence/lifetime contract and regression counterexamples.",
+      "Keep stable snapshot and candidate-deletion coverage audit as P0 for every SAFE-affecting increment.",
+      "Only after these gates run same-capability cost ablation and fair reference comparison."
+    ],
+    "lightweight_design_recommendation": "Do not introduce a generic proof framework. Initially split execution certificates from numerical optimizations conceptually or as two small fields, add proof/use tags and epoch/version assertions only where fact lifetimes cross an actual mutable boundary.",
+    "not_checked": [
+      "All transfer functions and shared-summary setters exhaustively",
+      "Full C11/LLVM semantics or translation correctness",
+      "New executions or wall-clock ablation",
+      "User-owned untracked scripts/replay_bmc.py was not edited"
+    ]
+  },
+  "m3_architecture": {
+    "status": "DESIGN_ONLY_M3_IMPLEMENTATION_PAUSED",
+    "date": "2026-10-13",
+    "audit_scope": {
+      "all126": "Fresh diagnostics and all available fresh reference metadata read; source-level detailed analysis restricted to listed rows. No claim of source audit of every one of126.",
+      "first_blockers_nonexclusive": {
+        "smt_unsat": 4,
+        "address_base": 1,
+        "sc_same_path_read_from": 2,
+        "points_to_not_singleton": 9,
+        "thread_activation_unproven": 76,
+        "target_not_reached": 7,
+        "heap_read_origin": 1,
+        "call_summary": 19,
+        "pthread_handle_representation": 19,
+        "activation_small_bound": 27,
+        "transitive_thread_order": 1,
+        "prefix_statement": 9,
+        "mixed_atomic": 1,
+        "search_budget": 8,
+        "atomic_completed_paths": 4,
+        "join_completion_unproven": 5
+      },
+      "warning": "76 activation-first files does not mean76 recoverable files; masks heap/API/definedness/search prerequisites.",
+      "no_execution_changes": true,
+      "performance": "No build, analyzer execution or full benchmark run performed by this design task.",
+      "AR_limit": "Existing report statements/candidate metadata inspected; no new complete AR startup export generated. First increment gate diagnosis is backed by source control flow and implementation, but recovery remains a testable prediction."
+    },
+    "increments": [
+      {
+        "id": "A",
+        "title": "Bounded creation occurrence selection with surplus children left unscheduled",
+        "priority": 1,
+        "effort": "small semantic increment; a selection record is preferable to repeated implicit first-match assumptions",
+        "premises": [
+          "Actual main prefix executes every retained create and its guards with existing supported ABI/definedness/handle-output contracts.",
+          "At least the required number of matching creation occurrences exists; selected occurrences are distinct.",
+          "No join/blocking completion in startup; all children may remain unscheduled until startup ends, and unselected children may remain unscheduled for this finite witness.",
+          "No startup event is omitted and no child side effect is invented."
+        ],
+        "approximation": "Existential finite-prefix scheduling restriction; only expands selected concrete executions. It proves neither SAFE nor that ignored children are harmless on other executions.",
+        "interface": {
+          "selection": "A concrete binding (creator trace identity, creator event index, child entry) per selected worker. CandidateFacts can carry it alongside startup; no new abstract concurrency domain is needed.",
+          "address": "Use existing BmcEvent/path-local value identity; do not make InternalVariable* an instance identity.",
+          "legacy": "Preserve the complete legacy first pass over all groups/startups/selections before adding bounded new occurrence alternatives. Fixed-budget discovery preservation is tested, not inferred from local ordering.",
+          "argument_scope": "First patch admits only already supported argument provenance (reorder pilots pass null). Record creator event index now; later variable arguments must resolve at that creation occurrence, not end-of-startup or unique static definition. No new pointer/integer transport in A."
+        },
+        "owners": [
+          "data_race.cpp two_live_threads/conditional_live_threads produce retained startup and explicit bindings",
+          "bmc/facts.hpp holds chosen bindings",
+          "bmc/unroll.hpp created_argument uses the exact creation event and dynamic argument value location",
+          "bmc/encode.hpp spawn edges use chosen creation, not every create with same entry",
+          "bmc/evidence.hpp exports the same creator_step",
+          "scripts/validate_bmc_execution.py independently validates exact create-to-trace binding; existing trace schema already supports this"
+        ],
+        "candidate_tasks": [
+          "c/pthread-deagle/reorder_c11_bad-10.yml",
+          "c/pthread-deagle/reorder_c11_good-10.yml"
+        ],
+        "count_claim": "Two strongly motivated pilots, not two promised recoveries; additional gates only known after controlled probe.",
+        "controls": [
+          "Three actual children including two of one entry; chosen cross-entry pair must have real distinct create events.",
+          "Only one child instance of same entry must never fabricate self-race.",
+          "Conditional unreachable second create must remain unconfirmed.",
+          "Different arguments for repeated same-entry creates bind independently.",
+          "Extra child remains blocked or contains unsupported code but is genuinely never scheduled in the finite prefix.",
+          "Corrupt creator_step in certificate must reject.",
+          "Rename/reorder helper/ILP32-LP64 variants."
+        ],
+        "budgets": "Keep existing10s/256candidate/1024query limits; no blanket bound increase. Larger literal startup loops are a separately measured bounded-search decision.",
+        "exit": [
+          "Each pilot reaches a concrete AR ACCEPT or has a new precise blocker; full pairwise baseline and regression criteria if implemented.",
+          "No new FP/FN labels, no SAFE verdict from bounded results, all changed counterexamples validated.",
+          "Stop expanding this increment if it requires heap/joins/unsupported runtime initialization; record separate prerequisite."
+        ]
+      },
+      {
+        "id": "B",
+        "title": "Handle-slot provenance and bounded joined-child completion",
+        "priority": 2,
+        "depends": [
+          "A explicit creation binding"
+        ],
+        "effort": "medium-to-large semantic work; split into independent validated commits, not one engine rewrite",
+        "target_family": {
+          "racy": [
+            "c/pthread-race-challenges/thread-join-array-const-race.yml",
+            "c/pthread-race-challenges/thread-join-array-const-race-2.yml",
+            "c/pthread-race-challenges/thread-join-array-const-race-3.yml"
+          ],
+          "safe": "c/pthread-race-challenges/thread-join-array-const.yml",
+          "main_worker_obligation": "Target main final read versus unjoined worker write. Keep one main frame/continuation; auxiliary completed traces bind distinct creator steps. Worker/worker startup extension does not implement this."
+        },
+        "source_evidence": "Four creates into array; safe joins all; race controls omit one/odd slots or overwrite slot0 with fifth creation. Every child writes data under its mutex, so auxiliary completion is effectful.",
+        "substeps": [
+          {
+            "name": "B1 exact typed slot origins",
+            "scope": "Static/global or current main-frame pthread_t arrays; exact byte offset, width, bounds and write generation. Exclude escaped/unknown byte writes and heap initially.",
+            "interface": "StorageSlot(object identity, byte offset, width) plus origin creation occurrence/generation. Decoder/ABI facts may be shared; abstract origin set and concrete origin instance are separate representations.",
+            "AI": "MAY origin sets join by union; strong updates require unique live object and exact slot. A singleton static create site in a loop still represents multiple dynamic instances. No new MUST completed fact solely from an origin singleton.",
+            "BMC": "Read handle identifies actual latest create write to exact slot, including overwrite; token is opaque and cannot supply arbitrary source integer comparison semantics."
+          },
+          {
+            "name": "B2 universal bounded-array completion certificate for AI",
+            "scope": "Single unique main invocation; fixed-size array, one affine create loop and one complete corresponding join loop, exact range, no skipped/duplicated/overwritten/detached/escaped handles and no earlier unknown side effects. API success and supported execution preconditions must be explicit.",
+            "result": "A proof covering every dynamic child represented by the repeated site permits completed-site MUST after loop; budget-limited iteration alone never establishes it. Universal quantification is over executions reaching the post-join access, not a proof that every child terminates on every execution.",
+            "failures": "Off-by-one, stride2, overwritten slot, conditional join, aliased clobber, second parent invocation all invalidate certificate and retain UNKNOWN.",
+            "purpose": "Directly addresses the one credible remaining TN join-array task; no automatic claim for13 heap-region tasks."
+          },
+          {
+            "name": "B3 complete auxiliary BMC traces",
+            "scope": "At most4 selected joined auxiliary children with acyclic/no-nested-create return paths and existing scalar-global/mutex effects. Exclude heap allocations/free, TLS and nested joins initially.",
+            "result": "Include actual child events, values, SC read-from and mutex order; return precedes matched join, selected unjoined worker remains separately bound.",
+            "engineering": "Generalize internal iteration over retained trace views only where required for clocks/value caches/rf/certificate export. Keep two target IDs a/b and existing public query interface; auxiliary trace vectors need not imply an arbitrary concurrency framework.",
+            "soundness": "A chosen sequential schedule for auxiliaries may restrict search, but never reinterpret auxiliary execution as parent program-order or omit release/acquire/HB effects. Every joined prefix must really reach return."
+          }
+        ],
+        "owners": [
+          "execution_engine/concurrent_semantics.hpp create/load/join transfer",
+          "execution_engine/handle_origin.hpp slot-source certificates",
+          "core/domain/concurrent_global_env.hpp and lockset_domain.hpp MAY origins/MUST completion when new coordinate required",
+          "bmc/unroll.hpp handle source and actual return paths",
+          "bmc/encode.hpp per-retained-trace rf/order/value cache",
+          "bmc/evidence.hpp retained auxiliary traces and chosen object/source IDs",
+          "scripts/validate_bmc_execution.py actual schedule/handle matching and independent vector-clock validation"
+        ],
+        "budgets": "Prototype auxiliary count<=4, bounded completed paths per child and existing shared10s query deadline. Excess is UNKNOWN. AI fixed-loop certificate search has finite syntax budget; failure falls back conservatively.",
+        "controls": [
+          "All original four joined => safe certificate only after full coverage proof.",
+          "Join0..2 leaves fourth; join even slots leaves odd; overwrite slot0 leaves original first unjoined.",
+          "Joining wrong/newest instance must not complete older instance.",
+          "Child needs mutex held across join => no invented terminating prefix.",
+          "Auxiliary write changes selected guard/read value; excluding it must be caught by AR replay.",
+          "Child loops forever or performs unsupported call => no synthetic completion.",
+          "Copied/partial-width/byte-clobbered handle sources reject until modeled.",
+          "ILP32/LP64 pthread_t ABI and renamed/extracted helper variants."
+        ],
+        "exit": [
+          "B1 validated before B2/B3; B2/B3 separate commits and A/B because AI SAFE and BMC FALSE differ.",
+          "The four-way family produces either corresponding validated result or a concrete next blocker; do not promise all4 automatically.",
+          "Stop B3 before nested dependency graphs, symbolic heap handles or arbitrary pthread runtime semantics; these are separate followups."
+        ]
+      }
+    ],
+    "shared_infrastructure": {
+      "share": [
+        "Verified exact API recognition/signature/data layout, source-object byte extents and constant slot extraction.",
+        "Statement identities, call provenance and concrete trace serialization primitives.",
+        "AI may-bounds/points-to/freshness provenance with explicit scope and fallback, supplied as candidate facts rather than concrete values."
+      ],
+      "do_not_share_as_same_fact": [
+        "AI static site can denote arbitrarily many dynamic children; BMC creator occurrence denotes one exact child.",
+        "AI absence/SAFE requires complete coverage of all represented instances and interference; BMC may choose a feasible subset schedule but must keep its dependencies.",
+        "AI join(MUST) is intersection, origin/liveness(MAY) union; BMC joins an exact completed instance.",
+        "BMC UNSAT on one bounded prefix cannot discharge an AI candidate or universal ownership proof."
+      ],
+      "practical_boundary": "Do not move Z3 expressions or concrete event clocks into core abstract domains. Keep shared facts free of solver/runtime interpretation; semantic consumers own proof direction.",
+      "heap_TN_relation": "Remaining15 =13 region/publication +1 array-to-heap field coverage +1 dynamic join-array. Slot/identity work addresses only last directly. For list2, read-only pre-spawn heap next-field provenance is a distinct narrow first AI increment; dynamic region ownership follows only after field/interference/lifetime envelope, not from BMC examples."
+    },
+    "deferred_examples": [
+      {
+        "task": "c/pthread-deagle/reorder_c11_bad-10.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-10.i",
+        "source_sha256": "10d5067d95273951a014725afb4753c98c29896d9675321f4fa3b00f339e7930",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/reorder_c11_bad-10-fa69c83bcf05/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 8
+        },
+        "source_facts": [
+          "main creates 10 setThread instances in setPool before creating one checkThread.",
+          "setThread stores a and b in separate verifier atomic blocks; checkThread reads a/b outside those atomic blocks. Names good/bad concern assertions and do not establish race freedom.",
+          "Startup acceptance currently requires spawns == required, so the selected 1 setter + 1 checker pair is rejected after surplus setter creations."
+        ],
+        "prerequisites": [
+          "Retain all actual creates/guards, select distinct concrete creator occurrences, permit unscheduled extra children."
+        ],
+        "disposition": "FIRST_INCREMENT_CANDIDATE"
+      },
+      {
+        "task": "c/pthread-deagle/reorder_c11_bad-20.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-20.i",
+        "source_sha256": "fd7555e2b4abe63429c1be22a8b482f63bbf931ffcb895a158eac84b789e7c88",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/reorder_c11_bad-20-8957c511faae/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 8
+        },
+        "source_facts": [
+          "main creates 20 setThread instances in setPool before creating one checkThread.",
+          "setThread stores a and b in separate verifier atomic blocks; checkThread reads a/b outside those atomic blocks. Names good/bad concern assertions and do not establish race freedom.",
+          "Startup acceptance currently requires spawns == required, so the selected 1 setter + 1 checker pair is rejected after surplus setter creations."
+        ],
+        "prerequisites": [
+          "Retain all actual creates/guards, select distinct concrete creator occurrences, permit unscheduled extra children.",
+          "Existing startup loop_bound16 also insufficient for this loop; source-derived bounded search is a separate performance decision."
+        ],
+        "disposition": "SAME_SEMANTIC_FAMILY_WITH_SEPARATE_BUDGET_OR_REFERENCE_LIMIT"
+      },
+      {
+        "task": "c/pthread-deagle/reorder_c11_bad-30.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-30.i",
+        "source_sha256": "8d7df89eaaa05ee1c4077455abbd501c07d86257ca2c037ce71ae27b3838effb",
+        "reference": {
+          "result": "TIMEOUT",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/reorder_c11_bad-30-22e5da25b03e/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 8
+        },
+        "source_facts": [
+          "main creates 30 setThread instances in setPool before creating one checkThread.",
+          "setThread stores a and b in separate verifier atomic blocks; checkThread reads a/b outside those atomic blocks. Names good/bad concern assertions and do not establish race freedom.",
+          "Startup acceptance currently requires spawns == required, so the selected 1 setter + 1 checker pair is rejected after surplus setter creations."
+        ],
+        "prerequisites": [
+          "Retain all actual creates/guards, select distinct concrete creator occurrences, permit unscheduled extra children.",
+          "Existing startup loop_bound16 also insufficient for this loop; source-derived bounded search is a separate performance decision."
+        ],
+        "disposition": "SAME_SEMANTIC_FAMILY_WITH_SEPARATE_BUDGET_OR_REFERENCE_LIMIT"
+      },
+      {
+        "task": "c/pthread-deagle/reorder_c11_bad-40.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-40.i",
+        "source_sha256": "b6d5da741db538e8728209fa456d0dc9c63ceba5521dacbaf062bafc94e3da01",
+        "reference": {
+          "result": "TIMEOUT",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/reorder_c11_bad-40-7d13c27555a4/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 8
+        },
+        "source_facts": [
+          "main creates 40 setThread instances in setPool before creating one checkThread.",
+          "setThread stores a and b in separate verifier atomic blocks; checkThread reads a/b outside those atomic blocks. Names good/bad concern assertions and do not establish race freedom.",
+          "Startup acceptance currently requires spawns == required, so the selected 1 setter + 1 checker pair is rejected after surplus setter creations."
+        ],
+        "prerequisites": [
+          "Retain all actual creates/guards, select distinct concrete creator occurrences, permit unscheduled extra children.",
+          "Existing startup loop_bound16 also insufficient for this loop; source-derived bounded search is a separate performance decision."
+        ],
+        "disposition": "SAME_SEMANTIC_FAMILY_WITH_SEPARATE_BUDGET_OR_REFERENCE_LIMIT"
+      },
+      {
+        "task": "c/pthread-deagle/reorder_c11_bad-50.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-50.i",
+        "source_sha256": "3fef2534d7e571caae7ed965d7471ed1f22fea3d397b160035401f5a41da921e",
+        "reference": {
+          "result": "TIMEOUT",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/reorder_c11_bad-50-92609a64de12/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 8
+        },
+        "source_facts": [
+          "main creates 50 setThread instances in setPool before creating one checkThread.",
+          "setThread stores a and b in separate verifier atomic blocks; checkThread reads a/b outside those atomic blocks. Names good/bad concern assertions and do not establish race freedom.",
+          "Startup acceptance currently requires spawns == required, so the selected 1 setter + 1 checker pair is rejected after surplus setter creations."
+        ],
+        "prerequisites": [
+          "Retain all actual creates/guards, select distinct concrete creator occurrences, permit unscheduled extra children.",
+          "Existing startup loop_bound16 also insufficient for this loop; source-derived bounded search is a separate performance decision."
+        ],
+        "disposition": "SAME_SEMANTIC_FAMILY_WITH_SEPARATE_BUDGET_OR_REFERENCE_LIMIT"
+      },
+      {
+        "task": "c/pthread-deagle/reorder_c11_good-10.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-10.i",
+        "source_sha256": "053c2020ab3922d27be669eca0e75ac8051424727a4d2b2d1ab69540cc43f0a3",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/reorder_c11_good-10-3b2f07bcf2c6/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 8
+        },
+        "source_facts": [
+          "main creates 10 setThread instances in setPool before creating one checkThread.",
+          "setThread stores a and b in separate verifier atomic blocks; checkThread reads a/b outside those atomic blocks. Names good/bad concern assertions and do not establish race freedom.",
+          "Startup acceptance currently requires spawns == required, so the selected 1 setter + 1 checker pair is rejected after surplus setter creations."
+        ],
+        "prerequisites": [
+          "Retain all actual creates/guards, select distinct concrete creator occurrences, permit unscheduled extra children."
+        ],
+        "disposition": "FIRST_INCREMENT_CANDIDATE"
+      },
+      {
+        "task": "c/pthread-deagle/reorder_c11_good-20.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-20.i",
+        "source_sha256": "2f66f1b2f8bc96c1cbd24e122a1b904932cb7f0e98e43f950b8a0288b2af2871",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/reorder_c11_good-20-81cfbdbdd451/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 8
+        },
+        "source_facts": [
+          "main creates 20 setThread instances in setPool before creating one checkThread.",
+          "setThread stores a and b in separate verifier atomic blocks; checkThread reads a/b outside those atomic blocks. Names good/bad concern assertions and do not establish race freedom.",
+          "Startup acceptance currently requires spawns == required, so the selected 1 setter + 1 checker pair is rejected after surplus setter creations."
+        ],
+        "prerequisites": [
+          "Retain all actual creates/guards, select distinct concrete creator occurrences, permit unscheduled extra children.",
+          "Existing startup loop_bound16 also insufficient for this loop; source-derived bounded search is a separate performance decision."
+        ],
+        "disposition": "SAME_SEMANTIC_FAMILY_WITH_SEPARATE_BUDGET_OR_REFERENCE_LIMIT"
+      },
+      {
+        "task": "c/pthread-deagle/reorder_c11_good-30.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-30.i",
+        "source_sha256": "e9f2c63b5b236ffd2c3c18bb3989267f7d1d50794d9317a52e37b9cf94f3ba35",
+        "reference": {
+          "result": "TIMEOUT",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/reorder_c11_good-30-28599f512c4c/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 8
+        },
+        "source_facts": [
+          "main creates 30 setThread instances in setPool before creating one checkThread.",
+          "setThread stores a and b in separate verifier atomic blocks; checkThread reads a/b outside those atomic blocks. Names good/bad concern assertions and do not establish race freedom.",
+          "Startup acceptance currently requires spawns == required, so the selected 1 setter + 1 checker pair is rejected after surplus setter creations."
+        ],
+        "prerequisites": [
+          "Retain all actual creates/guards, select distinct concrete creator occurrences, permit unscheduled extra children.",
+          "Existing startup loop_bound16 also insufficient for this loop; source-derived bounded search is a separate performance decision."
+        ],
+        "disposition": "SAME_SEMANTIC_FAMILY_WITH_SEPARATE_BUDGET_OR_REFERENCE_LIMIT"
+      },
+      {
+        "task": "c/pthread-deagle/reorder_c11_good-40.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-40.i",
+        "source_sha256": "bc410c23b8a40101ed787fe72a0515ef047b7022a45484b309d3277414201100",
+        "reference": {
+          "result": "TIMEOUT",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/reorder_c11_good-40-64ff99a95dc4/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 8
+        },
+        "source_facts": [
+          "main creates 40 setThread instances in setPool before creating one checkThread.",
+          "setThread stores a and b in separate verifier atomic blocks; checkThread reads a/b outside those atomic blocks. Names good/bad concern assertions and do not establish race freedom.",
+          "Startup acceptance currently requires spawns == required, so the selected 1 setter + 1 checker pair is rejected after surplus setter creations."
+        ],
+        "prerequisites": [
+          "Retain all actual creates/guards, select distinct concrete creator occurrences, permit unscheduled extra children.",
+          "Existing startup loop_bound16 also insufficient for this loop; source-derived bounded search is a separate performance decision."
+        ],
+        "disposition": "SAME_SEMANTIC_FAMILY_WITH_SEPARATE_BUDGET_OR_REFERENCE_LIMIT"
+      },
+      {
+        "task": "c/pthread-deagle/reorder_c11_good-50.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-50.i",
+        "source_sha256": "a3b533c73361ee15e10e9133a2147995318be27bb7652d57aee6ac7672acea5b",
+        "reference": {
+          "result": "TIMEOUT",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/reorder_c11_good-50-b96b29570083/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 8
+        },
+        "source_facts": [
+          "main creates 50 setThread instances in setPool before creating one checkThread.",
+          "setThread stores a and b in separate verifier atomic blocks; checkThread reads a/b outside those atomic blocks. Names good/bad concern assertions and do not establish race freedom.",
+          "Startup acceptance currently requires spawns == required, so the selected 1 setter + 1 checker pair is rejected after surplus setter creations."
+        ],
+        "prerequisites": [
+          "Retain all actual creates/guards, select distinct concrete creator occurrences, permit unscheduled extra children.",
+          "Existing startup loop_bound16 also insufficient for this loop; source-derived bounded search is a separate performance decision."
+        ],
+        "disposition": "SAME_SEMANTIC_FAMILY_WITH_SEPARATE_BUDGET_OR_REFERENCE_LIMIT"
+      },
+      {
+        "task": "c/pthread-race-challenges/thread-join-array-const-race.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-array-const-race.i",
+        "source_sha256": "b78611c293a7a651605e3dc9bdfe409b46ee0a572a0a5030b4011d70f271b607",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/thread-join-array-const-race-9f13059eb9ea/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "target_not_reached": 2
+        },
+        "source_facts": [
+          "main creates4 children into pthread_t tids[4], then joins slots0..2 and leaves original fourth child live.",
+          "Each child writes shared data under data_mutex; main final read is unlocked.",
+          "Current BMC inert_join_source requires main scalar integer slot offset0 and a one-return effect-free child, both insufficient here.",
+          "Current selected worker creation defaults to first matching entry; the original variant needs unjoined fourth instance rather than first."
+        ],
+        "prerequisites": [
+          "Exact handle slot and overwrite-generation provenance.",
+          "Explicit selected creation occurrence.",
+          "Actual completed prefixes for every joined auxiliary child, with values, lock ownership and return.",
+          "Do not flatten auxiliary events into parent program-order/HB."
+        ],
+        "disposition": "SECOND_INCREMENT_ACCEPTANCE_FAMILY"
+      },
+      {
+        "task": "c/pthread-race-challenges/thread-join-array-const-race-2.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-array-const-race-2.i",
+        "source_sha256": "860528881155a718438c0581485d42cc235131c30c9ba38f0a976304f206e75d",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/thread-join-array-const-race-2-543141486979/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "target_not_reached": 2
+        },
+        "source_facts": [
+          "main creates4 children into pthread_t tids[4], then joins slots0 and2; slots1 and3 remain live.",
+          "Each child writes shared data under data_mutex; main final read is unlocked.",
+          "Current BMC inert_join_source requires main scalar integer slot offset0 and a one-return effect-free child, both insufficient here.",
+          "Current selected worker creation defaults to first matching entry; the original variant needs unjoined fourth instance rather than first."
+        ],
+        "prerequisites": [
+          "Exact handle slot and overwrite-generation provenance.",
+          "Explicit selected creation occurrence.",
+          "Actual completed prefixes for every joined auxiliary child, with values, lock ownership and return.",
+          "Do not flatten auxiliary events into parent program-order/HB."
+        ],
+        "disposition": "SECOND_INCREMENT_ACCEPTANCE_FAMILY"
+      },
+      {
+        "task": "c/pthread-race-challenges/thread-join-array-const-race-3.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-array-const-race-3.i",
+        "source_sha256": "fa0ecdfec37b7bd940900ff854c772fdadeb6c6111223868a85a6141c0a777e6",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/thread-join-array-const-race-3-e2d7e5e56e3a/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "target_not_reached": 2
+        },
+        "source_facts": [
+          "main creates4 children into pthread_t tids[4], then creates a fifth child overwriting slot0, joins current four slots, leaves original slot0 child live.",
+          "Each child writes shared data under data_mutex; main final read is unlocked.",
+          "Current BMC inert_join_source requires main scalar integer slot offset0 and a one-return effect-free child, both insufficient here.",
+          "Current selected worker creation defaults to first matching entry; the original variant needs unjoined fourth instance rather than first."
+        ],
+        "prerequisites": [
+          "Exact handle slot and overwrite-generation provenance.",
+          "Explicit selected creation occurrence.",
+          "Actual completed prefixes for every joined auxiliary child, with values, lock ownership and return.",
+          "Do not flatten auxiliary events into parent program-order/HB."
+        ],
+        "disposition": "SECOND_INCREMENT_ACCEPTANCE_FAMILY"
+      },
+      {
+        "task": "c/pthread-race-challenges/thread-join-array-dynamic-race.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-array-dynamic-race.i",
+        "source_sha256": "ec72a571c515701a06aa24404f70bcf9f40028e7df85d67cfca81a233c8469ca",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/thread-join-array-dynamic-race-49f7a587c997/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "call_summary": 2
+        },
+        "source_facts": [
+          "Dynamic join-array family allocates pthread_t storage using nondet threads_total; main must execute joins before final shared read."
+        ],
+        "prerequisites": [
+          "Symbolic or finitely chosen constrained allocation extent; real heap object identity.",
+          "Handle elements with dynamic offsets and per-occurrence creation mapping.",
+          "Side-effecting join completion prefixes and selected unjoined instance.",
+          "Lifetime/free effects before target where present."
+        ],
+        "disposition": "DEFER_UNTIL_ALLOCATION_AND_JOIN_DEPENDENCIES"
+      },
+      {
+        "task": "c/pthread-race-challenges/thread-join-array-dynamic-race-2.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-array-dynamic-race-2.i",
+        "source_sha256": "9b6f5676df76ead7ff47af365c70465c7b9cb0ddd7acfe90754727af80919440",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/thread-join-array-dynamic-race-2-54bf2179e695/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "call_summary": 2
+        },
+        "source_facts": [
+          "Dynamic join-array family allocates pthread_t storage using nondet threads_total; main must execute joins before final shared read."
+        ],
+        "prerequisites": [
+          "Symbolic or finitely chosen constrained allocation extent; real heap object identity.",
+          "Handle elements with dynamic offsets and per-occurrence creation mapping.",
+          "Side-effecting join completion prefixes and selected unjoined instance.",
+          "Lifetime/free effects before target where present."
+        ],
+        "disposition": "DEFER_UNTIL_ALLOCATION_AND_JOIN_DEPENDENCIES"
+      },
+      {
+        "task": "c/pthread-race-challenges/thread-join-array-dynamic-race-3.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-array-dynamic-race-3.i",
+        "source_sha256": "827df23f2f2d5cc81b0f2d655a6c774471e4114629b1caec5ad3ca146d0279c2",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/thread-join-array-dynamic-race-3-1943e26d8487/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "call_summary": 2
+        },
+        "source_facts": [
+          "Dynamic join-array family allocates pthread_t storage using nondet threads_total; main must execute joins before final shared read."
+        ],
+        "prerequisites": [
+          "Symbolic or finitely chosen constrained allocation extent; real heap object identity.",
+          "Handle elements with dynamic offsets and per-occurrence creation mapping.",
+          "Side-effecting join completion prefixes and selected unjoined instance.",
+          "Lifetime/free effects before target where present."
+        ],
+        "disposition": "DEFER_UNTIL_ALLOCATION_AND_JOIN_DEPENDENCIES"
+      },
+      {
+        "task": "c/pthread-race-challenges/thread-join-binomial-race.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-binomial-race.i",
+        "source_sha256": "f3721357e68fd557f222f8a0ce5068ab4a46e5f8573d31ce219014656501246c",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/thread-join-binomial-race-020ea6c29248/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "join_completion_unproven": 3
+        },
+        "source_facts": [
+          "Worker uses integer encoded through void* argument as its index and performs additional joins on shared heap tids[].",
+          "Base variant main creates children in descending index order and joins tids[1] before freeing tids and reading data."
+        ],
+        "prerequisites": [
+          "Dynamic heap handle storage and width-correct integer-pointer argument contract.",
+          "Nested auxiliary join dependencies and actual completions; acyclicity and deadlock-aware finite prefix.",
+          "Free/lifetime checks for children that may still access tids."
+        ],
+        "disposition": "DEFER_NESTED_JOIN_AND_LIFETIME"
+      },
+      {
+        "task": "c/pthread-race-challenges/thread-join-binomial-race-2.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-binomial-race-2.i",
+        "source_sha256": "9c17f10721ad43a689085e56bbab66351be2a01da9f0c20359ae30ab37e92dbe",
+        "reference": {
+          "result": "TIMEOUT",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/thread-join-binomial-race-2-d59fe94bd271/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "join_completion_unproven": 3
+        },
+        "source_facts": [
+          "Worker uses integer encoded through void* argument as its index and performs additional joins on shared heap tids[].",
+          "Base variant main creates children in descending index order and joins tids[1] before freeing tids and reading data."
+        ],
+        "prerequisites": [
+          "Dynamic heap handle storage and width-correct integer-pointer argument contract.",
+          "Nested auxiliary join dependencies and actual completions; acyclicity and deadlock-aware finite prefix.",
+          "Free/lifetime checks for children that may still access tids."
+        ],
+        "disposition": "DEFER_NESTED_JOIN_AND_LIFETIME"
+      },
+      {
+        "task": "c/pthread-race-challenges/thread-join-binomial-race-3.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-binomial-race-3.i",
+        "source_sha256": "2fcf549dbbd9dfa3c3590290694ca7785fc56f3cc704f9ad7d537aaa6ab3cd10",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/thread-join-binomial-race-3-01e845f52369/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "join_completion_unproven": 3
+        },
+        "source_facts": [
+          "Worker uses integer encoded through void* argument as its index and performs additional joins on shared heap tids[].",
+          "Base variant main creates children in descending index order and joins tids[1] before freeing tids and reading data."
+        ],
+        "prerequisites": [
+          "Dynamic heap handle storage and width-correct integer-pointer argument contract.",
+          "Nested auxiliary join dependencies and actual completions; acyclicity and deadlock-aware finite prefix.",
+          "Free/lifetime checks for children that may still access tids."
+        ],
+        "disposition": "DEFER_NESTED_JOIN_AND_LIFETIME"
+      },
+      {
+        "task": "c/pthread-race-challenges/per-thread-array-index-race.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-array-index-race.i",
+        "source_sha256": "289adcaae4c50abff0035518c5703ebebf5bd048dfea932ca710de251a5a744e",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/per-thread-array-index-race-6373a3cf4e71/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 1
+        },
+        "source_facts": [
+          "Main allocates tids/data storage from nondet thread count and uses a creation loop.",
+          "First gate thread_activation_unproven does not isolate the main missing semantic mechanism."
+        ],
+        "prerequisites": [
+          "Constrained concrete/symbolic allocation extents and heap handle output writes.",
+          "Dynamic argument/object identity (integer-pointer transport or actual pointer slot, depending on source).",
+          "In-bounds worker index expression and read-from provenance, not independent free index."
+        ],
+        "disposition": "DEFER_ALLOCATION_ARGUMENT_BEFORE_ACTIVATION_COUNT"
+      },
+      {
+        "task": "c/pthread-race-challenges/per-thread-array-index-race-2.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-array-index-race-2.i",
+        "source_sha256": "b606ed8b0061f7540a480987fb5d0368be6ab145ef928bee0cc134c3bece9590",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/per-thread-array-index-race-2-5efb00e0494f/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 1
+        },
+        "source_facts": [
+          "Main allocates tids/data storage from nondet thread count and uses a creation loop.",
+          "First gate thread_activation_unproven does not isolate the main missing semantic mechanism."
+        ],
+        "prerequisites": [
+          "Constrained concrete/symbolic allocation extents and heap handle output writes.",
+          "Dynamic argument/object identity (integer-pointer transport or actual pointer slot, depending on source).",
+          "In-bounds worker index expression and read-from provenance, not independent free index."
+        ],
+        "disposition": "DEFER_ALLOCATION_ARGUMENT_BEFORE_ACTIVATION_COUNT"
+      },
+      {
+        "task": "c/pthread-race-challenges/per-thread-index-inc-race.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-index-inc-race.i",
+        "source_sha256": "dcbcb8208024116480c974e9f1bc8db6725056562df0982447c3fb673ff0c0ec",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/per-thread-index-inc-race-4d90aeda7efd/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 6
+        },
+        "source_facts": [
+          "Main allocates tids/data storage from nondet thread count and uses a creation loop.",
+          "First gate thread_activation_unproven does not isolate the main missing semantic mechanism.",
+          "Unprotected next_j read/write itself offers an earlier global race, before datas[j]; even that prefix requires the real preceding symbolic heap handle allocation."
+        ],
+        "prerequisites": [
+          "Constrained concrete/symbolic allocation extents and heap handle output writes.",
+          "Dynamic argument/object identity (integer-pointer transport or actual pointer slot, depending on source).",
+          "In-bounds worker index expression and read-from provenance, not independent free index."
+        ],
+        "disposition": "DEFER_ALLOCATION_ARGUMENT_BEFORE_ACTIVATION_COUNT"
+      },
+      {
+        "task": "c/pthread-race-challenges/per-thread-index-inc-race-2.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-index-inc-race-2.i",
+        "source_sha256": "729ea5b7f047316231f562bf88a66f84bb913811f2b458cb706ab3ed78d2b3a0",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/per-thread-index-inc-race-2-cc7b1ce2e24f/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 1
+        },
+        "source_facts": [
+          "Main allocates tids/data storage from nondet thread count and uses a creation loop.",
+          "First gate thread_activation_unproven does not isolate the main missing semantic mechanism.",
+          "next_j update is mutex protected, but j=next_j/2 maps successive children to the same datas cell, which is written after unlock."
+        ],
+        "prerequisites": [
+          "Constrained concrete/symbolic allocation extents and heap handle output writes.",
+          "Dynamic argument/object identity (integer-pointer transport or actual pointer slot, depending on source).",
+          "In-bounds worker index expression and read-from provenance, not independent free index."
+        ],
+        "disposition": "DEFER_ALLOCATION_ARGUMENT_BEFORE_ACTIVATION_COUNT"
+      },
+      {
+        "task": "c/pthread-race-challenges/per-thread-array-ptr-race.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-array-ptr-race.i",
+        "source_sha256": "3b48d748645bdde1aeeb8dea66ba49bd5b185acd910927d963305195a7958388",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/per-thread-array-ptr-race-fa17cec3f571/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 1
+        },
+        "source_facts": [
+          "Main allocates tids/data storage from nondet thread count and uses a creation loop.",
+          "First gate thread_activation_unproven does not isolate the main missing semantic mechanism.",
+          "Source passes &datas[i/2], an actual data pointer rather than integer encoded through void*."
+        ],
+        "prerequisites": [
+          "Constrained concrete/symbolic allocation extents and heap handle output writes.",
+          "Dynamic argument/object identity (integer-pointer transport or actual pointer slot, depending on source).",
+          "In-bounds worker index expression and read-from provenance, not independent free index."
+        ],
+        "disposition": "DEFER_ALLOCATION_ARGUMENT_BEFORE_ACTIVATION_COUNT"
+      },
+      {
+        "task": "c/pthread-race-challenges/per-thread-struct-race.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-struct-race.i",
+        "source_sha256": "bdf6537ef41e6e97eaabcf1f32a2477c3eb925663d5b8e717e1252d54a113bc0",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/per-thread-struct-race-6cdb88568c23/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 1
+        },
+        "source_facts": [
+          "Main allocates tids from nondet thread count, allocates one fixed-size struct, and passes the same struct pointer to every created child.",
+          "First gate thread_activation_unproven does not isolate the main missing semantic mechanism."
+        ],
+        "prerequisites": [
+          "Constrained concrete/symbolic allocation extents and heap handle output writes.",
+          "Retain fixed-size shared heap object and bind the actual t pointer argument to each distinct child; no integer-pointer contract needed here.",
+          "In-bounds worker index expression and read-from provenance, not independent free index."
+        ],
+        "disposition": "DEFER_ALLOCATION_ARGUMENT_BEFORE_ACTIVATION_COUNT"
+      },
+      {
+        "task": "c/pthread-race-challenges/per-thread-struct-in-array-race.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-struct-in-array-race.i",
+        "source_sha256": "c3ac8edf9cc34df23835297b42f3eb24b0fecd781f1d2abb112aaac7f99695b4",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/per-thread-struct-in-array-race-a74bf5368a71/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 1
+        },
+        "source_facts": [
+          "Main allocates tids/data storage from nondet thread count and uses a creation loop.",
+          "First gate thread_activation_unproven does not isolate the main missing semantic mechanism.",
+          "Source passes &ts[i/2], causing distinct children to share an actual struct subobject."
+        ],
+        "prerequisites": [
+          "Constrained concrete/symbolic allocation extents and heap handle output writes.",
+          "Dynamic argument/object identity (integer-pointer transport or actual pointer slot, depending on source).",
+          "In-bounds worker index expression and read-from provenance, not independent free index."
+        ],
+        "disposition": "DEFER_ALLOCATION_ARGUMENT_BEFORE_ACTIVATION_COUNT"
+      },
+      {
+        "task": "c/pthread/singleton-b.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread/singleton-b.i",
+        "source_sha256": "8df6b0e07576c0f44be76a2619065be37971886a948c5dcc3b73910d3c970468",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/singleton-b-05fc713d440b/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 3
+        },
+        "source_facts": [
+          "Main creates thread0; thread0 creates thread1, joins it, then creates conflicting writers.",
+          "thread1 allocates and publishes global pointer v, so actual initialization occurs in a non-main child."
+        ],
+        "prerequisites": [
+          "Activation ancestry beyond main startup.",
+          "Side-effecting joined child completion.",
+          "Allocation identity outside pre-spawn main and pointer publication/initialization definedness."
+        ],
+        "disposition": "DEFER_NESTED_CREATION_PLUS_ALLOCATION"
+      },
+      {
+        "task": "c/pthread/singleton_with-uninit-problems-b.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread/singleton_with-uninit-problems-b.i",
+        "source_sha256": "ee95c6207d65de8bda179fc4eddfd8312f741d4c9ea2d4ac3b4363fbcaae8d19",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/singleton_with-uninit-problems-b-58030c39c5f5/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 3
+        },
+        "source_facts": [
+          "Main creates thread0; thread0 creates thread1, joins it, then creates conflicting writers.",
+          "thread1 allocates and publishes global pointer v, so actual initialization occurs in a non-main child."
+        ],
+        "prerequisites": [
+          "Activation ancestry beyond main startup.",
+          "Side-effecting joined child completion.",
+          "Allocation identity outside pre-spawn main and pointer publication/initialization definedness."
+        ],
+        "disposition": "DEFER_NESTED_CREATION_PLUS_ALLOCATION"
+      },
+      {
+        "task": "c/pthread/indexer.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread/indexer.i",
+        "source_sha256": "f24afaadf07ead7c7da85cf6020fd6a6a5b5585e439441b5111a2dea2e7cec4c",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/indexer-9758219c0b06/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 3,
+          "target_not_reached": 1
+        },
+        "source_facts": [
+          "main initializes128 mutexes, creates13 workers while repeatedly writing stack arg=i, passing the same &arg each time.",
+          "Worker first reads *((int*)arg); this main-stack object has a concrete racing write/read possibility before table insertion loops."
+        ],
+        "prerequisites": [
+          "128-step initialization prefix budget and supported mutex object lifecycle.",
+          "Keep actual main stack argument object and main/worker interleaving; no constant argument substitution from create time."
+        ],
+        "disposition": "SEPARATE_PREFIX_BUDGET_AND_SHARED_ARGUMENT_NOT_SURPLUS_SPAWN_ONLY"
+      },
+      {
+        "task": "c/pthread-atomic/gcd-2.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/gcd-2.i",
+        "source_sha256": "abac4834eb8b1123405a2c6108c3d30e84ad22df2224a055d262e226b4ba66e1",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/gcd-2-4b961a329687/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "activation_small_bound": 2,
+          "thread_activation_unproven": 2
+        },
+        "source_facts": [
+          "start helper receives main nondet a_in/b_in, initializes globals, creates dec_a/dec_b, then joins both.",
+          "Workers loop on plain a!=b tests and modify respective globals in verifier atomic helpers.",
+          "Fresh diagnostics include sc_read_from/integer_operation, SMT UNSAT/UNKNOWN and search budgets as well as activation; some candidates are already encoded."
+        ],
+        "prerequisites": [
+          "Inspect selected atomic-interior query and exact helper startup values before claiming activation is primary.",
+          "Improve search only with a predicted finite prefix and confirmed AR trace."
+        ],
+        "disposition": "DEFER_DIAGNOSTIC_GATE_NOT_PRIMARY_PROOF"
+      },
+      {
+        "task": "c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_current-race.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_current-race.i",
+        "source_sha256": "8574c9e3ae0d1a85163128f572679ab993dc8d0ed0a940460456b969a6ba6abb",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_current-race-c0833fcd42ff/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 2
+        },
+        "source_facts": [
+          "main allocates many driver objects, sets nondet whoop_int and calls indirect _whoop_init before the two explicit wrapper creates.",
+          "Initialization includes hardware/environment API calls and publication via driver objects; there are only two selected creates, so surplus-spawn count is not the obstacle."
+        ],
+        "prerequisites": [
+          "Defined driver init prefix and exact indirect initializer target.",
+          "Library/hardware effect contracts actually encountered on chosen init path.",
+          "Initialized object fields and alias/lifetime."
+        ],
+        "disposition": "DEFER_DRIVER_ENVIRONMENT_CONTRACT"
+      },
+      {
+        "task": "c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_set-race.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_set-race.i",
+        "source_sha256": "f783ff361d5de31004cdf0040dad71b4fcfcade7de2ed268add7b76ae0c835eb",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_set-race-013de9889859/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 5
+        },
+        "source_facts": [
+          "main allocates many driver objects, sets nondet whoop_int and calls indirect _whoop_init before the two explicit wrapper creates.",
+          "Initialization includes hardware/environment API calls and publication via driver objects; there are only two selected creates, so surplus-spawn count is not the obstacle."
+        ],
+        "prerequisites": [
+          "Defined driver init prefix and exact indirect initializer target.",
+          "Library/hardware effect contracts actually encountered on chosen init path.",
+          "Initialized object fields and alias/lifetime."
+        ],
+        "disposition": "DEFER_DRIVER_ENVIRONMENT_CONTRACT"
+      },
+      {
+        "task": "c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_current_pc8736x_gpio_set-race.yml",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_current_pc8736x_gpio_set-race.i",
+        "source_sha256": "9e45e8b3a22753baa1011feee2127e6b036a6794c47e85c43714546dba2e558b",
+        "reference": {
+          "result": "FAIL",
+          "artifact": "/home/ruan/ikos-work/m3-20261013/reference-remaining/char_pc8736x_gpio_pc8736x_gpio_current_pc8736x_gpio_set-race-0e4c939ed4fa/result.json",
+          "reason": null
+        },
+        "diagnostic_first": {
+          "thread_activation_unproven": 2
+        },
+        "source_facts": [
+          "main allocates many driver objects, sets nondet whoop_int and calls indirect _whoop_init before the two explicit wrapper creates.",
+          "Initialization includes hardware/environment API calls and publication via driver objects; there are only two selected creates, so surplus-spawn count is not the obstacle."
+        ],
+        "prerequisites": [
+          "Defined driver init prefix and exact indirect initializer target.",
+          "Library/hardware effect contracts actually encountered on chosen init path.",
+          "Initialized object fields and alias/lifetime."
+        ],
+        "disposition": "DEFER_DRIVER_ENVIRONMENT_CONTRACT"
+      }
+    ],
+    "acceptance_general": [
+      "No filename/label conditions. Minimal positive/control/variant first, direct original tool/source contract comparison.",
+      "For semantic changes: build/install binary fingerprint, P0/ILP32-LP64, separate full AI and BMC paired1029, independent changed/new AR counterexamples; commit each mechanism with transitions.",
+      "Raw logs out of git; update existing manuals and small evidence only. Published competition ZIP unchanged in design/implementation until separate release authorization."
+    ],
+    "limitations": [
+      "No code changed and no recovery or timing experimentally measured in this design.",
+      "Fresh reference FAIL is task-level comparison, not proof that an IKOS selected execution is feasible.",
+      "Historical M2 source observations copied with provenance, not all15 re-audited here."
+    ],
+    "code_anchors": {
+      "startup_count_equality": "analyzer/src/checker/data_race.cpp:1712",
+      "startup_only_main": "analyzer/src/checker/data_race.cpp:1655",
+      "implicit_worker_binding": "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp:81 and unroll.hpp:616",
+      "function_based_spawn_edges": "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp:527",
+      "certificate_binding": "analyzer/include/ikos/analyzer/analysis/bmc/evidence.hpp:76",
+      "inert_join_scalar_restriction": "analyzer/include/ikos/analyzer/analysis/bmc/unroll.hpp:1187",
+      "handle_source_zero_offset": "analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp:320",
+      "AI_create_scalar_only": "analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp:2180",
+      "AI_join_origin_gate": "analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp:1101",
+      "concrete_validator_create_join": "scripts/validate_bmc_execution.py:315",
+      "concrete_heap_contract": "analyzer/include/ikos/analyzer/analysis/bmc/unroll.hpp:729 and scripts/validate_bmc_execution.py:329",
+      "AI_source_provenance": "analyzer/include/ikos/analyzer/analysis/execution_engine/handle_origin.hpp:79",
+      "AI_MUST_completion_warning": "docs/ikos-ai-complete.md:274"
+    }
+  },
+  "occurrence_review": {
+    "verdict": "GO for a finite extension selecting two explicit worker instances from a fully validated main-only startup. Count relaxation alone is neither an occurrence-binding implementation nor support for arbitrary thread activation.",
+    "current_binding_sites": [
+      {
+        "file": "analyzer/src/checker/data_race.cpp",
+        "lines": "1578-1719",
+        "role": "activation_prefixes stores only event vectors, keyed by sorted entry-name pair; exact count test and occurrence<=2 search"
+      },
+      {
+        "file": "analyzer/include/ikos/analyzer/analysis/bmc/unroll.hpp",
+        "lines": "616-624",
+        "role": "created_argument returns raw fourth argument of ordinal matching entry, default0"
+      },
+      {
+        "file": "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp",
+        "lines": "81-83",
+        "role": "A uses first matching creation; B second only if same entry"
+      },
+      {
+        "file": "analyzer/include/ikos/analyzer/analysis/bmc/unroll.hpp",
+        "lines": "838-895",
+        "role": "root_argument lookup chooses earliest matching static argument and rejects repeated/nonunique external definitions and symbolic external indices"
+      },
+      {
+        "file": "analyzer/include/ikos/analyzer/analysis/bmc/evidence.hpp",
+        "lines": "76-84",
+        "role": "independently rediscovers first/second matching creation to export creator_step"
+      },
+      {
+        "file": "scripts/validate_bmc_execution.py",
+        "lines": "315-328",
+        "role": "executes every create, writes handle, assigns monotone instance id and binds selected traces by creator_trace/step"
+      },
+      {
+        "file": "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp",
+        "lines": "527-539,981-987",
+        "role": "main/opponent branch adds spawn edges by entry and source folding finds first creator; avoid extending this branch accidentally"
+      }
+    ],
+    "minimal_boundary": [
+      "Only both selected roots are workers activated by implicit main. Keep current main-vs-worker behavior separate until its spawn/HB/source logic also consumes an explicit create occurrence.",
+      "Preserve every startup instruction, including creates for unselected children, guards, memory writes, library outputs, called helper prefixes and arithmetic definedness. Choose successful default-attribute creates with valid output slots under existing API contract.",
+      "Use one startup descriptor with two indices into the executed event sequence (or equivalent occurrence identities). Each index must designate a supported Create of the corresponding entry. Same entry requires distinct indices. Carry the same descriptor to argument resolution, pointer/address preparation, activation proof and evidence export; do not rediscover occurrences by function name.",
+      "Start with current supported actual argument subset (constant global address/unique external chain/main object identity). Resolving an argument uses the definition context at its chosen create, not at prefix end. Repeated helper/loop definitions and symbolic indices can remain unsupported until an occurrence-scoped resolver exists.",
+      "All children, selected and unselected, remain unscheduled during the main startup. Main suspends after startup; its frame and referenced allocations must still live. Scheduling only selected workers afterward is an existential finite prefix and does not require fairness or completion of extras.",
+      "Retain conditional-startup no-Join/no-Unsupported and held.empty requirements, with valid matching nonrecursive locks and closed verifier atomics. Existing encoder refuses startup cond_wait; do not relax it. A startup waiting for a child cannot use the dormant-child proof.",
+      "Extra children execute no body events. Any join in selected prefixes still requires an actual supported completion; existing inert-return exception is narrow. Do not silently ignore extra child side effects needed to satisfy a guard, join, signal, semaphore or barrier.",
+      "All create handle writes remain part of library-storage/alias accounting. Keep unknown/overlapping handle representation restrictions; do not delete extras to simplify the create count or ids.",
+      "Enumerate old first/second selection before alternatives and keep old search pass ahead of newly expanded work; preserving logical satisfiability does not by itself preserve a previous success under fixed global deadlines.",
+      "Current startup unroll targets only occurrences1/2 of each create statement and caps8 prefixes. Keep or explicitly increase finite search policy; merely allowing >= does not reach third loop occurrence when no later target is unrolled."
+    ],
+    "count_only_examples": [
+      {
+        "kind": "completeness counterexample to count-only recovery",
+        "program": "main creates A(&x), A(&y), B(&y); A/B write through their argument; x and y are distinct.",
+        "effect": "Only second A and B conflict. >= admits startup with2A+1B, but created_argument still selects first A(&x), so intended gain is not recovered. There is no new soundness failure just from selecting the old actual pair."
+      },
+      {
+        "kind": "false selected certificate if occurrence metadata and encoding disagree",
+        "program": "main creates W(&x), W(&x), W(&y); selected metadata names third W and second W, but unchanged encoder uses first W and second W.",
+        "effect": "SMT sees two accesses to x, while selected actual instances access y and x. Program remains racy due first/second W, so expected-race label can hide the invalid selected execution. AR replay must reject the address/target mismatch."
+      },
+      {
+        "kind": "same-static-argument dynamic-origin counterexample",
+        "program": "loop sets p=&data[i] then creates W(p), with a repeated AR definition of p; select a later create occurrence.",
+        "effect": "Static ar::Value* equality and earliest matching argument do not capture the selected value. Existing resolver rejects repeated definitions, which must remain or be replaced by exact occurrence context."
+      },
+      {
+        "kind": "extra child is necessary for startup reachability",
+        "program": "create C that sets flag=1; main loops until flag then creates A and B.",
+        "effect": "All-children-unscheduled startup cannot pass guard; no free flag and no ignored wait. Need a third-thread execution extension or retain UNKNOWN."
+      },
+      {
+        "kind": "held-lock startup failure",
+        "program": "main locks L, creates workers that need L, then startup is truncated before unlock.",
+        "effect": "Scheduling workers afterward cannot acquire L; require held.empty or model an actual main continuation. Existing conditional gate has held.empty."
+      },
+      {
+        "kind": "discarding extra handle write loses semantics",
+        "program": "main creates A(&x), overwrites the same pthread_t slot creating extra C, later reads or joins that slot before targets.",
+        "effect": "Dropping extra create binds handle to A instead of C. Full startup preservation and existing handle matching/output alias gates are mandatory."
+      }
+    ],
+    "validation_required": [
+      "ILP32/LP64 create A twice then B, and W three times with distinct/overlapping actual objects",
+      "Negative certificate mutation changes selected create index or swaps same-entry arguments",
+      "Loop/repeated helper/control-flow variants; unsupported dynamic actuals remain UNKNOWN",
+      "Extra unrelated dormant thread preserves same feasible race; extra necessary flag-writer remains unsupported",
+      "Startup with held lock, wait/join, create-failure guard, overwritten handle and invalid handle storage",
+      "All recovered selected prefixes AR ACCEPT; fixed-budget paired full regression including prior successes"
+    ],
+    "fact_class_formal_contract": [
+      {
+        "kind": "optional additional offset constraint",
+        "formula": "If every SAT model of base E denotes a valid race, then every SAT model of E AND F does too, even if F is too narrow. To preserve witness coverage require E implies F (or at least every required witness has an equivalent F model).",
+        "effect": "Invalid overly narrow F loses confirmations; with failed BMC->UNKNOWN it does not establish SAFE. The same F used by a SAFE candidate-deletion rule requires sound all-execution overapproximation and can cause FN if wrong."
+      },
+      {
+        "kind": "check-eliding no-wrap certificate",
+        "formula": "If exact encoding is E0 AND D and certificate removes D, require E0 AND certificate-premises implies D for every selected occurrence.",
+        "effect": "A wrong certificate expands admissible executions and can produce spurious FALSE, even for otherwise-unused arithmetic. Demanded result exactness alone does not protect an elided unused definedness obligation."
+      },
+      {
+        "kind": "lifetime/identity certificate",
+        "formula": "Certificate must imply the object/instance/definition identity and lifetime assumptions used to interpret the selected events; actual startup execution remains separately required.",
+        "effect": "A wrong certificate can interpret accesses or values using the wrong allocation/publication and create false execution. Missing certificate may reject a capability, unlike an optional redundant solver bound."
+      },
+      {
+        "kind": "search hint",
+        "formula": "Ordering only, with no event/constraint removal, preserves unbounded logical query set; fixed-budget observed coverage is still order-dependent.",
+        "effect": "Benchmark improvements are precision under resource bounds; do not confuse with a stronger semantic theorem."
+      }
+    ],
+    "not_done": "Read-only source audit; no edits or new runs. Examples are semantic design tests, not claimed reproduced defects in current source."
+  },
+  "m6_review": {
+    "scope": "Design-only M6 audit, 2026-10-13; no analyzer implementation, new benchmark run, or measured gain",
+    "decision": "NO_REAL_BENCHMARK_PILOT_ADMITTED_YET; one conditional local-control-partition diagnostic design",
+    "finding": {
+      "unresolved_reference_true": 15,
+      "coverage_blocked": 12,
+      "without_coverage_warning": 3,
+      "proven_pure_numerical_merge_loss": 0,
+      "qualification": "Zero means no such cause has been established by current source/diagnostic evidence; it does not prove no useful feedback exists."
+    },
+    "ledger_sha256": "061480fad413ca1e559fc5ca23bc350e58106f4aed2ecdfdb32bbdc09ade6904",
+    "per_task": [
+      {
+        "task": "c/goblint-regression/09-regions_04-list2_nr.c",
+        "source_sha256": "6b660f04f83becd21e4ff512c323a1198b0ce2547661a7b848e55ab597e13bce",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {
+          "synthetic pthread handle representation not modeled": [
+            27,
+            31
+          ],
+          "unknown destination write effects not covered": [
+            27,
+            31
+          ]
+        },
+        "source_facts": [
+          {
+            "line": 27,
+            "fact": "Separate allocated lists A/B have datum updates under separate mutexes27/31; main traverses A and B under matching mutexes54..60."
+          }
+        ],
+        "missing_semantics": "Trace heap-pointer load/merge from B->next and A->next, keeping offset-aware may-target provenance; fix synthetic-handle coverage independently, then evaluate region/escape facts.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Recorded reachable TOP pointer/Store or synthetic handle coverage prevents SAFE independently of local numeric precision. Recover full object/field/publication envelope before attributing a candidate to abstraction merging.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_04-list2_nr.c",
+        "task_yaml": "c/goblint-regression/09-regions_04-list2_nr.yml"
+      },
+      {
+        "task": "c/goblint-regression/09-regions_09-arraylist.c",
+        "source_sha256": "1250b991cc6af457c99698c8ecb919c369f7a178a8972aded6e4b48360bdf7f3",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {
+          "synthetic pthread handle representation not modeled": [
+            31,
+            62,
+            63
+          ],
+          "unknown destination write effects not covered": [
+            32
+          ]
+        },
+        "source_facts": [
+          {
+            "line": 43,
+            "fact": "Helper new initializes node; list_add(new(3),slot[i]) occurs under one global mutex; main reads slot[j]->next datum under same mutex62/63."
+          }
+        ],
+        "missing_semantics": "Trace next-field values across allocation/call frames, main-to-worker interference and fixpoint; validate byte/copy/lifetime and early/late-publication counterexamples before a field-source coordinate. No TN gained by the array coordinate alone.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Recorded reachable TOP pointer/Store or synthetic handle coverage prevents SAFE independently of local numeric precision. Recover full object/field/publication envelope before attributing a candidate to abstraction merging.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_09-arraylist.c",
+        "task_yaml": "c/goblint-regression/09-regions_09-arraylist.yml"
+      },
+      {
+        "task": "c/goblint-regression/09-regions_11-arraylist_nr.c",
+        "source_sha256": "d1ab298b15ff3e93e3a25e88a66e704a5aedd8d8523826dd902097f6af136d70",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {
+          "synthetic pthread handle representation not modeled": [
+            31,
+            65,
+            66
+          ],
+          "unknown destination write effects not covered": [
+            32
+          ]
+        },
+        "source_facts": [
+          {
+            "line": 42,
+            "fact": "Per-index mutex[i] protects list mutation slot[i], main uses independent j with mutex[j] and slot[j]."
+          }
+        ],
+        "missing_semantics": "Need slot-index-to-reachable-region ownership invariant, not pointer delta between heap node and unrelated mutex array. Nodes must not cross slots; prove list-splice effects and initialization/publication.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Recorded reachable TOP pointer/Store or synthetic handle coverage prevents SAFE independently of local numeric precision. Recover full object/field/publication envelope before attributing a candidate to abstraction merging.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_11-arraylist_nr.c",
+        "task_yaml": "c/goblint-regression/09-regions_11-arraylist_nr.yml"
+      },
+      {
+        "task": "c/goblint-regression/09-regions_13-arraycollapse_nr.c",
+        "source_sha256": "aa1019154e40d47bb37715d3eeac2054a52cf6d54f3dc9d5d7f27932730291e6",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {},
+        "source_facts": [
+          {
+            "line": 61,
+            "fact": "Two fresh p nodes inserted into independently chosen slot[j]/slot[k] before spawn; concurrent readers/writers use same index-specific locks."
+          }
+        ],
+        "missing_semantics": "Preserve allocation instance plus slot ownership through insertion; alias/transfer variants must invalidate region proof, then discharge handle and publication gates.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Possible ownership correlation loss, but relation is heap node reachable from slot[k] -> protection mutex[k]; also fresh-object initialization/publication. There is no demonstrated ordinary numerical join loss and the existing memory partitioner does not partition locks or shared pointer summaries.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_13-arraycollapse_nr.c",
+        "task_yaml": "c/goblint-regression/09-regions_13-arraycollapse_nr.yml"
+      },
+      {
+        "task": "c/goblint-regression/09-regions_17-arrayloop_nr.i",
+        "source_sha256": "b29c7049a333b10d890b8afae901738020ed1f084c2a7d471b316f0abdba3430",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {},
+        "source_facts": [
+          {
+            "line": 1242,
+            "fact": "Both main and worker iterate ten lists, use matching mutex[i], allocate and link new nodes while holding it."
+          }
+        ],
+        "missing_semantics": "Need per-list region invariant with dynamic allocation instances and loop-parametric corresponding protection; prove no cross-list aliases, retain unsupported dynamic pointer transfers.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Possible ownership correlation loss, but relation is heap node reachable from slot[k] -> protection mutex[k]; also fresh-object initialization/publication. There is no demonstrated ordinary numerical join loss and the existing memory partitioner does not partition locks or shared pointer summaries.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_17-arrayloop_nr.i",
+        "task_yaml": "c/goblint-regression/09-regions_17-arrayloop_nr.yml"
+      },
+      {
+        "task": "c/goblint-regression/09-regions_19-nested_nr.c",
+        "source_sha256": "280c30f41ca2c9f436a7f638405780966a2e3953046793cbc3431544593edf02",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {
+          "synthetic pthread handle representation not modeled": [
+            36,
+            67,
+            68
+          ],
+          "unknown destination write effects not covered": [
+            37
+          ]
+        },
+        "source_facts": [
+          {
+            "line": 44,
+            "fact": "Struct c contains slots[] and mutex[]; same selected index used to lock then mutate linked list."
+          }
+        ],
+        "missing_semantics": "First separate field-exact heap-pointer facts; then certify slot-index region ownership and use it to relate locks across independent thread indices.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Recorded reachable TOP pointer/Store or synthetic handle coverage prevents SAFE independently of local numeric precision. Recover full object/field/publication envelope before attributing a candidate to abstraction merging.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_19-nested_nr.c",
+        "task_yaml": "c/goblint-regression/09-regions_19-nested_nr.yml"
+      },
+      {
+        "task": "c/goblint-regression/28-race_reach_81-list_racing.i",
+        "source_sha256": "3de6ec2acea23c0ab47fbc2e02ad0931145060ca78b80531ef692b3505f9553b",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {
+          "synthetic pthread handle representation not modeled": [
+            1017,
+            1037
+          ],
+          "unknown destination write effects not covered": [
+            1037
+          ]
+        },
+        "source_facts": [
+          {
+            "line": 1009,
+            "fact": "Fresh-node init is outside list publication lock; published links are manipulated/traversed under a list mutex. Datum test/update macros take __global_lock; names containing racing describe the original assertion transformation, not a proof of a race for this active no-data-race property."
+          }
+        ],
+        "missing_semantics": "Need flow-sensitive fresh-object/publication facts closed through pointer fields and byte copies; initialization before publication does not synchronize a later write after publication. Use init->publish->acquire proof and retain unknown if escape cannot be proved. Trace one next-field load and one init-vs-data candidate using full report at recorded hash; after precise points-to, check which global-lock-protected groups remain.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Recorded reachable TOP pointer/Store or synthetic handle coverage prevents SAFE independently of local numeric precision. Recover full object/field/publication envelope before attributing a candidate to abstraction merging.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/28-race_reach_81-list_racing.i",
+        "task_yaml": "c/goblint-regression/28-race_reach_81-list_racing.yml"
+      },
+      {
+        "task": "c/goblint-regression/28-race_reach_82-list_racefree.i",
+        "source_sha256": "6ac894f5c6207d1329786eb676509b79ca36f8c33f880cc59ffa30652ab92765",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {
+          "synthetic pthread handle representation not modeled": [
+            1017,
+            1038
+          ],
+          "unknown destination write effects not covered": [
+            1038
+          ]
+        },
+        "source_facts": [
+          {
+            "line": 1009,
+            "fact": "Fresh-node init is outside list publication lock; published links are manipulated/traversed under a list mutex. Datum test/update macros take __global_lock; names containing racing describe the original assertion transformation, not a proof of a race for this active no-data-race property."
+          }
+        ],
+        "missing_semantics": "Need flow-sensitive fresh-object/publication facts closed through pointer fields and byte copies; initialization before publication does not synchronize a later write after publication. Use init->publish->acquire proof and retain unknown if escape cannot be proved. Trace one next-field load and one init-vs-data candidate using full report at recorded hash; after precise points-to, check which global-lock-protected groups remain.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Recorded reachable TOP pointer/Store or synthetic handle coverage prevents SAFE independently of local numeric precision. Recover full object/field/publication envelope before attributing a candidate to abstraction merging.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/28-race_reach_82-list_racefree.i",
+        "task_yaml": "c/goblint-regression/28-race_reach_82-list_racefree.yml"
+      },
+      {
+        "task": "c/goblint-regression/28-race_reach_83-list2_racing1.i",
+        "source_sha256": "23c4aefdda14d4315577cd0030d174ab477745d4b270d2de822290a016a0ff8d",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {
+          "synthetic pthread handle representation not modeled": [
+            1017,
+            1039,
+            1046
+          ],
+          "unknown destination write effects not covered": [
+            1039,
+            1046
+          ]
+        },
+        "source_facts": [
+          {
+            "line": 1009,
+            "fact": "Fresh-node init is outside list publication lock; published links are manipulated/traversed under a list mutex. Datum test/update macros take __global_lock; names containing racing describe the original assertion transformation, not a proof of a race for this active no-data-race property."
+          }
+        ],
+        "missing_semantics": "Need flow-sensitive fresh-object/publication facts closed through pointer fields and byte copies; initialization before publication does not synchronize a later write after publication. Use init->publish->acquire proof and retain unknown if escape cannot be proved. Trace one next-field load and one init-vs-data candidate using full report at recorded hash; after precise points-to, check which global-lock-protected groups remain.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Recorded reachable TOP pointer/Store or synthetic handle coverage prevents SAFE independently of local numeric precision. Recover full object/field/publication envelope before attributing a candidate to abstraction merging.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/28-race_reach_83-list2_racing1.i",
+        "task_yaml": "c/goblint-regression/28-race_reach_83-list2_racing1.yml"
+      },
+      {
+        "task": "c/goblint-regression/28-race_reach_84-list2_racing2.i",
+        "source_sha256": "f70125267ee7251a74a40ef1ba0ea3ced14d0fe45e7a9ea5a666e1eecab0c01c",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {
+          "synthetic pthread handle representation not modeled": [
+            1017,
+            1039,
+            1046
+          ],
+          "unknown destination write effects not covered": [
+            1025,
+            1039,
+            1046
+          ]
+        },
+        "source_facts": [
+          {
+            "line": 1009,
+            "fact": "Fresh-node init is outside list publication lock; published links are manipulated/traversed under a list mutex. Datum test/update macros take __global_lock; names containing racing describe the original assertion transformation, not a proof of a race for this active no-data-race property."
+          }
+        ],
+        "missing_semantics": "Need flow-sensitive fresh-object/publication facts closed through pointer fields and byte copies; initialization before publication does not synchronize a later write after publication. Use init->publish->acquire proof and retain unknown if escape cannot be proved. Trace one next-field load and one init-vs-data candidate using full report at recorded hash; after precise points-to, check which global-lock-protected groups remain.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Recorded reachable TOP pointer/Store or synthetic handle coverage prevents SAFE independently of local numeric precision. Recover full object/field/publication envelope before attributing a candidate to abstraction merging.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/28-race_reach_84-list2_racing2.i",
+        "task_yaml": "c/goblint-regression/28-race_reach_84-list2_racing2.yml"
+      },
+      {
+        "task": "c/goblint-regression/28-race_reach_85-list2_racefree.i",
+        "source_sha256": "da9f6c449f4da806b6a3bb0aaf2c3c9171ea9b71d075f7e8b1d9543f656f7b8b",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {
+          "synthetic pthread handle representation not modeled": [
+            1017,
+            1039,
+            1046
+          ],
+          "unknown destination write effects not covered": [
+            1039,
+            1046
+          ]
+        },
+        "source_facts": [
+          {
+            "line": 1009,
+            "fact": "Fresh-node init is outside list publication lock; published links are manipulated/traversed under a list mutex. Datum test/update macros take __global_lock; names containing racing describe the original assertion transformation, not a proof of a race for this active no-data-race property."
+          }
+        ],
+        "missing_semantics": "Need flow-sensitive fresh-object/publication facts closed through pointer fields and byte copies; initialization before publication does not synchronize a later write after publication. Use init->publish->acquire proof and retain unknown if escape cannot be proved. Trace one next-field load and one init-vs-data candidate using full report at recorded hash; after precise points-to, check which global-lock-protected groups remain.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Recorded reachable TOP pointer/Store or synthetic handle coverage prevents SAFE independently of local numeric precision. Recover full object/field/publication envelope before attributing a candidate to abstraction merging.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/28-race_reach_85-list2_racefree.i",
+        "task_yaml": "c/goblint-regression/28-race_reach_85-list2_racefree.yml"
+      },
+      {
+        "task": "c/goblint-regression/28-race_reach_86-lists_racing.i",
+        "source_sha256": "4e7050d36e2131966739d0040816e49ede1f1e8b3b668f65d41876950193b1d8",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {
+          "synthetic pthread handle representation not modeled": [
+            1017,
+            1023,
+            1043
+          ],
+          "unknown destination write effects not covered": [
+            1024,
+            1043
+          ]
+        },
+        "source_facts": [
+          {
+            "line": 1009,
+            "fact": "Fresh-node init is outside list publication lock; published links are manipulated/traversed under a list mutex. Datum test/update macros take __global_lock; names containing racing describe the original assertion transformation, not a proof of a race for this active no-data-race property."
+          }
+        ],
+        "missing_semantics": "Need flow-sensitive fresh-object/publication facts closed through pointer fields and byte copies; initialization before publication does not synchronize a later write after publication. Use init->publish->acquire proof and retain unknown if escape cannot be proved. Trace one next-field load and one init-vs-data candidate using full report at recorded hash; after precise points-to, check which global-lock-protected groups remain.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Recorded reachable TOP pointer/Store or synthetic handle coverage prevents SAFE independently of local numeric precision. Recover full object/field/publication envelope before attributing a candidate to abstraction merging.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/28-race_reach_86-lists_racing.i",
+        "task_yaml": "c/goblint-regression/28-race_reach_86-lists_racing.yml"
+      },
+      {
+        "task": "c/goblint-regression/28-race_reach_87-lists_racefree.i",
+        "source_sha256": "7be9b237ca4111a24c77c67cce26f31a788af03984af96dee7353f79c789c2c1",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {
+          "synthetic pthread handle representation not modeled": [
+            1017,
+            1023,
+            1041
+          ],
+          "unknown destination write effects not covered": [
+            1024,
+            1041
+          ]
+        },
+        "source_facts": [
+          {
+            "line": 1009,
+            "fact": "Fresh-node init is outside list publication lock; published links are manipulated/traversed under a list mutex. Datum test/update macros take __global_lock; names containing racing describe the original assertion transformation, not a proof of a race for this active no-data-race property."
+          }
+        ],
+        "missing_semantics": "Need flow-sensitive fresh-object/publication facts closed through pointer fields and byte copies; initialization before publication does not synchronize a later write after publication. Use init->publish->acquire proof and retain unknown if escape cannot be proved. Trace one next-field load and one init-vs-data candidate using full report at recorded hash; after precise points-to, check which global-lock-protected groups remain.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Recorded reachable TOP pointer/Store or synthetic handle coverage prevents SAFE independently of local numeric precision. Recover full object/field/publication envelope before attributing a candidate to abstraction merging.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/28-race_reach_87-lists_racefree.i",
+        "task_yaml": "c/goblint-regression/28-race_reach_87-lists_racefree.yml"
+      },
+      {
+        "task": "c/goblint-regression/28-race_reach_94-alloc_region_racing.i",
+        "source_sha256": "7faac9952fd378b53dcd8f21391daa9cc75834f7be2a5ad0c70d96fc8524bd08",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {
+          "synthetic pthread handle representation not modeled": [
+            1278,
+            1279,
+            1280
+          ],
+          "unknown destination write effects not covered": [
+            1279
+          ]
+        },
+        "source_facts": [
+          {
+            "line": 1245,
+            "fact": "Fresh-node init is outside list publication lock; published links are manipulated/traversed under a list mutex. Datum test/update macros take __global_lock; names containing racing describe the original assertion transformation, not a proof of a race for this active no-data-race property."
+          }
+        ],
+        "missing_semantics": "Need flow-sensitive fresh-object/publication facts closed through pointer fields and byte copies; initialization before publication does not synchronize a later write after publication. Use init->publish->acquire proof and retain unknown if escape cannot be proved. Trace one next-field load and one init-vs-data candidate using full report at recorded hash; after precise points-to, check which global-lock-protected groups remain.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Recorded reachable TOP pointer/Store or synthetic handle coverage prevents SAFE independently of local numeric precision. Recover full object/field/publication envelope before attributing a candidate to abstraction merging.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/28-race_reach_94-alloc_region_racing.i",
+        "task_yaml": "c/goblint-regression/28-race_reach_94-alloc_region_racing.yml"
+      },
+      {
+        "task": "c/pthread-race-challenges/thread-join-array-const.i",
+        "source_sha256": "3fabc1cc94c3126ff26eb9b915167fe6a6af37b0806df7c41554f022c4d5bcac",
+        "matches_saved_hash": true,
+        "reference": "TRUE",
+        "current_ai": "Unknown",
+        "coverage": {},
+        "source_facts": [
+          {
+            "line": 692,
+            "fact": "Create four threads into tids[i] in first loop; join all same elements in second; final read data after all joins. Child writes data under data_mutex."
+          }
+        ],
+        "missing_semantics": "New matched regressions distinguish loop instances, four explicitly created array slots and four scalar handles. Only scalar handles are SAFE. Need nonzero exact slot provenance plus a universal per-instance completion certificate; loop unrolling alone fails the storage-origin gate. Missing/overwritten joins remain UNKNOWN.",
+        "feedback_admission": "NOT_ESTABLISHED",
+        "reason": "Exact handle slot and dynamic instance completion coverage is missing; selecting a numeric domain or local control partition cannot supply a universal join certificate.",
+        "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-array-const.i",
+        "task_yaml": "c/pthread-race-challenges/thread-join-array-const.yml"
+      }
+    ],
+    "existing_prototypes": {
+      "A": {
+        "kind": "stable AI interval/congruence address pair exclusion",
+        "code": "analyzer/include/ikos/analyzer/analysis/pair_exclusion.hpp:16,109; analyzer/src/checker/data_race.cpp:1366",
+        "safe_contract": "UNSAT ranges over all independent overapproximated offsets, not bounded traces; singleton same global object, width and stable coverage required; SAT only abstract overlap"
+      },
+      "B": {
+        "kind": "query-model-selected numerical-domain portfolio",
+        "code": "scripts/ai_feedback.py:179-224",
+        "mechanism": "One immutable frontend result, interval baseline; interior abstract offset model selects interval-congruence; entirely new analyzer process/DB, recompute verdict",
+        "not_actual_bmc_feedback": true
+      },
+      "historical_evidence": {
+        "path": "docs/artifacts/ai-precision-2026-10-11/feedback-corpus/summary.json",
+        "date": "2026-10-11",
+        "tasks": 1029,
+        "strong_query_sat": 1240,
+        "strong_query_unsat": 0,
+        "guided_retries": 7,
+        "guided_added_tn": 0,
+        "warning": "Different historical analyzer/baseline TN661/TP106; not a new experiment on current TN687/TP109. Native exclusions are 16834 but remove no additional whole-task UNKNOWN. Timing is single round and cannot establish speedup."
+      }
+    },
+    "implementation_constraints": [
+      {
+        "code": "analyzer/include/ikos/analyzer/analysis/value/abstract_domain.hpp:61-82",
+        "fact": "Data and Lockset are orthogonal DomainProduct2 components; current memory partitioning cannot retain a branch-dependent lock/value pair."
+      },
+      {
+        "code": "analyzer/src/analysis/value/abstract_domain.cpp:90-123",
+        "fact": "Optional PartitioningDomain wraps ValueAbstractDomain; numerical domain is independently configurable."
+      },
+      {
+        "code": "core/include/ikos/core/domain/memory/partitioning.hpp:56-104,246-286,378-425,490-521",
+        "fact": "Partitions use one integer variable and disjoint intervals; joins preserve non-overlapping bins, incompatible partition keys merge; widening has conservative collapse cases. A stable finite selector and bounded partitions are natural first scope."
+      },
+      {
+        "code": "analyzer/include/ikos/analyzer/analysis/execution_engine/numerical.hpp:3422-3438",
+        "fact": "Existing set_variable/join/disable consumers operate only on data.normal(). A metadata-driven hook could reuse this without injecting a program assume."
+      },
+      {
+        "code": "core/include/ikos/core/domain/concurrent_global_env.hpp:198-213,215-230",
+        "fact": "Global numeric interference is flat interval and lock-indexed interval summaries; changing local numeric domain does not automatically make interference relational."
+      },
+      {
+        "code": "analyzer/src/analysis/value/thread_modular.cpp:365-439,572-592",
+        "fact": "Reanalyzes thread functions, joins exit summaries, flushes all partitions until shared summaries are stable; dirty final checking replay emits UNKNOWN. Feedback reanalysis must run this entire outer fixed point afresh."
+      },
+      {
+        "code": "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp:1485-1529",
+        "fact": "Currently exports detailed selected model only on SAT; UNSAT only returns BoundedUnsat/diagnostic. A reusable rejection dependency payload is not currently available and must be designed; do not claim it already exists."
+      }
+    ],
+    "one_conditional_pilot": {
+      "name": "Candidate-dependency-guided local data partition selection",
+      "status": "Conditional research design. Current15 not admitted. Synthetic seed is mathematical diagnostic only and has not been compiled or run in this review.",
+      "admission": [
+        "Locate one actual AI candidate with complete object, width, API, activation and interference coverage; record stable incoming states and the join where a concrete local correlation is lost.",
+        "On exactly the same source/AR, BMC has encoded the relevant finite local paths completely enough to expose the controlling assignments/guards. Its UNSAT only supplies a selection hint; SAFE must later come from fresh AI.",
+        "Partition selector is an immutable, thread-local integer across an acyclic region and every value/prefix is covered; no shared-load value, escaped local, heap ownership, branch-specific lockset or unbounded writer history is assumed.",
+        "Confirm compiler has not optimized away the seed loss; if it has, reject the C illustration as an experimental seed, use an explicit AR domain fixture for mechanics and continue searching actual tasks."
+      ],
+      "feedback_payload": {
+        "kind": "LocalPartitionHint (advisory, no proof authority)",
+        "identity": "source/bitcode/AR hashes; data layout; semantic configuration; stable function/basic-block/statement IDs and SSA definition IDs, never process pointers",
+        "origin": "candidate ID plus bounded query outcome, bound/completeness/unsupported flags, exact data/control backward dependency statements",
+        "suggestion": "one local integer selector, definition point, bounded region ending after relevant guard/access, suggested finite bins, fallback complement bin; inferred relation explicitly marked hypothesis",
+        "invalidation": "discard on hash/config/type/definition mismatch or unsupported shared/escape dependency; hint never persists as a MUST fact or environment constraint"
+      },
+      "consumer": "New analysis policy side table consumed before transfer to call existing partitioning_set_variable; same immutable program IR, fresh Context/ConcurrentGlobalEnv/DB and full outer AI fixed point. Join/disable after region. No formula is injected as assume and no candidate is deleted because of BMC UNSAT. Install selector after definition and BEFORE relevant branch/lossy merge. partitioning_set_variable cannot reconstruct already-lost correlation; fresh branch transfers and join build partitions.",
+      "budget": {
+        "max_retry_rounds": 1,
+        "max_selectors_per_function": 1,
+        "max_partitions": 4,
+        "region": "one acyclic local dependency cone, no recursive/cyclic selector lifetime",
+        "fallback": "Merge partitions by join or disable and retain initial UNKNOWN on budget/timeout/failure. Extra complement required unless source AI proves exhaustive finite values. Count all diagnostics/reanalysis in end-to-end budget.",
+        "partition_representation": "Existing domain requires disjoint integer interval pieces. Count every complement piece toward four. First diagnostic uses unsigned selector restricted to0..2; otherwise collapse by join if exhaustive pieces exceed cap."
+      },
+      "correctness_obligations": [
+        "Every split covers its input, and the analysis covers all real initial states and executions. Refined invariants need not cover the old convex hull of spurious states. Exhaustively represent complements or conservatively join/collapse.",
+        "Each transfer, join and widening remains sound in fixed partitioned domain. Selector redefinition, forget, casts, exceptions and function returns must conservatively update/collapse partitions.",
+        "Initial states, all local edges, all spawned entry contexts and every possible environment write are recomputed; current global summary is not filtered by the hinted finite trace.",
+        "All partitions publish interference including exits without unlock. Shared boards and dependent facts participate in dirty/fixpoint protocol; final checks use stable summaries.",
+        "Finite bins, fixed policy during each analysis and existing per-bin widening give a termination argument. One finite retry prevents endless adaptive refinement.",
+        "No value/lock correlation is inferred from Data-only partitioning; consumer initially targets unreachable local guard -> removed access only.",
+        "Unknown calls, missing object/lifetime coverage and unmatched threads keep UNKNOWN regardless of apparently precise local states."
+      ],
+      "synthetic_diagnostic": {
+        "c_illustration": "extern unsigned __VERIFIER_nondet_uint(void);\nint shared;\nvoid *worker(void *arg) {\n  unsigned b = __VERIFIER_nondet_uint();\n  if (b > 2) return 0;\n  unsigned x, y;\n  if (b == 0) { x = 0; y = 0; }\n  else if (b == 1) { x = 1; y = 2; }\n  else { x = 2; y = 1; }\n  if (x == 1 && y == 1) shared = 1;\n  return 0;\n}\n/* main: create worker once, write shared=2, join worker; checked pthread contracts. */\n",
+        "exact_states": "At merge (b,x,y) are (0,0,0), (1,1,2), (2,2,1). Guard x==1 && y==1 is infeasible, but separate intervals x,y in[0,2] and a convex hull permit(1,1); scalar congruences are both TOP. Three b partitions keep constants and eliminate guard.",
+        "positive_expected": "After proving current unpartitioned IR actually warns, requested partitioned AI should eliminate unreachable worker write and return SAFE. No claim this verdict change already happened.",
+        "racy_control": "Change b==2 branch from x=2,y=1 to x=1,y=1; now worker write is reachable and may race with main write. Refinement must retain may/race and must not return SAFE.",
+        "wrong_feedback_cases": [
+          "Omit b==2 from suggested bins: consumer must add complement/merge or reject; racy control stays reachable.",
+          "Suggest unrelated local q: may only lose efficiency/precision, never drop states or fabricate SAFE.",
+          "Change source or reuse a stale statement/SSA ID: reject hint.",
+          "Use selector loaded from shared state or escaped memory: reject in first scope; do not freeze sampled value against interference.",
+          "Budget zero or interval grows outside enumerated values: disable/merge and keep complete coverage."
+        ],
+        "variants": "Renamed variables, reordered branches, constants widened to u64, extracted pure helper if already modeled, and repeated same worker instances; no filename-based policy."
+      },
+      "comparison_to_portfolio": [
+        "Control1: same base AI and BMC, feedback off.",
+        "Control2: unconditional interval-congruence / DBM / existing relational domain using same IR and resource limit; if it matches gain more cheaply there is no case for new feedback.",
+        "Control3: unconditional local partitioning and syntax/dependency-only selector heuristic without BMC; this isolates value of solver guidance from generic path sensitivity.",
+        "Control4: BMC query run but hint discarded, to charge query cost and isolate consumer effect.",
+        "Guided mechanism must demonstrate fewer selected regions/cost at equal precision or new precision not explained by stronger-domain portfolio; artificial seed alone cannot establish research contribution."
+      ],
+      "exit_gates": [
+        "No-go now for claiming actual feedback benefit on15: prerequisite semantic gaps dominate and no measured merge-loss cause exists.",
+        "After semantic work, inspect same tasks and, if necessary, remaining safe-label UNKNOWNs once for explicit merge-loss candidates; do not launch broad new feedback algorithm before one is admitted.",
+        "Proceed with exactly one pilot only after actual loss is captured. Require positive/racy/wrong-feedback controls, complete fixed-point checks, mechanism ablations, at least one real task and separate held-out related tasks before any general benefit claim.",
+        "If benefit only appears in synthetic seed, or unconditional domain/partition heuristic dominates, record negative research result and stop this pilot; keep AI->BMC work as current supported direction."
+      ]
+    },
+    "paper_basis": [
+      {
+        "title": "Using Bounded Model Checking to Focus Fixpoint Iterations",
+        "doi": "10.1007/978-3-642-23702-7_27",
+        "file": "/home/ruan/ikos-work/strategic-design-20261013/sources/path-focusing.pdf",
+        "read": "Sections3.1-3.4, PDF pp6-10",
+        "specific": "Reduced graph contains all paths between cutpoints and cuts every cycle; SMT finds a path escaping current abstract postcondition; correctness/termination follows complete closure and widening. This is not arbitrary bounded race UNSAT.",
+        "transfer_limit": "Local dependency selection is inspired by solver-guided precision choice, but this pilot is not an implementation of their full path-focusing algorithm; concurrency closure still requires separate semantics.",
+        "pdf_sha256": "2e4bf820c6edb2ae86124787ba03f82e98a410b6b1f69d32982be242fca1f8e8"
+      },
+      {
+        "title": "Data Race Detection by Digest-Driven Abstract Interpretation (author extended version)",
+        "doi": "10.1007/978-3-032-15700-3_15",
+        "file": "/home/ruan/ikos-work/strategic-design-20261013/sources/digest2026.pdf",
+        "read": "Section3, PDF pp7-9; section5.1 Remark3, PDF p15 (immediately before section5.2).",
+        "specific": "Digest transfer must overapproximate trace compatibility, preserve spawn/initial effects and admissibility. Race exclusion predicate differs from interference compatibility: sharing a held lock can exclude simultaneous races but cannot reject protected writer->reader interference.",
+        "transfer_limit": "Current lockset bookkeeping is not certified full digest framework. Do not add sampled writer incompatibility facts or call Data-only partitions digest refinement.",
+        "pdf_sha256": "489c895dd74e6aab1528369fa88403dce705916d15f885a6bfda1a24dbf91fc9"
+      },
+      {
+        "title": "Static Analysis of Run-Time Errors in Embedded Real-Time Parallel C Programs",
+        "doi": "10.2168/LMCS-8(1:26)2012",
+        "file": "/home/ruan/ikos-work/strategic-design-20261013/sources/mine2012.pdf",
+        "read": "Section3.3, Fig12/13, equation3.6 and Theorem3.3, PDF pp15-17",
+        "specific": "Abstract transfers overapproximate environments and generated interference; outer widening recomputes all threads until interference stabilizes. Local relationality alone does not restore relations lost in interference abstraction.",
+        "pdf_sha256": "5ec9df3d588bcf46bb37c6675b08456955d13fc39b3eb0ec02a2e1a87b77bd5a"
+      }
+    ],
+    "new_runs": [],
+    "not_claimed": [
+      "No new TRUE/FALSE result",
+      "No implementation of full CEGAR/digest/path focusing",
+      "No feedback-derived invariant accepted as a safety proof",
+      "No new benchmark evidence or speedup",
+      "No claim that15 remaining tasks cannot eventually benefit after their semantic prerequisites are implemented"
+    ]
+  },
+  "semantic_calibration": {
+    "dartagnan_source": [
+      {
+        "path": "dartagnan/src/main/java/com/dat3m/dartagnan/program/processing/MemoryAllocation.java",
+        "url": "https://api.github.com/repos/hernanponcedeleon/Dat3M/contents/dartagnan/src/main/java/com/dat3m/dartagnan/program/processing/MemoryAllocation.java?ref=7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+        "sha256": "e04b08205f5582078e903f095417d04b385628902fb5d7193fcdf0d3fc9b2ab5",
+        "status": "read"
+      },
+      {
+        "path": "dartagnan/src/main/java/com/dat3m/dartagnan/encoding/WmmEncoder.java",
+        "url": "https://api.github.com/repos/hernanponcedeleon/Dat3M/contents/dartagnan/src/main/java/com/dat3m/dartagnan/encoding/WmmEncoder.java?ref=7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+        "sha256": "c1f98a3eb6b62ca2df5f0cd23d8ab8bf5982d9719df3f2dc8d08bfd1170b9049",
+        "status": "read"
+      },
+      {
+        "path": "dartagnan/src/main/java/com/dat3m/dartagnan/program/processing/Intrinsics.java",
+        "url": "https://api.github.com/repos/hernanponcedeleon/Dat3M/contents/dartagnan/src/main/java/com/dat3m/dartagnan/program/processing/Intrinsics.java?ref=7caef5c850dc2dbf81c5554dcf41e402007f7a19",
+        "sha256": "cae94525cde4d4e9ecdb780ce9788d9c90661de9e97b873ca644b3f1ffc8579b",
+        "status": "read"
+      }
+    ],
+    "llvm_language_reference": {
+      "url": "https://github.com/llvm/llvm-project/blob/llvmorg-14.0.6/llvm/docs/LangRef.rst",
+      "sha256": "9a75bbbd50a9f875e6bebcee34398dd037b882fd2aaf38865aafe8f6420c0e80",
+      "sections": [
+        "noundef",
+        "memory model uninitialized bytes"
+      ]
+    },
+    "llvm_compile_checks": [
+      {
+        "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_24-malloc_races.c",
+        "bits": 32,
+        "command": [
+          "/home/ruan/ikos-conc/install/llvm/bin/clang",
+          "-S",
+          "-emit-llvm",
+          "-O0",
+          "-m32",
+          "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_24-malloc_races.c",
+          "-o",
+          "/home/ruan/ikos-work/strategic-design-20261013/llvm-check/02-base_24-malloc_races-32.ll"
+        ],
+        "returncode": 0,
+        "error": "",
+        "printf_calls": [
+          "%11 = call i32 (i8*, ...) @printf(i8* noundef getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 noundef %10)",
+          "%15 = call i32 (i8*, ...) @printf(i8* noundef getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 noundef %14)"
+        ],
+        "source_sha256": "f90c032cad43da2fb4e0b7a9fd7f3200ca1c4adf3f239f2d78774392ccecc031",
+        "llvm_sha256": "9c3a0d09fea06f352c0c249b98383a6bb944765475e401f1ea342eac312e1125"
+      },
+      {
+        "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_24-malloc_races.c",
+        "bits": 64,
+        "command": [
+          "/home/ruan/ikos-conc/install/llvm/bin/clang",
+          "-S",
+          "-emit-llvm",
+          "-O0",
+          "-m64",
+          "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_24-malloc_races.c",
+          "-o",
+          "/home/ruan/ikos-work/strategic-design-20261013/llvm-check/02-base_24-malloc_races-64.ll"
+        ],
+        "returncode": 0,
+        "error": "",
+        "printf_calls": [
+          "%11 = call i32 (i8*, ...) @printf(i8* noundef getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i64 0, i64 0), i32 noundef %10)",
+          "%15 = call i32 (i8*, ...) @printf(i8* noundef getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i64 0, i64 0), i32 noundef %14)"
+        ],
+        "source_sha256": "f90c032cad43da2fb4e0b7a9fd7f3200ca1c4adf3f239f2d78774392ccecc031",
+        "llvm_sha256": "c04a571a7e3e7f40b7a174d251315fba98678cb339529a3d7bee0de8165aaf65"
+      },
+      {
+        "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_25-malloc_race_cp.c",
+        "bits": 32,
+        "command": [
+          "/home/ruan/ikos-conc/install/llvm/bin/clang",
+          "-S",
+          "-emit-llvm",
+          "-O0",
+          "-m32",
+          "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_25-malloc_race_cp.c",
+          "-o",
+          "/home/ruan/ikos-work/strategic-design-20261013/llvm-check/02-base_25-malloc_race_cp-32.ll"
+        ],
+        "returncode": 0,
+        "error": "",
+        "printf_calls": [
+          "%13 = call i32 (i8*, ...) @printf(i8* noundef getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 noundef %12)",
+          "%17 = call i32 (i8*, ...) @printf(i8* noundef getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 noundef %16)"
+        ],
+        "source_sha256": "5c24865639a0fb6385d87b52f972ca15b09ce8699a47a6e19f8c040c7561a77b",
+        "llvm_sha256": "4d314a0e85a68b1e8d9a63c225f3d8812258f55a1d202ffc0646f0c00afb0938"
+      },
+      {
+        "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_25-malloc_race_cp.c",
+        "bits": 64,
+        "command": [
+          "/home/ruan/ikos-conc/install/llvm/bin/clang",
+          "-S",
+          "-emit-llvm",
+          "-O0",
+          "-m64",
+          "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_25-malloc_race_cp.c",
+          "-o",
+          "/home/ruan/ikos-work/strategic-design-20261013/llvm-check/02-base_25-malloc_race_cp-64.ll"
+        ],
+        "returncode": 0,
+        "error": "",
+        "printf_calls": [
+          "%13 = call i32 (i8*, ...) @printf(i8* noundef getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i64 0, i64 0), i32 noundef %12)",
+          "%17 = call i32 (i8*, ...) @printf(i8* noundef getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i64 0, i64 0), i32 noundef %16)"
+        ],
+        "source_sha256": "5c24865639a0fb6385d87b52f972ca15b09ce8699a47a6e19f8c040c7561a77b",
+        "llvm_sha256": "0a00ea43327c606edcd3a7e4c2f507cb2fb1023ec6c80dd83d351a992ddde011"
+      },
+      {
+        "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_26-malloc_struct.c",
+        "bits": 32,
+        "command": [
+          "/home/ruan/ikos-conc/install/llvm/bin/clang",
+          "-S",
+          "-emit-llvm",
+          "-O0",
+          "-m32",
+          "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_26-malloc_struct.c",
+          "-o",
+          "/home/ruan/ikos-work/strategic-design-20261013/llvm-check/02-base_26-malloc_struct-32.ll"
+        ],
+        "returncode": 0,
+        "error": "",
+        "printf_calls": [
+          "%12 = call i32 (i8*, ...) @printf(i8* noundef getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 noundef %11)",
+          "%17 = call i32 (i8*, ...) @printf(i8* noundef getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 noundef %16)"
+        ],
+        "source_sha256": "35c5c2f16af42b98b1ab7b41b9d586c18e7bed3d8d4b2db75e06bb8de929769e",
+        "llvm_sha256": "a52c3b0d733e418909f8476eb4ace0bab01e985ec54053dcbd597273be0eb85d"
+      },
+      {
+        "source": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_26-malloc_struct.c",
+        "bits": 64,
+        "command": [
+          "/home/ruan/ikos-conc/install/llvm/bin/clang",
+          "-S",
+          "-emit-llvm",
+          "-O0",
+          "-m64",
+          "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_26-malloc_struct.c",
+          "-o",
+          "/home/ruan/ikos-work/strategic-design-20261013/llvm-check/02-base_26-malloc_struct-64.ll"
+        ],
+        "returncode": 0,
+        "error": "",
+        "printf_calls": [
+          "%12 = call i32 (i8*, ...) @printf(i8* noundef getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i64 0, i64 0), i32 noundef %11)",
+          "%17 = call i32 (i8*, ...) @printf(i8* noundef getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i64 0, i64 0), i32 noundef %16)"
+        ],
+        "source_sha256": "35c5c2f16af42b98b1ab7b41b9d586c18e7bed3d8d4b2db75e06bb8de929769e",
+        "llvm_sha256": "7670c495c7f5c175a67f81e6eb9e6bd3a5f1b0991cd9b9e75ced8161e3390905"
+      }
+    ],
+    "qualification": "Standalone clang14 -O0 emitted-IR check, not an additional analyzer run or reproduction of full frontend pipeline.",
+    "controls": "docs/artifacts/bmc-m3-2026-10-13/initial-controls.json"
+  },
+  "adopted_review_corrections": [
+    "Constraints preserve SAT-model validity conditionally; E=>F is sufficient for all-model preservation, not necessary for equisatisfiability or a timing guarantee.",
+    "Legacy search order must be preserved globally before occurrence alternatives, not only within one group.",
+    "Activation only supplies a searchable prefix; full race constraints and concrete replay still required.",
+    "Joined-child extension needs main/worker targets plus distinct auxiliary traces, not just worker/worker startup.",
+    "AI join proof concerns all executions reaching continuation, not global child termination.",
+    "Set partition selector before lossy merge; API does not reconstruct correlation.",
+    "Count disjoint integer interval complement pieces; merge on cap.",
+    "Refined analysis covers actual behavior, not necessarily the previous spurious abstract hull."
+  ],
+  "validation": {
+    "source_yaml_hashes_checked_racy": 33,
+    "source_yaml_hashes_checked_safe": 15,
+    "llvm_checks": 6,
+    "new_analyzer_runs": 0,
+    "new_full_sweeps": 0,
+    "remote_mutations": 0,
+    "local_document_links_checked": 586,
+    "broken_local_document_links": 0,
+    "code_fingerprints_unchanged": true,
+    "build_install_identical": true,
+    "diff_whitespace_check": "passed"
+  },
+  "not_done": [
+    "M3 semantic changes or complete126-source disposition pass",
+    "Independent C-to-AR translation proof or official witness acceptance",
+    "Systematic exhaustive novelty search or reproduction of reference-paper experiments",
+    "M6 concrete pilot compilation/analysis or real-task admission"
+  ]
+}
