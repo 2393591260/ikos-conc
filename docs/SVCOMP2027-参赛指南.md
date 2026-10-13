@@ -1,7 +1,7 @@
 # SV-COMP 2027 参赛指南
 
 本文统一维护注册、归档、runner 与 witness 验收。**官网日期及部分 GitLab 状态于 2026-10-11 复核**；
-2026-10-12 已按 BenchExec PR 审查修改本地接口并验收新候选；远端合并/上传状态仍须单独核对。
+2026-10-13 已核对新版 ZIP 公开发布及 BenchExec 15 项 CI 全部通过；两边提交尚未合并。
 旧 ZIP 和历史 validator 保留各自日期，未当作今日验收。
 外部要求和状态须在操作前重新确认。
 本地分析能力与最新基线见 [阅读入口](README.md#baseline)，不能用旧 ZIP 的成功检查替代新版本验收。
@@ -42,8 +42,8 @@ submission 页面已不要求另开 category-structure MR；类别仍需在 FM-T
 
 | 提交 | 最近实际观测 | 下一次须核对 |
 | --- | --- | --- |
-| [FM-Tools !1147](https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/merge_requests/1147) | 10/11：opened；失败 jobs 为 `stuck_pending_no_matching_runners`，smoke 跳过 | runner 恢复后的实际日志、是否合并；当前不能判为工具失败或通过 |
-| [BenchExec #1324](https://github.com/sosy-lab/benchexec/pull/1324) | 10/12 API：open，head `2393591260/benchexec:main`，`f9e49429`；收到接口/可移植性审查 | 本地修改与新 ZIP 已准备，须更新现有 fork 分支、Zenodo 文件并重新检查 CI/review；本地通过不等于远端接受 |
+| [FM-Tools !1147](https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/merge_requests/1147) | 10/13：opened，`ci_must_pass`；仍是 10/9 创建的 failed 流水线，历史失败 jobs 为无 matching runner | 请维护者使用新 ZIP 重新下载/重建并跑 CI；实际 smoketest 及合并仍待确认 |
+| [BenchExec #1324](https://github.com/sosy-lab/benchexec/pull/1324) | 10/13：open，head `1b0c957b`，15 项 checks 全部 completed/success | 回复审查意见，请 reviewer 复审并合并；CI 成功不等于已合并 |
 | [schema !1112](https://gitlab.com/sosy-lab/benchmarking/fm-tools/-/merge_requests/1112) | 已于 UTC 10/10 20:46 合并（上海 10/11 04:46） | 用合并后的 schema 校验本地和远端；不再等待该 MR |
 | category-structure !677 | 当时未取得其状态 | 已有 MR 是否需调整由组织者确认；它不再是当时页面必需的新提交 |
 
@@ -79,6 +79,8 @@ race/safe smoke 通过。记录见
 [逐任务配对](artifacts/svcomp-pr1324-2026-10-12/packaged-paired.json)。
 全量后仅调整 adapter 的 import 排序与 Ruff 格式；独立 import 集与其余 AST 一致，
 保留运行时 adapter 源码指纹，最终版本的单测及官方接口测试重新检查。
+原复制配置的本地 Ruff 检查未覆盖完整 BenchExec 包布局，后续已复现并修正 CI 的 I001；
+10/13 公开 PR 的 Perform linting/Code format 及其他共 15 项 checks 全部成功。
 
 以下保留 **10/11 M1 历史候选** 的验收，不能作为 10/12 新归档的身份记录。
 本地 adapter 的真实 BenchExec 接口测试 5 组通过，`test_tool_info` 确认包根定位与搬运路径；
@@ -108,16 +110,21 @@ Jan Strejček 的 10/9 回复明确：**10/12 前所需注册动作已完成；D
 归档身份见 [archive.json](artifacts/svcomp-pr1324-2026-10-12/archive.json)。
 该包包含当前已验收 M2 基线（TP109/TN687），不是旧 M1 的 TN678 二进制；旧 ZIP 保留。
 
+**10/13 公开发布已确认：** 用户通过 Zenodo 官网完成替换。
+公开记录仍为 `10.5281/zenodo.23122650`，附件 `ikos-conc.zip` 为 `163309116` bytes、
+`md5:20de8b1b24a738c6ea1ce027a45d5b19`，与本地归档指纹一致；
+记录更新时间为 UTC 10/13 00:44:14（上海 08:44:14）。这是公开 API 元数据核对，
+未重复下载整个 ZIP。archive.json 的远端操作 false 标志描述 10/12 打包时代理未执行上传/PR 写入，
+不表示用户今日的公开发布未完成。
+
 用户后续操作：
 
-1. 在已有 [BenchExec PR #1324](https://github.com/sosy-lab/benchexec/pull/1324) 的
-   `2393591260/benchexec:main` 分支，用本地 `benchexec/tools/ikos-conc.py` 更新同名文件，
-   不开新 PR；等待 Ruff、测试及 reviewer 复核。
-2. 将 IKOS-ConC 本地提交推送到公开源码分支，让 BUILD-INFO 的 `7329e4b` 可取得。
-3. 在原 Zenodo 记录 `23122650` 的 Edit files 草稿替换工具文件；上传文件名仍为
-   `ikos-conc.zip`，使用上述新归档，完成草稿保存/发布后核对公开文件校验和。
-   本轮没有创建新版本或写入远端。FM-Tools 条目的 DOI/版本/类别没有因本次接口修复改变。
-4. 通知现有 FM-Tools MR 中的新包校验和并重跑/请求重跑 CI，以排除同 DOI 的旧镜像缓存。
+1. 现有 [BenchExec PR #1324](https://github.com/sosy-lab/benchexec/pull/1324) 已更新且 CI 成功；
+   如尚未回复，逐条回应审查意见并请求 reviewer 复审合并。
+2. 将 IKOS-ConC 本地提交推送到公开源码分支，让 BUILD-INFO 的 `7329e4b` 可取得；
+   10/13 GitHub 按该完整 SHA 查询仍返回 422，尚未找到对应公开提交。
+3. ZIP 发布和公开指纹核对已完成。现有 FM-Tools 条目的 DOI/版本/类别没有因本次修复改变。
+4. 在现有 FM-Tools MR 通知新包已公开，并请求重新下载、重建镜像和重跑 CI，以排除同 DOI 的旧缓存。
    descriptor 文件无需仅为这次 adapter 修复改字段，但 CI 必须实际验证新包。
 
 可用现有上传脚本（token 隐藏输入，不在命令或消息中提供）：
