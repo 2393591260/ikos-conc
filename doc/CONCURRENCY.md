@@ -69,6 +69,19 @@ nonzero without emitting an analysis verdict.
 Registration metadata is in [fm-tools-entry.yml](../svcomp/fm-tools-entry.yml),
 and the archive builder is [package.py](../svcomp/package.py).
 
+Before updating the registration, install the FM-Tools checker dependencies in an
+isolated environment and run the official checks through the local helper:
+
+```bash
+python3 -m pip install -r /path/to/fm-tools/ci/requirements.txt
+python3 svcomp/check-fm-entry.py --fm-tools /path/to/fm-tools
+```
+
+The helper checks LF line endings, formatting, sorting, and the 2027 registration
+rules without modifying the entry. Use `--entry FILE` to check the file downloaded
+from the submitted MR as well; a local pass does not verify the uploaded bytes or
+the official archive smoke test.
+
 ## Code navigation
 
 | Component | Source |
