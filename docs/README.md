@@ -23,9 +23,9 @@
 <a id="baseline"></a>
 ## 当前可复核基线
 
-以下是 **2026-10-12 只读指针数组机制的全量配对实验**；源码与证据在该机制的单独提交中。
+以下是 **2026-10-13 M3.0 分因素开关的全量配对实验**；默认分析结果与此前基线逐项一致。
 安装二进制 SHA256 为
-`10bad24bc789fe8fbd515e2713f4d352cdcbadc3b20c5eca7f3f1ad08df722a5`。
+`dd68ce473f87f9c8def006d369be48b639edfca7b442a416077d5568f4adb9a2`。
 
 任务集合为 `/home/ruan/sv-benchmarks-2026`，revision
 `0a254fdddcfe24949be9edd47f8d609462eb52fb`，本地扫描 1029 项、全部 ILP32，
@@ -42,7 +42,11 @@
 不认证全部 SAFE 规则，也不穷尽所有 SAT 模型。
 有限基准 FP/FN 为零不能作为全语言 soundness 定理。
 
-本轮只读指针数组投影恢复两组最小正例的双架构 SAFE；冻结集逐任务判定不变。
+M3.0 修正消融范围、拆分开关与计数，没有新增 TP/TN；双架构80次定向检查通过，
+当前109项137条所选执行重新AR ACCEPT。证据：[汇总](artifacts/bmc-m3-2026-10-13/facts/summary.json)、
+[全量配对](artifacts/bmc-m3-2026-10-13/facts/paired.json)、
+[执行检查](artifacts/bmc-m3-2026-10-13/facts/selected-executions.json)。已发布ZIP保持原版本。
+此前只读指针数组投影恢复两组最小正例的双架构 SAFE；冻结集逐任务判定不变。
 前一轮首次发布证书恢复 `09-regions_02-list_nr.c`；通用 heap/region 与生命周期证明仍未完成。
 原始 `arraylist` 的内层 heap 访问仍触发 coverage gate，不能计作新增 TN。
 证据：[汇总](artifacts/ai-precision-2026-10-12/readonly-array/summary.json)、
@@ -59,13 +63,13 @@
   [本轮 24 项处置](artifacts/ai-precision-2026-10-12/readonly-array/dispositions-24.json)给出具体前提/缺口；
   [安全台账](artifacts/ai-precision-2026-10-11/unknown-ledger/ledger.json)保存当前判定和历史诊断指纹。
   M2 第一版已按阶段出口完成；TN 余项见 [AI 阶段出口与缺口](ikos-ai-complete.md#m2-exit)。
-- 竞争 UNKNOWN 126 项，历史 Dartagnan 参考为 FAIL 95、TIMEOUT 15、ERROR 13、有界 PASS 3。
+- 竞争 UNKNOWN 126 项，10/13 新 Dartagnan 参考为 FAIL 96、TIMEOUT 14、ERROR 13、PASS 3，
+  见[完整参考记录](artifacts/bmc-m3-2026-10-13/reference-complete/summary.json)。FAIL不是IKOS执行验收。
   [混合历史台账](artifacts/bmc-v1-final-2026-10-10/unknown-results.json)同时含安全和竞争任务，
   看 `current_bmc`/`current_ai` 字段及标签筛选，不能把全部 227 行称为竞争池或新参考运行。
   TP 工作入口为 [BMC 后续机制](ikos-bmc-complete.md#roadmap)。
   10/13 已固定 [M3 输入/hash](artifacts/bmc-m3-2026-10-13/baseline.json)，完成 126 项新 IKOS
-  诊断；新参考有 125 份有效结果、一份中断，见 [准备记录](artifacts/bmc-m3-2026-10-13/setup-summary.json)。
-  实现现按用户要求暂停，先完成下述设计审查；没有新 TP/TN 成绩。
+  诊断；准备阶段中断的一项已经单独补跑。设计审查和M3.0完成，继续M3.1实现。
 - 已有 AI→BMC 的能力及局部查询减少证据；真正 BMC→AI 归纳精化、
   整体优于参考工具及大幅提速仍需验证。
 
@@ -114,7 +118,7 @@ M3 每批固定一个语义桶及入口清单，先复核 Dartagnan，再决定�
 | 顺序/所属节点 | 已形成的决策 | 恢复实施后的结束节点 |
 | --- | --- | --- |
 | 1：M0/M2/M3 合同 | 区分搜索提示、附加约束、定义性/生命周期证书、SAFE 排除；补清 AR 检查的可信边界 | 每项新消费有作用域、前提、失效与反例控制；SAFE dirty 覆盖和新增 FALSE 执行分别验收，见 [架构合同](concurrency-architecture.md#contracts) |
-| 2：M3.0 实验基础 | 当前 facts 总开关同时影响数值优化与 helper 生命周期支持，先拆因素 | 开关范围/计数一致；同能力成本对照与能力对照分开，无判定回退后提交 |
+| 2：M3.0 实验基础（已完成） | 独立数值/生命周期开关与计数，旧总开关保持原范围 | 80次定向、全量配对和137条执行检查通过；分因素210次正式测量，无新增TP/TN |
 | 3：M3.1 创建实例 | 首批选择两个 reorder-10 的真实 `.i`；显式创建 occurrence、完整 startup、未选孩子可暂不调度 | 两项各有验证过的执行或具体下一阻断，通用正反变体/全量配对通过；不靠增加界限宣称机制收益 |
 | 4：M3.2 + TN 专题 | 精确句柄槽来源先行；AI 全实例完成与 BMC 有副作用辅助完成各自实现 | 全 join、漏 join、隔项 join、覆盖句柄四类一起验收；三增量分别提交，详见 [M3 设计](ikos-bmc-complete.md#m3-design) |
 | 并行：M5/M7 | “静态分析加速 BMC”已有先例；论文主问题落在受限 AI 合同如何减少确认工作及其有效性 | 完成近邻差异、保持性义务、同语义消融与独立任务族；无成本收益则据实调整贡献，不预称新颖性，见 [论文设计](ikos-ai-complete.md#publication) |

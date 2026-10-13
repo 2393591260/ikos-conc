@@ -38,19 +38,23 @@ struct Metrics {
   std::uint64_t path_queries = 0, prefix_events = 0, solver_queries = 0;
   std::uint64_t assertions = 0, solver_us = 0, evidence_us = 0;
   std::uint64_t ai_bounds = 0, ai_no_wrap = 0;
+  // Positive pointer-store annotations, not unique functions or publications.
+  std::uint64_t ai_single_execution = 0;
 
   void add(const Metrics& other) {
     path_queries += other.path_queries; prefix_events += other.prefix_events;
     solver_queries += other.solver_queries; assertions += other.assertions;
     solver_us += other.solver_us; evidence_us += other.evidence_us;
     ai_bounds += other.ai_bounds; ai_no_wrap += other.ai_no_wrap;
+    ai_single_execution += other.ai_single_execution;
   }
 
   JsonDict json() const {
     return JsonDict{{"path_queries", path_queries}, {"prefix_events", prefix_events},
       {"solver_queries", solver_queries}, {"assertions", assertions},
       {"solver_us", solver_us}, {"evidence_us", evidence_us},
-      {"ai_bounds", ai_bounds}, {"ai_no_wrap", ai_no_wrap}};
+      {"ai_bounds", ai_bounds}, {"ai_no_wrap", ai_no_wrap},
+      {"ai_single_execution", ai_single_execution}};
   }
 };
 

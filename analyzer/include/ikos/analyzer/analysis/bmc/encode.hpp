@@ -74,7 +74,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       auto* function = store != nullptr ? store->code()->function_or_null() : nullptr;
       if (function != nullptr && function->name() != "main" && store->value()->type()->is_pointer()) {
         event.single_function_execution = facts->single_execution(function);
-        if (event.single_function_execution) record(diagnostics, "ai_single_execution", store);
+        if (event.single_function_execution) {
+          record(diagnostics, "ai_single_execution", store);
+          if (metrics != nullptr) ++metrics->ai_single_execution;
+        }
       }
     }
   }

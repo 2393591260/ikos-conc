@@ -25,7 +25,8 @@ struct Diagnostics {
   void record(const std::string& reason, ar::Statement* stmt = nullptr) {
     ++counts[reason];
     if (first_blocker.empty() && reason != "sat" && reason != "integer_operation" &&
-        reason != "sc_read_from" && reason != "ai_candidate_bounds" && reason != "ai_no_wrap") {
+        reason != "sc_read_from" && reason != "ai_candidate_bounds" && reason != "ai_no_wrap" &&
+        reason != "ai_single_execution") {
       first_blocker = reason;
     }
     if (stmt == nullptr || examples.size() >= 16) {

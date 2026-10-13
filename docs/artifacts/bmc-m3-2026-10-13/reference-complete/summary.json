@@ -1,0 +1,16 @@
+{
+  "tasks": 126,
+  "outcomes": {
+    "FAIL": 96,
+    "ERROR": 13,
+    "TIMEOUT": 14,
+    "PASS": 3
+  },
+  "fail_by_label": {
+    "Race Found": 96
+  },
+  "new_rerun_task": "c/pthread-ext/25_stack_longest-1-race.yml",
+  "new_rerun_outcome": "FAIL",
+  "coverage": "exact frozen126 task IDs, actual input/YAML hashes checked",
+  "note": "Reference FAIL is not validation of an IKOS counterexample; timings are not controlled performance evidence."
+}

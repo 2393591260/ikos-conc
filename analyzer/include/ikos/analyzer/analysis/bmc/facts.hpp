@@ -10,8 +10,9 @@ namespace ikos { namespace analyzer { namespace bmc {
 // bounds: the AccessRecord's may-offset hull, never an equality for shared loads.
 // no_wrap: all observed contexts agree on the interval proof, with pure local
 // SSA sources and shared-independent control (producer in data_race.cpp).
-// Missing bounds/proofs only remove these optimizations; source/alias/lifetime
-// coverage is still checked from the complete chosen prefixes in encode.hpp.
+// Missing bounds adds no constraint; missing no_wrap retains the definedness
+// check. A missing single_execution proof can leave helper publication unsupported.
+// Source/alias/lifetime coverage still requires the complete chosen prefixes.
 struct CandidateFacts {
   std::vector< BmcEvent > startup;
   bool bounded_a = false, bounded_b = false;

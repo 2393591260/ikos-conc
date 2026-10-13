@@ -1,0 +1,128 @@
+{
+  "stage": "M3.0 complete",
+  "date": "2026-10-13",
+  "before_commit": "ffa7550",
+  "before_analyzer_sha256": "10bad24bc789fe8fbd515e2713f4d352cdcbadc3b20c5eca7f3f1ad08df722a5",
+  "analyzer_sha256": "dd68ce473f87f9c8def006d369be48b639edfca7b442a416077d5568f4adb9a2",
+  "build_install_equal": true,
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/bmc/diagnostics.hpp": "2be4b24f09fa377f89416c176d8ce3e754c7a91acd9ef4f5e64ea540d6271158",
+    "analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp": "8a5bb210f15951908959f1d20af3212f263466bacf9392c3f0401876b463df8c",
+    "analyzer/include/ikos/analyzer/analysis/bmc/facts.hpp": "2c2e1c365794c7f77fcc16f929e0fe5ac230bba6268e4f1507b42fed3e72df55",
+    "analyzer/include/ikos/analyzer/analysis/bmc/result.hpp": "eb4ce10535bc6356d47fab6f6127f1ae0fe35a3cb8a2102d410ecea8a6a4710f",
+    "analyzer/src/checker/data_race.cpp": "3b1b6024a9d9a01b65c6bde8c87d850bba4595552df05be7658e347ff2d3b8f5",
+    "scripts/ablate_bmc.py": "223879bc6824ec8812dfb1baade5ab98ba4e21ac9d39e40a21e1640b93a4a45e",
+    "scripts/summarize_unknowns.py": "388ea917292a6e1e19c5a9df41c9a27daea989e2cee1f425d282f20679a2119c",
+    "scripts/test_ablate_bmc.py": "17017bb7ca4614aa7776d6b61b17a811ef2d007848098420e95305ce997e7451",
+    "docs/review-repros/bmc-fact-switches/run.py": "076e615932da4cdec302ad2e01c9c78108871cf6727d42b791a9dc5d37539e8b"
+  },
+  "dataset_revision": "0a254fdddcfe24949be9edd47f8d609462eb52fb",
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "outer_timeout_seconds": 30,
+  "matrix": {
+    "ai": {
+      "TP": 0,
+      "TN": 687,
+      "FP": 0,
+      "FN": 0,
+      "unknown": 341,
+      "error": 1
+    },
+    "bmc": {
+      "TP": 109,
+      "TN": 687,
+      "FP": 0,
+      "FN": 0,
+      "unknown": 232,
+      "error": 1
+    }
+  },
+  "before_matrix": {
+    "ai": {
+      "TP": 0,
+      "TN": 687,
+      "FP": 0,
+      "FN": 0,
+      "unknown": 341,
+      "error": 1
+    },
+    "bmc": {
+      "TP": 109,
+      "TN": 687,
+      "FP": 0,
+      "FN": 0,
+      "unknown": 232,
+      "error": 1
+    }
+  },
+  "transitions": 0,
+  "error_detail": "Same nsc-ircc30s timeout in both modes, both prior and current rawlogs; pairedjson normalizes to historical Error class, details kept in errors.json.",
+  "runs": [
+    {
+      "mode": "ai",
+      "returncode": 0,
+      "seconds": 160.46616530999927,
+      "command": [
+        "python3",
+        "/home/ruan/ikos-conc/svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ],
+      "environment": {}
+    },
+    {
+      "mode": "bmc",
+      "returncode": 0,
+      "seconds": 365.68811559200003,
+      "command": [
+        "python3",
+        "/home/ruan/ikos-conc/svcomp_race_test.py",
+        "--demote",
+        "--jobs",
+        "4",
+        "--timeout",
+        "30"
+      ],
+      "environment": {
+        "IKOS_BMC_RECOVER": "1"
+      }
+    }
+  ],
+  "p0_observations": 20,
+  "p0_identical_to_accepted_baseline": true,
+  "switch_regression_runs": 80,
+  "switch_selected_executions": 40,
+  "switch_all_selected_AR_ACCEPT": true,
+  "script_unit_tests": 5,
+  "selected": {
+    "tasks": 109,
+    "executions": 137,
+    "all_AR_ACCEPT": true
+  },
+  "ablation": {
+    "measured_runs": 210,
+    "warmup_runs": 42,
+    "selected_executions": 205,
+    "repetitions": 5,
+    "cpu_affinity": "0,1,2,3",
+    "conclusion": "Numerical-factor verdicts unchanged on this historical10-input panel. No-wrap helps one synthetic example; bounds has no established general speedup. Single-execution changes helper support and is a capability ablation, not a speed comparison."
+  },
+  "default_fact_and_query_logic_unchanged": true,
+  "frontend_modified": false,
+  "official_source_witness_validation": false,
+  "package_modified": false,
+  "metric_scope": "ai_single_execution counts positive pointer-store annotations in attempted prefixes, not unique functions or successful publication uses.",
+  "reference126_complete": true,
+  "raw_logs": "/home/ruan/ikos-work/m3-implementation-20261013",
+  "limits": [
+    "Finite regression evidence; not full-language soundness.",
+    "AR execution checks trust frontend/snapshot and explicitAPI contracts.",
+    "Cost panel is historical development data; not held-out or globaltool comparison.",
+    "No newTP/TN or M3.1 semantics implemented in this stage."
+  ]
+}

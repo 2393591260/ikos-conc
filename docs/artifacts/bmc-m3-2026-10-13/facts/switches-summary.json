@@ -1,0 +1,48 @@
+{
+  "runs": 80,
+  "data_models": [
+    32,
+    64
+  ],
+  "profiles": {
+    "default": {},
+    "bounds-off": {
+      "bounds": "1"
+    },
+    "no-wrap-off": {
+      "no_wrap": "1"
+    },
+    "numerical-off": {
+      "bounds": "1",
+      "no_wrap": "1"
+    },
+    "lifetime-off": {
+      "single_execution": "1"
+    },
+    "legacy-off": {
+      "master": "1"
+    },
+    "bounds-zero": {
+      "bounds": "0"
+    },
+    "no-wrap-zero": {
+      "no_wrap": "0"
+    },
+    "lifetime-zero": {
+      "single_execution": "0"
+    },
+    "legacy-zero": {
+      "master": "0"
+    }
+  },
+  "analyzer_sha256": "dd68ce473f87f9c8def006d369be48b639edfca7b442a416077d5568f4adb9a2",
+  "verdicts": {
+    "Race Found": 40,
+    "Unknown": 32,
+    "Safe": 8
+  },
+  "selected_executions": 40,
+  "validation": "All reported FALSE selected executions independently AR ACCEPT; not source witness validation",
+  "metric_scope": "ai_single_execution counts successful per-event certificate annotations, not unique functions or required publication uses",
+  "timing_scope": "Regression observations only; no speedup claim"
+}

@@ -159,13 +159,16 @@ no-wrap 证书消费为 0；这是信息流观测，不是因果收益。
 （synthetic展开前）、真正solver queries、累计顶层SMT assertions、solver/evidence微秒和
 消费的bounds/no-wrap数。跨deferred轮次累积结果、失败状态及计数；不是只报最后一轮。
 顶层assertion数量不等于内部AST/bit-vector复杂度，事件数也不是全程序事件数。
-`scripts/ablate_bmc.py`串行运行、交替A/B顺序和三次重复，保留逐项时间、最大RSS与所选
-执行验收。该历史数值消融保留AI SAFE、may候选筛选、typed initializer和真实创建。
-**当前开关范围已扩大**：`data_race.cpp` 在 `IKOS_BMC_DISABLE_AI_FACTS` 存在时还不传
-`single_execution`，可能使 helper 发布变为不支持。`scripts/ablate_bmc.py` 的说明和
-`retained` 字段尚只描述 bounds/no-wrap，不能沿用来声称当前运行是同能力的纯速度消融。
-以下历史数据仍以归档中的二进制为准；下一轮先拆分数值优化与生命周期证书的开关/计数，
-再分别测成本和能力。不将这个事实组开关称为关闭整个IKOS。
+`scripts/ablate_bmc.py`串行运行、交替A/B顺序；以下历史实验为三次重复。
+当前默认五次，`--factor numerical`只关闭bounds/no-wrap，保留helper生命周期能力。
+`--factor bounds|no-wrap|single-execution|all`分别选择因素；旧总开关
+`IKOS_BMC_DISABLE_AI_FACTS`仍关闭全部三项。独立环境开关分别为
+`IKOS_BMC_DISABLE_AI_BOUNDS`、`IKOS_BMC_DISABLE_AI_NO_WRAP`、
+`IKOS_BMC_DISABLE_AI_SINGLE_EXECUTION`；按存在性判断，值为`0`也关闭。
+每对运行清理继承的这四个开关并记录真实环境。保留AI SAFE、may候选筛选、typed
+initializer和真实创建，不能称为关闭整个IKOS。没有非空ACCEPT证据的FALSE使实验失败；
+不同判定/超时保留结果，但不作同能力速度比较。`ai_single_execution`计数是被赋予正证书的
+非main指针Store occurrence数量，包含失败前缀，不是独立函数数或成功发布数。
 
 10输入60次受控运行：7个比赛标签TP、2个UNKNOWN、1个最小正例，A/B判定完全一致，
 所有所选执行AR ACCEPT。局部unsigned-char推广后加1的unused结果，AI证明范围[1,256]
@@ -180,6 +183,13 @@ fib5 0.845/0.871s、NVRAM 2.080/2.077s；没有全项目普遍大幅加速的依
 `/usr/bin/time`测的是报告的maximum RSS，不是整个cgroup合计峰值。
 证据：[ablation-summary](artifacts/bmc-v1-ai-facts-2026-10-10/ablation-summary.json)、
 [逐次结果](artifacts/bmc-v1-ai-facts-2026-10-10/ablation-results.json)。
+
+M3.0新实验固定CPU0–3、串行错峰、每因素五轮交替，42次预热与210次正式测量分列。
+两个数值因素分别在既有10输入面板上判定一致；no-wrap最小例中位端到端0.178s/0.450s
+（开/关），solver3185µs/273086µs。bounds没有建立一般收益。helper发布的生命周期因素
+五对均为FALSE/UNKNOWN，因此记录能力差异、不计算加速。205条正式测量所选执行均AR ACCEPT。
+这是WSL上的开发样本，不是独立任务集、进程树内存计量或普遍提速证明，见
+[分因素记录](artifacts/bmc-m3-2026-10-13/facts/ablation-summary.json)。
 
 **依赖覆盖契约**：AI may-bounds不能替代rf来源。完整选择的startup/A/B前缀中，
 真正执行的store、地址、库控制存储、动态调用/返回、guard和可能trap逐项核对；读取的
@@ -1062,24 +1072,27 @@ TN 的嵌套保护/发布相关性独立见 [AI 后续机制](ikos-ai-complete.m
 <a id="m3-design"></a>
 ### 12.4 M3 实施顺序与设计门槛（2026-10-13）
 
-**状态：设计已审查，以下扩展尚未实现或验证收益。** 固定入口为
+**状态：M3.0已完成；M3.1/M3.2仍待实现验收。** 固定入口为
 [126 个竞争 UNKNOWN](artifacts/bmc-m3-2026-10-13/baseline.json)。新 IKOS 诊断全部仍为 UNKNOWN；
-参考运行留下 125 份有效结果（FAIL 95、ERROR 13、TIMEOUT 14、PASS 3）及一份中断文件，
-不能称 126 项新参考完成。恢复实施时仅补缺失项，并按配置/hash核对后合并。
+参考运行的中断项已单独补跑为FAIL；完整126项为FAIL96、ERROR13、TIMEOUT14、PASS3，
+源/YAML及配置已核对，见[完整记录](artifacts/bmc-m3-2026-10-13/reference-complete/results.json)。
 诊断理由可重叠，76 项含 activation 阻断不等于可恢复 76 TP。本轮对 33 项作了具体源码
 归因，其余还需继续逐项检查；[设计依据](artifacts/strategic-design-2026-10-13/review.json)
 保留实际审查范围。
 
-**M3.0：先隔离证据与开销。** 将 bounds、no-wrap 和 single-execution 的消费分别记录，
-让纯数值消融保持生命周期能力。测试原查询顺序与原支持范围、helper 发布能力对照，
-再跑 [AI 手册的实验矩阵](ikos-ai-complete.md#publication)。这一步不能承诺 TP 增长。
-同时修正 `facts.hpp` 的“缺证明只损失优化”、checker 开头的不同静态语句要求、
-join HB 方向和旧 private-init 注释；这些是本轮已核对的文字滞后，不是新复现的误判。
+**M3.0：隔离证据与开销已验收。** 独立开关、普通结果计数和准确实验范围见§3.1；
+默认事实/查询逻辑保持原行为。build/install同步、80次双架构控制、20条P0、1029项
+AI/BMC配对、109项137条执行检查及5项脚本测试通过。TP109→109/TN687→687，
+FP/FN0，唯一超时未变；没有精度增益。旧注释与消融范围已修正，
+见[验收](artifacts/bmc-m3-2026-10-13/facts/summary.json)。后续优先推进实际UNKNOWN恢复。
 
 **M3.1：明确选中的创建 occurrence，允许额外子线程暂不调度。**
 首个入口为 YAML 指定的 `pthread-deagle/reorder_c11_{bad,good}-10.i`，固定参考两项均 FAIL。
 实际 `.i` 创建 10 个 setter 后再创建 checker；同名 `.c`/header 的参数不同，不能替换输入。
 当前 `conditional_live_threads` 要求 `spawns == required`，因此多余同入口创建会拒绝激活证明。
+基线AR探针还确认创建数组下标来自`load @i`，当前静态创建地址检查拒绝其符号偏移。
+仅改实例选择不足以恢复这两项；优先复用`value_init_`的真实读源/偏移编码，逐个约束
+创建输出的范围、对齐与ABI，保留独立地址检查，不给普通共享Load增加猜测常量分支。
 
 - 首版只支持隐式 main 的完整 startup 与两个 worker。保留全部创建、句柄写入、守卫、
   定义性和库效果；startup 无 join/等待、结束释放全部锁，所有子线程可暂不运行。

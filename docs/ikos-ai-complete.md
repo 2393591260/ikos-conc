@@ -557,8 +557,8 @@ M5 先固定如下实验矩阵，每行只回答一种因果问题：
 | 固定版 Goblint / Dartagnan | 输入/YAML/ABI/性质、机器/总资源；另列实际库/内存语义、配置与内部界限 | 工具能力和实际成本；Goblint may-warning 不算具体 FALSE，参考另一个 FAIL 不核验 IKOS 所选执行 |
 | M6 四类控制 | 同一 IR、环境覆盖、总资源，费用包括重算 | solver 指导是否优于普通强域/语法选区，见上节 |
 
-现有 `IKOS_BMC_DISABLE_AI_FACTS` 还关闭生命周期来源，需先按 [BMC §3.1](ikos-bmc-complete.md#architecture)
-纠正并拆分。没有现成的“完全移除 AI 仍同等功能的 IKOS BMC-only”，不能制造这个基线。
+旧总开关 `IKOS_BMC_DISABLE_AI_FACTS` 还关闭生命周期来源；M3.0已按 [BMC §3.1](ikos-bmc-complete.md#architecture)
+提供独立因素开关并验证范围。没有现成的“完全移除 AI 仍同等功能的 IKOS BMC-only”，不能制造这个基线。
 新机制的能力实验与旧语义下的优化实验分别报告。
 
 先冻结配置和任务族：2026 集已经参与开发，不能重新随机划分后称盲测；2027 新增任务或

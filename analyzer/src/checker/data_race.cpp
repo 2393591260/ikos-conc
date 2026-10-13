@@ -834,7 +834,7 @@ DataRaceChecker::~DataRaceChecker() {
   // Offline pairwise race detection across all logged accesses.
   //
   // Two accesses A and B form a potential race when:
-  //   1. A.stmt != B.stmt                 (different statements)
+  //   1. A and B may be distinct concurrent dynamic instances
   //   2. at least one is a Write          (W/W or W/R)
   //   3. A.pts and B.pts have non-empty intersection
   //   4. A.locks and B.locks have empty intersection
@@ -846,8 +846,8 @@ DataRaceChecker::~DataRaceChecker() {
   //     abstraction: spawned exactly once across the program). The flag
   //     `is_unique_thread` is precomputed when the AccessRecord is logged,
   //     so this destructor never re-enters the global blackboard.
-  //   - If A.joined_threads contains B.thread_id, then B finished before
-  //     A started → HB(A, B) → no race.
+  //   - If A has joined every instance represented by B.thread_id, then
+  //     B terminated before A's continuation: HB(B, A).
   //   - Symmetrically for B.joined_threads contains A.thread_id.
   //
   // Aggregation strategy (IKOS-native): rather than emitting one
@@ -1084,14 +1084,8 @@ DataRaceChecker::~DataRaceChecker() {
     }
   }
 
-  // Pre-pass: mark "private-init" writes (09-regions_02-list_nr.c). An
-  // UNLOCKED write to a SINGLE DynAlloc that the same thread later accesses
-  // while holding exactly ONE lock is an initialization preceding the
-  // object's promotion to a locked/shared state. It happens-before any
-  // locked read of that object by another thread: the promoting lock
-  // serializes the two critical sections, and before promotion the object
-  // is reachable only by its allocating thread (publication is itself a
-  // locked write under that lock).
+  // Legacy private_init annotations do not prove freshness or publication;
+  // their exclusion rule remains disabled. InitPublication proves its own HB.
   InitPublication init_publication(this->_ctx, this->_accesses);
   for (std::size_t i = 0; i < this->_accesses.size(); ++i) {
     AccessRecord& w = this->_accesses[i];
@@ -1941,13 +1935,18 @@ DataRaceChecker::~DataRaceChecker() {
           ++group_attempts;
           --search_budget.candidates;
           bmc::CandidateFacts facts;
-          // Experimental ablation affects BMC value/lifetime facts only. SAFE,
-          // candidate filtering, exact initialization and activation are retained.
-          if (getenv("IKOS_BMC_DISABLE_AI_FACTS") == nullptr) {
+          // Keep the historical master switch; independent factors isolate
+          // numerical costs from helper-publication support.
+          const bool disable_ai_facts = getenv("IKOS_BMC_DISABLE_AI_FACTS") != nullptr;
+          if (!disable_ai_facts && getenv("IKOS_BMC_DISABLE_AI_SINGLE_EXECUTION") == nullptr) {
             facts.single_execution = [&](ar::Function* function) {
               return this->_ctx.concurrent_env.function_executes_at_most_once(function);
             };
+          }
+          if (!disable_ai_facts && getenv("IKOS_BMC_DISABLE_AI_NO_WRAP") == nullptr) {
             facts.no_wrap = &this->_bmc_no_wrap;
+          }
+          if (!disable_ai_facts && getenv("IKOS_BMC_DISABLE_AI_BOUNDS") == nullptr) {
             facts.bounded_a = eff_interval(a, facts.lo_a, facts.hi_a);
             facts.bounded_b = eff_interval(b, facts.lo_b, facts.hi_b);
           }
