@@ -1,0 +1,133 @@
+{
+  "stage": "M3.1 follow-up: deferred main-startup loop hints",
+  "baseline_commit": "ee39097",
+  "before_analyzer_sha256": "45dcc02604b817908085d007d2edda12227056cef246d6d504d6c958dc731fb8",
+  "after_analyzer_sha256": "a20617e281b547f85a60eac4124fd217e1f1f95d56872414bb2da8f1e0dc6823",
+  "tasks": 1029,
+  "data_model": "ILP32",
+  "jobs": 4,
+  "timeout_seconds": 30,
+  "dataset": "/home/ruan/sv-benchmarks-2026",
+  "dataset_revision": "0a254fdddcfe24949be9edd47f8d609462eb52fb",
+  "matrix": {
+    "ai": {
+      "before": {
+        "TP": 0,
+        "FP": 0,
+        "TN": 687,
+        "FN": 0,
+        "unknown": 341,
+        "error": 1,
+        "timeout": 1
+      },
+      "after": {
+        "TP": 0,
+        "FP": 0,
+        "TN": 687,
+        "FN": 0,
+        "unknown": 341,
+        "error": 1,
+        "timeout": 1
+      }
+    },
+    "bmc": {
+      "before": {
+        "TP": 111,
+        "FP": 0,
+        "TN": 687,
+        "FN": 0,
+        "unknown": 230,
+        "error": 1,
+        "timeout": 1
+      },
+      "after": {
+        "TP": 115,
+        "FP": 0,
+        "TN": 687,
+        "FN": 0,
+        "unknown": 226,
+        "error": 1,
+        "timeout": 1
+      }
+    }
+  },
+  "fixtures": {
+    "runs": 20,
+    "phase": "candidate",
+    "analyzer_sha256": "a20617e281b547f85a60eac4124fd217e1f1f95d56872414bb2da8f1e0dc6823",
+    "source_sha256": "9e469e2e139d64c0b09efbc354fbef10acb9d3e7c26cf8766eedb35bf85c0a78",
+    "verdicts": {
+      "Unknown": 14,
+      "Race Found": 6
+    },
+    "selected_executions": 6,
+    "scope": "Bound-guided startup search, not loop termination or a new source of values; all FALSE selected AR executions ACCEPT"
+  },
+  "p0": {
+    "observations": 20,
+    "all_match_previous": true,
+    "analyzer_sha256": "a20617e281b547f85a60eac4124fd217e1f1f95d56872414bb2da8f1e0dc6823",
+    "previous": "facts/p0-observations.json"
+  },
+  "selected": {
+    "task_status_counts": {
+      "all_accepted": 115
+    },
+    "tasks": 115,
+    "tasks_with_selected_evidence": 115,
+    "executions": 143,
+    "status_counts": {
+      "ACCEPT": 143
+    },
+    "reason_counts": {
+      "accepted": 143
+    },
+    "scope": "Concrete AR execution with explicit API contracts; not official C/witness validation",
+    "validator_sha256": "745bd97ad9f3237fda6adb02dd810706007e0d6267d601048df938c8c0ebe591"
+  },
+  "source_mapping": {
+    "tasks": 4,
+    "all_mapped": true,
+    "registrations_each": [
+      21,
+      21,
+      31,
+      31
+    ],
+    "target_instances": [
+      [
+        21,
+        1
+      ],
+      [
+        21,
+        1
+      ],
+      [
+        31,
+        1
+      ],
+      [
+        31,
+        1
+      ]
+    ],
+    "mapper_sha256": "d27e26dffed8ce84548174c012e7cfbe7562fd392e04d0baf5c89d820d5fca1a",
+    "analyzer_sha256": "a20617e281b547f85a60eac4124fd217e1f1f95d56872414bb2da8f1e0dc6823",
+    "analyzer_rerun": false,
+    "clang_ast_extraction": true,
+    "official_source_validation": false
+  },
+  "reference": "The two planned 20-iteration tasks were already FAIL in the original fixed reference. The generic search also recovered both 30-iteration tasks; their original 90-second TIMEOUT was preserved, and the same Dartagnan 4.3.1 configuration confirmed FAIL at a 300-second outer limit. Supplemental runs overlap non-timing AR checks; no comparative speedup claim.",
+  "search_contract": "Only after all prior passes; reuse the existing loop-literal heuristic on main and callees. Constants 15..32 on CFG cycles yield bounded search hints up to 34, not termination/trip-count certificates. Actual guards and complete execution obligations remain. Same time/candidate/query budget; no bounded failure implies SAFE.",
+  "validation_scope": "Fresh selected concrete AR executions under frontend/snapshot/API contracts; source location and dynamic instance mapping are not official source witness validation. This is a search-coverage extension, not a new abstract invariant or independent publication novelty claim.",
+  "publication": "Published ZIP and remote MR/PR unchanged.",
+  "source_sha256": {
+    "analyzer/include/ikos/analyzer/analysis/bmc/diagnostics.hpp": "2e7892b8afda8ba3989b7131fd6f832b8784f10f52b7b9b427a1028cdc9a1cce",
+    "analyzer/src/checker/data_race.cpp": "0469115f428fa8d463b856668884d023c0d646335017b97b6dcb3dc5a679b039",
+    "scripts/bmc_diagnostics.py": "75eee3ce97d7cfcc563e11a78ffc056c863d582346bfc71a7637df0809cb0472",
+    "scripts/summarize_unknowns.py": "55ba606110f8af4403a05b80f7fd939db666752dbba57b28df3b68c7054e224a",
+    "docs/review-repros/bmc-startup-hints/startup.c": "9e469e2e139d64c0b09efbc354fbef10acb9d3e7c26cf8766eedb35bf85c0a78",
+    "docs/review-repros/bmc-startup-hints/run.py": "cc042a6df717da2e187869653983e16e53226256c8c09c3fe91368b8fdb08063"
+  }
+}

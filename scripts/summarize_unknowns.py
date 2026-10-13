@@ -112,6 +112,7 @@ def main():
         gaps = [GAPS[reason] for reason in b['counts'] if reason in GAPS]
         successes = {'ai_candidate_bounds', 'ai_no_wrap', 'ai_single_execution', 'integer_operation', 'sc_read_from',
                      'startup_read_from', 'selected_activation_occurrences', 'startup_create_offset',
+                     'startup_literal_loop_hint',
                      'sat', 'not_searched_after_confirmation'}
         blockers = {k: v for k, v in b['counts'].items() if k not in successes}
         for reason in b['counts']:

@@ -1740,17 +1740,27 @@ DataRaceChecker::~DataRaceChecker() {
   std::set< std::string > deferred_groups;
   std::set< std::string > larger_activation_groups;
   std::set< std::string > occurrence_groups;
+  std::set< std::string > hinted_activation_groups;
   std::map< std::string, bmc::Result > deferred_results;
   std::map< std::string, JsonList > deferred_candidates;
+  std::map< std::string, JsonList > occurrence_candidates;
   std::map< std::string, std::map< std::string, std::size_t > > deferred_counts;
   bool file_confirmed = false;
-  for (unsigned pass = 0; pass < 4; ++pass) {
-    if (pass == 2 || pass == 3) {
+  unsigned startup_hint = 16;
+  for (unsigned pass = 0; pass < 5; ++pass) {
+    if (pass == 4 && !hinted_activation_groups.empty() && !file_confirmed &&
+        !search_budget.expired() && search_budget.candidates != 0 && search_budget.queries != 0) {
+      // Even the hint scan follows every original pass; it cannot consume
+      // the budget of an already supported short activation.
+      auto* main = this->_ctx.bundle->function_or_null("main");
+      if (main != nullptr) startup_hint = bmc::literal_loop_search_bound(main);
+    }
+    if (pass >= 2) {
       // A short startup is a search choice, not an activation/safety proof for
       // other prefixes. Retry deferred groups with the original larger bound.
       instance_proofs.clear();
       activation_prefixes.clear();
-      if (pass == 3) small_activation.clear();
+      if (pass >= 3) small_activation.clear();
     }
     if (pass != 0) {
       search_budget.probe_interrupted = true;
@@ -1762,7 +1772,8 @@ DataRaceChecker::~DataRaceChecker() {
     for (auto& kv : groups) {
     if ((pass == 1 && deferred_groups.count(kv.first) == 0) ||
         (pass == 2 && larger_activation_groups.count(kv.first) == 0) ||
-        (pass == 3 && occurrence_groups.count(kv.first) == 0)) continue;
+        (pass == 3 && occurrence_groups.count(kv.first) == 0) ||
+        (pass == 4 && hinted_activation_groups.count(kv.first) == 0)) continue;
     search_budget.saw_interrupted = false;
     const std::vector< std::size_t >& pair_indices = kv.second;
     if (pair_indices.empty()) {
@@ -1832,10 +1843,15 @@ DataRaceChecker::~DataRaceChecker() {
     }
     // Held reports must still be emitted if another group succeeded or the
     // unchanged file deadline expired before the new occurrence-only pass.
-    if (pass == 3 && (file_confirmed || search_budget.expired())) {
+    const bool final_budget_exhausted = pass == 4 &&
+        (search_budget.candidates == 0 || search_budget.queries == 0);
+    if (pass >= 3 && (file_confirmed || search_budget.expired() || final_budget_exhausted ||
+                      (pass == 4 && startup_hint <= 16))) {
       query_order.clear();
-      if (!file_confirmed) group_result.merge(bmc::Result(bmc::Status::BudgetExceeded));
-      if (diagnostics_enabled)
+      if (pass == 4 && diagnostics_enabled) candidate_diagnostics = occurrence_candidates.at(kv.first);
+      if (!file_confirmed && (search_budget.expired() || final_budget_exhausted))
+        group_result.merge(bmc::Result(bmc::Status::BudgetExceeded));
+      if (diagnostics_enabled && (file_confirmed || search_budget.expired() || final_budget_exhausted))
         ++reason_counts[file_confirmed ? "not_searched_after_confirmation" : "search_budget"];
     }
     std::size_t group_attempts = 0;
@@ -1849,7 +1865,7 @@ DataRaceChecker::~DataRaceChecker() {
       const AccessRecord& b = this->_accesses[pr.j];
       const bool worker_pair = a.thread_id != "main" && b.thread_id != "main";
       group_worker_pairs |= worker_pair;
-      if (pass == 3 && !worker_pair) continue;
+      if (pass >= 3 && !worker_pair) continue;
       bmc::Result candidate_result(bmc::Status::NotSearched);
       bmc::Diagnostics diagnostics;
       bmc::Diagnostics* trace = diagnostics_enabled ? &diagnostics : nullptr;
@@ -1867,8 +1883,9 @@ DataRaceChecker::~DataRaceChecker() {
         auto proof = instance_proofs.find(key);
         if (proof == instance_proofs.end()) {
           bool live = false;
-          if (pass == 3) {
-            live = conditional_live_threads(a.thread_id, b.thread_id, 16, true);
+          if (pass >= 3) {
+            if (pass == 4) bmc::record(trace, "startup_literal_loop_hint");
+            live = conditional_live_threads(a.thread_id, b.thread_id, pass == 4 ? startup_hint : 16, true);
           } else {
             live = two_live_threads(a.thread_id, b.thread_id);
             if (!live && pass < 2 && conditional_live_threads(a.thread_id, b.thread_id, 2)) {
@@ -2000,7 +2017,7 @@ DataRaceChecker::~DataRaceChecker() {
           };
           if (worker_pair) {
             const auto& startups = activation_prefixes.at(std::minmax(a.thread_id, b.thread_id));
-            if (pass != 3) {
+            if (pass < 3) {
               for (const auto& startup : startups) {
                 facts.startup = startup;
                 if ((bmc_confirmed = confirm())) {
@@ -2136,14 +2153,19 @@ DataRaceChecker::~DataRaceChecker() {
     const bool legacy_deferred = (pass == 0 && search_budget.saw_interrupted) ||
                                  (pass == 1 && group_small_activation && !file_confirmed);
     const bool occurrence_deferred = pass < 3 && bmc_enabled && group_worker_pairs && !file_confirmed;
-    if (!bmc_confirmed && (legacy_deferred || occurrence_deferred)) {
+    // Hold the last unconfirmed worker reports until every original pass has
+    // finished. With no larger hint the final pass only emits these results.
+    const bool hint_deferred = pass == 3 && bmc_enabled && group_worker_pairs && !file_confirmed;
+    if (!bmc_confirmed && (legacy_deferred || occurrence_deferred || hint_deferred)) {
       deferred_results[kv.first] = group_result;
       if (legacy_deferred) {
         if (pass == 0) deferred_groups.insert(kv.first);
         else larger_activation_groups.insert(kv.first);
-      } else occurrence_groups.insert(kv.first);
+      } else if (hint_deferred) hinted_activation_groups.insert(kv.first);
+      else occurrence_groups.insert(kv.first);
       if (diagnostics_enabled) {
         if (pass == 0) deferred_candidates.emplace(kv.first, candidate_diagnostics);
+        if (pass == 3) occurrence_candidates[kv.first] = candidate_diagnostics;
         deferred_counts[kv.first] = reason_counts;
       }
       continue;
@@ -2178,6 +2200,8 @@ DataRaceChecker::~DataRaceChecker() {
       diagnostics.put("counts", counts);
       diagnostics.put("candidates", candidate_diagnostics);
       if (pass != 0) diagnostics.put("first_pass_candidates", deferred_candidates.at(kv.first));
+      if (pass == 4 && startup_hint > 16 && !query_order.empty())
+        diagnostics.put("previous_activation_candidates", occurrence_candidates.at(kv.first));
       diagnostics.put("omitted_candidates", pair_indices.size() > 256 ? pair_indices.size() - 256 : 0);
       info.put("bmc", diagnostics);
     }

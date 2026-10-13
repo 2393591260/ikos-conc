@@ -80,8 +80,9 @@ def main():
                     candidates += len(diagnostic.get("candidates", []))
                     candidates += diagnostic.get("omitted_candidates", 0)
                     # Deferred groups keep the earlier search evidence separately;
-                    # aggregate counts already include both passes.
+                    # aggregate counts already include every attempted pass.
                     for pair in (diagnostic.get("first_pass_candidates", []) +
+                                 diagnostic.get("previous_activation_candidates", []) +
                                  diagnostic.get("candidates", [])):
                         if pair.get("first_blocker"):
                             first[pair["first_blocker"]] += 1

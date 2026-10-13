@@ -1,0 +1,46 @@
+{
+  "analyzer_before": "45dcc02604b817908085d007d2edda12227056cef246d6d504d6c958dc731fb8",
+  "analyzer_after": "a20617e281b547f85a60eac4124fd217e1f1f95d56872414bb2da8f1e0dc6823",
+  "source_sha256": "9e469e2e139d64c0b09efbc354fbef10acb9d3e7c26cf8766eedb35bf85c0a78",
+  "runs_each": 20,
+  "ai_changes": 0,
+  "changes": [
+    {
+      "bits": 32,
+      "case": 0,
+      "variant": 0,
+      "mode": "bmc",
+      "before": "Unknown",
+      "after": "Race Found"
+    },
+    {
+      "bits": 32,
+      "case": 0,
+      "variant": 1,
+      "mode": "bmc",
+      "before": "Unknown",
+      "after": "Race Found"
+    },
+    {
+      "bits": 64,
+      "case": 0,
+      "variant": 0,
+      "mode": "bmc",
+      "before": "Unknown",
+      "after": "Race Found"
+    },
+    {
+      "bits": 64,
+      "case": 0,
+      "variant": 1,
+      "mode": "bmc",
+      "before": "Unknown",
+      "after": "Race Found"
+    }
+  ],
+  "old10_preserved": true,
+  "all_false_selected_ar_accepted": 6,
+  "acyclic_and_late32_hint_not_consumed": true,
+  "impossible_guard_and_unscheduled_child_boundary_retained": true,
+  "p0_unchanged": true
+}

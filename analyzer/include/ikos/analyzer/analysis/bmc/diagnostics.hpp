@@ -27,6 +27,7 @@ struct Diagnostics {
     if (first_blocker.empty() && reason != "sat" && reason != "integer_operation" &&
         reason != "sc_read_from" && reason != "ai_candidate_bounds" && reason != "ai_no_wrap" &&
         reason != "selected_activation_occurrences" && reason != "startup_create_offset" &&
+        reason != "startup_literal_loop_hint" &&
         reason != "ai_single_execution") {
       first_blocker = reason;
     }

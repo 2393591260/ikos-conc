@@ -1,0 +1,72 @@
+[
+  {
+    "mode": "ai",
+    "seconds": 162.22764429999916,
+    "returncode": 0,
+    "command": [
+      "python3",
+      "/home/ruan/ikos-conc/svcomp_race_test.py",
+      "--demote",
+      "--jobs",
+      "4",
+      "--timeout",
+      "30"
+    ],
+    "log": "ai-full-cli.log",
+    "matrix": {
+      "before": {
+        "TP": 0,
+        "FP": 0,
+        "TN": 687,
+        "FN": 0,
+        "unknown": 341,
+        "error": 1,
+        "timeout": 1
+      },
+      "after": {
+        "TP": 0,
+        "FP": 0,
+        "TN": 687,
+        "FN": 0,
+        "unknown": 341,
+        "error": 1,
+        "timeout": 1
+      }
+    }
+  },
+  {
+    "mode": "bmc",
+    "seconds": 351.8011945830003,
+    "returncode": 0,
+    "command": [
+      "python3",
+      "/home/ruan/ikos-conc/svcomp_race_test.py",
+      "--demote",
+      "--jobs",
+      "4",
+      "--timeout",
+      "30"
+    ],
+    "log": "bmc-full-cli.log",
+    "matrix": {
+      "before": {
+        "TP": 111,
+        "FP": 0,
+        "TN": 687,
+        "FN": 0,
+        "unknown": 230,
+        "error": 1,
+        "timeout": 1
+      },
+      "after": {
+        "TP": 115,
+        "FP": 0,
+        "TN": 687,
+        "FN": 0,
+        "unknown": 226,
+        "error": 1,
+        "timeout": 1
+      }
+    }
+  }
+]

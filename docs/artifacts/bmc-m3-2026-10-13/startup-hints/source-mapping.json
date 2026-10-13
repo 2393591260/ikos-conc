@@ -1,0 +1,1170 @@
+[
+  {
+    "task": "c/pthread-deagle/reorder_c11_bad-20.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-20.i",
+    "source_sha256": "fd7555e2b4abe63429c1be22a8b482f63bbf931ffcb895a158eac84b789e7c88",
+    "report_sha256": "62081450ab98bece4849c8f88cdfa534e33491c2d2adcdd666f4341f6bee99dd",
+    "registrations": [
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 705,
+          "column": 73
+        }
+      }
+    ],
+    "targets": [
+      {
+        "type": "target",
+        "action": "follow",
+        "thread_id": 21,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 695,
+          "column": 6
+        }
+      },
+      {
+        "type": "target",
+        "action": "follow",
+        "thread_id": 1,
+        "location": {
+          "file_name": "reorder_c11_bad-20.i",
+          "line": 687,
+          "column": 3
+        }
+      }
+    ],
+    "status": "MAPPED",
+    "scope": "Existing generator plus physical Clang AST mapping; not official source validation"
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_good-20.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-20.i",
+    "source_sha256": "2f66f1b2f8bc96c1cbd24e122a1b904932cb7f0e98e43f950b8a0288b2af2871",
+    "report_sha256": "d66d1cc301b012c33675ac07d963ee9fc762657c11d228da76e3ab736a7def8b",
+    "registrations": [
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 705,
+          "column": 73
+        }
+      }
+    ],
+    "targets": [
+      {
+        "type": "target",
+        "action": "follow",
+        "thread_id": 21,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 695,
+          "column": 6
+        }
+      },
+      {
+        "type": "target",
+        "action": "follow",
+        "thread_id": 1,
+        "location": {
+          "file_name": "reorder_c11_good-20.i",
+          "line": 687,
+          "column": 3
+        }
+      }
+    ],
+    "status": "MAPPED",
+    "scope": "Existing generator plus physical Clang AST mapping; not official source validation"
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_bad-30.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-30.i",
+    "source_sha256": "8d7df89eaaa05ee1c4077455abbd501c07d86257ca2c037ce71ae27b3838effb",
+    "report_sha256": "1f96066eb6241fa44f10d436a7913b13c796c448c6b65cadff2e47d099cab87a",
+    "registrations": [
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 705,
+          "column": 73
+        }
+      }
+    ],
+    "targets": [
+      {
+        "type": "target",
+        "action": "follow",
+        "thread_id": 31,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 695,
+          "column": 6
+        }
+      },
+      {
+        "type": "target",
+        "action": "follow",
+        "thread_id": 1,
+        "location": {
+          "file_name": "reorder_c11_bad-30.i",
+          "line": 687,
+          "column": 3
+        }
+      }
+    ],
+    "status": "MAPPED",
+    "scope": "Existing generator plus physical Clang AST mapping; not official source validation"
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_good-30.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-30.i",
+    "source_sha256": "e9f2c63b5b236ffd2c3c18bb3989267f7d1d50794d9317a52e37b9cf94f3ba35",
+    "report_sha256": "9ab17ad97de2072ff032eb1b9d3f415c76c8cdb71c4a2e9fa28c918b64b0e1f0",
+    "registrations": [
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 703,
+          "column": 69
+        }
+      },
+      {
+        "type": "function_enter",
+        "action": "follow",
+        "thread_id": 0,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 705,
+          "column": 73
+        }
+      }
+    ],
+    "targets": [
+      {
+        "type": "target",
+        "action": "follow",
+        "thread_id": 31,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 695,
+          "column": 6
+        }
+      },
+      {
+        "type": "target",
+        "action": "follow",
+        "thread_id": 1,
+        "location": {
+          "file_name": "reorder_c11_good-30.i",
+          "line": 687,
+          "column": 3
+        }
+      }
+    ],
+    "status": "MAPPED",
+    "scope": "Existing generator plus physical Clang AST mapping; not official source validation"
+  }
+]

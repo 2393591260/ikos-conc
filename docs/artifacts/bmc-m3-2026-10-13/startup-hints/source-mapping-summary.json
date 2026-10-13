@@ -1,0 +1,33 @@
+{
+  "tasks": 4,
+  "all_mapped": true,
+  "registrations_each": [
+    21,
+    21,
+    31,
+    31
+  ],
+  "target_instances": [
+    [
+      21,
+      1
+    ],
+    [
+      21,
+      1
+    ],
+    [
+      31,
+      1
+    ],
+    [
+      31,
+      1
+    ]
+  ],
+  "mapper_sha256": "d27e26dffed8ce84548174c012e7cfbe7562fd392e04d0baf5c89d820d5fca1a",
+  "analyzer_sha256": "a20617e281b547f85a60eac4124fd217e1f1f95d56872414bb2da8f1e0dc6823",
+  "analyzer_rerun": false,
+  "clang_ast_extraction": true,
+  "official_source_validation": false
+}

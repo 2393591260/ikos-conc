@@ -1075,7 +1075,7 @@ TN 的嵌套保护/发布相关性独立见 [AI 后续机制](ikos-ai-complete.m
 ### 12.4 M3 实施顺序与设计门槛（2026-10-13）
 
 **状态：M3.0、M3.1已完成；M3.2仍待实现验收，M3整体未结束。** 固定入口为
-[初始126个竞争UNKNOWN](artifacts/bmc-m3-2026-10-13/baseline.json)。初始诊断均UNKNOWN，M3.1已恢复其中两项；
+[初始126个竞争UNKNOWN](artifacts/bmc-m3-2026-10-13/baseline.json)。初始诊断均UNKNOWN，创建实例和启动提示已累计恢复其中六项；
 参考运行的中断项已单独补跑为FAIL；完整126项为FAIL96、ERROR13、TIMEOUT14、PASS3，
 源/YAML及配置已核对，见[完整记录](artifacts/bmc-m3-2026-10-13/reference-complete/results.json)。
 诊断理由可重叠，76 项含 activation 阻断不等于可恢复 76 TP。本轮对 33 项作了具体源码
@@ -1124,12 +1124,40 @@ UNKNOWN232→230，唯一超时未变；原TP/TN没有回退。111项重新导�
 18 次最小例 UNKNOWN→有效 FALSE 是测试运行数，不能当作新增 18 个比赛 TP。
 P0 两架构 20 条观测逐项保持。两项真实输入的所选执行各含 105 步，全部创建均被保留。
 在最终单次探测中耗时约 3.13/0.41 秒；这不是重复测量的通用速度结论。
-`-20` 的展开界、一般符号句柄来源和有副作用的 Join 完成仍是独立缺口。
+当时剩余的 `-20` 展开界由下述提示搜索覆盖；一般符号句柄来源和有副作用的 Join 完成仍是独立缺口。
 证据：[验收汇总](artifacts/bmc-m3-2026-10-13/created-instances/summary.json)、
 [配对](artifacts/bmc-m3-2026-10-13/created-instances/paired.json)、
 [逐执行检查](artifacts/bmc-m3-2026-10-13/created-instances/selected-executions.json)、
 [源位置/实例映射](artifacts/bmc-m3-2026-10-13/created-instances/source-mapping.json)。
 实际映射保留11个注册段及目标线程11/1；它仍不是官方源级witness验证。
+
+<a id="m3-startup-hints"></a>
+**M3.1后续：main 启动循环提示已实现并验收。** 原来的 `literal_loop_search_bound` 只供
+worker 展开使用；现在原四轮全部结束后，才为仍未确认的 worker/worker 候选尝试 main
+及其 helper 的提示。该现有函数寻找真实 CFG 环上的比较常量15–32，返回至多34的搜索界；
+它不是归纳不变式、精确循环次数或终止证明。`-20`/`-30` 分别得到22/32的额外尝试，
+每个创建、守卫、值、地址与同步仍由原有编码和所选执行检查确认。
+
+第五轮清理激活缓存并沿用剩余 deadline、候选数及查询数，不重置预算；先保留旧四轮
+结果，额外轮未执行也须把暂存报告输出一次。这样，main 中无关的较大循环常量不会
+抢占已经支持的较短创建前缀。提示取最大值、8条 startup、32组实例组合等仍会遗漏
+可行执行；预算耗尽或无法编码时保持 UNKNOWN，不产生 SAFE。
+
+本轮实际1029项配对：TP111→115、TN687保持、FP/FN0、UNKNOWN230→226，同一超时保持。
+四个新增用例为 `reorder_c11_{bad,good}-{20,30}.i`，原TP/TN无回退。
+115项重新导出143条执行，全部独立AR ACCEPT；新增源映射保留21/31次创建与目标实例
+21/1、31/1。20次双架构控制涵盖改名、64位访问、不可能守卫、需要第三线程先执行的
+启动条件，以及带无关32常量的旧10次创建；旧结果和P0均保留。
+计划入口 `-20` 已先由固定Dartagnan确认FAIL；通用实现另外恢复 `-30`，保留其原90秒
+TIMEOUT记录，同版本/输入/属性/模型/JVM配置下将外层上限设为300秒，两项均补充确认FAIL。
+补跑与非计时AR检查并行，仅用于参考判定，不作公平速度比较。
+
+这是复用既有 CFG 提示的搜索覆盖扩展，没有新增抽象不变式或 SAFE 规则，不能单凭此
+主张论文新颖性或整体优于参考工具。
+证据：[汇总](artifacts/bmc-m3-2026-10-13/startup-hints/summary.json)、
+[配对](artifacts/bmc-m3-2026-10-13/startup-hints/paired.json)、
+[所选执行](artifacts/bmc-m3-2026-10-13/startup-hints/selected-executions.json)、
+[30次创建的补充参考](artifacts/bmc-m3-2026-10-13/startup-hints/reference-30-confirmation.json)。
 
 **M3.2：有来源的句柄槽；随后分开处理 SAFE 完成证明与 BMC 辅助完成。**
 验收族是 `thread-join-array-const` 及三个 `-race` 变体（YAML 指定 `.i`）：安全版创建四个

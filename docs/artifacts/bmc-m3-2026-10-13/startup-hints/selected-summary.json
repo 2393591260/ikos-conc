@@ -1,0 +1,16 @@
+{
+  "task_status_counts": {
+    "all_accepted": 115
+  },
+  "tasks": 115,
+  "tasks_with_selected_evidence": 115,
+  "executions": 143,
+  "status_counts": {
+    "ACCEPT": 143
+  },
+  "reason_counts": {
+    "accepted": 143
+  },
+  "scope": "Concrete AR execution with explicit API contracts; not official C/witness validation",
+  "validator_sha256": "745bd97ad9f3237fda6adb02dd810706007e0d6267d601048df938c8c0ebe591"
+}
