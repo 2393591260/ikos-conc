@@ -1,0 +1,542 @@
+[
+  {
+    "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/calloc-initialized-race.c",
+    "source_sha256": "ab6ef0d39fc1e055f41f315418bf867bc65505213b59ab8c11f11cb4aab16d67",
+    "bits": 32,
+    "expected_reference": "FAIL",
+    "ikos": {
+      "verdict": "UNKNOWN",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 0.917779921999994,
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/home/ruan/ikos-work/m3-20261013/initial-controls/calloc-initialized-race-32-ikos/report.json",
+        "-o",
+        "/home/ruan/ikos-work/m3-20261013/initial-controls/calloc-initialized-race-32-ikos/output.db",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/calloc-initialized-race.c"
+      ],
+      "environment": {
+        "IKOS_BMC_RECOVER": "1",
+        "IKOS_BMC_DIAGNOSTICS": "1"
+      },
+      "validations": [],
+      "blockers": [
+        {
+          "call_summary": 2,
+          "target_not_reached": 2
+        }
+      ]
+    },
+    "dartagnan": {
+      "verdict": "FAIL",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 2.6302397489999976,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-jar",
+        "svcomp/target/svcomp.jar",
+        "--program.processing.skipAssertionsOfType=USER",
+        "cat/svcomp.cat",
+        "--svcomp.property=/home/ruan/sv-benchmarks-2026/c/properties/no-data-race.prp",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/calloc-initialized-race.c"
+      ],
+      "environment": {
+        "DAT3M_HOME": "/home/ruan/dartagnan-svcomp2026/dartagnan",
+        "DAT3M_OUTPUT": "/home/ruan/ikos-work/m3-20261013/initial-controls/calloc-initialized-race-32-dartagnan",
+        "CFLAGS": "-fgnu89-inline -m32",
+        "JAVA_TOOL_OPTIONS": "-Xmx2g"
+      }
+    }
+  },
+  {
+    "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/global-initialized-guard-safe.c",
+    "source_sha256": "6b5bb9537d8fafb3bd1e6dd4cbf1918f821576c8fe37fff8821402b5a9c8a4f6",
+    "bits": 32,
+    "expected_reference": "PASS",
+    "ikos": {
+      "verdict": "TRUE",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 0.2173513079999907,
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/home/ruan/ikos-work/m3-20261013/initial-controls/global-initialized-guard-safe-32-ikos/report.json",
+        "-o",
+        "/home/ruan/ikos-work/m3-20261013/initial-controls/global-initialized-guard-safe-32-ikos/output.db",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/global-initialized-guard-safe.c"
+      ],
+      "environment": {
+        "IKOS_BMC_RECOVER": "1",
+        "IKOS_BMC_DIAGNOSTICS": "1"
+      },
+      "validations": [],
+      "blockers": []
+    },
+    "dartagnan": {
+      "verdict": "PASS",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 1.9066097969999873,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-jar",
+        "svcomp/target/svcomp.jar",
+        "--program.processing.skipAssertionsOfType=USER",
+        "cat/svcomp.cat",
+        "--svcomp.property=/home/ruan/sv-benchmarks-2026/c/properties/no-data-race.prp",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/global-initialized-guard-safe.c"
+      ],
+      "environment": {
+        "DAT3M_HOME": "/home/ruan/dartagnan-svcomp2026/dartagnan",
+        "DAT3M_OUTPUT": "/home/ruan/ikos-work/m3-20261013/initial-controls/global-initialized-guard-safe-32-dartagnan",
+        "CFLAGS": "-fgnu89-inline -m32",
+        "JAVA_TOOL_OPTIONS": "-Xmx2g"
+      }
+    }
+  },
+  {
+    "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/heap-initialized-guard-safe.c",
+    "source_sha256": "36a035f9590d548fbd63720209576a5e421d7d65e1621d7693dafd9b81dd1d7e",
+    "bits": 32,
+    "expected_reference": "PASS",
+    "ikos": {
+      "verdict": "UNKNOWN",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 0.2723461260000022,
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/home/ruan/ikos-work/m3-20261013/initial-controls/heap-initialized-guard-safe-32-ikos/report.json",
+        "-o",
+        "/home/ruan/ikos-work/m3-20261013/initial-controls/heap-initialized-guard-safe-32-ikos/output.db",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/heap-initialized-guard-safe.c"
+      ],
+      "environment": {
+        "IKOS_BMC_RECOVER": "1",
+        "IKOS_BMC_DIAGNOSTICS": "1"
+      },
+      "validations": [],
+      "blockers": [
+        {
+          "assume_pointer_source": 4,
+          "join_completion_unproven": 2,
+          "sc_read_from": 2
+        }
+      ]
+    },
+    "dartagnan": {
+      "verdict": "PASS",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 1.8880111499999828,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-jar",
+        "svcomp/target/svcomp.jar",
+        "--program.processing.skipAssertionsOfType=USER",
+        "cat/svcomp.cat",
+        "--svcomp.property=/home/ruan/sv-benchmarks-2026/c/properties/no-data-race.prp",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/heap-initialized-guard-safe.c"
+      ],
+      "environment": {
+        "DAT3M_HOME": "/home/ruan/dartagnan-svcomp2026/dartagnan",
+        "DAT3M_OUTPUT": "/home/ruan/ikos-work/m3-20261013/initial-controls/heap-initialized-guard-safe-32-dartagnan",
+        "CFLAGS": "-fgnu89-inline -m32",
+        "JAVA_TOOL_OPTIONS": "-Xmx2g"
+      }
+    }
+  },
+  {
+    "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/heap-initialized-race.c",
+    "source_sha256": "6a4f46bed6bf60011e44444b454f1885a5606484500212b36e1a0847f4e0c866",
+    "bits": 32,
+    "expected_reference": "FAIL",
+    "ikos": {
+      "verdict": "FALSE",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 0.2682296479999877,
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "32",
+        "--format=json",
+        "--report-file=/home/ruan/ikos-work/m3-20261013/initial-controls/heap-initialized-race-32-ikos/report.json",
+        "-o",
+        "/home/ruan/ikos-work/m3-20261013/initial-controls/heap-initialized-race-32-ikos/output.db",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/heap-initialized-race.c"
+      ],
+      "environment": {
+        "IKOS_BMC_RECOVER": "1",
+        "IKOS_BMC_DIAGNOSTICS": "1"
+      },
+      "validations": [
+        {
+          "group": 0,
+          "pair": 0,
+          "program_sha256": "c12eb2a4c70ef233ad6d2dcd1d7f2c8fd2ac5b085d272752276f3fc088db0f1a",
+          "certificate_sha256": "20d68b10be5ee0431bae7522ac781c7d8d44fec0cf2149bd522ff70a9d1594da",
+          "status": "ACCEPT",
+          "scope": "concrete_AR_prefix",
+          "exact_encoded_values": true,
+          "instances": [
+            0,
+            1
+          ],
+          "targets": [
+            {
+              "instance": 0,
+              "object": "heap:1:s16",
+              "offset": 0,
+              "width": 4,
+              "write": false,
+              "vc": {
+                "0": 25
+              },
+              "atomic": false
+            },
+            {
+              "instance": 1,
+              "object": "heap:1:s16",
+              "offset": 0,
+              "width": 4,
+              "write": true,
+              "vc": {
+                "0": 23,
+                "1": 6
+              },
+              "atomic": false
+            }
+          ],
+          "steps": 31,
+          "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+        }
+      ],
+      "blockers": [
+        {
+          "ai_candidate_bounds": 1,
+          "sat": 1,
+          "sc_read_from": 2
+        }
+      ]
+    },
+    "dartagnan": {
+      "verdict": "FAIL",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 2.004919909000023,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-jar",
+        "svcomp/target/svcomp.jar",
+        "--program.processing.skipAssertionsOfType=USER",
+        "cat/svcomp.cat",
+        "--svcomp.property=/home/ruan/sv-benchmarks-2026/c/properties/no-data-race.prp",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/heap-initialized-race.c"
+      ],
+      "environment": {
+        "DAT3M_HOME": "/home/ruan/dartagnan-svcomp2026/dartagnan",
+        "DAT3M_OUTPUT": "/home/ruan/ikos-work/m3-20261013/initial-controls/heap-initialized-race-32-dartagnan",
+        "CFLAGS": "-fgnu89-inline -m32",
+        "JAVA_TOOL_OPTIONS": "-Xmx2g"
+      }
+    }
+  },
+  {
+    "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/calloc-initialized-race.c",
+    "source_sha256": "ab6ef0d39fc1e055f41f315418bf867bc65505213b59ab8c11f11cb4aab16d67",
+    "bits": 64,
+    "expected_reference": "FAIL",
+    "ikos": {
+      "verdict": "UNKNOWN",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 0.2273729370000126,
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "64",
+        "--format=json",
+        "--report-file=/home/ruan/ikos-work/m3-20261013/initial-controls/calloc-initialized-race-64-ikos/report.json",
+        "-o",
+        "/home/ruan/ikos-work/m3-20261013/initial-controls/calloc-initialized-race-64-ikos/output.db",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/calloc-initialized-race.c"
+      ],
+      "environment": {
+        "IKOS_BMC_RECOVER": "1",
+        "IKOS_BMC_DIAGNOSTICS": "1"
+      },
+      "validations": [],
+      "blockers": [
+        {
+          "call_summary": 2,
+          "target_not_reached": 2
+        }
+      ]
+    },
+    "dartagnan": {
+      "verdict": "FAIL",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 1.904635237000008,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-jar",
+        "svcomp/target/svcomp.jar",
+        "--program.processing.skipAssertionsOfType=USER",
+        "cat/svcomp.cat",
+        "--svcomp.property=/home/ruan/sv-benchmarks-2026/c/properties/no-data-race.prp",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/calloc-initialized-race.c"
+      ],
+      "environment": {
+        "DAT3M_HOME": "/home/ruan/dartagnan-svcomp2026/dartagnan",
+        "DAT3M_OUTPUT": "/home/ruan/ikos-work/m3-20261013/initial-controls/calloc-initialized-race-64-dartagnan",
+        "CFLAGS": "-fgnu89-inline -m64",
+        "JAVA_TOOL_OPTIONS": "-Xmx2g"
+      }
+    }
+  },
+  {
+    "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/global-initialized-guard-safe.c",
+    "source_sha256": "6b5bb9537d8fafb3bd1e6dd4cbf1918f821576c8fe37fff8821402b5a9c8a4f6",
+    "bits": 64,
+    "expected_reference": "PASS",
+    "ikos": {
+      "verdict": "TRUE",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 0.22107947099999592,
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "64",
+        "--format=json",
+        "--report-file=/home/ruan/ikos-work/m3-20261013/initial-controls/global-initialized-guard-safe-64-ikos/report.json",
+        "-o",
+        "/home/ruan/ikos-work/m3-20261013/initial-controls/global-initialized-guard-safe-64-ikos/output.db",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/global-initialized-guard-safe.c"
+      ],
+      "environment": {
+        "IKOS_BMC_RECOVER": "1",
+        "IKOS_BMC_DIAGNOSTICS": "1"
+      },
+      "validations": [],
+      "blockers": []
+    },
+    "dartagnan": {
+      "verdict": "PASS",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 1.9440518429999827,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-jar",
+        "svcomp/target/svcomp.jar",
+        "--program.processing.skipAssertionsOfType=USER",
+        "cat/svcomp.cat",
+        "--svcomp.property=/home/ruan/sv-benchmarks-2026/c/properties/no-data-race.prp",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/global-initialized-guard-safe.c"
+      ],
+      "environment": {
+        "DAT3M_HOME": "/home/ruan/dartagnan-svcomp2026/dartagnan",
+        "DAT3M_OUTPUT": "/home/ruan/ikos-work/m3-20261013/initial-controls/global-initialized-guard-safe-64-dartagnan",
+        "CFLAGS": "-fgnu89-inline -m64",
+        "JAVA_TOOL_OPTIONS": "-Xmx2g"
+      }
+    }
+  },
+  {
+    "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/heap-initialized-guard-safe.c",
+    "source_sha256": "36a035f9590d548fbd63720209576a5e421d7d65e1621d7693dafd9b81dd1d7e",
+    "bits": 64,
+    "expected_reference": "PASS",
+    "ikos": {
+      "verdict": "UNKNOWN",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 0.21842431800001805,
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "64",
+        "--format=json",
+        "--report-file=/home/ruan/ikos-work/m3-20261013/initial-controls/heap-initialized-guard-safe-64-ikos/report.json",
+        "-o",
+        "/home/ruan/ikos-work/m3-20261013/initial-controls/heap-initialized-guard-safe-64-ikos/output.db",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/heap-initialized-guard-safe.c"
+      ],
+      "environment": {
+        "IKOS_BMC_RECOVER": "1",
+        "IKOS_BMC_DIAGNOSTICS": "1"
+      },
+      "validations": [],
+      "blockers": [
+        {
+          "assume_pointer_source": 4,
+          "join_completion_unproven": 2,
+          "sc_read_from": 2
+        }
+      ]
+    },
+    "dartagnan": {
+      "verdict": "PASS",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 2.46529369000001,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-jar",
+        "svcomp/target/svcomp.jar",
+        "--program.processing.skipAssertionsOfType=USER",
+        "cat/svcomp.cat",
+        "--svcomp.property=/home/ruan/sv-benchmarks-2026/c/properties/no-data-race.prp",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/heap-initialized-guard-safe.c"
+      ],
+      "environment": {
+        "DAT3M_HOME": "/home/ruan/dartagnan-svcomp2026/dartagnan",
+        "DAT3M_OUTPUT": "/home/ruan/ikos-work/m3-20261013/initial-controls/heap-initialized-guard-safe-64-dartagnan",
+        "CFLAGS": "-fgnu89-inline -m64",
+        "JAVA_TOOL_OPTIONS": "-Xmx2g"
+      }
+    }
+  },
+  {
+    "source": "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/heap-initialized-race.c",
+    "source_sha256": "6a4f46bed6bf60011e44444b454f1885a5606484500212b36e1a0847f4e0c866",
+    "bits": 64,
+    "expected_reference": "FAIL",
+    "ikos": {
+      "verdict": "FALSE",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 0.27327085500002113,
+      "command": [
+        "/home/ruan/ikos-conc/install/bin/ikos",
+        "--analyses=race",
+        "--concurrency=auto",
+        "--demote-race-to-unknown",
+        "-m",
+        "64",
+        "--format=json",
+        "--report-file=/home/ruan/ikos-work/m3-20261013/initial-controls/heap-initialized-race-64-ikos/report.json",
+        "-o",
+        "/home/ruan/ikos-work/m3-20261013/initial-controls/heap-initialized-race-64-ikos/output.db",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/heap-initialized-race.c"
+      ],
+      "environment": {
+        "IKOS_BMC_RECOVER": "1",
+        "IKOS_BMC_DIAGNOSTICS": "1"
+      },
+      "validations": [
+        {
+          "group": 0,
+          "pair": 0,
+          "program_sha256": "44dee74e7c8733ef63b4d3a4d22f53c36ca3ecbf08ead287b09df0b557032c57",
+          "certificate_sha256": "7f61ee228d90da7ff750fb7b33e65b4b4f7e12ee2d154e05a9aecc50db0ca6d5",
+          "status": "ACCEPT",
+          "scope": "concrete_AR_prefix",
+          "exact_encoded_values": true,
+          "instances": [
+            0,
+            1
+          ],
+          "targets": [
+            {
+              "instance": 0,
+              "object": "heap:1:s16",
+              "offset": 0,
+              "width": 4,
+              "write": false,
+              "vc": {
+                "0": 25
+              },
+              "atomic": false
+            },
+            {
+              "instance": 1,
+              "object": "heap:1:s16",
+              "offset": 0,
+              "width": 4,
+              "write": true,
+              "vc": {
+                "0": 23,
+                "1": 6
+              },
+              "atomic": false
+            }
+          ],
+          "steps": 31,
+          "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+        }
+      ],
+      "blockers": [
+        {
+          "ai_candidate_bounds": 1,
+          "sat": 1,
+          "sc_read_from": 2
+        }
+      ]
+    },
+    "dartagnan": {
+      "verdict": "FAIL",
+      "returncode": 0,
+      "timed_out": false,
+      "seconds": 2.1263613520000035,
+      "command": [
+        "java",
+        "-Xmx2g",
+        "-jar",
+        "svcomp/target/svcomp.jar",
+        "--program.processing.skipAssertionsOfType=USER",
+        "cat/svcomp.cat",
+        "--svcomp.property=/home/ruan/sv-benchmarks-2026/c/properties/no-data-race.prp",
+        "/home/ruan/ikos-conc/docs/review-repros/bmc-m3-initial-source/heap-initialized-race.c"
+      ],
+      "environment": {
+        "DAT3M_HOME": "/home/ruan/dartagnan-svcomp2026/dartagnan",
+        "DAT3M_OUTPUT": "/home/ruan/ikos-work/m3-20261013/initial-controls/heap-initialized-race-64-dartagnan",
+        "CFLAGS": "-fgnu89-inline -m64",
+        "JAVA_TOOL_OPTIONS": "-Xmx2g"
+      }
+    }
+  }
+]

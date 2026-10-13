@@ -36,6 +36,8 @@ def main():
                     default=Path("/home/ruan/sv-benchmarks-2026"))
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--timeout", type=int, default=90)
+    ap.add_argument("--java-heap", choices=["1g", "2g", "4g"], default="2g",
+                    help="heap cap for both launcher and engine JVMs")
     ap.add_argument("--resume", action="store_true")
     args = ap.parse_args()
     if args.jobs < 1 or args.timeout < 1:
@@ -50,7 +52,7 @@ def main():
                   library_sha256=digest(root / "svcomp/target/libs/dartagnan-4.3.1.jar"),
                   cat_sha256=digest(root / "cat/svcomp.cat"),
                   property_sha256=digest(args.svbench / "c/properties/no-data-race.prp"),
-                  launcher_java_heap="2g", engine_java_heap="JVM default",
+                  launcher_java_heap=args.java_heap, engine_java_heap=args.java_heap,
                   skip_assertions="USER", tasks=len(tasks))
     args.output = args.output.resolve()
     if args.resume:
@@ -74,8 +76,9 @@ def main():
             return saved
         bits = {"ILP32": "32", "LP64": "64"}[task["data_model"]]
         env = dict(os.environ, DAT3M_HOME=str(root), DAT3M_OUTPUT=str(folder),
-                   CFLAGS="-fgnu89-inline -m" + bits)
-        command = ["java", "-Xmx2g", "-jar", "svcomp/target/svcomp.jar",
+                   CFLAGS="-fgnu89-inline -m" + bits,
+                   JAVA_TOOL_OPTIONS="-Xmx" + args.java_heap)
+        command = ["java", "-Xmx" + args.java_heap, "-jar", "svcomp/target/svcomp.jar",
                    "--program.processing.skipAssertionsOfType=USER", "cat/svcomp.cat",
                    "--svcomp.property=" + str(args.svbench / "c/properties/no-data-race.prp"),
                    task["input"]]
@@ -100,7 +103,7 @@ def main():
                    data_model=task["data_model"], ikos_before=task["verdict"],
                    ikos_before_blockers=task["counts"], reference=classify(output, returncode, timed_out),
                    returncode=returncode, seconds=time.monotonic() - started,
-                   command=command, environment={k: env[k] for k in ("DAT3M_HOME", "DAT3M_OUTPUT", "CFLAGS")},
+                   command=command, environment={k: env[k] for k in ("DAT3M_HOME", "DAT3M_OUTPUT", "CFLAGS", "JAVA_TOOL_OPTIONS")},
                    artifacts=str(folder.relative_to(args.output)),
                    reference_reason=re.findall(r"^Reason:\s*(.*)$", output, re.M),
                    error_tail=errors[-1600:] if returncode else "")

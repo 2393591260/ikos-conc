@@ -1,0 +1,2222 @@
+[
+  {
+    "task": "c/goblint-regression/02-base_24-malloc_races.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_24-malloc_races.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "f90c032cad43da2fb4e0b7a9fd7f3200ca1c4adf3f239f2d78774392ccecc031",
+    "yaml_sha256": "064044d0004567b627810283b5853c44554e00889d827bdf7f936de446dd1001",
+    "counts": {
+      "ai_candidate_bounds": 2,
+      "sc_read_from": 4,
+      "smt_unsat": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/goblint-regression/02-base_25-malloc_race_cp.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_25-malloc_race_cp.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "5c24865639a0fb6385d87b52f972ca15b09ce8699a47a6e19f8c040c7561a77b",
+    "yaml_sha256": "c3ef487c8c516882cb2b578275841668593f067646e80ba2335045c3025b61c7",
+    "counts": {
+      "ai_candidate_bounds": 2,
+      "sc_read_from": 4,
+      "smt_unsat": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/goblint-regression/02-base_26-malloc_struct.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/02-base_26-malloc_struct.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "35c5c2f16af42b98b1ab7b41b9d586c18e7bed3d8d4b2db75e06bb8de929769e",
+    "yaml_sha256": "ee6157bd7a8fec7e946a1228f5a42acf535ff9335d84d3580912c5952e337a7f",
+    "counts": {
+      "ai_candidate_bounds": 2,
+      "sc_read_from": 4,
+      "smt_unsat": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_20-stdfun_rc.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_20-stdfun_rc.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "4d52250703906ce0df99088915fecaf1c85dd61c9c2804930b60f620b64dfa32",
+    "yaml_sha256": "390899a409fc8540d16916e73ef7ad071e95c8a26578f7e934e986b66647e85b",
+    "counts": {
+      "address_base": 4,
+      "integer_operation": 2,
+      "sc_same_path_read_from": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "ERROR"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_35-trylock_rc.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_35-trylock_rc.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "bc4ff81e27c3c9c08a24375d30c2902a85848d2bd345364dfe2b3c3839c5dc11",
+    "yaml_sha256": "72e0ce5a98269a1bac5bef1bf42f8727086175dc3e5b9f06cd5e8de069c14fc2",
+    "counts": {
+      "non_global_object": 150,
+      "points_to_not_singleton": 150,
+      "thread_activation_unproven": 61
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "ERROR"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_44-malloc_sound.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_44-malloc_sound.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "5730b8f15d0cc07377d36a4e56b14cd6f9afe76bed8cf5546ba186fd0e3c8f24",
+    "yaml_sha256": "704a38d8b2454110a2d896c170d9e8537f0d88656eecd9d04c074005506f03c9",
+    "counts": {
+      "mutex_identity": 3,
+      "target_not_reached": 3
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_45-escape_rc.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/04-mutex_45-escape_rc.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "9d084a87e829f0714ea9740d57084c27a572a26dbf4f4c49019b90dc4e1092e0",
+    "yaml_sha256": "0fda024c582869f371f62d80797ff99720efe7ed9bd9e5fee37b5941129df7ab",
+    "counts": {
+      "non_global_object": 3
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/goblint-regression/09-regions_01-list_rc.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_01-list_rc.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "917c3a4e5c7c37037968095aaa6025089873d587c341a7db88ad7132ea30a543",
+    "yaml_sha256": "294aeb9e84e1a3354b23165dfde2a5fe87376a12e98787a3c60a3fefee3e060d",
+    "counts": {
+      "call_summary": 2,
+      "target_not_reached": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/goblint-regression/09-regions_03-list2_rc.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_03-list2_rc.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "395b7ffa5647b483120369e4dc84c1d19589cf18217c1a04022b1d6c5afa045f",
+    "yaml_sha256": "33e629f9e4705b81d11b46dfd7ef4a714379c59b611f8460f99d72559c0110aa",
+    "counts": {
+      "prefix_address": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/goblint-regression/09-regions_05-ptra_rc.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_05-ptra_rc.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "b00ba58edbbf9092a3bbde4865c9e14ef534546a29b4ba514bb7ebaf27fc72c0",
+    "yaml_sha256": "a24aebef02099cae48df6f9c1e776a01f34ac5b2dbe97fe2aeed9b366974c0ea",
+    "counts": {
+      "call_summary": 2,
+      "target_not_reached": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/goblint-regression/09-regions_10-arraylist_rc.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_10-arraylist_rc.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "9c310ca743e037dbc4fbe68f3a66f9551e82339d89bfe5780388869aac3fce99",
+    "yaml_sha256": "236f93a2a8868794573b18d95193a132dd57e590b2578c2ced2858978bfe54db",
+    "counts": {
+      "call_summary": 3,
+      "target_not_reached": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/goblint-regression/09-regions_16-arrayloop_rc.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_16-arrayloop_rc.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "5810bf8f90e8e4e20451fbc06dd5039f754e5765485d12699b814c2e1d4badb7",
+    "yaml_sha256": "490e0ac9e2c1f192c257f0016774265d7b428bec158dd2aad8fc8e64112c9f7d",
+    "counts": {
+      "call_summary": 16,
+      "target_not_reached": 8
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/goblint-regression/09-regions_18-nested_rc.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_18-nested_rc.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "0a93ea17a7eb1959d7b4006ffd88709d1f0f9bf991a564fd1c5bb23dda0591d4",
+    "yaml_sha256": "ecadf9a6231975c4cc8bfdcfe1027c730e66b6d2570301dbf580b6a5a18ba4d5",
+    "counts": {
+      "call_summary": 3,
+      "target_not_reached": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/goblint-regression/09-regions_20-arrayloop2_rc.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_20-arrayloop2_rc.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "ddcc4576900511e75c6f2237f0fd856ad5060452fe28996e1c25a73e3fdfa341",
+    "yaml_sha256": "adda4059e8d65967cd5f3628a4544ef8b47f27baef25167edfbd0847906f4f7b",
+    "counts": {
+      "thread_activation_unproven": 7
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/goblint-regression/09-regions_23-evilcollapse_rc.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_23-evilcollapse_rc.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "d412cb3d6ba89419f45c44aadd07a8bcc4c47074afd4483f1ea3d88cc2c0036f",
+    "yaml_sha256": "cacd494c124610646f7f546f298670b86fe9047b5867ab6c7558d375e7e0a5af",
+    "counts": {
+      "thread_activation_unproven": 7
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/goblint-regression/09-regions_26-alloc_region_rc.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_26-alloc_region_rc.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "f3b2ae0644e4461660d158d21313c8c5bd1a218cef344af564eada57cf6b8643",
+    "yaml_sha256": "53fb9211ab569596a63e68e201a8f317bec7d55d68273f0505d1be07f5e84531",
+    "counts": {
+      "call_summary": 2,
+      "target_not_reached": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/goblint-regression/09-regions_28-list2alloc.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/09-regions_28-list2alloc.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "d8eafef4fba87d23f577048e1519c0d9e44fde0c61d244f4e4b6ada90f00cba8",
+    "yaml_sha256": "fa2086b144fdeb534f780ac3e3db0e443f4f1fabe33e5a6de8153ac753d5bb44",
+    "counts": {
+      "call_summary": 4,
+      "target_not_reached": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/goblint-regression/28-race_reach_61-invariant_racing-2.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/goblint-regression/28-race_reach_61-invariant_racing-2.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "3465c34fa1c26a5c7a3494350123ab41e5828c33cb08ac3f67b81737d460e559",
+    "yaml_sha256": "cb05aa4f5b3c9754c7631ea8757201f446a9575d9a19ead26eacfe97d744ddb7",
+    "counts": {
+      "activation_deferred": 4,
+      "activation_small_bound": 12,
+      "constant_guard_unsat": 16,
+      "integer_operation": 16,
+      "sc_same_path_read_from": 16,
+      "target_not_reached": 12
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/ldv-races/race-2_3b-container_of.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-2_3b-container_of.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "3b5ad22496d50c8537256f76c6605916315b4e46bfea0d123c3dfe0ede8ccd5c",
+    "yaml_sha256": "18d7395bd566c32cc761d7cf912bedd5681dc04ed9cdf1a3b270fa6cd27a9cca",
+    "counts": {
+      "activation_deferred": 4,
+      "activation_small_bound": 12,
+      "non_global_object": 66
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "PASS"
+  },
+  {
+    "task": "c/ldv-races/race-2_4b-container_of.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-2_4b-container_of.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "bc5e7f1bb9d797b9993cfb044bde836cb0311db6d5f44e269650954deb1b2eac",
+    "yaml_sha256": "00fbd9ebe3825fcf413cc7c1251415764be32a24c054f213f61fa7763f3f1812",
+    "counts": {
+      "activation_deferred": 4,
+      "activation_small_bound": 12,
+      "non_global_object": 66
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "PASS"
+  },
+  {
+    "task": "c/ldv-races/race-2_5b-container_of.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-2_5b-container_of.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "f1942ace8c778751cd05c2300e6de2a4cae5b8531556ba74a79e4220c0fb3ead",
+    "yaml_sha256": "476a2a67e823c22fc28e8f0c282684cd34816740ee4193759c505ab34fd4de9b",
+    "counts": {
+      "activation_deferred": 4,
+      "activation_small_bound": 12,
+      "non_global_object": 66
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "PASS"
+  },
+  {
+    "task": "c/ldv-races/race-4_2-thread_local_vars.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/ldv-races/race-4_2-thread_local_vars.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "0f799b8cb369af433cd7b4f4a2ae1c7efd2306d185f06da0302d2727c00c6bf0",
+    "yaml_sha256": "ed206a7ebe5204baa3dba53c2337a97e946966302d51af94f66bb1a1271b7957",
+    "counts": {
+      "thread_activation_unproven": 15,
+      "transitive_thread_order": 5
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/libvsync/bounded_spsc.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/libvsync/bounded_spsc.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "93808a150a8803e907bade039c6d51db8f9a81931409074d169ee410e6e3b34e",
+    "yaml_sha256": "cf7f4c823cc601e39f259c4ad9fa68e5eae518dcbf6824e1a95b98ffd89dd44e",
+    "counts": {
+      "thread_activation_unproven": 11
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/libvsync/caslock.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/libvsync/caslock.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "ccdf0afe8275b0f0027f25e9cbae71f2f65e35cd382dc94e4bf618f0bb694bbb",
+    "yaml_sha256": "f7f65baab5abdca27f760e22f5b5d8baa64279fe3afc7e69968ac8b4865173a9",
+    "counts": {
+      "prefix_statement": 24,
+      "target_not_reached": 12,
+      "thread_activation_unproven": 6
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/libvsync/hemlock.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/libvsync/hemlock.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "32f4670f2030763bd67badb5cbfcc478b68d183a08014f4e493405aced06d0a1",
+    "yaml_sha256": "41fc277393488c094dd29d832fef90bc4f81c2311f1e10b8e3fae9a8240e1544",
+    "counts": {
+      "prefix_statement": 24,
+      "target_not_reached": 12,
+      "thread_activation_unproven": 6
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/libvsync/rec_spinlock.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/libvsync/rec_spinlock.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "6bccccdc690a2ab58d5a3c6589feeefb3ddb27ac03f283e5d86f588f822051f5",
+    "yaml_sha256": "064627f8aba5152a3d57c23a51e0b06aab9a3d5b19a6bb37084c094b50f5f097",
+    "counts": {
+      "prefix_statement": 24,
+      "target_not_reached": 12,
+      "thread_activation_unproven": 45
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/libvsync/twalock.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/libvsync/twalock.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "a5c220663fb58aca5054c7d66f1914d7f3ea195b856e95063c15f81a2e5a7d9e",
+    "yaml_sha256": "85f670edf0fccdcebfb86d8237b24b0e96cae1a6f39830ce0aa3deaa858927f3",
+    "counts": {
+      "prefix_statement": 24,
+      "target_not_reached": 12,
+      "thread_activation_unproven": 6
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/pthread-atomic/gcd-2.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/gcd-2.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "abac4834eb8b1123405a2c6108c3d30e84ad22df2224a055d262e226b4ba66e1",
+    "yaml_sha256": "7088ff988e66dca03b8a17631be479981625c15e63b69e03f1f76af605a9be1d",
+    "counts": {
+      "activation_deferred": 2,
+      "activation_small_bound": 6,
+      "ai_candidate_bounds": 5,
+      "atomic_completed_paths": 12,
+      "integer_operation": 67,
+      "interrupted_small_bound": 4,
+      "sc_read_from": 114,
+      "sc_same_path_read_from": 130,
+      "search_budget": 8,
+      "smt_unknown": 4,
+      "smt_unsat": 6,
+      "target_not_reached": 4,
+      "thread_activation_unproven": 2,
+      "unroll_path_budget": 8
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-atomic/qrcu-1.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/qrcu-1.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "3655f01df3eccc3acdb69c97e41dec3a3ff24ca3333b88921cb12b5b6c342936",
+    "yaml_sha256": "9b077306ee32003f2a593e721ae6351fd7ebc153b0cd34583d6af2310df9fe03",
+    "counts": {
+      "search_budget": 38,
+      "ai_candidate_bounds": 13,
+      "atomic_completed_paths": 5,
+      "call_summary": 5,
+      "constant_guard_unsat": 188,
+      "integer_operation": 520,
+      "sc_read_from": 682,
+      "sc_same_path_read_from": 216,
+      "smt_unsat": 26,
+      "unroll_work_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-atomic/qrcu-2.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-atomic/qrcu-2.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "d1980d3c26a5811df2d100379a9d31e1e9ec963bc59bfe660be33ada51bfb014",
+    "yaml_sha256": "ea2d1ebd75d1eca10d54f157ad0473d5722482a8ccdf22b6fd9fdee117fc1836",
+    "counts": {
+      "search_budget": 38,
+      "ai_candidate_bounds": 12,
+      "atomic_completed_paths": 4,
+      "call_summary": 4,
+      "constant_guard_unsat": 168,
+      "integer_operation": 516,
+      "sc_read_from": 664,
+      "sc_same_path_read_from": 206,
+      "smt_unsat": 24,
+      "unroll_work_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-complex/elimination_backoff_stack-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-complex/elimination_backoff_stack-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "115e066856baca443b44a0f6b5ce54f74ba2b2820e5612bf4393c0e893767d55",
+    "yaml_sha256": "f5699d978f9c4d499788100424a99108d3bc76e7fd031736aefa4512f66e40a7",
+    "counts": {
+      "activation_deferred": 19803,
+      "activation_small_bound": 59409,
+      "non_global_object": 24588,
+      "points_to_not_singleton": 24588,
+      "thread_activation_unproven": 19803,
+      "atomic_completed_paths": 3,
+      "call_summary": 6,
+      "interrupted_small_bound": 1,
+      "search_budget": 11606,
+      "target_not_reached": 3,
+      "unroll_work_budget": 6
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/pthread-complex/workstealqueue_mutex-1.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-complex/workstealqueue_mutex-1.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "3a1634bb3c8fd20e3116589f39b7439eb06d3d5864b5afee415eff1cf39cd7c4",
+    "yaml_sha256": "4a6d69fafcbec44fa44c0f26b6ef1f7d11d0aed6c7c4da6d8317cd2814bb6395",
+    "counts": {
+      "non_global_object": 455,
+      "points_to_not_singleton": 455,
+      "atomic_completed_paths": 4,
+      "call_summary": 2,
+      "search_budget": 192,
+      "target_not_reached": 2,
+      "unroll_work_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-deagle/floating_read-10.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/floating_read-10.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "8144e99ab74da6c65d7c38142aa4ddc1b99b688ea06937a7acd153b5a75ad731",
+    "yaml_sha256": "bd13e6c55b54f653d665c4ddd071f7c79560fdb6d3095c9a8c6cc8acae63288b",
+    "counts": {
+      "non_global_object": 2,
+      "points_to_not_singleton": 2,
+      "prefix_statement": 8,
+      "target_not_reached": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-deagle/floating_read-15.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/floating_read-15.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "abe6fcc2bea9781e0ab07417eb8616a5b638529e720de8eddec3568cb8edc6ea",
+    "yaml_sha256": "e83ae0faf947c927e0eecf52ca36cd0f87925fcd0c06f0f1411d355f54125304",
+    "counts": {
+      "literal_loop_search_hint": 2,
+      "non_global_object": 2,
+      "points_to_not_singleton": 2,
+      "prefix_statement": 8,
+      "target_not_reached": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-deagle/floating_read-20.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/floating_read-20.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "cd83ac16197366132446ebf4fbdedd8712860068d55cee6f01a283271b044e15",
+    "yaml_sha256": "94ad92ee4ddd2f62bd10657c7ccd1179a1072b00ed1b74f3a6d49aaf9bcd938e",
+    "counts": {
+      "literal_loop_search_hint": 2,
+      "non_global_object": 2,
+      "points_to_not_singleton": 2,
+      "prefix_statement": 8,
+      "target_not_reached": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-deagle/floating_read-25.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/floating_read-25.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "778e3ae04d32637f959b85d1a08971a3e61432e093e04b2798423806241a3f5a",
+    "yaml_sha256": "80f6a9599144607e574bef4e5eb1fb6271d25da3f38f85ce8a0f6b9fed3bace7",
+    "counts": {
+      "literal_loop_search_hint": 2,
+      "non_global_object": 2,
+      "points_to_not_singleton": 2,
+      "prefix_statement": 8,
+      "target_not_reached": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/pthread-deagle/floating_read-5.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/floating_read-5.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "2f28efd84e1dbcbcea7683bca483f8f3b9fbdd333eb36f517b9f12d5bccb885d",
+    "yaml_sha256": "28fd5f26d16c4b9c9cc6d0e7e251948c33a4a1bdda9ec63a8d7bb1c3319d1110",
+    "counts": {
+      "non_global_object": 2,
+      "points_to_not_singleton": 2,
+      "prefix_statement": 8,
+      "target_not_reached": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_bad-10.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-10.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "10d5067d95273951a014725afb4753c98c29896d9675321f4fa3b00f339e7930",
+    "yaml_sha256": "1cab84ddf75530365cfecaa68b7a40f8edaf72c2e2a5df667aac625105315a7e",
+    "counts": {
+      "thread_activation_unproven": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_bad-20.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-20.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "fd7555e2b4abe63429c1be22a8b482f63bbf931ffcb895a158eac84b789e7c88",
+    "yaml_sha256": "3ad348031ae997a1be07cd115847f6499326f530a9534583927be5eff38e30d3",
+    "counts": {
+      "thread_activation_unproven": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_bad-30.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-30.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "8d7df89eaaa05ee1c4077455abbd501c07d86257ca2c037ce71ae27b3838effb",
+    "yaml_sha256": "177d19fe9b2ce00623072a12f4abab7ec3095b8a80f4d8ed7b9d7027d7f9049d",
+    "counts": {
+      "thread_activation_unproven": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_bad-40.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-40.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "b6d5da741db538e8728209fa456d0dc9c63ceba5521dacbaf062bafc94e3da01",
+    "yaml_sha256": "98ae0bef8648eb4199d470a4cd90ae657f81bbc3eaafa95551ff03e8dc4b1e3c",
+    "counts": {
+      "thread_activation_unproven": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_bad-50.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_bad-50.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "3fef2534d7e571caae7ed965d7471ed1f22fea3d397b160035401f5a41da921e",
+    "yaml_sha256": "74235676fbd961c66bf2c49f01a77a103cf60094269e4146436bcd8ee2dde169",
+    "counts": {
+      "thread_activation_unproven": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_good-10.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-10.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "053c2020ab3922d27be669eca0e75ac8051424727a4d2b2d1ab69540cc43f0a3",
+    "yaml_sha256": "4e03edae63fb462e0a58310d76d831fe81637799701fd80fb515fdda69b6544a",
+    "counts": {
+      "thread_activation_unproven": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_good-20.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-20.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "2f66f1b2f8bc96c1cbd24e122a1b904932cb7f0e98e43f950b8a0288b2af2871",
+    "yaml_sha256": "2a7f91976708c3491b179c482c9baffeca3358aef8c195c057faf8c170e6f85d",
+    "counts": {
+      "thread_activation_unproven": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_good-30.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-30.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "e9f2c63b5b236ffd2c3c18bb3989267f7d1d50794d9317a52e37b9cf94f3ba35",
+    "yaml_sha256": "6e58cd36ea1dac4dbab7858b1fe17e2c623a53a01829cc94983b7c40d20e8637",
+    "counts": {
+      "thread_activation_unproven": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_good-40.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-40.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "bc410c23b8a40101ed787fe72a0515ef047b7022a45484b309d3277414201100",
+    "yaml_sha256": "42234425254fd9cf29b4a97262353c5fc2676864bbb51804c61ccedde4072a9b",
+    "counts": {
+      "thread_activation_unproven": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_good-50.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-deagle/reorder_c11_good-50.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "a3b533c73361ee15e10e9133a2147995318be27bb7652d57aee6ac7672acea5b",
+    "yaml_sha256": "e2ebfb2561b10b1d034ac35996649cfce8036bad9f634da151809b1ca96fe406",
+    "counts": {
+      "thread_activation_unproven": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/pthread-divine/barrier_2t.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-divine/barrier_2t.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "f16bd48636db1837ea8e0ca595ad8610f40d584c5526c4d4feced86ef6fdf308",
+    "yaml_sha256": "7694919f81ecd9cc93e7c114feee80aefcfcbae435f70607285e8e4371222377",
+    "counts": {
+      "call_summary": 25,
+      "non_global_object": 2458,
+      "points_to_not_singleton": 2458,
+      "search_budget": 35,
+      "target_not_reached": 9,
+      "thread_activation_unproven": 1329,
+      "unroll_path_budget": 17
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-divine/barrier_3t.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-divine/barrier_3t.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "116240ce9d1e33454ba4eae840c2d7b67606f3cd4ffa1a06798f06dcbc1241fc",
+    "yaml_sha256": "7337c4a253d3c21ff7a2167001eda1aa4f4d390210fab17d9e3e757b778d4784",
+    "counts": {
+      "non_global_object": 2458,
+      "points_to_not_singleton": 2458,
+      "thread_activation_unproven": 1329,
+      "call_summary": 25,
+      "search_budget": 35,
+      "target_not_reached": 9,
+      "unroll_path_budget": 17
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-divine/condvar.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-divine/condvar.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "08550a9d023a2de1ac334a3445fa7327c26092d061f764efe50453540d837a7a",
+    "yaml_sha256": "9c4bc552aeaff5d1ac3205fe000687d83f37494e2d4324bb1482a956a729adde",
+    "counts": {
+      "target_not_reached": 2,
+      "constant_guard_unsat": 17,
+      "integer_operation": 137,
+      "sc_same_path_read_from": 137
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-divine/divinefifo-bug_1w1r.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-divine/divinefifo-bug_1w1r.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "32482febe38d61a93fd0705f3ad97c9c1ccc991b1238f75e4d1dd99bfb01c35e",
+    "yaml_sha256": "b9532924011c057ca65814b9444aff361acfbea089901537867c69148a720316",
+    "counts": {
+      "non_global_object": 101,
+      "points_to_not_singleton": 96
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-divine/divinefifo_1w1r.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-divine/divinefifo_1w1r.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "43c4691e367ff0d8a9949fa90f15eddbc091ab75ed1546de74dafe83c2376639",
+    "yaml_sha256": "669e32f7f829f0491cd775a72874dbdd728d9311834a763b666c83800e49e968",
+    "counts": {
+      "non_global_object": 104,
+      "points_to_not_singleton": 99
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/pthread-divine/one_time_barrier_2t.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-divine/one_time_barrier_2t.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "16b049fb81e05ec2192b5dc6cabf7c8b89c1486d4e623332a0a01a89383c6c7d",
+    "yaml_sha256": "0b4491ad71bf90789fae881b9ce2ff4f2a23e180cdc0a70e0acd07f5b167b4b3",
+    "counts": {
+      "call_summary": 9,
+      "non_global_object": 680,
+      "points_to_not_singleton": 680,
+      "search_budget": 52,
+      "target_not_reached": 3,
+      "thread_activation_unproven": 374,
+      "unroll_path_budget": 3
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-divine/one_time_barrier_3t.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-divine/one_time_barrier_3t.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "658086e6a2b970f68ba6fa20919311f7cc4c75e1705e5ad288c4fd1e6439159f",
+    "yaml_sha256": "4ccde05b77331161b872ed3c2d0c60d0cbd555b145a15459f37fb3f8c4a7253d",
+    "counts": {
+      "non_global_object": 680,
+      "points_to_not_singleton": 680,
+      "thread_activation_unproven": 374,
+      "search_budget": 52,
+      "call_summary": 9,
+      "target_not_reached": 3,
+      "unroll_work_budget": 3
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-divine/one_time_barrier_twice_2t.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-divine/one_time_barrier_twice_2t.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "654ba073723c5bebcf706552b3cd58bc95cc07bc71a7e60391f80a16de89dbcb",
+    "yaml_sha256": "41008584a21a973c64c6275273d096fbbd5a72687fdfe66947eac62ef036b0a7",
+    "counts": {
+      "non_global_object": 680,
+      "points_to_not_singleton": 680,
+      "thread_activation_unproven": 374,
+      "search_budget": 52,
+      "call_summary": 9,
+      "target_not_reached": 3,
+      "unroll_path_budget": 3
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-divine/one_time_barrier_twice_3t.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-divine/one_time_barrier_twice_3t.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "f7efed4227021db06f22a3abd4d1096de1449b086dcfb78e041156858b4360a4",
+    "yaml_sha256": "68c77eae076b52293fe283cef05b87b0d6466fddc5e880cc031bbbb4baefe0cb",
+    "counts": {
+      "non_global_object": 680,
+      "points_to_not_singleton": 680,
+      "search_budget": 52,
+      "thread_activation_unproven": 374,
+      "call_summary": 9,
+      "target_not_reached": 3,
+      "unroll_work_budget": 3
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-divine/ring_1w1r-1.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-divine/ring_1w1r-1.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "3a956b76a4ba98ce13df4d83ef2fb7ffa0973225ecb152c14bcfbb55b6546601",
+    "yaml_sha256": "059dbb210585be9f0dd41a5f4eb6a0364786d186ff37712061c49fc20119d80b",
+    "counts": {
+      "non_global_object": 9
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-divine/ring_1w1r-2.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-divine/ring_1w1r-2.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "b7e9feb6929ab81158cc9d6731414a71af210f92cb571da2954e02689fee6d2b",
+    "yaml_sha256": "3f629286276d114a6f85f62d7eddb8bc39a2aaa0b4ef4d0df3b63d847dd739ed",
+    "counts": {
+      "non_global_object": 12
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-divine/ring_2w1r-1.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-divine/ring_2w1r-1.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "509c3c8c1895397e4c0d03f6462ad0ca0ed3ce99b40d08b775ab8473dba5ee1f",
+    "yaml_sha256": "4946c8e10fad2e65c09da3693b8b51abf128499193946f67516dea2771fb21a1",
+    "counts": {
+      "activation_deferred": 9,
+      "activation_small_bound": 27,
+      "non_global_object": 54
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_current-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_current-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "8574c9e3ae0d1a85163128f572679ab993dc8d0ed0a940460456b969a6ba6abb",
+    "yaml_sha256": "dc6157555770bd4edfc126efd788934b96caa81bca52bd5ea86ba726820f08e6",
+    "counts": {
+      "thread_activation_unproven": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_set-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_change_pc8736x_gpio_set-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "f783ff361d5de31004cdf0040dad71b4fcfcade7de2ed268add7b76ae0c835eb",
+    "yaml_sha256": "8df883037ea8c7401e3e1ea2b75f26e2b52257d6e7e103bc4fb46f4ef38c9f8c",
+    "counts": {
+      "thread_activation_unproven": 5
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_current_pc8736x_gpio_set-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-driver-races/char_pc8736x_gpio_pc8736x_gpio_current_pc8736x_gpio_set-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "9e45e8b3a22753baa1011feee2127e6b036a6794c47e85c43714546dba2e558b",
+    "yaml_sha256": "ee8f794886539e1199a7d0cf2c604e808ae35eefeaba78af9216e870da39c63a",
+    "counts": {
+      "thread_activation_unproven": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/04_incdec_cas-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/04_incdec_cas-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "a025fe4ca65874bde9a09e6a2d9fa9eceda581ed1bc5b23e0ff5285795ed115b",
+    "yaml_sha256": "0e76a334b3e932b66aec58788fe5470250a0c724b71f27bb838179d408012675",
+    "counts": {
+      "activation_deferred": 8,
+      "activation_small_bound": 24,
+      "atomic_completed_paths": 6,
+      "atomic_interior_unsat": 310,
+      "call_summary": 12,
+      "interrupted_small_bound": 2,
+      "search_budget": 7,
+      "target_not_reached": 2,
+      "thread_activation_unproven": 8,
+      "unroll_work_budget": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/05_tas.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/05_tas.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "1ee4025da2c93fbd4be930880192a9e0c94d8979f3d9117e228b55f99542c3b0",
+    "yaml_sha256": "f8b8c96098c72851c08b788d2e8806d802cd5ae5a2081387bc22c6bbb287ec5c",
+    "counts": {
+      "activation_deferred": 43,
+      "activation_small_bound": 129,
+      "ai_candidate_bounds": 46,
+      "call_summary": 4,
+      "integer_operation": 556,
+      "prefix_value_origin": 40,
+      "sc_read_from": 878,
+      "sc_same_path_read_from": 46,
+      "search_budget": 43,
+      "smt_unsat": 92,
+      "thread_activation_unproven": 43
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/06_ticket.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/06_ticket.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "d21b75ab9211f19b3beb5c83d6d66f0a0906e2f271e4621d3ded70db8a63bb33",
+    "yaml_sha256": "b2bf6f81550f076ddb3f4f87c7ad7d9f545e85746e0c695294dad8d1e4b2f7c6",
+    "counts": {
+      "activation_deferred": 25,
+      "activation_small_bound": 75,
+      "ai_candidate_bounds": 165,
+      "constant_guard_unsat": 618,
+      "integer_operation": 3569,
+      "sc_read_from": 1232,
+      "sc_same_path_read_from": 4397,
+      "search_budget": 25,
+      "smt_unsat": 330,
+      "thread_activation_unproven": 25
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/07_rand.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/07_rand.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "205a9486f54af3fadf53566888e578b0d398a9ea9e18a2466103c3619a5ade13",
+    "yaml_sha256": "ce1ee725ec96e2df9412c3cd524adc508d1346ea3b12f418762a6e1790b0ee25",
+    "counts": {
+      "activation_deferred": 112,
+      "activation_small_bound": 336,
+      "atomic_pair": 32,
+      "group_search_budget": 63,
+      "thread_activation_unproven": 112,
+      "ai_candidate_bounds": 3,
+      "call_summary": 18,
+      "constant_guard_unsat": 195,
+      "interrupted_small_bound": 3,
+      "sc_read_from": 356,
+      "sc_same_path_read_from": 246,
+      "search_budget": 15,
+      "smt_unsat": 6,
+      "unroll_path_budget": 2,
+      "unroll_work_budget": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/08_rand_cas-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/08_rand_cas-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "adb74bb4036ab42451aee4c4c2c855416fb34747e80c1114ce822e44c6b19376",
+    "yaml_sha256": "5fa0df587a44ed5f93962b39ba565a744ad592f283819c5d58d09f79eb6b21fd",
+    "counts": {
+      "activation_deferred": 51,
+      "activation_small_bound": 153,
+      "atomic_pair": 32,
+      "group_search_budget": 1,
+      "thread_activation_unproven": 51,
+      "ai_candidate_bounds": 3,
+      "atomic_completed_paths": 2,
+      "call_summary": 17,
+      "constant_guard_unsat": 32,
+      "interrupted_small_bound": 3,
+      "sc_read_from": 70,
+      "sc_same_path_read_from": 20,
+      "search_budget": 15,
+      "smt_unsat": 6,
+      "target_not_reached": 3,
+      "unroll_work_budget": 12
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/10_fmaxsym_cas.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/10_fmaxsym_cas.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "a11d0cba01cb66911cac56797cb36d325dc008752ffb55c25c965bd0644c21c3",
+    "yaml_sha256": "ca5df27462c8a9ded38983bcc7fe4ac856ec168061c92099724653181d2d79e0",
+    "counts": {
+      "activation_deferred": 4,
+      "activation_small_bound": 12,
+      "atomic_completed_paths": 6,
+      "call_summary": 12,
+      "interrupted_small_bound": 2,
+      "search_budget": 2,
+      "target_not_reached": 6,
+      "thread_activation_unproven": 4,
+      "unroll_work_budget": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/12_fmaxsymopt_cas.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/12_fmaxsymopt_cas.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "7a0803bc25bdee4cec741e6286f7294c3704d91bb65e5684830693d517eafafb",
+    "yaml_sha256": "4e5261dbd23d94678f40f33ae98dec68342a4c9990fa068bea0af3c298016c2e",
+    "counts": {
+      "activation_deferred": 4,
+      "activation_small_bound": 12,
+      "atomic_completed_paths": 2,
+      "call_summary": 12,
+      "interrupted_small_bound": 2,
+      "search_budget": 2,
+      "target_not_reached": 6,
+      "thread_activation_unproven": 4,
+      "unroll_work_budget": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/25_stack-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/25_stack-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "4272d82e4e32dc4af1661c2cd99f5af7e9487f266698e80f4586c30581d39fa9",
+    "yaml_sha256": "167de4d0dc2bc72a8bce5f5d0a74ec4f90c94ccbaa9f751156796fc79534ccd2",
+    "counts": {
+      "activation_deferred": 139,
+      "activation_small_bound": 417,
+      "atomic_pair": 14,
+      "thread_activation_unproven": 139,
+      "search_budget": 125,
+      "call_summary": 2,
+      "constant_guard_unsat": 867,
+      "integer_operation": 480,
+      "sc_read_from": 2486,
+      "sc_same_path_read_from": 627,
+      "unroll_work_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/25_stack_longer-1-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/25_stack_longer-1-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "71de1c8da7c81d1cb6f2035741a17645b8c79e199c0fda7e542c1cb232593d6b",
+    "yaml_sha256": "652cec123e6fdd70715aa93e9235d1426bd00e7f10f24adc7a7da817e1a92395",
+    "counts": {
+      "activation_deferred": 139,
+      "activation_small_bound": 417,
+      "atomic_pair": 14,
+      "thread_activation_unproven": 139,
+      "search_budget": 125,
+      "call_summary": 2,
+      "constant_guard_unsat": 859,
+      "integer_operation": 480,
+      "sc_read_from": 2465,
+      "sc_same_path_read_from": 624,
+      "unroll_work_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/25_stack_longer-2-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/25_stack_longer-2-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "dadbc714432dbabd9f10b5aceb2a2ff8af11608da70d21414f772d02695c7806",
+    "yaml_sha256": "6d4120c63b062999e094554293eabd5b8dc7a0f1efcfd8695113411847b4a0c2",
+    "counts": {
+      "activation_deferred": 139,
+      "activation_small_bound": 417,
+      "atomic_pair": 14,
+      "thread_activation_unproven": 139,
+      "search_budget": 125,
+      "call_summary": 2,
+      "constant_guard_unsat": 857,
+      "integer_operation": 480,
+      "sc_read_from": 2459,
+      "sc_same_path_read_from": 624,
+      "unroll_work_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/25_stack_longest-1-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/25_stack_longest-1-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "0cc9afdbf7eeaac0d52aedc8a0325c076240e2f45d0a3fe91081372b30b32137",
+    "yaml_sha256": "665c9bb26fe5b6cb6307faf99427e9743ea6e40cde32692276de7f5169c5baf2",
+    "counts": {
+      "activation_deferred": 139,
+      "activation_small_bound": 417,
+      "atomic_pair": 14,
+      "thread_activation_unproven": 139,
+      "search_budget": 125,
+      "call_summary": 2,
+      "constant_guard_unsat": 854,
+      "integer_operation": 480,
+      "sc_read_from": 2450,
+      "sc_same_path_read_from": 624,
+      "unroll_work_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/25_stack_longest-2-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/25_stack_longest-2-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "93834d0ed7ae29f55a5cf3676a6d16497c83e10891cd8a2ab18e9898a90eaebc",
+    "yaml_sha256": "c0f8da4782c1ea6f2eb833dffb6776da86e6c8472b9a4c4079318b215cf9dde2",
+    "counts": {
+      "activation_deferred": 139,
+      "activation_small_bound": 417,
+      "atomic_pair": 14,
+      "thread_activation_unproven": 139,
+      "search_budget": 125,
+      "call_summary": 2,
+      "constant_guard_unsat": 851,
+      "integer_operation": 480,
+      "sc_read_from": 2441,
+      "sc_same_path_read_from": 624,
+      "unroll_work_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/26_stack_cas-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/26_stack_cas-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "fa97ad6141e9aa8818b694f4968e766701fe7261f516cd86f7a15e5cf1a3d14d",
+    "yaml_sha256": "bf37cab660ea693377bc9bf5adb893b0e3217b641b9275fc0b7273e90d1db532",
+    "counts": {
+      "activation_deferred": 76,
+      "activation_small_bound": 228,
+      "atomic_pair": 14,
+      "thread_activation_unproven": 76,
+      "search_budget": 62,
+      "call_summary": 2,
+      "constant_guard_unsat": 920,
+      "integer_operation": 440,
+      "sc_read_from": 2344,
+      "sc_same_path_read_from": 480,
+      "unroll_work_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/26_stack_cas_longer-1-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/26_stack_cas_longer-1-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "e12b29ddb474fc17e74c2b71eb245022640b1de10fdbbb130c7f22e13cd3653f",
+    "yaml_sha256": "94941feefe41a3f94372bfb08558e7ea9d6bcc205b7051e1f442b8ed9ac6f76e",
+    "counts": {
+      "activation_deferred": 76,
+      "activation_small_bound": 228,
+      "atomic_pair": 14,
+      "thread_activation_unproven": 76,
+      "search_budget": 62,
+      "call_summary": 2,
+      "constant_guard_unsat": 817,
+      "integer_operation": 440,
+      "sc_read_from": 2000,
+      "sc_same_path_read_from": 436,
+      "unroll_work_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/26_stack_cas_longer-2-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/26_stack_cas_longer-2-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "cb8c1938cc441082517c5681097f5f6483a36107a8ec46d723b101297930909d",
+    "yaml_sha256": "853d24fff96c562ebefd4e60b9b0fc469b5535dd27051ad99f10c9314ad4507a",
+    "counts": {
+      "activation_deferred": 76,
+      "activation_small_bound": 228,
+      "atomic_pair": 14,
+      "thread_activation_unproven": 76,
+      "search_budget": 62,
+      "call_summary": 2,
+      "constant_guard_unsat": 835,
+      "integer_operation": 440,
+      "sc_read_from": 2068,
+      "sc_same_path_read_from": 440,
+      "unroll_work_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/26_stack_cas_longest-1-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/26_stack_cas_longest-1-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "8c0827ac193c1e2b03d5ccf1e60b62c7d6ff1b4feade2c409a6c7ca2cebf9412",
+    "yaml_sha256": "807392e4b8e618ad80082beaa01564eafdf4b4625da70b24a06a2ad112815d2f",
+    "counts": {
+      "activation_deferred": 76,
+      "activation_small_bound": 228,
+      "atomic_pair": 14,
+      "thread_activation_unproven": 76,
+      "search_budget": 62,
+      "call_summary": 2,
+      "constant_guard_unsat": 814,
+      "integer_operation": 440,
+      "sc_read_from": 1988,
+      "sc_same_path_read_from": 436,
+      "unroll_work_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/26_stack_cas_longest-2-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/26_stack_cas_longest-2-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "79f59481c49375d27b8409383d6d600e90e5ee29536655deda4d0ae0ca7faefc",
+    "yaml_sha256": "ba1e6dbc8ac7aa37942dcb37bf8e1a2e70bea9eedf8f2c235454bd5d4d18bcb9",
+    "counts": {
+      "activation_deferred": 76,
+      "activation_small_bound": 228,
+      "atomic_pair": 14,
+      "thread_activation_unproven": 76,
+      "search_budget": 62,
+      "call_summary": 2,
+      "constant_guard_unsat": 827,
+      "integer_operation": 440,
+      "sc_read_from": 2036,
+      "sc_same_path_read_from": 440,
+      "unroll_work_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/33_double_lock_p1_vs.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/33_double_lock_p1_vs.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "3937112f59473340c79cc2d7ab59a9fe9e4faa83d54303e5490f5452d86b21aa",
+    "yaml_sha256": "29495668b27612a34b00d586d92087c166610102d0899140ea1b93bcf2424eec",
+    "counts": {
+      "atomic_completed_paths": 32,
+      "target_not_reached": 32,
+      "activation_deferred": 28,
+      "activation_small_bound": 84,
+      "atomic_pair": 168,
+      "group_search_budget": 8
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/34_double_lock_p2_vs.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/34_double_lock_p2_vs.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "92ecee121b9ddff062603596761b7b6e384463e9908bd9593577f02dd4911207",
+    "yaml_sha256": "afc22e345e6707353b41924eee9bf81e6e344bee8c10328284ba05d98f396094",
+    "counts": {
+      "atomic_completed_paths": 32,
+      "target_not_reached": 32,
+      "activation_deferred": 28,
+      "activation_small_bound": 84,
+      "atomic_pair": 168,
+      "group_search_budget": 8
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/36_stack_cas_p0_vs_concur-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/36_stack_cas_p0_vs_concur-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "e7fe0631e7f950e2868c8cb954edca4f6de3fdffbf6debba58771511fbac2e8b",
+    "yaml_sha256": "48d52501a95bffbba990785ddcd3dca671764695b3075d8154c2f9c5a3817539",
+    "counts": {
+      "activation_deferred": 10,
+      "activation_small_bound": 30,
+      "call_summary": 4,
+      "constant_guard_unsat": 296,
+      "integer_operation": 4335,
+      "interrupted_small_bound": 1,
+      "sc_read_from": 6124,
+      "sc_same_path_read_from": 1389,
+      "search_budget": 11,
+      "smt_unsat": 300,
+      "thread_activation_unproven": 10,
+      "unroll_path_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/37_stack_lock_p0_vs_concur-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/37_stack_lock_p0_vs_concur-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "d76df1bfaca9781352b9c7afbe4683f5e649e880008edad8122f422eebb0dbe8",
+    "yaml_sha256": "22927f769a929f52dc83f3c3a0e4b8168929b65bb281ece06b5b3f279aed02f4",
+    "counts": {
+      "activation_deferred": 7,
+      "activation_small_bound": 21,
+      "call_summary": 6,
+      "constant_guard_unsat": 134,
+      "integer_operation": 1141,
+      "interrupted_small_bound": 1,
+      "sc_read_from": 687,
+      "sc_same_path_read_from": 437,
+      "search_budget": 7,
+      "smt_unsat": 56,
+      "thread_activation_unproven": 7,
+      "unroll_path_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/38_rand_cas_vs_concur.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/38_rand_cas_vs_concur.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "628ef5ad19754647fb807fc1cc13e384334d380a6e3691b7b5f1842f42e5f662",
+    "yaml_sha256": "dd1bfede3aa734af29db02a0751c420b5001352b24b858e7024a226117a143a5",
+    "counts": {
+      "activation_deferred": 2,
+      "activation_small_bound": 6,
+      "atomic_completed_paths": 5,
+      "atomic_interior_unsat": 1032,
+      "call_summary": 10,
+      "interrupted_small_bound": 2,
+      "search_budget": 4,
+      "target_not_reached": 2,
+      "unroll_work_budget": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/40_barrier_vf-b.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/40_barrier_vf-b.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "7e4eda3d9731a5d805cffabe3eaaa057ba5ed6235ab584548c3730cf4f9dedf3",
+    "yaml_sha256": "5e765456cd4222e5aab8260924ccdd093c89e25fa111935756bb9fdf38af5988",
+    "counts": {
+      "activation_deferred": 84,
+      "activation_small_bound": 252,
+      "ai_candidate_bounds": 38,
+      "call_summary": 92,
+      "constant_guard_unsat": 263,
+      "integer_operation": 371,
+      "sc_read_from": 925,
+      "sc_same_path_read_from": 16,
+      "smt_unsat": 76,
+      "thread_activation_unproven": 84,
+      "atomic_pair": 32,
+      "group_search_budget": 28,
+      "search_budget": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/42_FreeBSD_rdma_addr_sliced.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/42_FreeBSD_rdma_addr_sliced.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "adac70a9b891a5462c4bee71a2751021c9d437d73a002d25ad244a8f2ad465c8",
+    "yaml_sha256": "9905375c080d70a8559343894ec5078f542fdd3e5676c82eb8779d92cc2f4ba5",
+    "counts": {
+      "activation_deferred": 1150,
+      "activation_small_bound": 3450,
+      "call_summary": 6,
+      "constant_guard_unsat": 90,
+      "integer_operation": 160,
+      "interrupted_small_bound": 1,
+      "sc_read_from": 624,
+      "search_budget": 1151,
+      "smt_unsat": 12,
+      "thread_activation_unproven": 1150,
+      "unroll_work_budget": 5
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-ext/44_Solaris_space_map_sliced.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-ext/44_Solaris_space_map_sliced.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "33c040d0fbd9b1f189d3917c569371e7923ba6ef4820715ff1ef4976213f5b31",
+    "yaml_sha256": "15580b3a89460071bd161a079cd3acdf836ff63eec95ea53a9fa92f3287f19f9",
+    "counts": {
+      "activation_deferred": 699,
+      "activation_small_bound": 2097,
+      "ai_candidate_bounds": 4,
+      "call_summary": 2,
+      "constant_guard_unsat": 152,
+      "sc_read_from": 1648,
+      "sc_same_path_read_from": 240,
+      "search_budget": 699,
+      "smt_unknown": 1,
+      "smt_unsat": 7,
+      "thread_activation_unproven": 699
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-array-index-race-2.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-array-index-race-2.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "b606ed8b0061f7540a480987fb5d0368be6ab145ef928bee0cc134c3bece9590",
+    "yaml_sha256": "1e297921e241ab43f0dfcec3cd16ecedc0f4616e191316e1ec16ea310bdef651",
+    "counts": {
+      "thread_activation_unproven": 1
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-array-index-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-array-index-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "289adcaae4c50abff0035518c5703ebebf5bd048dfea932ca710de251a5a744e",
+    "yaml_sha256": "d562f76841c312c7e22d6dcae84961733c72bcfaffc2b0e98875c043a3774ac3",
+    "counts": {
+      "thread_activation_unproven": 1
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-array-init-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-array-init-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "6fea91513c96246b75c49fa902e51d33d0640cbe9a02143a9b8a08050c0f0b4f",
+    "yaml_sha256": "76e224ec8a3a7cfd72a147a1578e7815e66c13ef9851e93a5e7575c39720eb06",
+    "counts": {
+      "call_summary": 2,
+      "target_not_reached": 2
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "ERROR"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-array-join-counter-race-2.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-array-join-counter-race-2.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "534bdd637f5e5b671357d3ac8ec1b617321ae1d1d7a44132336275a64f61ed0f",
+    "yaml_sha256": "cc5919654dcbf3dff45d1cc58d5d312c06adcfe39cd0adea8ceb1a4706aefac2",
+    "counts": {
+      "call_summary": 6,
+      "prefix_statement": 4,
+      "target_not_reached": 5,
+      "unroll_path_budget": 1,
+      "thread_activation_unproven": 5
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "ERROR"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-array-join-counter-race-3.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-array-join-counter-race-3.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "21bb8f266262880d0d6873fb2e4e8bc5cd60f79baa0774ffc8a8aedd31b66692",
+    "yaml_sha256": "5a8b93fc34db0034d39059a3e4125ef0c663ea818ab046fc51621dc0fc12ba9f",
+    "counts": {
+      "call_summary": 6,
+      "prefix_statement": 4,
+      "target_not_reached": 5,
+      "unroll_path_budget": 1,
+      "thread_activation_unproven": 5
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "ERROR"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-array-join-counter-race-4.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-array-join-counter-race-4.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "12fde76b4484c87975ec3c2c6c513458a595d4b258864aadbba7a9ba15d60c4e",
+    "yaml_sha256": "695276fa27c05c9f1c8fe3068d820b21629bbfbf2dec04ae19d44471357371e1",
+    "counts": {
+      "call_summary": 8,
+      "target_not_reached": 6,
+      "unroll_path_budget": 1,
+      "join_completion_unproven": 2,
+      "prefix_statement": 4,
+      "thread_activation_unproven": 5,
+      "unroll_work_budget": 1
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "ERROR"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-array-join-counter-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-array-join-counter-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "89e1e1c0e1e01616972f9a6d634b048a563c333adf9bbdacaa43c945dbb7e140",
+    "yaml_sha256": "7420d7345cd292c65ff6c8a04f28bccfcd16215b2807d786faf5ee2155ebca8f",
+    "counts": {
+      "call_summary": 10,
+      "prefix_statement": 4,
+      "target_not_reached": 7,
+      "join_completion_unproven": 6,
+      "search_budget": 2,
+      "unroll_work_budget": 3,
+      "thread_activation_unproven": 5
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "ERROR"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-array-ptr-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-array-ptr-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "3b48d748645bdde1aeeb8dea66ba49bd5b185acd910927d963305195a7958388",
+    "yaml_sha256": "5f1b7c2b48126e169b676c405528ceed7f32a06488dfe5f79fed5328401c0c6e",
+    "counts": {
+      "thread_activation_unproven": 1
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-index-bitmask-race-2.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-index-bitmask-race-2.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "bf4857c62d483a773a35fae36979eac9c903a6d30c1e665676e5036b445ef343",
+    "yaml_sha256": "a45978c9bfb4d84ff5d5086cbe0c3ad4d1b0c4b8fd3976bf8b4f8cd986fb5883",
+    "counts": {
+      "thread_activation_unproven": 1
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-index-bitmask-race-3.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-index-bitmask-race-3.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "6029e5a48177b265da8d69ef0b285080ea9366bff1fe25e3f3180b0cf8b63df5",
+    "yaml_sha256": "f5cff05a08df19b2a6cf38f5bc1bea8e7554e07a0c03e1822bb6fcd7dd0bbc63",
+    "counts": {
+      "thread_activation_unproven": 1
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-index-bitmask-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-index-bitmask-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "9dc253a71095a3ed3b49fc56a3d17da307efb7fa91be8525b1f50977899b5b3d",
+    "yaml_sha256": "759237af78e8de5c8c5761610674bdb983373b2843a6e0edf82a1a3ce46d988f",
+    "counts": {
+      "call_summary": 14,
+      "prefix_statement": 14,
+      "target_not_reached": 14,
+      "thread_activation_unproven": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-index-inc-race-2.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-index-inc-race-2.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "729ea5b7f047316231f562bf88a66f84bb913811f2b458cb706ab3ed78d2b3a0",
+    "yaml_sha256": "f9c00709114bf1c13b00690a5d25fd4cd4bc829fd378ca966d157a6365e27aa2",
+    "counts": {
+      "thread_activation_unproven": 1
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-index-inc-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-index-inc-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "dcbcb8208024116480c974e9f1bc8db6725056562df0982447c3fb673ff0c0ec",
+    "yaml_sha256": "978d481f7bb5f45a0ce683acba2f67a1f45f05954365fe2ce39dfe5933a7a6f7",
+    "counts": {
+      "thread_activation_unproven": 6
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-struct-in-array-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-struct-in-array-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "c3ac8edf9cc34df23835297b42f3eb24b0fecd781f1d2abb112aaac7f99695b4",
+    "yaml_sha256": "d1933f579edd78da279fbfea4fc742e444287ccd2953fda9b913fdcfd0e3aa73",
+    "counts": {
+      "thread_activation_unproven": 1
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/per-thread-struct-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/per-thread-struct-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "bdf6537ef41e6e97eaabcf1f32a2477c3eb925663d5b8e717e1252d54a113bc0",
+    "yaml_sha256": "2b6a2c2ecacc5ec0ac79522773b8c579a0f5289279c46a2ffa21a31a9aeb11a4",
+    "counts": {
+      "thread_activation_unproven": 1
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/semaphore-posix-race-2.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/semaphore-posix-race-2.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "480c5148e7cd14e3e53887d18fd0599a0b88a26e0479fa105e19ce5761a14580",
+    "yaml_sha256": "2307c2438c890ea0a12361850fd680479d20896e4f3d69824a862c1ef8d3aaa1",
+    "counts": {
+      "thread_activation_unproven": 1
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "ERROR"
+  },
+  {
+    "task": "c/pthread-race-challenges/semaphore-posix-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/semaphore-posix-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "5dde223e05029ee74a9549f7a4ca4d96fc6c447ae57a94d6c6626aac6f15533a",
+    "yaml_sha256": "06114fb9be754dfcbe500f111221dcc6ea8f9bd243d3a0d2ab3605d748dc4e06",
+    "counts": {
+      "thread_activation_unproven": 1
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "ERROR"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-array-const-race-2.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-array-const-race-2.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "860528881155a718438c0581485d42cc235131c30c9ba38f0a976304f206e75d",
+    "yaml_sha256": "a4623ce68da86f580536e170feecb39faccb402cd6eeaf49a2e59ad0edb68ee9",
+    "counts": {
+      "join_completion_unproven": 2,
+      "target_not_reached": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-array-const-race-3.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-array-const-race-3.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "fa0ecdfec37b7bd940900ff854c772fdadeb6c6111223868a85a6141c0a777e6",
+    "yaml_sha256": "cd42df43f72cfc782e33a03009a44c601b5d6c34e6e9db173c3542a50e59e02d",
+    "counts": {
+      "join_completion_unproven": 2,
+      "target_not_reached": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-array-const-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-array-const-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "b78611c293a7a651605e3dc9bdfe409b46ee0a572a0a5030b4011d70f271b607",
+    "yaml_sha256": "65b8e1d776cb91cace52d98390205d9a3e21db31e214abeeed774dc04b8890da",
+    "counts": {
+      "join_completion_unproven": 2,
+      "target_not_reached": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-array-dynamic-race-2.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-array-dynamic-race-2.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "9b6f5676df76ead7ff47af365c70465c7b9cb0ddd7acfe90754727af80919440",
+    "yaml_sha256": "25eca42cd9b6a1263d13ca75e15793924608ab06f95533cc1b4cb9ca75b6ead8",
+    "counts": {
+      "call_summary": 4,
+      "target_not_reached": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-array-dynamic-race-3.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-array-dynamic-race-3.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "827df23f2f2d5cc81b0f2d655a6c774471e4114629b1caec5ad3ca146d0279c2",
+    "yaml_sha256": "e81a4e04aed3b175f6f53609756aeb696eda36d9013e4f7b002393c1a34ba0fa",
+    "counts": {
+      "call_summary": 4,
+      "target_not_reached": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-array-dynamic-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-array-dynamic-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "ec72a571c515701a06aa24404f70bcf9f40028e7df85d67cfca81a233c8469ca",
+    "yaml_sha256": "a25b4e53de779712164ee476e0d10b966196d57e25d3f39ba33a07f1932ba171",
+    "counts": {
+      "call_summary": 4,
+      "target_not_reached": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-binomial-race-2.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-binomial-race-2.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "9c17f10721ad43a689085e56bbab66351be2a01da9f0c20359ae30ab37e92dbe",
+    "yaml_sha256": "e5bf9be1ab52148b7b6d2b1d63795b6acd5764fab292d6299ed0ffe8b60a1a7c",
+    "counts": {
+      "join_completion_unproven": 6,
+      "prefix_statement": 6,
+      "target_not_reached": 6
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "TIMEOUT"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-binomial-race-3.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-binomial-race-3.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "2fcf549dbbd9dfa3c3590290694ca7785fc56f3cc704f9ad7d537aaa6ab3cd10",
+    "yaml_sha256": "1f890896809cea66fafff7b07a3a8b0e8a8df5df48c5d23bd53a625b59123344",
+    "counts": {
+      "join_completion_unproven": 6,
+      "prefix_statement": 6,
+      "target_not_reached": 6
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-binomial-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-binomial-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "f3721357e68fd557f222f8a0ce5068ab4a46e5f8573d31ce219014656501246c",
+    "yaml_sha256": "65afc33fb9b33c256825eac07fbfcdcb4d68f99a8c2f62b347bed227d8fb7120",
+    "counts": {
+      "join_completion_unproven": 6,
+      "prefix_statement": 6,
+      "target_not_reached": 6
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race-4.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-inner-race-4.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "981efc79b98be1af19a50b7730f942b742f0093baf5909570150cbe7e4c78c16",
+    "yaml_sha256": "8a021cfa7582f07334c59561b5bb1322500939d73d1625529dc7477b175afe99",
+    "counts": {
+      "ai_candidate_bounds": 111,
+      "constant_guard_unsat": 4,
+      "integer_operation": 1720,
+      "interrupted_small_bound": 1,
+      "sc_read_from": 1275,
+      "sc_same_path_read_from": 111,
+      "search_budget": 2,
+      "smt_unsat": 222,
+      "thread_activation_unproven": 14,
+      "unroll_path_budget": 3
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-outer-race-4.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-join-counter-outer-race-4.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "cc2bc8e2b738274330116922d0213f314e2f92c105156edd0131038d71009ecb",
+    "yaml_sha256": "8a81459e05f1b8ffae87f9fb70bb8e681421e0974bd871e69c9c71f14f308c0c",
+    "counts": {
+      "constant_guard_unsat": 332,
+      "integer_operation": 4424,
+      "interrupted_small_bound": 2,
+      "sc_same_path_read_from": 4842,
+      "search_budget": 1,
+      "thread_activation_unproven": 48,
+      "unroll_path_budget": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-local-value-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/thread-local-value-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "7ed1d3b0e4e2dcb24c2f8434bdd31da5e0bc2d00338c37a58d169ecec68bbec4",
+    "yaml_sha256": "f0fbdb0805c19fbe76e3da0f42aa932d3f9a8e70b6469f7ba8603151ef30bf4e",
+    "counts": {
+      "thread_activation_unproven": 5
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread-race-challenges/value-barrier-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread-race-challenges/value-barrier-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "4e3d22e98e469d91cee59ee59a7893605d6313bab33afdf939e81a0c217e3b1b",
+    "yaml_sha256": "67b7b6e3026c93758627dadd1c62dc232397073488ab712625ff3ab192b504c5",
+    "counts": {
+      "prefix_value_origin": 510,
+      "thread_activation_unproven": 38
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread/bigshot_p.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/bigshot_p.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "4f85a81c281496cbdf0eab98e129af733fe18998c76267e6089945bdfc7c0c54",
+    "yaml_sha256": "0dab859103d4c9fa71f212d2709e48e140a7520e656f856f972e952098c0281d",
+    "counts": {
+      "call_summary": 4,
+      "target_not_reached": 4
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread/indexer.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/indexer.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "f24afaadf07ead7c7da85cf6020fd6a6a5b5585e439441b5111a2dea2e7cec4c",
+    "yaml_sha256": "45f2f2245d0e8f47e5478ff981405dbd416eda5d7ea207612776139f59519800",
+    "counts": {
+      "thread_activation_unproven": 3,
+      "non_global_object": 1
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread/reorder_2-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/reorder_2-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "b8118921f4e94a266cc060fbf2fdaa97ed8f96343f174115bf05a8f09a1b77a8",
+    "yaml_sha256": "cb65ae3877ed80cb1c0414ff7fb92e99ae8a88f02346a250a7bfb635e97cfa9f",
+    "counts": {
+      "non_global_object": 68,
+      "points_to_not_singleton": 68,
+      "thread_activation_unproven": 29
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "ERROR"
+  },
+  {
+    "task": "c/pthread/reorder_5-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/reorder_5-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "898f8e4708144102795278f9f1417651c36b4d3f17c0ba18e240a325ff6101b3",
+    "yaml_sha256": "92d12195cc6a082468d77f021cb77a6eac663b6319b90506d79348ef0c125840",
+    "counts": {
+      "non_global_object": 68,
+      "points_to_not_singleton": 68,
+      "thread_activation_unproven": 29
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "ERROR"
+  },
+  {
+    "task": "c/pthread/sigma.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/sigma.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "236a73c15e935747b9f2e95e881c26c921eba2f2ad7a2b23cf05552665b9f683",
+    "yaml_sha256": "96cf0ce9f3bd60dd7e39dcec52725bd337a48e9bcfbba00f2376e67280424df5",
+    "counts": {
+      "literal_loop_search_hint": 1,
+      "prefix_statement": 2,
+      "target_not_reached": 2,
+      "thread_activation_unproven": 1
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "ERROR"
+  },
+  {
+    "task": "c/pthread/singleton-b.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/singleton-b.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "8df6b0e07576c0f44be76a2619065be37971886a948c5dcc3b73910d3c970468",
+    "yaml_sha256": "00c770adf7d82c94101e4ae928e0f2ab42b651f74adb90e611c0d0f3729d56a2",
+    "counts": {
+      "thread_activation_unproven": 11,
+      "transitive_thread_order": 6
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread/singleton_with-uninit-problems-b.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/singleton_with-uninit-problems-b.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "ee95c6207d65de8bda179fc4eddfd8312f741d4c9ea2d4ac3b4363fbcaae8d19",
+    "yaml_sha256": "7b214e9bc53e12f9a183daf251d29de0068a973ea7cdda00f2ccd2313b02fc10",
+    "counts": {
+      "thread_activation_unproven": 11,
+      "transitive_thread_order": 12
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  },
+  {
+    "task": "c/pthread/twostage_3-race.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/pthread/twostage_3-race.i",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "c1c75e051173a22f60f33f26eab32e0b3a7dcaf46f2d4cc494d0c9d8775c984e",
+    "yaml_sha256": "69cd0b97824c57b81b9fe972953c820159901a1096520c7b76e3094cc499128e",
+    "counts": {
+      "non_global_object": 118,
+      "points_to_not_singleton": 118,
+      "thread_activation_unproven": 39
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "ERROR"
+  },
+  {
+    "task": "c/weaver/popl20-more-parray-copy.wvr.yml",
+    "input": "/home/ruan/sv-benchmarks-2026/c/weaver/popl20-more-parray-copy.wvr.c",
+    "expected": "Race Found",
+    "data_model": "ILP32",
+    "verdict": "Unknown",
+    "input_sha256": "7aea5f8d9182df5a5d01671c1aa4ef829b038428d2f68272ec4ea6e120e3973d",
+    "yaml_sha256": "99201c74a2d6e52eec1b3ea3e2d20fe1fc416a817eca8711a5c7fd40e9594050",
+    "counts": {
+      "thread_activation_unproven": 3
+    },
+    "diagnostic_scope": "Historical; to refresh",
+    "historical_reference": "FAIL"
+  }
+]

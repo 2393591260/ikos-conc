@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-13",
+  "stage": "M3 setup and semantic calibration; implementation paused for strategic design",
+  "analyzer_changed": false,
+  "baseline_source": "ai-precision-2026-10-12/readonly-array",
+  "analyzer_sha256": "10bad24bc789fe8fbd515e2713f4d352cdcbadc3b20c5eca7f3f1ad08df722a5",
+  "frozen_manifest_tasks": 126,
+  "fresh_ikos_diagnostics": {
+    "tasks": 126,
+    "unknown": 126
+  },
+  "reference_valid_snapshots": 125,
+  "reference_outcomes": {
+    "FAIL": 95,
+    "ERROR": 13,
+    "TIMEOUT": 14,
+    "PASS": 3
+  },
+  "reference_incomplete": [
+    "/home/ruan/ikos-work/m3-20261013/reference-remaining/25_stack_longest-1-race-16f1d06cc6be/result.json"
+  ],
+  "reference_complete": false,
+  "reference_config": {
+    "baseline_sha256": "8fa1c698f8b1532f9f02831328627e66a96ff30131d454e05ee7eb61cf748888",
+    "timeout": 90,
+    "launcher_sha256": "c996ad93c25db7f65bc885edc24f10418027ca366726866a41b41ff5b269ea29",
+    "library_sha256": "e7e63dd6815f26b4b9f3b160899cf809cb4de6db86fbf2e1796bfd6e5ab422f6",
+    "cat_sha256": "1406a3a18741c0a73a8f9d46cda20ba87a06237318b7ac06e00319e32574affb",
+    "property_sha256": "b2ef05eb557bc2f158c38dc5687454ae558aa08a9955944a115e87d4cf1788a6",
+    "launcher_java_heap": "2g",
+    "engine_java_heap": "2g",
+    "skip_assertions": "USER",
+    "tasks": 123
+  },
+  "first_three_reference": {
+    "c/goblint-regression/02-base_24-malloc_races.yml": "FAIL",
+    "c/goblint-regression/02-base_25-malloc_race_cp.yml": "FAIL",
+    "c/goblint-regression/02-base_26-malloc_struct.yml": "FAIL"
+  },
+  "controls": {
+    "cases": 4,
+    "architectures": [
+      32,
+      64
+    ],
+    "observations": 8,
+    "selected_executions": 2,
+    "accepted": 2,
+    "scope": "Concrete AR prefixes; no official source-witness acceptance"
+  },
+  "interpretation": "Do not infer a concrete IKOS execution from reference FAIL; no full paired run or score change claimed.",
+  "raw_results": "/home/ruan/ikos-work/m3-20261013"
+}
