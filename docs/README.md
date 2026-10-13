@@ -13,6 +13,7 @@
 | 修改代码、构建、调试和验证 | [开发速查](dev-gotchas.md#workflow) |
 | 注册、包装、运行及 witness 外部验收 | [参赛指南](SVCOMP2027-参赛指南.md) |
 | 已实现与待研究的双向反馈、论文证据缺口 | [AI/BMC 协同](ikos-ai-complete.md#feedback) |
+| 当前工作能否形成研究论文、有哪些候选与补证实验 | [论文可行性审查](ikos-ai-complete.md#paper-feasibility) |
 | 比赛与论文如何逐个节点推进 | [整体路线](#roadmap)，再看对应手册中的实施前提 |
 
 理解代码先读整体架构；深入某个问题时只读 AI 或 BMC 的对应章节。

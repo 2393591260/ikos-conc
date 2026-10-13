@@ -672,7 +672,7 @@ startup_N标记不是已求出的全局clock，内部函数token也不能冒充�
 ### 10.3 旧 GraphML validator 的校准与失败
 
 CPAchecker4.2.2与Dartagnan4.3.1本地GraphML已接通，32/64位race/locked/exclusive控制通过。
-但二者都接受损坏thread ID；Dartagnan还接受不存在目标行和程序另一处竞争。
+但二者都接受修改后的thread ID；Dartagnan还接受不存在目标行和程序另一处竞争。
 `WitnessGraph`按行号收集所有线程事件，缺目标时可能不加约束；因此ACCEPT不严格绑定目标/实例。
 CPAchecker调用必须同时保留`datarace.spc`和GraphML自动机，不能只`--spec witness.graphml`覆盖性质。
 
@@ -702,6 +702,17 @@ Dartagnan24ACCEPT，另2对实例歧义拒导出。
 也不能提供当前109个标签TP的独立源级接受证据。
 完整校准、源码依据和交付边界统一见[参赛指南§5](SVCOMP2027-参赛指南.md#witness)。
 AR ACCEPT、格式通过与源级接受仍分别记录；现有ACCEPT不等于官方验收。
+
+<a id="witness-contract-review"></a>
+**论文审查补充（2026-10-13）：严格模型回放与标准 witness 验证不是同一合同。**
+上述观测说明这些调用/投影未提供我们要求的所选实例与目标对的忠实验收，
+不自动证明标准 validator 的接受违反了交换格式语义。ATVA2020 §4.1–4.2 将某些
+线程/创建信息作为 optional hints；Dartagnan TACAS2022 §3 也说明其路径约束近似。
+标准 witness 可描述一个执行集合；一致重命名、删除合法可选提示或其他弱化可能仍
+允许真实违例。内部 JSON 证书的精确值/读源/creator 合同则需要忠实检查给定执行。
+若以改坏证据研究工具错误，先按固定格式/性质规范证明所有允许违例已被排除，
+不能只因 validator 找到另一执行就宣布 unsound；旧版本论文也不能代替现代2.2规范。
+本轮未重跑或改写历史测量，未认定新的外部 validator 漏洞；源级严格验收仍开放。
 
 ### 10.4 Dartagnan 指定候选研究接口
 
