@@ -251,7 +251,15 @@ pthread_t 是内部身份令牌而非 POSIX 可观察整数。
 有来源的唯一非逃逸标量槽、完成支配与成功零返回关联可恢复受限确定目标；
 多 writer、heap 槽、错误身份、数值观察及动态不透明来源保守拒绝。
 10/13 typed 整槽来源已支持确切数组字节 offset/width，覆盖写仍受内存转移与表示覆盖门约束；
-四个独立显式槽全部 join 的双架构最小例已 SAFE，循环重复创建的全实例完成仍是单独义务。
+四个独立显式槽全部 join 的双架构最小例已 SAFE，循环重复创建已另有常量控制全实例证书，见下一段。
+
+10/13 `ConstantThreadCompletion` 只核查唯一 main 的完整私有句柄协议：每次 create 为新代，
+覆盖槽保留旧代，成功 join 只完成实际整槽来源；未知控制/表示/外部效果/预算不足撤销整份
+证明。完整 return 路径和全部注册点覆盖前提成立后，相关语句各次 occurrence 的非并发集合
+取交，附到 checker 的 `inactive_names`。不拓宽静态 MUST joined/live-child 格，不消费BMC模型。
+有效成功 pthread 库合同、default joinable、无detach/cancel/child join/ctor/逃逸仍是限制；
+不是完整 POSIX失败或任意动态池证明。真实固定数组例 UNKNOWN→SAFE，TN687→688、TP115保持。
+详见 [BMC手册§12.4](ikos-bmc-complete.md#m3-design)及其小型配对证据。
 detach 不建立完成/HB，sleep 不证明别的线程已结束。
 
 `initial_main_handle_seed` 仅识别可信 frontend 的 `ikos.freeze_uninit` 初始化，
@@ -638,7 +646,7 @@ Goblint `region.ml` 的 bullet/region 查询依赖它自己的 allocation/escape
 `threadJoins.ml:50–62` 只把 singleton 且 unique 的 TID 加入 MUST joined，
 不能只移植“join 后安全”的结论。固定源码指纹已记入阶段记录。
 本轮 join 回归证实：四个独立 scalar 句柄可 SAFE，四个显式 array 槽在本轮当时因非零偏移来源门
-保守拒绝（10/13 M3.2第一增量已解决，见BMC手册§12.4）；原循环还缺四个动态实例的完成覆盖。缺最后 join、覆盖旧句柄的负例均未 SAFE。
+保守拒绝（10/13 M3.2第一增量已解决，见BMC手册§12.4）；原循环在该次阶段仍缺四个动态实例的完成覆盖（10/13常量控制证书另已验收）。缺最后 join、覆盖旧句柄的负例均未 SAFE。
 
 因此按原路线可进入 M3 的有限语义/成本优化；更一般 heap-region 与动态 join 是后续 TN
 专题的具体入口，已有源码、观测和前提，无需靠放宽 gate 强行完成。

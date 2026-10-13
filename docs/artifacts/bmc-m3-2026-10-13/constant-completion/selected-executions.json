@@ -1,0 +1,6826 @@
+[
+  {
+    "task": "c/goblint-regression/00-sanity_09-include.c",
+    "source_sha256": "9d688e86e7e4087606ab9d08173c4c227b663da7e997bbf86bcc599e41d5985e",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.25149755100028415,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "b1432808f5e102f9e901831ac63344ba828ad233c4e96039b7596e4568e97a18",
+        "certificate_sha256": "8e34c257692aa96e4060c1a1f266dd951c8e0505e8cb3084dd62943d59c82c3d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 6
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 11,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/03-practical_07-nonterm.c",
+    "source_sha256": "1a5c45a44223147f393b74702a24905a50f014553bda5f1e486b1b813907bad6",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2994796700004372,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "4f8318417f57b4a242cf1e27de290dc6e41d80ccec15fbaf09e0da48ca118314",
+        "certificate_sha256": "e2b307b1205c2444ccd36af3c82335c5cf3a4473de8e5ef4b89bcf92ad1f72f3",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/03-practical_08-nonterm1.c",
+    "source_sha256": "3e969e32a88a5e156b51cffed83cf3d4aa28237f70c2f7ecca29f3fc87e23114",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2958834239998396,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e2ee07dec3c7aba09d79ad6402e54a757de29a260fc4c7573ba2cb5da338ffd8",
+        "certificate_sha256": "d78ba4fd50984e2849fa922e41fe0cf159ac195f73ebb3fd7e56ec3fabdf8d6f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "1": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 16
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 24,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/03-practical_15-exit_problems.c",
+    "source_sha256": "5a6f58d33d2b81528ca8565b89a520d0b28390552fc2b179422de5d107efa015",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.26689166500000283,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e50a0b8a792dc63da40ba99cf5a8a58f46329a783f2f88e12a0cb538ce7b7584",
+        "certificate_sha256": "0ea1e5ec1c5d22aaafb26d44c4d930746649ddedddaca537ef866f018a771cbc",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 10
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 15,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_01-simple_rc.c",
+    "source_sha256": "f386a8eced027f444b288d0e2b86adb39ba6177e302e8e8c075532cb09ebacc4",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3544839629994385,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "8b3206ac6bb5af46df0c3d06b9e54c966cd42c93041c4a518b2b9e3452570307",
+        "certificate_sha256": "2a1b457ca04d64aaf4e8806c96d488911b9cf46e755881e0eed60e7f9da8a33b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_03-munge_rc.c",
+    "source_sha256": "aab2115ad2e925c4213b3ce20b28f5d1793c3c4d4ff2243b939094d903ee91f0",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.36147193999931915,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "50133dda039b5ce032111b893bfba1f381c07eee0f5fca6a0c38ae2bebd68191",
+        "certificate_sha256": "51a6da259897855fd3ff63afa6cae84da805902edfee27c5088dd03fb7bb011f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 10
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 7
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 17,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_06-ps_rc.c",
+    "source_sha256": "6ff62bc1009e856ebfdbcc1756ddab571d8672e93ee6d6eb2d652f5f205a6980",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.39065592299994023,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ffd4a8f44b7688e6c186fd5c98f55a42ce204214322cb73109c94df4fbf7f21f",
+        "certificate_sha256": "1961319ffa0d6a32eed5b172197bfd08919ac80e41e1f37fc2d764f4a7c4813f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 17
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_09-ptrmunge_rc.c",
+    "source_sha256": "98ade1545a6507815c327cd3fc492f66b7c6ddf31c82d9f9cf04be524a97482e",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3588706900009129,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ff56f18b6e1229e7166b239c279db771081616697a35e1219f64d31217f101fd",
+        "certificate_sha256": "0f1cc8761acbb1a46b6f56ad1c90edb7a70670412f05089456118af0463c032b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 10
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 7
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 17,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_11-ptr_rc.c",
+    "source_sha256": "71ba38fd5ed66bb007d5bb9846445fbaefd63ff00f3378443bfa6be6d343bab6",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.33959137099918735,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "5f353ad68a3921f8375e1dde0456f80591211b634f3edbf95a27eacd14de6d0d",
+        "certificate_sha256": "51810ceb3d70007c469774fc42779508197d4b530d39f753660dce281daded1b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_14-funarg_rc.c",
+    "source_sha256": "c5b7dc0e540e307a6b72f1c856de4e5efd074e26d20a9cb66b738ee1a80b8921",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.38303536499915936,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "46dd225590c3bfead81cdfac7bac171864475118e6a9cd1409a6f91e4c73e5cc",
+        "certificate_sha256": "cdd1c11dea1f0ff26f97d6a2231193fc52d02e12299fd1c3f51b89bb0383a607",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_16-ps_add1_rc.c",
+    "source_sha256": "f14ae10b41ae5d21e4843c4d2c5b0585a53e06611a0f2164ba4ebd070e3a3e0d",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3480566939997516,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "350fe4397a8a6a7aa4c509d3599f944a50f902afe8f1eecc807277d6e6860d4d",
+        "certificate_sha256": "af967d7f4fed7cd2da0f68f85a25dbbd0c06ba3271f9f61fbb34224d98fa819d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 21,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_19-call_by_ptr_rc.c",
+    "source_sha256": "09bd5495e14a3740024968451b998f3083d63bdb3b7ff8a79710ef998155339e",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.32967624299999443,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "15f3153b9d6e066d43120a98240ccdac00c1c9da6dc0ef8e22d5283fc318be83",
+        "certificate_sha256": "bfe127cc8d204c904c15df2bd3d3b9a166175c56301615b3c865396ffc39630f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 21,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_21-sound_base.c",
+    "source_sha256": "68c0c5000c21f9e9ce587210ecf523aa294fc1749c89b05b6201f4ee47346a2b",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3078781589993014,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "13c68a6f2b11ca0be0e907a8ee9049d297ddfd3139f7fca0f3a770a8a93cd279",
+        "certificate_sha256": "fdff53383318494f411f7761759e6c7be8da750b1994704708013f623e446e03",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:f",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:f",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 8,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "13c68a6f2b11ca0be0e907a8ee9049d297ddfd3139f7fca0f3a770a8a93cd279",
+        "certificate_sha256": "0360cd25e67103753e3287647be8afd8461ad4fb918ea723237510d529f9e3b4",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 6
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 14,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_23-sound_unlock.c",
+    "source_sha256": "7f1a0b5f149ecdba4cad3e07b291f8823e0e38c0a543433b39a259fbac94fd24",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.32387212999856274,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "57d19f158627a91356088fc97ccf8886b6268123272fd20b4c9c832f17b3fb3d",
+        "certificate_sha256": "59a725a6668429b2a4a48da31f8467f0efd9f0bec3ed98ea18afe2f0f58a5d96",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 24
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 23,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 29,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_24-sound_lock.c",
+    "source_sha256": "00547e36d203d351ce109def1a1c049ccdf8634fc105a04d7e326eea727b86e1",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3134300269994128,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "0e6033b8df78f2e86b22ff90d08665f04c94cc3b85b83de3e1a6cfac56938c11",
+        "certificate_sha256": "57a65b0cb4b66b306ada15e61f67d2f0d3ae15b9b6e5548e3f47b321d75b811d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 21,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_25-single_acc.c",
+    "source_sha256": "d750445530daa57cef2f441377464e89f7d2e9f88f73166de8896066b4af753c",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.27832235200003197,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "77d4d585e14819a6247bdc817461314ecf319384e6e9f8ec4bf910e66577d883",
+        "certificate_sha256": "601df7b1eadb396fad2ec4db1fd707fa33c584e5dcd0a6fc6f3737332e0b1611",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_27-base_rc.c",
+    "source_sha256": "aa6769954855c21e78e338b5c9c85b82b4dc1b815f455d6f752caea060e1fc2c",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3083582610015583,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "29139bae48b07171e11fe6605f9639783e1103f32822f174bc5b508410ef6c23",
+        "certificate_sha256": "cfe42581411a55d2913c5be140e0faaee4d5b303f9c8459207fa27e55b09c39d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:global",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 10,
+              "1": 9
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_37-indirect_rc.c",
+    "source_sha256": "2076b13c59b7d49779b8c352bd775e6bfc3c974320821f52074d18209bb5536d",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2828244470001664,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "0a723a461a6367851565e8e240c7540cc58292bad50b7429bd1962cac96abd81",
+        "certificate_sha256": "aa9c8423b714b6c4b43af35b978bc0ed6636f09a154daefcb1fe4fcfd21ff494",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:g",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 10
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:g",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 6
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 16,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_38-indexing_malloc.c",
+    "source_sha256": "a5d5458e3d8cf05130899060969ec8c39906a1485e870f571d92651debe03df7",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2770961280002666,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "88caddc833b91e6e04d19d91c2db8d681ecc0aaf9de3053802d5f87c00ca7db8",
+        "certificate_sha256": "5b4f3c87232ea35c07f734099dea3c61740c8975eb08960f91a2c89767481a8a",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "heap:1:s4",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 11
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "heap:1:s4",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 14,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_47-fun_write.c",
+    "source_sha256": "5b0292c738c94357f593ff6c55dd0d3ce5b536c491ec9ddb366c9e0619302adc",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2746786730003805,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "2be0d9d9cb4880096de4527d221f570d47df4af8de8fe112bc623d563415ee42",
+        "certificate_sha256": "4f124543f3e170aef445e02cc51a083e1bc620842983d495b8823b070fa5683d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_50-funptr_rc.c",
+    "source_sha256": "ee142d20666d60ac4fd7f821852d0a9e3e7678fb9031d4a65233e7f955d8ec95",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2657554209999944,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "8b90dec565f7e0dd7000fb1a4c8b188529b8e4477594d0162643cbb58b629f9f",
+        "certificate_sha256": "b7bfd931c9b998656ec39faf8158a1ce9a627fe5205806579298f73f5d16bb00",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:fp",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:fp",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 12,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/04-mutex_55-pt_rwlock_rr.c",
+    "source_sha256": "3bc4e24382ea60332625fc43697e18a0341207a28648f6b22b09d36670c74715",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3146849189997738,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "06a854f4ebce7dc798dbe3b851fe90f2fba2272f36dae1d2014eebc846bae76d",
+        "certificate_sha256": "99faf7ba90c87be9ac5157883be09cfefd326f5f2d22836483565f833c9447bf",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "06a854f4ebce7dc798dbe3b851fe90f2fba2272f36dae1d2014eebc846bae76d",
+        "certificate_sha256": "d1d613975ec0d7a4817ee2fc27cabab40bea068e76a4877c9c9bfb333f050931",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data2",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data2",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 6
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 19,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_01-idx_rc.c",
+    "source_sha256": "56a6e25282b29868c16664dd03b49f4664ee7d481a2f71d72d1017e2ed35171a",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.31433292600013374,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f2eb7358a4f1684b54dc09080701fadb53e60ec662aa7659df6bb710614cb730",
+        "certificate_sha256": "a6b7813ec7db4c17de89c52e1787d9a84cae42a55d3908bc6e460647b943e141",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 61
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 58,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 66,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_03-fld_rc.c",
+    "source_sha256": "10228ef7c40ddc635535d704f043727867d6dccb8dd54aab36d2ec6c768346d1",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2963779749989044,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "3575f83b450297eec2106cf8d7c117c953e11db020c638ee9ac8f0dff24f6017",
+        "certificate_sha256": "408058e064011f7c3a3cdcb66e313b7ce55135659d162939642c04d4f91a89a9",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 12
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:glob",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 17,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_05-glob_idx_rc.c",
+    "source_sha256": "d685ff0dbd621781bc284ec18b9cefcdab391a7cba0994455a59081cf8a12788",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.24957210699903953,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ba9c2ea9af1d91c1e33afcaf855026c32c56c98ec9a0881e5c7da02fdc893108",
+        "certificate_sha256": "d4ebda04cc431029ef7fc57617b1482ca9f6a8bda2765b38a22aff57ad07e9f9",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 12,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_07-glob_fld_rc.c",
+    "source_sha256": "051e9de902f5f925b76552326852b754e8794c3d6efac87d73f390ecaab1f793",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2660905470002035,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "c968006e63937887848a599fed39f809dfefae9732befad35b4c6e48fbe8a19e",
+        "certificate_sha256": "61ea5a8e98e5834c91512c3ed30d8c6412971078a06bb9abe9a4e9e06f04d5b9",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 12,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_08-glob_fld_2_rc.c",
+    "source_sha256": "f42aa68b87f2b35193e6ff5d46d2fe0f91ded9a814a1ef0270a9838c89e0ea48",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.24516827400111652,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "3778f68027c8fbb2722fa525627da7aa818eebb6f197cd82e91212d89f838686",
+        "certificate_sha256": "2fea8e275c7de117d0d932031d26c94d1b7e93371058aaa91afb316c8f2b6a30",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 16,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_09-idxsense_rc.c",
+    "source_sha256": "8c1781f4276fb7477e65ff70325038ade597aa15f5765b1b35bb643b25a9eda4",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2685441140001785,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "cc2b30ce725d3659ffe92e17936a8fb0c49629ad88de1f3c7aa71fa79bd2e623",
+        "certificate_sha256": "9be7ec6c9b4510e645e97256616d8c4958d0194ae914d3e9be73670232cafa05",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 62
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 58,
+              "1": 7
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 69,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_11-fldsense_rc.c",
+    "source_sha256": "4aad48867934589e3a01ca7f74518ea1c168c8ea92dc1c011e0828ba06fbf654",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2761424269992858,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "5c6d344441497fd2bf4688ec75096f24179a43ac09c217f3e5d01560ea53baa6",
+        "certificate_sha256": "d2be8b6df3abe47cd3e1ece71c6e0c26d4b249bf914b1fe5fdbcb18c5418ce1f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "1": 7
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 20,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_13-idxunknown_lock.c",
+    "source_sha256": "7688aff6d5d22cc8ccec6097e1f98cf9f4c3da7a9a8bbabab449855d0421cf17",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3172456989996135,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "297c2da8699356d8ae8f07ca6395a0dddab14daf855d76275e4c3f8daca4b19d",
+        "certificate_sha256": "0078f9efbd04813c15c8e0e6de8a915316265150ce6b0129a7998e6e18678c20",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 75
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 71,
+              "1": 7
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 82,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_14-idxunknown_access.c",
+    "source_sha256": "604d6f32ad556c32a6b07f3bb57d696511cb4f2a0c5078b65ceef78243de6f21",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2894085410007392,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "d4c79af23ad7f263877fd6673160def5609c151d9af611deeae6c22f0559707f",
+        "certificate_sha256": "5fcd047104783bf438a88ade07c61aed1c4cc54bb523545ae8c59c719054abf1",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 20
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 16,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 18,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 25,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_15-fldunknown_access.c",
+    "source_sha256": "822e3cbe8154a40a0b16b4ed770984d9583e88fef936bc78ca0b018dfdbef072",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2582538860006025,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "7a17f55722e6934f54afefba2ddd5a5e367649cbde2a3494972a11be19e2132f",
+        "certificate_sha256": "be8521e569ec98da9dd35db64743d81c53df40308dd208903c4290caa8efa91a",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 12
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 11,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 17,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/05-lval_ls_16-idxunknown_unlock.c",
+    "source_sha256": "29214acd67e83ba256f657aeff315da60973f387f2ccff2e3376d340418f774e",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3034772730006807,
+    "executions": [
+      {
+        "group": 3,
+        "pair": 0,
+        "program_sha256": "f633d167766d5f9dfe90568ee4d0e53078d0abd15b631ca94c913b087105a723",
+        "certificate_sha256": "f3088d1bba3455fa1c21eecf0e653469342679dfd70603084e1592f0a85ef64b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 90
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 89,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 95,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/06-symbeq_03-funloop_simple.c",
+    "source_sha256": "ef37663658139b358a9f093f3b929c9ceece424d125426dc196af43d94bde65c",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.984167571999933,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "1bd59339a23789f6a6822706a33306c6eb566eb7c787aefd409e5cbd20387d1c",
+        "certificate_sha256": "173ad6518eda17fa451d5555b9c4ce2161827d569775b71302e875c75173e442",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:cache",
+            "offset": 140,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 213
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:cache",
+            "offset": 140,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 151,
+              "1": 81
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 294,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/06-symbeq_04-funloop_hard1.c",
+    "source_sha256": "24244265f01939585dcad60d79e24558b858e5e4c04744e3239e6582f5d25cc4",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.9965280409996922,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "5190b4ef92353e97671b056c32f5ac0e1d0ec5ef7f9cc35d7b84ad2ae220682e",
+        "certificate_sha256": "96c3cc666f9477dede5c4035085afc9288701d8fde42d3b061fd12be627ae191",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:cache",
+            "offset": 140,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 215,
+              "1": 69
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:cache",
+            "offset": 140,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 151,
+              "1": 81
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 296,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/06-symbeq_09-tricky_address4.c",
+    "source_sha256": "1f3bfcbefa47ffbbca39d8d8566e5ce2761e25d53033962fa4c6edf41ef0c3ed",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.37170062699988193,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "c016e20c62cd41c69bfdfc9ef6754d88708c465e46b6b5ceeaec6703152594e2",
+        "certificate_sha256": "f6f95b4dd66c7174071b8d8838cf35d0efeef850df85ad3a802e07fe21c1755e",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 87
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 28,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 81,
+              "1": 22
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 109,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/06-symbeq_10-equ_rc.c",
+    "source_sha256": "a60fcb98ac851c591a18dc1631d878e19b22590449601ba560425115015949af",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2805152469991299,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "d37ec5458f0e24fa9e934ad939ac3660b8db3028cf8e531c5ef0f064e34f488f",
+        "certificate_sha256": "078014ef6da41bf236eac70e231b4db5c9f86aa0542ce1946a1e4c1d535f5437",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:B",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 18
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:B",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/goblint-regression/10-synch_02-thread_nonunique.c",
+    "source_sha256": "bc78788d98da2638169fe03657250fbf876e72c9f507aa825539bd8508a72f4d",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.24397508000038215,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "37f4b742d68ca9a36300fb2765a1afe7ddc1ccbc028616dc7a9640328d97cd26",
+        "certificate_sha256": "d235efaaa9c1f38cfaff377ae39c0fa37325073246a4d3f4b9c807a42f813a1f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 12,
+              "2": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 14,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/ldv-races/race-1_2b-join.i",
+    "source_sha256": "475c64db2a2029c09985266553634853aa5ae7653363254bdcc8a56a9d27dc04",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3404506829992897,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "260025e6e6e5cd312f78086b52bd290028345fe8396a341f69114605fb6c70f3",
+        "certificate_sha256": "bfb67af3e91ce91f24cbcb301de90cbf03f172e69f70eaaaed831377cffcdcad",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:pdev",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 20
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:pdev",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 19,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 23,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/ldv-races/race-1_3b-join.i",
+    "source_sha256": "c73b137d4d055d601e6891c370b9da4780621da8a7fc8a5ca4886c6b3b685d8b",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.321902499999851,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "3df5f59bef9521e5dc6c84b3df83aee855bd582ce803b4c842a32d30b7eae7f8",
+        "certificate_sha256": "7b41c9bcfa9e977d50670e9a51d497d1bbd083bc96406bec9239f12a4808cd86",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:pdev",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 25
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:pdev",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 19,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 28,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/ldv-races/race-2_2b-container_of.i",
+    "source_sha256": "ee1ef439d2384e570357ab989c81c348d4e66a30456afde529ceafc93ab03ac3",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3385071419997985,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e5cb8ab8b682097a684e18598f085ea2c8d02cf45fbf416fb6ec5b390de5ff2c",
+        "certificate_sha256": "9f95564256fc41cda888a578e1d2025b5f09bce1c71a8f09619803b466a9e8f7",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "stack:1:v3",
+            "offset": 24,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 24,
+              "1": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "stack:1:v3",
+            "offset": 24,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 27,
+              "2": 7
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 41,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/ldv-races/race-3_2b-container_of-global.i",
+    "source_sha256": "20a87c920658ab1be3e1287b4219016d059cb655f966a0f7736d00edb2f76663",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.44724117099940486,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "11ecec06dd85f2ed82ece660afdbf42dcc6c08affa6f10d07ab784f486bc8058",
+        "certificate_sha256": "ebb49267f67fef9ddda0570ecccf84fc513fe786fca30011c872cfc17ebd4ad5",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "stack:1:v3",
+            "offset": 24,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 46,
+              "1": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "stack:1:v3",
+            "offset": 24,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 48,
+              "2": 8
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 64,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-C-DAC/pthread-demo-datarace-2.i",
+    "source_sha256": "8dedc3ea8e96f333d418860556906c8618bbf50be75cff10b45de6d34fe23444",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.38442900700101745,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "25f2e2ff2aaf20e581e639e4c5f3fbd89699659855ab2f047bd2c3ad514550e7",
+        "certificate_sha256": "8453dd3497980f8d3daa567addada5f07766095489e691883304022384f235b5",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 22
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:myglobal",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 19,
+              "1": 9
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 31,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/dekker-b-unfair.i",
+    "source_sha256": "00eedb63fb9d62a729cbdbbc78c20dc2306cd626b581321e129d31c09fc5db8e",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.31210590899900126,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "94d8aedaf65989283dcc01e82e866b77b0621a2a28a6880d3782e07d2f2e1f40",
+        "certificate_sha256": "4143112b0599f3743caca7feb3709783925e74233ddeae9d29f48e9782e4c5b5",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 20,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 21,
+              "2": 2
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 24,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/dekker-b.i",
+    "source_sha256": "ee2c91df2652a75c113f2667be77b799d83dae8d01b1c36baa45b8c25ceec25f",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3314470160003111,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "660cd683f2693c5d9341d7db9a9ed71165620d4e2f5c13d42c2e13ae8d6b8c31",
+        "certificate_sha256": "3676f50e6f7893d710eb8b0f60ceb81a5070a11b43e92254b1c63c992c5f5852",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 20,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 21,
+              "2": 2
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 24,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/lamport-b.i",
+    "source_sha256": "9bb446a7af732154870b2839e66288d9133e28dfbbe8fe81423789728796a44c",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 2.21552680700006,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 1,
+        "program_sha256": "bf642082fdca8d9e57a017092860f663d5abccc88273585fd31e424b30d2ef2d",
+        "certificate_sha256": "dd341d31e7d61d80bb7561fc3c2d75095ab6b3f352bc156e711d7ac9764e4aae",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:b1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 5
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:b1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 9,
+              "2": 9
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 23,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 1,
+        "program_sha256": "bf642082fdca8d9e57a017092860f663d5abccc88273585fd31e424b30d2ef2d",
+        "certificate_sha256": "fcb3f53073cb1acb4cd352d66478c5a9db798e670762a35666328d09875b3cdc",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:b2",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "1": 9
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:b2",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 23,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 2,
+        "pair": 0,
+        "program_sha256": "bf642082fdca8d9e57a017092860f663d5abccc88273585fd31e424b30d2ef2d",
+        "certificate_sha256": "9a5703d582dca16649428ae0163e998060cdc1d88cc8797cb793d502608c05d1",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 2
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 3,
+        "pair": 0,
+        "program_sha256": "bf642082fdca8d9e57a017092860f663d5abccc88273585fd31e424b30d2ef2d",
+        "certificate_sha256": "d44995ef03536b093fb9fb4aafaa72314922071b615c71869268fee0f1f48b66",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:y",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "1": 3
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:y",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 17,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/peterson-b.i",
+    "source_sha256": "13ba0c0f12adccd3d0e8bef05c1f05e632aaa49018b022a8b148494f09e3ffe5",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 10.349252085999979,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "47571464df8db84db2558f8faffd578c0b736a1cc27ca11ff4677b333c938e81",
+        "certificate_sha256": "90f92382c66308bf27007f0b89876fe768f1f4a654a66c779225396da55efdbe",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 9,
+              "2": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "47571464df8db84db2558f8faffd578c0b736a1cc27ca11ff4677b333c938e81",
+        "certificate_sha256": "fa180e9a60fcd78ac5d7e0ece3e1d29741259fdff9ed3329c8790c0cfeb52588",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:flag2",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "1": 3
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:flag2",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 2,
+        "pair": 0,
+        "program_sha256": "47571464df8db84db2558f8faffd578c0b736a1cc27ca11ff4677b333c938e81",
+        "certificate_sha256": "8d0440701d607112adf75ee12dcce2f152e36117264117b3e3bd906773f6d3e2",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:turn",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:turn",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 2
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 13,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/read_write_lock-1b.i",
+    "source_sha256": "d6a3f8c57ab77e58af8013fe9ddd1fa7c1d656ac7e087660662f74a34f2abc91",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2938161530000798,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "cf0e023e892756638d4bc66227def9f4a8d478343d3662c5b50e19ed005dc0f2",
+        "certificate_sha256": "bf4ac36b82c993a423bfa6b96fafdddb978e290a90bdfd9b3d777091795ac06d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          4
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "global:y",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 15,
+              "2": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 4,
+            "object": "global:y",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 17,
+              "4": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 26,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/read_write_lock-2b.i",
+    "source_sha256": "7b71c781c26c072fdf5838e0877462128517513c3df1f3bde9f2474cb4533ecb",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.7374264179998136,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "c7c8e9fbe23ab9d27970b8297284f65945d75a909ac6bd9414c3193f636c587d",
+        "certificate_sha256": "2768baed436df9af8a57ed0840e545dce2729b2efa5906904dfe39d98d180285",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          4
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "global:r",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 15,
+              "2": 15
+            },
+            "atomic": true
+          },
+          {
+            "instance": 4,
+            "object": "global:r",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 17,
+              "4": 23
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 69,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 2,
+        "program_sha256": "c7c8e9fbe23ab9d27970b8297284f65945d75a909ac6bd9414c3193f636c587d",
+        "certificate_sha256": "b513593fb25b8e0e3496ca0a6671d110164310e46a8730bd2706ec942322917c",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          3
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:w",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 14,
+              "1": 3
+            },
+            "atomic": true
+          },
+          {
+            "instance": 3,
+            "object": "global:w",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "3": 19
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 56,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 2,
+        "pair": 0,
+        "program_sha256": "c7c8e9fbe23ab9d27970b8297284f65945d75a909ac6bd9414c3193f636c587d",
+        "certificate_sha256": "326fd491ea5feb84220260c028e7bc5d3a02e83bd40bee4d9c938b17a3849921",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          4
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "global:y",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 15,
+              "2": 19
+            },
+            "atomic": false
+          },
+          {
+            "instance": 4,
+            "object": "global:y",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 17,
+              "4": 20
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 56,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/scull.i",
+    "source_sha256": "aa00f20131f5095ed14e7a46332bb5342dc26be5a17ecfa68bf5b51120e1579b",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.7296600929985289,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "5fb9b2860cb1a1cb9454e46312d7d94ffe737a3fcc78d7872caf41f5aacc354e",
+        "certificate_sha256": "c0be688999c6db29dc5f2972347d86584a5278ed9c7b8a334069c0ddb98b55f6",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:dev_data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 13,
+              "1": 18
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:dev_data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 31
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 63,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "5fb9b2860cb1a1cb9454e46312d7d94ffe737a3fcc78d7872caf41f5aacc354e",
+        "certificate_sha256": "7055ffffd16cc0a0989d350222336094780b1c314fa72b4fd1819230afef9d25",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:dev_qset",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 13,
+              "1": 12
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:dev_qset",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 30
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 56,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 2,
+        "pair": 0,
+        "program_sha256": "5fb9b2860cb1a1cb9454e46312d7d94ffe737a3fcc78d7872caf41f5aacc354e",
+        "certificate_sha256": "cd85f69c000bc981021a12a09a445354858f464427c865d52869838ef0c9b43f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:dev_quantum",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 13,
+              "1": 15
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:dev_quantum",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 28
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 57,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 3,
+        "pair": 0,
+        "program_sha256": "5fb9b2860cb1a1cb9454e46312d7d94ffe737a3fcc78d7872caf41f5aacc354e",
+        "certificate_sha256": "55171674972aba06c106350168e37f4a1a21cccc901ae1bf0955bbb710bc6888",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:dev_size",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 13,
+              "1": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:dev_size",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 26
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 53,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-atomic/szymanski-b.i",
+    "source_sha256": "85c07d53d6385c45c48e29a19b83e4c86409a0ffe74e084bb9e5c8a5937c23fb",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.1362116840009548,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "481e4d37ffa31c35adb6021b53a9f802f785cb137a19738e0fb6024f7d3f90cb",
+        "certificate_sha256": "603f7acf7c8bd0ebecc61003c2bf7cfa34ab2b9a5b8972cae7953361beaf5251",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 8,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 9,
+              "2": 2
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 12,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "481e4d37ffa31c35adb6021b53a9f802f785cb137a19738e0fb6024f7d3f90cb",
+        "certificate_sha256": "a1840b4d822b2ffd69c5b3a40b58b0db26861a6b45b47229f0d0e1f88f561617",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:flag2",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:flag2",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "2": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 12,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/airline-10.i",
+    "source_sha256": "8e894693d2d051395e42cf40effac907db7b5be7a8f5722374b3e5b36cc0228a",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.46218538799985254,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "48d9ac5495f414332b1cafc3c211fb5f296f3fed5ad9c3ef3237b826f5db9d22",
+        "certificate_sha256": "13847f4c2a795b771633fe2056a2fbfbe6e7106cee1a4dc4e7cbf92280f304fb",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 19,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 24,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 44,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/airline-15.i",
+    "source_sha256": "c250d04a54594f141e4a6230ba64a939d316d8b15028517201aca3da084476d7",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.6863058750004711,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "1efe107afe89f872018f154c51969957cb0b050568eeb28e4a805e72e4949c65",
+        "certificate_sha256": "f5e35f3861c794bf1222504d3fa6ffdac035f7a3c128002b8794b3c4bd34b9b2",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 19,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 24,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 44,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/airline-20.i",
+    "source_sha256": "012c46975e61d3a8df350de2a682cb9d47f59406509497c2ea72a562542ce55a",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.0755296789993736,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "636738f7f1a9ad322bb62bf4e9f3567c8ed1e013d92f1bb22fc625e21ae25052",
+        "certificate_sha256": "26e6c5df478f4934a5c7390a998adebfe0daae09ca12131001952e23ac2fa2ce",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 19,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 24,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 44,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/airline-25.i",
+    "source_sha256": "a0d81069750f24e52e04bdb7efecd6d77b64aec41e058c154f75fbba11e6c11d",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.819035854001413,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "6ad24eb1964f16acb8dbae0e53924fd2fe63f8c5cc3e6dd5bf35e787e0585a3a",
+        "certificate_sha256": "f620a4638fa5fcdbdb499def27033e9c0b7b4f3b8597580fea08453a6ba19f6c",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 19,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 24,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 44,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/airline-5.i",
+    "source_sha256": "b3375d634339bd0477387b7559c4eae5ae554f112c0f1d9d1b21e4edc4514353",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3259984579999582,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "6ba449b9b4e81935aacb87abf56547367d6c24cb5b60d34885477f25e6f6805c",
+        "certificate_sha256": "6177f09e282f1378e290a569339967fea783a890b0046f694272fbc8dafc09c9",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 19,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:numberOfSeatsSold",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 24,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 44,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_bad-10.i",
+    "source_sha256": "10d5067d95273951a014725afb4753c98c29896d9675321f4fa3b00f339e7930",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.44995418899998185,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "39695eaec2a4ab9cdcf0487444018b3e6b71e7b113d7391f387648cc6552c17c",
+        "certificate_sha256": "d3b3ab7132c3967db835bfcb1944c8a17857a767b2fb56d4a17a5066d966a12b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          11,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 11,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 93,
+              "11": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 10,
+              "1": 2
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 105,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_bad-20.i",
+    "source_sha256": "fd7555e2b4abe63429c1be22a8b482f63bbf931ffcb895a158eac84b789e7c88",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 3.9814641770008166,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "009c7093219ee9775dabe5d6035d20c7a7e803c3d83d5351e8c9d8e7bab9b4db",
+        "certificate_sha256": "034fb85495433bf4392e2cbca9e99484e6dff944bbe2be940cb3785fdd9de2b3",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          21,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 21,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 173,
+              "21": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 10,
+              "1": 2
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 185,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_bad-30.i",
+    "source_sha256": "8d7df89eaaa05ee1c4077455abbd501c07d86257ca2c037ce71ae27b3838effb",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 4.319163400999969,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "1ace2c71067c76689e9ae13a8241936c8b8937017436b893da7dd7573e5e9d35",
+        "certificate_sha256": "5095a6651644fbedade952b79df6008c1364fd94ad11160a5a8321ccc98dbd3f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          31,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 31,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 253,
+              "31": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 10,
+              "1": 2
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 265,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_good-10.i",
+    "source_sha256": "053c2020ab3922d27be669eca0e75ac8051424727a4d2b2d1ab69540cc43f0a3",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.5053982819990779,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "26d66c19bf41b9fed5a239fceb4f9f216dd828dbed7089e356f24c42ad452bde",
+        "certificate_sha256": "1530c09309bf963eba0726c6111cf65bc7596c9c344129ca2eef97f6602787e8",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          11,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 11,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 93,
+              "11": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 10,
+              "1": 2
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 105,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_good-20.i",
+    "source_sha256": "2f66f1b2f8bc96c1cbd24e122a1b904932cb7f0e98e43f950b8a0288b2af2871",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 3.962853120001455,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "851d4feab465bda352225dda11b54bd41ec34cdb3d0f8da0924a16661eecf55a",
+        "certificate_sha256": "e90d424a515b09a1a65f2f6037cb16e07787c2f8712cf08022875fd5d23af96b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          21,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 21,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 173,
+              "21": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 10,
+              "1": 2
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 185,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-deagle/reorder_c11_good-30.i",
+    "source_sha256": "e9f2c63b5b236ffd2c3c18bb3989267f7d1d50794d9317a52e37b9cf94f3ba35",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 4.106449270999292,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e1ad049056ebec8729dc5541a9be10b457f64cc7c0d06c969cfaec154ba251b0",
+        "certificate_sha256": "2c6962af936ec66a200c82b660741640419c20919e4a64b4fa9668dfe4e46bbf",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          31,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 31,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 253,
+              "31": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 10,
+              "1": 2
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 265,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-divine/condvar_spurious_wakeup.i",
+    "source_sha256": "36c3c3dc239d6629a8ba20aca175d79c45880ab21458cd8ebdaac3a8ef359066",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.26744525899994187,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "17f8faebb0c01ac040bfcf3d85bd4a6d558fa9f82b0b4cd9e31ae31b34b3266f",
+        "certificate_sha256": "711b844445885085fcab81fa4ad07a501efa666d07bba161708f92051980fc27",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 13
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 10,
+              "1": 8
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 21,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-divine/ring_2w1r-2.i",
+    "source_sha256": "37b8edad74269e9ff0decb0295cb9343b2467e698f16054f344bf342aab69b21",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.2163293470002827,
+    "executions": [
+      {
+        "group": 1,
+        "pair": 1,
+        "program_sha256": "4106ebe64731170067b8f88023030bc05f774eb5790b9d1b795bcd9033901789",
+        "certificate_sha256": "656d58b1cfb57a837ea6e795d888af8c36c45d3b9d8b14e29052e6ea86c2c9cc",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "stack:1:v73",
+            "offset": 20,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 29
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "stack:1:v73",
+            "offset": 20,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 18,
+              "2": 25
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 54,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-driver-races/char_generic_nvram_read_nvram_write_nvram-race.i",
+    "source_sha256": "aedfaf2f30401ef1fb89035eef2af3f1fa0e071d7640dfb0ac0413d4b26b1c7b",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 2.380268832001093,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "a584369aae9f52c10424ccb34688642491f92b1241b7aaa5a2fabde5aa8f748b",
+        "certificate_sha256": "bc5474376f39c8d7570009e2093d19e485d238ba281ff848b442febb79f134e9",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "heap:1:s54",
+            "offset": 0,
+            "width": 8,
+            "write": false,
+            "vc": {
+              "0": 86,
+              "2": 16
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "heap:1:s54",
+            "offset": 0,
+            "width": 8,
+            "write": true,
+            "vc": {
+              "0": 85,
+              "1": 33
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 135,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/01_inc.i",
+    "source_sha256": "dc44c09c63836e77e2249e5abf8328354015a2494c028ff1b2e04f58fa741976",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.8514901079997799,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 4,
+        "program_sha256": "55922b6673044a315d6306203f5a0fa9fc6e94e23c2c219d8fb184e459f1ab29",
+        "certificate_sha256": "120a16dbfb62ef8a7fc647bf531f5442545e186f089f44b37f9f9d3f46b20d1c",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:value",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 22
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:value",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 6,
+              "2": 39
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 90,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/09_fmaxsym-race.i",
+    "source_sha256": "f225ad0ddd29038af28d51fbbac3525492e9437e240dca78f58919375937976a",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.9415642590010975,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "faee71486840f82e5318818dd40e998f8ddd37a2b3b7dc93255085c13c95d7d2",
+        "certificate_sha256": "8c5f945d410afd755d1b54768b9d6452f2ee7dd413e09cee239c7b2c1e5e9ce9",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:max",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 51,
+              "1": 29,
+              "2": 30
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:max",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 51,
+              "2": 31
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 111,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/11_fmaxsymopt-race.i",
+    "source_sha256": "c885fc256284ed3b5456c69b30daa307e14001acfa6c144983451f9519cbd1fd",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 4.974420567999914,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "bb72794b3e29b86ba858bde1f13c7e0cd6468076f797cdcf9aae4364319fb7f0",
+        "certificate_sha256": "98d8756bff95d105207fd4ced4be5dc677a075e7b460adb50d4297344e03dd00",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:max",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 51,
+              "1": 49,
+              "2": 50
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:max",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 51,
+              "2": 51
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 151,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/13_unverif.i",
+    "source_sha256": "ea403ebfe777a86c8f08ec54b02dc30e546c8fae743fed5fb0e88129df40ac76",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.344997752999916,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "51f8ebd23fedafcfc4c2c33bad4b433a76802062e2cb5e7f81baf3893d9da163",
+        "certificate_sha256": "330c69b6dad8be74e9a45d98b5eab44a03e19c9eb0313c95b98bdf0e6ec7d07b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:r",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 16
+            },
+            "atomic": true
+          },
+          {
+            "instance": 2,
+            "object": "global:r",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 6,
+              "2": 20
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 50,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/17_szymanski.i",
+    "source_sha256": "9d000bd3a81a7401f4ccb21c2696e2644e9236d2ccbd2094291c987ec91aaa92",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.2247386390008614,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "c5dd1e2ea3a1321d0fa6f935e80853df0bcda77159ec7b0378dd7396de88e64c",
+        "certificate_sha256": "8c186498e1d335e628311217e091736ba6f567edb645e729409bf2b43c8c709b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 9,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "c5dd1e2ea3a1321d0fa6f935e80853df0bcda77159ec7b0378dd7396de88e64c",
+        "certificate_sha256": "e2258c82a58fa157d0fb6c4e04d07129d0ed8ff27a1dabad55dbc1868f7bff4b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:flag2",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:flag2",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 2
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 9,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/23_lu-fig2.fixed.i",
+    "source_sha256": "1e7e50acdaac6c5347f0e6861619a1b564ff01a6e5e780f6d69a20f7f739312d",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 2.5174411890002375,
+    "executions": [
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "813c86e372d902f885a5e24570e17ca63252afb92ad05c1b7e2d64a22aa3da31",
+        "certificate_sha256": "9201878799d6de0fe1c23ec4d371239fb7a9dcb5fc91c5efcef0812a9b6d68b2",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:start_main",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 9
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:start_main",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 16
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 25,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/27_Boop_simple_vf.i",
+    "source_sha256": "ce64fcfa63b9df647c320ea90e20b624e2dad5b9ca256083b6d2f56c3177560a",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 2.9060869199984154,
+    "executions": [
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "8836db3a2ec0af68c9f89ce393c904ee11ef2316a3968ea36999014bf578adb5",
+        "certificate_sha256": "328c84397e65e57cffd0ec8a61d20eb9679c0ed1fe0c2f8ceacc97573acd2cf9",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:flag1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 6,
+              "2": 12
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 23,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 2,
+        "pair": 0,
+        "program_sha256": "8836db3a2ec0af68c9f89ce393c904ee11ef2316a3968ea36999014bf578adb5",
+        "certificate_sha256": "fdb18c524d744874283d6aeb68c83f0ac105a712a9ae6024d3946471e554db7f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:release_thr1",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:release_thr1",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 6,
+              "2": 1
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 11,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/30_Function_Pointer3_vs.i",
+    "source_sha256": "c8b500e58ad9de43c2267c6cdc33609b02abfe24fc1cf283e17f14a4a70ea61c",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.30965973300044425,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "6359a4f674f830607e3792b275805983dc6eaac7ca9894cb17daf8a2fbca45c0",
+        "certificate_sha256": "3baa1856501a831c4747e2b6832ddd11ea99c1214007105f5548e22f997b3d55",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:res",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:res",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 6,
+              "2": 24
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 31,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/32_pthread5_vs.i",
+    "source_sha256": "a1dca423de1ee0965d72c4be0ada5e821e4dbfc023ab1c498b90df0e18b4c1f3",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 3.3984778150006605,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "47d84cb5c0b033195240e5be707b7656530efd525a865ffa8c766a8c99b8ecab",
+        "certificate_sha256": "2ccad90487411359d7023578e2945e3646105a02654ccdffaf37e123cbaee11a",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          3
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:lock",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 31
+            },
+            "atomic": false
+          },
+          {
+            "instance": 3,
+            "object": "global:lock",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 7,
+              "3": 19
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 57,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/39_rand_lock_p0_vs-b.i",
+    "source_sha256": "963fe2b49296fadf7c892a862a5472be95dcc4e457bf5d1be114d7bd124d5424",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2853944299986324,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "272b18b2cde4f936f65ca0f9f0d6e06d70c8d330dd097cfad1be79ee19849414",
+        "certificate_sha256": "8bc22d6280efee63385de2ed216b442d766252b84f2f8d09bbc103364238cd8d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:seed",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 5
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:seed",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 6,
+              "2": 32
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 43,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/41_FreeBSD_abd_kbd_sliced.i",
+    "source_sha256": "a7b1b4de6077c19ce6e7b3206b7aec935b2c49ded10f81f01daddf9a689038c1",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.7685098830006609,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "4c102c49eadacf1918020fce326678460a8f1879086df4a798b41e78c5f93f4c",
+        "certificate_sha256": "7ef5bb5079b0b19c12bc68a8126fd61e31b7e69217e505117718c6fb58fef550",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:COND",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 39
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:COND",
+            "offset": 0,
+            "width": 1,
+            "write": false,
+            "vc": {
+              "0": 6,
+              "2": 60
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 105,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/43_NetBSD_sysmon_power_sliced_2.i",
+    "source_sha256": "58b504e0f9c99c4dab9903d0572a1a6fc9dccc97093dedf55f23b393d189b988",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.476410641998882,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "62da7eb475d84fb1a83ab5a961df0c21cdcdad215aadf05784f74b9fbdc5a063",
+        "certificate_sha256": "50d9cabb7b565812f2961ece0035e56ac2f57a2e253354d0c361be6d2e80af3f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:COND",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 5,
+              "1": 50
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:COND",
+            "offset": 0,
+            "width": 1,
+            "write": false,
+            "vc": {
+              "0": 6,
+              "2": 71
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 127,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/45_monabsex1_vs-b.i",
+    "source_sha256": "8f6daa714ad29a28643c70bea2be7f060091d3c3adf6e85890e4056205fd8d77",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.25383880399931513,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "bf644c216294f78e4e2b60879c0772bc931d10acc9483b1ace5f12f043ec9984",
+        "certificate_sha256": "b32917b03f382bbebdd25c64ba4af33402a37493b3c96dc58d42e2383cf85bc7",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7,
+              "1": 3
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 8,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 15,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/46_monabsex2_vs-b.i",
+    "source_sha256": "cb0da49952f084f4179c44b957c91689c392bf769782a6b0853667237fdff1db",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2965484380001726,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ad8d9caee56cc2af6261018400322c8c2270c8577bc7453a38c27aa7b0cb9586",
+        "certificate_sha256": "e1715ed6514c45b96cc5ea16ddb56acb7c98c3fceefd7c1d0a96076566805a33",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": false,
+            "vc": {
+              "0": 5,
+              "1": 2
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:l",
+            "offset": 0,
+            "width": 1,
+            "write": true,
+            "vc": {
+              "0": 6,
+              "2": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 22,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/47_ticket_lock_hc_backoff_vs.i",
+    "source_sha256": "22ccde2ce516925ebfe813d783d47f1167b5115e5910734aa9e1bf526ce8c733",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 2.763688565000848,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "d711f59f1f5f08c252795bdb524f1d7c0b2fb3c08596e281ecf8b781da2302f3",
+        "certificate_sha256": "a58c8f78e4320bd43f313e12d9b01ff9cf6c0306fa8637de8ad267b7f6498117",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 35
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7,
+              "1": 36
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 71,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-ext/48_ticket_lock_low_contention_vs-b.i",
+    "source_sha256": "bee6bfabfc9168d01d046a770b423c49a0035ad8b39e289385170f3b76ba2fb2",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 5.778464213999541,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "b962bda0062a7f69e677e7e03fdb746f016615aab4e125d09c2da22f0895d972",
+        "certificate_sha256": "337b10f1903ab468e9015582260644372bc963d1c228f4fc83d83ddece9845f3",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 37
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 7,
+              "1": 36
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 73,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/fk2012.i",
+    "source_sha256": "25a65bfeb78eff83ae0d8a23f733f9dc95190d8c8aa20c7c495d09a2bd7eb6f0",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.6899569779998274,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "7da43684b1e755bdbbe5a505644bea3d5fde2bf12c4c7452db5424fe24e44a1e",
+        "certificate_sha256": "a6660862a834ba6ea023ca5a20cb2fec8adbef4e15e01f3cf34a9a8519553e0b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:counter",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 11,
+              "1": 15
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:counter",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 47
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 76,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/fkp2013-1.i",
+    "source_sha256": "ac100ce7c66b3266dc643fb77471441d693f59fe8c56e13ccaa684a73cdda8b0",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.24966658299854316,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "b019488c61a01135f8bb2dfa42d1e54a0f8d04a8eacb60c7f798a025306e930f",
+        "certificate_sha256": "460058765297d0dbb48348e9521b07e007d432e9f52faa9b4a9e36563bb87a25",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 11,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 19,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/fkp2013-2.i",
+    "source_sha256": "e812004a84a4494a04d3a026bee09dbf1dbf7d202520f02258b12ac817a7a74e",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.23944969399963156,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e1c26eed95384a6df087f3cb6e289464e12f8b7b37f4c80a7773d5a045ebd629",
+        "certificate_sha256": "b756a0f9dc75c5187477422c4fbc81cfcfc8b39053aa4539a753e0bee5cd6230",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 11,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 14,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 19,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/fkp2013_variant-1.i",
+    "source_sha256": "6f1a33edf94ce8e584ad249b95ad5bb2102c6ab4d820eebd8874b39ecbf22785",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2828785790006805,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "4210572e66e32c252cb8521ef2461add5847f234165ea4c5ac01d55b1f462284",
+        "certificate_sha256": "d1400ac8522bfc05fecaa4a7fc1c20cbadd5cf881b8a4bf127a49f91de9eed1e",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 23,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 27,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 32,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/fkp2013_variant-2.i",
+    "source_sha256": "37f99419c791b8329e91533415d896c367c9197a331e0ac4d97f5b27dc6c2be9",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.26465299899973616,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "4bfbc475523d52072ac3cb63b49d723e14adeca67ee5f1dabed6f2fad8aa057c",
+        "certificate_sha256": "9c905b7a4ee1d5d1b097a728eaa0e09edac2f8a6eef34e3a9dfcad5deea06200",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 23,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 27,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 32,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/fkp2014.i",
+    "source_sha256": "f24d9db33c7d5aecb89ac12017849974773f5d17a3292112bf25190c4dfae9f0",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3000380610010325,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "e499ca7d479beddfd76c7594351cf246a95fcadfccd1f0c9487a75dd8b54f665",
+        "certificate_sha256": "9400afed12a3f61dfe6fd7c3ec1c9fd269ad92f451eea25680520d9fde66aa41",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 20,
+              "1": 10
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:s",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 24,
+              "2": 25
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 82,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/qw2004-1.i",
+    "source_sha256": "3fb83c29fe591f537beeb8acce355ea986d79a29cfcecdcee0a9fb1725d601d1",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.8374458939997567,
+    "executions": [
+      {
+        "group": 1,
+        "pair": 1,
+        "program_sha256": "445b9ddcb5f46b074f02faf6daf882d09979884e0f9f8f708732880cd5ae73b8",
+        "certificate_sha256": "e7ad74a1d0ff74c79f967e4683b22b39a88c08ba87df1f39d90abc2e1232f2f0",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          0
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:stoppingEvent",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 9,
+              "1": 17
+            },
+            "atomic": false
+          },
+          {
+            "instance": 0,
+            "object": "global:stoppingEvent",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 37
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 54,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 2,
+        "pair": 0,
+        "program_sha256": "445b9ddcb5f46b074f02faf6daf882d09979884e0f9f8f708732880cd5ae73b8",
+        "certificate_sha256": "9eb2757137187b890c1512d4d5def768d319af026dd26e9f43ef4114dc6e1205",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          0
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:stoppingFlag",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 0,
+            "object": "global:stoppingFlag",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 16
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 63,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/qw2004-2.i",
+    "source_sha256": "a0f042164bf78d3595348b117153fa7346585efa21c060e488a9879023a64e1b",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.3632987709988811,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "20e5c6a90d9632e2dbd9bd9829937ebaf01409c6ce81c4850339315b21769407",
+        "certificate_sha256": "971ea4cf46dfa2b486aedc2d9ec18605e8ac67aa745546b3b225d4bd011b6465",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          0
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:stopped",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 9,
+              "1": 36
+            },
+            "atomic": false
+          },
+          {
+            "instance": 0,
+            "object": "global:stopped",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 36
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 72,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-lit/qw2004_variant.i",
+    "source_sha256": "1ad14026eba5b252f16e1e7c5b06294a08c72d8fedf1d2cbda596d8ea988add3",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.4654307210003026,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "7254a99981f2f7f1c66ee488c691f22adfa337fd7f479e695b5017d66935b6db",
+        "certificate_sha256": "17ece439f098425f9109630fd2f9ecd77935bb533431bdad7036ca672f128fa1",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          2,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 2,
+            "object": "global:stoppingEvent",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 13,
+              "2": 34
+            },
+            "atomic": true
+          },
+          {
+            "instance": 1,
+            "object": "global:stoppingEvent",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 10,
+              "1": 13
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 70,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-nondet/nondet-array-1.i",
+    "source_sha256": "e22e1beeef18edf77effe210ae0122c1338eccee79cdab905e0b74599361bc08",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 5.592082806999315,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "ac70c8a7d7a02bb503c3b198b01097b469b7d578eb288da73771c64705644f49",
+        "certificate_sha256": "a41e583cd7910235d153d0eeabca5b14283d1cb167c08d8dca002a9fe3133a16",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 22,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 27,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 35,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-nondet/nondet-array-2.i",
+    "source_sha256": "2796c466e7d8363340777400f1e90c0fc7eb53096f49ded0fb8aa6814bf1ef21",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 5.499559092999334,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 2,
+        "program_sha256": "aa2c1e9e9985e8ef536ec284dfa47b3a5b54643f9f95e482c47280c310b5a66d",
+        "certificate_sha256": "8a00e0bf045192ad43e9aa8b2eb432a93ee8a148b8630cc3bc2ce2fcf7be2336",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 22,
+              "1": 4
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:a",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 27,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 35,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-nondet/nondet-loop-bound-1.i",
+    "source_sha256": "cdf629ba70521b99830442583c87012a34d164ca28f01f7e59d76ae2f1e525ff",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.25583023600120214,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "2f105405b5769ab0a1e784c3435f81850b7d07b6854d61dd3dbc229f24abf1d6",
+        "certificate_sha256": "2a5bd8956960911d798576216ac5263b9872317f16b31472b926c60dd2a86136",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 26,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 30,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 35,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-nondet/nondet-loop-bound-2.i",
+    "source_sha256": "9d7936e5b6ec9509cab6289f8b3da6dd07c923c681ccf9d629892aaea9fa54f9",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2485931419996632,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "0094cc2850c6462e4aa4d443db30a3793a82468366a2b4511721d0b33f61638f",
+        "certificate_sha256": "9c871c08cdfb154a05d3a3ca7669b22b37c3833d8bde861f01d80cb5520bfd00",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 26,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 30,
+              "2": 4
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 35,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-nondet/nondet-loop-bound-variant-1.i",
+    "source_sha256": "645ee85d2a671dd1acf511bbf13e9e3bda7e0b5cc29e8abc16fb4ed3af500077",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.26928560199849016,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "8786dfa2e7e8b022908e889198caaaea4b1dda3f8877119cb0ba4a561c7746ca",
+        "certificate_sha256": "727bb5fcd1bda80aed97935f2ea004d9df962c1f6d16678a06c07366e36e6071",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 26,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 30,
+              "2": 21
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 52,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-nondet/nondet-loop-bound-variant-2.i",
+    "source_sha256": "dc1a8bd7c922f93873ec39bdce92396c491017d4a5984ae9a59a0e03f4bb08ec",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.2621268199982296,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "994d48db06f6d43f2133e9b30c14ccd2a0fc7072e4b8ca07f2b6ee10193d8827",
+        "certificate_sha256": "439b531673c9e31ad50cd015b5e0fbc049131c3daaaa0cb750cadf6f98efa3a9",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          1,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 1,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 26,
+              "1": 1
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:x",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 30,
+              "2": 21
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 52,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race-2.i",
+    "source_sha256": "57356a47c1e9533c32a5036af0336a5d2dbdf5bea55ed5f64606bf9ec7afd35e",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.1644581319997087,
+    "executions": [
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "0d132e67b9966037427da181b536d7f4244e0ee9342da6af95730d640992982c",
+        "certificate_sha256": "87e0ada3b43b7ef9bfcb010faecedf89ad4e20b5828a2d8605f3fd0ee294a016",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 42,
+              "1": 27
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 30,
+              "1": 32
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 74,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race-3.i",
+    "source_sha256": "5adb63485f34d5cafa0d99a2c73701114544138d3e69ca15b00fc732949a8202",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.163307121998514,
+    "executions": [
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "f89dbeb2cbd1e18a12d7d6bb2f16382da2f561b2d0284346d6d180a2eb3950be",
+        "certificate_sha256": "b08e69f881abc7400f10b93a2024338b293d803370f1240a9e272f769ba79a47",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 43,
+              "1": 18
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 19,
+              "1": 23
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 66,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race-5.i",
+    "source_sha256": "9c9074e122b1777f395c954ed30ab626f529c102cb2614b7e83435b6d498a843",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.8537663700008125,
+    "executions": [
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "1e9567e3208c62b819f23fa82841c180decc64437fa5e7744dc9f83f05bbc32f",
+        "certificate_sha256": "b7a27c54521d36f98f301a9270a2313126a52743145e491c9db46e3b3bdc5ae2",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 31
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 30,
+              "1": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 45,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-inner-race.i",
+    "source_sha256": "490e43bb8ca19cea87b27390f3d2ab0cf6fc9da6355c682d1c6272a9c3d813c1",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.7562727450003877,
+    "executions": [
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "2d3db942eafa49453decb6791801334d238d1cfd75b4a5811d41848af39bd679",
+        "certificate_sha256": "ea1eda373d77536186d654f4b065c25737c58e5cd2a9dcd5d27d4afecba3a8be",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:threads_alive",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 25
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:threads_alive",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 19,
+              "1": 3
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 28,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-outer-race-2.i",
+    "source_sha256": "d12d10876782f724294e520e736e39c29f3c74eafacabb114f7449f7b8388c75",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.005161193999811,
+    "executions": [
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "8f73b696140ca53c2185d807ff12210b5f63bb6f6f8fe2bc3fd5b8111ede300c",
+        "certificate_sha256": "4a971e5a9881c827c52dcf9a2531b39ea07cb8c1adf903cfeb05f5fe07c70d9e",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 38,
+              "1": 9
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 26,
+              "1": 14
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 52,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-outer-race-3.i",
+    "source_sha256": "a77d68c8e15036e88d70009e5342d88dd2f93f021b72148028da08073ac36a38",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.0067363529997237,
+    "executions": [
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "18e4e03fa2304fe4b926eca9c181bfb2f666109c26fbc7a5eaba585e018fe72b",
+        "certificate_sha256": "a0fed05884e10384afdbaa66934d6dd4c41b4d24dbcd6dd47129a3ccf2a86c34",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 38
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:data",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 26,
+              "1": 5
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 43,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread-race-challenges/thread-join-counter-outer-race.i",
+    "source_sha256": "47827fdca8ccc83dae99015d656cdcf2872ea585121905304e5ffb2ef40b4eac",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 0.717943063000348,
+    "executions": [
+      {
+        "group": 1,
+        "pair": 5,
+        "program_sha256": "105002a80e1f29ecf9796d730a43c25a242a994c808393c9faae61684086a44e",
+        "certificate_sha256": "ad666bafc5e5d57bfbcc2f4526b17d9678abb089954921a5f9697125c0105a94",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:threads_alive",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 28
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:threads_alive",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 22,
+              "1": 10
+            },
+            "atomic": false
+          }
+        ],
+        "steps": 38,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_safe-10-racy.i",
+    "source_sha256": "a48fe857d08ac3a4ba438de35e4bd3e7e5363b4267f7ed4ba2475f684ca08cd5",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 3.901745717999802,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "c0ac0c61b7b9e69bd3b608e5473866b1836fb57fafc54a2f206f0665004bc2e1",
+        "certificate_sha256": "3a20a1cf4e54a77c872bb4d9c0915596d4b4c465332f1bf3b816a1237baa462d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 310
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 428,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "c0ac0c61b7b9e69bd3b608e5473866b1836fb57fafc54a2f206f0665004bc2e1",
+        "certificate_sha256": "39b04e53a398c1e5aeecabb781782a109eb0db12ea5bca467e4a356687567a59",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 312
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 428,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_safe-11-racy.i",
+    "source_sha256": "deae7fd0ef95d67bb618281e50bfba6f50a83de212ef14f46660866b256c6152",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 4.879299406999053,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "caf66e1ad17c3b2ce7b6cac0d542f5211d4a459bc41a6da1be89cbbff3460065",
+        "certificate_sha256": "6547da13fb9089ace8de96cd212609be723196de8a1c77dea3af0266d2f29252",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 336
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 465,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "caf66e1ad17c3b2ce7b6cac0d542f5211d4a459bc41a6da1be89cbbff3460065",
+        "certificate_sha256": "9c5a6bcff161b809e2afb2ef13b22cc5032c3c2f071376a7ea7f3747eb382728",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 338
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 465,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_safe-12-racy.i",
+    "source_sha256": "d91b46fd69b3013c60bad92e46ce1ef1ddf2b09c97cd6d95697162ae1af201f2",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 6.309671553000953,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "3d5b027adac57cb7de8dafb5c489267b751b34fc4f9a2c888ea3ca049695ca4d",
+        "certificate_sha256": "55b7fc186420fed10d4ec67cf86931df5009ab6f0ac1bc6d45d56ae6e9c24f7a",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 362
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 502,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "3d5b027adac57cb7de8dafb5c489267b751b34fc4f9a2c888ea3ca049695ca4d",
+        "certificate_sha256": "2d4eeb9563dc60baccb419309376945647a80bc201240a53751cc33dbf023470",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 364
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 502,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_safe-5-racy.i",
+    "source_sha256": "40fcfd4444bd180f6e5508f0972ed92e70894b01f23e03dc2e761819c6d5a859",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.0981051280014071,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "297c1d81e8c417bdb84befa7a57bcb3a147cf326d0da764ce4d3ac7fddadd9bc",
+        "certificate_sha256": "8f43b11cbc286f83d808c7aff866aa06caf83a4f56c5e3dfd5f1f5a35a850995",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 180
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "297c1d81e8c417bdb84befa7a57bcb3a147cf326d0da764ce4d3ac7fddadd9bc",
+        "certificate_sha256": "fcf086c3e264109f350a49cd9a3ef60a962c0ac973c60166f323bc631957fa4f",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 182
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_safe-6-racy.i",
+    "source_sha256": "6959d4f0e51834399b1f177b2907c6f040a7f82b22df70a4ffbb4c40805c24f4",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.3714843729994755,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "6fa8f3cd0664ab1e291a06957acc9fbe5f3c478ea6ff0753f9ea37ad5db0ac6f",
+        "certificate_sha256": "fcce85e14f30368c4ad41bca1debae65f71bd3fb1cc5dc743cb68a74d52fdc28",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 206
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 280,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "6fa8f3cd0664ab1e291a06957acc9fbe5f3c478ea6ff0753f9ea37ad5db0ac6f",
+        "certificate_sha256": "a7b438554a3fa9f743c9682642d301ea5c6827cbeac36f56fb86743f9d5fb2fd",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 208
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 280,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_safe-7-racy.i",
+    "source_sha256": "1723883ecbdb95d71ea3ec2c746fab3b92c3a077cf232c2150d4112b37a05f98",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.6393812839996826,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "f3412c14724a1593153f56837a0566aaf35d16cadb39f88a259eda76753c3a78",
+        "certificate_sha256": "38b2e508fdc7d9607ff478729e7ce0ef216ccc7bc1b7b68f203a770684f79c35",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 232
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 317,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "f3412c14724a1593153f56837a0566aaf35d16cadb39f88a259eda76753c3a78",
+        "certificate_sha256": "445fefb81fd9e5c2c4c51ffb22d45fa58b0bce25978f635eb53bb65220483ae1",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 234
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 317,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_unsafe-10-racy.i",
+    "source_sha256": "38d4dff022ef4d2ea830e2718ea99215413d1e3f67567ac017eaf8275c303ef0",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 3.7013535339992814,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "b5938bd27d6a177f20ff6505bbec77190ff9941f6c7e8c59ebccf00b5d1e705a",
+        "certificate_sha256": "930ba20559934b1606afa93ec907255a113b1a0d48559c15884d612be4c702ab",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 310
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 428,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "b5938bd27d6a177f20ff6505bbec77190ff9941f6c7e8c59ebccf00b5d1e705a",
+        "certificate_sha256": "2fbaeaafbd4520628c164569ad39d6a2c47bd3e6aa4965b89dee58c3e3e7e1a4",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 312
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 428,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_unsafe-11-racy.i",
+    "source_sha256": "dd8583a115904a75c64c276a67bc1fecbbb0d70873f2ea75f8f51b865297f64f",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 5.002419652000754,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "c9b39abf8e357f8ec970219365de098df6635800fdacc5cec82396847c6c7a47",
+        "certificate_sha256": "3bb91d1d33dedff1cdc2aa1971b883a466ead0ed7639b74f421a8e1a123ebe0a",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 336
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 465,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "c9b39abf8e357f8ec970219365de098df6635800fdacc5cec82396847c6c7a47",
+        "certificate_sha256": "ed5cd46de9befc33a27424ee994ad621c40e745053fbed12ec8e86eb2393b1c4",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 338
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 465,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_unsafe-12-racy.i",
+    "source_sha256": "c4525591fa85ffc9750f318a48c09fdd29dc0d26cd65c6303a681f57303fc1a4",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 6.092807603999972,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "ed8efcc17f050823edbd0878b29af1f5d4732f0781cf648e9015d60a5517f83f",
+        "certificate_sha256": "07926dbacf952c64c9a1ce05525a5ec2622f3323adc3308d741dcfa1598b135d",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 362
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 502,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "ed8efcc17f050823edbd0878b29af1f5d4732f0781cf648e9015d60a5517f83f",
+        "certificate_sha256": "50405d29ff7bcac0c51cd4aa9fd1af082c39690c5978a4b627798487caeb15f7",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 364
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 502,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_unsafe-5-racy.i",
+    "source_sha256": "146f0d3d7f309689872842ec2e107172ef6d7d230f0dea419a95cb8899767aeb",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.089473669000654,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "605969f01de1b0b76a687aeae68ff60e9df3fb2c55c9b3b444bf97c7dacfa80e",
+        "certificate_sha256": "caf156a1a8eb72edcca8f37f56463a2ecbb561348c4330b325d375e1ff3d470c",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 180
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "605969f01de1b0b76a687aeae68ff60e9df3fb2c55c9b3b444bf97c7dacfa80e",
+        "certificate_sha256": "cda7989fc2b280e3d3a666c991cf2ee6f0805c132954f9fab71a0ea37afc9075",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 182
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 243,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_unsafe-6-racy.i",
+    "source_sha256": "4c475d56613186560380fd7710c1a393bef46e366024d2f60e26aa83cc625627",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.734347006000462,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "5345fc8a656be5722c8127836ab19e0b11b6bb0832519f36af2da89cb28459a8",
+        "certificate_sha256": "5c228f8fca04ea3d6213cdb4409ed85933ee7560a106152eba2b6533919ad794",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 206
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 280,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "5345fc8a656be5722c8127836ab19e0b11b6bb0832519f36af2da89cb28459a8",
+        "certificate_sha256": "ab52989dcf3f6712844c621576b35ed17270b8d00ff352454adaf47ab28984f3",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 208
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 280,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  },
+  {
+    "task": "c/pthread/fib_unsafe-7-racy.i",
+    "source_sha256": "a938b9e3b803ef0b08d2618a78ac055be54a6e48f84c6853aab11e3467af8157",
+    "returncode": 0,
+    "verdict": "The program is definitely UNSAFE",
+    "seconds": 1.8517472750008892,
+    "executions": [
+      {
+        "group": 0,
+        "pair": 0,
+        "program_sha256": "93695d0483cdc23c0d7c5c2ee0816654c4c7095d90fe676160b63a52e1f6525d",
+        "certificate_sha256": "684b3c3ee9eef609143d268301d12f98d2755894a7dba69dc098d0af19db38b6",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          1
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 232
+            },
+            "atomic": false
+          },
+          {
+            "instance": 1,
+            "object": "global:i",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 16,
+              "1": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 317,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      },
+      {
+        "group": 1,
+        "pair": 0,
+        "program_sha256": "93695d0483cdc23c0d7c5c2ee0816654c4c7095d90fe676160b63a52e1f6525d",
+        "certificate_sha256": "87aed357b86e514c7af268942ff84998619a7956dfadc366c6c43dd3bf28137b",
+        "status": "ACCEPT",
+        "scope": "concrete_AR_prefix",
+        "exact_encoded_values": true,
+        "instances": [
+          0,
+          2
+        ],
+        "targets": [
+          {
+            "instance": 0,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": false,
+            "vc": {
+              "0": 234
+            },
+            "atomic": false
+          },
+          {
+            "instance": 2,
+            "object": "global:j",
+            "offset": 0,
+            "width": 4,
+            "write": true,
+            "vc": {
+              "0": 17,
+              "2": 8
+            },
+            "atomic": true
+          }
+        ],
+        "steps": 317,
+        "scope_limit": "AR/frontend and explicit library contracts; not source/witness validation"
+      }
+    ]
+  }
+]

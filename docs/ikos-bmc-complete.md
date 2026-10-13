@@ -1192,6 +1192,30 @@ AI 证明的是所有**能到达 join 后访问的执行**中相关实例均已�
 这一步有通用子对象能力收益，尚无比赛数量收益，也没有完成全实例或辅助线程语义。
 [验收与配对](artifacts/bmc-m3-2026-10-13/handle-slots/summary.json)。
 
+**M3.2第二增量已验收：常量控制的 AI 全实例非并发证书。**
+`checker/thread_completion.hpp` 独立核查 main 的完整创建/join 协议，不读取 BMC 有界路径、
+SAT model 或 expected label。仅接受一个至多执行一次的隐式 main、GNU x86 ILP32/LP64、
+一次分配且不逃逸的完整整数句柄数组、NULL child argument/attribute/retval。
+现有有效成功的 opaque pthread 库合同仍是前提；detach、cancel、child join、ctor、额外根、
+自定义 global 初始化、一般 Store/外部效果或句柄表示观察均拒绝，不能据此声称完整 POSIX
+失败和无效调用语义已证明。
+
+证书状态为确切私有整数/指针 `V`、整槽到创建代次的 `H`、全部创建集合 `C` 和已 join
+集合 `J`。每次创建增加新代次并更新槽；覆盖槽不删除旧代次。只有
+`∀ i ∈ C_f(s), i ∈ J(s)` 且 f 的全部注册创建点均被唯一 main 覆盖时，才证明该访问与 f
+非并发；未来 main 创建由 create-HB 排序。因此写入 checker 的 `inactive_names`，不伪装成
+传递 MUST joined 域。对重复 AR 语句取各次观测的交集，覆盖访问摘要代表的全部 occurrence。
+所有会影响协议的分支必须由已计算常量唯一决定，整数运算检查实际类型范围；共享 load
+的值保持未知。必须解释到真实 Return，任何未知分支/效果、非法或重复 join、溢出、越界、
+8192步预算不足都撤销全部证书。孩子不终止时 join 后访问不可达；这不是孩子必然终止证明。
+
+真实 `thread-join-array-const.i` 从 UNKNOWN→SAFE。全量1029项 AI/BMC 配对
+TP115保持、TN687→688、FP/FN0、UNKNOWN226→225、同一超时保持；无旧TP/TN损失。
+48次协议控制加40次槽回归覆盖少 join、隔项 join、覆盖旧槽、重新创建新代、别名/部分写、
+未知范围/调用、detach 和 constructor 存活线程；20条P0保持，115项143条所选执行全部AR ACCEPT。
+该证书恢复的是受限动态完成精度，不是完整 digest/history、BMC→AI反例反馈或官方witness验证。
+[验收证据](artifacts/bmc-m3-2026-10-13/constant-completion/summary.json)。
+
 **初值合同的已校准边界。** `02-base_24/25/26-malloc*` 三项虽参考 FAIL，当前可竞争排序
 需在真实初始化前读取 x 并传给 LLVM `noundef` 的 printf 参数；Dartagnan 固定实现的
 未初始化读/printf 合同不同。这不能作为放自由 load 的理由，也不能泛称所有 malloc

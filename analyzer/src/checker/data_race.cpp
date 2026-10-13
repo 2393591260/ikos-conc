@@ -43,6 +43,7 @@
 
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/checker/init_publication.hpp>
+#include <ikos/analyzer/checker/thread_completion.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/analysis/bmc/bmc.hpp>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
@@ -1014,6 +1015,7 @@ DataRaceChecker::~DataRaceChecker() {
   std::vector< std::unordered_set< std::string > > joined_names(
       this->_accesses.size());
   std::vector< std::unordered_set< std::string > > inactive_names(this->_accesses.size());
+  ConstantThreadCompletion completion(this->_ctx);
   // Wrapper-resolved start routines are absent from this syntactic creator
   // map. Require coverage of every registered site before using its uniqueness.
   std::unordered_set< std::uint64_t > covered_create_sites;
@@ -1033,6 +1035,7 @@ DataRaceChecker::~DataRaceChecker() {
     }
     for (std::size_t k = 0; k < this->_accesses.size(); ++k) {
       const auto& joined = this->_accesses[k].joined_threads;
+      inactive_names[k] = completion.inactive_before(this->_accesses[k]);
       const auto& spawned_insts = this->_accesses[k].spawned_instances;
       bool spawned_top = this->_accesses[k].spawned_is_top;
       for (ar::Function* f : thread_funcs) {

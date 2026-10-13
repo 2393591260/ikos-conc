@@ -45,7 +45,7 @@ def main(args):
                     for r in parsed['reports'] if r.get('info', {}).get('unknown_reason')})
                 executions = validate_report(parsed) if mode == 'bmc' else []
                 if not args.observe:
-                    if case == 0:
+                    if case in (0, 1):
                         assert verdict == 'The program is SAFE', (folder, verdict, reasons)
                     else:
                         assert verdict != 'The program is SAFE', (folder, verdict, reasons)
