@@ -174,6 +174,14 @@ AR 指针只作进程内索引，不能成为持久证据身份。
 写入干扰或 read-from 来源。Goblint digest 论文作者扩展版 §5.1 Remark 3 明确区分这两种关系；
 锁/历史兼容性迁移需要遵守它，见 [AI 理论出处](ikos-ai-complete.md#references)。
 
+辅助执行补全沿第二条证明链实现：AI 的对象/范围、历史和效果信息先用于搜索相关
+生产者，BMC 再解释实际路径。静态 MUST joined 可服务全称 SAFE 排除，却不提供一个
+孩子的可执行终止路径；抽象返回/干扰值也不能直接服务 FALSE。若尝试省略必要线程
+或事件，需另证值源、同步、完成及生命周期的执行保持，不只证明目标地址不相交。
+新 trace 的身份绑定实际 creator occurrence，锁和 join 的 HB 在全 trace 集计算。
+受限核查、工程入口和论文假设分别见 [BMC 辅助执行](ikos-bmc-complete.md#auxiliary-feasibility)
+与 [论文构想](ikos-ai-complete.md#auxiliary-research)；不是现有 M6 反馈实现。
+
 独立 AR 检查器重新执行 CFG、字节内存和 vector clock，但程序快照仍由分析器导出。
 `sweep_bmc_execution.py::validate_report` 从同一报告提取快照后计算 hash，不能由此证明
 C→AR 转换正确；CLI 核对源 hash 也只绑定文件身份。后续证据应同时固定源码/YAML、

@@ -49,8 +49,8 @@
 证据：[最终配对与验收](artifacts/bmc-m3-2026-10-13/constant-completion/summary.json)、
 [126项台账/阶段汇总](artifacts/bmc-m3-2026-10-13/exit/summary.json)、
 [当版AI事实消融](artifacts/bmc-m3-2026-10-13/exit/cost.json)。
-M3第一版按受限出口完成；有副作用辅助线程/通用heap及官方源验证边界见
-[BMC阶段出口](ikos-bmc-complete.md#m3-exit)。发布ZIP仍为此前版本。
+M3第一版按受限出口验收，后续精度工作未穷尽；有副作用辅助执行的核查与路线见
+[BMC辅助执行](ikos-bmc-complete.md#auxiliary-feasibility)，通用heap及官方源验证仍开放。发布ZIP仍为此前版本。
 此前只读指针数组投影恢复两组最小正例的双架构 SAFE；冻结集逐任务判定不变。
 前一轮首次发布证书恢复 `09-regions_02-list_nr.c`；通用 heap/region 与生命周期证明仍未完成。
 原始 `arraylist` 的内层 heap 访问仍触发 coverage gate，不能计作新增 TN。
@@ -77,7 +77,7 @@ M3第一版按受限出口完成；有副作用辅助线程/通用heap及官方�
   TP 工作入口为 [BMC 后续机制](ikos-bmc-complete.md#roadmap)。
   10/13 已固定 [M3 输入/hash](artifacts/bmc-m3-2026-10-13/baseline.json)，完成 126 项新 IKOS
   诊断；准备阶段中断的一项已经单独补跑。创建实例/启动提示/typed槽/常量控制AI完成已验收；126项有当版诊断和明确处置，
-  [M3第一版已结束](ikos-bmc-complete.md#m3-exit)，后续辅助trace等具体义务已记录。
+  [M3第一版已验收](ikos-bmc-complete.md#m3-exit)，[辅助执行](ikos-bmc-complete.md#auxiliary-feasibility)等精度工作仍可继续。
 - 已有 AI→BMC 的能力及局部查询减少证据；真正 BMC→AI 归纳精化、
   整体优于参考工具及大幅提速仍需验证。
 

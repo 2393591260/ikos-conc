@@ -1074,7 +1074,7 @@ TN 的嵌套保护/发布相关性独立见 [AI 后续机制](ikos-ai-complete.m
 <a id="m3-design"></a>
 ### 12.4 M3 实施顺序与设计门槛（2026-10-13）
 
-**状态：M3第一版已按受限阶段出口完成。M3.0、M3.1及M3.2槽来源/常量控制AI证书已验收；BMC有副作用辅助完成未实现，具体接口义务列在下方。** 固定入口为
+**状态：M3第一版已按受限阶段出口验收；精度工作仍可继续，不能将记录全部 UNKNOWN 等同于穷尽优化。M3.0、M3.1及M3.2槽来源/常量控制AI证书已验收；BMC有副作用辅助完成未实现，具体接口义务列在下方。** 固定入口为
 [初始126个竞争UNKNOWN](artifacts/bmc-m3-2026-10-13/baseline.json)。初始诊断均UNKNOWN，创建实例和启动提示已累计恢复其中六项；
 参考运行的中断项已单独补跑为FAIL；完整126项为FAIL96、ERROR13、TIMEOUT14、PASS3，
 源/YAML及配置已核对，见[完整记录](artifacts/bmc-m3-2026-10-13/reference-complete/results.json)。
@@ -1257,6 +1257,57 @@ trace集合，但当前代码存在以下相互依赖的接口，不能只放宽
 多少TP。常量calloc初值亦不能单独救 `bigshot_p`：它在worker中分配并发布pointer，另一
 worker执行strcpy，而现有具体heap来源主要限main首次创建前，仍缺动态发布/库写合同。
 不把这些边界归因于“大模型能力不足”，也不宣称后续没有可改进空间。
+
+<a id="auxiliary-feasibility"></a>
+**辅助执行的可行性核查与下一实现入口（2026-10-13）。**
+“辅助”只表示实际程序线程不承载两端目标。它可能需要完整终止路径（成功 join），
+也可能只需供值/同步前缀；没有必要运行的其他线程可在所选有限调度中保持未调度。
+Goblint 的副作用约束是分析未知量的发布机制，不是这些线程本身；论文依据与研究
+边界统一放在 [AI 论文构想](ikos-ai-complete.md#auxiliary-research)。
+
+首个生产实现仍从四 create/三 join 的固定线程数组开始：一个连续 main frame，
+三个真实返回的有锁 writer，第四个目标 writer 和 main 的最终 load。
+重复入口共用 AR 变量不共用局部值 cache、frame 或分配实例。成功 join 必须消费实际
+handle 代次对应的已执行 Return，所有 load/store 在同一调度中建立字节值源；
+锁 release/acquire 和 return→join 形成的 HB 也在全 trace 集上计算。
+不能按 race 候选过滤删除三个有锁 writer，它们虽彼此无竞争仍有可观察副作用。
+
+核查 `ReplaySnapshot::program()` 已导出所有定义函数的 CFG，现有检查器的 CFG、
+内存、mutex、创建和返回执行可复用。缺的是有限 trace 集的生产、统一编码与证据，
+不是把 `inert_join_source` 的门简单放开。除上述接口外，`svcomp_witness.py` 也限定
+startup/a/b；它已有同一实际 create occurrence 不能绑定两个 trace 的检查，扩展时保留。
+现有 A/B 目标相邻查询须重新审查跨辅助线程的 HB：相邻可指导搜索，FALSE 的依据必须
+是实际冲突且无 HB；必要时以严格具体检查拒绝模型，不能靠遗漏辅助同步维持相邻。
+
+**受限回放原型已实测。** [复跑脚本](review-repros/bmc-auxiliary-feasibility/run.py)
+在真实前端快照上构造上述五条 trace，仅在临时检查器中允许 `aux_*` 并增加创建来源唯一性检查，
+不修改生产 analyzer/validator；双 ABI 共28项执行/损坏/生产边界检查通过。
+ILP32/LP64 下，三个孩子分别执行 lock、合法 nondet 写、
+unlock、实际 Return；main 消费三个真实 handle 完成 join 后读取 data，第四个孩子执行目标写。
+两种 ABI 都 ACCEPT，目标实例为 `[0,4]`；main 在 Return 前停止，第四个孩子不依赖
+进程退出后的执行。强制完成第四个孩子并 join 后，同一指定 data 目标对因 HB 被 REJECT。
+漏写、假返回、错 creator、重复 creator、假 guard、错读源、错编码值均 REJECT；
+缺 Return 保持既有 UNSUPPORTED，而不是凭摘要宣告完成。
+
+快照通过额外的条件 worker/worker probe 竞争取得，构造的三个完整孩子都选择该分支为假；
+因此全 join 的源程序仍可能有 probe 竞争，负控制只检查**指定 data 对**，不是 SAFE 程序测试。
+辅助调度和值由脚本构造，**不是扩展后的 SMT 找出的模型，也未直接恢复比赛任务**。
+生产检查器拒绝额外 trace 的控制和原导出证据 ACCEPT 的校准均单列；实验支持回放复用
+与有限完成的可执行性，不证明自动依赖选择、编码保持性、源 witness 或性能。
+原始快照/日志在仓库外，仅保存 [紧凑结果与身份](artifacts/strategic-design-2026-10-13/auxiliary-feasibility.json)。
+
+实现顺序是：①有限 trace/创建与完成依赖；②各实例值/地址和共同调度；
+③全部 trace 的证据、AR 检查和源 witness 映射；④不改变语义的 AI 依赖提示；
+⑤保持性明确后才试依赖裁剪/事件模板复用。首版不要求同时实现动态 heap 或弱内存。
+非闭合依赖、不可解释 API、非法实例、超界或无法找到真实终止路径均保持 UNKNOWN。
+为新模型设置可审查的验收门：独立检查所选模型，或完成编码到执行的保持性论证；
+当前离线检查与 `UNVALIDATED` 报告状态不被写成已有运行期 validator。
+
+这条路线的最小工程出口是上述族的真实主/子竞争执行可生成并检查，
+全 join 的 HB 对照不能被确认，漏写/假完成/错误来源必须拒绝；再按既有增量纪律
+build/install、双 ABI 控制、AI/BMC 全量配对及新旧所选执行验收后单独提交。
+路线有理论和代码接口依据；尚不能预报恢复数量或端到端速度。没有实际性能收益时，
+仍可记录精度扩展，但不声称 AI 依赖优化已经奏效。
 
 **当版AI→BMC成本/能力验收。** 独立运行10次warmup、30次正式配对，三次重复、交替
 开关顺序、单job固定CPU affinity，期间本会话未并行其他analyzer/reference作业。
