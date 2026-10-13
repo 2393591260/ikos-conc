@@ -117,17 +117,20 @@ class AdapterTest(unittest.TestCase):
 
     def test_exact_output_lines(self):
         for output in (
-            "diagnostic: The program is SAFE",
-            "The program is SAFE-ish",
-            "",
+            ["diagnostic: The program is SAFE"],
+            ["The program is SAFE-ish"],
+            ["error: analysis failed"],
+            [""],
+            [],
         ):
-            run = BaseTool2.Run(
-                [],
-                util.ProcessExitCode.create(value=0),
-                BaseTool2.RunOutput([output]),
-                None,
-            )
-            self.assertEqual(self.tool.determine_result(run), result.RESULT_UNKNOWN)
+            with self.subTest(output=output):
+                run = BaseTool2.Run(
+                    [],
+                    util.ProcessExitCode.create(value=0),
+                    BaseTool2.RunOutput(output),
+                    None,
+                )
+                self.assertEqual(self.tool.determine_result(run), result.RESULT_ERROR)
 
     def test_result_trust_boundary(self):
         cases = [
@@ -135,8 +138,6 @@ class AdapterTest(unittest.TestCase):
             ("The program is definitely UNSAFE", 0, None, result.RESULT_FALSE_DATARACE),
             ("The program is potentially UNSAFE", 0, None, result.RESULT_UNKNOWN),
             ("The program is UNKNOWN", 0, None, result.RESULT_UNKNOWN),
-            ("The program is SAFE", 1, None, result.RESULT_ERROR),
-            ("The program is definitely UNSAFE", 1, None, result.RESULT_ERROR),
             ("The program is SAFE", 0, "walltime", result.RESULT_TRUE_PROP),
         ]
         for text, code, termination, expected in cases:
@@ -148,13 +149,22 @@ class AdapterTest(unittest.TestCase):
                     termination,
                 )
                 self.assertEqual(self.tool.determine_result(run), expected)
-        run = BaseTool2.Run(
-            [],
+        for exit_code in (
+            util.ProcessExitCode.create(value=1),
             util.ProcessExitCode.create(signal=9),
-            BaseTool2.RunOutput(["The program is SAFE"]),
-            None,
-        )
-        self.assertEqual(self.tool.determine_result(run), result.RESULT_ERROR)
+        ):
+            for output in (
+                ["The program is SAFE"],
+                ["The program is definitely UNSAFE"],
+                ["The program is potentially UNSAFE"],
+                ["The program is UNKNOWN"],
+                [],
+            ):
+                with self.subTest(exit_code=exit_code, output=output):
+                    run = BaseTool2.Run(
+                        [], exit_code, BaseTool2.RunOutput(output), None
+                    )
+                    self.assertEqual(self.tool.determine_result(run), result.RESULT_ERROR)
 
 
 if __name__ == "__main__":

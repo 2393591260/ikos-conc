@@ -57,6 +57,9 @@ submission 页面已不要求另开 category-structure MR；类别仍需在 FM-T
   10/12 审查修复：版本查询使用 `_version_from_tool`；数据模型使用标准 task utility，
   没有任务模型时 adapter 不添加 ILP32；属性交给包装器校验；非零退出/信号为 ERROR，
   timeout 由 BenchExec 框架统一处理；判定按完整输出行匹配，明确竞争为 `false(no-data-race)`。
+  10/13 后续审查修复：用 `ProcessExitCode` 的布尔判断同时覆盖非零退出与信号；
+  即使已有 verdict，异常退出仍为 ERROR。正常退出但没有合法 verdict 也为 ERROR，
+  只有明确的 UNKNOWN / potentially UNSAFE 行归为 UNKNOWN。
   去掉 standalone/fallback/正则和误导注册注释；搬运 bin/lib/libexec/llvm/include 保持。
 - [打包脚本](../svcomp/package.py)、[见证包装器](../svcomp_witness.py)、
   [本地接口回归](../svcomp/bench-exec-sim.py)。它实际调用 Tool.cmdline/determine_result，逐任务隔离输出并区分 UNKNOWN、超时和非零退出；没有 cgroup 资源计量，不能替代官方 runner。
@@ -81,6 +84,12 @@ race/safe smoke 通过。记录见
 保留运行时 adapter 源码指纹，最终版本的单测及官方接口测试重新检查。
 原复制配置的本地 Ruff 检查未覆盖完整 BenchExec 包布局，后续已复现并修正 CI 的 I001；
 10/13 公开 PR 的 Perform linting/Code format 及其他共 15 项 checks 全部成功。
+上述公开 CI 对应修改前的 PR head；10/13 后续退出状态修复目前仅在本地完成。
+真实 BenchExec API 的 8 组 adapter 回归通过，覆盖正常 verdict、非零/信号与各 verdict
+组合，以及退出 0 但空输出、错误文本或伪结果行；无合法 verdict 的 5 个检查在修复前均失败。
+Ruff 0.16.10 在完整 BenchExec 源码布局下检查通过，247 个文件的格式检查通过。
+本次仅修改 adapter 结果分类，包装器与 ZIP 运行文件未改，不需重新上传 ZIP；
+更新现有 PR 后仍需等待该版本的远端 CI。
 
 以下保留 **10/11 M1 历史候选** 的验收，不能作为 10/12 新归档的身份记录。
 本地 adapter 的真实 BenchExec 接口测试 5 组通过，`test_tool_info` 确认包根定位与搬运路径；
