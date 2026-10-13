@@ -23,6 +23,9 @@ class Tool(BaseTool2):
     def name(self):
         return "ikos-conc"
 
+    def project_url(self):
+        return "https://github.com/2393591260/ikos-conc"
+
     def executable(self, tool_locator):
         return tool_locator.find_executable("svcomp_witness.py", subdir="bin")
 

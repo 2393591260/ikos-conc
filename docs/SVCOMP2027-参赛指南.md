@@ -60,6 +60,8 @@ submission 页面已不要求另开 category-structure MR；类别仍需在 FM-T
   10/13 后续审查修复：用 `ProcessExitCode` 的布尔判断同时覆盖非零退出与信号；
   即使已有 verdict，异常退出仍为 ERROR。正常退出但没有合法 verdict 也为 ERROR，
   只有明确的 UNKNOWN / potentially UNSAFE 行归为 UNKNOWN。
+  同日补充 `project_url()`，返回 `https://github.com/2393591260/ikos-conc`，
+  与 FM-Tools 条目及源码仓库链接一致。
   去掉 standalone/fallback/正则和误导注册注释；搬运 bin/lib/libexec/llvm/include 保持。
 - [打包脚本](../svcomp/package.py)、[见证包装器](../svcomp_witness.py)、
   [本地接口回归](../svcomp/bench-exec-sim.py)。它实际调用 Tool.cmdline/determine_result，逐任务隔离输出并区分 UNKNOWN、超时和非零退出；没有 cgroup 资源计量，不能替代官方 runner。
