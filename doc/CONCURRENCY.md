@@ -64,6 +64,8 @@ The wrapper locates `ikos` in the same directory and writes `witness.yml` for a
 confirmed race. The [BenchExec adapter](../benchexec/tools/ikos-conc.py) forwards
 the task's property and data model. It classifies abnormal exits or missing verdicts
 as `ERROR`; explicit inconclusive verdicts from successful runs are `UNKNOWN`.
+On failure, the competition wrapper writes error diagnostics to stderr and exits
+nonzero without emitting an analysis verdict.
 Registration metadata is in [fm-tools-entry.yml](../svcomp/fm-tools-entry.yml),
 and the archive builder is [package.py](../svcomp/package.py).
 

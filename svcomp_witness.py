@@ -624,7 +624,6 @@ def main():
         RecursionError,
     ) as exc:
         sys.stderr.write("error: cannot produce a competition result: {}\n".format(exc))
-        sys.stdout.write("The program is UNKNOWN\n")
         return 1
     finally:
         if temporary_witness is not None:

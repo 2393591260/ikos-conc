@@ -489,7 +489,10 @@ if mode == "changed":
 if mode == "crash": print("The program is definitely UNSAFE", file=sys.stderr)
 if mode != "missing":
  pathlib.Path(report).write_text("{" if mode == "json" else pathlib.Path(os.environ["FAKE_REPORT"]).read_text())
-print("The program is SAFE" if mode in ("safe","json") else "The program is definitely UNSAFE")
+if mode == "unknown":
+    print("The program is UNKNOWN")
+else:
+    print("The program is SAFE" if mode in ("safe","json") else "The program is definitely UNSAFE")
 sys.exit(3 if mode == "crash" else 0)
 """)
         fake.chmod(0o755)
@@ -557,7 +560,14 @@ sys.exit(3 if mode == "crash" else 0)
         self.assertIn("The program is SAFE", proc.stdout)
         self.assertFalse(out.exists())
 
-    def test_failures_suppress_false_and_clean_files(self):
+    def test_unknown_is_a_successful_inconclusive_result(self):
+        proc, out = self.run_wrapper("unknown")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout, "The program is UNKNOWN\n")
+        self.assertEqual(proc.stderr, "")
+        self.assertFalse(out.exists())
+
+    def test_failures_emit_only_errors_and_clean_files(self):
         missing = self.pair()
         missing.pop("counterexample")
         for mode, pair, output in [
@@ -573,7 +583,8 @@ sys.exit(3 if mode == "crash" else 0)
             with self.subTest(mode=mode, output=output, missing=pair is None):
                 proc, out = self.run_wrapper(mode, pair, output)
                 self.assertNotEqual(proc.returncode, 0)
-                self.assertEqual(proc.stdout, "The program is UNKNOWN\n")
+                self.assertEqual(proc.stdout, "")
+                self.assertIn("error: cannot produce a competition result:", proc.stderr)
                 self.assertNotIn("definitely UNSAFE", proc.stderr)
                 self.assertFalse(out.exists())
 
@@ -582,7 +593,7 @@ sys.exit(3 if mode == "crash" else 0)
         self.source.write_text(SOURCE + "\nint invalid = ;\n")
         proc, out = self.run_wrapper("race", pair)
         self.assertNotEqual(proc.returncode, 0)
-        self.assertEqual(proc.stdout, "The program is UNKNOWN\n")
+        self.assertEqual(proc.stdout, "")
         self.assertIn("Clang AST extraction failed", proc.stderr)
         self.assertFalse(out.exists())
 
@@ -602,7 +613,7 @@ sys.exit(3 if mode == "crash" else 0)
             text=True,
         )
         self.assertNotEqual(proc.returncode, 0)
-        self.assertEqual(proc.stdout, "The program is UNKNOWN\n")
+        self.assertEqual(proc.stdout, "")
         self.assertEqual(self.source.read_bytes(), before)
 
 
