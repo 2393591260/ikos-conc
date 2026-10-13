@@ -1,0 +1,16 @@
+[
+  {
+    "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.i",
+    "yaml": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.yml",
+    "mode": "ai",
+    "before": "Error (timeout)",
+    "after": "Error (timeout)"
+  },
+  {
+    "task": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.i",
+    "yaml": "c/ldv-linux-3.14-races/linux-3.14--drivers--net--irda--nsc-ircc.ko.cil.yml",
+    "mode": "bmc",
+    "before": "Error (timeout)",
+    "after": "Error (timeout)"
+  }
+]

@@ -304,6 +304,9 @@ private:
   std::vector< std::pair< ar::Statement*, std::string > > _unmodeled_effects;
   std::unordered_map< analyzer::MemoryLocation*, std::unordered_set< std::uint64_t > >
       _synthetic_handle_slots;
+  // MAY origins, not a current-value or dynamic-instance completion certificate.
+  std::map< std::tuple< analyzer::MemoryLocation*, ZNumber, ZNumber >,
+            std::unordered_set< std::uint64_t > > _synthetic_handle_ranges;
 
   /// \brief Per-function MUST-join summary: entry function → the set of thread
   /// instances it definitely joined by the time it exits (its exit invariant's
@@ -1155,9 +1158,24 @@ public:
   }
 
   void record_synthetic_handle_slot(analyzer::MemoryLocation* location,
-                                    std::uint64_t sid) {
+                                    std::uint64_t sid,
+                                    const ZNumber& offset,
+                                    const ZNumber& width,
+                                    bool exact_offset) {
     std::lock_guard< std::mutex > lock(_mutex);
     if (_synthetic_handle_slots[location].insert(sid).second) _is_dirty = true;
+    if (exact_offset &&
+        _synthetic_handle_ranges[{location, offset, width}].insert(sid).second)
+      _is_dirty = true;
+  }
+
+  bool synthetic_handle_range_has_source(analyzer::MemoryLocation* location,
+                                         const ZNumber& offset,
+                                         const ZNumber& width,
+                                         std::uint64_t sid) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    auto it = _synthetic_handle_ranges.find({location, offset, width});
+    return it != _synthetic_handle_ranges.end() && it->second.count(sid) != 0;
   }
 
   bool is_synthetic_handle_slot(analyzer::MemoryLocation* location) const {
@@ -2084,6 +2102,7 @@ public:
     _once_sids.clear();
     _unmodeled_effects.clear();
     _synthetic_handle_slots.clear();
+    _synthetic_handle_ranges.clear();
     _join_summary.clear();
     _spawn_joined.clear();
     _spawn_args.clear();

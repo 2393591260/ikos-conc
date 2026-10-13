@@ -249,7 +249,9 @@ no-wrap 运算只对能继续执行的路径使用，不能宣称覆盖发生 UB
 pthread_t 是内部身份令牌而非 POSIX 可观察整数。
 区间端点不能证明 join 目标；多 may 输出 create 写必须弱更新。
 有来源的唯一非逃逸标量槽、完成支配与成功零返回关联可恢复受限确定目标；
-多 writer、数组/heap 槽、错误身份、数值观察及动态不透明来源保守拒绝。
+多 writer、heap 槽、错误身份、数值观察及动态不透明来源保守拒绝。
+10/13 typed 整槽来源已支持确切数组字节 offset/width，覆盖写仍受内存转移与表示覆盖门约束；
+四个独立显式槽全部 join 的双架构最小例已 SAFE，循环重复创建的全实例完成仍是单独义务。
 detach 不建立完成/HB，sleep 不证明别的线程已结束。
 
 `initial_main_handle_seed` 仅识别可信 frontend 的 `ikos.freeze_uninit` 初始化，
@@ -635,8 +637,8 @@ TIMEOUT 34、ERROR 2。14 个带 Unsound 的 raw TRUE 已另试后续配置，�
 Goblint `region.ml` 的 bullet/region 查询依赖它自己的 allocation/escape 状态；
 `threadJoins.ml:50–62` 只把 singleton 且 unique 的 TID 加入 MUST joined，
 不能只移植“join 后安全”的结论。固定源码指纹已记入阶段记录。
-本轮 join 回归证实：四个独立 scalar 句柄可 SAFE，四个显式 array 槽仍因非零偏移来源门
-保守拒绝；原循环还缺四个动态实例的完成覆盖。缺最后 join、覆盖旧句柄的负例均未 SAFE。
+本轮 join 回归证实：四个独立 scalar 句柄可 SAFE，四个显式 array 槽在本轮当时因非零偏移来源门
+保守拒绝（10/13 M3.2第一增量已解决，见BMC手册§12.4）；原循环还缺四个动态实例的完成覆盖。缺最后 join、覆盖旧句柄的负例均未 SAFE。
 
 因此按原路线可进入 M3 的有限语义/成本优化；更一般 heap-region 与动态 join 是后续 TN
 专题的具体入口，已有源码、观测和前提，无需靠放宽 gate 强行完成。

@@ -317,7 +317,7 @@ void check_synthetic_handle_effect(E& eng, ar::Statement* statement,
 }
 
 template < typename E >
-bool proven_synthetic_handle_source(E& eng, ar::Value* value) {
+bool proven_synthetic_handle_source(E& eng, ar::Value* value, std::uint64_t sid) {
   for (unsigned depth = 0; depth < 64; ++depth) {
     auto* variable = dyn_cast< ar::InternalVariable >(value);
     if (variable == nullptr) return false;
@@ -327,10 +327,13 @@ bool proven_synthetic_handle_source(E& eng, ar::Value* value) {
       if (!pointer.is_pointer_var()) return false;
       auto points = eng.data().normal().pointer_to_points_to(pointer.var());
       auto offset = eng.data().normal().pointer_to_pointer(pointer.var()).offset();
+      auto* type = dyn_cast< ar::IntegerType >(load->result()->type());
       if (!points.is_set() || points.is_empty() || !offset.singleton() ||
-          !offset.lb().is_zero()) return false;
+          type == nullptr) return false;
+      const auto width = eng.data_layout().store_size_in_bytes(type);
       for (auto* location : points)
-        if (!eng.ctx().concurrent_env.is_synthetic_handle_slot(location)) return false;
+        if (!eng.ctx().concurrent_env.synthetic_handle_range_has_source(
+                location, offset.lb().to_z_number(), width, sid)) return false;
       return true;
     }
     if (auto* call = dyn_cast_or_null< ar::CallBase >(definition)) {
@@ -1131,7 +1134,8 @@ void exec_pthread_join(E& eng, ar::CallBase* call) {
     // Pointer / other arg forms carry no instance value → nothing to join.
   }
 
-  if (!joined_sids.empty() && !proven_synthetic_handle_source(eng, handle_arg)) {
+  if (!joined_sids.empty() &&
+      !proven_synthetic_handle_source(eng, handle_arg, *joined_sids.begin())) {
     joined_sids.clear();
     env.record_unmodeled_effect(
         call, "synthetic pthread handle representation not modeled");
@@ -2202,59 +2206,33 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
           if (auto* local = local_output_base(handle_arg))
             eng.data().normal().mem_forget(eng.ctx().mem_factory->get_local(local));
         }
-        if (pts.is_set()) {
-          for (MemoryLocation* loc : pts) {
-            Variable* var = nullptr;
-            ar::Type* pointee = nullptr;
-            if (auto* lml = dyn_cast< LocalMemoryLocation >(loc)) {
-              var = eng.var_factory().get_local(lml->local_var());
-              pointee = lml->local_var()->type()->pointee();
-            } else if (auto* gml = dyn_cast< GlobalMemoryLocation >(loc)) {
-              // GLOBAL pthread_t handle (race-1_1/1_2/1_3-join.c: `pthread_t
-              // t1;` at file scope) — same cell write as the local case, but
-              // on the global's memory cell.
-              var = eng.var_factory().get_global(gml->global_var());
-              pointee = gml->global_var()->type()->pointee();
-            } else {
-              continue;
-            }
-            if (isa< CellVariable >(var)) {
-              continue; // aggregate handle (id[i]): skip
-            }
-            // Only SCALAR handles — an ARRAY of pthread_t (`id[i]`) collapses
-            // to a variable-index deref whose points-to is TOP (skipped above)
-            // or resolves to a cell (aggregate), which `scalar_assign_nondet`
-            // must not touch.
-            {
-              // Store the thread-instance id as the pthread_t VALUE (a
-              // concrete i64) into the handle CELL, so a later pthread_join
-              // reads it back as a singleton (= the exact instance). A
-              // CONCRETE value is what lets an unknown call (`foo(&t)`
-              // clobbers it to TOP) be distinguished from a freshly-created
-              // handle (07-trivial-unknowntid FN). The handle is an
-              // address-taken local, so its value lives in the MEMORY cell,
-              // written via mem_write (the old scalar_assign_nondet only
-              // touched the ADDRESS var, not the content).
-              if (sid != 0 && pointee->is_integer()) {
-                eng.ctx().concurrent_env.record_synthetic_handle_slot(loc, sid);
-                ar::IntegerType* ity = ar::cast< ar::IntegerType >(pointee);
-                auto size = core::MachineInt(
-                    eng.data_layout().store_size_in_bytes(pointee),
-                    eng.data_layout().pointers.bit_width, core::Unsigned);
-                eng.data().normal().mem_write(
-                    // Preserve the actual may-target set and displacement.
-                    // Writing each base separately would strongly overwrite
-                    // every candidate even though create writes only one slot.
-                    scalar_lit.var(),
-                    core::Literal< Variable*, MemoryLocation* >::machine_int(
-                        core::MachineInt(static_cast< std::uint64_t >(sid),
-                                         ity->bit_width(), ity->sign())),
-                    size);
-              } else {
-                eng.data().normal().scalar_assign_nondet(var);
-              }
-            }
-          }
+        auto* pointee = cast< ar::PointerType >(handle_arg->type())->pointee();
+        auto* type = dyn_cast< ar::IntegerType >(pointee);
+        bool supported_bases = pts.is_set() && !pts.is_empty();
+        if (pts.is_set()) for (auto* location : pts)
+          supported_bases &= isa< LocalMemoryLocation >(location) ||
+                             isa< GlobalMemoryLocation >(location);
+        if (supported_bases && sid != 0 && type != nullptr) {
+          const auto width = eng.data_layout().store_size_in_bytes(type);
+          auto offset = eng.data().normal().pointer_to_pointer(scalar_lit.var()).offset();
+          // Origins are monotone MAY observations. Current contents still come
+          // from memory; non-identity writes retain the coverage gate above.
+          for (auto* location : pts)
+            eng.ctx().concurrent_env.record_synthetic_handle_slot(
+                location, sid, offset.singleton() ? offset.lb().to_z_number()
+                                                 : core::ZNumber(0),
+                width, bool(offset.singleton()));
+          // One write through the actual pointer preserves may-alias weak
+          // updates and targets scalar subobjects rather than the whole array.
+          eng.data().normal().mem_write(
+              scalar_lit.var(),
+              core::Literal< Variable*, MemoryLocation* >::machine_int(
+                  core::MachineInt(sid, type->bit_width(), type->sign())),
+              core::MachineInt(width, eng.data_layout().pointers.bit_width,
+                               core::Unsigned));
+        } else if (pts.is_set()) {
+          // An unresolved create supplies initialized, unknown handle bytes.
+          for (auto* location : pts) eng.data().normal().mem_forget(location);
         }
       }
     }
