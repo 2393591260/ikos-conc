@@ -1074,12 +1074,13 @@ TN 的嵌套保护/发布相关性独立见 [AI 后续机制](ikos-ai-complete.m
 <a id="m3-design"></a>
 ### 12.4 M3 实施顺序与设计门槛（2026-10-13）
 
-**状态：M3.0、M3.1已完成；M3.2仍待实现验收，M3整体未结束。** 固定入口为
+**状态：M3第一版已按受限阶段出口完成。M3.0、M3.1及M3.2槽来源/常量控制AI证书已验收；BMC有副作用辅助完成未实现，具体接口义务列在下方。** 固定入口为
 [初始126个竞争UNKNOWN](artifacts/bmc-m3-2026-10-13/baseline.json)。初始诊断均UNKNOWN，创建实例和启动提示已累计恢复其中六项；
 参考运行的中断项已单独补跑为FAIL；完整126项为FAIL96、ERROR13、TIMEOUT14、PASS3，
 源/YAML及配置已核对，见[完整记录](artifacts/bmc-m3-2026-10-13/reference-complete/results.json)。
-诊断理由可重叠，76 项含 activation 阻断不等于可恢复 76 TP。本轮对 33 项作了具体源码
-归因，其余还需继续逐项检查；[设计依据](artifacts/strategic-design-2026-10-13/review.json)
+诊断理由可重叠，76 项含 activation 阻断不等于可恢复 76 TP。设计时对33项作了深入源码
+归因；阶段出口另对全部126项核对实际输入的应用入口/API/循环/指针片段，刷新当前诊断和具体
+处置。其余导航核对不冒充逐指令Dartagnan探针回放；[设计依据](artifacts/strategic-design-2026-10-13/review.json)
 保留实际审查范围。
 
 **M3.0：隔离证据与开销已验收。** 独立开关、普通结果计数和准确实验范围见§3.1；
@@ -1168,7 +1169,7 @@ Goblint TRUE，三个竞争版已有新 Dartagnan FAIL，适合同时检验 TN �
 | --- | --- | --- |
 | 精确句柄槽来源 | 创建/转移保留对象、字节 offset、width 和覆盖写代次；BMC 用实际 occurrence，AI 保留 MAY 来源与唯一性条件 | 从固定长度 main 栈数组、完整 typed 写开始；未知别名/部分写/数值伪句柄使来源失效。不能把重复 site 的 singleton 当唯一动态线程 |
 | AI 全实例完成证书（TN 专题） | `concurrent_semantics` / `ConcurrentGlobalEnv` / checker；证明全部可能创建及成功完成，不消费有界路径数量 | 全 join 安全版与漏 join/覆写控制同时验收；循环范围、失败和句柄覆盖无法全称证明时保留 UNKNOWN |
-| BMC 有副作用辅助完成 | 在所选执行中纳入每个被 join 实例的完整有限终止路径，统一其读写、值源、同步及实际 handle；扩展证据和独立检查 | 当前只允许无副作用辅助返回。不能只加入一条“已完成”边；递归 join、所需第三线程无法闭合或路径不终止时 UNKNOWN |
+| BMC 有副作用辅助完成（未实现） | 在所选执行中纳入每个被 join 实例的完整有限终止路径，统一其读写、值源、同步及实际 handle；扩展证据和独立检查 | 当前只允许无副作用辅助返回。不能只加入一条“已完成”边；递归 join、所需第三线程无法闭合或路径不终止时 UNKNOWN |
 
 这三项分别设计/提交。第二项不是 BMC→AI 反馈；第三项需要从 startup/A/B 的局部约定
 逐步变成有限 trace 集，先列全所有 `a/b`、first-create、`value_init_` 消费点再改。
@@ -1224,9 +1225,57 @@ TP115保持、TN687→688、FP/FN0、UNKNOWN226→225、同一超时保持；无
 见 [控制结果](artifacts/bmc-m3-2026-10-13/initial-controls.json)。calloc 可作独立有限扩展，
 但先确认真实任务确实调用它、参考可用且没有更早的身份缺口；声明里出现名字不算调用。
 
-M3 的阶段出口仍是：126 项均有当版结果和具体处置；入选机制逐项实现验收或记录未满足的
-义务；完成能隔离因果的成本实验并提交。新 FALSE、保留 UNKNOWN、参考失败和语义不兼容
-分别记录。设计完成不等于 M3 完成，不以清空 UNKNOWN、达到预定 TP 数或普遍快于参考工具为出口。
+<a id="m3-exit"></a>
+**M3第一版阶段出口（2026-10-13）已完成。** 入选创建实例、延后启动提示、typed槽来源和
+常量控制AI完成证书已分别实施验收；初始126项有最终CLI判定、当版诊断、输入/YAML hash、
+固定参考状态、源码导航及逐项缺口。M3全阶段 TP109→115、TN687→688、FP/FN0、
+UNKNOWN232→225、唯一error/timeout保持；本次槽/完成专题贡献1个TN，未增加TP。
+115项143条所选执行全部AR ACCEPT，源witness与全语言SAFE规则验收仍有独立开放项。
+[阶段汇总](artifacts/bmc-m3-2026-10-13/exit/summary.json)、
+[126项最终台账](artifacts/bmc-m3-2026-10-13/exit/ledger.json)。
+
+剩余竞争UNKNOWN120：固定参考FAIL92、ERROR13、TIMEOUT12、标签不一致的PASS3。
+92项写明实现/证明前提；25项参考未确认、3项先解决标签/模型分歧。TIMEOUT/ERROR不能
+改写成PASS或“不可能”，参考FAIL也不能代替IKOS执行证据。安全UNKNOWN105，可信Goblint
+TRUE还剩14（旧M2快照的15中已有固定join数组恢复）；M2历史诊断保留原日期。
+全部任务进行了当前受限搜索并记录结果，源片段审查与深度AR/参考probe范围分列。
+
+**BMC辅助完成的具体延期依据与准入条件。** `thread-join-array-const` 的三个竞争变体需要
+main在真实完成若干writer后读取共享data，同时剩余writer仍存活。可行路线是一般化有限
+trace集合，但当前代码存在以下相互依赖的接口，不能只放宽 `inert_join_source`：
+
+| 消费点 | 当前限制 | 扩展前必须完成 |
+| --- | --- | --- |
+| `unroll.hpp` / `check_race` | main/A/B及单块return-NULL完成；main/worker激活另有前提 | 每个被join孩子的完整终止前缀和真实创建代次；main只有一个连续frame，不能复制续行 |
+| `encode.hpp` / `function_values.hpp` | 两路径clock分区、三个cache/`_paths[3]`、`value_init_` startup语境 | 各辅助trace独立局部值/实参/分配，所有读写共同rf/co、地址/锁顺序与return→join约束 |
+| `evidence.hpp` / `replay.hpp` | 读源采集主要枚举startup/A/B，creator与目标绑定按这组路径 | 所有供值/完成trace和实际creator_step一起导出，快照闭包、地址与值不丢来源 |
+| `validate_bmc_execution.py` | trace IDs限startup/a/b；缺孩子只接受真实单块return-NULL | 独立执行辅助孩子到Return，实际句柄匹配并合并VC；坏实例/遗漏写/假完成必须REJECT |
+| 源witness映射/搜索预算 | 主要映射所选两根，路径预算与枚举策略有限 | 纳入真实辅助线程源步骤及动态身份；在相同总预算下保持旧成功并单独测量 |
+
+这属于后续通用语义增量，具备工程可行路线，但这版未闭合，三个数组竞争例继续UNKNOWN。
+同一来源还解释动态join树、counter/cleaner和nested creator的若干剩余项；不预测必能恢复
+多少TP。常量calloc初值亦不能单独救 `bigshot_p`：它在worker中分配并发布pointer，另一
+worker执行strcpy，而现有具体heap来源主要限main首次创建前，仍缺动态发布/库写合同。
+不把这些边界归因于“大模型能力不足”，也不宣称后续没有可改进空间。
+
+**当版AI→BMC成本/能力验收。** 独立运行10次warmup、30次正式配对，三次重复、交替
+开关顺序、单job固定CPU affinity，期间本会话未并行其他analyzer/reference作业。
+WSL宿主不独占、面板为开发样例，结果是局部机制证据：
+
+- `unused-local.c` 的no-wrap证书：所选执行两边均ACCEPT、查询数均1，solver时间中位数
+  约3.085ms对273.266ms；端到端约0.189s对0.832s。这支持该样例的编码简化，不证明全量提速。
+- `reorder_c11_good-20.i` 两个数值因素均无能力/查询数变化；bounds开关约3.127s对2.844s，
+  no-wrap在此根本未被消费（计数0），也有约3.622s对2.908s波动。不能据此声称边界事实普遍加速。
+- `publication.c` 的single-execution证书把UNKNOWN恢复为有效FALSE；关闭后没查询，
+  是定义性能力差异，两个端到端时间不作速度比较。
+
+[逐因素、逐样本、配置与证据](artifacts/bmc-m3-2026-10-13/exit/cost.json)；此前M3.0的210次
+独立因素实验仍保留。总体更快于Dartagnan/Goblint尚无公平实验证据；后续M5需独立任务、
+同等资源/判定质量的对照，不能用参考timeout与IKOS确认时间直接算速度比。
+
+阶段关闭依据是已实施机制、当前126项处置、成本因素验收与分项提交。更一般辅助trace、
+heap/history、POSIX失败、弱内存和普遍SAFE证明继续作为明确后续节点，不以清空UNKNOWN、
+预定TP数量或完整复刻参考工具作为本版出口。
 
 <a id="history"></a>
 ## 13. 阶段历史与不再采用的判断

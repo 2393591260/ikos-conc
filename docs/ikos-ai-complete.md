@@ -944,6 +944,11 @@ stable-publication 共 172 次观察及 P0 20 次观察通过；stable-publicati
 全语言 soundness、混合锁集域义务和官方源 witness 验收仍是各自独立的工作，
 不能由这次首批出口推断它们已完成。
 
+**10/13 M3后的当前状态补充：** 上述表格是M2历史快照。typed槽来源与常量控制全实例
+证书已恢复固定join数组，当前TN688、TP115、安全UNKNOWN105、可信Goblint TRUE余14。
+13个heap/region与1个arraylist覆盖缺口继续保留；见[BMC阶段出口](ikos-bmc-complete.md#m3-exit)。
+完成证书来自完整受限控制协议，未使用BMC反例分区提示；M6研究准入仍需另外成立。
+
 ### M2 下一机制：实施前参考复核与剩余证书（2026-10-12）
 
 本轮将其余 91 个安全 UNKNOWN 在修正 GCC32 machine definition 的固定 Goblint 上

@@ -1,0 +1,134 @@
+{
+  "tasks": 126,
+  "matrix": {
+    "TP": 6,
+    "FP": 0,
+    "TN": 0,
+    "FN": 0,
+    "error": 0,
+    "unknown": 120
+  },
+  "unknown_tasks_by_observed_reason": {
+    "ai_candidate_bounds": {
+      "racy": 15
+    },
+    "sc_read_from": {
+      "racy": 29
+    },
+    "smt_unsat": {
+      "racy": 18
+    },
+    "address_base": {
+      "racy": 1
+    },
+    "integer_operation": {
+      "racy": 31
+    },
+    "sc_same_path_read_from": {
+      "racy": 28
+    },
+    "non_global_object": {
+      "racy": 23
+    },
+    "points_to_not_singleton": {
+      "racy": 23
+    },
+    "thread_activation_unproven": {
+      "racy": 70
+    },
+    "mutex_identity": {
+      "racy": 3
+    },
+    "target_not_reached": {
+      "racy": 43
+    },
+    "heap_read_origin": {
+      "racy": 3
+    },
+    "call_summary": {
+      "racy": 45
+    },
+    "pthread_handle_representation": {
+      "racy": 19
+    },
+    "startup_literal_loop_hint": {
+      "racy": 3
+    },
+    "activation_deferred": {
+      "racy": 27
+    },
+    "activation_small_bound": {
+      "racy": 27
+    },
+    "constant_guard_unsat": {
+      "racy": 29
+    },
+    "selected_activation_occurrences": {
+      "racy": 8
+    },
+    "transitive_thread_order": {
+      "racy": 1
+    },
+    "mixed_atomic": {
+      "racy": 2
+    },
+    "prefix_statement": {
+      "racy": 16
+    },
+    "atomic_completed_paths": {
+      "racy": 14
+    },
+    "interrupted_small_bound": {
+      "racy": 15
+    },
+    "search_budget": {
+      "racy": 32
+    },
+    "smt_unknown": {
+      "racy": 1
+    },
+    "unroll_path_budget": {
+      "racy": 9
+    },
+    "atomic_interior_unsat": {
+      "racy": 3
+    },
+    "unroll_work_budget": {
+      "racy": 21
+    },
+    "literal_loop_search_hint": {
+      "racy": 5
+    },
+    "activation_selection_budget": {
+      "racy": 4
+    },
+    "constant_startup_guard_unsat": {
+      "racy": 4
+    },
+    "startup_read_from": {
+      "racy": 4
+    },
+    "assume_value": {
+      "racy": 1
+    },
+    "sc_spawn_read_from": {
+      "racy": 2
+    },
+    "unroll_event_budget": {
+      "racy": 4
+    },
+    "prefix_value_origin": {
+      "racy": 2
+    },
+    "join_completion_unproven": {
+      "racy": 8
+    }
+  },
+  "note": "Reasons overlap; counts are observed blockers, not recoverable TP estimates. First blockers describe recorded traversal order; later stages behind failed gates were not explored.",
+  "timeout": 30,
+  "jobs": 4,
+  "environment": {
+    "IKOS_BMC_RECOVER": "1",
+    "IKOS_BMC_DIAGNOSTICS": "1"
+  }
+}
