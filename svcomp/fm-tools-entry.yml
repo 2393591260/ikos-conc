@@ -74,8 +74,8 @@ competition_participations:
 
 techniques:
   - Abstract Interpretation
-  - Concurrency Support
   - Bounded Model Checking
+  - Concurrency Support
   - Numeric Interval Analysis
 
 frameworks_solvers:
