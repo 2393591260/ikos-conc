@@ -27,6 +27,7 @@ import sys
 import tempfile
 import time
 import threading
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -208,6 +209,17 @@ def collect_report(report_path, verdict, evidence_dir, key):
         if not isinstance(report, dict) or not isinstance(report.get("reports"), list):
             raise ValueError("report must contain a reports array")
         result["report_status"] = "parsed"
+        reasons, bmc_counts, statuses = Counter(), Counter(), Counter()
+        for row in report["reports"]:
+            info = row.get("info", {})
+            if info.get("unknown_reason"):
+                reasons[info["unknown_reason"]] += 1
+            bmc_counts.update(info.get("bmc", {}).get("counts", {}))
+            status = info.get("bmc_result", {}).get("status")
+            if status:
+                statuses[status] += 1
+        result.update(unknown_reason_counts=dict(reasons), bmc_reason_counts=dict(bmc_counts),
+                      bmc_status_counts=dict(statuses))
         if verdict != VERDICT_RACE:
             return result
         selected = []

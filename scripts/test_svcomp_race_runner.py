@@ -140,6 +140,19 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(results[0]["report_status"], "missing")
         self.assertEqual(len(source.with_suffix(".calls").read_text().splitlines()), 1)
 
+    def test_unknown_diagnostics_survive_raw_cleanup(self):
+        self.task(output="The program is UNKNOWN", report={"reports": [{"info": {
+            "unknown_reason": "unknown destination write effects not covered",
+            "bmc_result": {"status": "UNSUPPORTED"},
+            "bmc": {"counts": {"prefix_address": 2}}}}]})
+        code, summary, results = self.run_evidence()
+        self.assertEqual(code, 0)
+        self.assertEqual(results[0]["unknown_reason_counts"],
+                         {"unknown destination write effects not covered": 1})
+        self.assertEqual(results[0]["bmc_reason_counts"], {"prefix_address": 2})
+        self.assertEqual(results[0]["bmc_status_counts"], {"UNSUPPORTED": 1})
+        self.assertFalse((self.root / "evidence/.raw").exists())
+
     def test_rejected_execution(self):
         self.task(report=self.selected_report())
         code, summary, results = self.run_evidence()
