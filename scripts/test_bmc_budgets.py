@@ -64,7 +64,7 @@ def main():
 
         for bits in (32, 64):
             for locked in (False, True):
-                for options, deadline, solver in (([], 10000, 1000),
+                for options, deadline, solver in (([], 20000, 1000),
                         (['--bmc-deadline-ms=10000', '--bmc-solver-timeout-ms=1000'], 10000, 1000),
                         (['--bmc-deadline-ms=0'], 0, 1000),
                         (['--bmc-deadline-ms=20000', '--bmc-solver-timeout-ms=2000'], 20000, 2000)):
