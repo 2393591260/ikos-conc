@@ -127,6 +127,9 @@ void AnalysisOptions::save(SettingsTable& table) {
                this->emit_concurrency_invariants);
 
   table.insert("demote-race-to-unknown", this->demote_race_to_unknown);
+  table.insert("bmc-deadline-ms", std::to_string(this->bmc_deadline_ms));
+  table.insert("bmc-solver-timeout-ms",
+               std::to_string(this->bmc_solver_timeout_ms));
 
   if (this->argc) {
     table.insert("argc", std::to_string(*this->argc));

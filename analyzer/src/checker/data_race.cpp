@@ -1568,7 +1568,8 @@ DataRaceChecker::~DataRaceChecker() {
   const bool bmc_enabled = this->_ctx.opts.demote_race_to_unknown &&
                            getenv("IKOS_BMC_RECOVER") != nullptr;
   const bool diagnostics_enabled = getenv("IKOS_BMC_DIAGNOSTICS") != nullptr;
-  bmc::SearchBudget search_budget;
+  bmc::SearchBudget search_budget(this->_ctx.opts.bmc_deadline_ms,
+                                 this->_ctx.opts.bmc_solver_timeout_ms);
   // A may-multiplicity flag cannot establish two live concrete instances.
   // Initially support two explicit spawns on a linear main prefix, with no
   // intervening waits or unknown calls. Loop/conditional creation needs modeling.
@@ -1860,6 +1861,11 @@ DataRaceChecker::~DataRaceChecker() {
       if (pass == 4 && diagnostics_enabled) candidate_diagnostics = occurrence_candidates.at(kv.first);
       if (!file_confirmed && (search_budget.expired() || final_budget_exhausted))
         group_result.merge(bmc::Result(bmc::Status::BudgetExceeded));
+      if (!file_confirmed) {
+        if (diagnostics_enabled && search_budget.expired()) ++reason_counts["search_deadline"];
+        if (diagnostics_enabled && final_budget_exhausted && search_budget.candidates == 0) ++reason_counts["candidate_budget"];
+        if (diagnostics_enabled && final_budget_exhausted && search_budget.queries == 0) ++reason_counts["query_budget"];
+      }
       if (diagnostics_enabled && (file_confirmed || search_budget.expired() || final_budget_exhausted))
         ++reason_counts[file_confirmed ? "not_searched_after_confirmation" : "search_budget"];
     }
@@ -1997,6 +2003,7 @@ DataRaceChecker::~DataRaceChecker() {
           bmc::record(trace, "group_search_budget");
           candidate_result.merge(bmc::Result(bmc::Status::BudgetExceeded));
         } else if (search_budget.candidates == 0 || search_budget.expired()) {
+          search_budget.record_exhaustion(trace);
           bmc::record(trace, "search_budget");
           candidate_result.merge(bmc::Result(bmc::Status::BudgetExceeded));
         } else {
@@ -2215,6 +2222,10 @@ DataRaceChecker::~DataRaceChecker() {
         counts.put(entry.first, entry.second);
       }
       diagnostics.put("counts", counts);
+      diagnostics.put("budget", JsonDict{{"deadline_ms", search_budget.deadline_ms},
+                                        {"solver_timeout_ms", search_budget.solver_timeout_ms},
+                                        {"remaining_candidates", search_budget.candidates},
+                                        {"remaining_queries", search_budget.queries}});
       diagnostics.put("candidates", candidate_diagnostics);
       if (pass != 0) diagnostics.put("first_pass_candidates", deferred_candidates.at(kv.first));
       if (pass == 4 && startup_hint > 16 && !query_order.empty())

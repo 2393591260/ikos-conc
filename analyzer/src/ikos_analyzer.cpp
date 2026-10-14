@@ -463,6 +463,20 @@ static llvm::cl::opt< bool > DemoteRaceToUnknown(
     llvm::cl::init(false),
     llvm::cl::cat(AnalysisCategory));
 
+static llvm::cl::opt< unsigned > BmcDeadlineMs(
+    "bmc-deadline-ms",
+    llvm::cl::desc("Cooperative BMC confirmation deadline in milliseconds "
+                   "(default: 10000; 0 disables confirmation searches)"),
+    llvm::cl::init(10000),
+    llvm::cl::cat(AnalysisCategory));
+
+static llvm::cl::opt< unsigned > BmcSolverTimeoutMs(
+    "bmc-solver-timeout-ms",
+    llvm::cl::desc("BMC SMT timeout per direction in milliseconds "
+                   "(default: 1000; must be positive)"),
+    llvm::cl::init(1000),
+    llvm::cl::cat(AnalysisCategory));
+
 static llvm::cl::opt< analyzer::WideningStrategy > WideningStrategy(
     "widening-strategy",
     llvm::cl::desc("Strategy for increasing iterations"),
@@ -928,6 +942,8 @@ static analyzer::AnalysisOptions make_analysis_options(ar::Bundle* bundle) {
       .enable_thread_modular = EnableThreadModular,
       .emit_concurrency_invariants = EmitConcurrencyInvariants,
       .demote_race_to_unknown = DemoteRaceToUnknown,
+      .bmc_deadline_ms = BmcDeadlineMs,
+      .bmc_solver_timeout_ms = BmcSolverTimeoutMs,
       .hardware_addresses = {bundle, HardwareAddresses, HardwareAddressesFile},
       .argc = ((Argc >= 0) ? boost::optional< int >(Argc) : boost::none),
   };
@@ -994,6 +1010,11 @@ int main(int argc, char** argv) {
 
   const char* overview = "ikos-analyzer -- IKOS static analyzer";
   llvm::cl::ParseCommandLineOptions(argc, argv, overview);
+
+  if (BmcSolverTimeoutMs == 0) {
+    llvm::errs() << progname << ": --bmc-solver-timeout-ms must be positive\n";
+    return 1;
+  }
 
   // Set log level
   analyzer::log::Level = LogLevel;

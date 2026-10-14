@@ -366,6 +366,10 @@ public:
   /// Retain the historical flag name for command-line compatibility.
   bool demote_race_to_unknown;
 
+  /// BMC's cooperative deadline and per-direction SMT timeout, in milliseconds.
+  unsigned bmc_deadline_ms = 10000;
+  unsigned bmc_solver_timeout_ms = 1000;
+
   /// \brief Hardware addresses
   HardwareAddresses hardware_addresses;
 

@@ -155,11 +155,26 @@ struct SearchBudget {
   std::size_t queries = 1024;
   bool probe_interrupted = false;
   bool saw_interrupted = false;
-  std::chrono::steady_clock::time_point deadline =
-      std::chrono::steady_clock::now() + std::chrono::seconds(10);
+  const unsigned deadline_ms;
+  const unsigned solver_timeout_ms;
+  std::chrono::steady_clock::time_point deadline;
+
+  explicit SearchBudget(unsigned deadline_ms = 10000,
+                        unsigned solver_timeout_ms = 1000)
+      : deadline_ms(deadline_ms),
+        solver_timeout_ms(solver_timeout_ms),
+        deadline(std::chrono::steady_clock::now() +
+                 std::chrono::milliseconds(deadline_ms)) {}
 
   bool expired() const {
     return std::chrono::steady_clock::now() >= deadline;
+  }
+
+  void record_exhaustion(Diagnostics* diagnostics) const {
+    if (diagnostics == nullptr) return;
+    if (expired()) record(diagnostics, "search_deadline");
+    if (candidates == 0) record(diagnostics, "candidate_budget");
+    if (queries == 0) record(diagnostics, "query_budget");
   }
 };
 
@@ -320,6 +335,7 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   for (const auto& pA : rA.paths) {
     for (const auto& pB : rB.paths) {
       if (budget != nullptr && (budget->expired() || budget->queries == 0)) {
+        budget->record_exhaustion(diagnostics);
         record(diagnostics, "search_budget");
         outcome.merge(Result(Status::BudgetExceeded));
         return outcome;
@@ -354,7 +370,8 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
       }
       GuardRejection rejection;
       outcome.merge(check_race(pA, pB, funcA, funcB, diagnostics, facts, &rejection,
-                              &outcome.metrics));
+                              &outcome.metrics, nullptr, nullptr,
+                              budget != nullptr ? budget->solver_timeout_ms : 1000u));
       if (rejection.startup_infeasible) {
         // Every worker alternative in this call shares the same startup;
         // dormant children cannot repair its already-false concrete guard.
@@ -415,6 +432,7 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
   if (!has_join(main, 0)) return outcome;
   auto spend = [&]() {
     if (budget.expired() || budget.queries == 0) {
+      budget.record_exhaustion(diagnostics);
       outcome.merge(Result(Status::BudgetExceeded));
       record(diagnostics, "completion_search_budget");
       return false;
@@ -529,7 +547,8 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
             record(diagnostics, "auxiliary_completion_query");
             outcome.merge(check_race(main_a ? main_path : worker_path,
                 main_a ? worker_path : main_path, funcA, funcB, diagnostics,
-                facts, nullptr, &outcome.metrics, &plan, &budget.deadline));
+                facts, nullptr, &outcome.metrics, &plan, &budget.deadline,
+                budget.solver_timeout_ms));
             return;
           }
           const auto creation = auxiliary[next].first, join_step = auxiliary[next].second;
@@ -576,6 +595,7 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
           return outcome;
         }
         if (budget.expired() || budget.queries == 0) {
+          budget.record_exhaustion(diagnostics);
           outcome.merge(Result(Status::BudgetExceeded)); return outcome;
         }
       }

@@ -51,7 +51,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                        const CandidateFacts* facts = nullptr,
                        GuardRejection* rejection = nullptr, Metrics* metrics = nullptr,
                        const CompletionPlan* completion = nullptr,
-                       const std::chrono::steady_clock::time_point* deadline = nullptr) {
+                       const std::chrono::steady_clock::time_point* deadline = nullptr,
+                       unsigned solver_timeout_ms = 1000) {
   if (metrics != nullptr) {
     ++metrics->path_queries;
     metrics->prefix_events += inputA.size() + inputB.size() + (facts != nullptr ? facts->startup.size() : 0);
@@ -1618,10 +1619,13 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     // Each query is independent. push/pop switches Z3 to incremental solving,
     // disabling preprocessing needed by some mixed Int/BV guards.
     z3::solver query(ctx);
-    auto timeout = 1000u;
+    auto timeout = solver_timeout_ms;
     if (deadline != nullptr) {
       const auto remaining = std::chrono::duration_cast< std::chrono::milliseconds >(*deadline - std::chrono::steady_clock::now()).count();
-      if (remaining <= 0) return Result(Status::BudgetExceeded);
+      if (remaining <= 0) {
+        record(diagnostics, "search_deadline");
+        return Result(Status::BudgetExceeded);
+      }
       timeout = static_cast< unsigned >(std::min< std::int64_t >(remaining, timeout));
     }
     query.set("timeout", timeout);
@@ -1653,6 +1657,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     }
     record(diagnostics, result == z3::sat ? "sat" :
                         result == z3::unsat ? "smt_unsat" : "smt_unknown");
+    if (diagnostics != nullptr && result == z3::unknown && query.reason_unknown() == "timeout")
+      record(diagnostics, "smt_timeout");
     if (result == z3::sat) {
       Result outcome(Status::Confirmed);
       auto model = query.get_model();

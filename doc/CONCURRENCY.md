@@ -126,11 +126,26 @@ all conflicts is not necessarily a concrete value source for a BMC execution.
 ## Resource limits
 
 The local benchmark script defaults to 30 seconds of **wall time** per task.
-BMC has an approximately 10-second cooperative search deadline, per-query SMT
-limits, and independent path/event/loop bounds. The BMC deadline starts after
-abstract analysis; it is not a hard limit on the entire program run. Current
-internal limits do not have runtime CLI options. Increasing the benchmark
-script's timeout does not increase these internal bounds.
+BMC defaults to a 10-second cooperative search deadline and a 1-second SMT
+timeout per race-query direction. The `ikos` and `ikos-analyzer` options
+`--bmc-deadline-ms` and `--bmc-solver-timeout-ms` override these independently.
+For example, `--bmc-deadline-ms=20000 --bmc-solver-timeout-ms=2000` changes only
+those time limits. A zero deadline disables confirmation searches; unresolved
+candidates remain UNKNOWN. The solver timeout must be positive: zero must not
+silently request unlimited Z3 solving.
+
+The deadline starts after abstract analysis and is checked cooperatively, so it
+does not hard-limit the whole invocation. The legacy search checks the deadline
+before each path-pair query; auxiliary completion queries also cap their solver
+timeout by the remaining deadline. Path/event/loop bounds and initial candidate/
+query tokens remain separate, unchanged limits. Some legacy retry passes reset
+those tokens without resetting the deadline. Increasing the benchmark script's
+wall timeout does not change any of these internal limits.
+
+The effective time limits are saved in the analysis database. With
+`IKOS_BMC_DIAGNOSTICS=1`, reports also record budget settings and observed
+`search_deadline`, `candidate_budget`, `query_budget`, and `smt_timeout` reasons.
+Several causes can coexist; exhaustion never establishes unbounded safety.
 
 These are engineering defaults, not competition requirements. Competition
 acceptance must use the actual BenchExec CPU, memory, core, and task configuration.

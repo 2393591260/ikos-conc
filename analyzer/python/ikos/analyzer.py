@@ -182,6 +182,16 @@ def parse_arguments(argv):
                           help="Keep unresolved race candidates inconclusive; "
                                "required for bounded race confirmation with "
                                "IKOS_BMC_RECOVER enabled.")
+    analysis.add_argument('--bmc-deadline-ms',
+                          type=args.Integer(min=0, max=4294967295),
+                          default=None,
+                          help='Cooperative BMC confirmation deadline in milliseconds '
+                               '(default: 10000; 0 disables confirmation searches)')
+    analysis.add_argument('--bmc-solver-timeout-ms',
+                          type=args.Integer(min=1, max=4294967295),
+                          default=None,
+                          help='BMC SMT timeout per direction in milliseconds '
+                               '(default: 1000)')
     analysis.add_argument('-j', '--jobs',
                           dest='jobs',
                           metavar='',
@@ -810,6 +820,11 @@ def ikos_analyzer(db_path, pp_path, opt):
 
     if opt.demote_race_to_unknown:
         cmd.append('--demote-race-to-unknown')
+
+    if opt.bmc_deadline_ms is not None:
+        cmd.append('--bmc-deadline-ms=%d' % opt.bmc_deadline_ms)
+    if opt.bmc_solver_timeout_ms is not None:
+        cmd.append('--bmc-solver-timeout-ms=%d' % opt.bmc_solver_timeout_ms)
 
     if opt.narrowing_strategy == 'auto':
         if opt.domain in domains_without_narrowing:
