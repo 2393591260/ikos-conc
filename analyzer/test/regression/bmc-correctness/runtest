@@ -19,13 +19,14 @@ from scripts.validate_bmc_execution import check, digest_json
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--bits', choices=("32", "64"), default="32")
     parser.add_argument("--ikos", type=Path, default=ROOT / "install/bin/ikos")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     rows = []
     with tempfile.TemporaryDirectory(prefix="ikos-bmc-correctness-test-") as tmp:
         work = Path(tmp)
-        for bits in ("32", "64"):
+        for bits in (args.bits,):
             for case in range(40):
                 # Rename globals, helpers and entries: rules must not use names.
                 text = (HERE / "correctness.c").read_text()

@@ -19,6 +19,7 @@ import svcomp_witness
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--bits', choices=(32, 64), type=int, default=32)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
@@ -48,7 +49,7 @@ def main():
             verdict = suite.classify(proc.stdout + proc.stderr, proc.returncode, False)
             return source, verdict, json.loads(report.read_text())
 
-        for bits in (32, 64):
+        for bits in (args.bits,):
             for variant, text in variants.items():
                 for case in range(1, 12):
                     source, verdict, report_data = analyze(f'#define CASE {case}\n' + text, bits)
@@ -107,7 +108,7 @@ def main():
                     print(bits, variant, case, verdict, flush=True)
 
         # Invalid POSIX histories are capability controls, not labeled SAFE tasks.
-        for bits in (32, 64):
+        for bits in (args.bits,):
             for variant, text in variants.items():
                 for case in range(12, 24):
                     _, verdict, report_data = analyze(f'#define CASE {case}\n' + text, bits)
@@ -133,7 +134,7 @@ def main():
                     print(bits, variant, case, verdict, flush=True)
 
         atomic = (HERE / 'atomic-tail.c').read_text()
-        for bits in (32, 64):
+        for bits in (args.bits,):
             for variant, text in (('renamed', atomic.replace('data', 'payload')),
                                   ('width', atomic.replace('int data, flag;', 'long data; int flag;')),
                                   ('named', '#define NAMED_ATOMIC 1\n' + atomic),

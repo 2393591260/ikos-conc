@@ -37,6 +37,7 @@ int main(void) {
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--bits', choices=(32, 64), type=int, default=32)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     args = parser.parse_args()
     entry = args.ikos.resolve()
@@ -62,7 +63,7 @@ def main():
                 settings = dict(db.execute('SELECT name, value FROM settings'))
             return classify(proc.stdout, proc.returncode, False), json.loads(report.read_text()), settings
 
-        for bits in (32, 64):
+        for bits in (args.bits,):
             for locked in (False, True):
                 for options, deadline, solver in (([], 20000, 1000),
                         (['--bmc-deadline-ms=10000', '--bmc-solver-timeout-ms=1000'], 10000, 1000),

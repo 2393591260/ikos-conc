@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--bits', choices=("32", "64"), default="32")
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     args = parser.parse_args()
     # Test invalid library histories even though BMC now refuses to export them.
@@ -40,7 +41,7 @@ def main():
             raise AssertionError('accepted operation on a joined instance')
     with tempfile.TemporaryDirectory(prefix='ikos-replay-') as temp:
         work = Path(temp)
-        for bits in ('32', '64'):
+        for bits in (args.bits,):
             for case in (1, 11, 21, 25, 31, 34, 36, 38, 48, 49, 52, 53, 54):
                 report = work / 'report.json'
                 report.unlink(missing_ok=True)

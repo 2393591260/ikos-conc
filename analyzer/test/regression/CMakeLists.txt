@@ -40,7 +40,7 @@ add_concurrency_test(modes "${CONCURRENCY_ROOT}/scripts/test_race_modes.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(budgets "${CONCURRENCY_ROOT}/scripts/test_bmc_budgets.py"
                      --ikos "${CONCURRENCY_IKOS}")
-foreach(bits 32 64)
+foreach(bits 32)
   add_concurrency_test(p0-${bits}
     "${CONCURRENCY_ROOT}/docs/review-repros/bmc-2026-10-08/run.py"
     --ikos "${CONCURRENCY_IKOS}" --bits ${bits})

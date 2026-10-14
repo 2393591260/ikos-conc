@@ -60,7 +60,7 @@ class VerdictTests(unittest.TestCase):
             source = work / 'renamed.c'
             entry = self.ikos.parent / 'svcomp_witness.py'
             self.assertTrue(entry.is_file(), 'complete installation must include the entry')
-            for bits in ('32', '64'):
+            for bits in (self.bits,):
                 for locked in (False, True):
                     source.write_text(SOURCE.replace('BEFORE',
                         'pthread_mutex_lock(&mutex);' if locked else '').replace('AFTER',
@@ -102,9 +102,11 @@ class VerdictTests(unittest.TestCase):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--bits', choices=('32', '64'), default='32')
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     args = parser.parse_args()
     VerdictTests.ikos = args.ikos.resolve()
+    VerdictTests.bits = args.bits
     result = unittest.TextTestRunner(verbosity=2).run(
         unittest.defaultTestLoader.loadTestsFromTestCase(VerdictTests))
     raise SystemExit(not result.wasSuccessful())

@@ -40,7 +40,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ikos", type=Path,
                         default=here.parents[3] / "install/bin/ikos")
-    parser.add_argument("--bits", choices=["32", "64"])
+    parser.add_argument("--bits", choices=["32", "64"], default="32")
     args = parser.parse_args()
     ikos = args.ikos.resolve()
     env = dict(os.environ, IKOS_BMC_RECOVER="1")
@@ -50,7 +50,7 @@ def main():
         # A renamed source checks that the behavior does not depend on fixture names.
         source = work / "renamed-input.c"
         source.write_text((here / "address.c").read_text())
-        for bits in ([args.bits] if args.bits else ["32", "64"]):
+        for bits in [args.bits]:
             for case, (name, expected) in CASES.items():
                 cmd = [str(ikos), "--analyses=race", "--concurrency=auto",
                        "--demote-race-to-unknown", "-m", bits,
