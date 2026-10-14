@@ -509,6 +509,10 @@ inline bool total_local_statement(ar::Statement* s) {
     case ar::UnaryOperation::SExt:
     case ar::UnaryOperation::UTrunc:
     case ar::UnaryOperation::STrunc:
+    case ar::UnaryOperation::PtrToUI:
+    case ar::UnaryOperation::PtrToSI:
+    case ar::UnaryOperation::UIToPtr:
+    case ar::UnaryOperation::SIToPtr:
       return true;
     default: return false;
   }
@@ -1227,6 +1231,19 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
           }
           if (core::isa< ar::Constant >(root_argument.value) || core::isa< ar::GlobalVariable >(root_argument.value))
             return !core::isa< ar::UndefinedConstant >(root_argument.value);
+          // inttoptr thread arg (floating_read): the pointer is the
+          // absolute-zero representation of an integer, so it has no real
+          // base. Its value origin is that integer; accept it here and let
+          // encode_value resolve the integer in the creator's path.
+          auto* arg_iv = core::dyn_cast< ar::InternalVariable >(root_argument.value);
+          ar::Statement* arg_def = arg_iv != nullptr ? unique_def_bmc(arg_iv) : nullptr;
+          auto* arg_un = core::dyn_cast_or_null< ar::UnaryOperation >(arg_def);
+          if (arg_un != nullptr &&
+              (arg_un->op() == ar::UnaryOperation::SIToPtr ||
+               arg_un->op() == ar::UnaryOperation::UIToPtr) &&
+              core::isa< ar::IntegerType >(arg_un->operand()->type())) {
+            return true;
+          }
           BmcEvent address;
           return pointer_on_path(variable, path, before, root, root_argument, address, origins) &&
                  (address.base != 0 || address.heap_allocation != nullptr || address.shared_main_local) &&
@@ -1699,6 +1716,12 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
         auto* f = exact_callee(call);
         if (f != nullptr && (f->intrinsic_id() == ar::Intrinsic::LibcAbort ||
                              f->intrinsic_id() == ar::Intrinsic::LibcExit)) return;
+        // noreturn assert failures terminate the error path like abort():
+        // reach_error() bodies forward to __assert_fail, which has no body to
+        // inline and would otherwise surface as an unsupported call_summary.
+        if (f != nullptr && f->is_declaration() &&
+            (f->name() == "__assert_fail" || f->name() == "__assert_perror_fail" ||
+             f->name() == "__assert_rtn")) return;
       }
       BmcEvent ev;
       if (classify_event(s, ev, &in_stack)) {
