@@ -1463,7 +1463,7 @@ inline ar::ReturnValue* inert_join_source(ar::CallBase* join,
   if (load == nullptr || !load->result()->type()->is_integer() ||
       !pointer_on_path(load->operand(), path, read, nullptr, nullptr, address) ||
       address.local_base == nullptr || address.local_base->function()->name() != "main" ||
-      address.var_id != 0 || address.const_off != 0 ||
+      address.var_id != 0 ||
       !address.local_base->type()->pointee()->is_integer()) return nullptr;
   const auto width = join->bundle()->data_layout().pointers.bit_width / 8;
   if (join->bundle()->data_layout().store_size_in_bytes(load->result()->type()) != core::ZNumber(width)) return nullptr;
@@ -1480,27 +1480,41 @@ inline ar::ReturnValue* inert_join_source(ar::CallBase* join,
     BmcEvent output;
     if (!pointer_on_path(call->argument(0), path, j, nullptr, nullptr, output)) return nullptr;
     if (output.local_base != address.local_base) continue;
-    if (output.var_id != 0 || output.const_off != 0 || !successful_create_result(path[j])) return nullptr;
+    // A sibling create at a different slot belongs to another join; keep
+    // scanning for the create that wrote THIS slot (floating_read t[i]).
+    if (output.var_id != address.var_id || output.const_off != address.const_off) continue;
+    if (!successful_create_result(path[j])) return nullptr;
     creation = j;
     auto* ret = inert_thread_return(reinterpret_cast< ar::Function* >(path[j].thread));
     if (ret == nullptr) return nullptr;
     // The handle cannot escape to another execution or be detached/rejoined.
+    // Match the FULL slot (base + index + offset): a sibling array element is
+    // a different handle, not an escape or a double-join (floating_read t[i]).
+    auto same_slot = [&](const BmcEvent& e) {
+      return e.local_base == address.local_base && e.var_id == address.var_id &&
+             e.const_off == address.const_off;
+    };
     for (std::size_t k = 0; k < before; ++k) {
       auto* prior = path[k].stmt;
       if (auto* store = core::dyn_cast< ar::Store >(prior)) {
         BmcEvent stored;
         if (store->value()->type()->is_pointer() &&
             pointer_on_path(store->value(), path, k, nullptr, nullptr, stored) &&
-            stored.local_base == address.local_base) return nullptr;
+            same_slot(stored)) return nullptr;
       }
       if (auto* use = core::dyn_cast< ar::CallBase >(prior)) {
         auto* f = exact_callee(use);
-        if (path[k].kind == EvKind::Join || (f != nullptr && f->name() == "pthread_detach")) return nullptr;
+        if (path[k].kind == EvKind::Join || (f != nullptr && f->name() == "pthread_detach")) {
+          BmcEvent prior_addr;
+          if (use->num_arguments() >= 1 &&
+              pointer_on_path(use->argument(0), path, k, nullptr, nullptr, prior_addr) &&
+              same_slot(prior_addr)) return nullptr;
+        }
         for (std::size_t arg = 0; arg < use->num_arguments(); ++arg) {
           if (!use->argument(arg)->type()->is_pointer()) continue;
           BmcEvent passed;
           if (pointer_on_path(use->argument(arg), path, k, nullptr, nullptr, passed) &&
-              passed.local_base == address.local_base && !(k == j && arg == 0)) return nullptr;
+              same_slot(passed) && !(k == j && arg == 0)) return nullptr;
         }
       }
     }
