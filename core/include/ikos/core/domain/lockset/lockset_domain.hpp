@@ -1,7 +1,7 @@
 /*******************************************************************************
  *
  * \file
- * \brief Single-Tier Must-Lockset abstract domain — tracks real mutexes only
+ * \brief Product of MUST lock/ownership facts and MAY thread histories
  *
  * Author: IKOS User
  *
@@ -78,8 +78,8 @@ struct CondLock {
 /// Lattice:
 ///   - ⊥ (bottom, unreachable code): `_is_bottom` flag.
 ///   - ⊤ (top, no information): per-digest `_xxx_top` flag.
-///   - ⊤-equivalent (concrete empty): `_xxx_top == false` with an empty set.
-///   - Concrete: non-empty set of must-held addresses.
+///   - An empty MUST set is TOP-equivalent; an empty MAY set proves no history.
+///   - New thread entries have empty MAY histories, unlike unknown TOP states.
 ///
 /// The three digests (`_mutex_*`, `_read_*`, `_joined_*`) each carry their own
 /// top flag + value set. The old representation used a raw pointer per digest
@@ -97,9 +97,9 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
   /// same function name (28/29/30-join-array FN). The spawned digest stays
   /// name-keyed (MAY, create-edge HB only needs "spawned function F at all").
   using JoinedSet = std::unordered_set< std::uint64_t >;
-  /// Conditional lock: result-variable index -> (lock addr, polarity) (trylock
-  /// result guard + `if (i) lock` branch guard).
-  using CondLockMap = std::unordered_map< std::uint64_t, CondLock >;
+  /// Several implications can share a guard after meet (both mutexes may be
+  /// held under that predicate). Each distinct fact occurs at most once.
+  using CondLockMap = std::unordered_multimap< std::uint64_t, CondLock >;
 
   /// True iff this value is ⊥ (unreachable code). Always propagates.
   bool _is_bottom = false;
@@ -154,14 +154,15 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
   /// universe, unrepresentable as a finite set). Set when an indirect
   /// pthread_create (non-constant thread function) is encountered, so the
   /// create-edge HB check cannot falsely conclude "the parent never spawned
-  /// the child" and unsoundly suppress a race. Default false = ∅ ("spawned
-  /// nothing yet", the entry state). Note the MAY-lattice polarity: ⊤ is
+  /// the child" and unsoundly suppress a race. TOP leaves history unknown;
+  /// `entry()` establishes ∅ ("spawned nothing yet"). MAY-lattice ⊤ is
   /// LEAST constrained here (any thread may be the child), opposite of the
   /// MUST digests where ⊤ = ∅.
-  bool _spawned_top = false;
+  bool _spawned_top = true;
 
-  /// Conditional-lock digest (trylock): maps the trylock RESULT variable's
-  /// index to the mutex addr that is held IFF that result is 0. A conditional
+  /// Conditional-lock digest: maps a guard to ownership implications. A
+  /// successful trylock result implies its mutex is held, not the converse.
+  /// A conditional
   /// lock is NOT a must-held lock: the checker resolves it at the access site
   /// via the interval domain (held iff guard interval == {0}). Same
   /// three-state lattice as the mutex digest (join = key-intersection,
@@ -178,12 +179,12 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
   /// checker (the signal→wait edge is a MAY edge — spurious wakeup / unknown
   /// wakee — so it cannot soundly suppress a race); kept as observable
   /// analysis state (dumped with `--emit-concurrency-invariants`).
-  bool _signaled_top = false;
+  bool _signaled_top = true;
   std::unordered_set< std::uint64_t > _signaled_conds;
 
   /// Condition-variable AWAITED digest (MAY, join = union): cond addresses
   /// this thread has POSSIBLY waited on. Same lattice as `_signaled_conds`.
-  bool _awaited_top = false;
+  bool _awaited_top = true;
   std::unordered_set< std::uint64_t > _awaited_conds;
 
   /// \brief Join a single digest in place: SET INTERSECTION.
@@ -426,9 +427,17 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     return true;
   }
 
-  /// \brief Join the conditional-lock digest in place: key-INTERSECTION.
+  static bool contains_cond(const CondLockMap& map, std::uint64_t guard,
+                            const CondLock& fact) {
+    auto range = map.equal_range(guard);
+    for (auto it = range.first; it != range.second; ++it)
+      if (it->second == fact) return true;
+    return false;
+  }
+
+  /// \brief Join the conditional-lock digest in place: fact-INTERSECTION.
   ///
-  /// A conditional lock is a MUST-conditional fact ("m held iff guard==p"), so
+  /// A conditional lock is a MUST implication ("guard==p implies m held"), so
   /// it joins exactly like the mutex digest: a fact survives the CFG join only
   /// if it holds on every incoming edge (same guard → same lock+polarity).
   /// Union would leak a branch-local fact ("if (g) lock(m)") onto a sibling
@@ -448,8 +457,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
       return; // already ⊤
     }
     for (auto it = map.begin(); it != map.end();) {
-      auto o = other.find(it->first);
-      if (o == other.end() || o->second != it->second) {
+      if (!contains_cond(other, it->first, it->second)) {
         it = map.erase(it); // fact absent (or different) on the other edge
       } else {
         ++it;
@@ -457,7 +465,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     }
   }
 
-  /// \brief Meet the conditional-lock digest in place: key-union.
+  /// \brief Meet the conditional-lock digest in place: fact-union.
   ///
   /// ⊤ is the identity (meet(x, ⊤) = meet(⊤, x) = x).
   static void meet_cond(bool& top,
@@ -473,7 +481,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
       return;
     }
     for (const auto& kv : other) {
-      map[kv.first] = kv.second;
+      if (!contains_cond(map, kv.first, kv.second)) map.emplace(kv.first, kv.second);
     }
   }
 
@@ -498,8 +506,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     if (other_top || other.empty()) return true;
     if (top) return false;
     for (const auto& kv : other) {
-      auto it = map.find(kv.first);
-      if (it == map.end() || it->second != kv.second) {
+      if (!contains_cond(map, kv.first, kv.second)) {
         return false;
       }
     }
@@ -510,12 +517,21 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
   ///
   /// Kept private so `std::is_default_constructible< LocksetDomain >` stays
   /// false — `AbstractDomain` asserts derived domains are NOT default
-  /// constructible and must be created via `top()` / `bottom()`.
+  /// constructible and must be created via `top()` / `bottom()` / `entry()`.
   LocksetDomain() = default;
 
  public:
   /// \brief Create ⊤ (top: no mutexes must-held)
   static LocksetDomain top() { return LocksetDomain(); }
+
+  /// A newly entered thread has no acquisition, spawn, signal or wait history.
+  static LocksetDomain entry() {
+    LocksetDomain d;
+    d._may_ever_acquired_mutex = false;
+    d._spawned_top = d._signaled_top = d._awaited_top = false;
+    d._live_top = false;
+    return d;
+  }
 
   /// \brief Create ⊥ (bottom: unreachable / contradictory)
   static LocksetDomain bottom() {
@@ -548,9 +564,8 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
            (_read_top || _read_locks.empty()) &&
            (_joined_top || _joined_threads.empty()) &&
            _live_top &&
-           (!_spawned_top && _spawned_threads.empty()) &&
-           (!_signaled_top && _signaled_conds.empty()) &&
-           (!_awaited_top && _awaited_conds.empty()) &&
+           _spawned_top && _signaled_top && _awaited_top &&
+           _fresh_heap_nodes.empty() &&
            (_cond_top || _cond_locks.empty());
   }
 
@@ -577,8 +592,8 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     _is_bottom = false;
     _may_ever_acquired_mutex = true;
     _mutex_top = _read_top = _joined_top = _cond_top = true;
-    _spawned_top = false;
-    _signaled_top = _awaited_top = false;
+    _spawned_top = true;
+    _signaled_top = _awaited_top = true;
     _mutex_locks.clear();
     _read_locks.clear();
     _joined_threads.clear();
@@ -592,7 +607,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     _cond_locks.clear();
   }
 
-  /// \brief Must-Lockset join: SET INTERSECTION on EACH digest independently.
+  /// \brief Join intersects MUST facts and unions MAY histories.
   void join_with(const LocksetDomain& other) override {
     if (other._is_bottom) {
       return; // join(⊥, x) = x
@@ -651,7 +666,7 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     this->join_with(other);
   }
 
-  /// \brief Must-Lockset meet: SET UNION on EACH digest independently.
+  /// \brief Meet unions MUST facts and intersects MAY histories.
   ///
   /// Component-wise independence: each digest is processed on its own merits.
   /// ⊤ is the identity of union, so meeting a digest with ⊤ leaves that
@@ -676,20 +691,13 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
                 other._joined_threads);
     // Spawned digest is MAY: meet = intersection (refinement shrinks the
     // possibly-spawned set), with ⊤ flag.
+    bool instances_top = _spawned_top;
     meet_spawned(_spawned_top,
                  _spawned_threads,
                  other._spawned_top,
                  other._spawned_threads);
-    if (!_spawned_top) {
-      for (auto it = _spawned_instances.begin();
-           it != _spawned_instances.end();) {
-        if (other._spawned_instances.count(*it) == 0) {
-          it = _spawned_instances.erase(it);
-        } else {
-          ++it;
-        }
-      }
-    }
+    meet_spawned(instances_top, _spawned_instances,
+                 other._spawned_top, other._spawned_instances);
     meet_spawned(_live_top, _live_children,
                  other._live_top, other._live_children);
     // Fresh heap nodes: MUST, meet = union (refinement adds freshness).
@@ -1001,7 +1009,10 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
       return;
     }
     _cond_top = false;
-    _cond_locks[guard_idx] = {lock_addr, polarity};
+    // Preserve transfer behavior: a new binding replaces this guard's old
+    // implications. Only meet combines facts from simultaneous constraints.
+    _cond_locks.erase(guard_idx);
+    _cond_locks.emplace(guard_idx, CondLock{lock_addr, polarity});
   }
 
   /// \brief Drop every conditional lock for `lock_addr` (unlock).
@@ -1018,8 +1029,8 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     }
   }
 
-  /// \brief Snapshot of conditional locks (guard index -> {lock, polarity}).
-  std::unordered_map< std::uint64_t, CondLock > cond_locks() const {
+  /// \brief Snapshot of conditional implications; guard keys may repeat.
+  std::unordered_multimap< std::uint64_t, CondLock > cond_locks() const {
     if (_is_bottom || _cond_top) {
       return {};
     }
