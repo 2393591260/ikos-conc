@@ -12,6 +12,7 @@
 
 #include "encode.hpp"
 #include "unroll.hpp"
+#include "traces.hpp"
 
 namespace ikos {
 namespace analyzer {
@@ -162,6 +163,17 @@ struct SearchBudget {
   }
 };
 
+inline bool atomic_candidate(const std::vector< BmcEvent >& path) {
+  int active = 0;
+  for (const auto& event : path) {
+    if (event.candidate) return active > 0;
+    if (event.mutex != PSEUDO_ATOMIC_LOCK) continue;
+    if (event.kind == EvKind::Lock) ++active;
+    if (event.kind == EvKind::Unlock) --active;
+  }
+  return false;
+}
+
 /// 确认两个访问（在各自线程入口函数里）是否真竞争。
 /// funcA/funcB = 两访问所在的线程入口函数；stmtA/stmtB = 两访问语句；
 /// widthA/widthB = 两访问的字节宽度（data_layout 的 store size，0=未知），
@@ -180,26 +192,30 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   // events/calls. Synchronization outside them need not be executable here.
   UnrollResult rA = unroll_to(funcA, stmtA, 1, loop_bound, true);
   UnrollResult rB = unroll_to(funcB, stmtB, 1, loop_bound, true);
-  auto atomic_access = [](const std::vector< BmcEvent >& path) {
-      int active = 0;
+  auto needs_completion_search = [](ar::Function* parent, ar::Function* child, const UnrollResult& paths) {
+    if (parent->name() != "main" || child->name() == "main") return false;
+    if (paths.pruned_join) return true;
+    for (const auto& path : paths.paths) {
+      bool joined = false; unsigned creations = 0;
       for (const auto& event : path) {
-        if (event.candidate) return active > 0;
-        if (event.mutex != PSEUDO_ATOMIC_LOCK) continue;
-        if (event.kind == EvKind::Lock) ++active;
-        if (event.kind == EvKind::Unlock) --active;
+        joined |= event.kind == EvKind::Join;
+        creations += event.kind == EvKind::Create && event.thread == reinterpret_cast< std::uint64_t >(child);
       }
-      return false;
+      if (joined && creations > 1) return true;
+    }
+    return false;
   };
+  outcome.needs_completion = needs_completion_search(funcA, funcB, rA) || needs_completion_search(funcB, funcA, rB);
   // Both accesses are RMW-tagged in the verifier atomic contract. Discard this
   // non-racing pair before full completion can exhaust the query budget.
   if (!rA.paths.empty() && !rB.paths.empty() &&
-      std::all_of(rA.paths.begin(), rA.paths.end(), atomic_access) &&
-      std::all_of(rB.paths.begin(), rB.paths.end(), atomic_access)) {
+      std::all_of(rA.paths.begin(), rA.paths.end(), atomic_candidate) &&
+      std::all_of(rB.paths.begin(), rB.paths.end(), atomic_candidate)) {
     record(diagnostics, "atomic_pair");
     return Result(Status::BoundedUnsat);
   }
   auto needs_completion = [&](const UnrollResult& unrolled) {
-    return std::any_of(unrolled.paths.begin(), unrolled.paths.end(), atomic_access);
+    return std::any_of(unrolled.paths.begin(), unrolled.paths.end(), atomic_candidate);
   };
   if (needs_completion(rA) || needs_completion(rB)) {
     rA = unroll_completed(funcA, stmtA, loop_bound);
@@ -337,7 +353,8 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
         --budget->queries;
       }
       GuardRejection rejection;
-      outcome.merge(check_race(pA, pB, funcA, funcB, diagnostics, facts, &rejection, &outcome.metrics));
+      outcome.merge(check_race(pA, pB, funcA, funcB, diagnostics, facts, &rejection,
+                              &outcome.metrics));
       if (rejection.startup_infeasible) {
         // Every worker alternative in this call shares the same startup;
         // dormant children cannot repair its already-false concrete guard.
@@ -362,6 +379,207 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     if (bound > 16) record(diagnostics, "literal_loop_search_hint");
     outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
                                diagnostics, budget, creations, facts, bound));
+  }
+  return outcome;
+}
+
+// Finite auxiliary executions are a fallback for main/worker candidates. Other
+// created children may remain dormant; joined generations must really finish.
+inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
+    std::uint64_t widthA, ar::Function* funcB, ar::Statement* stmtB,
+    std::uint64_t widthB, Diagnostics* diagnostics, SearchBudget& budget,
+    std::vector< ar::Statement* >* creations, const CandidateFacts* facts) {
+  Result outcome(Status::NotSearched);
+  const bool main_a = funcA->name() == "main";
+  if (main_a == (funcB->name() == "main")) return outcome;
+  auto* main = main_a ? funcA : funcB;
+  auto* worker = main_a ? funcB : funcA;
+  auto* main_target = main_a ? stmtA : stmtB;
+  auto* worker_target = main_a ? stmtB : stmtA;
+  const std::size_t main_index = main_a ? 1 : 2, target_index = main_a ? 2 : 1;
+  std::set< ar::Function* > scanned;
+  std::function< bool(ar::Function*, unsigned) > has_join;
+  has_join = [&](ar::Function* function, unsigned depth) {
+    if (!inline_ok(function) || depth > MAX_INLINE_DEPTH || !scanned.insert(function).second) return false;
+    for (auto* block : *function->body()) for (auto* statement : *block) {
+      BmcEvent event;
+      if (classify_event(statement, event) && event.kind == EvKind::Join) return true;
+      auto* call = core::dyn_cast< ar::CallBase >(statement);
+      if (call == nullptr) continue;
+      auto* callee = exact_callee(call);
+      // Unknown indirect calls may select a helper containing a join.
+      if (callee == nullptr || has_join(callee, depth + 1)) return true;
+    }
+    return false;
+  };
+  if (!has_join(main, 0)) return outcome;
+  auto spend = [&]() {
+    if (budget.expired() || budget.queries == 0) {
+      outcome.merge(Result(Status::BudgetExceeded));
+      record(diagnostics, "completion_search_budget");
+      return false;
+    }
+    --budget.queries;
+    return true;
+  };
+  if (!spend()) return outcome;
+  const auto bound = std::max(literal_loop_search_bound(main), literal_loop_search_bound(worker));
+  auto mains = unroll_to(main, main_target, 1, bound, false, nullptr, &budget.deadline);
+  UnrollResult prefixes;
+  bool prefixes_unrolled = false;
+  UnrollResult completed;
+  bool completed_unrolled = false;
+  auto note_unroll = [&](const UnrollResult& result) {
+    if (result.incomplete) {
+      outcome.merge(Result(Status::BudgetExceeded));
+      record(diagnostics, result.reason);
+    }
+    if (result.rejected_reason != nullptr) {
+      outcome.merge(Result(Status::Unsupported));
+      record(diagnostics, result.rejected_reason, result.rejected_statement);
+    }
+  };
+  note_unroll(mains);
+  std::map< ar::Function*, UnrollResult > returns;
+  for (const auto& main_prefix : mains.paths) {
+    // Atomic targets need both completion suffixes; this fallback retains main
+    // only through its target. Leave those queries to the complete-path search.
+    if (atomic_candidate(main_prefix)) {
+      record(diagnostics, "completion_atomic_target");
+      outcome.merge(Result(Status::Unsupported)); continue;
+    }
+    if (std::count_if(main_prefix.begin(), main_prefix.end(),
+        [](const auto& event) {return event.kind == EvKind::Join;}) > 4) {
+      record(diagnostics, "completion_trace_budget"); outcome.merge(Result(Status::BudgetExceeded)); continue;
+    }
+    if (!completion_prefix_supported(main_prefix)) {
+      record(diagnostics, "completion_prefix"); outcome.merge(Result(Status::Unsupported)); continue;
+    }
+    std::map< std::size_t, std::size_t > joined; // generation -> main join step
+    bool supported = true;
+    for (std::size_t i = 0; i < main_prefix.size(); ++i) {
+      if (main_prefix[i].kind != EvKind::Join) continue;
+      std::size_t creation = 0;
+      if (!completion_join_creation(main_prefix, i, creation) ||
+          !joined.emplace(creation, i).second) {
+        record(diagnostics, "completion_join_generation", main_prefix[i].stmt);
+        supported = false; break;
+      }
+    }
+    if (!supported) {outcome.merge(Result(Status::Unsupported)); continue;}
+    if (joined.empty()) continue;
+    std::vector< std::size_t > targets;
+    for (std::size_t i = 0; i < main_prefix.size(); ++i)
+      if (main_prefix[i].kind == EvKind::Create &&
+          main_prefix[i].thread == reinterpret_cast< std::uint64_t >(worker)) targets.push_back(i);
+    if (targets.empty()) continue;
+    if (!prefixes_unrolled) {
+      prefixes = unroll_to(worker, worker_target, 1, bound, false, nullptr, &budget.deadline);
+      prefixes_unrolled = true;
+      note_unroll(prefixes);
+    }
+    std::stable_sort(targets.begin(), targets.end(), [&](auto a, auto b) {
+      return joined.count(a) < joined.count(b);
+    });
+    for (auto target_creation : targets) {
+      if (!spend()) return outcome;
+      if (joined.count(target_creation) != 0 && !completed_unrolled) {
+        completed = unroll_completed(worker, worker_target, bound, &budget.deadline);
+        completed_unrolled = true;
+        note_unroll(completed);
+      }
+      const auto& workers = joined.count(target_creation) != 0 ? completed.paths : prefixes.paths;
+      for (const auto& worker_prefix : workers) {
+        if (atomic_candidate(worker_prefix)) {
+          record(diagnostics, "completion_atomic_target");
+          outcome.merge(Result(Status::Unsupported)); continue;
+        }
+        if (!completion_prefix_supported(worker_prefix, true)) {
+          record(diagnostics, "completion_child_lifecycle"); outcome.merge(Result(Status::Unsupported)); continue;
+        }
+        auto main_path = main_prefix, worker_path = worker_prefix;
+        auto main_candidate = candidate_index(main_path), worker_candidate = candidate_index(worker_path);
+        if (main_candidate == main_path.size() || worker_candidate == worker_path.size()) continue;
+        main_path[main_candidate].width = main_a ? widthA : widthB;
+        worker_path[worker_candidate].width = main_a ? widthB : widthA;
+        CompletionPlan plan;
+        plan.target_creation = target_creation;
+        bool plan_supported = true;
+        std::vector< std::pair< std::size_t, std::size_t > > auxiliary;
+        for (const auto& entry : joined) {
+          if (entry.first == target_creation) {
+            auto* ret = completion_return(worker_path, worker);
+            if (ret == nullptr) {plan_supported = false; break;}
+            main_path[entry.second].join_creation = entry.first;
+            main_path[entry.second].join_completion = ret;
+            plan.joins.emplace(entry.second, target_index);
+          } else auxiliary.push_back(entry);
+        }
+        if (!plan_supported) {outcome.merge(Result(Status::Unsupported)); continue;}
+        std::function< void(std::size_t, std::size_t) > enumerate;
+        enumerate = [&](std::size_t next, std::size_t events) {
+          if (outcome.confirmed() || budget.expired() || budget.queries == 0) return;
+          if (events > 512) {
+            record(diagnostics, "completion_event_budget");
+            outcome.merge(Result(Status::BudgetExceeded)); return;
+          }
+          if (next == auxiliary.size()) {
+            if (!spend()) return;
+            if (diagnostics != nullptr) ++diagnostics->path_pairs;
+            record(diagnostics, "auxiliary_completion_query");
+            outcome.merge(check_race(main_a ? main_path : worker_path,
+                main_a ? worker_path : main_path, funcA, funcB, diagnostics,
+                facts, nullptr, &outcome.metrics, &plan, &budget.deadline));
+            return;
+          }
+          const auto creation = auxiliary[next].first, join_step = auxiliary[next].second;
+          auto* root = reinterpret_cast< ar::Function* >(main_path[creation].thread);
+          auto found = returns.find(root);
+          if (found == returns.end()) {
+            if (!spend()) return;
+            auto result = unroll_terminated(root, literal_loop_search_bound(root), &budget.deadline);
+            note_unroll(result);
+            found = returns.emplace(root, std::move(result)).first;
+          }
+          if (found->second.paths.empty()) outcome.merge(Result(Status::Unsupported));
+          for (const auto& path : found->second.paths) {
+            if (!spend()) return;
+            auto* ret = completion_return(path, root);
+            if (ret == nullptr || !completion_prefix_supported(path, true)) {
+              record(diagnostics, "completion_child_lifecycle");
+              outcome.merge(Result(Status::Unsupported)); continue;
+            }
+            ExecutionTrace trace;
+            trace.id = "aux_" + std::to_string(next);
+            trace.root = root; trace.events = path;
+            trace.creator_path = main_index; trace.creator_step = creation;
+            if (!bind_creation_step(root, main_path, creation, trace.argument)) {
+              outcome.merge(Result(Status::Unsupported)); continue;
+            }
+            plan.auxiliary.push_back(std::move(trace));
+            plan.joins[join_step] = next + 3;
+            main_path[join_step].join_creation = creation;
+            main_path[join_step].join_completion = ret;
+            enumerate(next + 1, events + path.size());
+            plan.auxiliary.pop_back();
+            plan.joins.erase(join_step);
+            if (outcome.confirmed()) return;
+          }
+        };
+        enumerate(0, main_path.size() + worker_path.size());
+        if (outcome.confirmed()) {
+          if (creations != nullptr) {
+            creations->clear();
+            for (const auto& event : main_path)
+              if (event.kind == EvKind::Create) creations->push_back(event.stmt);
+          }
+          return outcome;
+        }
+        if (budget.expired() || budget.queries == 0) {
+          outcome.merge(Result(Status::BudgetExceeded)); return outcome;
+        }
+      }
+    }
   }
   return outcome;
 }

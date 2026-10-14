@@ -84,7 +84,18 @@ class Replay:
         self.functions, self.instructions = program['functions'], program['instructions']
         self.traces = {t['id']: t for t in certificate['traces']}
         require(len(self.traces) == len(certificate['traces']), 'duplicate trace identity')
-        require(set(self.traces) <= {'startup', 'a', 'b'} and {'a', 'b'} <= set(self.traces), 'trace identities')
+        require({'a', 'b'} <= set(self.traces) and all(
+            name in {'startup', 'a', 'b'} or (name.startswith('aux_') and name[4:].isdigit())
+            for name in self.traces), 'trace identities')
+        bindings = set()
+        for name, trace in self.traces.items():
+            if trace['entry'] == 'main':
+                require('creator_trace' not in trace and 'creator_step' not in trace, 'main cannot have a creator')
+                continue
+            creator, step = trace.get('creator_trace'), trace.get('creator_step')
+            require(creator in self.traces and type(step) is int and step >= 0, 'dynamic creation occurrence')
+            require((creator, step) not in bindings, 'two traces share one creation occurrence')
+            bindings.add((creator, step))
         self.threads, self.memory, self.objects = {}, {}, {}
         self.created, self.locks, self.accesses = {}, {}, {}
         self.next_instance, self.next_frame = 1, 0
@@ -395,6 +406,18 @@ class Replay:
                 child.vc[args[0]] = child.vc.get(args[0],0) + 1
                 self.threads['joined:' + str(args[0])] = child
                 matched = [child]
+            if 'joined_trace' in step:
+                completed = step['joined_trace']
+                child_id, last = completed['trace'], completed['step']
+                require(child_id in self.traces and type(last) is int and
+                        last == len(self.traces[child_id]['steps']) - 1, 'join terminal occurrence')
+                child_trace = self.traces[child_id]
+                require(child_trace.get('creator_trace') == created['creator_trace'] and
+                        child_trace.get('creator_step') == created['creator_step'], 'join creation occurrence')
+                require(child_id in self.threads and self.threads[child_id].instance == args[0] and
+                        self.threads[child_id].finished, 'joined instance completion not replayed')
+                ret = self.instructions[child_trace['steps'][last]['statement']]
+                require(ret['kind'] == 'return', 'join terminal return')
             if not matched or not matched[0].finished: raise Unsupported('joined instance completion not replayed')
             self.join_vc(thread.vc, matched[0].vc); created['joined'] = True; return 0
         if name in LOCKS:
@@ -634,6 +657,10 @@ class Replay:
         self.assign(frame,inst,step,result)
 
     def run(self):
+        for trace in self.traces.values():
+            if trace['entry'] != 'main':
+                require(trace['creator_step'] < len(self.traces[trace['creator_trace']]['steps']),
+                        'dynamic creation occurrence')
         roots=[k for k,t in self.traces.items() if t['entry']=='main']
         require(len(roots)==1, 'exactly one actual main prefix required')
         parameters = self.functions['main']['parameters']

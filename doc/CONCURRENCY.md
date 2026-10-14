@@ -112,6 +112,14 @@ all C/POSIX programs.
 | Unknown effects | Conservative coverage boundaries or explicit import/execution errors; omitted effects do not prove SAFE |
 | Other properties | Original IKOS analyses remain available; deadlock/reachability are not claimed as complete concurrency properties |
 
+For supported main/worker candidates, BMC can retain finite auxiliary child
+executions through their actual returns before a successful join. Those children
+contribute their reads, writes and synchronization to the same concrete execution;
+a completion edge alone cannot replace their effects. The fallback requires
+supported handle generations and rejects nested child creation/join, unsupported
+handle storage and atomic targets whose completion suffixes it cannot retain.
+The existing complete-path search for atomic targets remains available.
+
 AI and BMC have different coverage responsibilities. A fact sufficient to exclude
 all conflicts is not necessarily a concrete value source for a BMC execution.
 

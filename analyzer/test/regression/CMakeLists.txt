@@ -43,7 +43,7 @@ foreach(bits 32 64)
     "${CONCURRENCY_ROOT}/docs/review-repros/bmc-2026-10-08/run.py"
     --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
 endforeach()
-foreach(suite address values correctness)
+foreach(suite address values correctness auxiliary)
   add_concurrency_test(${suite} "${CMAKE_CURRENT_SOURCE_DIR}/bmc-${suite}/runtest"
                        --ikos "${CONCURRENCY_IKOS}")
 endforeach()

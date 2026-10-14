@@ -1,7 +1,7 @@
 #pragma once
 
 #include <z3++.h>
-#include "unroll.hpp"
+#include "traces.hpp"
 
 namespace ikos { namespace analyzer { namespace bmc {
 
@@ -11,12 +11,12 @@ class FunctionValues {
 public:
   using Key = std::pair< ar::InternalVariable*, std::size_t >;
   using Cache = std::map< Key, z3::expr >;
-  Cache caches[3]; // startup, A, B; separate dynamic thread instances.
+  std::vector< Cache > caches;
 
 private:
   z3::context& _ctx;
   z3::solver& _solver;
-  const std::vector< BmcEvent >* _paths[3];
+  const std::vector< ExecutionTrace >& _traces;
   const std::vector< z3::expr >& _clock;
   std::vector< ar::Function* > _functions;
   std::function< bool(const BmcEvent&, const void*) > _library_alias;
@@ -29,11 +29,10 @@ private:
 
 public:
   FunctionValues(z3::context& ctx, z3::solver& solver, ar::Bundle* bundle,
-                 const std::vector< BmcEvent >& startup,
-                 const std::vector< BmcEvent >& a, const std::vector< BmcEvent >& b,
+                 const std::vector< ExecutionTrace >& traces,
                  const std::vector< z3::expr >& clock,
                  std::function< bool(const BmcEvent&, const void*) > library_alias)
-      : _ctx(ctx), _solver(solver), _paths{&startup, &a, &b}, _clock(clock),
+      : caches(traces.size()), _ctx(ctx), _solver(solver), _traces(traces), _clock(clock),
         _library_alias(std::move(library_alias)) {
     for (auto i = bundle->function_begin(); i != bundle->function_end(); ++i) _functions.push_back(*i);
     std::sort(_functions.begin(), _functions.end(), [](auto* a, auto* b) {return a->name() < b->name();});
@@ -48,7 +47,7 @@ public:
     if (core::isa< ar::NullConstant >(value)) {out = _ctx.int_val(0); return true;}
     auto* variable = core::dyn_cast< ar::InternalVariable >(value);
     if (variable == nullptr) return false;
-    const auto& path = *_paths[path_id];
+    const auto& path = _traces[path_id].events;
     std::size_t index = 0;
     auto* definition = reaching_definition(variable, path, before, index);
     if (definition == nullptr) {
@@ -92,7 +91,7 @@ public:
         return event.var_id == 0 && event.const_off == 0 && event.width == access.width &&
                encode(core::cast< ar::Store >(event.stmt)->value(), id, j, result, depth + 1);
       };
-      const auto& startup = *_paths[0];
+      const auto& startup = _traces[0].events;
       for (std::size_t j = 0, end = path_id == 0 ? index : startup.size(); j < end; ++j) {
         if (!matches(startup[j])) continue;
         if (!stored(startup[j], 0, j, initial)) return false;
@@ -104,16 +103,16 @@ public:
       } else {
         struct Write {z3::expr time, value;};
         std::vector< Write > writes;
-        for (unsigned id : {1u, 2u}) {
-          const auto& events = *_paths[id];
+        for (unsigned id = 1; id < _traces.size(); ++id) {
+          const auto& events = _traces[id].events;
           for (std::size_t j = 0; j < events.size(); ++j) {
             if (!matches(events[j]) || (id == path_id && j >= index)) continue;
             z3::expr encoded(_ctx);
             if (!stored(events[j], id, j, encoded)) return false;
-            writes.push_back({_clock[(id == 1 ? 0 : _paths[1]->size()) + j], encoded});
+            writes.push_back({_clock[_traces[id].clock_start + j], encoded});
           }
         }
-        const auto time = _clock[(path_id == 1 ? 0 : _paths[1]->size()) + index];
+        const auto time = _clock[_traces[path_id].clock_start + index];
         auto choice = _ctx.bool_val(false), first = _ctx.bool_val(true);
         for (std::size_t j = 0; j < writes.size(); ++j) {
           auto latest = writes[j].time < time;

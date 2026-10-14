@@ -63,6 +63,7 @@ struct Result {
   std::set< Status > observed;
   Counterexample evidence;
   Metrics metrics;
+  bool needs_completion = false; // Capability hint, not a verdict premise.
 
   explicit Result(Status status = Status::Unsupported)
       : status(status), observed{status} {}
@@ -73,6 +74,7 @@ struct Result {
   // them. This aggregation never turns unsupported branches into UNSAT.
   void merge(Result other) {
     metrics.add(other.metrics);
+    needs_completion |= other.needs_completion;
     observed.insert(other.observed.begin(), other.observed.end());
     if (confirmed()) return;
     if (static_cast< unsigned >(other.status) > static_cast< unsigned >(status))

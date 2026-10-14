@@ -324,7 +324,8 @@ def build_witness(source, info, data_model, ikos="ikos"):
     traces = {t["id"]: t for t in trace_list}
     require(
         len(traces) == len(trace_list)
-        and set(traces) <= {"startup", "a", "b"}
+        and all(name in {"startup", "a", "b"} or
+                (name.startswith("aux_") and name[4:].isdigit()) for name in traces)
         and {"a", "b"} <= set(traces),
         "invalid dynamic trace identities",
     )

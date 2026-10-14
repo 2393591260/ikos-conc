@@ -49,13 +49,27 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                        ar::Function* funcA, ar::Function* funcB,
                        Diagnostics* diagnostics = nullptr,
                        const CandidateFacts* facts = nullptr,
-                       GuardRejection* rejection = nullptr, Metrics* metrics = nullptr) {
+                       GuardRejection* rejection = nullptr, Metrics* metrics = nullptr,
+                       const CompletionPlan* completion = nullptr,
+                       const std::chrono::steady_clock::time_point* deadline = nullptr) {
   if (metrics != nullptr) {
     ++metrics->path_queries;
     metrics->prefix_events += inputA.size() + inputB.size() + (facts != nullptr ? facts->startup.size() : 0);
+    if (completion != nullptr)
+      for (const auto& trace : completion->auxiliary) metrics->prefix_events += trace.events.size();
   }
   if (rejection != nullptr) *rejection = {};
-  auto pathA = inputA, pathB = inputB;
+  std::vector< ExecutionTrace > traces;
+  traces.reserve(3 + (completion != nullptr ? completion->auxiliary.size() : 0));
+  traces.push_back({"startup", funcA->bundle()->function_or_null("main"),
+                    facts != nullptr ? facts->startup : std::vector< BmcEvent >{}});
+  traces.push_back({"a", funcA, inputA});
+  traces.push_back({"b", funcB, inputB});
+  if (completion != nullptr)
+    for (const auto& auxiliary : completion->auxiliary) traces.push_back(auxiliary);
+  auto& startup = traces[0].events;
+  auto& pathA = traces[1].events;
+  auto& pathB = traces[2].events;
   if (pathA.empty() || pathB.empty()) {
     record(diagnostics, "empty_path");
     return Result(Status::Unsupported);
@@ -67,10 +81,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     record(diagnostics, "global_constructor_prefix");
     return Result(Status::Unsupported);
   }
-  const std::vector< BmcEvent > empty_startup;
-  auto startup = facts != nullptr ? facts->startup : empty_startup;
   if (facts != nullptr && facts->single_execution) {
-    for (auto* path : {&startup, &pathA, &pathB}) for (auto& event : *path) {
+    for (auto& trace : traces) for (auto& event : trace.events) {
       auto* store = core::dyn_cast< ar::Store >(event.stmt);
       auto* function = store != nullptr ? store->code()->function_or_null() : nullptr;
       if (function != nullptr && function->name() != "main" && store->value()->type()->is_pointer()) {
@@ -93,11 +105,39 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     record(diagnostics, "selected_creation_missing");
     return Result(Status::Unsupported);
   }
-  const auto& allocation_origin = funcA->name() == "main" ? pathA : funcB->name() == "main" ? pathB : startup;
+  const std::size_t main_index = funcA->name() == "main" ? 1 : funcB->name() == "main" ? 2 : 0;
+  if (completion != nullptr) {
+    if (main_index == 0 || !startup.empty()) return Result(Status::Unsupported);
+    auto& child = traces[main_index == 1 ? 2 : 1];
+    child.creator_path = main_index;
+    child.creator_step = completion->target_creation;
+    if (!bind_creation_step(child.root, traces[main_index].events, child.creator_step, child.argument))
+      return Result(Status::Unsupported);
+    argumentA = traces[1].argument; argumentB = traces[2].argument;
+  } else {
+    traces[1].argument = argumentA; traces[2].argument = argumentB;
+    for (std::size_t id = 1; id < 3; ++id) {
+      auto& trace = traces[id];
+      if (trace.root->name() == "main") continue;
+      trace.creator_path = main_index;
+      const auto ordinal = selected_workers ? (id == 1 ? facts->worker_a_occurrence : facts->worker_b_occurrence) :
+                           (id == 2 && funcA == funcB ? 1 : 0);
+      auto step = created_occurrence(trace.root, traces[main_index].events, ordinal);
+      if (step < traces[main_index].events.size()) trace.creator_step = step;
+    }
+  }
+  for (std::size_t id = 3; id < traces.size(); ++id) {
+    auto& trace = traces[id];
+    if (trace.creator_path != main_index || trace.events.empty() ||
+        !bind_creation_step(trace.root, traces[main_index].events, trace.creator_step, trace.argument))
+      return Result(Status::Unsupported);
+  }
+  const auto& allocation_origin = traces[main_index].events;
   using ObjectId = std::pair< std::uint64_t, core::ZNumber >;
   std::map< ObjectId, unsigned > attributes;
   std::vector< BmcEvent > initialized_mutexes;
-  const std::vector< BmcEvent >* lifecycle_paths[] = {&startup, &pathA, &pathB};
+  std::vector< const std::vector< BmcEvent >* > lifecycle_paths;
+  for (const auto& trace : traces) lifecycle_paths.push_back(&trace.events);
   bool has_attributes = false;
   for (const auto* path : lifecycle_paths)
     for (const auto& event : *path)
@@ -233,10 +273,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     }
     return true;
   };
-  if (!attribute_lifecycle(startup, funcA->bundle()->function_or_null("main"), nullptr) ||
-      !attribute_lifecycle(pathA, funcA, argumentA) || !attribute_lifecycle(pathB, funcB, argumentB)) {
-    record(diagnostics, "mutex_attribute_lifecycle"); return Result(Status::Unsupported);
-  }
+  for (const auto& trace : traces)
+    if (!attribute_lifecycle(trace.events, trace.root, trace.argument)) {
+      record(diagnostics, "mutex_attribute_lifecycle"); return Result(Status::Unsupported);
+    }
   using ConditionId = std::pair< std::uint64_t, core::ZNumber >;
   std::map< ConditionId, std::uint64_t > conditions;
   std::map< ConditionId, std::pair< const void*, std::size_t > > condition_origins;
@@ -277,11 +317,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     return true;
   };
   auto* main = funcA->bundle()->function_or_null("main");
-  if (!condition_initializers(startup, main, nullptr) ||
-      !condition_initializers(pathA, funcA, argumentA) ||
-      !condition_initializers(pathB, funcB, argumentB)) {
-    record(diagnostics, "condition_initialization"); return Result(Status::Unsupported);
-  }
+  for (const auto& trace : traces)
+    if (!condition_initializers(trace.events, trace.root, trace.argument)) {
+      record(diagnostics, "condition_initialization"); return Result(Status::Unsupported);
+    }
   std::map< ConditionId, ConditionId > waiting_mutexes;
   auto condition_uses = [&](const auto& path, ar::Function* root, ThreadArgument argument, bool is_startup) {
     for (std::size_t i = 0; i < path.size(); ++i) {
@@ -313,11 +352,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     }
     return true;
   };
-  if (!condition_uses(startup, main, nullptr, true) ||
-      !condition_uses(pathA, funcA, argumentA, false) ||
-      !condition_uses(pathB, funcB, argumentB, false)) {
-    record(diagnostics, "condition_object"); return Result(Status::Unsupported);
-  }
+  for (std::size_t id = 0; id < traces.size(); ++id)
+    if (!condition_uses(traces[id].events, traces[id].root, traces[id].argument, id == 0)) {
+      record(diagnostics, "condition_object"); return Result(Status::Unsupported);
+    }
   for (std::size_t i = 0; !conditions.empty() && i < startup.size(); ++i) {
     const auto& event = startup[i];
     if (event.kind != EvKind::Read && event.kind != EvKind::Write) continue;
@@ -348,7 +386,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         path.insert(path.begin() + i + 1, {release, reacquire});
       }
       auto& event = path[i];
-      if (event.kind == EvKind::Join) {
+      if (event.kind == EvKind::Join && completion == nullptr) {
         // Condition expansion may have shifted earlier creation indices.
         event.join_completion = inert_join_source(core::cast< ar::CallBase >(event.stmt),
                                                   path, i, event.join_creation);
@@ -379,6 +417,15 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         std::uint64_t alignment;
         if (!synchronization_layout(call, argument_index, event.width, alignment)) {
           record(diagnostics, "mutex_storage_layout", event.stmt); return false;
+        }
+        if (completion != nullptr) {
+          const auto bits = call->bundle()->data_layout().pointers.bit_width;
+          auto* api = exact_callee(call);
+          const bool rwlock = api != nullptr && api->name().find("pthread_rwlock_") == 0;
+          const auto expected = rwlock ? (bits == 32 ? 32u : 56u) : (bits == 32 ? 24u : 40u);
+          if (event.width != expected || alignment != bits / 8) {
+            record(diagnostics, "completion_mutex_abi", event.stmt); return false;
+          }
         }
         if (event.synthetic_condition && event.var_id != 0) return false;
         if (event.var_id == 0 && (event.const_off < 0 || event.const_off + event.width > size)) return false;
@@ -412,24 +459,45 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     }
     return true;
   };
-  if (!prepare(startup, main, nullptr) || !prepare(pathA, funcA, argumentA) ||
-      !prepare(pathB, funcB, argumentB)) return Result(Status::Unsupported);
+  if (completion != nullptr) {
+    for (const auto& joined : completion->joins) {
+      if (joined.first >= traces[main_index].events.size() || joined.second >= traces.size() ||
+          joined.second == main_index) return Result(Status::Unsupported);
+      auto& join = traces[main_index].events[joined.first];
+      const auto& child = traces[joined.second];
+      auto* ret = core::dyn_cast< ar::ReturnValue >(child.events.back().stmt);
+      if (join.kind != EvKind::Join || ret == nullptr || ret->code() != child.root->body_or_null() ||
+          child.creator_path != main_index) return Result(Status::Unsupported);
+      join.join_completion = ret; join.join_creation = child.creator_step;
+    }
+  }
+  for (auto& trace : traces)
+    if (!prepare(trace.events, trace.root, trace.argument)) return Result(Status::Unsupported);
+  // Expansion in the old search can shift a creation; recover its ordinal.
+  if (completion == nullptr)
+    for (std::size_t id = 1; id < 3; ++id) {
+      auto& trace = traces[id];
+      if (trace.root->name() == "main" || trace.creator_step == ExecutionTrace::no_creation) continue;
+      const auto ordinal = selected_workers ? (id == 1 ? facts->worker_a_occurrence : facts->worker_b_occurrence) :
+                           (id == 2 && funcA == funcB ? 1 : 0);
+      trace.creator_step = created_occurrence(trace.root, traces[trace.creator_path].events, ordinal);
+    }
   // Only actually accessed child objects use shared SC sources. Main's
   // private handle storage keeps its existing modeled-create definedness.
   std::unordered_set< ar::LocalVariable* > shared_stack;
-  for (const auto* path : {&pathA, &pathB}) {
-    auto* root = path == &pathA ? funcA : funcB;
-    if (root->name() == "main") continue;
-    for (const auto& event : *path)
+  for (const auto& trace : traces) {
+    if (trace.root == nullptr || trace.root->name() == "main") continue;
+    for (const auto& event : trace.events)
       if (event.shared_main_local) shared_stack.insert(event.local_base);
   }
-  for (auto* path : {&startup, &pathA, &pathB})
-    for (auto& event : *path)
+  for (auto& trace : traces)
+    for (auto& event : trace.events)
       if (event.shared_main_local && !shared_stack.count(event.local_base))
         event.shared_main_local = false;
-  if (!prefix_values_defined(startup, diagnostics, main, nullptr, nullptr, selected_workers) ||
-      !prefix_values_defined(pathA, diagnostics, funcA, argumentA, &allocation_origin) ||
-      !prefix_values_defined(pathB, diagnostics, funcB, argumentB, &allocation_origin)) return Result(Status::Unsupported);
+  for (std::size_t id = 0; id < traces.size(); ++id)
+    if (!prefix_values_defined(traces[id].events, diagnostics, traces[id].root, traces[id].argument,
+          id == 0 ? nullptr : &allocation_origin, id == 0 && selected_workers))
+      return Result(Status::Unsupported);
 
   // Calls update handles and opaque synchronization storage without AR Stores.
   // Preserve their footprints so static initialization cannot masquerade as rf.
@@ -480,7 +548,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
             record(diagnostics, "startup_create_output", call); return false;
           }
           address = path[i];
-        } else if (selected_workers && &path == &startup && event.kind == EvKind::Create) {
+        } else if ((selected_workers || completion != nullptr) && event.kind == EvKind::Create) {
           // Preserve the concrete output also when a loop index folded early.
           auto& output = path[i];
           output.base = address.base; output.local_base = address.local_base;
@@ -494,8 +562,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     }
     return true;
   };
-  if (!library_outputs(startup, main, nullptr) || !library_outputs(pathA, funcA, argumentA) ||
-      !library_outputs(pathB, funcB, argumentB)) return Result(Status::Unsupported);
+  for (auto& trace : traces)
+    if (!library_outputs(trace.events, trace.root, trace.argument)) return Result(Status::Unsupported);
   auto aliases_library = [&](const BmcEvent& access, const void* path, bool opaque_only) {
     for (const auto& storage : library_storage) {
       if (opaque_only && !storage.opaque) continue;
@@ -523,7 +591,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     }
     return false;
   };
-  const std::vector< BmcEvent >* data_paths[] = {&startup, &pathA, &pathB};
+  const auto& data_paths = lifecycle_paths;
   for (const auto* path : data_paths)
     for (const auto& event : *path)
       if ((event.kind == EvKind::Read || event.kind == EvKind::Write) && aliases_library(event, path, true)) {
@@ -538,51 +606,50 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   const std::size_t targetA = candidate_index(pathA), targetB = candidate_index(pathB);
   if (targetA == nA || targetB == nB) {record(diagnostics, "candidate_missing"); return Result(Status::Unsupported);}
 
-  // clock 变量：A 的 nA 个 + B 的 nB 个。
   std::vector< z3::expr > clock;
-  for (std::size_t i = 0; i < nA; ++i) {
-    clock.push_back(ctx.int_const(("a" + std::to_string(i)).c_str()));
-  }
-  for (std::size_t i = 0; i < nB; ++i) {
-    clock.push_back(ctx.int_const(("b" + std::to_string(i)).c_str()));
-  }
-
-  // po：路径内相邻事件 clock 递增。
-  for (std::size_t i = 0; i + 1 < nA; ++i) {
-    s.add(clock[i] < clock[i + 1]);
-  }
-  for (std::size_t i = 0; i + 1 < nB; ++i) {
-    s.add(clock[nA + i] < clock[nA + i + 1]);
+  for (std::size_t id = 1; id < traces.size(); ++id) {
+    auto& trace = traces[id]; trace.clock_start = clock.size();
+    for (std::size_t i = 0; i < trace.events.size(); ++i) {
+      clock.push_back(ctx.int_const((trace.id + std::to_string(i)).c_str()));
+      if (i != 0) s.add(clock.back() > clock[clock.size() - 2]);
+    }
   }
   // SC memory and indivisible stdout calls have a common strict order. Ties
   // must not invent distinct latest writes or omit the stream synchronization.
   z3::expr_vector memory_clocks(ctx);
-  for (std::size_t i = 0; i < nA; ++i)
-    if (pathA[i].kind == EvKind::Read || pathA[i].kind == EvKind::Write || stream_output(pathA[i])) memory_clocks.push_back(clock[i]);
-  for (std::size_t i = 0; i < nB; ++i)
-    if (pathB[i].kind == EvKind::Read || pathB[i].kind == EvKind::Write || stream_output(pathB[i])) memory_clocks.push_back(clock[nA + i]);
+  for (std::size_t id = 1; id < traces.size(); ++id) {
+    const auto& trace = traces[id];
+    for (std::size_t i = 0; i < trace.events.size(); ++i)
+      if (trace.events[i].kind == EvKind::Read || trace.events[i].kind == EvKind::Write || stream_output(trace.events[i]))
+        memory_clocks.push_back(clock[trace.clock_start + i]);
+  }
   if (memory_clocks.size() > 1) s.add(z3::distinct(memory_clocks));
 
-  // spawn HB（svcomp.cat 的 po 跨线程边）：路径里 create(T)（T = 对方线程入口函数）
-  // < T 的首事件。funcA/funcB 是两线程入口函数，Create 事件的 thread 字段存线程
-  // 函数指针。detach 无 join、只有 spawn 边；join 边（E_T < join）后续再加。
-  std::uint64_t ta = reinterpret_cast< std::uint64_t >(funcA);
-  std::uint64_t tb = reinterpret_cast< std::uint64_t >(funcB);
-  for (std::size_t i = 0; i < nA; ++i) {
-    if (pathA[i].kind == EvKind::Create && pathA[i].thread == tb) {
-      s.add(clock[i] < clock[nA]);  // A 的 create(B) < B 首事件（clock[nA] = b_0）
+  if (completion != nullptr) {
+    std::set< std::pair< std::size_t, std::size_t > > bindings;
+    for (std::size_t id = 1; id < traces.size(); ++id) {
+      const auto& child = traces[id];
+      if (id == main_index) continue;
+      if (!bindings.emplace(child.creator_path, child.creator_step).second ||
+          child.creator_step >= traces[child.creator_path].events.size()) return Result(Status::Unsupported);
+      s.add(clock[traces[child.creator_path].clock_start + child.creator_step] < clock[child.clock_start]);
+    }
+    for (const auto& joined : completion->joins) {
+      const auto& child = traces[joined.second];
+      s.add(clock[child.clock_start + child.events.size() - 1] < clock[traces[main_index].clock_start + joined.first]);
+    }
+  } else {
+    // Preserve the original fast search's conservative activation order.
+    for (std::size_t id = 1; id < 3; ++id) {
+      const auto& parent = traces[id]; const auto& child = traces[id == 1 ? 2 : 1];
+      for (std::size_t i = 0; i < parent.events.size(); ++i)
+        if (parent.events[i].kind == EvKind::Create &&
+            parent.events[i].thread == reinterpret_cast< std::uint64_t >(child.root))
+          s.add(clock[parent.clock_start + i] < clock[child.clock_start]);
     }
   }
-  for (std::size_t i = 0; i < nB; ++i) {
-    if (pathB[i].kind == EvKind::Create && pathB[i].thread == ta) {
-      s.add(clock[nA + i] < clock[0]);  // B 的 create(A) < A 首事件（clock[0] = a_0）
-    }
-  }
-
-  // An auxiliary's single actual return has no effects on either selected
-  // thread. Its concrete creation/handle/completion binding is exported.
-  for (const auto* path : {&startup, &pathA, &pathB})
-    for (const auto& event : *path)
+  for (const auto& trace : traces)
+    for (const auto& event : trace.events)
       if (event.kind == EvKind::Join && event.join_completion == nullptr) {
         record(diagnostics, "join_completion_unproven", event.stmt);
         return Result(Status::Unsupported);
@@ -618,8 +685,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     for (const auto& entry : active) out.push_back({entry.first, entry.second, path.size(), path[entry.second].reader});
     return true;
   };
-  std::vector< Section > sections_a, sections_b;
-  if (!sections(pathA, sections_a) || !sections(pathB, sections_b)) return Result(Status::Unsupported);
+  std::vector< std::vector< Section > > trace_sections(traces.size());
+  for (std::size_t id = 1; id < traces.size(); ++id)
+    if (!sections(traces[id].events, trace_sections[id])) return Result(Status::Unsupported);
+  const auto& sections_a = trace_sections[1]; const auto& sections_b = trace_sections[2];
   auto atomic_target = [](const std::vector< Section >& sections, std::size_t target) {
     return std::any_of(sections.begin(), sections.end(), [&](const Section& section) {
       return section.mutex == PSEUDO_ATOMIC_LOCK && section.begin < target && target < section.end;
@@ -645,10 +714,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   if (interior(sections_a, pathA, targetA) || interior(sections_b, pathB, targetB)) {
     record(diagnostics, "atomic_interior_unsat"); return Result(Status::BoundedUnsat);
   }
-  FunctionValues functions(ctx, s, funcA->bundle(), startup, pathA, pathB, clock,
+  FunctionValues functions(ctx, s, funcA->bundle(), traces, clock,
       [&](const BmcEvent& access, const void* path) {return aliases_library(access, path, false);});
-  for (unsigned id = 0; id < 3; ++id) {
-    const auto& path = id == 0 ? startup : id == 1 ? pathA : pathB;
+  for (unsigned id = 0; id < traces.size(); ++id) {
+    const auto& path = traces[id].events;
     for (std::size_t i = 0; i < path.size(); ++i) {
       if (path[i].synthetic_atomic || path[i].synthetic_condition) continue;
       auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt);
@@ -669,7 +738,12 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   // 的独立值（FN）。
   using ValueKey = std::pair< ar::InternalVariable*, std::size_t >;
   using ValueCache = std::map< ValueKey, z3::expr >;
-  ValueCache cache_a, cache_b, cache_init;
+  std::vector< ValueCache > caches(traces.size());
+  auto& cache_init = caches[0]; auto& cache_a = caches[1]; auto& cache_b = caches[2];
+  auto trace_index = [&](const ValueCache& cache) {
+    for (std::size_t id = 0; id < caches.size(); ++id) if (&caches[id] == &cache) return id;
+    ikos_unreachable("unknown BMC value cache");
+  };
   bool guard_reusable = false;
   std::set< ar::GlobalVariable* > guard_reads;
   std::map< const BmcEvent*, z3::expr > replay_offsets;
@@ -695,7 +769,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       return false;
     }
     std::size_t definition_index = 0;
-    const auto& path = prefix == "value_a_" ? pathA : prefix == "value_b_" ? pathB : startup;
+    const auto id = trace_index(cache);
+    const auto& path = traces[id].events;
     ar::Statement* def = reaching_definition(iv, path, before, definition_index);
     std::size_t call_index = 0;
     auto* actual = def == nullptr ? formal_argument(iv, path, before, call_index) : nullptr;
@@ -918,13 +993,13 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           return true;
         };
         if (!collect_bytes(startup, cache_init, "value_init_", 0, true)) return false;
-        if (prefix != "value_init_" &&
-            (!collect_bytes(pathA, cache_a, "value_a_", 0, false) ||
-             !collect_bytes(pathB, cache_b, "value_b_", nA, false))) return false;
+        if (id != 0)
+          for (std::size_t k = 1; k < traces.size(); ++k)
+            if (!collect_bytes(traces[k].events, caches[k], traces[k].value_prefix(), traces[k].clock_start, false)) return false;
         if (prefix == "value_init_") {
           for (bool known : byte_known) if (!known) return false;
         } else {
-          const auto read_time = clock[(prefix == "value_a_" ? 0 : nA) + definition_index];
+          const auto read_time = clock[traces[id].clock_start + definition_index];
           for (unsigned k = 0; k < access.width; ++k) {
             const auto& writes = byte_writes[k];
             auto byte = ctx.bv_const((prefix + "byte_" + std::to_string(definition_index) + "_" + std::to_string(k)).c_str(), 8);
@@ -1014,7 +1089,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       std::vector< z3::expr > sources;
       struct Write {z3::expr time; z3::expr value; z3::expr matches;};
       std::vector< Write > writes;
-      bool ordered_sources = (access.base != 0 || access.heap_allocation != nullptr || access.shared_main_local) && access.var_id == 0;
+      bool ordered_sources = completion == nullptr && (access.base != 0 || access.heap_allocation != nullptr || access.shared_main_local) && access.var_id == 0;
       const auto& other_path = prefix == "value_a_" ? pathB : pathA;
       auto* root = prefix == "value_a_" ? funcA : funcB;
       auto* other_root = prefix == "value_a_" ? funcB : funcA;
@@ -1074,7 +1149,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         record(diagnostics, "startup_read_from", load);
         return true;
       }
-      if (!collect(pathA, cache_a, "value_a_", 0) || !collect(pathB, cache_b, "value_b_", nA)) return false;
+      for (std::size_t k = 1; k < traces.size(); ++k)
+        if (!collect(traces[k].events, caches[k], traces[k].value_prefix(), traces[k].clock_start)) return false;
       // po and create->child-start order pre-spawn parent writes before all
       // child writes. Retain collect's checks; post-spawn/symbolic writers
       // still need general SC rf. This is not a program-privacy proof.
@@ -1087,7 +1163,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         record(diagnostics, static_cast< bool >(last_parent) ? "sc_spawn_read_from" : "sc_same_path_read_from", load);
         return true;
       }
-      z3::expr read_time = clock[(prefix == "value_a_" ? 0 : nA) + definition_index];
+      z3::expr read_time = clock[traces[id].clock_start + definition_index];
       for (std::size_t j = 0; j < writes.size(); ++j) {
         z3::expr latest = writes[j].matches && writes[j].time < read_time;
         for (std::size_t k = 0; k < writes.size(); ++k)
@@ -1276,7 +1352,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     // Only equality of proven function/null identities is modeled for pointers.
     if (cmp->predicate() == ar::Comparison::PEQ || cmp->predicate() == ar::Comparison::PNE) {
       z3::expr x(ctx), y(ctx);
-      unsigned id = prefix == "value_a_" ? 1 : prefix == "value_b_" ? 2 : 0;
+      const auto id = trace_index(cache);
       if (functions.encode(l, id, before, x) && functions.encode(r, id, before, y)) {
         guard_reusable = false;
         return cmp->predicate() == ar::Comparison::PEQ ? x == y : x != y;
@@ -1349,7 +1425,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     // A prepopulated cache may hide dependencies encoded for the other path.
     // A fixed startup contradiction can stop this group; worker rejections
     // additionally need the read/write check in the caller.
-    guard_reusable = prefix != "value_init_" && cache.empty();
+    guard_reusable = completion == nullptr && prefix != "value_init_" && cache.empty();
     guard_reads.clear();
     for (std::size_t i = 0; i < path.size(); ++i) {
       const auto& e = path[i];
@@ -1386,27 +1462,24 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     }
     return true;
   };
-  if (!assumptions(startup, cache_init, "value_init_") ||
-      !assumptions(pathA, cache_a, "value_a_") ||
-      !assumptions(pathB, cache_b, "value_b_")) return Result(unencodable ? Status::Unsupported : Status::BoundedUnsat);
-  // Reject impossible guards before encoding unused operations. Every retained
-  // path still needs the complete trap/poison obligations, including dead results.
-  if (unencodable || !arithmetic_prefix(startup, cache_init, "value_init_") ||
-      !arithmetic_prefix(pathA, cache_a, "value_a_") ||
-      !arithmetic_prefix(pathB, cache_b, "value_b_")) return Result(Status::Unsupported);
+  for (std::size_t id = 0; id < traces.size(); ++id)
+    if (!assumptions(traces[id].events, caches[id], traces[id].value_prefix()))
+      return Result(unencodable ? Status::Unsupported : Status::BoundedUnsat);
+  if (unencodable) return Result(Status::Unsupported);
+  for (std::size_t id = 0; id < traces.size(); ++id)
+    if (!arithmetic_prefix(traces[id].events, caches[id], traces[id].value_prefix())) return Result(Status::Unsupported);
 
-  // Verifier atomic blocks exclude all other threads, including accesses
-  // outside atomic blocks. A mutex-only exclusion does not express this.
-  for (const auto& section : sections_a) {
-    if (section.mutex == PSEUDO_ATOMIC_LOCK)
-      for (std::size_t j = 0; j < nB; ++j)
-        s.add(clock[nA + j] < clock[section.begin] || clock[section.end] < clock[nA + j]);
-  }
-  for (const auto& section : sections_b) {
-    if (section.mutex == PSEUDO_ATOMIC_LOCK)
-      for (std::size_t i = 0; i < nA; ++i)
-        s.add(clock[i] < clock[nA + section.begin] || clock[nA + section.end] < clock[i]);
-  }
+  // A verifier atomic interval excludes every other dynamic instance.
+  for (std::size_t id = 1; id < traces.size(); ++id)
+    for (const auto& section : trace_sections[id]) {
+      if (section.mutex != PSEUDO_ATOMIC_LOCK) continue;
+      for (std::size_t other = 1; other < traces.size(); ++other) {
+        if (other == id) continue;
+        for (std::size_t j = 0; j < traces[other].events.size(); ++j)
+          s.add(clock[traces[other].clock_start + j] < clock[traces[id].clock_start + section.begin] ||
+                clock[traces[id].clock_start + section.end] < clock[traces[other].clock_start + j]);
+      }
+    }
 
   // Executed pointer definitions must select the same global object, even
   // when the checker's may-points-to sets contain several objects.
@@ -1469,7 +1542,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       s.add(z3::mod(offset, ctx.int_val(std::to_string(storage.alignment).c_str())) == 0);
       record(diagnostics, "startup_create_offset", event.stmt);
     }
-    if (!valid_memory(pathA, cache_a, "value_a_") || !valid_memory(pathB, cache_b, "value_b_")) return Result(Status::Unsupported);
+    for (std::size_t id = 1; id < traces.size(); ++id)
+      if (!valid_memory(traces[id].events, caches[id], traces[id].value_prefix())) return Result(Status::Unsupported);
     auto ownership = [&](const std::vector< Section >& sections, const std::vector< BmcEvent >& path,
                          ValueCache& cache, const std::string& prefix) {
       for (const auto& section : sections) {
@@ -1483,19 +1557,20 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       }
       return true;
     };
-    if (!ownership(sections_a, pathA, cache_a, "value_a_") ||
-        !ownership(sections_b, pathB, cache_b, "value_b_")) return Result(Status::Unsupported);
-    for (const auto& a : sections_a) for (const auto& b : sections_b) {
-      if (a.mutex == PSEUDO_ATOMIC_LOCK || b.mutex == PSEUDO_ATOMIC_LOCK || (a.reader && b.reader)) continue;
-      const auto& lock_a = pathA[a.begin]; const auto& lock_b = pathB[b.begin];
-      if (lock_a.base != lock_b.base) continue;
-      z3::expr address_a(ctx), address_b(ctx);
-      if (!encode_offset(lock_a, address_a, cache_a, "value_a_", a.begin) ||
-          !encode_offset(lock_b, address_b, cache_b, "value_b_", b.begin)) return Result(Status::Unsupported);
-      z3::expr a_first = a.end < nA ? clock[a.end] < clock[nA + b.begin] : ctx.bool_val(false);
-      z3::expr b_first = b.end < nB ? clock[nA + b.end] < clock[a.begin] : ctx.bool_val(false);
-      s.add(address_a != address_b || a_first || b_first);
-    }
+    for (std::size_t id = 1; id < traces.size(); ++id)
+      if (!ownership(trace_sections[id], traces[id].events, caches[id], traces[id].value_prefix())) return Result(Status::Unsupported);
+    for (std::size_t x = 1; x < traces.size(); ++x) for (std::size_t y = x + 1; y < traces.size(); ++y)
+      for (const auto& a : trace_sections[x]) for (const auto& b : trace_sections[y]) {
+        if (a.mutex == PSEUDO_ATOMIC_LOCK || b.mutex == PSEUDO_ATOMIC_LOCK || (a.reader && b.reader)) continue;
+        const auto& lock_a = traces[x].events[a.begin]; const auto& lock_b = traces[y].events[b.begin];
+        if (lock_a.base != lock_b.base) continue;
+        z3::expr address_a(ctx), address_b(ctx);
+        if (!encode_offset(lock_a, address_a, caches[x], traces[x].value_prefix(), a.begin) ||
+            !encode_offset(lock_b, address_b, caches[y], traces[y].value_prefix(), b.begin)) return Result(Status::Unsupported);
+        auto a_first = a.end < traces[x].events.size() ? clock[traces[x].clock_start + a.end] < clock[traces[y].clock_start + b.begin] : ctx.bool_val(false);
+        auto b_first = b.end < traces[y].events.size() ? clock[traces[y].clock_start + b.end] < clock[traces[x].clock_start + a.begin] : ctx.bool_val(false);
+        s.add(address_a != address_b || a_first || b_first);
+      }
     z3::expr off_a(ctx), off_b(ctx);
     if (!encode_offset(ea, off_a, cache_a, "value_a_", targetA) || !encode_offset(eb, off_b, cache_b, "value_b_", targetB)) return Result(Status::Unsupported);
     if (facts != nullptr) {
@@ -1543,7 +1618,13 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     // Each query is independent. push/pop switches Z3 to incremental solving,
     // disabling preprocessing needed by some mixed Int/BV guards.
     z3::solver query(ctx);
-    query.set("timeout", 1000u);
+    auto timeout = 1000u;
+    if (deadline != nullptr) {
+      const auto remaining = std::chrono::duration_cast< std::chrono::milliseconds >(*deadline - std::chrono::steady_clock::now()).count();
+      if (remaining <= 0) return Result(Status::BudgetExceeded);
+      timeout = static_cast< unsigned >(std::min< std::int64_t >(remaining, timeout));
+    }
+    query.set("timeout", timeout);
     query.add(s.assertions());
     auto first = dir == 0 ? nA + targetB : targetA;
     auto last = dir == 0 ? targetA : nA + targetB;
@@ -1558,7 +1639,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           query.add(clock[start + i] < clock[first] || clock[last] < clock[start + i]);
         }
       };
-      exclude_between(pathA, 0); exclude_between(pathB, nA);
+      for (std::size_t id = 1; id < traces.size(); ++id)
+        exclude_between(traces[id].events, traces[id].clock_start);
     }
     auto solve_start = std::chrono::steady_clock::now();
     z3::check_result result = query.check();
@@ -1575,8 +1657,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       Result outcome(Status::Confirmed);
       auto model = query.get_model();
       auto export_start = std::chrono::steady_clock::now();
-      outcome.evidence = export_counterexample(funcA, funcB, startup, pathA, pathB,
-          cache_init, cache_a, cache_b, clock, replay_offsets, model, &functions, facts);
+      outcome.evidence = export_counterexample(traces, caches, clock, replay_offsets, model, &functions);
       if (metrics != nullptr) metrics->evidence_us += std::chrono::duration_cast< std::chrono::microseconds >(
           std::chrono::steady_clock::now() - export_start).count();
       return outcome;

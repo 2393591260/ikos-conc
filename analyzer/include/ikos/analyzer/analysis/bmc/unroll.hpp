@@ -5,6 +5,7 @@
 #pragma once
 
 #include <algorithm>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
@@ -42,7 +43,7 @@ struct BmcEvent {
   ar::Function* called_function = nullptr; // Callee proven on this executed call.
   bool synthetic_atomic = false; // Boundary marker, not another source call.
   bool synthetic_condition = false; // Wait's release/reacquire, not another call.
-  ar::ReturnValue* join_completion = nullptr; // Actual effect-free auxiliary return.
+  ar::ReturnValue* join_completion = nullptr; // Actual selected child return.
   std::size_t join_creation = 0; // Creation occurrence in this same prefix.
   bool candidate = false; // Selected dynamic access; atomic closure may follow.
   EvKind kind = EvKind::Read;
@@ -1032,7 +1033,7 @@ inline bool successful_condition_result(const BmcEvent& event) {
          result->is_signed() && returned->bit_width() == 32 && returned->is_signed();
 }
 
-// This chosen successful join has an actual inert completion and no return store.
+// This chosen successful join has an actual child completion and no return store.
 inline bool successful_join_result(const BmcEvent& event) {
   if (event.kind != EvKind::Join || event.join_completion == nullptr) return false;
   auto* call = core::cast< ar::CallBase >(event.stmt);
@@ -1250,7 +1251,7 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
         if (previous.kind == EvKind::Create) {
           auto* call = core::cast< ar::CallBase >(previous.stmt);
           BmcEvent output;
-          if (symbolic_byte_offset(call->argument(0), output) &&
+          if (pointer_on_path(call->argument(0), path, j, root, root_argument, output, origins) &&
               output.local_base == access.local_base && output.var_id == 0 &&
               output.const_off == access.const_off &&
               access.width <= call->bundle()->data_layout().store_size_in_bytes(
@@ -1593,6 +1594,8 @@ constexpr std::size_t MAX_PATHS = 256;
 constexpr std::size_t MAX_PATH_EVENTS = 1024;
 struct UnrollBudget {
   bool prune_join_prefix = false;
+  bool pruned_join = false;
+  const std::chrono::steady_clock::time_point* deadline = nullptr;
   // Optional activation contract: retained creation counts only increase.
   const std::map< ar::Function*, unsigned >* create_limits = nullptr;
   std::size_t steps = 0;
@@ -1627,6 +1630,10 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
                std::vector< ar::BasicBlock* > in_stack,
                UnrollBudget& budget, int depth = 0, ar::Statement* resume_after = nullptr) {
   if (budget.exhausted != nullptr) {
+    return;
+  }
+  if (budget.deadline != nullptr && std::chrono::steady_clock::now() >= *budget.deadline) {
+    budget.exhausted = "unroll_deadline";
     return;
   }
   if (++budget.steps > 16384 || in_stack.size() >= 256) {
@@ -1707,6 +1714,7 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
                                                  current.size(), ev.join_creation);
           if (budget.prune_join_prefix && ev.join_completion == nullptr &&
               candidate_index(current) == current.size()) {
+            budget.pruned_join = true;
             budget.rejected_reason = "join_completion_unproven";
             budget.rejected_statement = s;
             return;
@@ -1838,6 +1846,7 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
 struct UnrollResult {
   std::vector< std::vector< BmcEvent > > paths;
   bool incomplete = false;  // true = construction budget exhausted
+  bool pruned_join = false; // Search hint only; never a safety conclusion.
   const char* reason = nullptr;
   const char* rejected_reason = nullptr;
   ar::Statement* rejected_statement = nullptr;
@@ -1848,7 +1857,8 @@ inline UnrollResult unroll_to(
     ar::Function* func, ar::Statement* target,
     unsigned target_occurrence = 1, unsigned loop_bound = 1,
     bool prune_join_prefix = false,
-    const std::map< ar::Function*, unsigned >* create_limits = nullptr) {
+    const std::map< ar::Function*, unsigned >* create_limits = nullptr,
+    const std::chrono::steady_clock::time_point* deadline = nullptr) {
   UnrollResult result;
   // A root invocation has no source call on which to attach the boundaries.
   if (named_verifier_atomic(func)) {
@@ -1862,6 +1872,7 @@ inline UnrollResult unroll_to(
   }
   UnrollBudget budget;
   budget.prune_join_prefix = prune_join_prefix;
+  budget.deadline = deadline;
   budget.create_limits = create_limits;
   budget.target_occurrence = target_occurrence;
   budget.loop_bound = loop_bound;
@@ -1870,6 +1881,7 @@ inline UnrollResult unroll_to(
   std::vector< ar::BasicBlock* > in_stack;
   dfs_paths(body->entry_block(), target, current, result.paths, in_stack,
             budget);
+  result.pruned_join = budget.pruned_join;
   result.rejected_reason = budget.rejected_reason;
   result.rejected_statement = budget.rejected_statement;
 
@@ -1889,13 +1901,15 @@ inline UnrollResult unroll_to(
 // Atomic-target queries need both completed worker paths, including assumptions
 // following the opposite access. Do not replace them with arbitrary stop points.
 inline UnrollResult unroll_completed(ar::Function* func, ar::Statement* target,
-                                     unsigned loop_bound) {
+                                     unsigned loop_bound,
+    const std::chrono::steady_clock::time_point* deadline = nullptr) {
   UnrollResult result;
   auto* body = func->body_or_null();
   if (named_verifier_atomic(func) || body == nullptr || !body->has_entry_block()) return result;
   UnrollBudget budget;
   budget.root_target = target;
   budget.completed = true;
+  budget.deadline = deadline;
   budget.loop_bound = loop_bound;
   for (auto* block : *body) for (auto* statement : *block) {
     if (!core::isa< ar::ReturnValue >(statement) &&
@@ -1903,6 +1917,7 @@ inline UnrollResult unroll_completed(ar::Function* func, ar::Statement* target,
     std::vector< BmcEvent > current;
     dfs_paths(body->entry_block(), statement, current, result.paths, {}, budget);
   }
+  result.pruned_join = budget.pruned_join;
   result.rejected_reason = budget.rejected_reason;
   result.rejected_statement = budget.rejected_statement;
   if (budget.exhausted != nullptr) {
@@ -1910,6 +1925,29 @@ inline UnrollResult unroll_completed(ar::Function* func, ar::Statement* target,
   }
   result.paths.erase(std::remove_if(result.paths.begin(), result.paths.end(),
       [](const auto& path) {return candidate_index(path) == path.size();}), result.paths.end());
+  return result;
+}
+
+// Auxiliary instances must reach an actual root return through their real CFG.
+inline UnrollResult unroll_terminated(ar::Function* func, unsigned loop_bound,
+    const std::chrono::steady_clock::time_point* deadline = nullptr) {
+  UnrollResult result;
+  auto* body = func->body_or_null();
+  if (named_verifier_atomic(func) || body == nullptr || !body->has_entry_block()) return result;
+  UnrollBudget budget;
+  budget.loop_bound = loop_bound;
+  budget.deadline = deadline;
+  for (auto* block : *body) for (auto* statement : *block) {
+    if (!core::isa< ar::ReturnValue >(statement)) continue;
+    std::vector< BmcEvent > current;
+    dfs_paths(body->entry_block(), statement, current, result.paths, {}, budget);
+  }
+  result.pruned_join = budget.pruned_join;
+  result.rejected_reason = budget.rejected_reason;
+  result.rejected_statement = budget.rejected_statement;
+  if (budget.exhausted != nullptr) {
+    result.incomplete = true; result.reason = budget.exhausted;
+  }
   return result;
 }
 

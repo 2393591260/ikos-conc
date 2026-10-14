@@ -2,12 +2,11 @@
 """Construct finite auxiliary schedules on genuine frontend AR snapshots.
 
 This is an execution/replay feasibility experiment, not production SMT search.
-The temporary Replay differs only in trace-name admission and a creation-origin
-uniqueness check. Production analyzer/validator files are never edited.
+Constructed schedules supplement the production SMT regression; both use the
+same production validator. Production analyzer/validator files are never edited.
 """
 import argparse
 import copy
-import difflib
 import hashlib
 import importlib.util
 import json
@@ -25,30 +24,12 @@ def dump(path, value):
 
 
 def temporary_replay(root, output):
+    # Keep the constructed-schedule controls against the production validator.
     source = root / 'scripts/validate_bmc_execution.py'
-    original = source.read_text()
-    old = "        require(set(self.traces) <= {'startup', 'a', 'b'} and {'a', 'b'} <= set(self.traces), 'trace identities')"
-    new = """        require({'a', 'b'} <= set(self.traces) and all(
-            name in {'startup', 'a', 'b'} or (name.startswith('aux_') and name[4:].isdigit())
-            for name in self.traces), 'trace identities')
-        bindings = [(t.get('creator_trace'), t.get('creator_step'))
-                    for t in self.traces.values() if t['entry'] != 'main']
-        require(all(parent in self.traces and type(step) is int and step >= 0
-                    for parent, step in bindings), 'creation occurrence identity')
-        require(len(bindings) == len(set(bindings)), 'duplicate dynamic creation occurrence')"""
-    assert original.count(old) == 1
-    modified = original.replace(old, new)
     target = output / 'validate_auxiliary.py'
-    target.write_text(modified)
-    (output / 'validator.patch').write_text(''.join(difflib.unified_diff(
-        original.splitlines(True), modified.splitlines(True),
-        fromfile=str(source), tofile=str(target))))
-    spec = importlib.util.spec_from_file_location('validate_auxiliary', target)
-    module = importlib.util.module_from_spec(spec)
-    import sys
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module, source, target
+    target.write_text(source.read_text())
+    (output / 'validator.patch').write_text('')
+    return production_replay(target), source, target
 
 
 def production_replay(source):
@@ -250,7 +231,7 @@ def main():
             assert bootstrap['status'] == 'ACCEPT', bootstrap
             certificate = construct(module, program, joins)
             production_aux = production.check(program, certificate)
-            assert production_aux == dict(status='REJECT',reason='trace identities'), production_aux
+            assert production_aux['status'] == ('ACCEPT' if joins == 3 else 'REJECT'), production_aux
             dump(folder / 'program.json', program)
             dump(folder / 'constructed-certificate.json', certificate)
             results = controls(module, program, certificate, joins)
@@ -263,7 +244,8 @@ def main():
             print(bits, joins, [(r['case'],r['result']['status']) for r in results], flush=True)
     summary = dict(scope='constructed finite AR schedules; not production SMT auxiliary support',
         checks=dict(target_and_corruption_replays=sum(len(r['results']) for r in rows),
-                    production_bootstrap_accepts=len(rows), production_auxiliary_rejects=len(rows)),
+                    production_bootstrap_accepts=len(rows), production_auxiliary_accepts=sum(r['production_auxiliary']['status'] == 'ACCEPT' for r in rows),
+                    production_auxiliary_rejects=sum(r['production_auxiliary']['status'] == 'REJECT' for r in rows)),
         root_revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
         analyzer_sha256=sha(root/'install/bin/ikos-analyzer'),
         fixture_sha256=sha(Path(__file__).with_name('seed.c')),
@@ -274,7 +256,7 @@ def main():
             'The all-join source still permits an export_probe race; its negative control concerns only forced data store/load HB.',
             'Schedules and concrete nondet values are constructed using Replay, not found by an extended SMT encoder.',
             'Missing Return remains UNSUPPORTED under the unchanged existing join-completion gate.',
-            'No production search, budget, evidence exporter, or source witness support is established.'])
+            'These constructed schedules exercise replay only; production SMT search has separate regressions.'])
     dump(args.output/'summary.json', summary)
     compact = {k:v for k,v in summary.items() if k!='rows'}
     compact['rows'] = [dict(bits=r['bits'],joins=r['joins'],program_sha256=r['program_sha256'],

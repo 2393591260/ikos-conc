@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+"""Check finite joined effects, handle generations, and selected executions."""
+import argparse
+import copy
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[3]
+sys.path[:0] = [str(ROOT), str(ROOT / 'scripts')]
+import svcomp_race_test as suite
+from validate_bmc_execution import check, digest_json
+import svcomp_witness
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--output', type=Path)
+    args = parser.parse_args()
+    rows, assertions = [], 0
+    fixture = (HERE / 'auxiliary.c').read_text()
+    variants = {
+        'renamed': fixture.replace('data', 'payload').replace('writer', 'update'),
+        'width': fixture.replace('int data;', 'long data;'),
+        'helper': fixture.replace('void *writer(void *arg) {',
+            'void put(void) { data = __VERIFIER_nondet_int(); }\nvoid *writer(void *arg) {')
+            .replace('  data = __VERIFIER_nondet_int();', '  put();'),
+    }
+    with tempfile.TemporaryDirectory(prefix='ikos-auxiliary-') as temp:
+        folder = Path(temp)
+        def analyze(text, bits):
+            source = folder / 'renamed.c'
+            source.write_text(text)
+            report = folder / 'report.json'
+            report.unlink(missing_ok=True)
+            proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                '--concurrency=auto', '--demote-race-to-unknown', '-m', str(bits),
+                '--format=json', '--report-file=' + str(report),
+                '-o', str(folder / 'output.db'), str(source)], cwd=folder,
+                env=dict(os.environ, IKOS_BMC_RECOVER='1', IKOS_BMC_DIAGNOSTICS='1'),
+                capture_output=True, text=True, timeout=30)
+            assert proc.returncode == 0, proc.stdout + proc.stderr
+            verdict = suite.classify(proc.stdout + proc.stderr, proc.returncode, False)
+            return source, verdict, json.loads(report.read_text())
+
+        for bits in (32, 64):
+            for variant, text in variants.items():
+                for case in range(1, 12):
+                    source, verdict, report_data = analyze(f'#define CASE {case}\n' + text, bits)
+                    racy = case in (1, 3, 5, 6, 8, 10)
+                    assert (verdict == suite.VERDICT_RACE if racy else
+                        verdict in (suite.VERDICT_SAFE, suite.VERDICT_UNKNOWN)), (bits, variant, case, verdict)
+                    assertions += 1
+                    infos = [row['info'] for row in report_data['reports'] if 'counterexample' in row['info']]
+                    assert bool(infos) == racy, (bits, variant, case)
+                    for info in infos:
+                        certificate = copy.deepcopy(info['counterexample'])
+                        program = certificate.pop('program')
+                        certificate['program_sha256'] = digest_json(program)
+                        result = check(program, certificate)
+                        assert result['status'] == 'ACCEPT', (bits, variant, case, result)
+                        assertions += 1
+                        traces = {trace['id']: trace for trace in certificate['traces']}
+                        auxiliaries = [t for t in traces.values() if t['id'].startswith('aux_')]
+                        assert auxiliaries, (bits, variant, case)
+                        aux = auxiliaries[0]
+
+                        def rejected(mutate):
+                            nonlocal assertions
+                            changed = copy.deepcopy(certificate)
+                            mutate(changed, {t['id']: t for t in changed['traces']})
+                            outcome = check(program, changed)
+                            assert outcome['status'] == 'REJECT', (bits, variant, case, outcome)
+                            assertions += 1
+
+                        rejected(lambda c, ts: ts[aux['id']].__setitem__('creator_step', -1))
+                        rejected(lambda c, ts: c['traces'].append(copy.deepcopy(ts[aux['id']])))
+                        rejected(lambda c, ts: ts[aux['id']]['steps'].pop())
+                        fake = aux['steps'][-1]['statement'] if len(aux['steps']) > 1 else next(
+                            sid for sid, inst in program['instructions'].items() if inst['kind'] == 'return' and sid != aux['steps'][-1]['statement'])
+                        rejected(lambda c, ts: ts[aux['id']]['steps'].__setitem__(0,
+                            dict(statement=fake, clock=aux['steps'][0]['clock'])))
+                        stores = [i for i, step in enumerate(aux['steps']) if program['instructions'][step['statement']]['kind'] == 'store']
+                        if stores:
+                            rejected(lambda c, ts: ts[aux['id']]['steps'].__delitem__(stores[0]))
+                        # Equal values do not excuse a wrong read-from occurrence.
+                        reads = [(name, i) for name, trace in traces.items() for i, step in enumerate(trace['steps'])
+                                 if 'read_from' in step and any(isinstance(r, dict) for r in step['read_from'])]
+                        if reads:
+                            name, i = reads[-1]
+                            rejected(lambda c, ts: ts[name]['steps'][i]['read_from'].__setitem__(0, 'initial'))
+                        if len(auxiliaries) > 1:
+                            rejected(lambda c, ts: ts[aux['id']].__setitem__('creator_step', auxiliaries[1]['creator_step']))
+                        joined = [(name, i) for name, trace in traces.items() for i, step in enumerate(trace['steps']) if 'joined_trace' in step]
+                        name, i = joined[0]
+                        rejected(lambda c, ts: ts[name]['steps'][i]['joined_trace'].__setitem__('step', -1))
+                        witness = svcomp_witness.build_witness(str(source), info, 'ILP32' if bits == 32 else 'LP64', str(args.ikos.resolve()))
+                        targets = witness[0]['content'][-1]['segment']
+                        assert len(targets) == 2 and targets[0]['waypoint']['thread_id'] != targets[1]['waypoint']['thread_id']
+                        assertions += 1
+                    rows.append(dict(bits=bits, variant=variant, case=case, verdict=verdict, executions=len(infos)))
+                    print(bits, variant, case, verdict, flush=True)
+
+        atomic = (HERE / 'atomic-tail.c').read_text()
+        for bits in (32, 64):
+            for variant, text in (('renamed', atomic.replace('data', 'payload')),
+                                  ('width', atomic.replace('int data, flag;', 'long data; int flag;')),
+                                  ('named', '#define NAMED_ATOMIC 1\n' + atomic),
+                                  ('nested', '#define NESTED_ATOMIC 1\n' + atomic)):
+                for main_atomic in (0, 1):
+                    for tail in (0, 1):
+                        _, verdict, report = analyze(
+                            f'#define MAIN_ATOMIC {main_atomic}\n#define TAIL {tail}\n' + text, bits)
+                        assert verdict == suite.VERDICT_UNKNOWN, (bits, variant, main_atomic, tail, verdict)
+                        assert not any('counterexample' in row['info'] for row in report['reports'])
+                        counts = [row['info'].get('bmc', {}).get('counts', {}) for row in report['reports']]
+                        if variant != 'nested':
+                            assert any(c.get('completion_atomic_target') for c in counts), counts
+                        assertions += 3
+                        rows.append(dict(bits=bits, variant=variant, atomic_main=main_atomic,
+                                         tail=tail, verdict=verdict, executions=0))
+                _, verdict, report = analyze('#define ATOMIC_TARGET 0\n#define TAIL 1\n' + text, bits)
+                assert verdict == suite.VERDICT_RACE, (bits, variant, verdict)
+                infos = [row['info'] for row in report['reports'] if 'counterexample' in row['info']]
+                for info in infos:
+                    certificate = copy.deepcopy(info['counterexample'])
+                    program = certificate.pop('program')
+                    certificate['program_sha256'] = digest_json(program)
+                    assert check(program, certificate)['status'] == 'ACCEPT'
+                    assertions += 1
+                assertions += 1
+    if args.output:
+        args.output.write_text(json.dumps(dict(assertions=assertions, rows=rows), indent=2) + '\n')
+    print(f'{assertions} verdict/execution/corruption/witness assertions passed')
+
+
+if __name__ == '__main__':
+    main()
