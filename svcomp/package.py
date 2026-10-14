@@ -120,48 +120,40 @@ synchronization constraints to confirm supported finite race executions.
 Unsupported confirmation cases stay UNKNOWN. Finite regression results are
 not a proof of whole-tool soundness.
 
-## Usage (standalone)
+## Usage
 
-    ./bin/ikos --analyses=race --concurrency=auto <file.c>
+Run the entry point on a C `.c` or preprocessed `.i` input:
 
-Verdicts: `The program is SAFE` (no race), `The program is definitely UNSAFE`
-(race found), `The program is UNKNOWN` (model boundary).
+    ./bin/svcomp_witness.py --data-model LP64 --out witness.yml input.c
 
-### Demoting races to UNKNOWN + bounded re-confirmation (SV-COMP scoring)
+Use ILP32 or LP64 to match the input. The wrapper defaults to ILP32, while the
+underlying analyzer defaults to LP64; always specify the model. It locates
+`ikos` next to itself, enables demote plus BMC, and emits witness format 2.2
+only for a confirmed race. The requested old witness is removed before analysis;
+use a distinct output path per task. It also supports `--version`.
+For competition tasks, pass `--property FILE.prp`; only the property
+`CHECK(init(main()), LTL(G ! data-race))` is accepted.
 
-The abstract analysis cannot always separate a REAL race from a false positive
-caused by unmodelled synchronization, and SV-COMP penalizes a wrong race
-(-16) far more than it rewards a right one (+1). So the SV-COMP entry point
-runs IKOS in two stages:
+Outputs: `The program is SAFE` (safety under the implemented contract),
+`The program is definitely UNSAFE` (bounded confirmation), or
+`The program is UNKNOWN` / `potentially UNSAFE` (inconclusive).
+A nonzero exit or missing legal verdict is an execution failure.
+An exported witness is not automatically independently validated.
 
-1. `--demote-race-to-unknown` — every race the abstract checker finds is
-   reported as `potentially UNSAFE` (= UNKNOWN) instead of `definitely UNSAFE`
-   (= FALSE). This is sound for FN=0: UNKNOWN is never SAFE.
-2. A bounded model checker (enabled via `IKOS_BMC_RECOVER=1`) re-confirms the
-   races it can PROVE by unrolling the two thread paths and checking the
-   happens-before / alias encoding with SMT. A proven race is reported as
-   `definitely UNSAFE` (= FALSE, +1); everything else stays UNKNOWN (0).
+For an analyzer report without witness export:
 
-The entry point only claims a race after bounded confirmation. UNSAT or
-unsupported bounded searches do not prove SAFE. Independently validating the
-violation witness remains a separate check.
+    IKOS_BMC_RECOVER=1 ./bin/ikos --analyses=race --concurrency=auto --demote-race-to-unknown -m 64 -o output.db input.c
 
-    ./bin/ikos --analyses=race --concurrency=auto --demote-race-to-unknown <file.c>   # + env IKOS_BMC_RECOVER=1
+For abstract safety analysis only, remove IKOS_BMC_RECOVER and retain the demote
+option. Setting IKOS_BMC_RECOVER=0 still enables it. Unresolved abstract candidates
+and bounded UNSAT cannot prove a race or unbounded safety respectively.
+Internal search/SMT/structural limits are separate from external resource limits.
 
-### Data model (32-bit / 64-bit)
-
-SV-COMP tasks specify an `ILP32` (32-bit) or `LP64` (64-bit) data model; the
-C type widths (`long`, pointers) differ between the two. Pass `-m 32` / `-m 64`
-to select it (default is 64-bit):
-
-    ./bin/ikos -m 32 --analyses=race --concurrency=auto <file.c>   # ILP32
-    ./bin/ikos -m 64 --analyses=race --concurrency=auto <file.c>   # LP64
-
-The SV-COMP entry point (`bin/svcomp_witness.py`) takes `--data-model ILP32|LP64`
-and forwards it, recording the matching `data_model` in `witness.yml`.
-Its documented default is ILP32; BenchExec forwards the task model when present.
-The entry is executable, supports `--version`, and finds `ikos` in the same bin/.
-Pass `--property FILE.prp` to request no-data-race; other properties are rejected.
+Runtime: the archive targets Linux x86-64 with the declared Ubuntu 24.04 system
+packages and Python. LLVM/abstract-domain libraries are bundled; the archive does
+not promise a native Windows/macOS installation or independence of system libraries.
+User installation and troubleshooting are maintained in the source repository's
+README.md, doc/CONCURRENCY.md, and TROUBLESHOOTING.md.
 
 ## SV-COMP integration
 

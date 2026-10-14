@@ -1,242 +1,136 @@
-IKOS-ConC
-=========
+# IKOS-ConC
 
-IKOS-ConC extends NASA IKOS with data-race analysis for concurrent C programs.
-It combines thread-modular abstract interpretation with bounded SMT confirmation
-of remaining race candidates. See [concurrent analysis](doc/CONCURRENCY.md) for
-usage, the implemented pipeline, and its supported boundaries.
+IKOS-ConC analyzes data races in concurrent C programs. It extends NASA IKOS
+with thread-modular abstract interpretation and bounded SMT confirmation of
+remaining race candidates. Its competition entry targets `no-data-race`.
 
-Build this checkout to use the concurrency extension. The upstream installation
-instructions and IKOS background below describe the original analyzer.
+- [Install and run](#install-and-run): start here.
+- [Concurrent analysis](doc/CONCURRENCY.md): modes, verdicts, supported boundaries,
+  witnesses, and architecture.
+- [Troubleshooting](TROUBLESHOOTING.md): installation errors, inconclusive results,
+  and reproducible bug reports.
 
-[![License](https://img.shields.io/badge/license-NOSA%201.3-blue.svg)](LICENSE.pdf)
-[![Release](https://img.shields.io/badge/release-v3.5-orange.svg)](https://github.com/NASA-SW-VnV/ikos/releases/tag/v3.5)
-[![Linux Build](https://github.com/NASA-SW-VnV/ikos/actions/workflows/build-linux.yml/badge.svg)](https://github.com/NASA-SW-VnV/ikos/actions/workflows/build-linux.yml)
-[![MacOS Build](https://github.com/NASA-SW-VnV/ikos/actions/workflows/build-macos.yml/badge.svg)](https://github.com/NASA-SW-VnV/ikos/actions/workflows/build-macos.yml)
+## Install and run
 
-IKOS (Inference Kernel for Open Static Analyzers) is a static analyzer for C/C++ based on the theory of Abstract Interpretation.
+### Use the competition archive
 
-Introduction
-------------
+The registered archive is available at
+[Zenodo, DOI 10.5281/zenodo.23122650](https://doi.org/10.5281/zenodo.23122650).
+It targets **Linux x86-64 with Ubuntu 24.04 runtime packages**; Windows users can
+use an Ubuntu WSL2 environment. This archive identifies its own source revision
+and runtime hashes in `BUILD-INFO.json`. A newer development branch does not
+update an already published archive.
 
-IKOS started as a C++ library designed to facilitate the development of sound static analyzers based on [Abstract Interpretation](https://www.di.ens.fr/~cousot/AI/IntroAbsInt.html). Specialization of a static analyzer for an application or family of applications is critical for achieving both precision and scalability. Developing such an analyzer is arduous and requires significant expertise in Abstract Interpretation.
+On Ubuntu 24.04, install the archive's declared runtime dependencies:
 
-IKOS provides a generic and efficient implementation of state-of-the-art Abstract Interpretation data structures and algorithms, such as control-flow graphs, fixpoint iterators, numerical abstract domains, etc. IKOS is independent of a particular programming language.
-
-IKOS also provides a C and C++ static analyzer based on [LLVM](https://llvm.org). It implements scalable analyses for detecting and proving the absence of runtime errors in C and C++ programs.
-
-License
--------
-
-IKOS has been released under the NASA Open Source Agreement version 1.3, see [LICENSE.pdf](LICENSE.pdf)
-
-Contact
--------
-
-ikos@lists.nasa.gov
-
-Release notes
--------------
-
-See [Releases](https://github.com/NASA-SW-VnV/ikos/releases).
-
-Troubleshooting
----------------
-
-See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-
-Installation
-------------
-
-To install IKOS on **Linux** or **macOS**, we recommend to use **[Homebrew](https://brew.sh/)**.
-
-First, install **Homebrew** by following [these instructions](https://docs.brew.sh/Installation).
-
-Then, simply run:
-```
-$ brew install nasa-sw-vnv/core/ikos
+```bash
+sudo apt-get update
+sudo apt-get install --yes \
+  unzip python3 libc6-dev libc6-dev-i386 lib32gcc-13-dev \
+  libgmp10 libgmpxx4ldbl libmpfr6 libppl14 \
+  libboost-filesystem1.83.0 libboost-thread1.83.0 libtbb12 \
+  libsqlite3-0 libtinfo6 libz1 libz3-4 libicu74 libxml2 libffi8 \
+  libedit2 libbsd0 liblzma5 libmd0
 ```
 
-For Windows, consider using [Windows Subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/install).
+Download `ikos-conc.zip` from the record, then unpack and check it:
 
-How to run IKOS
----------------
-
-Suppose we want to analyze the following C program in a file, called *loop.c*:
-
-```c
- 1: #include <stdio.h>
- 2: int a[10];
- 3: int main(int argc, char *argv[]) {
- 4:     size_t i = 0;
- 5:     for (;i < 10; i++) {
- 6:         a[i] = i;
- 7:     }
- 8:     a[i] = i;
- 9:     printf("%i", a[i]);
-10: }
+```bash
+unzip ikos-conc.zip
+cd ikos-conc
+./smoketest.sh
+./bin/svcomp_witness.py --data-model LP64 --out witness.yml examples/smoke.c
 ```
 
-To analyze this program with IKOS, simply run:
+The smoke test checks race and mutex-protected examples in ILP32 and LP64, using
+the real entry point. It checks witness output, not independent witness validity.
+The archive bundles LLVM and abstract-domain libraries but still uses system
+Python and runtime libraries. There is no separate published container image
+promised by these instructions.
 
-```
-$ ikos loop.c
-```
+To analyze your input, replace `examples/smoke.c` with its path. Choose ILP32 or
+LP64 to match the program's target or task definition. The wrapper accepts C
+`.c` and preprocessed `.i` files, confirms supported races, and writes the
+requested witness only for a confirmed race. Use a different `--out` path for
+each task; an old output at that path is removed before analysis.
 
-You shall see the following output. IKOS reports two occurrences of buffer overflow at line 8 and 9.
+### Build from source
 
-```
-[*] Compiling loop.c
-[*] Running ikos preprocessor
-[*] Running ikos analyzer
-[*] Translating LLVM bitcode to AR
-[*] Running liveness analysis
-[*] Running widening hint analysis
-[*] Running interprocedural value analysis
-[*] Analyzing entry point 'main'
-[*] Checking properties for entry point 'main'
+Use this repository for the concurrency extension. The upstream command
+`brew install nasa-sw-vnv/core/ikos` installs NASA IKOS, not IKOS-ConC.
+The `concurrency` branch is a development branch; fix a reviewed commit when
+reproducing results or distributing a build.
 
-# Time stats:
-clang        : 0.037 sec
-ikos-analyzer: 0.023 sec
-ikos-pp      : 0.007 sec
+On Ubuntu 24.04, install the build and dual-ABI header dependencies:
 
-# Summary:
-Total number of checks                : 7
-Total number of unreachable checks    : 0
-Total number of safe checks           : 5
-Total number of definite unsafe checks: 2
-Total number of warnings              : 0
+```bash
+sudo apt-get update
+sudo apt-get install --yes \
+  build-essential cmake python3 python3-venv python3-pip \
+  libgmp-dev libboost-filesystem-dev libboost-system-dev \
+  libboost-thread-dev libboost-test-dev libsqlite3-dev libtbb-dev \
+  libz-dev libedit-dev libz3-dev \
+  llvm-14 llvm-14-dev llvm-14-tools clang-14 \
+  libc6-dev-i386 lib32gcc-13-dev
 
-The program is definitely UNSAFE
-
-# Results
-loop.c: In function 'main':
-loop.c:8:10: error: buffer overflow, trying to access index 10 of global variable 'a' of 10 elements
-    a[i] = i;
-         ^
-loop.c: In function 'main':
-loop.c:9:18: error: buffer overflow, trying to access index 10 of global variable 'a' of 10 elements
-    printf("%i", a[i]);
-                 ^
-```
-
-The `ikos` command takes a source file (`.c`, `.cpp`) or a LLVM bitcode file (`.bc`) as input, analyzes it to find runtime errors (also called undefined behaviors), creates a result database `output.db` in the current working directory and prints a report.
-
-In the report, each line has one of the following status:
-
-* **safe**: the statement is proven safe;
-* **error**: the statement always results into an error (or is unreachable);
-* **unreachable**: the statement is never executed;
-* **warning** may mean three things:
-   1. the statement results into an error for some executions, or
-   2. the static analyzer did not have enough information to conclude (check dependent on an external input, for instance), or
-   3. the static analyzer was not powerful enough to prove the absence of errors;
-
-By default, ikos shows warnings and errors directly in your terminal, like a compiler would do.
-
-If the analysis report is too big, you shall use:
-* `ikos-report output.db` to examine the report in your terminal
-* `ikos-view output.db` to examine the report in a web interface
-
-Further information:
-* [Analyze a whole project with ikos-scan](analyzer/README.md#analyze-a-whole-project-with-ikos-scan)
-* [Examine a report with ikos-view](analyzer/README.md#examine-a-report-with-ikos-view)
-* [Analysis Options](analyzer/README.md#analysis-options)
-  - [Checks](analyzer/README.md#checks)
-  - [Numerical abstract domains](analyzer/README.md#numerical-abstract-domains)
-  - [Entry points](analyzer/README.md#entry-points)
-  - [Multi-threading](analyzer/README.md#multi-threading)
-  - [Optimization level](analyzer/README.md#optimization-level)
-  - [Inter-procedural vs Intra-procedural](analyzer/README.md#inter-procedural-vs-intra-procedural)
-  - [Fixpoint engine parameters](analyzer/README.md#fixpoint-engine-parameters)
-  - [Partitioning](analyzer/README.md#partitioning)
-  - [Hardware addresses](analyzer/README.md#hardware-addresses)
-  - [Other analysis options](analyzer/README.md#other-analysis-options)
-* [Report Options](analyzer/README.md#report-options)
-  - [Format](analyzer/README.md#format)
-  - [File](analyzer/README.md#file)
-  - [Status Filter](analyzer/README.md#status-filter)
-  - [Analysis Filter](analyzer/README.md#analysis-filter)
-  - [Verbosity](analyzer/README.md#verbosity)
-  - [Other report options](analyzer/README.md#other-report-options)
-* [APRON Support](analyzer/README.md#apron-support)
-* [Analysis Assumptions](analyzer/README.md#analysis-assumptions)
-* [Analyze an embedded software requiring a cross-compiler](analyzer/README.md#analyze-an-embedded-software-requiring-a-cross-compiler)
-* [Model library functions to reduce warnings](analyzer/README.md#model-library-functions-to-reduce-warnings)
-
-Build from source
------------------
-
-Below are instructions to build IKOS from source.
-This is only for advanced users that want to either package IKOS for an operating system or to experiment with the codebase. Otherwise, please follow the instructions [above](#installation).
-
-### Dependencies
-
-To build and run the analyzer, you will need the following dependencies:
-
-* A C++ compiler that supports C++14 (gcc >= 4.9.2 or clang >= 3.4)
-* CMake >= 3.4.3
-* GMP >= 4.3.1
-* Boost >= 1.55
-* Python >= 3.3
-* SQLite >= 3.6.20
-* TBB >= 2
-* LLVM and Clang 14.0.x
-* (Optional) APRON >= 0.9.10
-
-Most of them can be installed using your package manager.
-
-Note: If you build LLVM from source, you need to enable run-time type information (RTTI).
-
-### Build and Install
-
-Now that you have all the dependencies on your system, you can build and install IKOS.
-
-As you open the IKOS distribution, you shall see the following directory structure:
-
-```
-.
-├── CMakeLists.txt
-├── LICENSE.pdf
-├── README.md
-├── RELEASE_NOTES.md
-├── TROUBLESHOOTING.md
-├── analyzer
-├── ar
-├── cmake
-├── core
-├── doc
-├── frontend
-├── script
-└── test
+git clone --branch concurrency https://github.com/2393591260/ikos-conc.git
+cd ikos-conc
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX="$PWD/install" \
+  -DLLVM_CONFIG_EXECUTABLE=/usr/lib/llvm-14/bin/llvm-config \
+  -DPYTHON_EXECUTABLE=/usr/bin/python3
+cmake --build build -j2
+cmake --install build
+./install/bin/ikos --version
 ```
 
-IKOS uses the CMake build system. You will need to specify an installation directory that will contain all the binaries, libraries and headers after installation. If you do not specify this directory, CMake will install everything under `install` in the root directory of the distribution. In the following steps, we will install IKOS under `/path/to/ikos-install-directory`.
+LLVM/Clang 14 and the Z3 development library are required. APRON is optional;
+install it before configuring if you need its numerical domains. Domain and
+build choices must match when comparing results with another build. Installation
+creates the Python environment and installs the frontend; normal users do not
+need to copy individual binaries or Python modules. Initial installation uses
+Python packages from the network. `-j2` limits concurrent compiler memory use;
+increase it only when the machine has enough memory.
 
-Here are the steps to build and install IKOS:
+Analyze a C file with abstract interpretation and bounded confirmation:
 
-```
-$ mkdir build
-$ cd build
-$ cmake -DCMAKE_INSTALL_PREFIX=/path/to/ikos-install-directory ..
-$ make
-$ make install
-```
-
-Then, add IKOS in your PATH (consider adding this in your .bashrc):
-
-```
-$ PATH="/path/to/ikos-install-directory/bin:$PATH"
+```bash
+IKOS_BMC_RECOVER=1 ./install/bin/ikos \
+  --analyses=race --concurrency=auto --demote-race-to-unknown \
+  -m 64 -o output.db program.c
 ```
 
-### Tests
+This command produces the analyzer report/database. To export a source witness
+from a source checkout, use:
 
-To build and run the tests, simply type:
+```bash
+python3 svcomp_witness.py --ikos "$PWD/install/bin/ikos" \
+  --data-model LP64 --out witness.yml program.c
+```
 
-```
-$ make check
-```
+## Understanding results
+
+| Output | Meaning in the recommended confirmation mode |
+| --- | --- |
+| `The program is SAFE` | No race under the implemented abstract coverage and semantic contracts |
+| `The program is definitely UNSAFE` | Bounded confirmation found a supported finite race execution |
+| `The program is UNKNOWN` or `potentially UNSAFE` | Inconclusive; a potential race is not a confirmed counterexample |
+| Nonzero exit, signal, or no legal verdict | Execution failure; do not interpret it as SAFE or a race |
+
+A confirmed race and an independently validated witness are different evidence
+levels. Bounded UNSAT, unsupported behavior, and exhausted search never establish
+unbounded safety. This is not complete analysis of arbitrary C/POSIX or every
+weak-memory behavior; see [supported boundaries](doc/CONCURRENCY.md#supported-boundaries).
+
+## License and upstream
+
+IKOS-ConC derives from [NASA IKOS](https://github.com/NASA-SW-VnV/ikos).
+It retains the NASA Open Source Agreement 1.3; see [LICENSE.pdf](LICENSE.pdf).
+Bundled archives also contain third-party notices. Report IKOS-ConC issues at
+[this repository's issue tracker](https://github.com/2393591260/ikos-conc/issues).
+The original numerical analyzer documentation remains in [analyzer/README.md](analyzer/README.md)
+and [doc/OVERVIEW.md](doc/OVERVIEW.md).
 
 Contributors
 ------------

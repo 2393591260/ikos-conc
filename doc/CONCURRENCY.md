@@ -1,122 +1,172 @@
 # Concurrent data-race analysis
 
-IKOS-ConC extends NASA IKOS to analyze data races in concurrent C programs.
-It reuses the LLVM-to-AR frontend, numerical and memory domains, interprocedural
-analysis, and reporting infrastructure. Its SV-COMP entry targets `no-data-race`.
+Start with the [installation and first example](../README.md#install-and-run).
+This guide explains how to use the concurrency extension and interpret its
+results. Installation and failure diagnosis are maintained in the
+[README](../README.md) and [troubleshooting guide](../TROUBLESHOOTING.md).
 
-## Analysis pipeline
+## Analysis modes
 
-1. Clang and the LLVM frontend translate the input into AR instructions, control
-   flow, types, and byte layouts for the selected machine model.
-2. Thread-modular abstract interpretation computes local invariants and shared
-   summaries. Thread creation, joins, locks, and modeled library effects contribute
-   to the concurrent state; changed summaries trigger further analysis.
-3. The data-race checker records shared accesses and conservatively filters pairs
-   using object, byte-range, thread-lifecycle, and synchronization information.
-4. Remaining candidates can be checked by bounded path exploration and a Z3
-   encoding of values, addresses, dynamic instances, and supported synchronization.
-   Abstract facts provide candidate-specific information subject to their contracts.
-5. Confirmed results carry execution evidence. The competition wrapper exports a
-   violation witness in SV-Witnesses format 2.2 for a confirmed race.
+All commands below use the installed frontend, not a binary in the build tree.
+Select `-m 32` for ILP32 or `-m 64` for LP64 to match the input's target.
 
-`SAFE` requires abstract coverage and conservative exclusion of conflicts.
-In competition mode, `definitely UNSAFE` denotes bounded confirmation of a race;
-`UNKNOWN` denotes an inconclusive result. Unsupported semantics, exhausted bounds,
-and bounded UNSAT do not establish unbounded safety. An abstract race warning by
-itself is not a confirmed execution. Failed runs are classified separately.
-
-## Build and run
-
-Configure the build using the [source-build instructions](../README.md#build-from-source).
-The bounded confirmation module also requires Z3. For an already configured build:
+### Abstract safety analysis
 
 ```bash
-cmake --build build --target ikos-analyzer -j"$(nproc)"
-cp build/analyzer/ikos-analyzer install/bin/ikos-analyzer
+env -u IKOS_BMC_RECOVER ./install/bin/ikos \
+  --analyses=race --concurrency=auto --demote-race-to-unknown \
+  -m 64 -o output.db input.c
 ```
 
-After Python frontend changes, synchronize the modified modules with the installed
-Python package as well. `install/bin/ikos` runs the installed analyzer and modules.
+The abstract interpreter tries to prove safety. Unresolved race candidates and
+coverage gaps remain inconclusive. It does not construct a concrete race.
+
+### Abstract analysis with bounded confirmation
 
 ```bash
-# Abstract safety analysis with unresolved race warnings reported as UNKNOWN
-env -u IKOS_BMC_RECOVER install/bin/ikos --analyses=race --concurrency=auto \
-  --demote-race-to-unknown -m 32 input.c
-
-# Abstract analysis followed by bounded confirmation
-IKOS_BMC_RECOVER=1 install/bin/ikos --analyses=race --concurrency=auto \
-  --demote-race-to-unknown -m 32 input.c
+IKOS_BMC_RECOVER=1 ./install/bin/ikos \
+  --analyses=race --concurrency=auto --demote-race-to-unknown \
+  -m 64 -o output.db input.c
 ```
 
-Use `-m 32` for ILP32 and `-m 64` for LP64. The presence of `IKOS_BMC_RECOVER`
-enables recovery; setting it to `0` still enables it. Remove the variable to disable
-recovery. Machine models must match the task definition.
+This is the recommended analyzer mode. The abstract interpreter first excludes
+conflicts where its conservative proofs apply; BMC searches remaining candidates
+for actual finite executions. The environment variable is enabled by presence:
+`IKOS_BMC_RECOVER=0` still enables it. Remove it to disable confirmation.
+The demote option is also required to enter the current confirmation path.
+An abstract warning from another mode is not evidence of an actual race.
 
-For the packaged competition entry:
+### Competition entry and source witnesses
+
+In an unpacked archive:
 
 ```bash
-./bin/svcomp_witness.py --property no-data-race.prp \
-  --data-model ILP32 input.c
+./bin/svcomp_witness.py --data-model ILP32 --out witness.yml input.c
 ```
 
-The property file must specify `CHECK(init(main()), LTL(G ! data-race))`.
-The wrapper locates `ikos` in the same directory and writes `witness.yml` for a
-confirmed race. The [BenchExec adapter](../benchexec/tools/ikos-conc.py) forwards
-the task's property and data model. It classifies abnormal exits or missing verdicts
-as `ERROR`; explicit inconclusive verdicts from successful runs are `UNKNOWN`.
-On failure, the competition wrapper writes error diagnostics to stderr and exits
-nonzero without emitting an analysis verdict.
-Registration metadata is in [fm-tools-entry.yml](../svcomp/fm-tools-entry.yml),
-and the archive builder is [package.py](../svcomp/package.py).
-
-Before updating the registration, install the FM-Tools checker dependencies in an
-isolated environment and run the official checks through the local helper:
+From a source checkout after installation:
 
 ```bash
-python3 -m pip install -r /path/to/fm-tools/ci/requirements.txt
-python3 svcomp/check-fm-entry.py --fm-tools /path/to/fm-tools
+python3 svcomp_witness.py --ikos "$PWD/install/bin/ikos" \
+  --data-model ILP32 --out witness.yml input.c
 ```
 
-The helper checks LF line endings, formatting, sorting, and the 2027 registration
-rules without modifying the entry. Use `--entry FILE` to check the file downloaded
-from the submitted MR as well; a local pass does not verify the uploaded bytes or
-the official archive smoke test.
+The wrapper fixes the analysis to demote plus BMC, accepts `.c`/`.i` inputs,
+and emits a witness in SV-Witnesses format 2.2 for a confirmed race. It defaults
+to ILP32; direct `ikos` defaults to LP64, so specify the model explicitly.
+Use `--property FILE.prp` for a competition task. The supported property is:
 
-## Code navigation
+```text
+CHECK(init(main()), LTL(G ! data-race))
+```
+
+Other properties are rejected. The wrapper locates `ikos` next to itself unless
+`--ikos` is specified. It prints a confirmed verdict only after writing the
+witness. Output files are per invocation: the requested old witness is removed
+before analysis, including unsuccessful runs. Parallel tasks need distinct
+witness paths and analyzer databases.
+
+## Results and evidence
+
+- **SAFE:** abstract coverage and conservative exclusion of all conflicts under
+  the supported contract. Missing accesses or incomplete effects cannot justify SAFE.
+- **Confirmed race:** an encoded finite execution reaches conflicting accesses
+  with the required values, objects, instances, and synchronization. In the
+  recommended mode it is printed as `definitely UNSAFE`.
+- **Potential race / UNKNOWN:** inconclusive. Abstract candidates alone,
+  bounded UNSAT, truncation, unsupported operations, and solver unknown do not
+  establish either safety or a confirmed race.
+- **Execution failure:** a nonzero exit, signal, or missing legal output is an
+  error. BenchExec handles external resource termination separately.
+
+To save analyzer details, add `--format=json --report-file=report.json` to an
+`ikos` command. The report contains per-check information and structured BMC
+outcomes. `IKOS_BMC_DIAGNOSTICS=1` enables more detailed candidate diagnostics;
+these may be large. A group may have several unsuccessful search reasons.
+
+Confirmed executions can be checked offline by
+`scripts/validate_bmc_execution.py`. This interprets exported AR executions under
+explicit frontend and library assumptions. A normal run does not automatically
+receive that acceptance. Witness format validity, AR acceptance, and acceptance
+by an independent source-level validator must be reported separately.
+An independent tool finding another race does not validate this tool's witness.
+
+## Supported boundaries
+
+The current target is concurrent C data-race analysis. Support depends on the
+implemented operation and library contracts; it is not a blanket guarantee for
+all C/POSIX programs.
+
+| Area | Current scope and boundary |
+| --- | --- |
+| Input and layout | C via LLVM/Clang 14 and AR; explicit ILP32/LP64; competition wrapper accepts `.c`/`.i` |
+| Memory model | BMC models its supported sequentially consistent executions; complete C11 weak-memory behavior is not implemented |
+| Threads | Modeled pthread creation/join and finite dynamic instances; arbitrary creator trees and dynamic handle structures remain limited |
+| Synchronization | Supported mutex/atomic/other library contracts; pthread attributes, failures, and ownership must satisfy their modeled premises |
+| Objects | Global and supported stack/heap/pointer sources, byte ranges and access widths; general heap graphs, escape and lifetime remain limited |
+| Unknown effects | Conservative coverage boundaries or explicit import/execution errors; omitted effects do not prove SAFE |
+| Other properties | Original IKOS analyses remain available; deadlock/reachability are not claimed as complete concurrency properties |
+
+AI and BMC have different coverage responsibilities. A fact sufficient to exclude
+all conflicts is not necessarily a concrete value source for a BMC execution.
+
+## Resource limits
+
+The local benchmark script defaults to 30 seconds of **wall time** per task.
+BMC has an approximately 10-second cooperative search deadline, per-query SMT
+limits, and independent path/event/loop bounds. The BMC deadline starts after
+abstract analysis; it is not a hard limit on the entire program run. Current
+internal limits do not have runtime CLI options. Increasing the benchmark
+script's timeout does not increase these internal bounds.
+
+These are engineering defaults, not competition requirements. Competition
+acceptance must use the actual BenchExec CPU, memory, core, and task configuration.
+Record both the resource configuration and tool identity when comparing results.
+
+## Architecture and code navigation
+
+The pipeline is C/LLVM → AR → thread-modular abstract interpretation → access
+records and conservative conflict filtering → candidate-driven BMC → result
+and execution evidence. Shared-summary changes trigger thread reanalysis;
+bounded search is used to confirm races, not to prove unbounded safety.
 
 | Component | Source |
 | --- | --- |
-| Race records, candidate filters, confirmation dispatch | `analyzer/src/checker/data_race.cpp` |
-| Thread-modular driver and shared-summary iteration | `analyzer/src/analysis/value/thread_modular.cpp` |
+| Concurrent worklist and shared-summary iteration | `analyzer/src/analysis/value/thread_modular.cpp` |
 | Concurrent library transfers | `analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp` |
-| Shared abstract environment | `core/include/ikos/core/domain/concurrent_global_env.hpp` |
-| Lock and thread facts | `core/include/ikos/core/domain/lockset/lockset_domain.hpp` |
-| Bounded exploration, SMT, facts, and evidence | `analyzer/include/ikos/analyzer/analysis/bmc/` |
+| Shared environment and lock/thread facts | `core/include/ikos/core/domain/concurrent_global_env.hpp`, `lockset/lockset_domain.hpp` |
+| Access records, conservative filters and dispatch | `analyzer/src/checker/data_race.cpp` |
+| Bounded exploration, values, addresses, synchronization and evidence | `analyzer/include/ikos/analyzer/analysis/bmc/` |
 | Independent exported AR execution checks | `scripts/validate_bmc_execution.py` |
-| Witness export | `svcomp_witness.py` |
+| Source witness export and BenchExec interface | `svcomp_witness.py`, `benchexec/tools/ikos-conc.py` |
 
-## Validation and boundaries
+Original IKOS numerical analyses and general parameters are described in
+[analyzer/README.md](../analyzer/README.md). Keep property queries separate from
+reusable thread and memory semantics.
 
-The original soundness regression cases and their controls are retained in
-[review-repros](../docs/review-repros/). They cover shared guard values, publication
-before initialization, and overlapping access widths:
+## Validation and reproducibility
+
+The original soundness regression cases and their controls are in
+[review-repros](../docs/review-repros/). For an installed source checkout:
 
 ```bash
 python3 docs/review-repros/bmc-2026-10-08/run.py --bits 32
 python3 docs/review-repros/bmc-2026-10-08/run.py --bits 64
 ```
 
-For a supplied benchmark checkout, the task runner reads YAML expectations and
-machine models. Use a fixed revision and report timeouts and failures separately:
+For a fixed external benchmark checkout:
 
 ```bash
 IKOS_BMC_RECOVER=1 python3 svcomp_race_test.py /path/to/sv-benchmarks \
-  --demote --jobs 4 --timeout 30
+  --ikos "$PWD/install/bin/ikos" --demote --jobs 4 --timeout 30
 ```
 
-Support depends on the implemented library, memory, frontend, and bounded-execution
-contracts; this is not complete analysis of arbitrary C/POSIX or all weak-memory
-behaviors. Independent AR checks validate selected exported executions under their
-frontend and API assumptions. They do not certify every SMT model, every SAFE rule,
-or acceptance of source-level witnesses by an official validator. Zero observed
-benchmark errors are not a proof of soundness for all programs.
+This measures the analyzer under a local wall limit, not the entire competition
+wrapper or official CPU budget. Record source revision, binary/frontend hashes,
+input revision, ABI, flags, environment, resource limits, and validator version.
+Finite zero FP/FN observations do not prove soundness for all programs.
+
+For FM-Tools registration changes, use the official checks through
+`svcomp/check-fm-entry.py --fm-tools /path/to/fm-tools`. It checks LF, formatting,
+sorting, and 2027 registration rules. Verify uploaded bytes and archive behavior
+separately; a local pass is not an official CI or witness acceptance.

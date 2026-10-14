@@ -1,12 +1,14 @@
 Troubleshooting
 ===============
 
-This document covers some common issues with IKOS, and how to solve them.
+Start with the [IKOS-ConC quick start](README.md#install-and-run) and
+[concurrent analysis guide](doc/CONCURRENCY.md). The issues below distinguish
+installation failures, inconclusive analysis, and unsupported behavior.
 
 Contact
 -------
 
-ikos@lists.nasa.gov
+[IKOS-ConC issue tracker](https://github.com/2393591260/ikos-conc/issues)
 
 Installation issues
 -------------------
@@ -93,4 +95,49 @@ The Buffer Overflow Analysis (BOA) in IKOS handles `__memset_chk()`, `__memcpy_c
 
 ### Analyzing multi-threaded code
 
-IKOS does not handle analyzing multi-threaded code. Handling multi-threaded code in a sound static analyzer based on Abstract Interpretation (such as IKOS) is challenging and an ongoing research topic.
+IKOS-ConC adds concurrent C data-race analysis. Use the recommended
+[demote+BMC or witness entry](doc/CONCURRENCY.md#analysis-modes), not an upstream
+IKOS installation. Consult the supported boundaries before interpreting a result.
+
+### Missing Z3 or Python installation dependencies
+
+Install `libz3-dev` when building on Ubuntu. Z3 is required even if a particular
+run disables BMC. Use LLVM/Clang 14. Python source installation also requires
+`python3-venv` and network access for its initial package installation. An
+installed archive instead uses system Python and its declared runtime libraries.
+If `ikos` cannot import its modules, rerun the complete source installation and
+check the actual executable path; do not mix modules from another installation.
+
+### UNKNOWN or potentially UNSAFE
+
+These are inconclusive outcomes, not proof of a race or race freedom. Save a
+report with `--format=json --report-file=report.json`; inspect per-check coverage
+reasons and BMC outcomes. If needed, enable `IKOS_BMC_DIAGNOSTICS=1`. Distinguish
+unsupported semantics, bounded search without a counterexample, structural
+truncation, solver unknown, and search-budget exhaustion. Multiple blockers may
+apply to one task.
+
+### Raising an external timeout did not help
+
+The benchmark script's wall timeout is separate from BMC's cooperative deadline,
+per-query SMT timeout, and structural limits. Internal limits currently have no
+runtime CLI options. Increasing external time does not add missing semantics or
+remove those limits. Official performance evaluation needs the actual BenchExec
+resource configuration, not an assumed wall-time equivalent.
+
+### No witness was written
+
+Only the wrapper exports a witness, and only for a confirmed race. SAFE and
+inconclusive runs do not generate a violation witness. The wrapper removes the
+requested old output before analysis, so use a distinct output path for every
+run. A nonzero exit means analysis or witness export failed; inspect stderr.
+Witness format validity does not establish source-level validity.
+
+### Reproducing an issue
+
+Open an issue with a minimal C/.i input that can be shared, the exact command,
+stdout/stderr and exit status, machine model, tool version/commit or archive
+BUILD-INFO, OS, and relevant limits. Include a report when available; do not post
+credentials or unrelated local material. State whether the failure is in the
+analyzer, wrapper, or independent validator. Keep the input and configuration
+unchanged when comparing versions.
