@@ -110,6 +110,8 @@ endif()
 
 # Z3 SMT solver (for the bounded model checking race checker)
 find_library(Z3_LIB z3 REQUIRED)
+find_path(Z3_INCLUDE_DIR z3++.h REQUIRED)
+include_directories(SYSTEM ${Z3_INCLUDE_DIR})
 
 find_package(PythonInterp REQUIRED)
 
@@ -351,17 +353,33 @@ option(PYTHON_VENV_EXECUTABLE "Path to the python executable of an existing virt
 if (INSTALL_PYTHON_VIRTUALENV)
   install(CODE "
     message(STATUS \"Running python -m venv ${CMAKE_INSTALL_PREFIX}/libexec\")
-    execute_process(COMMAND \"${PYTHON_EXECUTABLE}\" -m venv \"${CMAKE_INSTALL_PREFIX}/libexec\")
+    execute_process(COMMAND \"${PYTHON_EXECUTABLE}\" -m venv \"${CMAKE_INSTALL_PREFIX}/libexec\"
+                    RESULT_VARIABLE ikos_python_install_status)
+    if (NOT ikos_python_install_status EQUAL 0)
+      message(FATAL_ERROR \"Cannot create the IKOS Python environment; check python3-venv.\")
+    endif()
 
     message(STATUS \"Running ${CMAKE_INSTALL_PREFIX}/libexec/bin/python -m pip install -U pip\")
-    execute_process(COMMAND \"${CMAKE_INSTALL_PREFIX}/libexec/bin/python\" -m pip install -U pip)
+    execute_process(COMMAND \"${CMAKE_INSTALL_PREFIX}/libexec/bin/python\" -m pip install -U pip
+                    RESULT_VARIABLE ikos_python_install_status)
+    if (NOT ikos_python_install_status EQUAL 0)
+      message(FATAL_ERROR \"Cannot install pip in the IKOS Python environment.\")
+    endif()
 
     message(STATUS \"Running ${CMAKE_INSTALL_PREFIX}/libexec/bin/python -m pip install -U pygments setuptools\")
-    execute_process(COMMAND \"${CMAKE_INSTALL_PREFIX}/libexec/bin/python\" -m pip install pygments setuptools)
+    execute_process(COMMAND \"${CMAKE_INSTALL_PREFIX}/libexec/bin/python\" -m pip install pygments setuptools
+                    RESULT_VARIABLE ikos_python_install_status)
+    if (NOT ikos_python_install_status EQUAL 0)
+      message(FATAL_ERROR \"Cannot install the IKOS Python dependencies.\")
+    endif()
 
     message(STATUS \"Running ${CMAKE_INSTALL_PREFIX}/libexec/bin/python -m pip install .\")
     execute_process(COMMAND \"${CMAKE_INSTALL_PREFIX}/libexec/bin/python\" -m pip install .
-                    WORKING_DIRECTORY \"${CMAKE_CURRENT_BINARY_DIR}/python\")
+                    WORKING_DIRECTORY \"${CMAKE_CURRENT_BINARY_DIR}/python\"
+                    RESULT_VARIABLE ikos_python_install_status)
+    if (NOT ikos_python_install_status EQUAL 0)
+      message(FATAL_ERROR \"Cannot install the IKOS Python frontend.\")
+    endif()
   ")
   set(PYTHON_VENV_EXECUTABLE "${CMAKE_INSTALL_PREFIX}/libexec/bin/python")
 else()
@@ -377,6 +395,7 @@ install(DIRECTORY python/ikos/view DESTINATION share/ikos)
 # python scripts
 configure_file(script/ikos.py.in script/ikos @ONLY)
 install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/script/ikos" DESTINATION bin)
+install(PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/../svcomp_witness.py" DESTINATION bin)
 
 configure_file(script/ikos-config.py.in script/ikos-config @ONLY)
 install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/script/ikos-config" DESTINATION bin)

@@ -105,7 +105,7 @@ This command produces the analyzer report/database. To export a source witness
 from a source checkout, use:
 
 ```bash
-python3 svcomp_witness.py --ikos "$PWD/install/bin/ikos" \
+./install/bin/svcomp_witness.py \
   --data-model LP64 --out witness.yml program.c
 ```
 

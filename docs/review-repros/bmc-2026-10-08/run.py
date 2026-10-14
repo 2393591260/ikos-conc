@@ -42,6 +42,19 @@ def main():
                 observations.append(dict(source=source.name, mode=mode,
                                          data_model='ILP32' if args.bits == '32' else 'LP64',
                                          exit_code=exit_code, verdict=verdict))
+                assert exit_code == 0, observations[-1]
+                inconclusive = ('The program is potentially UNSAFE',
+                                'The program is UNKNOWN')
+                if source.stem == 'exclusive-flag':
+                    assert verdict in inconclusive, observations[-1]
+                elif mode == 'default':
+                    assert verdict in inconclusive, observations[-1]
+                elif source.stem.startswith('overlapping-widths'):
+                    assert verdict == 'The program is definitely UNSAFE', observations[-1]
+                else:
+                    # Publication/lifetime coverage may prevent confirmation;
+                    # a racy input must never be called SAFE.
+                    assert verdict in (*inconclusive, 'The program is definitely UNSAFE'), observations[-1]
                 print(f'{source.name} [{mode}]: {verdict}', flush=True)
     print(json.dumps(observations, ensure_ascii=False, indent=2))
 

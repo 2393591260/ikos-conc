@@ -28,11 +28,12 @@ from pathlib import Path
 VERDICT_SAFE = "Safe"
 VERDICT_RACE = "Race Found"
 VERDICT_UNKNOWN = "Unknown"
-RE_SAFE = re.compile(r"\bThe program is SAFE\b")
-RE_RACE = re.compile(r"\bpotential data race\b", re.IGNORECASE)
-RE_DEF_UNSAFE = re.compile(r"\bThe program is definitely UNSAFE\b")
-RE_POT_UNSAFE = re.compile(r"\bThe program is potentially UNSAFE\b")
-RE_UNKNOWN = re.compile(r"\bThe program is UNKNOWN\b")
+VERDICT_LINES = {
+    "The program is SAFE": VERDICT_SAFE,
+    "The program is definitely UNSAFE": VERDICT_RACE,
+    "The program is potentially UNSAFE": VERDICT_UNKNOWN,
+    "The program is UNKNOWN": VERDICT_UNKNOWN,
+}
 
 # concurrency directories in sv-benchmarks/c that carry no-data-race tasks
 CONCURRENCY_DIRS = [
@@ -85,18 +86,13 @@ def classify(output: str, returncode: int, timed_out: bool) -> str:
         return "Error (timeout)"
     if returncode != 0:
         return f"Error (exit {returncode})"
-    # Check the AUTHORITATIVE verdict line first. The per-check
-    # "potential data race" text appears in BOTH race and unknown outputs, so
-    # it must only be a fallback.
-    if RE_DEF_UNSAFE.search(output):
-        return VERDICT_RACE
-    if RE_UNKNOWN.search(output) or RE_POT_UNSAFE.search(output):
-        return VERDICT_UNKNOWN
-    if RE_SAFE.search(output):
-        return VERDICT_SAFE
-    if RE_RACE.search(output):
-        return VERDICT_RACE
-    return "Error (unrecognized)"
+    # Per-check diagnostics cannot substitute for a complete verdict line.
+    output = re.sub(r"\x1b\[[0-9;]*m", "", output)
+    verdicts = {VERDICT_LINES[line] for line in output.splitlines()
+                if line in VERDICT_LINES}
+    if len(verdicts) != 1:
+        return "Error (conflicting verdicts)" if verdicts else "Error (unrecognized)"
+    return verdicts.pop()
 
 
 def run_one(src: Path, ikos: Path, timeout_sec: int, out_db: Path, concurrency: str,
@@ -128,7 +124,7 @@ def main(argv) -> int:
                     default=Path("/home/ruan/sv-benchmarks-2026"),
                     help="sv-benchmarks checkout root (default: 2026 freeze)")
     ap.add_argument("--ikos", type=Path,
-                    default=Path("/home/ruan/ikos-conc/install/bin/ikos"))
+                    default=Path(__file__).resolve().parent / "install/bin/ikos")
     ap.add_argument("--timeout", type=int, default=30)
     ap.add_argument("--jobs", type=int, default=8)
     ap.add_argument("--concurrency", default="auto", choices=["auto", "on", "off"])

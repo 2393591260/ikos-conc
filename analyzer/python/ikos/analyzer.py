@@ -179,9 +179,9 @@ def parse_arguments(argv):
                           dest='demote_race_to_unknown',
                           action='store_true',
                           default=False,
-                          help="Report every data race as UNKNOWN instead of "
-                               "'definitely unsafe'. Sound for FN=0 (UNKNOWN is "
-                               "never SAFE); avoids the SV-COMP FP penalty.")
+                          help="Keep unresolved race candidates inconclusive; "
+                               "required for bounded race confirmation with "
+                               "IKOS_BMC_RECOVER enabled.")
     analysis.add_argument('-j', '--jobs',
                           dest='jobs',
                           metavar='',

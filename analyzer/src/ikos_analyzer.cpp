@@ -458,10 +458,8 @@ static llvm::cl::opt< bool > EmitConcurrencyInvariants(
 
 static llvm::cl::opt< bool > DemoteRaceToUnknown(
     "demote-race-to-unknown",
-    llvm::cl::desc("Report every data race as UNKNOWN (not 'definitely "
-                   "unsafe'). Sound for FN=0: UNKNOWN is never SAFE. For "
-                   "SV-COMP scoring, avoids the -16 FP penalty on races the "
-                   "abstract model cannot prove are real."),
+    llvm::cl::desc("Keep unresolved race candidates inconclusive; required "
+                   "for bounded race confirmation with IKOS_BMC_RECOVER enabled."),
     llvm::cl::init(false),
     llvm::cl::cat(AnalysisCategory));
 

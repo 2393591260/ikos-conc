@@ -2211,9 +2211,9 @@ DataRaceChecker::~DataRaceChecker() {
 
     this->_checks.insert(CheckKind::DataRace,
                          CheckerName::DataRace,
-                         (group_is_unknown ||
-                          (this->_ctx.opts.demote_race_to_unknown &&
-                           !bmc_confirmed))
+                         // Abstract candidates do not establish a real race,
+                         // including when bounded confirmation is disabled.
+                         (group_is_unknown || !bmc_confirmed)
                              ? Result::Warning
                              : Result::Error,
                          selected->report_stmt,

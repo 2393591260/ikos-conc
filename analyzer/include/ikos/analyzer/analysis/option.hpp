@@ -360,15 +360,10 @@ public:
   /// analysis. Useful for debugging and for the plugin's observability hook.
   bool emit_concurrency_invariants;
 
-  /// \brief Demote every data-race report to an "unknown" (Result::Warning)
-  /// verdict instead of "definitely unsafe" (Result::Error). The abstract
-  /// thread-modular model cannot reliably separate a REAL race from a false
-  /// positive caused by an unmodelled synchronization (acquire/release,
-  /// per-thread array slots, region disjointness), so for SV-COMP scoring it
-  /// is better to report UNKNOWN (0 points) than FALSE (-16 per wrong answer).
-  /// Never produces a FN: UNKNOWN is not SAFE. The race REPORT is still
-  /// emitted (and the witness generation still sees it); only the verdict is
-  /// demoted. Opt-in via --demote-race-to-unknown.
+  /// \brief Enable the optional BMC confirmation path when IKOS_BMC_RECOVER
+  /// is present. Unconfirmed abstract race reports remain warnings in all
+  /// modes; only a supported concrete execution licenses Result::Error.
+  /// Retain the historical flag name for command-line compatibility.
   bool demote_race_to_unknown;
 
   /// \brief Hardware addresses

@@ -35,6 +35,8 @@ for actual finite executions. The environment variable is enabled by presence:
 `IKOS_BMC_RECOVER=0` still enables it. Remove it to disable confirmation.
 The demote option is also required to enter the current confirmation path.
 An abstract warning from another mode is not evidence of an actual race.
+Without confirmation, unresolved candidates are reported as warnings rather
+than definite races. This applies to the ordinary non-demote mode as well.
 
 ### Competition entry and source witnesses
 
@@ -47,7 +49,7 @@ In an unpacked archive:
 From a source checkout after installation:
 
 ```bash
-python3 svcomp_witness.py --ikos "$PWD/install/bin/ikos" \
+./install/bin/svcomp_witness.py \
   --data-model ILP32 --out witness.yml input.c
 ```
 

@@ -10,7 +10,6 @@ introduced by switching on the relational backend.
 from __future__ import annotations
 
 import argparse
-import re
 import subprocess
 import sys
 import time
@@ -20,12 +19,7 @@ from pathlib import Path
 from typing import Optional
 
 
-VERDICT_SAFE = "Safe"
-VERDICT_RACE = "Race Found"
-VERDICT_UNKNOWN = "Unknown"
-RE_SAFE = re.compile(r"\bThe program is SAFE\b")
-RE_RACE = re.compile(r"\bpotential data race\b", re.IGNORECASE)
-RE_UNKNOWN = re.compile(r"\bThe program is UNKNOWN\b")
+from svcomp_race_test import VERDICT_SAFE, VERDICT_RACE, VERDICT_UNKNOWN, classify
 
 
 def expected_verdict_from_yaml(yml: Path) -> Optional[str]:
@@ -80,22 +74,6 @@ def source_from_yaml(yml: Path) -> Optional[Path]:
                 if alt.is_file():
                     return alt
     return None
-
-
-def classify(output: str, returncode: int, timed_out: bool) -> str:
-    if timed_out:
-        return "Error (timeout)"
-    if returncode != 0:
-        return f"Error (exit {returncode})"
-    # "The program is UNKNOWN" must take precedence over the per-check
-    # "potential data race" text (which also appears in unknown reports).
-    if RE_UNKNOWN.search(output):
-        return VERDICT_UNKNOWN
-    if RE_RACE.search(output):
-        return VERDICT_RACE
-    if RE_SAFE.search(output):
-        return VERDICT_SAFE
-    return "Error (unrecognized)"
 
 
 def run_one(source: Path, ikos: Path, mode: str, timeout_sec: int):
