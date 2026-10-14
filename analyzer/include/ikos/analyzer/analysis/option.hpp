@@ -367,7 +367,9 @@ public:
   bool demote_race_to_unknown;
 
   /// BMC's cooperative deadline and per-direction SMT timeout, in milliseconds.
-  unsigned bmc_deadline_ms = 10000;
+  /// 20s recovers deadline-marginal confirmations (e.g. ring_1w1r-2 spin-loop)
+  /// that 10s clipped; still well under the 30s local wall and 900s official CPU.
+  unsigned bmc_deadline_ms = 20000;
   unsigned bmc_solver_timeout_ms = 1000;
 
   /// \brief Hardware addresses

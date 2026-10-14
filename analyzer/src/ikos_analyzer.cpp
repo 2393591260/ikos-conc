@@ -466,8 +466,8 @@ static llvm::cl::opt< bool > DemoteRaceToUnknown(
 static llvm::cl::opt< unsigned > BmcDeadlineMs(
     "bmc-deadline-ms",
     llvm::cl::desc("Cooperative BMC confirmation deadline in milliseconds "
-                   "(default: 10000; 0 disables confirmation searches)"),
-    llvm::cl::init(10000),
+                   "(default: 20000; 0 disables confirmation searches)"),
+    llvm::cl::init(20000),
     llvm::cl::cat(AnalysisCategory));
 
 static llvm::cl::opt< unsigned > BmcSolverTimeoutMs(

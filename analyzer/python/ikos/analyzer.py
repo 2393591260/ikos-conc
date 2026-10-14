@@ -186,7 +186,7 @@ def parse_arguments(argv):
                           type=args.Integer(min=0, max=4294967295),
                           default=None,
                           help='Cooperative BMC confirmation deadline in milliseconds '
-                               '(default: 10000; 0 disables confirmation searches)')
+                               '(default: 20000; 0 disables confirmation searches)')
     analysis.add_argument('--bmc-solver-timeout-ms',
                           type=args.Integer(min=1, max=4294967295),
                           default=None,
