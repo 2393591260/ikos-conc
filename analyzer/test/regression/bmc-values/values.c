@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <stdio.h>
+#include <stdint.h>
 extern int __VERIFIER_nondet_int(void);
 extern unsigned __VERIFIER_nondet_uint(void);
+extern unsigned long long __VERIFIER_nondet_ulonglong(void);
 #ifndef CASE
 #define CASE 0
 #endif
@@ -24,7 +26,21 @@ void assume_wrapper(int x) {if (!x) abort();}
 int stack_value(int initialize) {volatile int x; if (initialize) x = 7; return x;}
 void locked_write(pthread_mutex_t* m) {pthread_mutex_lock(m); payload++; pthread_mutex_unlock(m);}
 void* first(void* arg) {
-#if CASE == 0 || CASE == 1
+#if CASE >= 56 && CASE <= 65
+#if CASE == 57 || CASE == 58
+  if ((intptr_t)arg != -1) return 0;
+#elif CASE == 59
+  if ((uintptr_t)arg != 8) return 0;
+#elif CASE == 62
+  if ((unsigned long long)arg != 4294967297ULL) return 0;
+#elif CASE == 63
+  if ((uintptr_t)arg != 1) return 0;
+#elif CASE == 64
+  *(int *)arg = 1; return 0;
+#else
+  if ((uintptr_t)arg != 7) return 0;
+#endif
+#elif CASE == 0 || CASE == 1
   if (selector != 0) return 0;
 #elif CASE == 2
   int x = __VERIFIER_nondet_int(); if (x < 0 || x > 10) return 0;
@@ -179,7 +195,37 @@ void* second(void* arg) {
 }
 int main(void) {
   pthread_t a, b;
-#if CASE == 47 || CASE == 48
+#if CASE >= 56 && CASE <= 65
+#if CASE == 57
+  intptr_t value = __VERIFIER_nondet_int(); if (value != -1) return 0;
+#elif CASE == 58
+  uintptr_t value = __VERIFIER_nondet_ulonglong();
+  if (value != (uintptr_t)-1) return 0;
+#elif CASE == 62 || CASE == 63
+  unsigned long long value = __VERIFIER_nondet_ulonglong();
+  if (value != 4294967297ULL) return 0;
+#elif CASE == 64
+  uintptr_t value = __VERIFIER_nondet_uint(); if (value != 7) return 0;
+#else
+  uintptr_t value = __VERIFIER_nondet_uint(); if (value != 7) return 0;
+#endif
+#if CASE == 65
+  // Each repeated cast/call captures the current loop occurrence.
+  for (uintptr_t i = 7; i < 9; ++i)
+    pthread_create(&a, 0, first, (void *)i);
+#else
+  pthread_create(&a, 0, first, (void *)value);
+#endif
+#if CASE == 60
+  uintptr_t different = value + 1;
+  pthread_create(&b, 0, first, (void *)different);
+#elif CASE == 61
+  pthread_create(&b, 0, first, (void *)value);
+#else
+  pthread_create(&b, 0, second, 0);
+#endif
+  return 0;
+#elif CASE == 47 || CASE == 48
   selector =
 #if CASE == 47
       0

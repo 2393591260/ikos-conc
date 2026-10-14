@@ -814,18 +814,23 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       auto* src = core::dyn_cast< ar::IntegerType >(un->operand()->type());
       auto* dst = core::dyn_cast< ar::IntegerType >(iv->type());
       if (src == nullptr || dst == nullptr) {
-        // ptrtoint round-trip: the thread-entry `arg` formal was passed
-        // `(void*)i` (an inttoptr SIToPtr/UIToPtr), so its integer value is `i`
-        // (floating_read-{5,10,15,20}: worker does `x = (intptr_t)arg`).
+        // Only a native-width integer round-trip has this bit-pattern identity.
+        // Capture its executed definition before the actual creation occurrence.
         if (dst != nullptr &&
             (un->op() == ar::UnaryOperation::PtrToSI ||
              un->op() == ar::UnaryOperation::PtrToUI)) {
           const auto& trace = traces[id];
           if (trace.root != nullptr && trace.root->num_parameters() == 1 &&
               trace.root->param(0) == un->operand() &&
-              trace.argument.value != nullptr) {
+              trace.argument.value != nullptr &&
+              trace.creator_path < caches.size() &&
+              trace.creator_step < traces[trace.creator_path].events.size()) {
             auto* piv = core::dyn_cast< ar::InternalVariable >(trace.argument.value);
-            ar::Statement* pdef = piv != nullptr ? unique_def_bmc(piv) : nullptr;
+            std::size_t argument_step = 0;
+            const auto& creator = traces[trace.creator_path];
+            ar::Statement* pdef = piv != nullptr
+                ? reaching_definition(piv, creator.events, trace.creator_step, argument_step)
+                : nullptr;
             auto* inner = core::dyn_cast_or_null< ar::UnaryOperation >(pdef);
             auto* inner_src = inner != nullptr
                 ? core::dyn_cast< ar::IntegerType >(inner->operand()->type())
@@ -834,11 +839,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                 (inner->op() == ar::UnaryOperation::SIToPtr ||
                  inner->op() == ar::UnaryOperation::UIToPtr) &&
                 inner_src != nullptr && inner_src->bit_width() == dst->bit_width() &&
-                trace.creator_path < caches.size() &&
-                trace.creator_step < traces[trace.creator_path].events.size() &&
+                dst->bit_width() == un->bundle()->data_layout().pointers.bit_width &&
                 encode_value(inner->operand(), out, caches[trace.creator_path],
                              traces[trace.creator_path].value_prefix(), depth + 1,
-                             trace.creator_step)) {
+                             argument_step)) {
               if (inner_src->is_signed() != dst->is_signed()) {
                 z3::expr bits = z3::int2bv(dst->bit_width(), out);
                 out = z3::bv2int(bits, dst->is_signed());

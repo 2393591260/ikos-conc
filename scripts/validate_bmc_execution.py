@@ -603,6 +603,23 @@ class Replay:
         elif kind=='unary':
             op=inst['operator']; dst=inst['result']['type']; src=operands[0]['type']; value=values[0]
             if dst['kind']=='pointer' and src['kind']=='pointer' and op==14: result=value
+            elif dst['kind']=='pointer' and src['kind']=='integer' and op in (12,13):
+                width = self.program['pointer_bits']
+                if width not in (32,64) or src['bits'] != width:
+                    raise Unsupported('non-native integer pointer conversion')
+                bits = integer(value,src) % (1 << src['bits']) % (1 << width)
+                # Numeric pointers carry bits, never permission to access an object.
+                result = ('absolute',bits) if bits else ('null',0)
+            elif dst['kind']=='integer' and src['kind']=='pointer' and op in (10,11):
+                if not isinstance(value,tuple) or value[0] not in ('absolute','null'):
+                    raise Unsupported('object pointer integer representation')
+                width = self.program['pointer_bits']
+                if width not in (32,64) or dst['bits'] != width:
+                    raise Unsupported('non-native pointer integer conversion')
+                require(type(value[1]) is int and 0 <= value[1] < (1 << width),
+                        'numeric pointer bit pattern')
+                require(value[0] != 'null' or value[1] == 0, 'null pointer bit pattern')
+                result = integer(value[1],dst)
             elif dst['kind']=='integer' and src['kind']=='integer' and op in (0,1,2,3,14):
                 integer(value,src)
                 if op==2: value%=1<<src['bits']
@@ -620,7 +637,10 @@ class Replay:
                 if op is None or not all(isinstance(v,int) for v in values): raise Unsupported('comparison')
                 require({'eq':a==b,'ne':a!=b,'gt':a>b,'ge':a>=b,'lt':a<b,'le':a<=b}[op], 'false CFG guard')
         elif kind=='pointer_shift':
-            pointer=values[0]; require(isinstance(pointer,tuple) and pointer[0] not in ('null','function'), 'pointer shift base')
+            pointer=values[0]
+            if isinstance(pointer,tuple) and pointer[0]=='absolute':
+                raise Unsupported('numeric pointer arithmetic')
+            require(isinstance(pointer,tuple) and pointer[0] not in ('null','function'), 'pointer shift base')
             require(all(isinstance(v,int) for v in values[1:]), 'pointer shift index')
             result=(pointer[0],pointer[1]+sum(int(f)*v for f,v in zip(inst['factors'],values[1:])))
         elif kind in ('load','store'):

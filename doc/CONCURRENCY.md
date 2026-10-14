@@ -129,6 +129,15 @@ native-width main storage. Reusing the slot for a new create gives a new instanc
 it does not make the old instance joinable again. Unresolved or escaped handles
 remain unsupported.
 
+BMC also supports a native-pointer-width integer passed through a thread's
+`void*` argument and converted back to an integer. The value comes from the
+definition executed before that particular create, including repeated loop
+occurrences; signedness changes preserve the bit pattern. The concrete AR
+checker treats this as a numeric pointer and grants no permission to dereference
+it or perform pointer arithmetic. Object-pointer conversions and non-native
+width round trips remain unsupported. This is a contract for the imported AR
+and configured LLVM target, not a portable C pointer-representation guarantee.
+
 AI and BMC have different coverage responsibilities. A fact sufficient to exclude
 all conflicts is not necessarily a concrete value source for a BMC execution.
 

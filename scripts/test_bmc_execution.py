@@ -42,7 +42,9 @@ def main():
     with tempfile.TemporaryDirectory(prefix='ikos-replay-') as temp:
         work = Path(temp)
         for bits in (args.bits,):
-            for case in (1, 11, 21, 25, 31, 34, 36, 38, 48, 49, 52, 53, 54):
+            cases = (1, 11, 21, 25, 31, 34, 36, 38, 48, 49, 52, 53, 54,
+                     56, 57, 58, 61, 65, 63 if bits == '32' else 62)
+            for case in cases:
                 report = work / 'report.json'
                 report.unlink(missing_ok=True)
                 proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race', '--concurrency=auto',
