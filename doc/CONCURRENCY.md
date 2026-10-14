@@ -9,6 +9,9 @@ results. Installation and failure diagnosis are maintained in the
 
 All commands below use the installed frontend, not a binary in the build tree.
 Select `-m 32` for ILP32 or `-m 64` for LP64 to match the input's target.
+The analyzer verdict behavior here describes the current source checkout.
+Older archives may label standalone abstract candidates as definite races;
+use their confirmation wrapper and check `BUILD-INFO.json` for the version.
 
 ### Abstract safety analysis
 
