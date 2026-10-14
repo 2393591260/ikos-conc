@@ -1,6 +1,5 @@
 build/
 install/
-!doc/install/
 
 # Editors
 *.swp
@@ -64,6 +63,8 @@ __pycache__
 *.db
 verification_result.csv
 .cache/
+.ruff_cache/
+.pytest_cache/
 
 # Local tooling and external benchmark copies
 .claude/

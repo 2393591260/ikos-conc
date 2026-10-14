@@ -8,7 +8,6 @@ The following illustrates the content of the root directory:
 ├── CMakeLists.txt
 ├── LICENSE.pdf
 ├── README.md
-├── RELEASE_NOTES.md
 ├── TROUBLESHOOTING.md
 ├── analyzer
 ├── ar
@@ -16,6 +15,10 @@ The following illustrates the content of the root directory:
 ├── core
 ├── doc
 ├── frontend
+├── benchexec
+├── boundary-tests
+├── scripts
+├── svcomp
 ├── script
 └── test
 ```
@@ -24,8 +27,6 @@ The following illustrates the content of the root directory:
 * [CMakeLists.txt](../CMakeLists.txt) is the root CMake file.
 
 * [LICENSE.pdf](../LICENSE.pdf) contains the NOSA 1.3 license.
-
-* [RELEASE_NOTES.md](../RELEASE_NOTES.md) contains the release notes for the latest versions.
 
 * [TROUBLESHOOTING.md](../TROUBLESHOOTING.md) contains solution for common issues with IKOS.
 
@@ -37,10 +38,14 @@ The following illustrates the content of the root directory:
 
 * [core](../core) contains the implementation of the theory of Abstract Interpretation, which includes the abstract domains, the fixpoint iterator, and various algorithms that support the implementation. More information can be found at [core/README.md](../core/README.md).
 
-* [doc/install](../doc/install) contains installation instructions for specific operating systems.
+* [README.md](../README.md#build-from-source) contains the maintained Linux/WSL2 installation instructions. [CONCURRENCY.md](CONCURRENCY.md) explains the concurrent-analysis architecture, verdicts and supported boundaries.
 
 * [frontend/llvm](../frontend/llvm) contains the implementation of the translation from LLVM to AR. More information can be found at [frontend/llvm/README.md](../frontend/llvm/README.md).
 
-* [script](../script) contains the [bootstrap](../script/bootstrap) script for a rootless installation.
+* [script](../script) contains the formatting and static code-checking helpers.
 
-* [test/install](../test/install) contains tests for the installation of IKOS on different platforms.
+* [scripts](../scripts) contains concurrency regression runners, execution checks and reference-tool comparison helpers.
+
+* [svcomp](../svcomp) and [benchexec](../benchexec) contain packaging, registration and benchmark-tool integration.
+
+* [test](../test), [boundary-tests](../boundary-tests), and [docs/review-repros](../docs/review-repros) contain concurrent regression inputs. Analyzer, frontend and core regression tests also live alongside their respective modules. Run the maintained installed concurrency checks with `ctest --test-dir build -L concurrency --output-on-failure` after installation.
