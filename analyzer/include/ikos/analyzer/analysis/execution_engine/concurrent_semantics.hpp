@@ -2250,13 +2250,34 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
       if (scalar_lit.is_pointer_var()) {
         auto pts = eng.data().normal().pointer_to_points_to(scalar_lit.var());
         auto offset =
-            eng.data().normal().pointer_to_pointer(scalar_lit.var()).offset();
+            eng.data().normal().pointer_offset_to_interval(scalar_lit.var());
+        // PointerAbsValue normalizes NULL's offset to bottom. Transport the
+        // raw components, and include numeric zero for every possible NULL.
+        if (!eng.data().normal().nullity_is_non_null(scalar_lit.var())) {
+          auto zero = core::machine_int::Interval(core::MachineInt::zero(
+              offset.bit_width(), offset.sign()));
+          auto null_pts = decltype(pts){eng.ctx().mem_factory->get_absolute_zero()};
+          if (eng.data().normal().nullity_is_null(scalar_lit.var())) {
+            pts = null_pts;
+            offset = zero;
+          } else {
+            pts.join_with(null_pts);
+            offset.join_with(zero);
+          }
+        }
         eng.ctx().concurrent_env.record_spawn_arg(
             thread_func, pts, offset);
         // Passing a pointer as the thread `arg` PUBLISHES its heap nodes: the
         // child dereferences the same cell (`&is[i]` escapes to the thread),
         // so they must leave the fresh set (per-thread-array-init-race FN).
         unfresh_pointer_targets(eng, scalar_lit);
+      } else if (scalar_lit.is_null()) {
+        eng.ctx().concurrent_env.record_spawn_arg(
+            thread_func,
+            core::PointsToSet< MemoryLocation* >{
+                eng.ctx().mem_factory->get_absolute_zero()},
+            core::machine_int::Interval(core::MachineInt::zero(
+                eng.data_layout().pointers.bit_width, core::Unsigned)));
       }
     }
   }
