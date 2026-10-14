@@ -109,6 +109,19 @@ from a source checkout, use:
   --data-model LP64 --out witness.yml program.c
 ```
 
+## Checking a source installation
+
+After installation, developers can run the focused concurrency regressions:
+
+```bash
+./install/libexec/bin/python -m pip install benchexec
+ctest --test-dir build -L concurrency --output-on-failure
+```
+
+These checks cover both machine models, verdict modes, supported value/address
+semantics, exported execution checks and witness/adapter failure controls. They
+are separate from the full external benchmark sweep and official validation.
+
 ## Understanding results
 
 | Output | Meaning in the recommended confirmation mode |

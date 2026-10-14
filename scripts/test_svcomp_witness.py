@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Directed checks for the SV-COMP 2.2 wrapper's instance and failure contract."""
 
+import argparse
 import copy
 import importlib.util
 import json
@@ -45,6 +46,8 @@ int main(void) {
 
 
 class WitnessTests(unittest.TestCase):
+    ikos = ROOT / "install/bin/ikos"
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="test-ikos-witness-")
         self.addCleanup(self.temp.cleanup)
@@ -122,7 +125,7 @@ class WitnessTests(unittest.TestCase):
 
     def content(self, pair):
         return wrapper.build_witness(
-            str(self.source), pair, "ILP32", str(ROOT / "install/bin/ikos")
+            str(self.source), pair, "ILP32", str(self.ikos)
         )[0]["content"]
 
     def test_repeated_helper_and_later_same_entry_instances(self):
@@ -280,7 +283,7 @@ class WitnessTests(unittest.TestCase):
 
     def source_map(self):
         sm = wrapper.SourceMap(str(self.source))
-        sm.load_ast(str(ROOT / "install/bin/ikos"), "ILP32")
+        sm.load_ast(str(self.ikos), "ILP32")
         return sm
 
     def test_source_mapping_and_exact_call_positions(self):
@@ -497,11 +500,16 @@ sys.exit(3 if mode == "crash" else 0)
 """)
         fake.chmod(0o755)
         config = self.folder / "ikos-config"
+        frontend = subprocess.run(
+            [str(self.ikos.parent / "ikos-config"), "--clang", "--includedir"],
+            capture_output=True, text=True, check=True,
+        ).stdout.splitlines()
+        self.assertEqual(len(frontend), 2)
         config.write_text(
             "#!/usr/bin/env python3\nprint("
-            + repr(str(ROOT / "install/llvm/bin/clang"))
+            + repr(frontend[0])
             + ")\nprint("
-            + repr(str(ROOT / "install/include"))
+            + repr(frontend[1])
             + ")\n"
         )
         if mode == "config":
@@ -618,4 +626,8 @@ sys.exit(3 if mode == "crash" else 0)
 
 
 if __name__ == "__main__":
-    unittest.main()
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--ikos", type=Path, default=WitnessTests.ikos)
+    args, remaining = parser.parse_known_args()
+    WitnessTests.ikos = args.ikos.resolve()
+    unittest.main(argv=[sys.argv[0], *remaining])

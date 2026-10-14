@@ -25,3 +25,30 @@ add_analysis_test(pointer-compare pcmp)
 add_analysis_test(function-call fca)
 add_analysis_test(double-free dfa)
 add_analysis_test(soundness sound)
+
+# These end-to-end tests use the installed frontend and its configured tools.
+# Run them after cmake --install; serialize solver-heavy checks on small hosts.
+set(CONCURRENCY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../..")
+function(add_concurrency_test test_name)
+  add_test(NAME "concurrency-${test_name}"
+           COMMAND "${PYTHON_VENV_EXECUTABLE}" ${ARGN})
+  set_tests_properties("concurrency-${test_name}" PROPERTIES
+                      LABELS concurrency RUN_SERIAL TRUE TIMEOUT 600)
+endfunction()
+set(CONCURRENCY_IKOS "${CMAKE_INSTALL_PREFIX}/bin/ikos")
+add_concurrency_test(modes "${CONCURRENCY_ROOT}/scripts/test_race_modes.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+foreach(bits 32 64)
+  add_concurrency_test(p0-${bits}
+    "${CONCURRENCY_ROOT}/docs/review-repros/bmc-2026-10-08/run.py"
+    --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
+endforeach()
+foreach(suite address values correctness)
+  add_concurrency_test(${suite} "${CMAKE_CURRENT_SOURCE_DIR}/bmc-${suite}/runtest"
+                       --ikos "${CONCURRENCY_IKOS}")
+endforeach()
+add_concurrency_test(execution "${CONCURRENCY_ROOT}/scripts/test_bmc_execution.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(witness "${CONCURRENCY_ROOT}/scripts/test_svcomp_witness.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(adapter "${CONCURRENCY_ROOT}/scripts/test_svcomp_adapter.py")

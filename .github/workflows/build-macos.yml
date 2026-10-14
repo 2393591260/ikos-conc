@@ -15,7 +15,7 @@ jobs:
       - name: Install dependencies
         run: |
           brew tap nasa-sw-vnv/core
-          brew install cmake gmp boost tbb llvm@14 apron sqlite
+          brew install cmake gmp boost tbb llvm@14 apron sqlite z3
       - name: Adjust path
         run:
           echo "/opt/homebrew/opt/llvm@14/bin" >> $GITHUB_PATH
