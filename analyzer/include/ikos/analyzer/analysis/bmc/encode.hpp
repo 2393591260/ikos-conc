@@ -375,6 +375,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   std::map< std::pair< std::uint64_t, core::ZNumber >, std::uint64_t > lock_ids;
   auto prepare = [&](std::vector< BmcEvent >& path, ar::Function* root, ThreadArgument argument) {
     std::set< std::uint64_t > held;
+    std::set< std::size_t > consumed_handles;
     std::uint64_t symbolic_lock = 0;
     for (std::size_t i = 0; i < path.size(); ++i) {
       auto* wait = core::dyn_cast< ar::CallBase >(path[i].stmt);
@@ -391,6 +392,20 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         // Condition expansion may have shifted earlier creation indices.
         event.join_completion = inert_join_source(core::cast< ar::CallBase >(event.stmt),
                                                   path, i, event.join_creation);
+      }
+      if (event.kind == EvKind::Join && event.join_completion != nullptr &&
+          !consumed_handles.insert(event.join_creation).second) {
+        record(diagnostics, "thread_handle_consumed", event.stmt); return false;
+      }
+      auto* handle_call = core::dyn_cast< ar::CallBase >(event.stmt);
+      auto* handle_api = handle_call != nullptr ? exact_callee(handle_call) : nullptr;
+      if (handle_api != nullptr && handle_api->name() == "pthread_detach") {
+        std::size_t creation = 0;
+        if (!supported_leaf_call(handle_call) ||
+            !handle_creation_on_path(handle_call, path, i, creation) ||
+            !consumed_handles.insert(creation).second) {
+          record(diagnostics, "detach_handle_unproven", event.stmt); return false;
+        }
       }
       ar::Value* pointer = nullptr;
       if (auto* load = core::dyn_cast< ar::Load >(event.stmt)) pointer = load->operand();

@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
-from validate_bmc_execution import check, digest_json
+from validate_bmc_execution import Replay, Reject, check, digest_json
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -16,7 +16,28 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     args = parser.parse_args()
-    checks = 0
+    # Test invalid library histories even though BMC now refuses to export them.
+    replay = Replay.__new__(Replay)
+    replay.functions = {'pthread_join': {}, 'pthread_detach': {}}
+    replay.created = {1: dict(joined=False, detached=False)}
+    invoke = lambda name, values: replay.api(name, values, {}, {}, 'startup', 0, None, None)
+    assert invoke('pthread_detach', [1]) == 0
+    checks = 1
+    for name, values in (('pthread_detach', [1]), ('pthread_join', [1, ('null', 0)])):
+        try:
+            invoke(name, values)
+        except Reject:
+            checks += 1
+        else:
+            raise AssertionError('accepted operation on a detached instance')
+    replay.created[1] = dict(joined=True, detached=False)
+    for name, values in (('pthread_detach', [1]), ('pthread_join', [1, ('null', 0)])):
+        try:
+            invoke(name, values)
+        except Reject:
+            checks += 1
+        else:
+            raise AssertionError('accepted operation on a joined instance')
     with tempfile.TemporaryDirectory(prefix='ikos-replay-') as temp:
         work = Path(temp)
         for bits in ('32', '64'):

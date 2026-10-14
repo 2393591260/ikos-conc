@@ -454,7 +454,16 @@ inline bool supported_leaf_call(ar::CallBase* call) {
       "__VERIFIER_nondet_uint", "__VERIFIER_nondet_long", "__VERIFIER_nondet_ulong",
       "__VERIFIER_nondet_longlong", "__VERIFIER_nondet_ulonglong", "__VERIFIER_nondet_size_t"};
   if (nondet.count(f->name()) != 0 && call->num_arguments() == 0) return true;
-  if (f->name() == "pthread_detach") return call->num_arguments() == 1;
+  if (f->name() == "pthread_detach") {
+    auto* returned = core::dyn_cast< ar::IntegerType >(f->type()->return_type());
+    auto* source = call->has_frontend()
+        ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+    auto* handle = call->num_arguments() == 1
+        ? core::dyn_cast< ar::IntegerType >(call->argument(0)->type()) : nullptr;
+    return returned != nullptr && returned->bit_width() == 32 && returned->is_signed() &&
+           handle != nullptr && handle->bit_width() == call->bundle()->data_layout().pointers.bit_width &&
+           source != nullptr && source->getCallingConv() == llvm::CallingConv::C;
+  }
   if (f->name() == "pthread_mutex_init") {
     return mutex_attribute_call(call);
   }
@@ -1429,101 +1438,117 @@ inline ar::ReturnValue* inert_thread_return(ar::Function* function) {
   return ret != nullptr && ret->has_operand() && core::isa< ar::NullConstant >(ret->operand()) ? ret : nullptr;
 }
 
-// Match a loaded, unescaped main-stack scalar handle to its actual creation
-// occurrence. Failed matching means unsupported, never "join the opponent".
-inline ar::ReturnValue* inert_join_source(ar::CallBase* join,
-    const std::vector< BmcEvent >& path, std::size_t before, std::size_t& creation) {
-  auto* api = join != nullptr ? exact_callee(join) : nullptr;
-  if (api == nullptr || !api->is_declaration() || join->num_arguments() != 2 ||
-      !(api->name() == "pthread_join" || api->intrinsic_id() == ar::Intrinsic::PthreadJoin) ||
-      !core::isa< ar::NullConstant >(join->argument(1))) return nullptr;
-  int atomic = 0;
-  for (std::size_t i = 0; i < before; ++i) {
-    if (path[i].called_function != nullptr && path[i].called_function->name() == "main") return nullptr;
-    if (path[i].mutex != PSEUDO_ATOMIC_LOCK) continue;
-    if (path[i].kind == EvKind::Lock) ++atomic;
-    if (path[i].kind == EvKind::Unlock) --atomic;
-  }
-  // A newly created child cannot run while a verifier atomic block owns execution.
-  if (atomic != 0) return nullptr;
-  ar::Value* value = join->argument(0);
-  ar::Load* load = nullptr;
-  std::size_t read = before;
+inline ar::Load* handle_load_on_path(ar::Value* value,
+    const std::vector< BmcEvent >& path, std::size_t before, std::size_t& read) {
+  read = before;
   for (unsigned depth = 0; depth < 32; ++depth) {
     auto* variable = core::dyn_cast< ar::InternalVariable >(value);
     if (variable == nullptr) return nullptr;
     std::size_t index = 0;
     auto* definition = reaching_definition(variable, path, read, index);
-    if ((load = core::dyn_cast_or_null< ar::Load >(definition))) {read = index; break;}
+    if (auto* load = core::dyn_cast_or_null< ar::Load >(definition)) {
+      read = index;
+      return load;
+    }
     auto* assignment = core::dyn_cast_or_null< ar::Assignment >(definition);
     if (assignment == nullptr || assignment->operand()->type() != value->type()) return nullptr;
     value = assignment->operand(); read = index;
   }
+  return nullptr;
+}
+
+// Resolve the actual generation read from private native-width main storage.
+// Unknown writes or escaped object pointers cannot establish a live handle.
+inline bool handle_creation_on_path(ar::CallBase* use,
+    const std::vector< BmcEvent >& path, std::size_t before, std::size_t& creation) {
+  if (use == nullptr || use->num_arguments() < 1) return false;
+  for (std::size_t i = 0; i < before; ++i)
+    if (path[i].called_function != nullptr && path[i].called_function->name() == "main") return false;
+  std::size_t read = before;
+  auto* load = handle_load_on_path(use->argument(0), path, before, read);
   BmcEvent address;
   if (load == nullptr || !load->result()->type()->is_integer() ||
       !pointer_on_path(load->operand(), path, read, nullptr, nullptr, address) ||
       address.local_base == nullptr || address.local_base->function()->name() != "main" ||
-      address.var_id != 0 ||
-      !address.local_base->type()->pointee()->is_integer()) return nullptr;
-  const auto width = join->bundle()->data_layout().pointers.bit_width / 8;
-  if (join->bundle()->data_layout().store_size_in_bytes(load->result()->type()) != core::ZNumber(width)) return nullptr;
+      address.var_id != 0) return false;
+  const auto width = use->bundle()->data_layout().pointers.bit_width / 8;
+  auto* handle = core::dyn_cast< ar::IntegerType >(address.local_base->type()->pointee());
+  core::ZNumber extent;
+  if (handle == nullptr || handle->bit_width() != width * 8 ||
+      use->bundle()->data_layout().store_size_in_bytes(load->result()->type()) != core::ZNumber(width) ||
+      !memory_extent(address, extent) || address.const_off < 0 ||
+      address.const_off + width > extent || address.const_off % width != 0) return false;
+  bool matched = false;
   for (std::size_t j = read; j-- > 0;) {
     auto* statement = path[j].stmt;
-    if (statement->result_or_null() == address.local_base) {break;}
-    if (path[j].kind == EvKind::Write) {
-      BmcEvent write;
-      if (!pointer_on_path(core::cast< ar::Store >(statement)->pointer(), path, j, nullptr, nullptr, write)) return nullptr;
-      if (write.local_base == address.local_base) return nullptr;
-    }
-    auto* call = core::dyn_cast< ar::CallBase >(statement);
-    if (call == nullptr || path[j].kind != EvKind::Create) continue;
+    if (statement->result_or_null() == address.local_base) break;
+    if (path[j].kind != EvKind::Create) continue;
+    auto* call = core::cast< ar::CallBase >(statement);
     BmcEvent output;
-    if (!pointer_on_path(call->argument(0), path, j, nullptr, nullptr, output)) return nullptr;
+    std::uint64_t output_width, alignment;
+    if (!pointer_on_path(call->argument(0), path, j, nullptr, nullptr, output)) return false;
     if (output.local_base != address.local_base) continue;
-    // A sibling create at a different slot belongs to another join; keep
-    // scanning for the create that wrote THIS slot (floating_read t[i]).
-    if (output.var_id != address.var_id || output.const_off != address.const_off) continue;
-    if (!successful_create_result(path[j])) return nullptr;
-    creation = j;
-    auto* ret = inert_thread_return(reinterpret_cast< ar::Function* >(path[j].thread));
-    if (ret == nullptr) return nullptr;
-    // The handle cannot escape to another execution or be detached/rejoined.
-    // Match the FULL slot (base + index + offset): a sibling array element is
-    // a different handle, not an escape or a double-join (floating_read t[i]).
-    auto same_slot = [&](const BmcEvent& e) {
-      return e.local_base == address.local_base && e.var_id == address.var_id &&
-             e.const_off == address.const_off;
-    };
-    for (std::size_t k = 0; k < before; ++k) {
-      auto* prior = path[k].stmt;
-      if (auto* store = core::dyn_cast< ar::Store >(prior)) {
+    if (output.var_id != 0 || !create_output_layout(call, output_width, alignment)) return false;
+    if (output.const_off + output_width <= address.const_off ||
+        address.const_off + width <= output.const_off) continue;
+    if (output.const_off != address.const_off || output_width != width ||
+        !successful_create_result(path[j]) || !constant_create_output_aligned(call, output)) return false;
+    creation = j; matched = true; break;
+  }
+  if (!matched) return false;
+  bool allocated = false;
+  for (std::size_t k = 0; k < before; ++k) {
+    auto* statement = path[k].stmt;
+    allocated |= k < creation && statement->result_or_null() == address.local_base;
+    if (auto* store = core::dyn_cast< ar::Store >(statement)) {
+      if (abstract_initializer(store)) continue;
+      BmcEvent written;
+      if (!pointer_on_path(store->pointer(), path, k, nullptr, nullptr, written) ||
+          written.local_base == address.local_base) return false;
+      if (store->value()->type()->is_pointer()) {
         BmcEvent stored;
-        if (store->value()->type()->is_pointer() &&
-            pointer_on_path(store->value(), path, k, nullptr, nullptr, stored) &&
-            same_slot(stored)) return nullptr;
-      }
-      if (auto* use = core::dyn_cast< ar::CallBase >(prior)) {
-        auto* f = exact_callee(use);
-        if (path[k].kind == EvKind::Join || (f != nullptr && f->name() == "pthread_detach")) {
-          BmcEvent prior_addr;
-          if (use->num_arguments() >= 1 &&
-              pointer_on_path(use->argument(0), path, k, nullptr, nullptr, prior_addr) &&
-              same_slot(prior_addr)) return nullptr;
-        }
-        for (std::size_t arg = 0; arg < use->num_arguments(); ++arg) {
-          if (!use->argument(arg)->type()->is_pointer()) continue;
-          BmcEvent passed;
-          if (pointer_on_path(use->argument(arg), path, k, nullptr, nullptr, passed) &&
-              same_slot(passed) && !(k == j && arg == 0)) return nullptr;
-        }
+        if (pointer_on_path(store->value(), path, k, nullptr, nullptr, stored) &&
+            stored.local_base == address.local_base) return false;
       }
     }
-    // Also require an executed alloca from this invocation, not an older frame.
-    for (std::size_t k = j; k-- > 0;)
-      if (path[k].stmt->result_or_null() == address.local_base) return ret;
-    return nullptr;
+    if (auto* call = core::dyn_cast< ar::CallBase >(statement)) {
+      for (std::size_t arg = 0; arg < call->num_arguments(); ++arg) {
+        if (!call->argument(arg)->type()->is_pointer()) continue;
+        BmcEvent passed;
+        if (pointer_on_path(call->argument(arg), path, k, nullptr, nullptr, passed) &&
+            passed.local_base == address.local_base &&
+            !(path[k].kind == EvKind::Create && arg == 0)) return false;
+      }
+    }
   }
-  return nullptr;
+  return allocated;
+}
+
+// A successful inert join also needs a real child return and an unconsumed
+// generation. Integer handles are loaded values, not addresses of their slots.
+inline ar::ReturnValue* inert_join_source(ar::CallBase* join,
+    const std::vector< BmcEvent >& path, std::size_t before, std::size_t& creation) {
+  auto* api = join != nullptr ? exact_callee(join) : nullptr;
+  if (api == nullptr || !api->is_declaration() || join->num_arguments() != 2 ||
+      !(api->name() == "pthread_join" || api->intrinsic_id() == ar::Intrinsic::PthreadJoin) ||
+      !core::isa< ar::NullConstant >(join->argument(1)) ||
+      !handle_creation_on_path(join, path, before, creation)) return nullptr;
+  int atomic = 0;
+  for (std::size_t i = 0; i < before; ++i) {
+    if (path[i].mutex == PSEUDO_ATOMIC_LOCK) {
+      if (path[i].kind == EvKind::Lock) ++atomic;
+      if (path[i].kind == EvKind::Unlock) --atomic;
+    }
+    auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt);
+    auto* f = call != nullptr ? exact_callee(call) : nullptr;
+    if (path[i].kind == EvKind::Join || (f != nullptr && f->name() == "pthread_detach")) {
+      std::size_t prior_creation = 0;
+      if (!handle_creation_on_path(call, path, i, prior_creation) ||
+          prior_creation == creation) return nullptr;
+    }
+  }
+  if (atomic != 0) return nullptr;
+  return inert_thread_return(reinterpret_cast< ar::Function* >(path[creation].thread));
 }
 
 /// Hardware atomic builtins need summaries; verifier atomic definitions compose

@@ -43,7 +43,45 @@ void *guarded(void *arg) {
 }
 int main(void) {
   pthread_t tids[4];
-#if CASE == 10 || CASE == 11
+#if CASE >= 12 && CASE <= 23
+  pthread_t worker_tid, idle_tid, other_tid;
+  pthread_create(&worker_tid, 0, writer, 0);
+#if CASE == 20
+  pthread_join(worker_tid, 0);
+#elif CASE >= 21
+  pthread_detach(worker_tid);
+#if CASE == 22
+  pthread_create(&worker_tid, 0, writer, 0);
+  pthread_detach(worker_tid);
+#elif CASE == 23
+  pthread_detach(worker_tid);
+#endif
+#else
+  pthread_create(&idle_tid, 0, inert, 0);
+#if CASE == 14 || CASE == 16
+  pthread_detach(idle_tid);
+#if CASE == 16
+  pthread_detach(idle_tid);
+#endif
+#endif
+  pthread_join(idle_tid, 0);
+#if CASE == 13
+  pthread_join(idle_tid, 0);
+#elif CASE == 15
+  pthread_detach(idle_tid);
+#elif CASE == 17
+  pthread_create(&other_tid, 0, inert, 0);
+  pthread_join(other_tid, 0);
+#elif CASE == 18
+  pthread_create(&idle_tid, 0, inert, 0);
+  pthread_join(idle_tid, 0);
+#elif CASE == 19
+  extern void retain_handle(pthread_t *);
+  retain_handle(&idle_tid);
+#endif
+#endif
+  data = 7;
+#elif CASE == 10 || CASE == 11
   pthread_t first_tid, second_tid, inert_tid;
   pthread_create(&first_tid, 0, argument_writer, &first_object);
 #if CASE == 10

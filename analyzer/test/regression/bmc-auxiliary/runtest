@@ -106,6 +106,32 @@ def main():
                     rows.append(dict(bits=bits, variant=variant, case=case, verdict=verdict, executions=len(infos)))
                     print(bits, variant, case, verdict, flush=True)
 
+        # Invalid POSIX histories are capability controls, not labeled SAFE tasks.
+        for bits in (32, 64):
+            for variant, text in variants.items():
+                for case in range(12, 24):
+                    _, verdict, report_data = analyze(f'#define CASE {case}\n' + text, bits)
+                    if case in (12, 17, 21, 22):
+                        assert verdict == suite.VERDICT_RACE, (bits, variant, case, verdict)
+                    elif case == 18:
+                        assert verdict in (suite.VERDICT_RACE, suite.VERDICT_UNKNOWN), (bits, variant, case, verdict)
+                    elif case == 20:
+                        assert verdict in (suite.VERDICT_SAFE, suite.VERDICT_UNKNOWN), (bits, variant, case, verdict)
+                    else:
+                        assert verdict == suite.VERDICT_UNKNOWN, (bits, variant, case, verdict)
+                    assertions += 1
+                    infos = [r['info'] for r in report_data['reports'] if 'counterexample' in r['info']]
+                    assert bool(infos) == (verdict == suite.VERDICT_RACE)
+                    for info in infos:
+                        certificate = copy.deepcopy(info['counterexample'])
+                        program = certificate.pop('program')
+                        certificate['program_sha256'] = digest_json(program)
+                        result = check(program, certificate)
+                        assert result['status'] == 'ACCEPT', (bits, variant, case, result)
+                        assertions += 1
+                    rows.append(dict(bits=bits, variant=variant, case=case, verdict=verdict, executions=len(infos)))
+                    print(bits, variant, case, verdict, flush=True)
+
         atomic = (HERE / 'atomic-tail.c').read_text()
         for bits in (32, 64):
             for variant, text in (('renamed', atomic.replace('data', 'payload')),

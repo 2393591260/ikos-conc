@@ -120,13 +120,22 @@ supported handle generations and rejects nested child creation/join, unsupported
 handle storage and atomic targets whose completion suffixes it cannot retain.
 The existing complete-path search for atomic targets remains available.
 
+The inert-child fast path traces an integer join handle back to its actual load
+and checks earlier uses of that slot. An unresolved handle or a previously
+consumed slot cannot establish another successful join. The concrete AR checker
+also tracks whether each created instance has been joined or detached. BMC can
+model a successful detach of a still-joinable instance identified through private,
+native-width main storage. Reusing the slot for a new create gives a new instance;
+it does not make the old instance joinable again. Unresolved or escaped handles
+remain unsupported.
+
 AI and BMC have different coverage responsibilities. A fact sufficient to exclude
 all conflicts is not necessarily a concrete value source for a BMC execution.
 
 ## Resource limits
 
 The local benchmark script defaults to 30 seconds of **wall time** per task.
-BMC defaults to a 10-second cooperative search deadline and a 1-second SMT
+BMC defaults to a 20-second cooperative search deadline and a 1-second SMT
 timeout per race-query direction. The `ikos` and `ikos-analyzer` options
 `--bmc-deadline-ms` and `--bmc-solver-timeout-ms` override these independently.
 For example, `--bmc-deadline-ms=20000 --bmc-solver-timeout-ms=2000` changes only

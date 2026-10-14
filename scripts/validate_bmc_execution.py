@@ -364,7 +364,8 @@ class Replay:
             target = args[2][1]; instance = self.next_instance; self.next_instance += 1
             self.store(args[0], instance, t, width)
             self.created[instance] = dict(function=target, argument=args[3], vc=dict(thread.vc),
-                                          creator_trace=trace_id, creator_step=index, joined=False)
+                                          creator_trace=trace_id, creator_step=index,
+                                          joined=False, detached=False)
             for child_id, child in self.traces.items():
                 if child.get('creator_trace') == trace_id and child.get('creator_step') == index:
                     require(child['entry'] == target and child_id not in self.threads, 'dynamic creation binding')
@@ -380,12 +381,17 @@ class Replay:
             self.memory[object_id] = [None] * args[0]
             return (object_id, 0)
         if name == 'pthread_detach':
-            require(len(args)==1 and args[0] in self.created, 'unknown detach handle'); return 0
+            require(len(args)==1 and args[0] in self.created, 'unknown detach handle')
+            created = self.created[args[0]]
+            require(not created['joined'] and not created['detached'], 'instance not joinable')
+            created['detached'] = True
+            return 0
         if name in ('pthread_join', 'ar.pthread.join'):
             require(len(args)==2 and args[0] in self.created, 'unknown join handle')
             require(args[1] == ('null',0), 'join result storage unsupported')
             created = self.created[args[0]]
             require(not created['joined'], 'instance joined twice')
+            require(not created['detached'], 'instance detached before join')
             matched = [t for t in self.threads.values() if t.instance == args[0]]
             if not matched and 'joined_completion' in step:
                 require(self.atomic_owner is None, 'auxiliary completion inside verifier atomic')
