@@ -121,9 +121,36 @@ After installation, developers can run the focused concurrency regressions:
 ctest --test-dir build -L concurrency --output-on-failure
 ```
 
-These checks cover both machine models, verdict modes, supported value/address
-semantics, exported execution checks and witness/adapter failure controls. They
-are separate from the full external benchmark sweep and official validation.
+These checks default to ILP32 and cover verdict modes, supported value/address
+semantics, exported execution checks and witness/adapter failure controls.
+The relevant Python suites accept `--bits 64` for explicit LP64 checks.
+They are separate from the full external benchmark sweep and official validation.
+
+For a local benchmark sweep with evidence from the same analyzer invocations:
+
+```bash
+IKOS_BMC_RECOVER=1 python3 svcomp_race_test.py /path/to/sv-benchmarks \
+  --ikos /path/to/install/bin/ikos --demote --jobs 4 --timeout 30 \
+  --bmc-deadline-ms 20000 --bmc-solver-timeout-ms 1000 \
+  --evidence-dir /path/outside/repository/new-run
+```
+
+Use a new evidence directory for each run. The runner explicitly uses the
+selected installation's Python and checks the actual modules, binaries and
+resolved dependencies before and after the run. Keep that installation and its
+dependencies unchanged during evaluation. Once all analyses finish, it checks
+the saved FALSE executions offline and retains compressed evidence. Interrupted
+runs retain partial results; timeouts terminate the analysis process group.
+`complete` means the task scan finished; baseline pairing and source-witness
+validation remain separate acceptance steps. Coverage includes UNKNOWN and
+errors in the task population. JSON reporting adds overhead, so these local wall
+times must not be compared directly with another reporting mode or official CPU
+limits. Runtime/harness unit tests need no analyzer build:
+
+```bash
+python3 scripts/test_ikos_runtime.py
+python3 scripts/test_svcomp_race_runner.py
+```
 
 ## Understanding results
 
