@@ -46,6 +46,8 @@ struct BmcEvent {
   ar::ReturnValue* join_completion = nullptr; // Actual selected child return.
   std::size_t join_creation = 0; // Creation occurrence in this same prefix.
   bool candidate = false; // Selected dynamic access; atomic closure may follow.
+  bool finite_source = false; // A chosen value of this executed source occurrence.
+  unsigned finite_value = 0;
   EvKind kind = EvKind::Read;
   std::uint64_t mutex = 0;  // Lock/Unlock 的锁对象语法同一性（arg0 指针）；内存事件为 0
   bool reader = false; // Two rwlock read acquisitions do not exclude each other.
@@ -370,6 +372,24 @@ inline bool malloc_call(ar::CallBase* call) {
          source->arg_size() == 1 && source->getArgOperand(0)->getType()->isIntegerTy(bits);
 }
 
+inline bool free_call(ar::CallBase* call) {
+  auto* function = exact_callee(call);
+  auto* source = call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+  auto* declaration = source != nullptr
+      ? llvm::dyn_cast< llvm::Function >(source->getCalledOperand()->stripPointerCasts()) : nullptr;
+  return function != nullptr && function->is_declaration() &&
+         function->intrinsic_id() == ar::Intrinsic::LibcFree && call->num_arguments() == 1 &&
+         call->argument(0)->type()->is_pointer() && !call->has_result() &&
+         declaration != nullptr && declaration->isDeclaration() && declaration->getName() == "free" &&
+         !declaration->isVarArg() && declaration->arg_size() == 1 &&
+         declaration->getReturnType()->isVoidTy() && source->getType()->isVoidTy() &&
+         declaration->getFunctionType()->getParamType(0)->isPointerTy() &&
+         source->arg_size() == 1 && source->getArgOperand(0)->getType()->isPointerTy() &&
+         declaration->getCallingConv() == llvm::CallingConv::C &&
+         source->getCallingConv() == llvm::CallingConv::C;
+}
+
 // A direct worker termination endpoint; it is never an ordinary returning leaf.
 // Callback registration and non-null return payloads remain unsupported.
 inline bool thread_exit_call(ar::CallBase* call) {
@@ -447,6 +467,9 @@ inline bool supported_leaf_call(ar::CallBase* call) {
   if (f->intrinsic_id() == ar::Intrinsic::IkosNonDet) return true;
   if (f->intrinsic_id() == ar::Intrinsic::LibcMalloc)
     return malloc_call(call) && call->code()->is_function_body() &&
+           call->code()->function()->name() == "main";
+  if (f->intrinsic_id() == ar::Intrinsic::LibcFree)
+    return free_call(call) && call->code()->is_function_body() &&
            call->code()->function()->name() == "main";
   static const std::set< std::string > nondet{
       "__VERIFIER_nondet_bool", "__VERIFIER_nondet_char", "__VERIFIER_nondet_uchar",
@@ -723,6 +746,9 @@ inline bool constant_integer_on_path(ar::Value* value,
         (cast->op() == ar::UnaryOperation::ZExt && result < 0) ||
         (cast->op() == ar::UnaryOperation::SExt && !source->is_signed() &&
          result >= (core::ZNumber(1) << (source->bit_width() - 1)))) return false;
+  } else if (auto* call = core::dyn_cast< ar::CallBase >(definition)) {
+    if (!path[index].finite_source || !source_nondet(call)) return false;
+    result = core::ZNumber(path[index].finite_value);
   } else return false;
   core::ZNumber lo = type->is_signed() ? -(core::ZNumber(1) << (type->bit_width() - 1)) : core::ZNumber(0);
   core::ZNumber hi = (core::ZNumber(1) << (type->is_signed() ? type->bit_width() - 1 : type->bit_width())) - 1;
@@ -1652,6 +1678,8 @@ struct UnrollBudget {
   bool prune_join_prefix = false;
   bool pruned_join = false;
   const std::chrono::steady_clock::time_point* deadline = nullptr;
+  ar::CallBase* finite_source = nullptr;
+  unsigned finite_value = 0;
   // Optional activation contract: retained creation counts only increase.
   const std::map< ar::Function*, unsigned >* create_limits = nullptr;
   std::size_t steps = 0;
@@ -1787,6 +1815,10 @@ void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
         // Encode the actual nonzero argument, including casts. Failure to
         // extract a comparison must not turn an assume into a no-op.
         current.emplace_back(s, is_assume_call(call) ? EvKind::Assume : EvKind::Local);
+        if (call == budget.finite_source && source_nondet(call)) {
+          current.back().finite_source = true;
+          current.back().finite_value = budget.finite_value;
+        }
       } else if (total_local_statement(s)) {
         current.emplace_back(s, EvKind::Local);
       } else {
@@ -1920,7 +1952,9 @@ inline UnrollResult unroll_to(
     unsigned target_occurrence = 1, unsigned loop_bound = 1,
     bool prune_join_prefix = false,
     const std::map< ar::Function*, unsigned >* create_limits = nullptr,
-    const std::chrono::steady_clock::time_point* deadline = nullptr) {
+    const std::chrono::steady_clock::time_point* deadline = nullptr,
+    ar::CallBase* finite_source = nullptr,
+    unsigned finite_value = 0) {
   UnrollResult result;
   // A root invocation has no source call on which to attach the boundaries.
   if (named_verifier_atomic(func)) {
@@ -1935,6 +1969,8 @@ inline UnrollResult unroll_to(
   UnrollBudget budget;
   budget.prune_join_prefix = prune_join_prefix;
   budget.deadline = deadline;
+  budget.finite_source = finite_source;
+  budget.finite_value = finite_value;
   budget.create_limits = create_limits;
   budget.target_occurrence = target_occurrence;
   budget.loop_bound = loop_bound;
@@ -1964,7 +2000,9 @@ inline UnrollResult unroll_to(
 // following the opposite access. Do not replace them with arbitrary stop points.
 inline UnrollResult unroll_completed(ar::Function* func, ar::Statement* target,
                                      unsigned loop_bound,
-    const std::chrono::steady_clock::time_point* deadline = nullptr) {
+    const std::chrono::steady_clock::time_point* deadline = nullptr,
+    ar::CallBase* finite_source = nullptr,
+    unsigned finite_value = 0) {
   UnrollResult result;
   auto* body = func->body_or_null();
   if (named_verifier_atomic(func) || body == nullptr || !body->has_entry_block()) return result;
@@ -1972,6 +2010,8 @@ inline UnrollResult unroll_completed(ar::Function* func, ar::Statement* target,
   budget.root_target = target;
   budget.completed = true;
   budget.deadline = deadline;
+  budget.finite_source = finite_source;
+  budget.finite_value = finite_value;
   budget.loop_bound = loop_bound;
   for (auto* block : *body) for (auto* statement : *block) {
     if (!core::isa< ar::ReturnValue >(statement) &&

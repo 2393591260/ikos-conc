@@ -201,12 +201,41 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
                          SearchBudget* budget = nullptr,
                          std::vector< ar::Statement* >* creations = nullptr,
                          const CandidateFacts* facts = nullptr,
-                         unsigned loop_bound = 1) {
+                         unsigned loop_bound = 1,
+                         ar::CallBase* finite_source = nullptr,
+                         unsigned finite_value = 0) {
   Result outcome(Status::NotSearched);
+  // Enumerate a few actual values of one source in main. This is a bounded
+  // witness search: each choice is attached to the executed call occurrence,
+  // and the encoder must bind the same value before accepting a model. Run it
+  // after the established path search, so existing confirmations keep priority.
+  auto finite_fallback = [&] {
+    if (outcome.confirmed() || finite_source != nullptr || loop_bound != 1 ||
+        (funcA->name() == "main") == (funcB->name() == "main")) return;
+    auto* main = funcA->name() == "main" ? funcA : funcB;
+    ar::CallBase* source = nullptr;
+    unsigned sources = 0, allocations = 0;
+    for (auto* block : *main->body()) for (auto* statement : *block) {
+      auto* call = core::dyn_cast< ar::CallBase >(statement);
+      if (call == nullptr) continue;
+      if (source_nondet(call)) {source = call; ++sources;}
+      if (malloc_call(call)) ++allocations;
+    }
+    if (sources == 1 && allocations == 1)
+      for (unsigned value = 1; value <= 4; ++value) {
+        if (budget != nullptr && (budget->expired() || budget->queries == 0)) break;
+        outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
+                                   diagnostics, budget, creations, facts, 1, source,
+                                   value));
+        if (outcome.confirmed()) return;
+      }
+  };
   // The actual startup and worker prefixes reject unsupported atomic memory
   // events/calls. Synchronization outside them need not be executable here.
-  UnrollResult rA = unroll_to(funcA, stmtA, 1, loop_bound, true);
-  UnrollResult rB = unroll_to(funcB, stmtB, 1, loop_bound, true);
+  UnrollResult rA = unroll_to(funcA, stmtA, 1, loop_bound, true,
+                              nullptr, nullptr, finite_source, finite_value);
+  UnrollResult rB = unroll_to(funcB, stmtB, 1, loop_bound, true,
+                              nullptr, nullptr, finite_source, finite_value);
   auto needs_completion_search = [](ar::Function* parent, ar::Function* child, const UnrollResult& paths) {
     if (parent->name() != "main" || child->name() == "main") return false;
     if (paths.pruned_join) return true;
@@ -233,8 +262,10 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     return std::any_of(unrolled.paths.begin(), unrolled.paths.end(), atomic_candidate);
   };
   if (needs_completion(rA) || needs_completion(rB)) {
-    rA = unroll_completed(funcA, stmtA, loop_bound);
-    rB = unroll_completed(funcB, stmtB, loop_bound);
+    rA = unroll_completed(funcA, stmtA, loop_bound, nullptr,
+                          finite_source, finite_value);
+    rB = unroll_completed(funcB, stmtB, loop_bound, nullptr,
+                          finite_source, finite_value);
     record(diagnostics, "atomic_completed_paths");
   }
   if (rA.rejected_reason != nullptr) {
@@ -277,7 +308,8 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     if (loop_bound >= 16) {
       record(diagnostics, "interrupted_small_bound");
       outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
-                                 diagnostics, budget, creations, facts, 2));
+                                 diagnostics, budget, creations, facts, 2,
+                                 finite_source, finite_value));
       if (outcome.confirmed()) return outcome;
       if (diagnostics != nullptr) {
         diagnostics->paths_a = rA.paths.size();
@@ -291,7 +323,9 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
       auto bound = std::max(literal_loop_search_bound(funcA), literal_loop_search_bound(funcB));
       if (bound > 16) record(diagnostics, "literal_loop_search_hint");
       outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
-                                 diagnostics, budget, creations, facts, bound));
+                                 diagnostics, budget, creations, facts, bound,
+                                 finite_source, finite_value));
+      finite_fallback();
       return outcome;
     }
     outcome.merge(Result(Status::BoundedUnsat));
@@ -395,8 +429,10 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     auto bound = std::max(literal_loop_search_bound(funcA), literal_loop_search_bound(funcB));
     if (bound > 16) record(diagnostics, "literal_loop_search_hint");
     outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
-                               diagnostics, budget, creations, facts, bound));
+                               diagnostics, budget, creations, facts, bound,
+                               finite_source, finite_value));
   }
+  finite_fallback();
   return outcome;
 }
 

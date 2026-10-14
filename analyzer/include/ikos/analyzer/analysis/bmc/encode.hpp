@@ -564,7 +564,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
             record(diagnostics, "startup_create_output", call); return false;
           }
           address = path[i];
-        } else if ((selected_workers || completion != nullptr) && event.kind == EvKind::Create) {
+        } else if ((selected_workers || completion != nullptr || address.heap_allocation != nullptr) &&
+                   event.kind == EvKind::Create) {
           // Preserve the concrete output also when a loop index folded early.
           auto& output = path[i];
           output.base = address.base; output.local_base = address.local_base;
@@ -580,6 +581,99 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   };
   for (auto& trace : traces)
     if (!library_outputs(trace.events, trace.root, trace.argument)) return Result(Status::Unsupported);
+  // A selected free consumes exactly one live main allocation. For the finite
+  // source search the heap stays private: the only pointer argument allowed
+  // outside free is the output of pthread_create. No later pointer operation
+  // or access may use the freed object.
+  auto private_heap_lifetime = [&](std::vector< BmcEvent >& path) {
+    bool finite = std::any_of(path.begin(), path.end(),
+                              [](const auto& e) {return e.finite_source;});
+    bool has_free = std::any_of(path.begin(), path.end(), [](const auto& e) {
+      auto* call = core::dyn_cast< ar::CallBase >(e.stmt);
+      return call != nullptr && free_call(call);
+    });
+    if (!finite && !has_free) return true;
+    const bool private_heap = finite || has_free;
+    std::set< ar::CallBase* > live, freed;
+    unsigned allocations = 0;
+    for (std::size_t i = 0; i < path.size(); ++i) {
+      auto& event = path[i];
+      if (event.heap_allocation != nullptr && freed.count(event.heap_allocation)) return false;
+      auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+      if (call != nullptr && malloc_call(call)) {
+        core::ZNumber extent;
+        if (!main_allocation(call, path, i, extent) || ++allocations > 1) return false;
+        live.insert(call);
+      }
+      if (call != nullptr && free_call(call)) {
+        BmcEvent pointer;
+        if (call->num_arguments() != 1 ||
+            !pointer_on_path(call->argument(0), path, i, path[i].stmt->code()->function_or_null(),
+                             nullptr, pointer) ||
+            pointer.heap_allocation == nullptr || pointer.var_id != 0 ||
+            pointer.const_off != 0 || !live.erase(pointer.heap_allocation) ||
+            !freed.insert(pointer.heap_allocation).second) return false;
+        event.heap_allocation = pointer.heap_allocation;
+        event.heap_extent = pointer.heap_extent;
+        event.const_off = 0;
+        event.width = 0;
+      }
+      if (call != nullptr && private_heap) {
+        for (std::size_t arg = 0; arg < call->num_arguments(); ++arg) {
+          auto* value = call->argument(arg);
+          if (!value->type()->is_pointer() || core::isa< ar::NullConstant >(value) ||
+              core::isa< ar::FunctionPointerConstant >(value)) continue;
+          BmcEvent pointer;
+          if (!pointer_on_path(value, path, i, path[i].stmt->code()->function_or_null(),
+                               nullptr, pointer)) return false;
+          if (pointer.heap_allocation != nullptr &&
+              !((event.kind == EvKind::Create || free_call(call)) && arg == 0)) return false;
+        }
+      }
+      if (private_heap) {
+        auto* cast = core::dyn_cast< ar::UnaryOperation >(event.stmt);
+        if (cast != nullptr && cast->operand()->type()->is_pointer() &&
+            !core::isa< ar::NullConstant >(cast->operand()) &&
+            !core::isa< ar::FunctionPointerConstant >(cast->operand())) {
+          BmcEvent pointer;
+          if (!pointer_on_path(cast->operand(), path, i, path[i].stmt->code()->function_or_null(),
+                               nullptr, pointer)) return false;
+          if (pointer.heap_allocation != nullptr &&
+              (freed.count(pointer.heap_allocation) || cast->op() == ar::UnaryOperation::PtrToUI ||
+               cast->op() == ar::UnaryOperation::PtrToSI)) return false;
+        }
+        auto* store = core::dyn_cast< ar::Store >(event.stmt);
+        if (store != nullptr && store->value()->type()->is_pointer() &&
+            !core::isa< ar::NullConstant >(store->value()) &&
+            !core::isa< ar::FunctionPointerConstant >(store->value())) {
+          BmcEvent pointer;
+          if (!pointer_on_path(store->value(), path, i, path[i].stmt->code()->function_or_null(),
+                               nullptr, pointer) || pointer.heap_allocation != nullptr) return false;
+        }
+        auto* shift = core::dyn_cast< ar::PointerShift >(event.stmt);
+        if (shift != nullptr && shift->result()->type()->is_pointer()) {
+          BmcEvent base, pointer;
+          if (!pointer_on_path(shift->pointer(), path, i, path[i].stmt->code()->function_or_null(),
+                               nullptr, base)) return false;
+          if (base.heap_allocation != nullptr) {
+            auto* native = shift->has_frontend()
+                ? llvm::dyn_cast< llvm::GetElementPtrInst >(shift->frontend< llvm::Value >()) : nullptr;
+            if (!pointer_on_path(shift->result(), path, i + 1, path[i].stmt->code()->function_or_null(),
+                                 nullptr, pointer) ||
+                native == nullptr || !native->isInBounds() || pointer.var_id != 0 ||
+                pointer.const_off < 0 || pointer.const_off > pointer.heap_extent ||
+                freed.count(pointer.heap_allocation)) return false;
+          }
+        }
+      }
+    }
+    return !private_heap || allocations == 1;
+  };
+  for (auto& trace : traces)
+    if (trace.root != nullptr && trace.root->name() == "main" &&
+        !private_heap_lifetime(trace.events)) {
+      record(diagnostics, "heap_lifetime"); return Result(Status::Unsupported);
+    }
   auto aliases_library = [&](const BmcEvent& access, const void* path, bool opaque_only) {
     for (const auto& storage : library_storage) {
       if (opaque_only && !storage.opaque) continue;
@@ -1329,6 +1423,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
             s.add(e >= 0 && e <= 1);
           }
         }
+        if (path[definition_index].finite_source) {
+          if (!source_nondet(call)) return false;
+          s.add(e == ctx.int_val(path[definition_index].finite_value));
+        }
         cache.emplace(key, e);
         out = e;
         return true;
@@ -1520,6 +1618,26 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     if (!assumptions(traces[id].events, caches[id], traces[id].value_prefix()))
       return Result(unencodable ? Status::Unsupported : Status::BoundedUnsat);
   if (unencodable) return Result(Status::Unsupported);
+  // The structural heap extent must be the value passed to this executed
+  // malloc. In particular, a finite source choice cannot size the object
+  // independently of the same nondet value used by loop guards.
+  for (std::size_t id = 0; id < traces.size(); ++id) {
+    const auto& path = traces[id].events;
+    if (traces[id].root == nullptr || traces[id].root->name() != "main") continue;
+    for (std::size_t i = 0; i < path.size(); ++i) {
+      auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt);
+      if (call == nullptr || !malloc_call(call)) continue;
+      core::ZNumber extent;
+      z3::expr actual(ctx);
+      if (!main_allocation(call, path, i, extent) ||
+          !encode_value(call->argument(0), actual, caches[id],
+                        traces[id].value_prefix(), 0, i)) {
+        record(diagnostics, "heap_extent_source", call);
+        return Result(Status::Unsupported);
+      }
+      s.add(actual == ctx.int_val(extent.str().c_str()));
+    }
+  }
   for (std::size_t id = 0; id < traces.size(); ++id)
     if (!arithmetic_prefix(traces[id].events, caches[id], traces[id].value_prefix())) return Result(Status::Unsupported);
 

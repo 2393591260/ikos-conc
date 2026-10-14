@@ -293,14 +293,19 @@ class Replay:
         require(width == int(address['width']), 'SMT access width mismatch')
 
     def library_layout(self, inst, argument, size, alignment=None):
-        target = self.program.get('target_triple', '')
-        if not (target.startswith(('i386-', 'i486-', 'i586-', 'i686-', 'x86_64-')) and target.endswith('linux-gnu')):
-            raise Unsupported('unverified pthread ABI')
+        if not self.verified_pthread_abi(): raise Unsupported('unverified pthread ABI')
         if inst.get('calling_convention') != 0: raise Unsupported('library calling convention')
         layouts = inst.get('argument_layouts', [])
         if argument >= len(layouts) or layouts[argument].get('size') != size or (
                 alignment is not None and layouts[argument].get('alignment') != alignment):
             raise Unsupported('library argument layout')
+
+    def verified_pthread_abi(self):
+        target = self.program.get('target_triple', '')
+        bits = self.program['pointer_bits']
+        return target.endswith('linux-gnu') and (
+            (bits == 32 and target.startswith(('i386-', 'i486-', 'i586-', 'i686-'))) or
+            (bits == 64 and target.startswith('x86_64-')))
 
     def thread_output_subobject(self, declared, offset, width):
         kind = declared.get('kind')
@@ -357,10 +362,12 @@ class Replay:
                 require(isinstance(base_alignment, int) and not isinstance(base_alignment, bool) and
                         base_alignment >= width and base_alignment % width == 0,
                         'thread output object alignment')
-                # Follow declared subobjects, not a cast's destination type.
-                if not self.thread_output_subobject(meta.get('type', {}), offset, width):
+                # Malloc storage is untyped; other objects must have a declared pthread_t subobject.
+                if 'allocation' not in meta and not self.thread_output_subobject(meta.get('type', {}), offset, width):
                     raise Unsupported('thread output declared object type')
                 self.encoded_address(step, args[0], width)
+            elif 'allocation' in self.objects[obj]:
+                raise Reject('missing encoded heap output address')
             target = args[2][1]; instance = self.next_instance; self.next_instance += 1
             self.store(args[0], instance, t, width)
             self.created[instance] = dict(function=target, argument=args[3], vc=dict(thread.vc),
@@ -373,13 +380,29 @@ class Replay:
             return 0
         if name in ('malloc', 'ar.libc.malloc'):
             require(len(args) == 1 and isinstance(args[0], int) and 0 < args[0] <= 1_000_000, 'malloc extent')
-            if thread.instance != 0 or self.created: raise Unsupported('allocation outside pre-spawn main')
+            if thread.instance != 0 or len(thread.frames) != 1 or frame.function != 'main' or self.created:
+                raise Unsupported('allocation outside pre-spawn main')
             object_id = 'heap:' + str(frame.uid) + ':' + step['statement']
             if object_id in self.objects: raise Unsupported('repeated allocation site')
             self.objects[object_id] = dict(size=args[0], live=True, variable=object_id, thread_local=False,
-                allocation=step['statement'], owner='main', occurrence=1)
+                allocation=step['statement'], owner='main', occurrence=1,
+                alignment=self.program['pointer_bits']//8 if self.verified_pthread_abi() else None)
             self.memory[object_id] = [None] * args[0]
             return (object_id, 0)
+        if name in ('free', 'ar.libc.free'):
+            require(len(args) == 1, 'free argument count')
+            pointer = args[0]
+            if pointer == ('null', 0):
+                require('encoded_address' not in step, 'unexpected encoded free address')
+                return UNDEFINED
+            require(isinstance(pointer, tuple) and len(pointer) == 2 and
+                    pointer[0] in self.objects and 'allocation' in self.objects[pointer[0]] and
+                    pointer[1] == 0, 'invalid free pointer')
+            require(self.objects[pointer[0]]['live'], 'double free')
+            require('encoded_address' in step, 'missing encoded free address')
+            self.encoded_address(step, pointer, 0)
+            self.objects[pointer[0]]['live'] = False
+            return UNDEFINED
         if name == 'pthread_detach':
             require(len(args)==1 and args[0] in self.created, 'unknown detach handle')
             created = self.created[args[0]]

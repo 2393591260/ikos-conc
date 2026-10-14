@@ -138,6 +138,20 @@ it or perform pointer arithmetic. Object-pointer conversions and non-native
 width round trips remain unsupported. This is a contract for the imported AR
 and configured LLVM target, not a portable C pointer-representation guarantee.
 
+BMC can search a single main allocation whose size depends on one genuine
+integer nondeterministic source. After the established path search fails, it
+tries source values 1 through 4, retaining the real loop guards and binding the
+same value to the allocation extent in SMT. These are search samples, not a
+restriction on the program's possible inputs or evidence of safety.
+The supported heap handle storage remains private to main: native-width,
+aligned create outputs must fit the allocation. A supported `free` consumes
+that allocation's base exactly once; publication, integer address export,
+unknown pointer derivation, interior or repeated free, and subsequent use
+leave the execution unconfirmed. Actual intermediate inbounds pointer shifts
+are checked as well. The AR checker independently checks allocation size,
+create output identity/alignment, free identity and lifetime. Heap join loads
+still require additional handle-source and generation support.
+
 AI and BMC have different coverage responsibilities. A fact sufficient to exclude
 all conflicts is not necessarily a concrete value source for a BMC execution.
 
