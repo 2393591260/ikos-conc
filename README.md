@@ -47,6 +47,8 @@ the real entry point. It checks witness output, not independent witness validity
 The archive bundles LLVM and abstract-domain libraries but still uses system
 Python and runtime libraries. There is no separate published container image
 promised by these instructions.
+Native macOS is not a validated release target. Its build workflow checks
+compilation; automatic concurrent-analysis acceptance targets Linux.
 
 To analyze your input, replace `examples/smoke.c` with its path. Choose ILP32 or
 LP64 to match the program's target or task definition. The wrapper accepts C
