@@ -198,6 +198,29 @@ def write_json(path, value):
     temporary.replace(path)
 
 
+def export_database_report(database, report_path, command):
+    """Use the selected IKOS reporter offline, without exporting its whole DB."""
+    if not database.is_file():
+        return
+    script = """
+import json, sys
+from ikos import args
+from ikos.output_db import OutputDatabase
+from ikos.report import generate_report, JSONEncoder
+db = OutputDatabase(sys.argv[1])
+try:
+    report = generate_report(db, status_filter=args.default_status_filter)
+    with open(sys.argv[2], 'w') as output:
+        json.dump({'reports': report.statement_reports}, output, cls=JSONEncoder)
+finally:
+    db.close()
+"""
+    result = subprocess.run(list(command[:-1]) + ['-c', script, str(database), str(report_path)],
+                            capture_output=True, text=True, timeout=120)
+    if result.returncode:
+        raise RuntimeError('offline IKOS report extraction failed: ' + result.stderr[-2000:])
+
+
 def collect_report(report_path, verdict, evidence_dir, key):
     """After analysis stops, parse/hash a raw report and compress selected rows."""
     result = dict(report_status="missing", executions=[])
@@ -260,11 +283,15 @@ def main(argv) -> int:
     ap.add_argument("--only-fail", action="store_true", help="print only FN/FP/err")
     ap.add_argument("--evidence-dir", type=Path,
                     help="new directory for same-run JSON/selected AR evidence; local report-mode timing, not official performance")
+    ap.add_argument("--evidence-source", choices=("json", "database"), default="json",
+                    help="database defers report extraction until analysis ends; json preserves the original capture mode")
     ap.add_argument("--bmc-deadline-ms", type=int,
                     help="forward the existing BMC deadline (0 disables confirmation)")
     ap.add_argument("--bmc-solver-timeout-ms", type=int,
                     help="forward the existing positive per-query SMT timeout")
     args = ap.parse_args(argv)
+    if args.evidence_source != "json" and args.evidence_dir is None:
+        ap.error("--evidence-source requires --evidence-dir")
     if args.timeout <= 0 or args.jobs <= 0 or args.limit < 0:
         ap.error("timeout/jobs must be positive and limit nonnegative")
     for name, minimum in (("bmc_deadline_ms", 0), ("bmc_solver_timeout_ms", 1)):
@@ -302,7 +329,10 @@ def main(argv) -> int:
         summary = dict(status="running", complete=False, tasks_planned=len(tasks),
                        tasks_collected=0, execution_checks_passed=False,
                        scope="Local same-run selected AR execution checks; not stage acceptance or official source-witness validation",
-                       timing_scope="Local wall time with JSON reporting overhead; not official CPU/performance results",
+                       timing_scope=("Local wall time with text reporting; database extraction/checks are offline"
+                                     if args.evidence_source == "database" else
+                                     "Local wall time with JSON reporting overhead; not official CPU/performance results"),
+                       evidence_source=args.evidence_source,
                        options=dict(concurrency=args.concurrency, demote=args.demote,
                                     jobs=args.jobs, wall_timeout_seconds=args.timeout,
                                     bmc_deadline_ms=args.bmc_deadline_ms,
@@ -323,6 +353,8 @@ def main(argv) -> int:
                                          data_model=data_model)
                 key = hashlib.sha256(manifest[str(yml)]["task"].encode()).hexdigest()[:20]
                 manifest[str(yml)]["raw_report"] = ".raw/" + key + ".json"
+                if args.evidence_source == "database":
+                    manifest[str(yml)]["raw_database"] = ".raw/" + key + ".db"
             summary["manifest_sha256"] = hashlib.sha256(json.dumps(
                 list(manifest.values()), sort_keys=True).encode()).hexdigest()
             write_json(evidence_dir / "summary.json", summary)
@@ -339,10 +371,13 @@ def main(argv) -> int:
         with tempfile.TemporaryDirectory(prefix="ikos-race-") as temporary:
             folder = Path(temporary)
             report_path = evidence_dir / record["raw_report"] if evidence_dir else None
+            database_path = (evidence_dir / record["raw_database"] if "raw_database" in record
+                             else folder / "output.db")
             try:
                 verdict, elapsed = run_one(
-                    src, args.ikos, args.timeout, folder / "output.db", args.concurrency,
-                    data_model, args.demote, report_path=report_path,
+                    src, args.ikos, args.timeout, database_path, args.concurrency,
+                    data_model, args.demote,
+                    report_path=None if "raw_database" in record else report_path,
                     bmc_deadline_ms=args.bmc_deadline_ms,
                     bmc_solver_timeout_ms=args.bmc_solver_timeout_ms,
                     command=command, cancel_event=cancel_event)
@@ -386,6 +421,15 @@ def main(argv) -> int:
             # Parsing, hashing, compression and replay start after all analyzers.
             for record in records:
                 report_path = evidence_dir / record["raw_report"]
+                if "raw_database" in record:
+                    database = evidence_dir / record["raw_database"]
+                    if database.is_file():
+                        record["database_sha256"] = file_sha256(database)
+                    # Failed/terminated invocations do not supply executions.
+                    if not record["verdict"].startswith("Error"):
+                        export_database_report(database, report_path, command)
+                    if database.is_file() and file_sha256(database) != record["database_sha256"]:
+                        raise RuntimeError("analysis database changed during extraction")
                 record.update(collect_report(report_path, record["verdict"],
                                              evidence_dir, report_path.stem))
                 if record.get("evidence"):
@@ -418,6 +462,12 @@ def main(argv) -> int:
                 for record in records:
                     (evidence_dir / record["raw_report"]).unlink(missing_ok=True)
                     record.pop("raw_report")
+                    if "raw_database" in record:
+                        database = evidence_dir / record["raw_database"]
+                        database.unlink(missing_ok=True)
+                        for suffix in ("-journal", "-wal", "-shm"):
+                            database.with_name(database.name + suffix).unlink(missing_ok=True)
+                        record.pop("raw_database")
                 raw_dir.rmdir()
     except KeyboardInterrupt:
         exit_code = 130

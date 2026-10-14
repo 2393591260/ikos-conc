@@ -26,7 +26,10 @@ config = json.loads(source.read_text())
 with source.with_suffix('.calls').open('a') as stream:
     stream.write(json.dumps(sys.argv[1:]) + '\\n')
 database = pathlib.Path(sys.argv[sys.argv.index('-o') + 1])
-database.write_text('temporary database')
+if config.get('database', True):
+    database.write_text(json.dumps(config.get('report')))
+if config.get('database_sidecar'):
+    database.with_name(database.name + '-journal').write_text('interrupted transaction')
 if config.get('child'):
     child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
     source.with_suffix('.child').write_text(str(child.pid))
@@ -139,6 +142,71 @@ class RunnerTests(unittest.TestCase):
         self.assertFalse(summary["execution_checks_passed"])
         self.assertEqual(results[0]["report_status"], "missing")
         self.assertEqual(len(source.with_suffix(".calls").read_text().splitlines()), 1)
+
+    def test_database_capture_is_offline_and_uses_same_invocation(self):
+        report = self.selected_report()
+        sources = [self.task(report=report), self.task("two", report=report, sleep=0.1)]
+
+        def export(database, destination, command):
+            self.assertTrue(all(source.with_suffix(".done").exists() for source in sources))
+            self.assertEqual(command, [sys.executable, str(self.fake)])
+            destination.write_text(database.read_text())
+
+        with mock.patch.object(suite, "export_database_report", side_effect=export) as exporter, \
+                mock.patch.object(sweep_bmc_execution, "validate_report", side_effect=lambda report: [{"group": 0, "status": "ACCEPT"}]):
+            code, summary, rows = self.run_evidence("--evidence-source", "database")
+        self.assertEqual(code, 0)
+        self.assertEqual(exporter.call_count, 2)
+        self.assertTrue(summary["execution_checks_passed"])
+        self.assertEqual(summary["evidence_source"], "database")
+        for source, row in zip(sources, rows):
+            calls = source.with_suffix(".calls").read_text().splitlines()
+            self.assertEqual(len(calls), 1)
+            self.assertNotIn("--format=json", json.loads(calls[0]))
+            self.assertEqual(len(row["database_sha256"]), 64)
+            self.assertNotIn("raw_database", row)
+            with gzip.open(self.root / "evidence" / row["evidence"], "rt") as stream:
+                self.assertEqual(json.load(stream)["reports"][0]["info"], report["reports"][1]["info"])
+        self.assertFalse((self.root / "evidence/.raw").exists())
+
+    def test_database_mutation_rejects_evidence_without_rerun(self):
+        source = self.task(report=self.selected_report())
+
+        def export(database, destination, command):
+            destination.write_text(database.read_text())
+            database.write_text("changed")
+
+        with mock.patch.object(suite, "export_database_report", side_effect=export):
+            code, summary, rows = self.run_evidence("--evidence-source", "database")
+        self.assertEqual(code, 2)
+        self.assertFalse(summary["execution_checks_passed"])
+        self.assertIn("database changed", summary["failure"])
+        self.assertTrue((self.root / "evidence" / rows[0]["raw_database"]).is_file())
+        self.assertEqual(len(source.with_suffix(".calls").read_text().splitlines()), 1)
+
+    def test_missing_database_cannot_certify_false(self):
+        source = self.task(database=False)
+        code, summary, rows = self.run_evidence("--evidence-source", "database")
+        self.assertEqual(code, 2)
+        self.assertFalse(summary["execution_checks_passed"])
+        self.assertEqual(rows[0]["report_status"], "missing")
+        self.assertEqual(len(source.with_suffix(".calls").read_text().splitlines()), 1)
+
+    def test_database_source_requires_evidence_directory(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+            suite.main([str(self.bench), "--evidence-source", "database"])
+        self.assertEqual(error.exception.code, 2)
+
+    def test_failed_database_invocation_never_supplies_evidence(self):
+        source = self.task(report=self.selected_report(), exit=2, database_sidecar=True)
+        with mock.patch.object(suite, "export_database_report") as exporter:
+            code, summary, rows = self.run_evidence("--evidence-source", "database")
+        exporter.assert_not_called()
+        self.assertEqual(code, 0)  # Complete scan with a separately counted tool error.
+        self.assertEqual(summary["counts"]["err"], 1)
+        self.assertEqual(rows[0]["executions"], [])
+        self.assertEqual(len(source.with_suffix(".calls").read_text().splitlines()), 1)
+        self.assertFalse((self.root / "evidence/.raw").exists())
 
     def test_unknown_diagnostics_survive_raw_cleanup(self):
         self.task(output="The program is UNKNOWN", report={"reports": [{"info": {

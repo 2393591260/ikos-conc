@@ -132,7 +132,7 @@ For a local benchmark sweep with evidence from the same analyzer invocations:
 IKOS_BMC_RECOVER=1 python3 svcomp_race_test.py /path/to/sv-benchmarks \
   --ikos /path/to/install/bin/ikos --demote --jobs 4 --timeout 30 \
   --bmc-deadline-ms 20000 --bmc-solver-timeout-ms 1000 \
-  --evidence-dir /path/outside/repository/new-run
+  --evidence-dir /path/outside/repository/new-run --evidence-source database
 ```
 
 Use a new evidence directory for each run. The runner explicitly uses the
@@ -143,9 +143,13 @@ the saved FALSE executions offline and retains compressed evidence. Interrupted
 runs retain partial results; timeouts terminate the analysis process group.
 `complete` means the task scan finished; baseline pairing and source-witness
 validation remain separate acceptance steps. Coverage includes UNKNOWN and
-errors in the task population. JSON reporting adds overhead, so these local wall
-times must not be compared directly with another reporting mode or official CPU
-limits. Runtime/harness unit tests need no analyzer build:
+errors in the task population. Database capture preserves the normal text verdict
+and extracts report rows with the selected installation's reporter after all
+analyses finish. It hashes the same invocation's database and avoids exporting
+the full statement/object tables during the timed run. The original capture mode
+remains available with `--evidence-source json` and adds JSON reporting overhead.
+Local wall times must not be compared directly with another reporting mode or
+official CPU limits. Runtime/harness unit tests need no analyzer build:
 
 ```bash
 python3 scripts/test_ikos_runtime.py
