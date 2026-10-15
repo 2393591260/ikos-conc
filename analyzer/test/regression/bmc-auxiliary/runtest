@@ -147,7 +147,9 @@ def main():
                         assert not any('counterexample' in row['info'] for row in report['reports'])
                         counts = [row['info'].get('bmc', {}).get('counts', {}) for row in report['reports']]
                         if variant != 'nested':
-                            assert any(c.get('completion_atomic_target') for c in counts), counts
+                            assert any(c.get('atomic_auxiliary_completed_paths') for c in counts), counts
+                            if tail:
+                                assert any(c.get('completion_target_unjoined') for c in counts), counts
                         assertions += 3
                         rows.append(dict(bits=bits, variant=variant, atomic_main=main_atomic,
                                          tail=tail, verdict=verdict, executions=0))

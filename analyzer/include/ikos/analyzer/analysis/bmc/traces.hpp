@@ -64,10 +64,28 @@ inline ar::ReturnValue* completion_return(const std::vector< BmcEvent >& path,
   return ret != nullptr && ret->code() == root->body_or_null() ? ret : nullptr;
 }
 
+// A proven integer constant cast carries no object access capability. This is
+// only the handle non-escape audit; the encoder still binds the actual argument.
+inline bool constant_numeric_thread_argument(ar::Value* value,
+    const std::vector< BmcEvent >& path, std::size_t before) {
+  auto* variable = core::dyn_cast< ar::InternalVariable >(value);
+  if (!variable) return false;
+  std::size_t index = 0;
+  auto* cast = core::dyn_cast_or_null< ar::UnaryOperation >(
+      reaching_definition(variable, path, before, index));
+  if (!cast || (cast->op() != ar::UnaryOperation::SIToPtr &&
+                cast->op() != ar::UnaryOperation::UIToPtr)) return false;
+  auto* type = core::dyn_cast< ar::IntegerType >(cast->operand()->type());
+  core::ZNumber integer;
+  return type && type->bit_width() == cast->bundle()->data_layout().pointers.bit_width &&
+         constant_integer_on_path(cast->operand(), path, index, integer);
+}
+
 // Match generations at the consuming load, before a later slot overwrite.
 // Only an unescaped, typed scalar/array in this main invocation is supported.
 inline bool completion_join_creation(const std::vector< BmcEvent >& path,
-                                      std::size_t before, std::size_t& creation) {
+                                      std::size_t before, std::size_t& creation,
+                                      bool completed_main = false) {
   auto* join = core::dyn_cast< ar::CallBase >(path[before].stmt);
   auto* api = join != nullptr ? exact_callee(join) : nullptr;
   if (api == nullptr || !api->is_declaration() || join->num_arguments() != 2 ||
@@ -98,8 +116,15 @@ inline bool completion_join_creation(const std::vector< BmcEvent >& path,
   if (load == nullptr || !load->result()->type()->is_integer() ||
       !pointer_on_path(load->operand(), path, read, main, nullptr, address) ||
       address.local_base == nullptr || address.local_base->function() != main ||
-      address.var_id != 0 || address.base != 0 || address.heap_allocation != nullptr ||
-      !shared_main_allocation(address.local_base, path)) return false;
+      address.var_id != 0 || address.base != 0 || address.heap_allocation != nullptr) return false;
+  bool live = shared_main_allocation(address.local_base, path);
+  if (!live && completed_main) {
+    // Other retained children must Return < join < main Return. Only this
+    // handle consumption needs the main stack live, not the later root Return.
+    std::vector< BmcEvent > prefix(path.begin(), path.begin() + before + 1);
+    live = shared_main_allocation(address.local_base, prefix);
+  }
+  if (!live) return false;
   const auto width = join->bundle()->data_layout().pointers.bit_width / 8;
   core::ZNumber extent;
   auto* type = address.local_base->type()->pointee();
@@ -147,6 +172,8 @@ inline bool completion_join_creation(const std::vector< BmcEvent >& path,
       auto* operand = call->argument(arg);
       if (!operand->type()->is_pointer() || core::isa< ar::NullConstant >(operand) ||
           core::isa< ar::FunctionPointerConstant >(operand)) continue;
+      if (completed_main && path[i].kind == EvKind::Create && arg == 3 &&
+          constant_numeric_thread_argument(operand, path, i)) continue;
       BmcEvent passed;
       if (!pointer_on_path(operand, path, i, main, nullptr, passed) ||
           (passed.local_base == address.local_base &&

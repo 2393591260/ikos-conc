@@ -51,8 +51,10 @@ def main():
                 actual = suite.classify(proc.stdout + proc.stderr, proc.returncode, False)
                 # One verifier-atomic writer does not protect the other plain
                 # writer (18); the supported selected execution is checked below.
-                racy = case in (6, 7, 8, 11, 14, 15, 18, 19, 26, 27, 28, 32, 34, 35, 37, 39)
-                unsupported = case in (10, 16, 17, 20, 21, 22, 23, 24, 25, 29, 31, 33, 36, 38)
+                # In 20 the parent's atomic write follows create; joining later
+                # does not order it against the child's plain write.
+                racy = case in (6, 7, 8, 11, 14, 15, 18, 19, 20, 26, 27, 28, 32, 34, 35, 37, 39)
+                unsupported = case in (10, 16, 17, 21, 22, 23, 24, 25, 29, 31, 33, 36, 38)
                 # Narrow undef may be eliminated before BMC. It must not be
                 # confirmed; this UB input is not a labeled race-free control.
                 ok = actual == suite.VERDICT_RACE if racy else actual != suite.VERDICT_RACE
@@ -72,7 +74,7 @@ def main():
                     certificate["program_sha256"] = digest_json(program)
                     execution = check(program, certificate)
                     assert execution["status"] == "ACCEPT", (bits, case, execution)
-                    if case == 18:
+                    if case in (18, 20):
                         assert any(t["atomic"] for t in execution["targets"])
                         for label in ("a", "b"):
                             truncated = copy.deepcopy(certificate)
@@ -80,8 +82,10 @@ def main():
                             assert program["instructions"][trace["steps"][-1]["statement"]]["kind"] == "return"
                             trace["steps"].pop()
                             failure = check(program, truncated)
-                            assert failure == dict(status="REJECT",
-                                reason="atomic targets require completed root executions"), failure
+                            reasons = {"atomic targets require completed root executions"}
+                            if case == 20:
+                                reasons.add("join terminal occurrence")
+                            assert failure["status"] == "REJECT" and failure["reason"] in reasons, failure
                     if case == 15:
                         assert len(info["thread_creations"]) == 1, info["thread_creations"]
                     witness = svcomp_witness.build_witness(str(source), info,

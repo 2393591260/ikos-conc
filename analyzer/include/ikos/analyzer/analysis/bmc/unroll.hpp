@@ -772,10 +772,15 @@ inline bool constant_integer_on_path(ar::Value* value,
       default: return false;
     }
   } else if (auto* cast = core::dyn_cast< ar::UnaryOperation >(definition)) {
-    if (cast->op() != ar::UnaryOperation::SExt && cast->op() != ar::UnaryOperation::ZExt &&
-        cast->op() != ar::UnaryOperation::Bitcast) return false;
+    const bool truncation = cast->op() == ar::UnaryOperation::STrunc ||
+                            cast->op() == ar::UnaryOperation::UTrunc;
+    if (!truncation && cast->op() != ar::UnaryOperation::SExt &&
+        cast->op() != ar::UnaryOperation::ZExt && cast->op() != ar::UnaryOperation::Bitcast)
+      return false;
     auto* source = core::dyn_cast< ar::IntegerType >(cast->operand()->type());
-    if (source == nullptr || type->bit_width() < source->bit_width() ||
+    // The final range check admits only value-preserving truncations, not wrap.
+    if (source == nullptr || (truncation ? type->bit_width() > source->bit_width()
+                                        : type->bit_width() < source->bit_width()) ||
         !constant_integer_on_path(cast->operand(), path, index, result, depth + 1) ||
         (cast->op() == ar::UnaryOperation::Bitcast && type->bit_width() != source->bit_width()) ||
         (cast->op() == ar::UnaryOperation::ZExt && result < 0) ||
@@ -1273,9 +1278,11 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
                                   ar::Function* root = nullptr,
                                   ThreadArgument root_argument = nullptr,
                                   const std::vector< BmcEvent >* origins = nullptr,
-                                  bool defer_startup_create_offsets = false) {
+                                  bool defer_startup_create_offsets = false,
+                                  bool cache_successful_proofs = false) {
+  std::set< std::pair< ar::Value*, std::size_t > > proved;
   std::function< bool(ar::Value*, std::size_t, unsigned) > defined;
-  defined = [&](ar::Value* value, std::size_t before, unsigned depth) {
+  auto prove_defined = [&](ar::Value* value, std::size_t before, unsigned depth) {
     if (depth >= 32 || core::isa< ar::UndefinedConstant >(value)) return false;
     if (auto* aggregate = core::dyn_cast< ar::StructConstant >(value)) {
       for (const auto& field : aggregate->values())
@@ -1376,6 +1383,16 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
     }
     for (auto it = def->op_begin(); it != def->op_end(); ++it)
       if (!defined(*it, index, depth + 1)) return false;
+    return true;
+  };
+  defined = prove_defined;
+  if (cache_successful_proofs) defined = [&](ar::Value* value, std::size_t before, unsigned depth) {
+    // A dynamic use includes its position: another loop/call may redefine it.
+    // Reuse only successful proofs; depth-limited failures are context dependent.
+    auto key = std::make_pair(value, before);
+    if (proved.count(key)) return true;
+    if (!prove_defined(value, before, depth)) return false;
+    proved.insert(key);
     return true;
   };
   for (std::size_t i = 0; i < path.size(); ++i) {

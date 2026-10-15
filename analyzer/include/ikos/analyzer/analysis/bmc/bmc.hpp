@@ -263,6 +263,8 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     return std::any_of(unrolled.paths.begin(), unrolled.paths.end(), atomic_candidate);
   };
   if (needs_completion(rA) || needs_completion(rB)) {
+    // The completed main suffix can contain joins absent before either target.
+    outcome.needs_completion |= (funcA->name() == "main") != (funcB->name() == "main");
     rA = unroll_completed(funcA, stmtA, loop_bound, nullptr,
                           finite_source, finite_value);
     rB = unroll_completed(funcB, stmtB, loop_bound, nullptr,
@@ -487,7 +489,6 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
   const auto bound = std::max(literal_loop_search_bound(main), literal_loop_search_bound(worker));
   auto mains = unroll_to(main, main_target, 1, bound, false, nullptr, &budget.deadline);
   UnrollResult prefixes;
-  bool prefixes_unrolled = false;
   UnrollResult completed;
   bool completed_unrolled = false;
   auto note_unroll = [&](const UnrollResult& result) {
@@ -501,15 +502,22 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
     }
   };
   note_unroll(mains);
+  prefixes = unroll_to(worker, worker_target, 1, bound, false, nullptr, &budget.deadline);
+  note_unroll(prefixes);
+  const bool complete_roots = std::any_of(mains.paths.begin(), mains.paths.end(), atomic_candidate) ||
+      std::any_of(prefixes.paths.begin(), prefixes.paths.end(), atomic_candidate);
+  if (complete_roots) {
+    mains = unroll_completed(main, main_target, bound, &budget.deadline);
+    note_unroll(mains);
+    record(diagnostics, "atomic_auxiliary_completed_paths");
+  }
   std::map< ar::Function*, UnrollResult > returns;
   for (const auto& main_prefix : mains.paths) {
-    // Atomic targets need both completion suffixes; this fallback retains main
-    // only through its target. Leave those queries to the complete-path search.
-    if (atomic_candidate(main_prefix)) {
-      record(diagnostics, "completion_atomic_target");
+    if (complete_roots && completion_return(main_prefix, main) == nullptr) {
+      record(diagnostics, "completion_main_return");
       outcome.merge(Result(Status::Unsupported)); continue;
     }
-    if (std::count_if(main_prefix.begin(), main_prefix.end(),
+    if (!complete_roots && std::count_if(main_prefix.begin(), main_prefix.end(),
         [](const auto& event) {return event.kind == EvKind::Join;}) > 4) {
       record(diagnostics, "completion_trace_budget"); outcome.merge(Result(Status::BudgetExceeded)); continue;
     }
@@ -521,7 +529,7 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
     for (std::size_t i = 0; i < main_prefix.size(); ++i) {
       if (main_prefix[i].kind != EvKind::Join) continue;
       std::size_t creation = 0;
-      if (!completion_join_creation(main_prefix, i, creation) ||
+      if (!completion_join_creation(main_prefix, i, creation, complete_roots) ||
           !joined.emplace(creation, i).second) {
         record(diagnostics, "completion_join_generation", main_prefix[i].stmt);
         supported = false; break;
@@ -534,15 +542,15 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
       if (main_prefix[i].kind == EvKind::Create &&
           main_prefix[i].thread == reinterpret_cast< std::uint64_t >(worker)) targets.push_back(i);
     if (targets.empty()) continue;
-    if (!prefixes_unrolled) {
-      prefixes = unroll_to(worker, worker_target, 1, bound, false, nullptr, &budget.deadline);
-      prefixes_unrolled = true;
-      note_unroll(prefixes);
-    }
     std::stable_sort(targets.begin(), targets.end(), [&](auto a, auto b) {
       return joined.count(a) < joined.count(b);
     });
     for (auto target_creation : targets) {
+      // Only joined target instances finish before main's stack/process death.
+      if (complete_roots && joined.count(target_creation) == 0) {
+        record(diagnostics, "completion_target_unjoined");
+        outcome.merge(Result(Status::Unsupported)); continue;
+      }
       if (!spend()) return outcome;
       if (joined.count(target_creation) != 0 && !completed_unrolled) {
         completed = unroll_completed(worker, worker_target, bound, &budget.deadline);
@@ -551,8 +559,9 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
       }
       const auto& workers = joined.count(target_creation) != 0 ? completed.paths : prefixes.paths;
       for (const auto& worker_prefix : workers) {
-        if (atomic_candidate(worker_prefix)) {
-          record(diagnostics, "completion_atomic_target");
+        if ((!complete_roots && atomic_candidate(worker_prefix)) ||
+            (complete_roots && completion_return(worker_prefix, worker) == nullptr)) {
+          record(diagnostics, "completion_worker_return");
           outcome.merge(Result(Status::Unsupported)); continue;
         }
         if (!completion_prefix_supported(worker_prefix, true)) {

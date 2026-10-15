@@ -512,7 +512,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         event.shared_main_local = false;
   for (std::size_t id = 0; id < traces.size(); ++id)
     if (!prefix_values_defined(traces[id].events, diagnostics, traces[id].root, traces[id].argument,
-          id == 0 ? nullptr : &allocation_origin, id == 0 && selected_workers))
+          id == 0 ? nullptr : &allocation_origin, id == 0 && selected_workers, completion != nullptr))
       return Result(Status::Unsupported);
 
   // Calls update handles and opaque synchronization storage without AR Stores.
