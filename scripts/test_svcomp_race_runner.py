@@ -403,6 +403,17 @@ raise SystemExit(code)
         verdict, elapsed = suite.run_one(source, self.fake, 5, self.root / "db", "auto", "ILP32", False)
         self.assertEqual(verdict, suite.VERDICT_SAFE)
 
+    def test_process_stopped_probe_handles_exit_races(self):
+        for error in (FileNotFoundError, ProcessLookupError):
+            with self.subTest(error=error), mock.patch.object(Path, "read_text", side_effect=error):
+                self.assert_process_stopped(123)
+
+    def test_process_stopped_probe_rejects_live_process(self):
+        with mock.patch.object(Path, "read_text", return_value="123 (child) S"), \
+                mock.patch.object(time, "sleep"):
+            with self.assertRaisesRegex(AssertionError, "survived timeout"):
+                self.assert_process_stopped(123)
+
     @staticmethod
     def kill_if_live(pid):
         try:
@@ -414,7 +425,7 @@ raise SystemExit(code)
         for _ in range(50):
             try:
                 state = Path(f"/proc/{pid}/stat").read_text().split()[2]
-            except FileNotFoundError:
+            except (FileNotFoundError, ProcessLookupError):
                 return
             if state == "Z":
                 return
