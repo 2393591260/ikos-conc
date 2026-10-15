@@ -64,7 +64,10 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
         auto collect = [&](const auto& path, const std::string& name, std::size_t start, std::size_t writer_trace) {
           for (std::size_t j = 0; j < path.size(); ++j) {
             const auto& write = path[j];
-            if (write.kind != EvKind::Write || abstract_initializer(write.stmt) || !same_object(write, writer_trace)) continue;
+            const bool handle_source = read.joined_handle_read && writer_trace == trace_index &&
+                                       write.kind == EvKind::Create;
+            if ((write.kind != EvKind::Write && !handle_source) || abstract_initializer(write.stmt) ||
+                !same_object(write, writer_trace)) continue;
             auto write_offset = offset_of(write), time = number(clock[start + j]);
             if (write_offset <= position && position < write_offset + write.width && time < read_time &&
                 (!has_time || time > last_time)) {

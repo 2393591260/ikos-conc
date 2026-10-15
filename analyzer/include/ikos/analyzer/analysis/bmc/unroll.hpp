@@ -47,6 +47,7 @@ struct BmcEvent {
   std::size_t join_creation = 0; // Creation occurrence in this same prefix.
   bool candidate = false; // Selected dynamic access; atomic closure may follow.
   bool finite_source = false; // A chosen value of this executed source occurrence.
+  bool joined_handle_read = false; // Opaque library value consumed by a proven completion join.
   unsigned finite_value = 0;
   EvKind kind = EvKind::Read;
   std::uint64_t mutex = 0;  // Lock/Unlock 的锁对象语法同一性（arg0 指针）；内存事件为 0

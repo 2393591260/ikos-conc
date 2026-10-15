@@ -52,6 +52,8 @@ add_concurrency_test(ffs "${CONCURRENCY_ROOT}/scripts/test_bmc_ffs.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(atomic-completion "${CONCURRENCY_ROOT}/scripts/test_bmc_atomic_completion.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(heap-completion "${CONCURRENCY_ROOT}/scripts/test_bmc_heap_completion.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 foreach(bits 32)
   add_concurrency_test(p0-${bits}
     "${CONCURRENCY_ROOT}/docs/review-repros/bmc-2026-10-08/run.py"

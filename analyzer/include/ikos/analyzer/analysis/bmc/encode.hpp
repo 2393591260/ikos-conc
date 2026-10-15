@@ -590,10 +590,12 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       auto* call = core::dyn_cast< ar::CallBase >(e.stmt);
       return call != nullptr && free_call(call);
     });
-    if (!finite && !has_free) return true;
+    const bool joined_heap = completion != nullptr && std::any_of(path.begin(), path.end(),
+        [](const auto& e) {return e.joined_handle_read && e.heap_allocation != nullptr;});
+    if (!finite && !has_free && !joined_heap) return true;
     const bool shared_startup = selected_workers && &path == &startup && finite;
     if (shared_startup && has_free) return false;
-    const bool private_heap = finite || has_free;
+    const bool private_heap = finite || has_free || joined_heap;
     std::set< ar::CallBase* > live, freed;
     unsigned allocations = 0;
     for (std::size_t i = 0; i < path.size(); ++i) {
@@ -1503,7 +1505,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                                 const std::string& prefix) {
     for (std::size_t i = 0; i < path.size(); ++i) {
       if (path[i].synthetic_condition) continue;
-      if ((path[i].heap_allocation != nullptr || path[i].shared_main_local) && path[i].kind == EvKind::Read) {
+      // A proven join consumes an actual opaque create identity. Numerical
+      // consumers still go through encode_value and its library-source gate.
+      if ((path[i].heap_allocation != nullptr || path[i].shared_main_local) && path[i].kind == EvKind::Read &&
+          !(completion != nullptr && path[i].joined_handle_read)) {
         // Even an unused shared read must have a defined actual SC source.
         // Pointer or unsupported sources cannot become free malloc data.
         auto* load = core::cast< ar::Load >(path[i].stmt);

@@ -450,7 +450,8 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
 inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
     std::uint64_t widthA, ar::Function* funcB, ar::Statement* stmtB,
     std::uint64_t widthB, Diagnostics* diagnostics, SearchBudget& budget,
-    std::vector< ar::Statement* >* creations, const CandidateFacts* facts) {
+    std::vector< ar::Statement* >* creations, const CandidateFacts* facts,
+    ar::CallBase* finite_source = nullptr, unsigned finite_value = 0) {
   Result outcome(Status::NotSearched);
   const bool main_a = funcA->name() == "main";
   if (main_a == (funcB->name() == "main")) return outcome;
@@ -487,7 +488,8 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
   };
   if (!spend()) return outcome;
   const auto bound = std::max(literal_loop_search_bound(main), literal_loop_search_bound(worker));
-  auto mains = unroll_to(main, main_target, 1, bound, false, nullptr, &budget.deadline);
+  auto mains = unroll_to(main, main_target, 1, bound, false, nullptr, &budget.deadline,
+                         finite_source, finite_value);
   UnrollResult prefixes;
   UnrollResult completed;
   bool completed_unrolled = false;
@@ -507,7 +509,7 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
   const bool complete_roots = std::any_of(mains.paths.begin(), mains.paths.end(), atomic_candidate) ||
       std::any_of(prefixes.paths.begin(), prefixes.paths.end(), atomic_candidate);
   if (complete_roots) {
-    mains = unroll_completed(main, main_target, bound, &budget.deadline);
+    mains = unroll_completed(main, main_target, bound, &budget.deadline, finite_source, finite_value);
     note_unroll(mains);
     record(diagnostics, "atomic_auxiliary_completed_paths");
   }
@@ -525,15 +527,18 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
       record(diagnostics, "completion_prefix"); outcome.merge(Result(Status::Unsupported)); continue;
     }
     std::map< std::size_t, std::size_t > joined; // generation -> main join step
+    std::set< std::size_t > handle_reads;
     bool supported = true;
     for (std::size_t i = 0; i < main_prefix.size(); ++i) {
       if (main_prefix[i].kind != EvKind::Join) continue;
       std::size_t creation = 0;
-      if (!completion_join_creation(main_prefix, i, creation, complete_roots) ||
+      std::size_t read = 0;
+      if (!completion_join_creation(main_prefix, i, creation, complete_roots, &read) ||
           !joined.emplace(creation, i).second) {
         record(diagnostics, "completion_join_generation", main_prefix[i].stmt);
         supported = false; break;
       }
+      handle_reads.insert(read);
     }
     if (!supported) {outcome.merge(Result(Status::Unsupported)); continue;}
     if (joined.empty()) continue;
@@ -568,6 +573,7 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
           record(diagnostics, "completion_child_lifecycle"); outcome.merge(Result(Status::Unsupported)); continue;
         }
         auto main_path = main_prefix, worker_path = worker_prefix;
+        for (auto read : handle_reads) main_path[read].joined_handle_read = true;
         auto main_candidate = candidate_index(main_path), worker_candidate = candidate_index(worker_path);
         if (main_candidate == main_path.size() || worker_candidate == worker_path.size()) continue;
         main_path[main_candidate].width = main_a ? widthA : widthB;
@@ -652,6 +658,22 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
         }
       }
     }
+  }
+  if (!outcome.confirmed() && finite_source == nullptr && !budget.expired()) {
+    ar::CallBase* source = nullptr;
+    unsigned sources = 0, allocations = 0;
+    for (auto* block : *main->body()) for (auto* statement : *block) {
+      auto* call = core::dyn_cast< ar::CallBase >(statement);
+      if (call == nullptr) continue;
+      if (source_nondet(call)) {source = call; ++sources;}
+      if (malloc_call(call)) ++allocations;
+    }
+    if (sources == 1 && allocations == 1)
+      for (unsigned value = 1; value <= 4 && !budget.expired() && budget.queries != 0; ++value) {
+        outcome.merge(confirm_race_completion(funcA, stmtA, widthA, funcB, stmtB, widthB,
+            diagnostics, budget, creations, facts, source, value));
+        if (outcome.confirmed()) break;
+      }
   }
   return outcome;
 }

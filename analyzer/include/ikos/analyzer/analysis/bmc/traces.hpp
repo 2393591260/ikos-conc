@@ -85,7 +85,8 @@ inline bool constant_numeric_thread_argument(ar::Value* value,
 // Only an unescaped, typed scalar/array in this main invocation is supported.
 inline bool completion_join_creation(const std::vector< BmcEvent >& path,
                                       std::size_t before, std::size_t& creation,
-                                      bool completed_main = false) {
+                                      bool completed_main = false,
+                                      std::size_t* handle_read = nullptr) {
   auto* join = core::dyn_cast< ar::CallBase >(path[before].stmt);
   auto* api = join != nullptr ? exact_callee(join) : nullptr;
   if (api == nullptr || !api->is_declaration() || join->num_arguments() != 2 ||
@@ -115,9 +116,10 @@ inline bool completion_join_creation(const std::vector< BmcEvent >& path,
   BmcEvent address;
   if (load == nullptr || !load->result()->type()->is_integer() ||
       !pointer_on_path(load->operand(), path, read, main, nullptr, address) ||
-      address.local_base == nullptr || address.local_base->function() != main ||
-      address.var_id != 0 || address.base != 0 || address.heap_allocation != nullptr) return false;
-  bool live = shared_main_allocation(address.local_base, path);
+      address.var_id != 0 || address.base != 0) return false;
+  const bool heap = address.heap_allocation != nullptr;
+  if (!heap && (address.local_base == nullptr || address.local_base->function() != main)) return false;
+  bool live = heap || shared_main_allocation(address.local_base, path);
   if (!live && completed_main) {
     // Other retained children must Return < join < main Return. Only this
     // handle consumption needs the main stack live, not the later root Return.
@@ -127,21 +129,27 @@ inline bool completion_join_creation(const std::vector< BmcEvent >& path,
   if (!live) return false;
   const auto width = join->bundle()->data_layout().pointers.bit_width / 8;
   core::ZNumber extent;
-  auto* type = address.local_base->type()->pointee();
+  auto* type = heap ? core::cast< ar::PointerType >(load->operand()->type())->pointee()
+                    : address.local_base->type()->pointee();
   while (auto* array = core::dyn_cast< ar::ArrayType >(type)) type = array->element_type();
   auto* integer = core::dyn_cast< ar::IntegerType >(type);
   if (integer == nullptr || integer->bit_width() != width * 8 ||
       join->bundle()->data_layout().store_size_in_bytes(load->result()->type()) != core::ZNumber(width) ||
       !memory_extent(address, extent) || address.const_off < 0 ||
       address.const_off + width > extent || address.const_off % width != 0) return false;
+  auto same_object = [&](const BmcEvent& other) {
+    return heap ? other.heap_allocation == address.heap_allocation
+                : other.local_base == address.local_base;
+  };
   bool matched = false;
   for (std::size_t j = read; j-- > 0;) {
-    if (path[j].stmt->result_or_null() == address.local_base) break;
+    if (heap ? path[j].stmt == address.heap_allocation
+             : path[j].stmt->result_or_null() == address.local_base) break;
     if (path[j].kind != EvKind::Create) continue;
     auto* call = core::cast< ar::CallBase >(path[j].stmt);
     BmcEvent output;
     if (!pointer_on_path(call->argument(0), path, j, main, nullptr, output)) return false;
-    if (output.local_base != address.local_base) continue;
+    if (!same_object(output)) continue;
     std::uint64_t output_width, alignment;
     if (output.var_id != 0 || !create_output_layout(call, output_width, alignment)) return false;
     if (output.const_off + output_width <= address.const_off ||
@@ -157,13 +165,13 @@ inline bool completion_join_creation(const std::vector< BmcEvent >& path,
       if (abstract_initializer(store)) continue;
       BmcEvent output;
       if (!pointer_on_path(store->pointer(), path, i, main, nullptr, output) ||
-          output.local_base == address.local_base) return false;
+          same_object(output)) return false;
       if (store->value()->type()->is_pointer() &&
           !core::isa< ar::NullConstant >(store->value()) &&
           !core::isa< ar::FunctionPointerConstant >(store->value())) {
         BmcEvent stored;
         if (!pointer_on_path(store->value(), path, i, main, nullptr, stored) ||
-            stored.local_base == address.local_base) return false;
+            same_object(stored)) return false;
       }
     }
     auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt);
@@ -176,10 +184,33 @@ inline bool completion_join_creation(const std::vector< BmcEvent >& path,
           constant_numeric_thread_argument(operand, path, i)) continue;
       BmcEvent passed;
       if (!pointer_on_path(operand, path, i, main, nullptr, passed) ||
-          (passed.local_base == address.local_base &&
-           !(path[i].kind == EvKind::Create && arg == 0))) return false;
+          (same_object(passed) &&
+           !(path[i].kind == EvKind::Create && arg == 0) &&
+           !(heap && free_call(call) && arg == 0 && i > before && passed.const_off == 0))) return false;
     }
   }
+  if (heap) {
+    // Opaque identity is copied to this join, never interpreted as an integer.
+    std::set< ar::Value* > aliases{load->result()};
+    bool consumed = false;
+    for (std::size_t i = read + 1; i < path.size(); ++i) {
+      auto* statement = path[i].stmt;
+      bool used = false;
+      for (auto operand = statement->op_begin(); operand != statement->op_end(); ++operand)
+        used |= aliases.count(*operand) != 0;
+      auto* copy = core::dyn_cast< ar::Assignment >(statement);
+      const bool forwarding = used && copy != nullptr &&
+                              copy->result()->type() == copy->operand()->type();
+      if (used && !forwarding) {
+        if (i != before || !aliases.count(join->argument(0))) return false;
+        consumed = true;
+      }
+      if (auto* result = statement->result_or_null()) aliases.erase(result);
+      if (forwarding) aliases.insert(copy->result());
+    }
+    if (!consumed) return false;
+  }
+  if (handle_read != nullptr) *handle_read = read;
   return true;
 }
 
