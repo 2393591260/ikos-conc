@@ -48,6 +48,7 @@
 #include <ikos/analyzer/analysis/bmc/bmc.hpp>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
 #include <ikos/analyzer/analysis/pair_exclusion.hpp>
+#include <ikos/analyzer/analysis/region_ownership.hpp>
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 #include <ikos/analyzer/analysis/pointer/function.hpp>
 #include <ikos/analyzer/support/cast.hpp>
@@ -718,6 +719,7 @@ inline bool region_of(ar::Value* v, Context& ctx, CallContext* cc,
 } // end anonymous namespace
 
 DataRaceChecker::DataRaceChecker(Context& ctx) : Checker(ctx) {
+  this->_ownership.reset(new RegionOwnership(ctx));
   const char* configured = std::getenv("IKOS_AI_PAIR_EXCLUSION");
   const std::string mode = configured ? configured : "";
   this->_pair_exclusion_enabled = mode == "1" || mode == "native";
@@ -725,6 +727,7 @@ DataRaceChecker::DataRaceChecker(Context& ctx) : Checker(ctx) {
 }
 
 DataRaceChecker::~DataRaceChecker() {
+  this->_ownership->run();
   bool synthetic_handle_unsupported = false;
   for (ar::CallBase* call : this->_ctx.concurrent_env.unmodeled_thread_creations()) {
     this->_checks.insert(
@@ -1325,6 +1328,32 @@ DataRaceChecker::~DataRaceChecker() {
       if (protects_both(a.locks, b.locks) ||          // exclusive ∩ exclusive
           protects_both(a.locks, b.read_locks) ||     // exclusive ∩ read
           protects_both(a.read_locks, b.locks)) {     // read ∩ exclusive
+        continue;
+      }
+
+      // This proof only covers live heap objects, including every disjunct on
+      // both sides. Absolute-address/TOP mixtures retain their old candidates.
+      auto heap_only = [](const PointsToSet& points) {
+        if (!points.is_set() || points.is_empty()) return false;
+        for (auto* object : points) {
+          if (!isa< DynAllocMemoryLocation >(object)) return false;
+        }
+        return true;
+      };
+      // Actual heap overlap implies equal immutable owners, hence the same
+      // corresponding concrete mutex. This is not a non-nullness assertion.
+      if (heap_only(a.pts) && heap_only(b.pts) &&
+          this->_ownership->excludes(a.stmt, a.call_context, b.stmt, b.call_context)) {
+        auto proof = this->_ownership->info();
+        proof.put("safe_reason", "indexed ownership with corresponding mutexes");
+        if (auto location = source_location(a.stmt)) {
+          proof.put("access_a_line", location.line());
+        }
+        if (auto location = source_location(b.stmt)) {
+          proof.put("access_b_line", location.line());
+        }
+        this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+                             a.stmt, a.call_context, {}, proof);
         continue;
       }
 
@@ -2296,6 +2325,8 @@ void DataRaceChecker::check(ar::Statement* stmt,
     // Statement is unreachable
     return;
   }
+
+  this->_ownership->observe(stmt, inv, call_context);
 
   if (auto* operation = dyn_cast< ar::BinaryOperation >(stmt)) {
     if (this->_ctx.opts.demote_race_to_unknown && getenv("IKOS_BMC_RECOVER") != nullptr && operation->has_no_wrap()) {

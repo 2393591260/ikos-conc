@@ -246,6 +246,38 @@ Original IKOS numerical analyses and general parameters are described in
 [analyzer/README.md](../analyzer/README.md). Keep property queries separate from
 reusable thread and memory semantics.
 
+## Indexed heap ownership
+
+A separate finite proof pass can relate a global array of heap roots to a
+corresponding mutex array. It checks all supported writer transfers, including
+helpers and loop joins, before supplying any exclusion certificate. Fresh malloc
+instances acquire an immutable owner on publication; links must remain NULL or
+within that owner. Copies preserve the relation, while conflicting joins forget
+it. Allocation sites are not treated as unique runtime objects.
+
+For a pair of heap accesses, overlap in the same live object implies equal
+owners. If both accesses hold their owner's actual mutex, that pair cannot race.
+This conditional proof does not establish pointer validity or narrow the original
+value analysis. Both complete points-to sets must contain only known heap
+locations; numeric addresses, TOP and mixed storage classes retain their original
+candidates. Missing ownership on either endpoint also retains the candidate.
+
+The initial subset supports ILP32 GNU/Linux fixed root/mutex arrays, one
+self-referential pointer field per object, exact object extents and verified
+pthread/malloc APIs. Root slots become immutable before worker creation.
+Cross-owner links, unknown effects, unsupported escaping, free/realloc, partial
+pointer writes or unproved address bounds disable the family certificate.
+Coverage warnings remain independent. Unsupported programs use the existing
+analysis and may remain UNKNOWN.
+
+Implementation: `analysis/region_ownership.hpp` and
+`src/analysis/region_ownership.cpp`. The checker consumes certificates only after
+the original value analysis has converged. With `--format=json`, add
+`--status-filter=safe` to inspect `indexed-live-heap-owner-v1` proof rows; safe
+rows are hidden by the default report filter. Local positive, negative and
+transformed examples run with BMC disabled via
+`python3 scripts/test_region_ownership.py`.
+
 ## Validation and reproducibility
 
 The original soundness regression cases and their controls are in

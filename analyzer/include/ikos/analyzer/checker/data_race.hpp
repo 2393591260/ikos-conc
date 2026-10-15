@@ -44,6 +44,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_set>
 
@@ -54,6 +55,8 @@
 
 namespace ikos {
 namespace analyzer {
+
+class RegionOwnership;
 
 /// \brief Kind of memory access recorded for race detection
 enum class AccessKind { Read, Write };
@@ -298,6 +301,8 @@ private:
 private:
   /// \brief Access digest collected during the analysis pass
   std::vector< AccessRecord > _accesses;
+
+  std::unique_ptr< RegionOwnership > _ownership;
 
   // Opt-in research configuration; native mode is the solver-free ablation.
   bool _pair_exclusion_enabled = false;

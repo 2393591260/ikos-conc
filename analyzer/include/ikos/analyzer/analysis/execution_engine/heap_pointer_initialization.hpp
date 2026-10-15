@@ -2,13 +2,14 @@
 #pragma once
 
 #include <ikos/analyzer/analysis/execution_engine/stable_publication.hpp>
+#include <ikos/analyzer/analysis/literal.hpp>
 
 namespace ikos {
 namespace analyzer {
 
 // Every returned instance has the slot initialized before its first escape.
 // This proves coverage of values, never uniqueness of summarized allocations.
-inline bool prove_heap_constructor(ar::CallBase* allocation, const core::ZNumber& field) {
+inline bool prove_heap_constructor_body(ar::CallBase* allocation, const core::ZNumber& field) {
   auto* code = allocation->code();
   if (!code->is_function_body() || field < 0) return false;
   auto* block = code->entry_block();
@@ -82,6 +83,12 @@ inline bool prove_heap_constructor(ar::CallBase* allocation, const core::ZNumber
     } else return false;
   }
   if (!allocated || !initialized || !returned) return false;
+  return true;
+}
+
+inline bool prove_heap_constructor(ar::CallBase* allocation, const core::ZNumber& field) {
+  if (!prove_heap_constructor_body(allocation, field)) return false;
+  auto* function = allocation->code()->function();
   auto* bundle = function->bundle();
   if (bundle->global_or_null("ar.global_ctors")) return false;
   unsigned budget = 8192;

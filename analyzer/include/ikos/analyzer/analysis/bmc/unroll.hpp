@@ -1802,7 +1802,7 @@ inline std::size_t candidate_index(const std::vector< BmcEvent >& path) {
   return path.size();
 }
 
-void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
+inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
                std::vector< BmcEvent >& current,
                std::vector< std::vector< BmcEvent > >& out,
                std::vector< ar::BasicBlock* > in_stack,
