@@ -1574,6 +1574,7 @@ DataRaceChecker::~DataRaceChecker() {
   // Initially support two explicit spawns on a linear main prefix, with no
   // intervening waits or unknown calls. Loop/conditional creation needs modeling.
   std::map< std::pair< std::string, std::string >, std::vector< std::vector< bmc::BmcEvent > > > activation_prefixes;
+  decltype(activation_prefixes) short_activation_prefixes;
   auto two_live_threads = [&](const std::string& thread_a, const std::string& thread_b) {
     ar::Function* main = this->_ctx.bundle->function_or_null("main");
     if (main == nullptr || main->body_or_null() == nullptr ||
@@ -1758,6 +1759,8 @@ DataRaceChecker::~DataRaceChecker() {
   bool file_confirmed = false;
   unsigned startup_hint = 16;
   for (unsigned pass = 0; pass < 6; ++pass) {
+    // Try every candidate's short execution before deeper loop alternatives.
+    search_budget.defer_large_loops = pass < 2;
     if (pass == 4 && !hinted_activation_groups.empty() && !file_confirmed &&
         !search_budget.expired() && search_budget.candidates != 0 && search_budget.queries != 0) {
       // Even the hint scan follows every original pass; it cannot consume
@@ -1769,6 +1772,9 @@ DataRaceChecker::~DataRaceChecker() {
       // A short startup is a search choice, not an activation/safety proof for
       // other prefixes. Retry deferred groups with the original larger bound.
       instance_proofs.clear();
+      // Bounded DFS need not emit a superset: keep short startup + deep worker
+      // combinations when the larger startup enumeration saturates.
+      if (pass == 2) short_activation_prefixes = std::move(activation_prefixes);
       activation_prefixes.clear();
       if (pass >= 3) small_activation.clear();
     }
@@ -1932,6 +1938,14 @@ DataRaceChecker::~DataRaceChecker() {
               small_activation.insert(key);
             }
             if (!live) live = conditional_live_threads(a.thread_id, b.thread_id, 16);
+          }
+          if (pass == 2) {
+            auto previous = short_activation_prefixes.find(key);
+            if (previous != short_activation_prefixes.end() && !previous->second.empty()) {
+              auto& paths = activation_prefixes[key];
+              paths.insert(paths.begin(), previous->second.begin(), previous->second.end());
+              live = true;
+            }
           }
           proof = instance_proofs.emplace(key, live).first;
         }
@@ -2195,7 +2209,7 @@ DataRaceChecker::~DataRaceChecker() {
 
     file_confirmed |= bmc_confirmed;
     const bool legacy_deferred = (pass == 0 && search_budget.saw_interrupted) ||
-                                 (pass == 1 && group_small_activation && !file_confirmed);
+                                 (pass == 1 && (group_small_activation || search_budget.saw_interrupted) && !file_confirmed);
     const bool occurrence_deferred = pass < 3 && bmc_enabled && group_worker_pairs && !file_confirmed;
     // Hold the last unconfirmed worker reports until every original pass has
     // finished. With no larger hint the final pass only emits these results.

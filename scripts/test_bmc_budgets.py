@@ -34,6 +34,28 @@ int main(void) {
 }
 """
 
+STARTUP_SOURCE = """#include <pthread.h>
+extern int __VERIFIER_nondet_int(void);
+extern void __VERIFIER_assume(int);
+int startup_count, payload;
+void *writer(void *arg) {
+  if (startup_count == 0)
+    for (int i = 0; i < 3; ++i)
+      if (i == 2) payload = 1;
+  return 0;
+}
+int main(void) {
+  pthread_t first, second;
+  while (__VERIFIER_nondet_int()) ++startup_count;
+  CONTROL
+  pthread_create(&first, 0, writer, 0);
+  pthread_create(&second, 0, writer, 0);
+  pthread_join(first, 0);
+  pthread_join(second, 0);
+  return 0;
+}
+"""
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -49,8 +71,8 @@ def main():
         report = work / 'report.json'
         database = work / 'output.db'
 
-        def analyze(bits, locked, options):
-            source.write_text(SOURCE.replace('BEFORE',
+        def analyze(bits, locked, options, program=SOURCE):
+            source.write_text(program.replace('BEFORE',
                 'pthread_mutex_lock(&lock);' if locked else '').replace('AFTER',
                 'pthread_mutex_unlock(&lock);' if locked else ''))
             report.unlink(missing_ok=True)
@@ -90,6 +112,18 @@ def main():
                         assert checks and all(c['status'] == 'ACCEPT' for c in checks), checks
                         assertions += 1
                     print(bits, locked, options or ['defaults'], verdict, flush=True)
+
+        # A deeper worker must retain the zero-iteration startup even if the
+        # larger DFS fills its startup limit with nonzero iterations.
+        for control in ('', '__VERIFIER_assume(startup_count > 0);'):
+            verdict, data, _ = analyze(args.bits, False, [],
+                                      STARTUP_SOURCE.replace('CONTROL', control))
+            assert (verdict == VERDICT_RACE) == (not control), (control, verdict)
+            if not control:
+                checks = validate_report(data)
+                assert checks and all(c['status'] == 'ACCEPT' for c in checks), checks
+            assertions += 2
+            print('short startup / deep worker', bool(control), verdict, flush=True)
 
         for flag, values in (('--bmc-deadline-ms', ('-1', '4294967296', 'x')),
                 ('--bmc-solver-timeout-ms', ('0', '-1', '4294967296', 'x'))):

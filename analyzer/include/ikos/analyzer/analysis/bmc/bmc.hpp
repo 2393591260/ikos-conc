@@ -154,6 +154,7 @@ struct SearchBudget {
   std::size_t candidates = 256;
   std::size_t queries = 1024;
   bool probe_interrupted = false;
+  bool defer_large_loops = false;
   bool saw_interrupted = false;
   const unsigned deadline_ms;
   const unsigned solver_timeout_ms;
@@ -322,9 +323,12 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     if (loop_bound == 1) {
       auto bound = std::max(literal_loop_search_bound(funcA), literal_loop_search_bound(funcB));
       if (bound > 16) record(diagnostics, "literal_loop_search_hint");
-      outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
-                                 diagnostics, budget, creations, facts, bound,
-                                 finite_source, finite_value));
+      if (budget != nullptr && budget->defer_large_loops) {
+        budget->saw_interrupted = true;
+        record(diagnostics, "deferred_loop_search");
+      } else outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
+                                        diagnostics, budget, creations, facts, bound,
+                                        finite_source, finite_value));
       finite_fallback();
       return outcome;
     }
@@ -428,9 +432,12 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   if (loop_bound == 1) {
     auto bound = std::max(literal_loop_search_bound(funcA), literal_loop_search_bound(funcB));
     if (bound > 16) record(diagnostics, "literal_loop_search_hint");
-    outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
-                               diagnostics, budget, creations, facts, bound,
-                               finite_source, finite_value));
+    if (budget != nullptr && budget->defer_large_loops) {
+      budget->saw_interrupted = true;
+      record(diagnostics, "deferred_loop_search");
+    } else outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
+                                      diagnostics, budget, creations, facts, bound,
+                                      finite_source, finite_value));
   }
   finite_fallback();
   return outcome;
