@@ -174,6 +174,12 @@ identity. Integer payload conversions are supported. Branching constructors,
 interior returns, pointer export, unknown calls, byte overlap and missing source
 coverage fall back conservatively. Lifetime checks remain separate.
 
+BMC models the POSIX `ffs(int)` library declaration with its exact 32-bit
+argument: zero returns zero, otherwise the result is the 1-based index of the
+least significant set bit. The independent AR checker computes that result
+from the replayed argument. Definitions with the same name execute their
+actual bodies; incompatible signatures and calling conventions are unsupported.
+
 AI and BMC have different coverage responsibilities. A fact sufficient to exclude
 all conflicts is not necessarily a concrete value source for a BMC execution.
 

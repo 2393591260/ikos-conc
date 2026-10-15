@@ -360,6 +360,17 @@ class Replay:
 
     def api(self, name, args, inst, step, trace_id, index, thread, frame):
         fn = self.functions[name]
+        if name == 'ffs':
+            types = fn['parameter_types'] + [fn['return_type']]
+            require(fn['declaration'] and not fn['variadic'] and len(args) == 1 and
+                    len(fn['parameter_types']) == 1 and inst.get('calling_convention') == 0 and
+                    all(t.get('kind') == 'integer' and t.get('bits') == 32 and
+                        t.get('signed') and int(t.get('size', 0)) == 4 for t in types), 'ffs contract')
+            require(inst['operands'][1]['type'] == types[0] and
+                    ('result' not in inst or inst['result']['type'] == types[-1]), 'ffs call types')
+            require(isinstance(args[0], int) and integer(args[0], types[0]) == args[0], 'ffs argument')
+            bits = args[0] & 0xffffffff
+            return (bits & -bits).bit_length()
         if fn.get('intrinsic_nondet') or name in NONDET:
             require(not args and not fn['parameter_types'] and fn['declaration'], 'nondet contract')
             t = inst['result']['type']

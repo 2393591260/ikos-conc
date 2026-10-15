@@ -1359,6 +1359,18 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         cache.emplace(key, out);
         return true;
       }
+      if (ffs_call(call)) {
+        z3::expr value(ctx);
+        if (!encode_value(call->argument(0), value, cache, prefix, depth + 1,
+                          definition_index)) return false;
+        auto bits = z3::int2bv(32, value);
+        out = ctx.int_val(0);
+        for (unsigned bit = 32; bit-- > 0;)
+          out = z3::ite(bits.extract(bit, bit) == ctx.bv_val(1, 1),
+                        ctx.int_val(bit + 1), out);
+        cache.emplace(key, out);
+        return true;
+      }
       // 识别 nondet 调用：直调是
       // FunctionPointerConstant；`__VERIFIER_nondet_int` 常被 frontend 变成 `%5
       // = bitcast @__VERIFIER_nondet_int; %6 = call %5()`， 剥 bitcast

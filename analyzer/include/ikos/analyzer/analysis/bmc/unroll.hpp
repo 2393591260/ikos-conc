@@ -460,10 +460,31 @@ inline bool mutex_attribute_call(ar::CallBase* call) {
 
 // Memory-using summaries must discharge their object/effect obligations later.
 // Unknown externals have no such summary.
+// POSIX ffs(int): zero maps to zero; otherwise the least set bit is 1-based.
+// Only the actual 32-bit C library declaration grants this pure-call contract.
+inline bool ffs_call(ar::CallBase* call) {
+  auto* function = exact_callee(call);
+  if (!function || !function->is_declaration() || function->name() != "ffs" ||
+      function->type()->is_var_arg() || function->num_parameters() != 1 ||
+      call->num_arguments() != 1) return false;
+  auto int32 = [](ar::Type* type) {
+    auto* integer = core::dyn_cast< ar::IntegerType >(type);
+    return integer && integer->bit_width() == 32 && integer->is_signed();
+  };
+  auto* source = call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+  return int32(function->type()->return_type()) &&
+         int32(function->type()->param_type(0)) && int32(call->argument(0)->type()) &&
+         (!call->has_result() || int32(call->result()->type())) &&
+         source && source->getCallingConv() == llvm::CallingConv::C &&
+         function->has_frontend() && source->getCalledOperand()->stripPointerCasts() ==
+             function->frontend< llvm::Function >();
+}
+
 inline bool supported_leaf_call(ar::CallBase* call) {
   auto* f = exact_callee(call);
   if (f == nullptr || !f->is_declaration()) return false;
-  if (constant_output_call(call)) return true;
+  if (constant_output_call(call) || ffs_call(call)) return true;
   if (f->intrinsic_id() == ar::Intrinsic::IkosNonDet) return true;
   if (f->intrinsic_id() == ar::Intrinsic::LibcMalloc)
     return malloc_call(call) && call->code()->is_function_body() &&
@@ -1339,6 +1360,7 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
       core::ZNumber size;
       if (main_allocation(call, path, index, size)) return true;
       if (source_nondet(call)) return true;
+      if (ffs_call(call)) return defined(call->argument(0), index, depth + 1);
       if (successful_create_result(path[index])) return true;
       if (successful_condition_result(path[index]) || successful_join_result(path[index])) return true;
       auto* f = callee_on_path(call, path, index);
