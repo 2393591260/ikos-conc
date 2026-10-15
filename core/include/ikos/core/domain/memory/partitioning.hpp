@@ -323,56 +323,60 @@ public:
   }
 
   bool leq(const PartitioningDomain& other) const override {
-    if (this->_variable != other._variable) {
-      return this->join_partitions().memory.leq(other.join_partitions().memory);
-    } else {
-      for (auto this_it = this->_partitions.begin(),
-                this_et = this->_partitions.end(),
-                other_it = other._partitions.begin(),
-                other_et = other._partitions.end();
-           this_it != this_et;) {
-        if (other_it == other_et ||
-            this_it->interval.ub() < other_it->interval.lb()) {
-          // The partition in `this` does not match any partition in `other`
-          if (!this_it->memory.is_bottom()) {
-            return false;
-          }
-          ++this_it;
-        } else if (other_it->interval.ub() < this_it->interval.lb()) {
-          // The partition in `other` does not match any partition in `this`
-          ++other_it;
-        } else if (this_it->interval.ub() <= other_it->interval.ub()) {
-          // The partition in `this` matches a partition in `other`
-          if (!this_it->memory.leq(other_it->memory)) {
-            return false;
-          }
-          ++this_it;
-        } else {
-          // The partition in `this` overlaps one or more partitions in `other`
-          MemoryDomain other_memory = other_it->memory;
-          for (auto it = std::next(other_it);
-               it != other_et && this_it->interval.ub() >= it->interval.lb();
-               ++it) {
-            other_memory.join_with(it->memory);
-          }
-          if (!this_it->memory.leq(other_memory)) {
-            return false;
-          }
-          ++this_it;
+    if (this->is_bottom()) {
+      return true;
+    } else if (other.is_bottom()) {
+      return false;
+    }
+    if (!other._variable || this->is_same_partitioning(other)) {
+      auto right = other._partitions.begin();
+      for (const Partition& left : this->_partitions) {
+        if (!left.memory.leq(right->memory)) {
+          return false;
+        }
+        if (other._variable) {
+          ++right;
         }
       }
-
       return true;
     }
+
+    const auto key = *other._variable;
+    const auto width = IntVariableTrait::bit_width(key);
+    const auto sign = IntVariableTrait::sign(key);
+    const ZNumber minimum = MachineInt::min(width, sign).to_z_number();
+    const ZNumber maximum = MachineInt::max(width, sign).to_z_number();
+    for (const Partition& left : this->_partitions) {
+      auto slice = [&](const ZNumber& lower, const ZNumber& upper) {
+        MemoryDomain memory = left.memory;
+        // Refinement is a query: do not initialize an undefined key.
+        memory.int_refine(key, IntInterval(MachineInt(lower, width, sign),
+                                           MachineInt(upper, width, sign)));
+        memory.normalize();
+        return memory;
+      };
+      ZNumber lower = minimum;
+      for (const Partition& right : other._partitions) {
+        const ZNumber first = right.interval.lb().to_z_number();
+        const ZNumber last = right.interval.ub().to_z_number();
+        if (lower < first && !slice(lower, first - 1).is_bottom()) {
+          return false;
+        }
+        // Compare with each actual disjunct, never its convex hull.
+        if (!slice(first, last).leq(right.memory)) {
+          return false;
+        }
+        lower = last + 1;
+      }
+      if (lower <= maximum && !slice(lower, maximum).is_bottom()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   bool equals(const PartitioningDomain& other) const override {
-    if (this->_variable != other._variable) {
-      return this->join_partitions().memory.equals(
-          other.join_partitions().memory);
-    } else {
-      return this->leq(other) && other.leq(*this);
-    }
+    return this->leq(other) && other.leq(*this);
   }
 
   void join_with(const PartitioningDomain& other) override {

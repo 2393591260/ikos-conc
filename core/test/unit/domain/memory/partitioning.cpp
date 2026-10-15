@@ -42,6 +42,8 @@
 
 #define BOOST_TEST_MODULE test_memory_partitioning_domain
 #define BOOST_TEST_DYN_LINK
+#include <vector>
+
 #include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -696,4 +698,132 @@ BOOST_AUTO_TEST_CASE(to_interval) {
   e2.add(Int(-3, 32, Signed), y);
   BOOST_CHECK(inv.int_to_interval(e2) ==
               Interval(Int(-9, 32, Signed), Int(-4, 32, Signed)));
+}
+
+// A convex hull of a union does not preserve its value correlations.
+BOOST_AUTO_TEST_CASE(inclusion_preserves_partition_correlations) {
+  VariableFactory vfac;
+  Variable x(vfac.get_int("x", 32, Signed));
+  Variable y(vfac.get_int("y", 32, Signed));
+  auto point = [&](int a, int b, Variable key) {
+    auto inv = make_top();
+    inv.int_assign(x, Int(a, 32, Signed));
+    inv.int_assign(y, Int(b, 32, Signed));
+    inv.partitioning_set_variable(key);
+    return inv;
+  };
+  auto diagonal = point(0, 0, x).join(point(1, 1, x));
+  auto alternate_key = point(0, 0, y).join(point(1, 1, y));
+  auto opposite = point(0, 1, y).join(point(1, 0, y));
+  auto box = diagonal;
+  box.partitioning_disable();
+  BOOST_CHECK(diagonal.leq(box));
+  BOOST_CHECK(!box.leq(diagonal));
+  BOOST_CHECK(!box.equals(diagonal));
+  box.partitioning_set_variable(x);
+  BOOST_CHECK(!box.leq(diagonal));
+  BOOST_CHECK(!box.equals(diagonal));
+  BOOST_CHECK(!diagonal.leq(opposite));
+  BOOST_CHECK(!opposite.leq(diagonal));
+  BOOST_CHECK(!diagonal.equals(opposite));
+  BOOST_CHECK(diagonal.equals(alternate_key));
+
+  auto gap = point(-2, 0, x).join(point(2, 0, x));
+  auto gap_box = gap;
+  gap_box.partitioning_join();
+  BOOST_CHECK(!gap_box.leq(gap));
+  BOOST_CHECK(gap.leq(gap_box));
+}
+
+BOOST_AUTO_TEST_CASE(inclusion_does_not_initialize_partition_keys) {
+  VariableFactory vfac;
+  Variable x(vfac.get_int("x", 32, Signed));
+  Variable y(vfac.get_int("y", 32, Signed));
+  auto initialized = make_top();
+  initialized.int_assign(x, Int(0, 32, Signed));
+  initialized.partitioning_set_variable(x);
+  auto uninitialized = make_top();
+  uninitialized.int_assign_undef(x);
+  BOOST_CHECK(!uninitialized.leq(initialized));
+  auto maybe_initialized = initialized;
+  maybe_initialized.partitioning_disable();
+  maybe_initialized.join_with(uninitialized);
+  maybe_initialized.partitioning_set_variable(y);
+  BOOST_CHECK(!maybe_initialized.leq(initialized));
+}
+
+BOOST_AUTO_TEST_CASE(inclusion_covers_machine_integer_boundaries) {
+  for (auto width : {1u, 64u}) {
+    for (auto sign : {Signed, Unsigned}) {
+      VariableFactory vfac;
+      Variable x(vfac.get_int("x", width, sign));
+      Variable y(vfac.get_int("y", width, sign));
+      const auto minimum = Int::min(width, sign);
+      const auto maximum = Int::max(width, sign);
+      auto point = [&](const Int& n, Variable key) {
+        auto inv = make_top();
+        inv.int_assign(x, n);
+        inv.int_assign(y, n);
+        inv.partitioning_set_variable(key);
+        return inv;
+      };
+      auto split = point(minimum, x).join(point(maximum, x));
+      auto equivalent = point(minimum, y).join(point(maximum, y));
+      auto box = split;
+      box.partitioning_disable();
+      BOOST_CHECK(split.equals(equivalent));
+      BOOST_CHECK(split.leq(box));
+      BOOST_CHECK(!box.leq(split));
+      box.partitioning_set_variable(x);
+      BOOST_CHECK(!box.leq(split));
+      auto enlarged = split.join_iter(box);
+      BOOST_CHECK(!enlarged.leq(split));
+    }
+  }
+}
+
+// Every state below stays within {0,1}^2, making point membership exhaustive.
+BOOST_AUTO_TEST_CASE(inclusion_matches_finite_concretizations) {
+  VariableFactory vfac;
+  Variable x(vfac.get_int("x", 32, Signed));
+  Variable y(vfac.get_int("y", 32, Signed));
+  std::vector< PartitioningDomain > domains;
+  std::vector< unsigned > concrete;
+  for (unsigned key = 0; key < 3; ++key) {
+    for (unsigned selected = 1; selected < 16; ++selected) {
+      auto inv = make_bottom();
+      for (unsigned point = 0; point < 4; ++point) {
+        if (!(selected & (1u << point)))
+          continue;
+        auto branch = make_top();
+        branch.int_assign(x, Int(point / 2, 32, Signed));
+        branch.int_assign(y, Int(point % 2, 32, Signed));
+        if (key != 0)
+          branch.partitioning_set_variable(key == 1 ? x : y);
+        inv.join_with(branch);
+      }
+      unsigned mask = 0;
+      for (unsigned point = 0; point < 4; ++point) {
+        auto member = inv;
+        member.int_refine(x, Interval(Int(point / 2, 32, Signed)));
+        member.int_refine(y, Interval(Int(point % 2, 32, Signed)));
+        member.normalize();
+        if (!member.is_bottom())
+          mask |= 1u << point;
+      }
+      domains.push_back(inv);
+      concrete.push_back(mask);
+    }
+  }
+  for (unsigned i = 0; i < domains.size(); ++i) {
+    BOOST_CHECK(domains[i].leq(domains[i]));
+    for (unsigned j = 0; j < domains.size(); ++j) {
+      if (domains[i].leq(domains[j])) {
+        BOOST_CHECK_EQUAL(concrete[i] & ~concrete[j], 0u);
+      }
+      if (domains[i].equals(domains[j])) {
+        BOOST_CHECK_EQUAL(concrete[i], concrete[j]);
+      }
+    }
+  }
 }

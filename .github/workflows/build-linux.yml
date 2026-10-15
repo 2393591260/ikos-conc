@@ -45,5 +45,9 @@ jobs:
       - name: Confirm that it runs
         run: |
           ikos --version
+      - name: Check partitioned-domain inclusion
+        run: |
+          cmake --build build --target test-core-domain-memory-partitioning
+          ctest --test-dir build -R '^core-domain-memory-partitioning$' --output-on-failure
       - name: Check concurrent analysis and evidence
         run: ctest --test-dir build -L concurrency --output-on-failure
