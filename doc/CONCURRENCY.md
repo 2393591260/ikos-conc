@@ -211,6 +211,10 @@ The pipeline is C/LLVM → AR → thread-modular abstract interpretation → acc
 records and conservative conflict filtering → candidate-driven BMC → result
 and execution evidence. Shared-summary changes trigger thread reanalysis;
 bounded search is used to confirm races, not to prove unbounded safety.
+When either selected access is inside a verifier atomic region, the exported
+execution retains both target roots through completion. The independent AR
+checker also requires both roots to finish, so an atomic-end marker alone
+cannot hide a later assumption by truncating the trace.
 
 | Component | Source |
 | --- | --- |

@@ -766,6 +766,10 @@ class Replay:
             selected.append(self.accesses[key])
         a,b=selected
         require(not (a['atomic'] and b['atomic']), 'both targets in verifier atomics')
+        # Match the producer's tail policy: neither target may omit later assumes.
+        if a['atomic'] or b['atomic']:
+            require(all(self.threads[t['trace']].finished for t in targets),
+                    'atomic targets require completed root executions')
         require(a['instance']!=b['instance'], 'same dynamic target instance')
         require(a['object']==b['object'] and a['offset']<b['offset']+b['width'] and b['offset']<a['offset']+a['width'] and (a['write'] or b['write']), 'nonconflicting target ranges')
         before=lambda x,y: all(v<=y.get(k,0) for k,v in x.items())

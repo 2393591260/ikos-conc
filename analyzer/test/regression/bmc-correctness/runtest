@@ -72,6 +72,16 @@ def main():
                     certificate["program_sha256"] = digest_json(program)
                     execution = check(program, certificate)
                     assert execution["status"] == "ACCEPT", (bits, case, execution)
+                    if case == 18:
+                        assert any(t["atomic"] for t in execution["targets"])
+                        for label in ("a", "b"):
+                            truncated = copy.deepcopy(certificate)
+                            trace = next(t for t in truncated["traces"] if t["id"] == label)
+                            assert program["instructions"][trace["steps"][-1]["statement"]]["kind"] == "return"
+                            trace["steps"].pop()
+                            failure = check(program, truncated)
+                            assert failure == dict(status="REJECT",
+                                reason="atomic targets require completed root executions"), failure
                     if case == 15:
                         assert len(info["thread_creations"]) == 1, info["thread_creations"]
                     witness = svcomp_witness.build_witness(str(source), info,
