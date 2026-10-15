@@ -27,7 +27,19 @@ inline bool direct_storage_address(ar::Value* value) {
 // Only this closed effects subset may treat the heap Store board as complete.
 // Other intrinsics can havoc bytes without publishing a typed pointer write.
 inline bool heap_pointer_call_covered(ar::CallBase* call) {
-  auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+  auto* called = call->called();
+  for (unsigned depth = 0; depth < 16; ++depth) {
+    auto* variable = dyn_cast< ar::InternalVariable >(called);
+    auto* cast = variable ? dyn_cast_or_null< ar::UnaryOperation >(unique_def(variable)) : nullptr;
+    if (!cast || cast->op() != ar::UnaryOperation::Bitcast) break;
+    if (variable->code()->is_function_body()) {
+      auto* owner = variable->code()->function();
+      for (auto it = owner->param_begin(); it != owner->param_end(); ++it)
+        if (*it == variable) return false;
+    }
+    called = cast->operand();
+  }
+  auto* target = dyn_cast< ar::FunctionPointerConstant >(called);
   if (!target) return false;
   auto* function = target->function();
   if (function->is_definition()) return true;

@@ -37,6 +37,7 @@
 #include <ikos/analyzer/analysis/execution_engine/handle_origin.hpp>
 #include <ikos/analyzer/analysis/execution_engine/stable_publication.hpp>
 #include <ikos/analyzer/analysis/execution_engine/readonly_pointer_array.hpp>
+#include <ikos/analyzer/analysis/execution_engine/heap_pointer_initialization.hpp>
 #include <ikos/analyzer/analysis/execution_engine/protected_values.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
 #include <ikos/analyzer/analysis/memory_location.hpp>

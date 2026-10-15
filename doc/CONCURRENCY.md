@@ -163,6 +163,17 @@ of call effects: general memory-copy, vararg and opaque output operations fall
 back to the ordinary conservative analysis. It does not prove general list
 ownership or require pointer fields to remain immutable.
 
+A second initialization certificate covers repeated calls to a constructor:
+a single straight-line body allocates one constant-size object, initializes an
+exact pointer field to NULL, and returns the base without exposing it earlier.
+The interpreter can then constrain field loads using the union of all typed
+writes to every possible source, including the initial NULL. Every source must
+have the certificate and an available summary. This also works for allocation
+sites that summarize multiple objects; it grants no unique object or lock
+identity. Integer payload conversions are supported. Branching constructors,
+interior returns, pointer export, unknown calls, byte overlap and missing source
+coverage fall back conservatively. Lifetime checks remain separate.
+
 AI and BMC have different coverage responsibilities. A fact sufficient to exclude
 all conflicts is not necessarily a concrete value source for a BMC execution.
 

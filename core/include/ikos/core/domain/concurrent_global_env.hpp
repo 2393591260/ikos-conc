@@ -434,6 +434,8 @@ private:
   std::unordered_map< ar::Store*, PointerValue > _heap_initializer_destinations;
   std::map< std::pair< ar::Store*, ar::Function* >, bool > _heap_initializer_certificates;
 
+  std::map< std::pair< ar::CallBase*, ZNumber >, bool > _heap_constructor_certificates;
+
   // Write footprints outlive summary discovery and individual analysis rounds.
   // Bounded offset, lower/upper start, byte width, complete typed pointer value.
   using PointerWrite = std::tuple< bool, ZNumber, ZNumber, ZNumber, bool >;
@@ -2056,8 +2058,26 @@ public:
     }
   }
 
-  bool get_heap_pointer(const HeapPointerKey& key, PointerValue& value) const {
+  bool get_heap_constructor_certificate(ar::CallBase* allocation, const ZNumber& offset,
+                                        bool& value) const {
     std::lock_guard< std::mutex > lock(_mutex);
+    auto it = _heap_constructor_certificates.find({allocation, offset});
+    if (it == _heap_constructor_certificates.end()) return false;
+    value = it->second;
+    return true;
+  }
+
+  void cache_heap_constructor_certificate(ar::CallBase* allocation, const ZNumber& offset,
+                                          bool value) {
+    std::lock_guard< std::mutex > lock(_mutex);
+    _heap_constructor_certificates.emplace(std::make_pair(allocation, offset), value);
+  }
+
+  bool get_heap_pointer(const HeapPointerKey& key, PointerValue& value,
+                        bool require_complete = false) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    if (require_complete && (_unknown_pointer_write || !_unmodeled_effects.empty() ||
+                             !_unmodeled_thread_creations.empty())) return false;
     if (pointer_write_invalidates_nolock(std::get<0>(key), std::get<1>(key),
                                         std::get<2>(key), std::get<2>(key),
                                         ZNumber(value.offset().bit_width() / 8))) {
@@ -2169,6 +2189,7 @@ public:
     _heap_pointer_board.clear();
     _heap_initializer_destinations.clear();
     _heap_initializer_certificates.clear();
+    _heap_constructor_certificates.clear();
     _pointer_writes.clear();
     _lock_symbolic_index.clear();
     _is_dirty = false;
