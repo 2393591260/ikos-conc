@@ -1604,6 +1604,34 @@ void on_load_pointer_restore(E& eng,
       }
     }
   }
+  // Initialization precedes every worker invocation. Keep ALL later writes;
+  // replacing absent local heap memory does not select an initializer's value.
+  if (sources.size() == 1 && offset && lhs.var() != ptr.var() &&
+      size.to_z_number() == core::ZNumber(eng.data_layout().pointers.bit_width / 8) &&
+      load->code()->is_function_body() && load->code()->function()->name() != "main") {
+    auto* source = dyn_cast< DynAllocMemoryLocation >(*sources.begin());
+    bool only_main_root = true;
+    for (auto* root : eng.ctx().opts.entry_points) only_main_root &= root->name() == "main";
+    if (source && only_main_root && concrete_lock_object(source, env)) {
+      auto key = heap_pointer_key(core::IndexableTraits< MemoryLocation* >::index(source),
+                                 eng.data().normal().pointer_to_pointer(ptr.var()).offset());
+      for (auto* initializer : env.heap_initializers(key)) {
+        bool ordered = false;
+        if (!env.get_heap_initializer_certificate(initializer, load->code()->function(), ordered)) {
+          ordered = worker_created_after(initializer, load->code()->function(), env, true);
+          env.cache_heap_initializer_certificate(initializer, load->code()->function(), ordered);
+        }
+        auto value = core::ConcurrentGlobalEnv::PointerValue::top(size.bit_width(), core::Unsigned);
+        if (ordered && env.get_heap_pointer(key, value)) {
+          eng.data().normal().pointer_assign_nondet(lhs.var());
+          eng.data().normal().pointer_refine(lhs.var(), value);
+          eng.data().normal().mem_write(ptr.var(), lhs, size);
+          eng.data().normal().scalar_forget(lhs.var());
+          return;
+        }
+      }
+    }
+  }
   auto alternatives = eng.data();
   bool changed = false;
   for (MemoryLocation* source : sources) {

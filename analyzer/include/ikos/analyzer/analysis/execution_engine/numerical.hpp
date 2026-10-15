@@ -1903,6 +1903,11 @@ public:
     }
 
     auto destinations = this->data().normal().pointer_to_points_to(ptr.var());
+    if (this->_ctx.opts.enable_thread_modular && s->value()->type()->is_pointer() &&
+        s->code()->is_function_body() && s->code()->function()->name() == "main") {
+      this->_ctx.concurrent_env.join_heap_initializer_destination(
+          s, this->data().normal().pointer_to_pointer(ptr.var()));
+    }
     if (this->_ctx.opts.enable_thread_modular && destinations.is_set()) {
       for (auto* location : destinations)
         if (isa< AbsoluteZeroMemoryLocation >(location)) {

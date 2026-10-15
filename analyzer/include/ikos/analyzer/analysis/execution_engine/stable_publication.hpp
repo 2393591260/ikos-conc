@@ -6,14 +6,69 @@
 namespace ikos {
 namespace analyzer {
 
-// A whole pointer slot is written once, before every invocation of this worker.
-// The first subset accepts same-block creates; helpers/escapes fall back to may-values.
-inline ar::Store* prove_stable_publication_writer(ar::GlobalVariable* slot,
-                                             ar::Function* worker,
-                                             core::ConcurrentGlobalEnv& env) {
-  if (!slot->is_definition() || slot->is_thread_local() ||
-      !slot->type()->pointee()->is_pointer()) return nullptr;
-  ar::Store* writer = nullptr;
+inline bool direct_storage_address(ar::Value* value) {
+  for (unsigned depth = 0; depth < 32; ++depth) {
+    if (isa< ar::GlobalVariable >(value) || isa< ar::LocalVariable >(value)) return true;
+    auto* variable = dyn_cast< ar::InternalVariable >(value);
+    auto* definition = variable ? unique_def(variable) : nullptr;
+    if (auto* copy = dyn_cast_or_null< ar::Assignment >(definition)) value = copy->operand();
+    else if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
+      if (cast->op() != ar::UnaryOperation::Bitcast) return false;
+      value = cast->operand();
+    } else if (auto* shift = dyn_cast_or_null< ar::PointerShift >(definition)) {
+      for (auto it = shift->term_begin(); it != shift->term_end(); ++it)
+        if (!isa< ar::IntegerConstant >((*it).second)) return false;
+      value = shift->pointer();
+    } else return false;
+  }
+  return false;
+}
+
+// Only this closed effects subset may treat the heap Store board as complete.
+// Other intrinsics can havoc bytes without publishing a typed pointer write.
+inline bool heap_pointer_call_covered(ar::CallBase* call) {
+  auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+  if (!target) return false;
+  auto* function = target->function();
+  if (function->is_definition()) return true;
+  auto id = function->intrinsic_id();
+  switch (id) {
+    case ar::Intrinsic::IkosNonDet:
+    case ar::Intrinsic::IkosAssume:
+    case ar::Intrinsic::IkosAssert:
+    case ar::Intrinsic::LibcMalloc:
+    case ar::Intrinsic::LibcFree:
+    case ar::Intrinsic::LibcAbort:
+    case ar::Intrinsic::Trap:
+      return true;
+    case ar::Intrinsic::LibcPrintf:
+      for (unsigned i = 1; i < call->num_arguments(); ++i)
+        if (!call->argument(i)->type()->is_integer() &&
+            !call->argument(i)->type()->is_float()) return false;
+      return call->num_arguments() > 0;
+    default: break;
+  }
+  const auto& name = function->name();
+  if (name == "pthread_create" || id == ar::Intrinsic::PthreadCreate)
+    return call->num_arguments() == 4 && direct_storage_address(call->argument(0));
+  if (name == "pthread_join" || id == ar::Intrinsic::PthreadJoin)
+    return call->num_arguments() == 2 && isa< ar::NullConstant >(call->argument(1));
+  if (name == "pthread_mutex_lock" || name == "pthread_mutex_unlock" ||
+      id == ar::Intrinsic::PthreadMutexLock || id == ar::Intrinsic::PthreadMutexUnlock)
+    return call->num_arguments() == 1 && direct_storage_address(call->argument(0));
+  if (name == "__VERIFIER_nondet_int" || name == "__VERIFIER_nondet_uint") {
+    auto* type = dyn_cast< ar::IntegerType >(function->type()->return_type());
+    return call->num_arguments() == 0 && function->num_parameters() == 0 &&
+           type && type->bit_width() == 32;
+  }
+  return false;
+}
+
+// Close every invocation of the worker, including address escapes and aliases.
+inline bool worker_created_after(ar::Store* writer, ar::Function* worker,
+                                  core::ConcurrentGlobalEnv& env,
+                                  bool require_heap_effects = false) {
+  if (!env.function_executes_at_most_once(writer->code()->function())) return false;
   std::vector< ar::CallBase* > creates;
   unsigned budget = 8192;
   auto mentions_worker = [&](auto&& self, ar::Value* value, unsigned depth) -> bool {
@@ -39,6 +94,7 @@ inline ar::Store* prove_stable_publication_writer(ar::GlobalVariable* slot,
           if (statement->result_or_null() == *it) return false;
       }
       if (auto* call = dyn_cast< ar::CallBase >(statement)) {
+        if (require_heap_effects && !heap_pointer_call_covered(call)) return false;
         if (mentions_worker(mentions_worker, call->called(), 0)) return false;
         for (unsigned i = 0; i < call->num_arguments(); ++i) {
           if (!mentions_worker(mentions_worker, call->argument(i), 0)) continue;
@@ -53,6 +109,43 @@ inline ar::Store* prove_stable_publication_writer(ar::GlobalVariable* slot,
         for (auto it = statement->op_begin(); it != statement->op_end(); ++it)
           if (mentions_worker(mentions_worker, *it, 0)) return false;
       }
+    }
+    return true;
+  };
+  auto* bundle = worker->bundle();
+  for (auto it = bundle->function_begin(); it != bundle->function_end(); ++it)
+    if (!scan((*it)->body_or_null())) return false;
+  for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it)
+    if (!scan((*it)->initializer_or_null())) return false;
+  if (creates.empty()) return false;
+  auto* block = writer->parent();
+  std::unordered_set< ar::BasicBlock* > seen;
+  std::vector< ar::BasicBlock* > pending(block->successor_begin(), block->successor_end());
+  while (!pending.empty()) {
+    auto* next = pending.back(); pending.pop_back();
+    if (next == block || seen.size() >= 256) return false;
+    if (!seen.insert(next).second) continue;
+    pending.insert(pending.end(), next->successor_begin(), next->successor_end());
+  }
+  for (auto* create : creates)
+    if (create->parent() != block || !handle_statement_dominates(writer, create))
+      return false;
+  return true;
+}
+
+// A whole pointer slot is written once, before every invocation of this worker.
+// The first subset accepts same-block creates; helpers/escapes fall back to may-values.
+inline ar::Store* prove_stable_publication_writer(ar::GlobalVariable* slot,
+                                             ar::Function* worker,
+                                             core::ConcurrentGlobalEnv& env) {
+  if (!slot->is_definition() || slot->is_thread_local() ||
+      !slot->type()->pointee()->is_pointer()) return nullptr;
+  ar::Store* writer = nullptr;
+  unsigned budget = 8192;
+  auto scan = [&](ar::Code* code) {
+    if (code == nullptr) return true;
+    for (auto* block : *code) for (auto* statement : *block) {
+      if (budget-- == 0) return false;
       bool mentioned = false;
       for (auto it = statement->op_begin(); it != statement->op_end(); ++it)
         mentioned |= mentions_handle_slot(*it, slot);
@@ -89,21 +182,7 @@ inline ar::Store* prove_stable_publication_writer(ar::GlobalVariable* slot,
     if (!scan((*it)->body_or_null())) return nullptr;
   for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it)
     if (!scan((*it)->initializer_or_null())) return nullptr;
-  if (writer == nullptr || creates.empty() ||
-      !env.function_executes_at_most_once(writer->code()->function())) return nullptr;
-  auto* block = writer->parent();
-  std::unordered_set< ar::BasicBlock* > seen;
-  std::vector< ar::BasicBlock* > pending(block->successor_begin(), block->successor_end());
-  while (!pending.empty()) {
-    auto* next = pending.back(); pending.pop_back();
-    if (next == block || seen.size() >= 256) return nullptr;
-    if (!seen.insert(next).second) continue;
-    pending.insert(pending.end(), next->successor_begin(), next->successor_end());
-  }
-  for (auto* create : creates)
-    if (create->parent() != block || !handle_statement_dominates(writer, create))
-      return nullptr;
-  return writer;
+  return writer && worker_created_after(writer, worker, env) ? writer : nullptr;
 }
 
 inline ar::Store* stable_publication_writer(ar::GlobalVariable* slot,

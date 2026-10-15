@@ -430,6 +430,9 @@ private:
   /// offset (structural key) so distinct allocation sites / fields do not collide,
   /// and the per-key set stays bounded by `kPtrBoardWidenThreshold`.
   std::map< HeapPointerKey, PointerValue > _heap_pointer_board;
+  // Joined destinations: a later ambiguous observation revokes initialization.
+  std::unordered_map< ar::Store*, PointerValue > _heap_initializer_destinations;
+  std::map< std::pair< ar::Store*, ar::Function* >, bool > _heap_initializer_certificates;
 
   // Write footprints outlive summary discovery and individual analysis rounds.
   // Bounded offset, lower/upper start, byte width, complete typed pointer value.
@@ -2009,6 +2012,40 @@ public:
   }
 
   /// Join a heap-field pointer value keyed by allocation and field offset.
+  void join_heap_initializer_destination(ar::Store* store, const PointerValue& address) {
+    if (address.is_bottom()) return;
+    std::lock_guard< std::mutex > lock(_mutex);
+    join_pointer_summary_nolock(_heap_initializer_destinations, store, address);
+  }
+
+  std::vector< ar::Store* > heap_initializers(const HeapPointerKey& key) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    std::vector< ar::Store* > result;
+    if (_unknown_pointer_write || !_unmodeled_effects.empty() ||
+        !_unmodeled_thread_creations.empty() || !std::get<1>(key)) return result;
+    for (const auto& entry : _heap_initializer_destinations) {
+      const auto& points = entry.second.points_to();
+      const auto offset = entry.second.offset().singleton();
+      if (points.is_set() && points.size() == 1 && offset &&
+          IndexableTraits< analyzer::MemoryLocation* >::index(*points.begin()) == std::get<0>(key) &&
+          offset->to_z_number() == std::get<2>(key)) result.push_back(entry.first);
+    }
+    return result;
+  }
+
+  bool get_heap_initializer_certificate(ar::Store* store, ar::Function* worker, bool& value) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    auto it = _heap_initializer_certificates.find({store, worker});
+    if (it == _heap_initializer_certificates.end()) return false;
+    value = it->second;
+    return true;
+  }
+
+  void cache_heap_initializer_certificate(ar::Store* store, ar::Function* worker, bool value) {
+    std::lock_guard< std::mutex > lock(_mutex);
+    _heap_initializer_certificates.emplace(std::make_pair(store, worker), value);
+  }
+
   void join_heap_pointer(const HeapPointerKey& key, const PointerValue& value) {
     if (value.is_bottom()) return;
     std::lock_guard< std::mutex > lock(_mutex);
@@ -2130,6 +2167,8 @@ public:
     _unknown_pointer_write = false;
     _global_pointer_targets.clear();
     _heap_pointer_board.clear();
+    _heap_initializer_destinations.clear();
+    _heap_initializer_certificates.clear();
     _pointer_writes.clear();
     _lock_symbolic_index.clear();
     _is_dirty = false;

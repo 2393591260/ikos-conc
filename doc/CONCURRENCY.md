@@ -152,6 +152,17 @@ are checked as well. The AR checker independently checks allocation size,
 create output identity/alignment, free identity and lifetime. Heap join loads
 still require additional handle-source and generation support.
 
+The abstract interpreter can restore an initialized heap pointer field in a
+worker when a full pointer store precedes every invocation of that worker.
+This requires one concrete allocation, an exact byte offset, a direct main
+initializer and closed, same-block create ordering. The restored value joins
+all pointer writes, including later writes; it is not the initializer's value
+alone. Ambiguous destinations, overlapping byte writes and uncovered effects
+revoke the refinement and trigger reanalysis. This subset checks a closed set
+of call effects: general memory-copy, vararg and opaque output operations fall
+back to the ordinary conservative analysis. It does not prove general list
+ownership or require pointer fields to remain immutable.
+
 AI and BMC have different coverage responsibilities. A fact sufficient to exclude
 all conflicts is not necessarily a concrete value source for a BMC execution.
 

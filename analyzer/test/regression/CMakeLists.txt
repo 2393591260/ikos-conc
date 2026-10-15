@@ -44,6 +44,8 @@ add_concurrency_test(spawn-arguments "${CONCURRENCY_ROOT}/scripts/test_spawn_arg
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(shared-heap "${CONCURRENCY_ROOT}/scripts/test_bmc_shared_heap.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(heap-initialization "${CONCURRENCY_ROOT}/scripts/test_heap_pointer_initialization.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 foreach(bits 32)
   add_concurrency_test(p0-${bits}
     "${CONCURRENCY_ROOT}/docs/review-repros/bmc-2026-10-08/run.py"
