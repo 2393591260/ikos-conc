@@ -157,6 +157,31 @@ class Replay:
             raise Unsupported('large/thread-local object')
         return obj, offset
 
+    def pointer_shift(self, inst, values):
+        pointer = values[0]
+        if isinstance(pointer, tuple) and pointer[0] == 'absolute':
+            raise Unsupported('numeric pointer arithmetic')
+        require(isinstance(pointer, tuple) and pointer[0] not in ('null', 'function'), 'pointer shift base')
+        require(len(inst['factors']) == len(values) - 1, 'pointer shift arity')
+        require(all(isinstance(v, int) for v in values[1:]), 'pointer shift index')
+        heap = pointer[0] in self.objects and 'allocation' in self.objects[pointer[0]]
+        offset, delta = pointer[1], 0
+        if heap:
+            if inst.get('inbounds') is not True or inst.get('index_bits') != self.program['pointer_bits']:
+                raise Unsupported('unverified heap GEP contract')
+            self.region(pointer, 0)
+            bits = inst['index_bits']
+            low, high = -(1 << (bits - 1)), (1 << (bits - 1)) - 1
+        for position, (factor, value) in enumerate(zip(inst['factors'], values[1:]), 1):
+            product = int(factor) * value
+            delta += product
+            if heap:
+                width = min(bits, inst['operands'][position]['type']['bits'])
+                require(-(1 << (width - 1)) <= value < (1 << (width - 1)), 'GEP index truncation/sign')
+                require(low <= product <= high and low <= delta <= high, 'GEP signed offset overflow')
+                self.region((pointer[0], offset + delta), 0)
+        return (pointer[0], offset + delta)
+
     def store(self, pointer, value, t, alignment=0):
         size = int(t['size']); obj, offset = self.region(pointer, size, alignment)
         if t['kind'] == 'integer':
@@ -379,7 +404,7 @@ class Replay:
                     self.threads[child_id] = Thread(instance, [self.frame(target, [args[3]])], dict(thread.vc))
             return 0
         if name in ('malloc', 'ar.libc.malloc'):
-            require(len(args) == 1 and isinstance(args[0], int) and 0 < args[0] <= 1_000_000, 'malloc extent')
+            require(len(args) == 1 and isinstance(args[0], int) and 0 < args[0] <= 1_048_576, 'malloc extent')
             if thread.instance != 0 or len(thread.frames) != 1 or frame.function != 'main' or self.created:
                 raise Unsupported('allocation outside pre-spawn main')
             object_id = 'heap:' + str(frame.uid) + ':' + step['statement']
@@ -660,12 +685,7 @@ class Replay:
                 if op is None or not all(isinstance(v,int) for v in values): raise Unsupported('comparison')
                 require({'eq':a==b,'ne':a!=b,'gt':a>b,'ge':a>=b,'lt':a<b,'le':a<=b}[op], 'false CFG guard')
         elif kind=='pointer_shift':
-            pointer=values[0]
-            if isinstance(pointer,tuple) and pointer[0]=='absolute':
-                raise Unsupported('numeric pointer arithmetic')
-            require(isinstance(pointer,tuple) and pointer[0] not in ('null','function'), 'pointer shift base')
-            require(all(isinstance(v,int) for v in values[1:]), 'pointer shift index')
-            result=(pointer[0],pointer[1]+sum(int(f)*v for f,v in zip(inst['factors'],values[1:])))
+            result=self.pointer_shift(inst, values)
         elif kind in ('load','store'):
             if inst['atomic']: raise Unsupported('atomic memory operation')
             pointer=values[0]; t=inst['result']['type'] if kind=='load' else operands[1]['type']; width=int(t['size'])

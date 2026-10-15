@@ -2251,6 +2251,9 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
         auto pts = eng.data().normal().pointer_to_points_to(scalar_lit.var());
         auto offset =
             eng.data().normal().pointer_offset_to_interval(scalar_lit.var());
+        bool may_numeric_nonnull = pts.is_top() ||
+            (pts.is_set() && pts.contains(eng.ctx().mem_factory->get_absolute_zero()) &&
+             !(offset.singleton() && offset.lb().is_zero()));
         // PointerAbsValue normalizes NULL's offset to bottom. Transport the
         // raw components, and include numeric zero for every possible NULL.
         if (!eng.data().normal().nullity_is_non_null(scalar_lit.var())) {
@@ -2260,13 +2263,14 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
           if (eng.data().normal().nullity_is_null(scalar_lit.var())) {
             pts = null_pts;
             offset = zero;
+            may_numeric_nonnull = false;
           } else {
             pts.join_with(null_pts);
             offset.join_with(zero);
           }
         }
         eng.ctx().concurrent_env.record_spawn_arg(
-            thread_func, pts, offset);
+            thread_func, pts, offset, may_numeric_nonnull);
         // Passing a pointer as the thread `arg` PUBLISHES its heap nodes: the
         // child dereferences the same cell (`&is[i]` escapes to the thread),
         // so they must leave the fresh set (per-thread-array-init-race FN).
@@ -2277,7 +2281,7 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
             core::PointsToSet< MemoryLocation* >{
                 eng.ctx().mem_factory->get_absolute_zero()},
             core::machine_int::Interval(core::MachineInt::zero(
-                eng.data_layout().pointers.bit_width, core::Unsigned)));
+                eng.data_layout().pointers.bit_width, core::Unsigned)), false);
       }
     }
   }

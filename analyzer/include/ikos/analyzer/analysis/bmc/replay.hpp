@@ -111,6 +111,12 @@ public:
       out.put("kind", "pointer_shift"); JsonList factors;
       for (std::size_t i = 0; i < shift->num_terms(); ++i) factors.add(shift->term(i).first.to_z_number().str());
       out.put("factors", factors);
+      auto* native = shift->has_frontend()
+          ? llvm::dyn_cast< llvm::GetElementPtrInst >(shift->frontend< llvm::Value >()) : nullptr;
+      if (native != nullptr) {
+        out.put("inbounds", native->isInBounds());
+        out.put("index_bits", native->getModule()->getDataLayout().getIndexSizeInBits(native->getPointerAddressSpace()));
+      }
     } else if (auto* alloc = core::dyn_cast< ar::Allocate >(stmt)) {
       out.put("kind", "allocate"); out.put("allocated_type", type(alloc->allocated_type()));
       out.put("alignment", alloc->result()->alignment());

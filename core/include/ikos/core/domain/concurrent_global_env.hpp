@@ -350,6 +350,8 @@ private:
   struct SpawnArg {
     PointsToSet< analyzer::MemoryLocation* > pts;
     machine_int::Interval offset;
+    // Distinguish nullable object pointers from genuine integer addresses.
+    bool may_numeric_nonnull;
   };
   std::unordered_map< ar::Function*, SpawnArg > _spawn_args;
 
@@ -1578,21 +1580,25 @@ public:
   ///               `container_of`-style field recovery).
   void record_spawn_arg(ar::Function* func,
                         const PointsToSet< analyzer::MemoryLocation* >& pts,
-                        const machine_int::Interval& offset) {
+                        const machine_int::Interval& offset,
+                        bool may_numeric_nonnull = true) {
     if (func == nullptr || pts.is_bottom()) return;
     std::lock_guard< std::mutex > lock(_mutex);
     auto it = _spawn_args.find(func);
     if (it == _spawn_args.end()) {
-      _spawn_args.emplace(func, SpawnArg{pts, offset});
+      _spawn_args.emplace(func, SpawnArg{pts, offset, may_numeric_nonnull});
       _is_dirty = true;
     } else {
       auto old_pts = it->second.pts;
       auto old_offset = it->second.offset;
+      bool old_numeric = it->second.may_numeric_nonnull;
+      it->second.may_numeric_nonnull |= may_numeric_nonnull;
       it->second.pts.join_with(pts);
       if (_global_iteration.load(std::memory_order_relaxed) <= kWideningDelay)
         it->second.offset.join_with(offset);
       else it->second.offset.widen_with(offset);
-      if (!it->second.pts.leq(old_pts) || !it->second.offset.leq(old_offset))
+      if (!it->second.pts.leq(old_pts) || !it->second.offset.leq(old_offset) ||
+          it->second.may_numeric_nonnull != old_numeric)
         _is_dirty = true;
     }
     // Unknown arguments may publish any address, including private locals.
@@ -2052,7 +2058,8 @@ public:
   /// \return true iff a spawn arg was recorded for `func`.
   bool get_spawn_arg(ar::Function* func,
                      PointsToSet< analyzer::MemoryLocation* >& pts,
-                     machine_int::Interval& offset) const {
+                     machine_int::Interval& offset,
+                     bool* may_numeric_nonnull = nullptr) const {
     std::lock_guard< std::mutex > lock(_mutex);
     auto it = _spawn_args.find(func);
     if (it == _spawn_args.end()) {
@@ -2060,6 +2067,7 @@ public:
     }
     pts = it->second.pts;
     offset = it->second.offset;
+    if (may_numeric_nonnull) *may_numeric_nonnull = it->second.may_numeric_nonnull;
     return true;
   }
 

@@ -1651,7 +1651,8 @@ DataRaceChecker::~DataRaceChecker() {
   // site counts are not existence evidence; the retained guards are later
   // checked together with both workers' value/scheduling constraints.
   auto conditional_live_threads = [&](const std::string& thread_a, const std::string& thread_b,
-                                      unsigned loop_bound, bool extra_occurrences = false) {
+                                      unsigned loop_bound, bool extra_occurrences = false,
+                                      ar::CallBase* finite_source = nullptr, unsigned finite_value = 0) {
     auto* main = this->_ctx.bundle->function_or_null("main");
     if (main == nullptr || !main->is_definition()) return false;
     std::map< std::string, unsigned > required{{thread_a, 1}, {thread_b, 1}};
@@ -1674,8 +1675,12 @@ DataRaceChecker::~DataRaceChecker() {
         if (extra_occurrences && search_budget.expired()) break;
         // Activation below rejects every join. Stop unsupported join suffixes
         // during construction instead of enumerating paths we cannot retain.
-        auto result = bmc::unroll_to(main, creation.stmt, occurrence, loop_bound, true,
-                                    extra_occurrences ? nullptr : &create_limits);
+        auto result = finite_source == nullptr
+            ? bmc::unroll_to(main, creation.stmt, occurrence, loop_bound, true,
+                             extra_occurrences ? nullptr : &create_limits)
+            : bmc::unroll_to(main, creation.stmt, occurrence, loop_bound, true,
+                             extra_occurrences ? nullptr : &create_limits,
+                             &search_budget.deadline, finite_source, finite_value);
         // Exhaustion omits alternatives, not the complete prefixes already
         // emitted. Keep their target/guard/definedness/activation obligations.
         for (auto& path : result.paths) {
@@ -1901,6 +1906,25 @@ DataRaceChecker::~DataRaceChecker() {
           if (pass >= 3) {
             if (pass == 4) bmc::record(trace, "startup_literal_loop_hint");
             live = conditional_live_threads(a.thread_id, b.thread_id, pass == 4 ? startup_hint : 16, true);
+            if (!live && pass == 3) {
+              auto* main = this->_ctx.bundle->function_or_null("main");
+              ar::CallBase* source = nullptr;
+              unsigned sources = 0, allocations = 0;
+              if (main != nullptr && main->is_definition())
+                for (auto* block : *main->body()) for (auto* stmt : *block) {
+                  auto* call = dyn_cast< ar::CallBase >(stmt);
+                  if (call == nullptr) continue;
+                  if (bmc::source_nondet(call)) {source = call; ++sources;}
+                  if (bmc::malloc_call(call)) ++allocations;
+                }
+              if (sources == 1 && allocations > 0 && allocations <= 4) {
+                for (unsigned value = 1; value <= 4 && !search_budget.expired(); ++value) {
+                  live |= conditional_live_threads(a.thread_id, b.thread_id, 16, true, source, value);
+                  if (activation_prefixes[key].size() >= 8) break;
+                }
+                bmc::record(trace, "startup_finite_source");
+              }
+            }
           } else {
             live = two_live_threads(a.thread_id, b.thread_id);
             if (!live && pass < 2 && conditional_live_threads(a.thread_id, b.thread_id, 2)) {

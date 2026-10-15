@@ -103,15 +103,23 @@ void ThreadModularAnalysis::run() {
         core::PointsToSet< MemoryLocation* >::empty();
     core::machine_int::Interval offset =
         core::machine_int::Interval::bottom(64, core::Signed);
+    bool may_numeric_nonnull = true;
     auto& env = _ctx.concurrent_env;
     if (func->num_parameters() < 1 ||
-        !env.get_spawn_arg(func, pts, offset) ||
+        !env.get_spawn_arg(func, pts, offset, &may_numeric_nonnull) ||
         !pts.is_set() || pts.size() == 0) {
       return;
     }
     const auto& a0 = _ctx.lit_factory->get_scalar(func->param(0));
     if (!a0.is_pointer_var()) {
       return;
+    }
+    // With no numeric nonzero source, NULL is represented by nullity TOP.
+    // Keeping it also as absolute_zero would invent arbitrary numeric aliases
+    // when its zero offset is joined with an object's variable field offset.
+    if (!may_numeric_nonnull && pts.size() > 1 &&
+        entry_inv.first().normal().nullity_to_nullity(a0.var()).is_top()) {
+      pts.remove(_ctx.mem_factory->get_absolute_zero());
     }
     // Bind the formal to the recorded points-to set WITH its byte offset
     // (container_of field-recovery: `&s->f` must arrive as base+offset, not

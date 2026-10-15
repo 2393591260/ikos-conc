@@ -721,7 +721,12 @@ inline bool constant_integer_on_path(ar::Value* value,
   if (type == nullptr) return false;
   std::size_t index = 0;
   auto* definition = reaching_definition(variable, path, before, index);
-  if (definition == nullptr || abstract_initializer(definition)) return false;
+  if (definition == nullptr) {
+    auto* actual = formal_argument(variable, path, before, index);
+    return actual != nullptr && actual->type() == variable->type() &&
+           constant_integer_on_path(actual, path, index, result, depth + 1);
+  }
+  if (abstract_initializer(definition)) return false;
   if (auto* assignment = core::dyn_cast< ar::Assignment >(definition)) {
     if (assignment->operand()->type() != variable->type() ||
         !constant_integer_on_path(assignment->operand(), path, index, result, depth + 1)) return false;
@@ -734,6 +739,15 @@ inline bool constant_integer_on_path(ar::Value* value,
       case ar::BinaryOperation::SAdd: case ar::BinaryOperation::UAdd: result = left + right; break;
       case ar::BinaryOperation::SSub: case ar::BinaryOperation::USub: result = left - right; break;
       case ar::BinaryOperation::SMul: case ar::BinaryOperation::UMul: result = left * right; break;
+      case ar::BinaryOperation::SDiv: case ar::BinaryOperation::UDiv:
+        if (right == 0 || (operation->is_exact() && left % right != 0)) return false;
+        result = left / right; break;
+      case ar::BinaryOperation::SAShr: case ar::BinaryOperation::UAShr:
+      case ar::BinaryOperation::SLShr: case ar::BinaryOperation::ULShr:
+        // Negative signed/logical shifts need an explicit bit-pattern model.
+        if (left < 0 || right < 0 || right >= type->bit_width()) return false;
+        if (operation->is_exact() && left % (core::ZNumber(1) << right.to< unsigned >()) != 0) return false;
+        result = left >> right.to< unsigned >(); break;
       default: return false;
     }
   } else if (auto* cast = core::dyn_cast< ar::UnaryOperation >(definition)) {
@@ -977,7 +991,7 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
           variable->type()->is_pointer() &&
           ((copy != nullptr && copy->operand()->type() == variable->type()) ||
            (cast != nullptr && cast->op() == ar::UnaryOperation::Bitcast &&
-            cast->operand()->type()->is_pointer()));
+            cast->operand()->type()->is_pointer()) || core::isa< ar::PointerShift >(definition));
       exact_external_chain &= forwarding || (unique_def_bmc(variable) == definition &&
           std::count_if(origins->begin(), origins->end(), [&](const auto& event) {
             return event.stmt == definition;
@@ -991,7 +1005,8 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
         if (auto* c = core::dyn_cast< ar::IntegerConstant >(term.second)) event.const_off += term.first.to_z_number() * c->value().to_z_number();
         else if (auto* index_var = core::dyn_cast< ar::InternalVariable >(term.second)) {
           core::ZNumber constant;
-          if (!external && constant_integer_on_path(index_var, path, before, constant)) {
+          if ((!external || (selected_argument_origin && definitions == origins)) &&
+              constant_integer_on_path(index_var, *definitions, before, constant)) {
             event.const_off += term.first.to_z_number() * constant;
             continue;
           }

@@ -581,10 +581,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   };
   for (auto& trace : traces)
     if (!library_outputs(trace.events, trace.root, trace.argument)) return Result(Status::Unsupported);
-  // A selected free consumes exactly one live main allocation. For the finite
-  // source search the heap stays private: the only pointer argument allowed
-  // outside free is the output of pthread_create. No later pointer operation
-  // or access may use the freed object.
+  // A fixed startup may publish live allocations to its selected children.
+  // Interleaved main/free retains the narrower private-handle contract.
   auto private_heap_lifetime = [&](std::vector< BmcEvent >& path) {
     bool finite = std::any_of(path.begin(), path.end(),
                               [](const auto& e) {return e.finite_source;});
@@ -593,6 +591,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       return call != nullptr && free_call(call);
     });
     if (!finite && !has_free) return true;
+    const bool shared_startup = selected_workers && &path == &startup && finite;
+    if (shared_startup && has_free) return false;
     const bool private_heap = finite || has_free;
     std::set< ar::CallBase* > live, freed;
     unsigned allocations = 0;
@@ -602,7 +602,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
       if (call != nullptr && malloc_call(call)) {
         core::ZNumber extent;
-        if (!main_allocation(call, path, i, extent) || ++allocations > 1) return false;
+        if (!main_allocation(call, path, i, extent) || ++allocations > (shared_startup ? 4u : 1u)) return false;
         live.insert(call);
       }
       if (call != nullptr && free_call(call)) {
@@ -625,9 +625,25 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
               core::isa< ar::FunctionPointerConstant >(value)) continue;
           BmcEvent pointer;
           if (!pointer_on_path(value, path, i, path[i].stmt->code()->function_or_null(),
-                               nullptr, pointer)) return false;
+                               nullptr, pointer)) {
+            // Numeric arguments retain the existing native-width round-trip
+            // contract; they never grant object-pointer access.
+            auto* variable = core::dyn_cast< ar::InternalVariable >(value);
+            std::size_t definition = 0;
+            auto* cast = variable != nullptr ? core::dyn_cast_or_null< ar::UnaryOperation >(
+                reaching_definition(variable, path, i, definition)) : nullptr;
+            auto* integer = cast != nullptr ? core::dyn_cast< ar::IntegerType >(cast->operand()->type()) : nullptr;
+            if (!shared_startup || event.kind != EvKind::Create || arg != 3 ||
+                cast == nullptr || (cast->op() != ar::UnaryOperation::SIToPtr &&
+                                    cast->op() != ar::UnaryOperation::UIToPtr) || integer == nullptr ||
+                integer->bit_width() != call->bundle()->data_layout().pointers.bit_width) return false;
+            continue;
+          }
           if (pointer.heap_allocation != nullptr &&
-              !((event.kind == EvKind::Create || free_call(call)) && arg == 0)) return false;
+              ((!live.count(pointer.heap_allocation) &&
+                !(free_call(call) && arg == 0 && freed.count(pointer.heap_allocation))) ||
+               !(((event.kind == EvKind::Create || free_call(call)) && arg == 0) ||
+                 (shared_startup && event.kind == EvKind::Create && arg == 3)))) return false;
         }
       }
       if (private_heap) {
@@ -648,7 +664,13 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
             !core::isa< ar::FunctionPointerConstant >(store->value())) {
           BmcEvent pointer;
           if (!pointer_on_path(store->value(), path, i, path[i].stmt->code()->function_or_null(),
-                               nullptr, pointer) || pointer.heap_allocation != nullptr) return false;
+                               nullptr, pointer)) return false;
+          if (pointer.heap_allocation != nullptr) {
+            auto* slot = global_pointer_slot(store->pointer());
+            std::size_t origin = 0;
+            if (!shared_startup || !live.count(pointer.heap_allocation) || slot == nullptr ||
+                published_pointer(slot, path, origin) != store || origin != i) return false;
+          }
         }
         auto* shift = core::dyn_cast< ar::PointerShift >(event.stmt);
         if (shift != nullptr && shift->result()->type()->is_pointer()) {
@@ -667,7 +689,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         }
       }
     }
-    return !private_heap || allocations == 1;
+    return !private_heap || (shared_startup ? allocations > 0 : allocations == 1);
   };
   for (auto& trace : traces)
     if (trace.root != nullptr && trace.root->name() == "main" &&
@@ -919,6 +941,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
               trace.argument.value != nullptr &&
               trace.creator_path < caches.size() &&
               trace.creator_step < traces[trace.creator_path].events.size()) {
+            guard_reusable = false;
             auto* piv = core::dyn_cast< ar::InternalVariable >(trace.argument.value);
             std::size_t argument_step = 0;
             const auto& creator = traces[trace.creator_path];
@@ -1699,6 +1722,50 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       }
       return true;
     };
+    // Prove every retained heap GEP's intermediate offsets, including unused
+    // results. Rejecting unproved poison is a supported-path boundary, not a
+    // claim that unused LLVM poison itself is immediate UB.
+    const bool has_heap = std::any_of(allocation_origin.begin(), allocation_origin.end(), [](const auto& event) {
+      auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+      return call != nullptr && malloc_call(call);
+    });
+    for (std::size_t id = 0; has_heap && id < traces.size(); ++id) {
+      const auto& trace = traces[id];
+      for (std::size_t i = 0; i < trace.events.size(); ++i) {
+        auto* shift = core::dyn_cast< ar::PointerShift >(trace.events[i].stmt);
+        if (shift == nullptr) continue;
+        BmcEvent base;
+        if (!pointer_on_path(shift->pointer(), trace.events, i, trace.root, trace.argument,
+                             base, &allocation_origin)) return Result(Status::Unsupported);
+        if (base.heap_allocation == nullptr) continue;
+        auto* native = shift->has_frontend()
+            ? llvm::dyn_cast< llvm::GetElementPtrInst >(shift->frontend< llvm::Value >()) : nullptr;
+        if (native == nullptr || !native->isInBounds()) return Result(Status::Unsupported);
+        const auto bits = native->getModule()->getDataLayout().getIndexSizeInBits(native->getPointerAddressSpace());
+        if (bits == 0 || bits > 64) return Result(Status::Unsupported);
+        const auto low = ctx.int_val((-(core::ZNumber(1) << (bits - 1))).str().c_str());
+        const auto high = ctx.int_val(((core::ZNumber(1) << (bits - 1)) - 1).str().c_str());
+        const auto size = ctx.int_val(base.heap_extent.str().c_str());
+        z3::expr offset(ctx), delta = ctx.int_val(0);
+        if (!encode_offset(base, offset, caches[id], trace.value_prefix(), i)) return Result(Status::Unsupported);
+        replay_offsets.erase(&base);
+        s.add(offset >= 0 && offset <= size);
+        for (std::size_t term = 0; term < shift->num_terms(); ++term) {
+          z3::expr index(ctx);
+          auto* type = core::dyn_cast< ar::IntegerType >(shift->term(term).second->type());
+          if (type == nullptr) return Result(Status::Unsupported);
+          const auto index_width = std::min< std::uint64_t >(bits, type->bit_width());
+          if (!encode_value(shift->term(term).second, index, caches[id], trace.value_prefix(), 0, i))
+            return Result(Status::Unsupported);
+          const auto product = index * ctx.int_val(shift->term(term).first.to_z_number().str().c_str());
+          s.add(index >= ctx.int_val((-(core::ZNumber(1) << (index_width - 1))).str().c_str()) &&
+                index <= ctx.int_val(((core::ZNumber(1) << (index_width - 1)) - 1).str().c_str()) &&
+                product >= low && product <= high);
+          delta = delta + product;
+          s.add(delta >= low && delta <= high && offset + delta >= 0 && offset + delta <= size);
+        }
+      }
+    }
     // Every deferred output, including dormant children's handles, must have
     // a concrete valid slot in this same main-only startup execution.
     for (const auto& storage : library_storage) {
