@@ -132,7 +132,7 @@ inline unsigned literal_loop_search_bound(ar::Function* root) {
         if (constant == nullptr) constant = core::dyn_cast< ar::IntegerConstant >(comparison->left());
         if (constant == nullptr) continue;
         auto value = constant->value().to_z_number();
-        if (value < 15 || value > 32) continue;
+        if (value < 15 || value > 64) continue;
         std::vector< ar::BasicBlock* > pending;
         for (auto it = block->successor_begin(), end = block->successor_end(); it != end; ++it) pending.push_back(*it);
         std::set< ar::BasicBlock* > seen;

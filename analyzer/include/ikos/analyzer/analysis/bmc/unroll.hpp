@@ -1320,8 +1320,7 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
                                   ar::Function* root = nullptr,
                                   ThreadArgument root_argument = nullptr,
                                   const std::vector< BmcEvent >* origins = nullptr,
-                                  bool defer_startup_create_offsets = false,
-                                  bool cache_successful_proofs = false) {
+                                  bool defer_startup_create_offsets = false) {
   std::set< std::pair< ar::Value*, std::size_t > > proved;
   std::function< bool(ar::Value*, std::size_t, unsigned) > defined;
   auto prove_defined = [&](ar::Value* value, std::size_t before, unsigned depth) {
@@ -1427,8 +1426,7 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
       if (!defined(*it, index, depth + 1)) return false;
     return true;
   };
-  defined = prove_defined;
-  if (cache_successful_proofs) defined = [&](ar::Value* value, std::size_t before, unsigned depth) {
+  defined = [&](ar::Value* value, std::size_t before, unsigned depth) {
     // A dynamic use includes its position: another loop/call may redefine it.
     // Reuse only successful proofs; depth-limited failures are context dependent.
     auto key = std::make_pair(value, before);
