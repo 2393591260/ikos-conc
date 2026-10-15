@@ -21,7 +21,9 @@ pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
 void update(void) { before = 1; payload = 7; after = 1; }
 void __VERIFIER_atomic_update(void) { update(); }
 void write_payload(void) {
-#if CASE == 10
+#if CASE == 15 || CASE == 16
+  __VERIFIER_atomic_begin(); payload = 7; __VERIFIER_atomic_end();
+#elif CASE == 10
   __VERIFIER_atomic_begin(); update(); __VERIFIER_atomic_end();
 #else
   __VERIFIER_atomic_update();
@@ -91,6 +93,9 @@ void *worker(void *unused) {
 }
 int main(void) {
   pthread_t a, b;
+#if CASE == 16
+  __VERIFIER_atomic_begin();
+#endif
 #if CASE == 7 || CASE == 8 || CASE == 14
   pthread_create(&a, 0, writer, 0); pthread_create(&b, 0, reader, 0);
 #else
@@ -105,6 +110,9 @@ int main(void) {
                  0
 #endif
   );
+#endif
+#if CASE == 16
+  __VERIFIER_atomic_end();
 #endif
   return 0;
 }

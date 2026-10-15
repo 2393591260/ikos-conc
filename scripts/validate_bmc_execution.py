@@ -100,6 +100,7 @@ class Replay:
         self.created, self.locks, self.accesses = {}, {}, {}
         self.next_instance, self.next_frame = 1, 0
         self.atomic_owner = None
+        self.atomic_sections = []
         self.pending_markers = {}
         self.writers = {}
         self.attributes, self.conditions = {}, {}
@@ -358,8 +359,22 @@ class Replay:
     def marker(self, trace_id, statement, name, pointer=None):
         self.pending_markers.setdefault(trace_id, []).append((statement, name, pointer))
 
+    def atomic_begin(self, thread):
+        require(self.atomic_owner is None, 'nested atomic')
+        self.atomic_owner = thread.instance
+        self.atomic_sections.append(dict(begin=dict(thread.vc), end=None))
+
+    def atomic_end(self, thread):
+        require(self.atomic_owner == thread.instance, 'unowned atomic end')
+        self.atomic_sections[-1]['end'] = dict(thread.vc)
+        self.atomic_owner = None
+
     def api(self, name, args, inst, step, trace_id, index, thread, frame):
         fn = self.functions[name]
+        if self.atomic_owner is not None and not (
+                fn.get('intrinsic_nondet') or name in NONDET or fn.get('intrinsic_assume') or
+                name in ('__VERIFIER_assume', 'ffs', '__VERIFIER_atomic_begin', '__VERIFIER_atomic_end')):
+            raise Unsupported('external API inside verifier atomic: ' + name)
         if name == 'ffs':
             types = fn['parameter_types'] + [fn['return_type']]
             require(fn['declaration'] and not fn['variadic'] and len(args) == 1 and
@@ -603,11 +618,10 @@ class Replay:
             self.join_vc(self.stdout_vc, thread.vc)
             return output_length if 'printf' in name else min(len(text) + 1, (1 << 31) - 1)
         if name in ('__VERIFIER_atomic_begin','__VERIFIER_atomic_end'):
-
             if name.endswith('begin'):
-                require(self.atomic_owner is None, 'nested atomic'); self.atomic_owner=thread.instance
+                self.atomic_begin(thread)
             else:
-                require(self.atomic_owner == thread.instance, 'unowned atomic end'); self.atomic_owner=None
+                self.atomic_end(thread)
             return UNDEFINED
         raise Unsupported('external API ' + name)
 
@@ -624,11 +638,9 @@ class Replay:
             _, name, pointer = pending.pop(0)
             if not pending: del self.pending_markers[trace_id]
             if name == 'atomic_end':
-                require(self.atomic_owner == thread.instance, 'unowned synthetic atomic end')
-                self.atomic_owner = None
+                self.atomic_end(thread)
             elif name == 'atomic_begin':
-                require(self.atomic_owner is None, 'nested synthetic atomic begin')
-                self.atomic_owner = thread.instance
+                self.atomic_begin(thread)
             elif name in ('condition_release', 'condition_reacquire'):
                 state = self.locks[pointer]
                 width = 24 if self.program['pointer_bits']==32 else 40
@@ -785,6 +797,17 @@ class Replay:
         require(a['object']==b['object'] and a['offset']<b['offset']+b['width'] and b['offset']<a['offset']+a['width'] and (a['write'] or b['write']), 'nonconflicting target ranges')
         before=lambda x,y: all(v<=y.get(k,0) for k,v in x.items())
         require(not before(a['vc'],b['vc']) and not before(b['vc'],a['vc']), 'targets ordered by pthread synchronization')
+        # Serializing complete atomic sections is stronger than atomic communication.
+        # Preserve the original pthread clocks: ordering only under this additional
+        # relation prevents certification, without proving the execution invalid.
+        def ordered_with_atomics(source, target):
+            reachable = [source['vc']]
+            for previous, current in zip(self.atomic_sections, self.atomic_sections[1:]):
+                if any(before(vc, previous['end']) for vc in reachable):
+                    reachable.append(current['begin'])
+            return any(before(vc, target['vc']) for vc in reachable)
+        if ordered_with_atomics(a, b) or ordered_with_atomics(b, a):
+            raise Unsupported('targets ordered by conservative verifier-atomic synchronization')
         return dict(status='ACCEPT',scope='concrete_AR_prefix',exact_encoded_values=True,
                     instances=[a['instance'],b['instance']],targets=selected,steps=len(events)+len(startup),
                     scope_limit='AR/frontend and explicit library contracts; not source/witness validation')

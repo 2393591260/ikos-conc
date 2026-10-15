@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def heap_handle_contract():
     replay = Replay.__new__(Replay)
+    replay.atomic_owner = None
     replay.program = dict(pointer_bits=32, target_triple='i386-pc-linux-gnu', little_endian=True)
     replay.functions = {'ar.libc.malloc': {}, 'ar.libc.free': {}, 'pthread_create': {}}
     replay.objects = {'global:other': dict(size=4, live=True, variable='other', thread_local=False,
@@ -146,6 +147,7 @@ def main():
     args = parser.parse_args()
     # Test invalid library histories even though BMC now refuses to export them.
     replay = Replay.__new__(Replay)
+    replay.atomic_owner = None
     replay.functions = {'pthread_join': {}, 'pthread_detach': {}}
     replay.created = {1: dict(joined=False, detached=False)}
     invoke = lambda name, values: replay.api(name, values, {}, {}, 'startup', 0, None, None)

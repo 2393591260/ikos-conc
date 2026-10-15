@@ -222,6 +222,16 @@ execution retains both target roots through completion. The independent AR
 checker also requires both roots to finish, so an atomic-end marker alone
 cannot hide a later assumption by truncating the trace.
 
+Absence of pthread synchronization does not exclude communication between
+verifier-atomic sections. BMC therefore retains its conservative adjacency
+conditions for mixed atomic/plain targets. The AR checker also tests ordering
+under a stronger relation that serializes complete atomic sections; a pair
+ordered only by this additional relation is `UNSUPPORTED`, not certified as a
+race. This is a conservative acceptance condition, not an implementation of the
+complete CAT memory model. External calls inside an atomic section are limited
+to supported nondeterministic inputs, assumptions, and `ffs`; ordinary helpers
+must be expanded. Other library effects require further communication modeling.
+
 | Component | Source |
 | --- | --- |
 | Concurrent worklist and shared-summary iteration | `analyzer/src/analysis/value/thread_modular.cpp` |

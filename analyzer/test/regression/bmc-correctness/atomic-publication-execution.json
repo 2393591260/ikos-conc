@@ -1,0 +1,1679 @@
+{
+  "source_sha256": "2041516029fd16b0bf30ee6e57e7a7273acd5cb783af8a20a5bf5b07addeb2f0",
+  "counterexample": {
+    "schema": 1,
+    "validation_status": "UNVALIDATED",
+    "program": {
+      "little_endian": true,
+      "pointer_bits": 32,
+      "target_triple": "i386-pc-linux-gnu",
+      "functions": {
+        "ar.ikos.nondet.si32": {
+          "declaration": true,
+          "return_type": {
+            "size": "4",
+            "extent": "4",
+            "kind": "integer",
+            "bits": 32,
+            "signed": true
+          },
+          "variadic": false,
+          "intrinsic_nondet": true,
+          "intrinsic_assume": false,
+          "parameter_types": []
+        },
+        "pthread_create": {
+          "declaration": true,
+          "return_type": {
+            "size": "4",
+            "extent": "4",
+            "kind": "integer",
+            "bits": 32,
+            "signed": true
+          },
+          "variadic": false,
+          "intrinsic_nondet": false,
+          "intrinsic_assume": false,
+          "parameter_types": [
+            {
+              "size": "4",
+              "extent": "4",
+              "kind": "pointer",
+              "bits": 32,
+              "pointee": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              }
+            },
+            {
+              "size": "4",
+              "extent": "4",
+              "kind": "pointer",
+              "bits": 32
+            },
+            {
+              "size": "4",
+              "extent": "4",
+              "kind": "pointer",
+              "bits": 32
+            },
+            {
+              "size": "4",
+              "extent": "4",
+              "kind": "pointer",
+              "bits": 32,
+              "pointee": {
+                "size": "1",
+                "extent": "1",
+                "kind": "integer",
+                "bits": 8,
+                "signed": true
+              }
+            }
+          ]
+        },
+        "reader": {
+          "declaration": false,
+          "return_type": {
+            "size": "4",
+            "extent": "4",
+            "kind": "pointer",
+            "bits": 32,
+            "pointee": {
+              "size": "1",
+              "extent": "1",
+              "kind": "integer",
+              "bits": 8,
+              "signed": true
+            }
+          },
+          "variadic": false,
+          "intrinsic_nondet": false,
+          "intrinsic_assume": false,
+          "parameter_types": [
+            {
+              "size": "4",
+              "extent": "4",
+              "kind": "pointer",
+              "bits": 32,
+              "pointee": {
+                "size": "1",
+                "extent": "1",
+                "kind": "integer",
+                "bits": 8,
+                "signed": true
+              }
+            }
+          ],
+          "parameters": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32,
+                "pointee": {
+                  "size": "1",
+                  "extent": "1",
+                  "kind": "integer",
+                  "bits": 8,
+                  "signed": true
+                }
+              },
+              "kind": "variable",
+              "id": "v0"
+            }
+          ],
+          "entry": "b0",
+          "blocks": {
+            "b0": {
+              "statements": [
+                "s0",
+                "s1"
+              ],
+              "successors": [
+                "b1",
+                "b2"
+              ]
+            },
+            "b1": {
+              "statements": [
+                "s2",
+                "s3"
+              ],
+              "successors": [
+                "b3"
+              ]
+            },
+            "b2": {
+              "statements": [
+                "s4",
+                "s5"
+              ],
+              "successors": [
+                "b3"
+              ]
+            },
+            "b3": {
+              "statements": [
+                "s6",
+                "s7",
+                "s8",
+                "s9",
+                "s10",
+                "s11"
+              ],
+              "successors": []
+            }
+          }
+        },
+        "__VERIFIER_atomic_end": {
+          "declaration": true,
+          "return_type": {
+            "kind": "unsupported"
+          },
+          "variadic": false,
+          "intrinsic_nondet": false,
+          "intrinsic_assume": false,
+          "parameter_types": []
+        },
+        "__VERIFIER_atomic_begin": {
+          "declaration": true,
+          "return_type": {
+            "kind": "unsupported"
+          },
+          "variadic": false,
+          "intrinsic_nondet": false,
+          "intrinsic_assume": false,
+          "parameter_types": []
+        },
+        "main": {
+          "declaration": false,
+          "return_type": {
+            "size": "4",
+            "extent": "4",
+            "kind": "integer",
+            "bits": 32,
+            "signed": true
+          },
+          "variadic": false,
+          "intrinsic_nondet": false,
+          "intrinsic_assume": false,
+          "parameter_types": [],
+          "parameters": [],
+          "entry": "b4",
+          "blocks": {
+            "b4": {
+              "statements": [
+                "s12",
+                "s13",
+                "s14",
+                "s15",
+                "s16",
+                "s17",
+                "s18",
+                "s19",
+                "s20",
+                "s21"
+              ],
+              "successors": []
+            }
+          }
+        },
+        "__VERIFIER_assume": {
+          "declaration": true,
+          "return_type": {
+            "kind": "unsupported"
+          },
+          "variadic": false,
+          "intrinsic_nondet": false,
+          "intrinsic_assume": false,
+          "parameter_types": [
+            {
+              "size": "4",
+              "extent": "4",
+              "kind": "integer",
+              "bits": 32,
+              "signed": true
+            }
+          ]
+        },
+        "writer": {
+          "declaration": false,
+          "return_type": {
+            "size": "4",
+            "extent": "4",
+            "kind": "pointer",
+            "bits": 32,
+            "pointee": {
+              "size": "1",
+              "extent": "1",
+              "kind": "integer",
+              "bits": 8,
+              "signed": true
+            }
+          },
+          "variadic": false,
+          "intrinsic_nondet": false,
+          "intrinsic_assume": false,
+          "parameter_types": [
+            {
+              "size": "4",
+              "extent": "4",
+              "kind": "pointer",
+              "bits": 32,
+              "pointee": {
+                "size": "1",
+                "extent": "1",
+                "kind": "integer",
+                "bits": 8,
+                "signed": true
+              }
+            }
+          ],
+          "parameters": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32,
+                "pointee": {
+                  "size": "1",
+                  "extent": "1",
+                  "kind": "integer",
+                  "bits": 8,
+                  "signed": true
+                }
+              },
+              "kind": "variable",
+              "id": "v13"
+            }
+          ],
+          "entry": "b5",
+          "blocks": {
+            "b5": {
+              "statements": [
+                "s22",
+                "s23",
+                "s24",
+                "s25",
+                "s26"
+              ],
+              "successors": []
+            }
+          }
+        }
+      },
+      "instructions": {
+        "s0": {
+          "abstract_initializer": false,
+          "block": "b0",
+          "file": "atomic-publication.c",
+          "line": 10,
+          "column": 2,
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "function",
+              "id": "__VERIFIER_atomic_begin"
+            }
+          ],
+          "kind": "call",
+          "calling_convention": 0,
+          "argument_layouts": []
+        },
+        "s1": {
+          "abstract_initializer": false,
+          "block": "b0",
+          "file": "atomic-publication.c",
+          "line": 10,
+          "column": 47,
+          "result": {
+            "type": {
+              "size": "4",
+              "extent": "4",
+              "kind": "integer",
+              "bits": 32,
+              "signed": true
+            },
+            "kind": "variable",
+            "id": "v1"
+          },
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32,
+                "pointee": {
+                  "size": "4",
+                  "extent": "4",
+                  "kind": "integer",
+                  "bits": 32,
+                  "signed": true
+                }
+              },
+              "kind": "global",
+              "id": "flag"
+            }
+          ],
+          "kind": "load",
+          "alignment": 4,
+          "atomic": false
+        },
+        "s2": {
+          "abstract_initializer": false,
+          "block": "b1",
+          "file": "atomic-publication.c",
+          "line": 10,
+          "column": 51,
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              },
+              "kind": "variable",
+              "id": "v1"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              },
+              "kind": "integer",
+              "value": "1"
+            }
+          ],
+          "kind": "compare",
+          "predicate": 10
+        },
+        "s3": {
+          "abstract_initializer": false,
+          "block": "b1",
+          "file": "atomic-publication.c",
+          "line": 10,
+          "column": 51,
+          "result": {
+            "type": {
+              "size": "1",
+              "extent": "1",
+              "kind": "integer",
+              "bits": 1,
+              "signed": false
+            },
+            "kind": "variable",
+            "id": "v2"
+          },
+          "operands": [
+            {
+              "type": {
+                "size": "1",
+                "extent": "1",
+                "kind": "integer",
+                "bits": 1,
+                "signed": false
+              },
+              "kind": "integer",
+              "value": "1"
+            }
+          ],
+          "kind": "assign"
+        },
+        "s4": {
+          "abstract_initializer": false,
+          "block": "b2",
+          "file": "atomic-publication.c",
+          "line": 10,
+          "column": 51,
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              },
+              "kind": "variable",
+              "id": "v1"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              },
+              "kind": "integer",
+              "value": "1"
+            }
+          ],
+          "kind": "compare",
+          "predicate": 11
+        },
+        "s5": {
+          "abstract_initializer": false,
+          "block": "b2",
+          "file": "atomic-publication.c",
+          "line": 10,
+          "column": 51,
+          "result": {
+            "type": {
+              "size": "1",
+              "extent": "1",
+              "kind": "integer",
+              "bits": 1,
+              "signed": false
+            },
+            "kind": "variable",
+            "id": "v2"
+          },
+          "operands": [
+            {
+              "type": {
+                "size": "1",
+                "extent": "1",
+                "kind": "integer",
+                "bits": 1,
+                "signed": false
+              },
+              "kind": "integer",
+              "value": "0"
+            }
+          ],
+          "kind": "assign"
+        },
+        "s6": {
+          "abstract_initializer": false,
+          "block": "b3",
+          "file": "atomic-publication.c",
+          "line": 10,
+          "column": 51,
+          "result": {
+            "type": {
+              "size": "4",
+              "extent": "4",
+              "kind": "integer",
+              "bits": 32,
+              "signed": false
+            },
+            "kind": "variable",
+            "id": "v3"
+          },
+          "operands": [
+            {
+              "type": {
+                "size": "1",
+                "extent": "1",
+                "kind": "integer",
+                "bits": 1,
+                "signed": false
+              },
+              "kind": "variable",
+              "id": "v2"
+            }
+          ],
+          "kind": "unary",
+          "operator": 2
+        },
+        "s7": {
+          "abstract_initializer": false,
+          "block": "b3",
+          "file": "atomic-publication.c",
+          "line": 10,
+          "column": 51,
+          "result": {
+            "type": {
+              "size": "4",
+              "extent": "4",
+              "kind": "integer",
+              "bits": 32,
+              "signed": true
+            },
+            "kind": "variable",
+            "id": "v4"
+          },
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": false
+              },
+              "kind": "variable",
+              "id": "v3"
+            }
+          ],
+          "kind": "unary",
+          "operator": 14
+        },
+        "s8": {
+          "abstract_initializer": false,
+          "block": "b3",
+          "file": "atomic-publication.c",
+          "line": 10,
+          "column": 29,
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "function",
+              "id": "__VERIFIER_assume"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              },
+              "kind": "variable",
+              "id": "v4"
+            }
+          ],
+          "kind": "call",
+          "calling_convention": 0,
+          "argument_layouts": [
+            {}
+          ]
+        },
+        "s9": {
+          "abstract_initializer": false,
+          "block": "b3",
+          "file": "atomic-publication.c",
+          "line": 10,
+          "column": 57,
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "function",
+              "id": "__VERIFIER_atomic_end"
+            }
+          ],
+          "kind": "call",
+          "calling_convention": 0,
+          "argument_layouts": []
+        },
+        "s10": {
+          "abstract_initializer": false,
+          "block": "b3",
+          "file": "atomic-publication.c",
+          "line": 11,
+          "column": 8,
+          "result": {
+            "type": {
+              "size": "4",
+              "extent": "4",
+              "kind": "integer",
+              "bits": 32,
+              "signed": true
+            },
+            "kind": "variable",
+            "id": "v5"
+          },
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32,
+                "pointee": {
+                  "size": "4",
+                  "extent": "4",
+                  "kind": "integer",
+                  "bits": 32,
+                  "signed": true
+                }
+              },
+              "kind": "global",
+              "id": "payload"
+            }
+          ],
+          "kind": "load",
+          "alignment": 4,
+          "atomic": false
+        },
+        "s11": {
+          "abstract_initializer": false,
+          "block": "b3",
+          "file": "atomic-publication.c",
+          "line": 11,
+          "column": 17,
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32,
+                "pointee": {
+                  "size": "1",
+                  "extent": "1",
+                  "kind": "integer",
+                  "bits": 8,
+                  "signed": true
+                }
+              },
+              "kind": "null"
+            }
+          ],
+          "kind": "return"
+        },
+        "s12": {
+          "abstract_initializer": true,
+          "block": "b4",
+          "file": "atomic-publication.c",
+          "line": 13,
+          "column": 33,
+          "result": {
+            "type": {
+              "size": "4",
+              "extent": "4",
+              "kind": "integer",
+              "bits": 32,
+              "signed": true
+            },
+            "kind": "variable",
+            "id": "v6"
+          },
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "function",
+              "id": "ar.ikos.nondet.si32"
+            }
+          ],
+          "kind": "call",
+          "calling_convention": 0,
+          "argument_layouts": []
+        },
+        "s13": {
+          "abstract_initializer": false,
+          "block": "b4",
+          "file": "atomic-publication.c",
+          "line": 13,
+          "column": 33,
+          "result": {
+            "type": {
+              "size": "4",
+              "extent": "4",
+              "kind": "pointer",
+              "bits": 32,
+              "pointee": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              }
+            },
+            "kind": "local",
+            "id": "v7"
+          },
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": false
+              },
+              "kind": "integer",
+              "value": "1"
+            }
+          ],
+          "kind": "allocate",
+          "allocated_type": {
+            "size": "4",
+            "extent": "4",
+            "kind": "integer",
+            "bits": 32,
+            "signed": true
+          },
+          "alignment": 4
+        },
+        "s14": {
+          "abstract_initializer": true,
+          "block": "b4",
+          "file": "atomic-publication.c",
+          "line": 13,
+          "column": 33,
+          "result": {
+            "type": {
+              "size": "4",
+              "extent": "4",
+              "kind": "integer",
+              "bits": 32,
+              "signed": true
+            },
+            "kind": "variable",
+            "id": "v8"
+          },
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "function",
+              "id": "ar.ikos.nondet.si32"
+            }
+          ],
+          "kind": "call",
+          "calling_convention": 0,
+          "argument_layouts": []
+        },
+        "s15": {
+          "abstract_initializer": true,
+          "block": "b4",
+          "file": "atomic-publication.c",
+          "line": 13,
+          "column": 33,
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32,
+                "pointee": {
+                  "size": "4",
+                  "extent": "4",
+                  "kind": "integer",
+                  "bits": 32,
+                  "signed": true
+                }
+              },
+              "kind": "local",
+              "id": "v7"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              },
+              "kind": "variable",
+              "id": "v8"
+            }
+          ],
+          "kind": "store",
+          "alignment": 4,
+          "atomic": false
+        },
+        "s16": {
+          "abstract_initializer": false,
+          "block": "b4",
+          "file": "atomic-publication.c",
+          "line": 13,
+          "column": 33,
+          "result": {
+            "type": {
+              "size": "4",
+              "extent": "4",
+              "kind": "pointer",
+              "bits": 32,
+              "pointee": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              }
+            },
+            "kind": "local",
+            "id": "v9"
+          },
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": false
+              },
+              "kind": "integer",
+              "value": "1"
+            }
+          ],
+          "kind": "allocate",
+          "allocated_type": {
+            "size": "4",
+            "extent": "4",
+            "kind": "integer",
+            "bits": 32,
+            "signed": true
+          },
+          "alignment": 4
+        },
+        "s17": {
+          "abstract_initializer": true,
+          "block": "b4",
+          "file": "atomic-publication.c",
+          "line": 13,
+          "column": 33,
+          "result": {
+            "type": {
+              "size": "4",
+              "extent": "4",
+              "kind": "integer",
+              "bits": 32,
+              "signed": true
+            },
+            "kind": "variable",
+            "id": "v10"
+          },
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "function",
+              "id": "ar.ikos.nondet.si32"
+            }
+          ],
+          "kind": "call",
+          "calling_convention": 0,
+          "argument_layouts": []
+        },
+        "s18": {
+          "abstract_initializer": true,
+          "block": "b4",
+          "file": "atomic-publication.c",
+          "line": 13,
+          "column": 33,
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32,
+                "pointee": {
+                  "size": "4",
+                  "extent": "4",
+                  "kind": "integer",
+                  "bits": 32,
+                  "signed": true
+                }
+              },
+              "kind": "local",
+              "id": "v9"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              },
+              "kind": "variable",
+              "id": "v10"
+            }
+          ],
+          "kind": "store",
+          "alignment": 4,
+          "atomic": false
+        },
+        "s19": {
+          "abstract_initializer": false,
+          "block": "b4",
+          "file": "atomic-publication.c",
+          "line": 13,
+          "column": 33,
+          "result": {
+            "type": {
+              "size": "4",
+              "extent": "4",
+              "kind": "integer",
+              "bits": 32,
+              "signed": true
+            },
+            "kind": "variable",
+            "id": "v11"
+          },
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "function",
+              "id": "pthread_create"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32,
+                "pointee": {
+                  "size": "4",
+                  "extent": "4",
+                  "kind": "integer",
+                  "bits": 32,
+                  "signed": true
+                }
+              },
+              "kind": "local",
+              "id": "v7"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "null"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "function",
+              "id": "writer"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32,
+                "pointee": {
+                  "size": "1",
+                  "extent": "1",
+                  "kind": "integer",
+                  "bits": 8,
+                  "signed": true
+                }
+              },
+              "kind": "null"
+            }
+          ],
+          "kind": "call",
+          "calling_convention": 0,
+          "argument_layouts": [
+            {
+              "size": 4,
+              "alignment": 4
+            },
+            {
+              "size": 36,
+              "alignment": 4,
+              "name": "union.pthread_attr_t"
+            },
+            {},
+            {
+              "size": 1,
+              "alignment": 1
+            }
+          ]
+        },
+        "s20": {
+          "abstract_initializer": false,
+          "block": "b4",
+          "file": "atomic-publication.c",
+          "line": 13,
+          "column": 63,
+          "result": {
+            "type": {
+              "size": "4",
+              "extent": "4",
+              "kind": "integer",
+              "bits": 32,
+              "signed": true
+            },
+            "kind": "variable",
+            "id": "v12"
+          },
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "function",
+              "id": "pthread_create"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32,
+                "pointee": {
+                  "size": "4",
+                  "extent": "4",
+                  "kind": "integer",
+                  "bits": 32,
+                  "signed": true
+                }
+              },
+              "kind": "local",
+              "id": "v9"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "null"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "function",
+              "id": "reader"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32,
+                "pointee": {
+                  "size": "1",
+                  "extent": "1",
+                  "kind": "integer",
+                  "bits": 8,
+                  "signed": true
+                }
+              },
+              "kind": "null"
+            }
+          ],
+          "kind": "call",
+          "calling_convention": 0,
+          "argument_layouts": [
+            {
+              "size": 4,
+              "alignment": 4
+            },
+            {
+              "size": 36,
+              "alignment": 4,
+              "name": "union.pthread_attr_t"
+            },
+            {},
+            {
+              "size": 1,
+              "alignment": 1
+            }
+          ]
+        },
+        "s21": {
+          "abstract_initializer": false,
+          "block": "b4",
+          "file": "atomic-publication.c",
+          "line": 13,
+          "column": 93,
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              },
+              "kind": "integer",
+              "value": "0"
+            }
+          ],
+          "kind": "return"
+        },
+        "s22": {
+          "abstract_initializer": false,
+          "block": "b5",
+          "file": "atomic-publication.c",
+          "line": 7,
+          "column": 2,
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "function",
+              "id": "__VERIFIER_atomic_begin"
+            }
+          ],
+          "kind": "call",
+          "calling_convention": 0,
+          "argument_layouts": []
+        },
+        "s23": {
+          "abstract_initializer": false,
+          "block": "b5",
+          "file": "atomic-publication.c",
+          "line": 7,
+          "column": 36,
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32,
+                "pointee": {
+                  "size": "4",
+                  "extent": "4",
+                  "kind": "integer",
+                  "bits": 32,
+                  "signed": true
+                }
+              },
+              "kind": "global",
+              "id": "payload"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              },
+              "kind": "integer",
+              "value": "7"
+            }
+          ],
+          "kind": "store",
+          "alignment": 4,
+          "atomic": false
+        },
+        "s24": {
+          "abstract_initializer": false,
+          "block": "b5",
+          "file": "atomic-publication.c",
+          "line": 7,
+          "column": 44,
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32,
+                "pointee": {
+                  "size": "4",
+                  "extent": "4",
+                  "kind": "integer",
+                  "bits": 32,
+                  "signed": true
+                }
+              },
+              "kind": "global",
+              "id": "flag"
+            },
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              },
+              "kind": "integer",
+              "value": "1"
+            }
+          ],
+          "kind": "store",
+          "alignment": 4,
+          "atomic": false
+        },
+        "s25": {
+          "abstract_initializer": false,
+          "block": "b5",
+          "file": "atomic-publication.c",
+          "line": 7,
+          "column": 48,
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32
+              },
+              "kind": "function",
+              "id": "__VERIFIER_atomic_end"
+            }
+          ],
+          "kind": "call",
+          "calling_convention": 0,
+          "argument_layouts": []
+        },
+        "s26": {
+          "abstract_initializer": false,
+          "block": "b5",
+          "file": "atomic-publication.c",
+          "line": 7,
+          "column": 73,
+          "operands": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "pointer",
+                "bits": 32,
+                "pointee": {
+                  "size": "1",
+                  "extent": "1",
+                  "kind": "integer",
+                  "bits": 8,
+                  "signed": true
+                }
+              },
+              "kind": "null"
+            }
+          ],
+          "kind": "return"
+        }
+      },
+      "globals": {
+        "flag": {
+          "type": {
+            "size": "4",
+            "extent": "4",
+            "kind": "integer",
+            "bits": 32,
+            "signed": true
+          },
+          "thread_local": false,
+          "alignment": 4,
+          "declaration": false,
+          "initializers": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              },
+              "kind": "integer",
+              "value": "0"
+            }
+          ],
+          "simple_initializer": true
+        },
+        "payload": {
+          "type": {
+            "size": "4",
+            "extent": "4",
+            "kind": "integer",
+            "bits": 32,
+            "signed": true
+          },
+          "thread_local": false,
+          "alignment": 4,
+          "declaration": false,
+          "initializers": [
+            {
+              "type": {
+                "size": "4",
+                "extent": "4",
+                "kind": "integer",
+                "bits": 32,
+                "signed": true
+              },
+              "kind": "integer",
+              "value": "0"
+            }
+          ],
+          "simple_initializer": true
+        }
+      }
+    },
+    "traces": [
+      {
+        "id": "startup",
+        "entry": "main",
+        "steps": [
+          {
+            "statement": "s12"
+          },
+          {
+            "statement": "s13"
+          },
+          {
+            "statement": "s14"
+          },
+          {
+            "statement": "s15",
+            "encoded_address": {
+              "object": {
+                "type": {
+                  "size": "4",
+                  "extent": "4",
+                  "kind": "pointer",
+                  "bits": 32,
+                  "pointee": {
+                    "size": "4",
+                    "extent": "4",
+                    "kind": "integer",
+                    "bits": 32,
+                    "signed": true
+                  }
+                },
+                "kind": "local",
+                "id": "v7"
+              },
+              "offset": "0",
+              "width": 4
+            }
+          },
+          {
+            "statement": "s16"
+          },
+          {
+            "statement": "s17"
+          },
+          {
+            "statement": "s18",
+            "encoded_address": {
+              "object": {
+                "type": {
+                  "size": "4",
+                  "extent": "4",
+                  "kind": "pointer",
+                  "bits": 32,
+                  "pointee": {
+                    "size": "4",
+                    "extent": "4",
+                    "kind": "integer",
+                    "bits": 32,
+                    "signed": true
+                  }
+                },
+                "kind": "local",
+                "id": "v9"
+              },
+              "offset": "0",
+              "width": 4
+            }
+          },
+          {
+            "statement": "s19"
+          },
+          {
+            "statement": "s20"
+          }
+        ]
+      },
+      {
+        "id": "a",
+        "entry": "reader",
+        "creator_trace": "startup",
+        "creator_step": 8,
+        "steps": [
+          {
+            "statement": "s0",
+            "clock": "-8"
+          },
+          {
+            "statement": "s1",
+            "clock": "-7",
+            "encoded_result": "1",
+            "read_from": [
+              {
+                "trace": "b",
+                "step": 2
+              },
+              {
+                "trace": "b",
+                "step": 2
+              },
+              {
+                "trace": "b",
+                "step": 2
+              },
+              {
+                "trace": "b",
+                "step": 2
+              }
+            ],
+            "encoded_address": {
+              "object": {
+                "type": {
+                  "size": "4",
+                  "extent": "4",
+                  "kind": "pointer",
+                  "bits": 32,
+                  "pointee": {
+                    "size": "4",
+                    "extent": "4",
+                    "kind": "integer",
+                    "bits": 32,
+                    "signed": true
+                  }
+                },
+                "kind": "global",
+                "id": "flag"
+              },
+              "offset": "0",
+              "width": 4
+            }
+          },
+          {
+            "statement": "s2",
+            "clock": "-6"
+          },
+          {
+            "statement": "s3",
+            "clock": "-5",
+            "encoded_result": "1"
+          },
+          {
+            "statement": "s6",
+            "clock": "-4",
+            "encoded_result": "1"
+          },
+          {
+            "statement": "s7",
+            "clock": "-3",
+            "encoded_result": "1"
+          },
+          {
+            "statement": "s8",
+            "clock": "-2"
+          },
+          {
+            "statement": "s9",
+            "clock": "-1"
+          },
+          {
+            "statement": "s10",
+            "clock": "0",
+            "read_from": [
+              {
+                "trace": "b",
+                "step": 1
+              },
+              {
+                "trace": "b",
+                "step": 1
+              },
+              {
+                "trace": "b",
+                "step": 1
+              },
+              {
+                "trace": "b",
+                "step": 1
+              }
+            ],
+            "encoded_address": {
+              "object": {
+                "type": {
+                  "size": "4",
+                  "extent": "4",
+                  "kind": "pointer",
+                  "bits": 32,
+                  "pointee": {
+                    "size": "4",
+                    "extent": "4",
+                    "kind": "integer",
+                    "bits": 32,
+                    "signed": true
+                  }
+                },
+                "kind": "global",
+                "id": "payload"
+              },
+              "offset": "0",
+              "width": 4
+            }
+          },
+          {
+            "statement": "s11",
+            "clock": "1"
+          }
+        ]
+      },
+      {
+        "id": "b",
+        "entry": "writer",
+        "creator_trace": "startup",
+        "creator_step": 7,
+        "steps": [
+          {
+            "statement": "s22",
+            "clock": "-12"
+          },
+          {
+            "statement": "s23",
+            "clock": "-11",
+            "encoded_address": {
+              "object": {
+                "type": {
+                  "size": "4",
+                  "extent": "4",
+                  "kind": "pointer",
+                  "bits": 32,
+                  "pointee": {
+                    "size": "4",
+                    "extent": "4",
+                    "kind": "integer",
+                    "bits": 32,
+                    "signed": true
+                  }
+                },
+                "kind": "global",
+                "id": "payload"
+              },
+              "offset": "0",
+              "width": 4
+            }
+          },
+          {
+            "statement": "s24",
+            "clock": "-10",
+            "encoded_address": {
+              "object": {
+                "type": {
+                  "size": "4",
+                  "extent": "4",
+                  "kind": "pointer",
+                  "bits": 32,
+                  "pointee": {
+                    "size": "4",
+                    "extent": "4",
+                    "kind": "integer",
+                    "bits": 32,
+                    "signed": true
+                  }
+                },
+                "kind": "global",
+                "id": "flag"
+              },
+              "offset": "0",
+              "width": 4
+            }
+          },
+          {
+            "statement": "s25",
+            "clock": "-9"
+          },
+          {
+            "statement": "s26",
+            "clock": "0"
+          }
+        ]
+      }
+    ],
+    "targets": [
+      {
+        "trace": "a",
+        "step": 8
+      },
+      {
+        "trace": "b",
+        "step": 1
+      }
+    ]
+  }
+}

@@ -36,59 +36,6 @@ inline bool atomic_query_barrier(const BmcEvent& event) {
            event.mutex == PSEUDO_ATOMIC_LOCK);
 }
 
-// A common parent and no subsequent synchronization leave the two children
-// HB-unordered. Verifier atomic markers constrain scheduling, not pthread HB.
-inline bool synchronization_free_siblings(const std::vector< ExecutionTrace >& traces) {
-  if (traces.size() != 3 || traces[0].root == nullptr || traces[0].root->name() != "main") return false;
-  const auto& startup = traces[0].events;
-  for (std::size_t id = 1; id < 3; ++id) {
-    const auto& trace = traces[id];
-    if (trace.root == nullptr || trace.root->name() == "main" || trace.creator_path != 0 ||
-        trace.creator_step >= startup.size() || !completion_return(trace.events, trace.root)) return false;
-    const auto& creation = startup[trace.creator_step];
-    if (creation.kind != EvKind::Create || creation.thread != reinterpret_cast< std::uint64_t >(trace.root)) return false;
-    auto* call = core::dyn_cast< ar::CallBase >(creation.stmt);
-    if (call == nullptr || call->num_arguments() != 4 || trace.argument.value != call->argument(3)) return false;
-    // Legacy occurrence selection needs no dynamic value proof for literal NULL.
-    if (!trace.argument.exact_creation && !core::isa< ar::NullConstant >(trace.argument.value)) return false;
-  }
-  if (traces[1].creator_step == traces[2].creator_step) return false;
-  for (std::size_t id = 0; id < traces.size(); ++id) {
-    const auto& path = traces[id].events;
-    for (std::size_t i = 0; i < path.size(); ++i) {
-      const auto& event = path[i];
-      if (event.synthetic_condition || event.kind == EvKind::Join || event.kind == EvKind::Unsupported) return false;
-      if (event.kind == EvKind::Create) {
-        if (id != 0) return false;
-        continue;
-      }
-      if (event.kind == EvKind::Lock || event.kind == EvKind::Unlock) {
-        if (event.mutex != PSEUDO_ATOMIC_LOCK) return false;
-        continue;
-      }
-      if (abstract_initializer(event.stmt)) continue;
-      if (auto* ret = core::dyn_cast< ar::ReturnValue >(event.stmt))
-        if (id == 0 && ret->code() == traces[0].root->body_or_null()) return false;
-      auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
-      if (call == nullptr) continue;
-      // Local/leaf calls may hide stdout or library synchronization.
-      if (source_nondet(call) || is_assume_call(call) || ffs_call(call)) continue;
-      auto* callee = event.called_function;
-      auto* exact = exact_callee(call);
-      if (callee == nullptr || !callee->is_definition() || (exact != nullptr && exact != callee)) return false;
-      bool returned = false;
-      for (std::size_t j = i + 1; j < path.size(); ++j) {
-        auto* ret = core::dyn_cast< ar::ReturnValue >(path[j].stmt);
-        if (ret != nullptr && ret->code() == callee->body_or_null() && invocation_call(path, ret->code(), j) == i) {
-          returned = true; break;
-        }
-      }
-      if (!returned) return false;
-    }
-  }
-  return true;
-}
-
 struct GuardRejection {
   unsigned path = 0; // 1 = A, 2 = B; these need the caller's read/write check.
   bool startup_infeasible = false; // Only the fixed main-before-workers prefix.
@@ -853,6 +800,19 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         record(diagnostics, e.blocker, e.stmt);
         return false;
       }
+      // Synchronization published inside an atomic section needs the section's
+      // complete communication semantics, not just the API's local clock.
+      if (active.count(PSEUDO_ATOMIC_LOCK) &&
+          !((e.kind == EvKind::Lock || e.kind == EvKind::Unlock) &&
+            e.mutex == PSEUDO_ATOMIC_LOCK) && !abstract_initializer(e.stmt)) {
+        auto* call = core::dyn_cast< ar::CallBase >(e.stmt);
+        if (call != nullptr && !source_nondet(call) && !is_assume_call(call) &&
+            !ffs_call(call) && (e.called_function == nullptr ||
+                               !e.called_function->is_definition())) {
+          record(diagnostics, "atomic_external_effect", e.stmt);
+          return false;
+        }
+      }
       if (e.kind != EvKind::Lock && e.kind != EvKind::Unlock) continue;
       if (e.mutex == 0) {record(diagnostics, "mutex_identity", e.stmt); return false;}
       if (e.kind == EvKind::Lock) {
@@ -873,7 +833,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     return true;
   };
   std::vector< std::vector< Section > > trace_sections(traces.size());
-  for (std::size_t id = 1; id < traces.size(); ++id)
+  for (std::size_t id = 0; id < traces.size(); ++id)
     if (!sections(traces[id].events, trace_sections[id])) return Result(Status::Unsupported);
   const auto& sections_a = trace_sections[1]; const auto& sections_b = trace_sections[2];
   auto atomic_target = [](const std::vector< Section >& sections, std::size_t target) {
@@ -883,9 +843,6 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   };
   const bool atomicA = atomic_target(sections_a, targetA), atomicB = atomic_target(sections_b, targetB);
   if (atomicA && atomicB) {record(diagnostics, "atomic_pair"); return Result(Status::BoundedUnsat);}
-  const bool independent_atomic = (atomicA || atomicB) && completion == nullptr &&
-                                 main_index == 0 && synchronization_free_siblings(traces);
-  if (independent_atomic) record(diagnostics, "synchronization_free_siblings");
   auto interior = [](const auto& sections, const auto& path, std::size_t target) {
     for (const auto& section : sections) {
       if (section.mutex != PSEUDO_ATOMIC_LOCK || !(section.begin < target && target < section.end)) continue;
@@ -901,7 +858,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   };
   // The other target is outside this indivisible interval. A mandatory barrier
   // on each side of this target prevents both adjacent orientations in our query.
-  if (!independent_atomic && (interior(sections_a, pathA, targetA) || interior(sections_b, pathB, targetB))) {
+  if (interior(sections_a, pathA, targetA) || interior(sections_b, pathB, targetB)) {
     record(diagnostics, "atomic_interior_unsat"); return Result(Status::BoundedUnsat);
   }
   FunctionValues functions(ctx, s, funcA->bundle(), traces, clock,
@@ -1954,9 +1911,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           query.add(clock[start + i] < clock[first] || clock[last] < clock[start + i]);
         }
       };
-      if (!independent_atomic)
-        for (std::size_t id = 1; id < traces.size(); ++id)
-          exclude_between(traces[id].events, traces[id].clock_start);
+      for (std::size_t id = 1; id < traces.size(); ++id)
+        exclude_between(traces[id].events, traces[id].clock_start);
     }
     auto solve_start = std::chrono::steady_clock::now();
     z3::check_result result = query.check();

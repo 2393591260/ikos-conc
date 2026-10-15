@@ -17,6 +17,7 @@ from validate_bmc_execution import Replay, Reject, check, digest_json
 
 def api_contract():
     replay = Replay.__new__(Replay)
+    replay.atomic_owner = None
     integer = dict(kind='integer', bits=32, signed=True, size='4', extent='4')
     replay.functions = {'ffs': dict(declaration=True, variadic=False,
                                     parameter_types=[integer], return_type=integer)}
