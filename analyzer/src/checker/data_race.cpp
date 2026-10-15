@@ -1914,16 +1914,8 @@ DataRaceChecker::~DataRaceChecker() {
             live = conditional_live_threads(a.thread_id, b.thread_id, pass == 4 ? startup_hint : 16, true);
             if (!live && pass == 3) {
               auto* main = this->_ctx.bundle->function_or_null("main");
-              ar::CallBase* source = nullptr;
-              unsigned sources = 0, allocations = 0;
-              if (main != nullptr && main->is_definition())
-                for (auto* block : *main->body()) for (auto* stmt : *block) {
-                  auto* call = dyn_cast< ar::CallBase >(stmt);
-                  if (call == nullptr) continue;
-                  if (bmc::source_nondet(call)) {source = call; ++sources;}
-                  if (bmc::malloc_call(call)) ++allocations;
-                }
-              if (sources == 1 && allocations > 0 && allocations <= 4) {
+              auto* source = bmc::allocation_finite_source(main, 4);
+              if (source != nullptr) {
                 for (unsigned value = 1; value <= 4 && !search_budget.expired(); ++value) {
                   live |= conditional_live_threads(a.thread_id, b.thread_id, 16, true, source, value);
                   if (activation_prefixes[key].size() >= 8) break;

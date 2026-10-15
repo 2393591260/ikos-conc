@@ -16,6 +16,7 @@ extern int __VERIFIER_nondet_int(void);
 extern void escape(void *);
 struct cell { datum data; };
 struct cell *published;
+int noise;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 #if CASE == 15
 volatile int guard_flag;
@@ -38,7 +39,7 @@ void *worker(void *argument) {
   p = p + 2;
   p = p - 2;
 #endif
-#if CASE == 11
+#if CASE == 11 || CASE == 17
   pthread_mutex_lock(&lock);
 #endif
 #if CASE == 15
@@ -52,10 +53,12 @@ void *worker(void *argument) {
   *(long long *)p = 7;
 #elif CASE == 9
   p->data = p->data + 1;
+#elif CASE == 16 || CASE == 17
+  p->data = noise;
 #else
   p->data = __VERIFIER_nondet_int();
 #endif
-#if CASE == 11
+#if CASE == 11 || CASE == 17
   pthread_mutex_unlock(&lock);
 #endif
   return 0;
@@ -67,6 +70,9 @@ int main(void) {
   int count = __VERIFIER_nondet_int();
 #endif
   if (count < 0) abort();
+#if CASE == 16 || CASE == 17
+  noise = __VERIFIER_nondet_int();
+#endif
 #if CASE == 3
   if (count != 1) abort();
 #elif CASE == 2

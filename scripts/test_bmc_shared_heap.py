@@ -49,9 +49,9 @@ def main():
     text = (ROOT / 'analyzer/test/regression/bmc-auxiliary/shared-heap.c').read_text()
     cases = [(mode, 0, variant, True) for mode in range(5)
              for variant in ('renamed', 'wide', 'constant', 'helper', 'guard-helper', 'select-helper')]
-    cases += [(0, case, 'renamed', False) for case in (1, 2, 3, 5, 6, 7, 9, 11, 13)]
+    cases += [(0, case, 'renamed', False) for case in (1, 2, 3, 5, 6, 7, 9, 11, 13, 17)]
     cases += [(3, case, 'renamed', False) for case in (4, 8)]
-    cases += [(0, case, 'renamed', True) for case in (10, 12, 15)]
+    cases += [(0, case, 'renamed', True) for case in (10, 12, 15, 16)]
     assertions = gep_contract()
     with tempfile.TemporaryDirectory(prefix='ikos-shared-heap-') as temp:
         work = Path(temp)

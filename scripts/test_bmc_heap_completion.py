@@ -20,8 +20,8 @@ def main():
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     args = parser.parse_args()
     fixture = (ROOT / 'analyzer/test/regression/bmc-auxiliary/heap-completion.c').read_text()
-    positive = {0, 1, 12, 20}
-    cases = [(case, False, False) for case in range(25)]
+    positive = {0, 1, 12, 20, 25, 26}
+    cases = [(case, False, False) for case in range(28)]
     cases += [(case, True, False) for case in (0, 1, 2, 3, 12)]
     cases += [(case, False, True) for case in (0, 1, 2, 12, 20, 21)]
     with tempfile.TemporaryDirectory(prefix='ikos-heap-completion-') as temp:
@@ -51,7 +51,10 @@ def main():
                     certificate['program_sha256'] = digest_json(program)
                     result = check(program, certificate)
                     assert result['status'] == 'ACCEPT', (case, result)
-                    assert set(result['instances']) == ({0, 2} if case == 12 or case == 0 or case == 20 else {0, 1})
+                    if case == 25:
+                        assert set(result['instances']) in ({0, 1}, {0, 2})
+                        continue  # This conflict precedes the joins; no completion trace is needed.
+                    assert set(result['instances']) == ({0, 2} if case in (0, 12, 20, 26) else {0, 1})
                     sources = []
                     for trace in certificate['traces']:
                         for index, step in enumerate(trace['steps']):

@@ -595,6 +595,47 @@ inline bool source_nondet(ar::CallBase* call) {
          source != nullptr && source->getDebugLoc() && !abstract_initializer(call);
 }
 
+// A search hint only: actual paths and the encoder must bind the sampled call.
+// Unrelated nondet values must not hide the source of an allocation's extent.
+inline ar::CallBase* allocation_finite_source(ar::Function* function,
+                                             unsigned maximum_allocations = 1) {
+  if (function == nullptr || !function->is_definition()) return nullptr;
+  std::set< ar::CallBase* > sources;
+  std::vector< ar::CallBase* > allocations;
+  for (auto* block : *function->body()) for (auto* statement : *block) {
+    auto* call = core::dyn_cast< ar::CallBase >(statement);
+    if (call == nullptr) continue;
+    if (source_nondet(call)) sources.insert(call);
+    if (malloc_call(call)) allocations.push_back(call);
+  }
+  if (allocations.empty() || allocations.size() > maximum_allocations) return nullptr;
+  // Preserve the earlier source choice even when allocation size is constant.
+  if (sources.size() == 1) return *sources.begin();
+  std::set< ar::Value* > visited;
+  std::set< ar::CallBase* > extent_sources;
+  std::function< bool(ar::Value*, unsigned) > collect;
+  collect = [&](ar::Value* value, unsigned depth) {
+    if (!value->type()->is_integer() || depth >= 32) return false;
+    if (core::isa< ar::IntegerConstant >(value) || !visited.insert(value).second) return true;
+    auto* variable = core::dyn_cast< ar::InternalVariable >(value);
+    auto* definition = variable != nullptr ? unique_def_bmc(variable) : nullptr;
+    if (definition == nullptr || definition->code()->function_or_null() != function ||
+        abstract_initializer(definition)) return false;
+    if (auto* call = core::dyn_cast< ar::CallBase >(definition)) {
+      if (!sources.count(call)) return false;
+      extent_sources.insert(call); return true;
+    }
+    if (!core::isa< ar::Assignment >(definition) && !core::isa< ar::UnaryOperation >(definition) &&
+        !core::isa< ar::BinaryOperation >(definition)) return false;
+    for (auto operand = definition->op_begin(); operand != definition->op_end(); ++operand)
+      if (!collect(*operand, depth + 1)) return false;
+    return true;
+  };
+  for (auto* allocation : allocations)
+    if (!collect(allocation->argument(0), 0)) return nullptr;
+  return extent_sources.size() == 1 ? *extent_sources.begin() : nullptr;
+}
+
 // Dynamic invocation boundaries, reconstructed from the composed call/return
 // prefix. Static AR variables are reused by separate helper invocations.
 inline ar::Function* callee_on_path(ar::CallBase* call,

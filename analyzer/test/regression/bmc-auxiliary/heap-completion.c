@@ -62,6 +62,9 @@ int main(void) {
 #endif
     );
   }
+#if CASE == 25
+  datum = __VERIFIER_nondet_int();
+#endif
 #if CASE == 6
   handles[0] = 0;
 #elif CASE == 22
@@ -91,7 +94,7 @@ int main(void) {
 #endif
 #if CASE != 12 && CASE != 17 && CASE != 18 && CASE != 24
   for (counter i = 0; i < count;
-#if CASE == 1 || CASE == 2
+#if CASE == 1 || CASE == 2 || CASE == 27
        ++i
 #else
        i += 2
@@ -114,6 +117,9 @@ int main(void) {
   free(handles);
 #elif CASE == 23
   (void)*(volatile pthread_t *)handles;
+#endif
+#if CASE == 26 || CASE == 27
+  datum = __VERIFIER_nondet_int();
 #endif
 #if CASE == 10
   pthread_mutex_lock(&mutex);

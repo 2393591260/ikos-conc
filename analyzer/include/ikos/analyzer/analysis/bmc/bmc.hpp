@@ -214,15 +214,8 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     if (outcome.confirmed() || finite_source != nullptr || loop_bound != 1 ||
         (funcA->name() == "main") == (funcB->name() == "main")) return;
     auto* main = funcA->name() == "main" ? funcA : funcB;
-    ar::CallBase* source = nullptr;
-    unsigned sources = 0, allocations = 0;
-    for (auto* block : *main->body()) for (auto* statement : *block) {
-      auto* call = core::dyn_cast< ar::CallBase >(statement);
-      if (call == nullptr) continue;
-      if (source_nondet(call)) {source = call; ++sources;}
-      if (malloc_call(call)) ++allocations;
-    }
-    if (sources == 1 && allocations == 1)
+    auto* source = allocation_finite_source(main);
+    if (source != nullptr)
       for (unsigned value = 1; value <= 4; ++value) {
         if (budget != nullptr && (budget->expired() || budget->queries == 0)) break;
         outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
@@ -660,15 +653,8 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
     }
   }
   if (!outcome.confirmed() && finite_source == nullptr && !budget.expired()) {
-    ar::CallBase* source = nullptr;
-    unsigned sources = 0, allocations = 0;
-    for (auto* block : *main->body()) for (auto* statement : *block) {
-      auto* call = core::dyn_cast< ar::CallBase >(statement);
-      if (call == nullptr) continue;
-      if (source_nondet(call)) {source = call; ++sources;}
-      if (malloc_call(call)) ++allocations;
-    }
-    if (sources == 1 && allocations == 1)
+    auto* source = allocation_finite_source(main);
+    if (source != nullptr)
       for (unsigned value = 1; value <= 4 && !budget.expired() && budget.queries != 0; ++value) {
         outcome.merge(confirm_race_completion(funcA, stmtA, widthA, funcB, stmtB, widthB,
             diagnostics, budget, creations, facts, source, value));
