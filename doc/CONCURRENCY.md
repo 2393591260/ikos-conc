@@ -856,3 +856,39 @@ normal completion. No mutex success is inferred from a wrapper return value.
 Run `python3 scripts/test_protected_protocol.py` for protocol, lifecycle,
 ALL-access protection, source API and ILP32 wide-integer controls.
 Implementation: `checker/sc_protocol.hpp` and `src/checker/sc_protocol.cpp`.
+
+## Monotone ticket ownership
+
+`BinaryTokenOwnership` also checks a separate ticket certificate. It never exports
+these permissions through the binary-token event interface used by arena or once
+proofs. The current subset uses two zero-initialized unsigned 32-bit globals:
+issued tickets `T` and the current service index `S`. A complete actual named-atomic
+issuer must reject `T == UINT32_MAX`, write the previous `T` to a private scalar
+outcell, then increment `T` once. The guard's actual scalar helper is interpreted
+on input zero over its complete returning control flow; its name is irrelevant.
+Native/AR addresses, widths, value origins and unsigned additions must match.
+
+The inductive invariant is `0 <= S <= T <= UINT32_MAX`: issued rights have unique
+numbers in `[0,T)`, and consumed rights are `[0,S)`. A private reserved right becomes
+Held only through the real `ticket == S` exit of a closed atomic spin loop. Its
+exit has no bypass predecessor. A release advances `S` exactly once inside a real
+atomic section and consumes Held. Since a holder has `S = ticket < T`, its release
+also cannot wrap. While that right remains Held, no different right can acquire
+or release the same service number. Actual atomic serialization, rather than
+volatile accesses or interleaving order alone, orders the protected accesses.
+
+A finite MAY worklist tracks None/Reserved/Held through every branch, loop and
+actual helper return. Endpoint observations intersect all main/thread/helper
+contexts; normal root exits must have no live right. Repeated issuances require
+a consumed previous right and a fresh actual outcell write. Arbitrarily many
+successful thread creations and synchronous calls remain separate activations;
+no thread count or ticket range is enumerated. Creation failure creates no right.
+All ticket-cell/counter uses and native/AR memory/call effects are closed. Unknown
+aliases, partial writes, stale snapshots, unmatched atomic scopes, extra writers,
+signed or unsupported counter widths, recursion and limits refuse this proof.
+
+Run `python3 scripts/test_ticket_ownership.py` for ILP32 scalar/wide-payload controls,
+including early release, cross-context helpers, repeat issuance, missing atomic
+sections, native API identities and overflow boundaries.
+Implementation: `src/checker/binary_token.cpp`; these are pair-exclusion facts,
+not BMC UNSAT, thread-completion, allocation-success or pointer-validity facts.

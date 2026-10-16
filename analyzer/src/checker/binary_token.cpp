@@ -28,6 +28,8 @@ bool plain_call(llvm::CallBase* c, llvm::Function* f) {
 }
 struct Token {
   llvm::GlobalVariable* source = nullptr;
+  llvm::GlobalVariable* issued = nullptr;
+  llvm::Function* issuer = nullptr;
   std::map< llvm::CallBase*, bool > operations;
   std::set< llvm::Instruction* > transition_effects;
   std::map< llvm::Instruction*, bool > held;
@@ -194,7 +196,7 @@ class BinaryTokenOwnership::Impl {
         ar_i && ar_i->bit_width() == 32 && a->type()->return_type()->is_void() && a->name() == f->getName().str() &&
         classify_atomic_intrinsic(a->name()) == AtomicKind::SingleCall;
   }
-  Transition transition(llvm::Function* operation, unsigned entry, llvm::GlobalVariable* source) {
+  Transition transition(llvm::Function* operation, unsigned entry, llvm::GlobalVariable* source, const llvm::APInt* actual = nullptr) {
     unsigned state = entry, writes = 0;
     std::set< llvm::Function* > active;
     std::function< Transition(llvm::Function*, const llvm::APInt*, bool) > run =
@@ -266,7 +268,7 @@ class BinaryTokenOwnership::Impl {
       }
       return {};
     };
-    return run(operation, nullptr, true);
+    return run(operation, actual, actual == nullptr);
   }
   int kind(llvm::Function* f, llvm::GlobalVariable* source = nullptr) {
     auto key = std::make_pair(f, source);
@@ -377,6 +379,540 @@ class BinaryTokenOwnership::Impl {
     for (auto* root : roots) { run(root, 1); if (!valid) return false; }
     return valid;
   }
+  ar::Value* ticket_base(ar::Value* v) const {
+    for (unsigned depth = 0; depth < 32; ++depth) {
+      if (isa< ar::GlobalVariable >(v) || isa< ar::LocalVariable >(v))
+        return v;
+      auto* iv = dyn_cast< ar::InternalVariable >(v);
+      auto* d = iv ? unique_def(iv) : nullptr;
+      if (auto* a = dyn_cast_or_null< ar::Assignment >(d))
+        v = a->operand();
+      else if (auto* a = dyn_cast_or_null< ar::UnaryOperation >(d)) {
+        if (a->op() != ar::UnaryOperation::Bitcast)
+          return v;
+        v = a->operand();
+      } else
+        return v;
+    }
+    return nullptr;
+  }
+  bool same_ticket_value(ar::Value* a, llvm::Value* n) const {
+    for (unsigned depth = 0; depth < 32; ++depth) {
+      auto* t = dyn_cast< ar::IntegerType >(a->type());
+      if (!t || !n->getType()->isIntegerTy() ||
+          t->bit_width() != n->getType()->getIntegerBitWidth())
+        return false;
+      if (auto* c = dyn_cast< ar::IntegerConstant >(a)) {
+        auto* nc = llvm::dyn_cast< llvm::ConstantInt >(n);
+        auto bits = c->value().to_z_number();
+        if (bits < 0)
+          bits += core::ZNumber(1) << t->bit_width();
+        return nc && bits == core::ZNumber(nc->getZExtValue());
+      }
+      auto* v = dyn_cast< ar::InternalVariable >(a);
+      if (!v)
+        return false;
+      if (v->has_frontend() && v->frontend< llvm::Value >() == n)
+        return true;
+      auto* d = unique_def(v);
+      if (auto* copy = dyn_cast_or_null< ar::Assignment >(d))
+        a = copy->operand();
+      else if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(d)) {
+        if (cast->op() != ar::UnaryOperation::Bitcast)
+          return false;
+        a = cast->operand();
+      } else
+        return false;
+    }
+    return false;
+  }
+  bool ticket_counter(llvm::GlobalVariable* g) const {
+    if (!g || !g->getValueType()->isIntegerTy(32) || !token_object(g))
+      return false;
+    auto* t = dyn_cast< ar::IntegerType >(globals.at(g)->type()->pointee());
+    return t && !t->is_signed() && t->bit_width() == 32;
+  }
+  bool ticket_memory(llvm::Instruction* i, llvm::Function* issuer) const {
+    auto* l = llvm::dyn_cast< llvm::LoadInst >(i);
+    auto* s = llvm::dyn_cast< llvm::StoreInst >(i);
+    auto* a_l = dyn_cast_or_null< ar::Load >(original(i));
+    auto* a_s = dyn_cast_or_null< ar::Store >(original(i));
+    if ((!l && !s) || (l && (!a_l || l->isAtomic() || a_l->is_atomic())) ||
+        (s && (!a_s || s->isAtomic() || a_s->is_atomic())))
+      return false;
+    auto* type = l ? l->getType() : s->getValueOperand()->getType();
+    auto* at = l ? a_l->result()->type() : a_s->value()->type();
+    if (!type->isIntegerTy() || type->getIntegerBitWidth() > 64 ||
+        !at->is_integer() ||
+        cast< ar::IntegerType >(at)->bit_width() !=
+            type->getIntegerBitWidth() ||
+        ctx.bundle->data_layout().store_size_in_bytes(at) !=
+            i->getModule()
+                ->getDataLayout()
+                .getTypeStoreSize(type)
+                .getFixedValue())
+      return false;
+    auto* p = (l ? l->getPointerOperand() : s->getPointerOperand())
+                  ->stripPointerCasts();
+    auto* a = ticket_base(l ? a_l->operand() : a_s->pointer());
+    if (auto* g = llvm::dyn_cast< llvm::GlobalVariable >(p))
+      return globals.count(g) && a == globals.at(g) &&
+             g->getValueType() == type && !g->isThreadLocal() &&
+             !g->isExternallyInitialized() && g->getAddressSpace() == 0 &&
+             g->hasInitializer();
+    if (auto* local = llvm::dyn_cast< llvm::AllocaInst >(p)) {
+      auto* count = llvm::dyn_cast< llvm::ConstantInt >(local->getArraySize());
+      auto* variable = dyn_cast_or_null< ar::LocalVariable >(a);
+      return count && count->isOne() && local->getAllocatedType() == type &&
+             local->getAddressSpace() == 0 && variable &&
+             variable->has_frontend() &&
+             variable->frontend< llvm::Value >() == local;
+    }
+    return s && i->getFunction() == issuer && p == issuer->getArg(0) &&
+           a == functions.at(issuer)->param(0) && type->isIntegerTy(32);
+  }
+  bool ticket_scalar_guard(llvm::Function* f,
+                           std::set< llvm::Function* >& active) {
+    if (!functions.count(f) || !active.insert(f).second || active.size() > 32)
+      return false;
+    for (auto& b : *f)
+      for (auto& i : b) {
+        if (!spend())
+          return false;
+        if (llvm::isa< llvm::DbgInfoIntrinsic >(i))
+          continue;
+        if (llvm::isa< llvm::LoadInst >(i) || llvm::isa< llvm::StoreInst >(i) ||
+            llvm::isa< llvm::AllocaInst >(i))
+          return false;
+        if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
+          if (!binding(c))
+            return false;
+          if (terminal(c) || unused_freeze(c))
+            continue;
+          auto* child = callee(c);
+          if (child->isDeclaration() ||
+              classify_atomic_intrinsic(child->getName().str()) !=
+                  AtomicKind::None ||
+              !ticket_scalar_guard(child, active))
+            return false;
+        }
+      }
+    active.erase(f);
+    return true;
+  }
+  bool ticket_marker(llvm::Instruction* i, bool begin) const {
+    auto* c = llvm::dyn_cast< llvm::CallBase >(i);
+    auto* a = c ? binding(c) : nullptr;
+    auto* f = c ? callee(c) : nullptr;
+    auto* af = a ? native_handle_callee(a) : nullptr;
+    const char* name =
+        begin ? "__VERIFIER_atomic_begin" : "__VERIFIER_atomic_end";
+    return f && af && f->isDeclaration() && af->is_declaration() &&
+           f->getName() == name && af->name() == name && c->arg_empty() &&
+           c->getType()->isVoidTy() && af->num_parameters() == 0 &&
+           af->type()->return_type()->is_void();
+  }
+  std::vector< llvm::Instruction* > ticket_instructions(
+      llvm::BasicBlock& b) const {
+    std::vector< llvm::Instruction* > result;
+    for (auto& i : b)
+      if (!llvm::isa< llvm::DbgInfoIntrinsic >(i))
+        result.push_back(&i);
+    return result;
+  }
+  llvm::LoadInst* ticket_increment(llvm::StoreInst* store,
+                                   llvm::GlobalVariable* g) const {
+    if (!store || store->getPointerOperand() != g ||
+        !store->getValueOperand()->getType()->isIntegerTy(32))
+      return nullptr;
+    auto* add =
+        llvm::dyn_cast< llvm::BinaryOperator >(store->getValueOperand());
+    if (!add || add->getOpcode() != llvm::Instruction::Add)
+      return nullptr;
+    auto* l = llvm::dyn_cast< llvm::LoadInst >(add->getOperand(0));
+    auto* one = llvm::dyn_cast< llvm::ConstantInt >(add->getOperand(1));
+    auto* a = dyn_cast_or_null< ar::Store >(original(store));
+    auto* result = a ? dyn_cast< ar::InternalVariable >(a->value()) : nullptr;
+    auto* operation =
+        result ? dyn_cast_or_null< ar::BinaryOperation >(unique_def(result))
+               : nullptr;
+    return l && l->getPointerOperand() == g && l->getType()->isIntegerTy(32) &&
+                   one && one->isOne() && operation &&
+                   operation->op() == ar::BinaryOperation::UAdd &&
+                   same_ticket_value(operation->left(), l) &&
+                   same_ticket_value(operation->right(), one) &&
+                   same_ticket_value(a->value(), add)
+               ? l
+               : nullptr;
+  }
+  bool ticket_ownership(llvm::Function* issuer, Token& token) {
+    if (!atomic_signature(issuer) || issuer->arg_size() != 1 ||
+        issuer->size() != 1)
+      return false;
+    llvm::StoreInst *output = nullptr, *update = nullptr;
+    llvm::CallBase* guard = nullptr;
+    for (auto& i : issuer->getEntryBlock()) {
+      if (!spend())
+        return false;
+      if (llvm::isa< llvm::DbgInfoIntrinsic >(i))
+        continue;
+      if (auto* s = llvm::dyn_cast< llvm::StoreInst >(&i)) {
+        if (s->getPointerOperand() == issuer->getArg(0)) {
+          if (output)
+            return false;
+          output = s;
+        } else {
+          if (update)
+            return false;
+          update = s;
+        }
+      } else if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
+        if (guard)
+          return false;
+        guard = c;
+      } else if (!llvm::isa< llvm::LoadInst >(i) &&
+                 !llvm::isa< llvm::ICmpInst >(i) &&
+                 !llvm::isa< llvm::CastInst >(i) &&
+                 !llvm::isa< llvm::BinaryOperator >(i) &&
+                 !llvm::isa< llvm::ReturnInst >(i))
+        return false;
+    }
+    auto* next = update ? llvm::dyn_cast< llvm::GlobalVariable >(
+                              update->getPointerOperand())
+                        : nullptr;
+    auto* old =
+        output ? llvm::dyn_cast< llvm::LoadInst >(output->getValueOperand())
+               : nullptr;
+    auto* step = next ? ticket_increment(update, next) : nullptr;
+    if (!next || !ticket_counter(next) || !old ||
+        old->getPointerOperand() != next || !step || !guard ||
+        !binding(guard) || !guard->comesBefore(output) ||
+        !output->comesBefore(update) || !old->comesBefore(update) ||
+        !step->comesBefore(update) || guard->arg_size() != 1 ||
+        !guard->use_empty() || !guard->getType()->isVoidTy())
+      return false;
+    auto* argument = llvm::dyn_cast< llvm::ZExtInst >(guard->getArgOperand(0));
+    auto* compare =
+        argument ? llvm::dyn_cast< llvm::ICmpInst >(argument->getOperand(0))
+                 : nullptr;
+    if (!argument || !argument->getType()->isIntegerTy(32) || !compare ||
+        compare->getPredicate() != llvm::CmpInst::ICMP_NE)
+      return false;
+    auto* check = llvm::dyn_cast< llvm::LoadInst >(compare->getOperand(0));
+    auto* maximum = llvm::dyn_cast< llvm::ConstantInt >(compare->getOperand(1));
+    if (!check || check->getPointerOperand() != next || !maximum ||
+        !maximum->getType()->isIntegerTy(32) || !maximum->isMinusOne() ||
+        !check->comesBefore(guard))
+      return false;
+    if (!same_ticket_value(binding(guard)->argument(0), argument))
+      return false;
+    auto* helper = callee(guard);
+    std::set< llvm::Function* > active;
+    if (helper->arg_size() != 1 ||
+        !helper->getArg(0)->getType()->isIntegerTy(32) ||
+        !ticket_scalar_guard(helper, active))
+      return false;
+    llvm::APInt zero(32, 0);
+    auto rejected = transition(helper, 0, nullptr, &zero);
+    if (!rejected.supported || rejected.returned)
+      return false;
+    auto* out = dyn_cast< ar::Store >(original(output));
+    if (!out || !same_ticket_value(out->value(), old))
+      return false;
+    for (auto* u : issuer->getArg(0)->users())
+      if (u != output && !llvm::isa< llvm::DbgInfoIntrinsic >(u))
+        return false;
+    for (auto& i : issuer->getEntryBlock())
+      if (auto* l = llvm::dyn_cast< llvm::LoadInst >(&i))
+        if (l->getPointerOperand() != next)
+          return false;
+    std::set< llvm::Instruction* > next_effects;
+    for (auto* u : next->users()) {
+      auto* i = llvm::dyn_cast< llvm::Instruction >(u);
+      if (!i || i->getFunction() != issuer || !ticket_memory(i, issuer) ||
+          (llvm::isa< llvm::StoreInst >(i) && i != update))
+        return false;
+      next_effects.insert(i);
+    }
+    std::map< llvm::Instruction*, unsigned > rules;
+    std::set< llvm::Instruction* > markers, served_effects;
+    std::set< llvm::AllocaInst* > slots;
+    llvm::GlobalVariable* served = nullptr;
+    unsigned callers = 0;
+    for (auto* f : order)
+      for (auto& b : *f)
+        for (auto& i : b) {
+          auto* c = llvm::dyn_cast< llvm::CallBase >(&i);
+          if (!c || callee(c) != issuer)
+            continue;
+          auto* a = binding(c);
+          auto* slot = llvm::dyn_cast< llvm::AllocaInst >(c->getArgOperand(0));
+          auto* count =
+              slot ? llvm::dyn_cast< llvm::ConstantInt >(slot->getArraySize())
+                   : nullptr;
+          auto* ar_slot =
+              a ? dyn_cast< ar::LocalVariable >(ticket_base(a->argument(0)))
+                : nullptr;
+          if (!a || c->arg_size() != 1 || !slot || !count || !count->isOne() ||
+              !slot->getAllocatedType()->isIntegerTy(32) ||
+              slot->getAddressSpace() != 0 || !ar_slot ||
+              !ar_slot->has_frontend() ||
+              ar_slot->frontend< llvm::Value >() != slot ||
+              !slots.insert(slot).second)
+            return false;
+          auto source = ticket_instructions(b);
+          auto position = std::find(source.begin(), source.end(), c);
+          if (position == source.end() || source.end() - position != 3 ||
+              !ticket_marker(position[1], true))
+            return false;
+          auto* into = llvm::dyn_cast< llvm::BranchInst >(position[2]);
+          if (!into || !into->isUnconditional())
+            return false;
+          auto* header = into->getSuccessor(0);
+          auto spin = ticket_instructions(*header);
+          if (spin.size() != 4)
+            return false;
+          auto* ticket = llvm::dyn_cast< llvm::LoadInst >(spin[0]);
+          auto* service = llvm::dyn_cast< llvm::LoadInst >(spin[1]);
+          auto* equality = llvm::dyn_cast< llvm::ICmpInst >(spin[2]);
+          auto* edge = llvm::dyn_cast< llvm::BranchInst >(spin[3]);
+          auto* cell = service ? llvm::dyn_cast< llvm::GlobalVariable >(
+                                     service->getPointerOperand())
+                               : nullptr;
+          if (!ticket || ticket->getPointerOperand() != slot || !cell ||
+              cell == next || !cell->getValueType()->isIntegerTy(32) ||
+              !ticket_counter(cell) || (served && served != cell) ||
+              !equality || !edge || !edge->isConditional() ||
+              edge->getCondition() != equality ||
+              (equality->getPredicate() != llvm::CmpInst::ICMP_NE &&
+               equality->getPredicate() != llvm::CmpInst::ICMP_EQ) ||
+              !((equality->getOperand(0) == ticket &&
+                 equality->getOperand(1) == service) ||
+                (equality->getOperand(0) == service &&
+                 equality->getOperand(1) == ticket)))
+            return false;
+          served = cell;
+          unsigned equal_edge =
+              equality->getPredicate() == llvm::CmpInst::ICMP_EQ ? 0 : 1;
+          auto* exit = edge->getSuccessor(equal_edge);
+          auto* back = edge->getSuccessor(equal_edge ^ 1);
+          auto retry = ticket_instructions(*back);
+          auto after = ticket_instructions(*exit);
+          auto* repeat = retry.size() == 1
+                             ? llvm::dyn_cast< llvm::BranchInst >(retry[0])
+                             : nullptr;
+          if (!repeat || !repeat->isUnconditional() ||
+              repeat->getSuccessor(0) != header || after.empty() ||
+              !ticket_marker(after[0], false) ||
+              exit->getSinglePredecessor() != header)
+            return false;
+          std::set< llvm::BasicBlock* > predecessors(llvm::pred_begin(header),
+                                                     llvm::pred_end(header));
+          if (predecessors != std::set< llvm::BasicBlock* >{&b, back})
+            return false;
+          for (auto* u : slot->users()) {
+            if (u == c || u == ticket || llvm::isa< llvm::DbgInfoIntrinsic >(u))
+              continue;
+            auto* store = llvm::dyn_cast< llvm::StoreInst >(u);
+            if (!store || store->getPointerOperand() != slot ||
+                !store->getValueOperand()->getType()->isIntegerTy(32))
+              return false;
+            rules
+                .emplace(store,
+                         4); // Reset is legal only before a reservation exists.
+          }
+          rules.emplace(c, 1);
+          rules.emplace(after[0], 2);
+          markers.insert(position[1]);
+          markers.insert(after[0]);
+          served_effects.insert(service);
+          ++callers;
+        }
+    if (!callers || !served)
+      return false;
+    unsigned releases = 0;
+    for (auto* u : served->users()) {
+      auto* store = llvm::dyn_cast< llvm::StoreInst >(u);
+      if (!store)
+        continue;
+      auto* load = ticket_increment(store, served);
+      if (!load)
+        return false;
+      auto sequence = ticket_instructions(*store->getParent());
+      auto at = std::find(sequence.begin(), sequence.end(), store);
+      if (at - sequence.begin() < 3 || sequence.end() - at < 2 ||
+          !ticket_marker(at[-3], true) || at[-2] != load ||
+          at[-1] != store->getValueOperand() || !ticket_marker(at[1], false))
+        return false;
+      rules.emplace(store, 3);
+      markers.insert(at[-3]);
+      markers.insert(at[1]);
+      served_effects.insert(load);
+      served_effects.insert(store);
+      ++releases;
+    }
+    if (!releases)
+      return false;
+    for (auto* u : served->users())
+      if (!llvm::isa< llvm::Instruction >(u) ||
+          !served_effects.count(llvm::cast< llvm::Instruction >(u)))
+        return false;
+    // Both LLVM and AR must be wholly inside this scalar/private-storage frame.
+    for (const auto& item : functions) {
+      for (auto& b : *item.first)
+        for (auto& i : b) {
+          if (!spend())
+            return false;
+          if (llvm::isa< llvm::LoadInst >(i) ||
+              llvm::isa< llvm::StoreInst >(i)) {
+            if (!ticket_memory(&i, issuer))
+              return false;
+          } else if (auto* local = llvm::dyn_cast< llvm::AllocaInst >(&i)) {
+            auto* count =
+                llvm::dyn_cast< llvm::ConstantInt >(local->getArraySize());
+            if (!count || !count->isOne() ||
+                !local->getAllocatedType()->isIntegerTy() ||
+                local->getAllocatedType()->getIntegerBitWidth() > 64 ||
+                local->getAddressSpace() != 0)
+              return false;
+          } else if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
+            if ((ticket_marker(c, true) || ticket_marker(c, false)) &&
+                !markers.count(c))
+              return false;
+          } else if (!llvm::isa< llvm::DbgInfoIntrinsic >(i) &&
+                     !llvm::isa< llvm::BinaryOperator >(i) &&
+                     !llvm::isa< llvm::CastInst >(i) &&
+                     !llvm::isa< llvm::CmpInst >(i) &&
+                     !llvm::isa< llvm::PHINode >(i) &&
+                     !llvm::isa< llvm::SelectInst >(i) &&
+                     !llvm::isa< llvm::GetElementPtrInst >(i) &&
+                     !llvm::isa< llvm::BranchInst >(i) &&
+                     !llvm::isa< llvm::SwitchInst >(i) &&
+                     !llvm::isa< llvm::ReturnInst >(i) &&
+                     !llvm::isa< llvm::UnreachableInst >(i) &&
+                     !llvm::isa< llvm::FreezeInst >(i))
+            return false;
+        }
+      for (auto* b : *item.second->body())
+        for (auto* s : *b) {
+          if (isa< ar::Load >(s) || isa< ar::Store >(s) ||
+              isa< ar::CallBase >(s)) {
+            if (!s->has_frontend() ||
+                original(s->frontend< llvm::Value >()) != s)
+              return false;
+          } else if (auto* a = dyn_cast< ar::Allocate >(s)) {
+            auto* local = a->has_frontend()
+                              ? llvm::dyn_cast< llvm::AllocaInst >(
+                                    a->frontend< llvm::Value >())
+                              : nullptr;
+            auto* count = dyn_cast< ar::IntegerConstant >(a->array_size());
+            if (!local || !count || count->value().to_z_number() != 1 ||
+                !a->allocated_type()->is_integer() ||
+                cast< ar::IntegerType >(a->allocated_type())->bit_width() !=
+                    local->getAllocatedType()->getIntegerBitWidth())
+              return false;
+          } else if (!isa< ar::Assignment >(s) &&
+                     !isa< ar::UnaryOperation >(s) &&
+                     !isa< ar::BinaryOperation >(s) &&
+                     !isa< ar::Comparison >(s) && !isa< ar::PointerShift >(s) &&
+                     !isa< ar::ReturnValue >(s) && !isa< ar::Unreachable >(s))
+            return false;
+        }
+    }
+    // Issued rights are unique in [0,T); retired rights are [0,S). An H right
+    // has k=S<T, so its sole release cannot wrap or coexist with another H.
+    bool valid = true;
+    std::map< std::pair< llvm::Function*, unsigned >, unsigned > summaries;
+    std::set< llvm::Function* > entering;
+    std::function< unsigned(llvm::Function*, unsigned) > run =
+        [&](llvm::Function* f, unsigned entry) {
+          auto key = std::make_pair(f, entry);
+          auto cache = summaries.find(key);
+          if (cache != summaries.end())
+            return cache->second;
+          if (!entering.insert(f).second || entering.size() > 32) {
+            valid = false;
+            return 0u;
+          }
+          std::map< llvm::BasicBlock*, unsigned > inputs;
+          std::deque< llvm::BasicBlock* > work{&f->getEntryBlock()};
+          inputs[&f->getEntryBlock()] = entry;
+          unsigned exits = 0;
+          while (valid && !work.empty()) {
+            auto* block = work.front();
+            work.pop_front();
+            auto states = inputs.at(block);
+            for (auto& i : *block) {
+              if (!spend()) {
+                valid = false;
+                break;
+              }
+              if (!states)
+                break;
+              if (llvm::isa< llvm::LoadInst >(i) ||
+                  llvm::isa< llvm::StoreInst >(i)) {
+                auto old = token.held.emplace(&i, states == 4);
+                if (!old.second)
+                  old.first->second &= states == 4;
+              }
+              auto rule = rules.find(&i);
+              if (rule != rules.end()) {
+                unsigned need = rule->second == 1 || rule->second == 4 ? 1
+                                : rule->second == 2                    ? 2
+                                                                       : 4;
+                if (states != need) {
+                  valid = false;
+                  break;
+                }
+                states = rule->second == 1 ? 2 : rule->second == 2 ? 4 : 1;
+              } else if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
+                if (llvm::isa< llvm::DbgInfoIntrinsic >(c))
+                  continue;
+                if (terminal(c))
+                  states = 0;
+                else if (!callee(c)->isDeclaration()) {
+                  unsigned next = 0;
+                  for (unsigned state : {1u, 2u, 4u})
+                    if (states & state)
+                      next |= run(callee(c), state);
+                  states = next;
+                }
+              }
+              if (llvm::isa< llvm::UnreachableInst >(i) && states) {
+                valid = false;
+                break;
+              }
+              if (llvm::isa< llvm::ReturnInst >(i)) {
+                if (std::find(roots.begin(), roots.end(), f) != roots.end() &&
+                    states != 1) {
+                  valid = false;
+                  break;
+                }
+                exits |= states;
+              }
+            }
+            for (auto* successor : llvm::successors(block)) {
+              auto old = inputs[successor];
+              inputs[successor] |= states;
+              if (old != inputs[successor])
+                work.push_back(successor);
+            }
+          }
+          entering.erase(f);
+          summaries.emplace(key, exits);
+          return exits;
+        };
+    for (auto* f : roots) {
+      run(f, 1);
+      if (!valid)
+        return false;
+    }
+    token.source = served;
+    token.issued = next;
+    token.issuer = issuer;
+    return true;
+  }
+
   llvm::Instruction* access(const AccessRecord& r) const {
     if (!r.stmt->has_frontend() || !r.pts.is_set() || r.pts.size() != 1 || !r.width) return nullptr;
     auto* i = llvm::dyn_cast< llvm::Instruction >(r.stmt->frontend< llvm::Value >());
@@ -452,6 +988,10 @@ public:
       Token t; t.source = g;
       if (close_token(t) && ownership(t)) tokens.push_back(std::move(t));
     }
+    for (auto* f : order) {
+      Token t;
+      if (ticket_ownership(f, t)) tokens.push_back(std::move(t));
+    }
   }
   BinaryTokenEvent event(llvm::CallBase* call) const {
     for (const auto& token : tokens) {
@@ -463,13 +1003,27 @@ public:
   bool excludes(const AccessRecord& a, const AccessRecord& b) const { return pair(a, b); }
   JsonDict info(const AccessRecord& a, const AccessRecord& b) const {
     auto* t = pair(a, b);
-    const bool observation = t &&
-        (t->transition_effects.count(access(a)) || t->transition_effects.count(access(b)));
-    return t ? JsonDict{{"safe_reason", observation ? "atomic token transition ordered with holder observation" :
-                                                    "both accesses must own the same closed atomic token"},
-                        {"binary_token_contract", observation ? "closed-binary-token-held-observation-v1" :
-                                                                "closed-binary-token-ownership-v1"},
-                        {"token", t->source->getName().str()}} : JsonDict{};
+    if (t && t->issued)
+      return {{"safe_reason",
+               "both accesses own the unique current nonwrapping ticket"},
+              {"ticket_ownership_contract",
+               "closed-monotone-ticket-ownership-v1"},
+              {"issued", t->issued->getName().str()},
+              {"served", t->source->getName().str()},
+              {"issuer", t->issuer->getName().str()},
+              {"counter_bits", 32}};
+    const bool observation = t && (t->transition_effects.count(access(a)) ||
+                                   t->transition_effects.count(access(b)));
+    return t ? JsonDict{{"safe_reason",
+                         observation ? "atomic token transition ordered with "
+                                       "holder observation"
+                                     : "both accesses must own the same closed "
+                                       "atomic token"},
+                        {"binary_token_contract",
+                         observation ? "closed-binary-token-held-observation-v1"
+                                     : "closed-binary-token-ownership-v1"},
+                        {"token", t->source->getName().str()}}
+             : JsonDict{};
   }
 };
 BinaryTokenOwnership::BinaryTokenOwnership(Context& ctx, const std::vector< AccessRecord >& records)
