@@ -56,6 +56,8 @@ add_concurrency_test(pthread-key-effects "${CONCURRENCY_ROOT}/scripts/test_pthre
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(heap-handoff "${CONCURRENCY_ROOT}/scripts/test_heap_handoff.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(arena-reservation "${CONCURRENCY_ROOT}/scripts/test_arena_reservation.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(thread-private-heap "${CONCURRENCY_ROOT}/scripts/test_thread_private_heap.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(calloc-overflow "${CONCURRENCY_ROOT}/scripts/test_calloc_overflow.py"

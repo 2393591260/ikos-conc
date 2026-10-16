@@ -1,0 +1,26 @@
+// Copyright and license: see data_race.hpp.
+#pragma once
+
+#include <memory>
+#include <vector>
+#include <ikos/analyzer/json/json.hpp>
+
+namespace ikos {
+namespace analyzer {
+class Context;
+struct AccessRecord;
+
+// Disjoint slices from a sealed, serialized finite counter transition system.
+// A proof budget is a refusal boundary, never an unrolling-based SAFE result.
+class ArenaReservation {
+  class Impl;
+  std::unique_ptr< Impl > _impl;
+
+public:
+  ArenaReservation(Context&, const std::vector< AccessRecord >&);
+  ~ArenaReservation();
+  bool excludes(const AccessRecord&, const AccessRecord&) const;
+  JsonDict info(const AccessRecord&) const;
+};
+} // namespace analyzer
+} // namespace ikos

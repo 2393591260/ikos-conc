@@ -291,6 +291,36 @@ callbacks and joins needed to reclaim an object from the parent require further
 proof and remain outside this subset. This rule preserves the existing NULL
 failure branches, coverage and shared interference.
 
+## Serialized arena reservations
+
+The checker can prove disjoint byte ranges in a flat global integer array when
+each access uses a fresh reservation from a sealed counter. The initial subset
+uses a real, defined `__VERIFIER_atomic_*` function with exact `void(int*)` ABI;
+its complete body is non-interleaved under the
+[SV-COMP atomic-function convention](https://sv-comp.sosy-lab.org/2026/rules.php).
+Only the reservation body is atomic, not later caller accesses.
+
+A separate finite-state certificate starts from the counter's exact initializer
+and interprets each reachable complete transaction. A success returns the old
+positive counter and strictly advances it, reserving the half-open slice between
+those values. A failure writes zero and leaves the counter unchanged. The proof
+must reach this deterministic exhausted self-loop; a partial search, unsupported
+operation, overflow or budget exhaustion yields no certificate. Consequently
+arbitrarily many later calls cannot reuse a successful slice. Every intermediate
+arithmetic operation is checked before later guards, without assuming LLVM
+`nsw` or `inbounds`.
+
+All counter writers and actual calls are closed. Each call must write to one
+activation-private integer stack slot, with no address escape, later writer or
+repeated call in that activation. A successful-result guard must dominate each
+certified access, and its full byte width must fit both the reserved slice and
+the real array. Both endpoints of an excluded pair need these facts for the
+same counter and array. A shared-load reuse of a published index, zero result,
+counter reset, escaping arena address or unknown effect keeps the ordinary
+candidate. Points-to, interference, access records, BMC and coverage are unchanged.
+This subset targets ILP32 Linux/GNU; return-value/mutex reservations and general
+initialization phases need separate proofs.
+
 ## Resource limits
 
 `calloc` size overflow preserves the caller's normal failure continuation.
