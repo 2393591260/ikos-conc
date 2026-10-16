@@ -1103,7 +1103,7 @@ DataRaceChecker::~DataRaceChecker() {
   ThreadPrivateHeap private_heap(this->_ctx, this->_accesses);
   BinaryTokenOwnership binary_token(this->_ctx, this->_accesses);
   ArenaReservation arena_reservation(this->_ctx, this->_accesses, binary_token);
-  OnceInitialization once_initialization(this->_ctx, this->_accesses);
+  OnceInitialization once_initialization(this->_ctx, this->_accesses, binary_token);
   for (std::size_t i = 0; i < this->_accesses.size(); ++i) {
     AccessRecord& w = this->_accesses[i];
     if (w.kind != AccessKind::Write || !w.locks.empty() ||

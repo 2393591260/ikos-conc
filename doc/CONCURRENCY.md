@@ -612,3 +612,15 @@ counter read, capture and update, and the original complete finite counter
 closure and byte-range proof. A balanced release/reacquire protocol is therefore
 insufficient for a reservation. These events retain their token identity and are
 not represented as native pthread mutexes.
+
+Sealed once-initialization gates can also consume these actual token events.
+Their exact state-zero/state-one prefixes and MUST post-gate facts remain
+independent obligations. A narrow payload helper binding additionally accepts
+actual defined `void(D*, D, D, i32*)` bodies: all calls must pass the same exact
+32- or 64-bit global as D and a closed caller-private i32 output slot. Every
+pointer use, full-width source/AR effect and complete helper body is checked.
+The same physical call may repeat in a retry loop; the output is private, not
+an immutable ticket. Post-gate facts intersect over all calling contexts,
+including pre-gate invocations. This binding grants no atomicity and never
+orders ordinary later/later conflicts. Ambiguous aliases, escaped outputs,
+partial effects or another actual payload refuse the binding.

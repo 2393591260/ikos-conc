@@ -1,5 +1,6 @@
 // Copyright and license: see data_race.hpp.
 #include <ikos/analyzer/checker/once_initialization.hpp>
+#include <ikos/analyzer/checker/binary_token.hpp>
 
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/checker/normal_mutex.hpp>
@@ -25,9 +26,15 @@ bool plain_call(llvm::CallBase* c, llvm::Function* f) {
       if (c->paramHasAttr(i, a) || f->hasParamAttribute(i, a)) return false;
   return true;
 }
+struct GateOperation {
+  llvm::GlobalVariable* source = nullptr;
+  bool acquire = false;
+  bool token = false;
+};
 struct Gate {
   llvm::GlobalVariable* state = nullptr;
-  llvm::GlobalVariable* mutex = nullptr;
+  llvm::GlobalVariable* serializer = nullptr;
+  bool binary_token = false;
   llvm::GlobalVariable* payload = nullptr;
   llvm::CallBase* lock = nullptr;
   llvm::StoreInst* initialization = nullptr;
@@ -43,6 +50,8 @@ struct Gate {
 
 class OnceInitialization::Impl {
   Context& ctx;
+  const BinaryTokenOwnership& binary_tokens;
+  std::map< llvm::Argument*, llvm::GlobalVariable* > formal_payloads;
   std::map< llvm::Value*, ar::Statement* > originals;
   std::map< llvm::GlobalVariable*, ar::GlobalVariable* > globals;
   std::map< llvm::Function*, ar::Function* > functions;
@@ -67,6 +76,12 @@ class OnceInitialization::Impl {
     auto it = mutex_calls.find(c);
     if (it != mutex_calls.end()) return it->second;
     auto m = normal_mutex(ctx, binding(c)); mutex_calls.emplace(c, m); return m;
+  }
+  GateOperation gate_call(llvm::CallBase* call) {
+    auto native = mutex_call(call);
+    if (native.source) return {native.source, native.lock, false};
+    auto token = binary_tokens.event(call);
+    return {token.source, token.acquire, true};
   }
   bool unused_freeze(llvm::CallBase* c) const {
     auto* a = binding(c); auto* f = a ? native_handle_callee(a) : nullptr;
@@ -185,8 +200,127 @@ class OnceInitialization::Impl {
         s->getPointerOperand() == g && s->getValueOperand()->getType() == g->getValueType() &&
         !s->isVolatile() && !s->isAtomic();
   }
-  bool mutex_uses(Gate& g) {
-    std::vector< llvm::Value* > todo{g.mutex}; std::set< llvm::Value* > seen;
+  bool integer_effect(llvm::Instruction* i, llvm::Value* p, ar::Value* a) const {
+    auto* type = dyn_cast< ar::PointerType >(a->type());
+    auto* integer = type ? dyn_cast< ar::IntegerType >(type->pointee()) : nullptr;
+    auto* native = llvm::dyn_cast< llvm::PointerType >(p->getType());
+    if (!integer || !native || native->getAddressSpace() != 0 ||
+        !native->getPointerElementType()->isIntegerTy(integer->bit_width())) return false;
+    if (auto* l = llvm::dyn_cast< llvm::LoadInst >(i)) {
+      auto* load = dyn_cast_or_null< ar::Load >(original(i));
+      return load && load->operand() == a && load->result()->type() == integer &&
+          l->getPointerOperand() == p && l->getType() == native->getPointerElementType() &&
+          !l->isVolatile() && !l->isAtomic();
+    }
+    auto* store = dyn_cast_or_null< ar::Store >(original(i));
+    auto* s = llvm::dyn_cast< llvm::StoreInst >(i);
+    return s && store && store->pointer() == a && store->value()->type() == integer &&
+        s->getPointerOperand() == p && s->getValueOperand()->getType() == native->getPointerElementType() &&
+        !s->isVolatile() && !s->isAtomic();
+  }
+  bool private_output(llvm::CallBase* call) {
+    auto* slot = llvm::dyn_cast< llvm::AllocaInst >(call->getArgOperand(3));
+    if (!slot || slot->getFunction() != call->getFunction() ||
+        slot->getParent() != &slot->getFunction()->getEntryBlock() ||
+        slot->getAddressSpace() != 0 || !slot->getAllocatedType()->isIntegerTy(32)) return false;
+    auto* one = llvm::dyn_cast< llvm::ConstantInt >(slot->getArraySize());
+    auto* a = dyn_cast_or_null< ar::Allocate >(original(slot));
+    auto* size = a ? dyn_cast< ar::IntegerConstant >(a->array_size()) : nullptr;
+    auto* type = a ? dyn_cast< ar::IntegerType >(a->allocated_type()) : nullptr;
+    auto* ar_call = binding(call);
+    if (!one || !one->isOne() || !a || !type || type->bit_width() != 32 ||
+        !size || size->value().to_z_number() != 1 || !ar_call ||
+        ar_call->argument(3) != a->result()) return false;
+    for (auto* u : slot->users()) {
+      if (!spend()) return false;
+      auto* i = llvm::dyn_cast< llvm::Instruction >(u);
+      if (!i || i->getFunction() != call->getFunction()) return false;
+      if (i == call || llvm::isa< llvm::DbgInfoIntrinsic >(i)) continue;
+      if (!integer_effect(i, slot, a->result())) return false;
+    }
+    // The entry slot is private per activation. Repeated execution of this same
+    // call is allowed: this is an effect proof, not immutable ticket provenance.
+    return true;
+  }
+  bool uniform_payload_helper(llvm::Function* f, llvm::GlobalVariable* payload) {
+    if (!functions.count(f) || f->isVarArg() || f->arg_size() != 4 ||
+        !f->getReturnType()->isVoidTy() || f->getCallingConv() != llvm::CallingConv::C) return false;
+    auto* a = functions.at(f);
+    auto* data_type = globals.at(payload)->type()->pointee();
+    if (a->num_parameters() != 4 || !a->type()->return_type()->is_void() ||
+        a->param(1)->type() != data_type || a->param(2)->type() != data_type ||
+        f->getArg(1)->getType() != payload->getValueType() ||
+        f->getArg(2)->getType() != payload->getValueType()) return false;
+    for (unsigned index : {0u, 3u}) {
+      auto* p = llvm::dyn_cast< llvm::PointerType >(f->getArg(index)->getType());
+      auto* ap = dyn_cast< ar::PointerType >(a->param(index)->type());
+      auto* integer = ap ? dyn_cast< ar::IntegerType >(ap->pointee()) : nullptr;
+      unsigned bits = index == 0 ? payload->getValueType()->getIntegerBitWidth() : 32;
+      if (!p || p->getAddressSpace() != 0 || !p->getPointerElementType()->isIntegerTy(bits) ||
+          !integer || integer->bit_width() != bits || (index == 0 && integer != data_type)) return false;
+      for (auto* u : f->getArg(index)->users()) {
+        if (!spend()) return false;
+        auto* i = llvm::dyn_cast< llvm::Instruction >(u);
+        if (i && llvm::isa< llvm::DbgInfoIntrinsic >(i)) continue;
+        if (!i || (index == 3 && !llvm::isa< llvm::StoreInst >(i)) ||
+            !integer_effect(i, f->getArg(index), a->param(index))) return false;
+      }
+    }
+    // Uniformity includes every actual call, even syntactically unreachable ones.
+    if (f->use_empty()) return false;
+    for (auto* u : f->users()) {
+      if (!spend()) return false;
+      auto* c = llvm::dyn_cast< llvm::CallBase >(u);
+      auto* ar_c = c ? binding(c) : nullptr;
+      if (!ar_c || c->getCalledOperand() != f || !isa< ar::FunctionPointerConstant >(ar_c->called()) ||
+          c->getArgOperand(0) != payload || !exact_handle_slot(ar_c->argument(0), globals.at(payload)) ||
+          !private_output(c)) return false;
+    }
+    for (auto& b : *f) for (auto& i : b) {
+      if (!spend()) return false;
+      if (llvm::isa< llvm::DbgInfoIntrinsic >(i)) continue;
+      if (llvm::isa< llvm::LoadInst >(i) || llvm::isa< llvm::StoreInst >(i)) {
+        if (!integer_effect(&i, f->getArg(0), a->param(0)) &&
+            !(llvm::isa< llvm::StoreInst >(i) && integer_effect(&i, f->getArg(3), a->param(3)))) return false;
+      } else if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
+        if (!unused_freeze(c)) return false;
+      } else if (auto* cmp = llvm::dyn_cast< llvm::ICmpInst >(&i)) {
+        if (!cmp->getOperand(0)->getType()->isIntegerTy()) return false;
+      } else if (auto* z = llvm::dyn_cast< llvm::ZExtInst >(&i)) {
+        if (!z->getSrcTy()->isIntegerTy(1) || !z->getDestTy()->isIntegerTy(32)) return false;
+      } else if (auto* ret = llvm::dyn_cast< llvm::ReturnInst >(&i)) {
+        if (ret->getReturnValue()) return false;
+      } else if (!llvm::isa< llvm::BranchInst >(i)) return false;
+    }
+    return true;
+  }
+  bool close_payload(llvm::GlobalVariable* payload) {
+    std::set< llvm::Function* > helpers;
+    for (auto* u : payload->users()) {
+      if (!spend()) return false;
+      auto* i = llvm::dyn_cast< llvm::Instruction >(u);
+      if (i && effect(i, payload)) continue;
+      auto* call = llvm::dyn_cast< llvm::CallBase >(u);
+      auto* f = call ? callee(call) : nullptr;
+      if (!f || call->arg_size() != 4 || call->getArgOperand(0) != payload ||
+          (!helpers.count(f) && !uniform_payload_helper(f, payload))) return false;
+      helpers.insert(f);
+    }
+    for (auto* f : helpers) formal_payloads[f->getArg(0)] = payload;
+    return true;
+  }
+  bool payload_effect(llvm::Instruction* i, llvm::GlobalVariable* payload) const {
+    if (effect(i, payload)) return true;
+    auto* l = llvm::dyn_cast< llvm::LoadInst >(i);
+    auto* s = llvm::dyn_cast< llvm::StoreInst >(i);
+    auto* p = l ? l->getPointerOperand() : s ? s->getPointerOperand() : nullptr;
+    auto* arg = llvm::dyn_cast_or_null< llvm::Argument >(p);
+    auto found = arg ? formal_payloads.find(arg) : formal_payloads.end();
+    return found != formal_payloads.end() && found->second == payload &&
+        integer_effect(i, arg, functions.at(arg->getParent())->param(0));
+  }
+  bool gate_uses(Gate& g) {
+    std::vector< llvm::Value* > todo{g.serializer}; std::set< llvm::Value* > seen;
     while (!todo.empty()) {
       auto* v = todo.back(); todo.pop_back();
       if (!spend()) return false;
@@ -194,9 +328,9 @@ class OnceInitialization::Impl {
       for (auto* u : v->users()) {
         if (llvm::isa< llvm::BitCastOperator >(u)) { todo.push_back(u); continue; }
         auto* c = llvm::dyn_cast< llvm::CallBase >(u);
-        if (!c || c->arg_size() != 1 || c->getArgOperand(0) != v || mutex_call(c).source != g.mutex ||
+        if (!c || c->arg_size() != 1 || c->getArgOperand(0) != v || (gate_call(c).source != g.serializer || gate_call(c).token != g.binary_token) ||
             !reachable.count(c->getFunction())) return false;
-        if (mutex_call(c).lock) { if (g.lock && g.lock != c) return false; g.lock = c; }
+        if (gate_call(c).acquire) { if (g.lock && g.lock != c) return false; g.lock = c; }
         else g.unlocks.insert(c);
       }
     }
@@ -254,9 +388,9 @@ class OnceInitialization::Impl {
             }
           } else if (auto* c = llvm::dyn_cast< llvm::CallBase >(i)) {
             if (unused_freeze(c)) continue;
-            auto m = mutex_call(c);
+            auto m = gate_call(c);
             if (m.source) {
-              if (m.source != g.mutex || m.lock || !g.unlocks.count(c) || f != g.lock->getFunction() ||
+              if (m.source != g.serializer || m.token != g.binary_token || m.acquire || !g.unlocks.count(c) || f != g.lock->getFunction() ||
                   state != 1 || initializations != (entry == 0 ? 1u : 0u) || writes != (entry == 0 ? 1u : 0u)) return false;
               released = true; active.erase(f); return true;
             }
@@ -264,7 +398,7 @@ class OnceInitialization::Impl {
             if (!binding(c) || !child || child->isDeclaration() || !c->use_empty() || c->arg_size() != 0 ||
                 !child->getReturnType()->isVoidTy() || !run(child, &child->getEntryBlock().front()) || released) return false;
           } else if (auto* cast = llvm::dyn_cast< llvm::BitCastInst >(i)) {
-            if (!cast->getType()->isPointerTy() || cast->getOperand(0)->stripPointerCasts() != g.mutex) return false;
+            if (!cast->getType()->isPointerTy() || cast->getOperand(0)->stripPointerCasts() != g.serializer) return false;
           } else if (auto* cmp = llvm::dyn_cast< llvm::ICmpInst >(i)) {
             llvm::APInt a, b;
             if (!value(cmp->getOperand(0), a) || !value(cmp->getOperand(1), b) || a.getBitWidth() != b.getBitWidth()) return false;
@@ -303,7 +437,7 @@ class OnceInitialization::Impl {
         for (auto& i : *block) {
           if (!spend()) { valid = false; break; }
           if (!states) break;
-          if (effect(&i, g.payload)) {
+          if (payload_effect(&i, g.payload)) {
             if (&i == g.initialization) {
               if (states != (1u << 2)) { valid = false; break; }
               g.saw_initialization = true;
@@ -316,11 +450,11 @@ class OnceInitialization::Impl {
           if (effect(&i, g.state) && (!g.state_effects.count(&i) || (states & 3u))) { valid = false; break; }
           if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
             if (llvm::isa< llvm::DbgInfoIntrinsic >(c)) continue;
-            auto m = mutex_call(c);
-            if (m.source == g.mutex) {
+            auto m = gate_call(c);
+            if (m.source == g.serializer && m.token == g.binary_token) {
               unsigned next = 0;
               for (unsigned s = 0; s < 4; ++s) if (states & (1u << s)) {
-                if (m.lock) {
+                if (m.acquire) {
                   if (c != g.lock || (s & 2)) { valid = false; break; }
                   next |= 1u << (s | 2);
                 } else {
@@ -378,7 +512,7 @@ class OnceInitialization::Impl {
       if (!r.stmt->has_frontend() || !r.pts.is_set() || r.pts.size() != 1 || !r.width) return nullptr;
       auto* i = llvm::dyn_cast< llvm::Instruction >(r.stmt->frontend< llvm::Value >());
       auto* p = dyn_cast< GlobalMemoryLocation >(*r.pts.begin());
-      if (!i || original(i) != r.stmt || !p || p->global_var() != globals.at(g.payload) || !effect(i, g.payload)) return nullptr;
+      if (!i || original(i) != r.stmt || !p || p->global_var() != globals.at(g.payload) || !payload_effect(i, g.payload)) return nullptr;
       auto* l = llvm::dyn_cast< llvm::LoadInst >(i);
       if ((l && r.kind != AccessKind::Read) || (!l && r.kind != AccessKind::Write)) return nullptr;
       const auto bytes = i->getModule()->getDataLayout().getTypeStoreSize(g.payload->getValueType()).getFixedValue();
@@ -392,7 +526,8 @@ class OnceInitialization::Impl {
     return nullptr;
   }
 public:
-  Impl(Context& context, const std::vector< AccessRecord >&) : ctx(context) {
+  Impl(Context& context, const std::vector< AccessRecord >&, const BinaryTokenOwnership& tokens)
+      : ctx(context), binary_tokens(tokens) {
     if (!ctx.opts.enable_thread_modular || ctx.opts.procedural == Procedural::Intraprocedural ||
         ctx.opts.entry_points.size() != 1 || ctx.opts.entry_points.front()->name() != "main" ||
         ctx.opts.entry_points.front()->num_parameters() != 0 || !ctx.opts.entry_points.front()->has_frontend() ||
@@ -412,14 +547,14 @@ public:
       if (!f->is_definition() || !f->has_frontend()) continue;
       auto* source = f->frontend< llvm::Function >(); functions.emplace(source, f); order.push_back(source);
       for (auto* b : *f->body()) for (auto* s : *b) if (s->has_frontend()) {
-        if (!isa< ar::CallBase >(s) && !isa< ar::Load >(s) && !isa< ar::Store >(s)) continue;
+        if (!isa< ar::CallBase >(s) && !isa< ar::Load >(s) && !isa< ar::Store >(s) && !isa< ar::Allocate >(s)) continue;
         auto inserted = originals.emplace(s->frontend< llvm::Value >(), s);
         if (!inserted.second) inserted.first->second = nullptr;
       }
     }
     bool potential = false;
     for (auto* f : order) for (auto& b : *f) for (auto& i : b)
-      if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) if (mutex_call(c).lock) potential = true;
+      if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) if (gate_call(c).acquire) potential = true;
     roots.push_back(main);
     if (!potential || !inventory(*main->getParent(), main)) return;
     // Source order, not pointer order, makes the bounded proof work deterministic.
@@ -428,34 +563,32 @@ public:
       auto* state = a->has_frontend() ? llvm::dyn_cast< llvm::GlobalVariable >(a->frontend< llvm::Value >()) : nullptr;
       if (!scalar(state, true)) continue;
       for (auto* f : order) for (auto& b : *f) for (auto& i : b) {
-        auto* c = llvm::dyn_cast< llvm::CallBase >(&i); auto m = c ? mutex_call(c) : NormalMutex{};
-        if (!m.lock || !reachable.count(f)) continue;
-        Gate g; g.state = state; g.mutex = m.source;
-        if (!mutex_uses(g) || g.lock != c || !prefix(g, 0) || !prefix(g, 1) || !g.initialization || !g.publish) continue;
+        auto* c = llvm::dyn_cast< llvm::CallBase >(&i); auto m = c ? gate_call(c) : GateOperation{};
+        if (!m.acquire || !reachable.count(f)) continue;
+        Gate g; g.state = state; g.serializer = m.source; g.binary_token = m.token;
+        if (!gate_uses(g) || g.lock != c || !prefix(g, 0) || !prefix(g, 1) || !g.initialization || !g.publish) continue;
         bool closed = true;
         for (auto* u : state->users()) {
           auto* effect_i = llvm::dyn_cast< llvm::Instruction >(u);
           if (!effect_i || !effect(effect_i, state) || !g.state_effects.count(effect_i)) { closed = false; break; }
         }
-        for (auto* u : g.payload->users()) {
-          auto* effect_i = llvm::dyn_cast< llvm::Instruction >(u);
-          if (!effect_i || !effect(effect_i, g.payload)) { closed = false; break; }
-        }
-        if (closed && phases(g)) gates.push_back(std::move(g));
+        if (closed && close_payload(g.payload) && phases(g)) gates.push_back(std::move(g));
       }
     }
   }
   bool ordered(const AccessRecord& a, const AccessRecord& b) const { return pair(a, b); }
   JsonDict info(const AccessRecord& a, const AccessRecord& b) const {
     auto* g = pair(a, b);
-    return g ? JsonDict{{"safe_reason", "initialization before sealed mutex gate continuation"},
+    return g ? JsonDict{{"safe_reason", "initialization before sealed serialization gate continuation"},
                         {"once_initialization_contract", "closed-state01-must-postgate-v1"},
-                        {"state", g->state->getName().str()}, {"gate_mutex", g->mutex->getName().str()},
+                        {"state", g->state->getName().str()}, {"gate_mutex", !g->binary_token ? g->serializer->getName().str() : ""},
+                        {"gate_token", g->binary_token ? g->serializer->getName().str() : ""},
                         {"payload", g->payload->getName().str()}} : JsonDict{};
   }
 };
-OnceInitialization::OnceInitialization(Context& ctx, const std::vector< AccessRecord >& records)
-    : _impl(std::make_unique< Impl >(ctx, records)) {}
+OnceInitialization::OnceInitialization(Context& ctx, const std::vector< AccessRecord >& records,
+                                       const BinaryTokenOwnership& tokens)
+    : _impl(std::make_unique< Impl >(ctx, records, tokens)) {}
 OnceInitialization::~OnceInitialization() = default;
 bool OnceInitialization::ordered(const AccessRecord& a, const AccessRecord& b) const { return _impl->ordered(a, b); }
 JsonDict OnceInitialization::info(const AccessRecord& a, const AccessRecord& b) const { return _impl->info(a, b); }

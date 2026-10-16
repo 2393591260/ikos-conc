@@ -8,6 +8,7 @@
 namespace ikos {
 namespace analyzer {
 class Context;
+class BinaryTokenOwnership;
 struct AccessRecord;
 
 // Orders a runtime initialization against accesses that MUST pass a sealed gate.
@@ -16,7 +17,7 @@ class OnceInitialization {
   class Impl;
   std::unique_ptr< Impl > _impl;
 public:
-  OnceInitialization(Context&, const std::vector< AccessRecord >&);
+  OnceInitialization(Context&, const std::vector< AccessRecord >&, const BinaryTokenOwnership&);
   ~OnceInitialization();
   bool ordered(const AccessRecord&, const AccessRecord&) const;
   JsonDict info(const AccessRecord&, const AccessRecord&) const;
