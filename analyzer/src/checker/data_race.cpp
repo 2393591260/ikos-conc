@@ -44,6 +44,7 @@
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/checker/init_publication.hpp>
 #include <ikos/analyzer/checker/first_publication.hpp>
+#include <ikos/analyzer/checker/thread_private_heap.hpp>
 #include <ikos/analyzer/checker/thread_completion.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_key_effects.hpp>
@@ -1096,6 +1097,7 @@ DataRaceChecker::~DataRaceChecker() {
   // their exclusion rule remains disabled. InitPublication proves its own HB.
   InitPublication init_publication(this->_ctx, this->_accesses);
   FirstPublication first_publication(this->_ctx, this->_accesses);
+  ThreadPrivateHeap private_heap(this->_ctx, this->_accesses);
   for (std::size_t i = 0; i < this->_accesses.size(); ++i) {
     AccessRecord& w = this->_accesses[i];
     if (w.kind != AccessKind::Write || !w.locks.empty() ||
@@ -1235,6 +1237,15 @@ DataRaceChecker::~DataRaceChecker() {
         continue;
       }
       if (init_publication.ordered(a, b) || init_publication.ordered(b, a)) {
+        continue;
+      }
+      if (private_heap.excludes(a, b)) {
+        JsonDict proof{{"safe_reason", "unexported live worker allocations"},
+                       {"private_heap_contract", "closed-worker-calloc-v1"}};
+        if (auto location = source_location(a.stmt)) proof.put("access_a_line", location.line());
+        if (auto location = source_location(b.stmt)) proof.put("access_b_line", location.line());
+        this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+                             a.stmt, a.call_context, {}, proof);
         continue;
       }
       if (first_publication.ordered(a, b)) {

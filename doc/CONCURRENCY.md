@@ -251,6 +251,30 @@ See POSIX.1-2024
 [key creation](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_key_create.html)
 and [thread-specific values](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_getspecific.html).
 
+## Private worker allocations
+
+The race checker can distinguish live allocations belonging to separate dynamic
+worker instances even when points-to analysis merges their allocation sites.
+The current certificate covers a single, non-repeated `calloc` in an actual
+thread entry. It closes all uses of the allocation and, if used, its TLS pointer
+slot. Pointer publication, an escaped slot address, unknown call effects, pointer
+graphs, ordinary calls to the entry, and a reachable use after `free` prevent the
+certificate. It never treats the static allocation site as a unique object.
+
+Every certified access needs its full byte range within the successful
+allocation. Constant offsets are checked mathematically. The supported dynamic
+case uses the same defined count as [the calloc allocation](https://pubs.opengroup.org/onlinepubs/9799919799/functions/calloc.html), a zero-based loop counter, a sole
+`+1` backedge and a strict signed comparison whose true edge dominates both the
+access and increment. The induction proves non-negative indices and a
+representable increment; LLVM `inbounds` and `nsw` are not proof premises.
+Allocation failure does not grant non-nullness or prune the caller's path.
+
+Only pairs whose two recorded accesses match certified LLVM/AR effects and exact
+heap provenance are excluded. All existing access records, shared interference,
+coverage checks and unrelated race candidates remain active. Creator-to-child
+ownership transfer and per-iteration allocation identities are outside this
+certificate. The initial implementation targets the ILP32 Linux/GNU ABI.
+
 ## Resource limits
 
 `calloc` size overflow preserves the caller's normal failure continuation.
