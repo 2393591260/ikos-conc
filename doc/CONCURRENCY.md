@@ -584,3 +584,24 @@ verified freeze metadata calls are transparent; an earlier ordinary call, an
 unknown condition, a return, a loop or a bare `unreachable` refuses this extension.
 This does not infer termination from a helper name or `noreturn` attribute, and
 changes no LLVM CFG, numerical invariant, coverage or BMC result directly.
+
+### Closed binary atomic tokens
+
+`BinaryTokenOwnership` can independently certify a global i32 token initialized
+at zero. Actual defined `__VERIFIER_atomic_*` bodies must implement checked
+zero-to-one acquisition and one-to-zero release. Exact execution at both entry
+values includes their scalar guard helpers: the wrong entry must terminate via
+actual libc abort, rather than return. Full-width token uses, function-address
+uses, callback roots and external effects must be closed. The rule relies on the
+SV-COMP complete named-atomic-body convention; it grants no mutex semantics to
+an arbitrary function name or C11 relaxed flag.
+
+A finite per-thread ownership pass starts every root unheld. MAY ownership joins
+by union; acquisition requires certainly unheld and release certainly held.
+Helpers return their actual possible ownership states, loops reach a fixed point,
+and every source access intersects its held fact over all reachable contexts.
+A root that returns while held leaves the token occupied; thread exit does not
+release it. Unknown effects, foreign release, ambiguous ownership or incomplete
+proofs refuse the affected certificate. Only two exact direct-global accesses
+that must own the same certified token can be excluded. This neither makes caller
+statements atomic nor exempts unprotected accesses before or after the interval.

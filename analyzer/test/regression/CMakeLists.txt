@@ -58,6 +58,8 @@ add_concurrency_test(heap-handoff "${CONCURRENCY_ROOT}/scripts/test_heap_handoff
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(arena-reservation "${CONCURRENCY_ROOT}/scripts/test_arena_reservation.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(binary-token "${CONCURRENCY_ROOT}/scripts/test_binary_token.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(zero-guard-arena "${CONCURRENCY_ROOT}/scripts/test_zero_guard_arena.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(native-arena "${CONCURRENCY_ROOT}/scripts/test_native_arena.py"
