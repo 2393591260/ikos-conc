@@ -547,3 +547,30 @@ acquisition memory synchronization contract. The first implementation limits
 normal mutex representation to the checked GNU x86 ILP32 ABI (24 complete zero
 bytes, aligned storage and the actual typed pthread API). It is not a claim of
 support for arbitrary weak-memory publication protocols or for LP64.
+
+### Sealed runtime initialization gates
+
+A separate `OnceInitialization` certificate orders a full-width scalar runtime
+initialization against accesses that must pass a concrete default-normal mutex
+gate. The sealed i32 state starts at zero. Exact critical-prefix execution for
+entry states zero and one proves that the former performs one initialization,
+publishes state one, and unlocks; the latter only unlocks. All state and gate
+uses are closed, so this is an inductive invariant for arbitrarily many gate
+entries, rather than a bounded-thread safety argument. The syntactic default
+branch of a lowered switch need not be reachable from this invariant.
+
+A finite interprocedural phase pass starts every actual callback without a
+post-gate fact. It joins possible phases by union, intersects post-gate facts
+over all observations of an access, follows helper returns, and iterates CFG
+loops. A helper used both before and after the gate receives no universal
+post-gate certificate. An initializer source reached outside its designated
+critical prefix invalidates the gate proof. Unreachable definitions are ignored
+only after closing the executable root/callback graph and function-address uses.
+
+Only initialization/post-gate pairs for the exact global and full byte interval
+are excluded. Later/later races, including equal-value writes, remain subject to
+ordinary checks. Resets, address escapes, partial writes, unsupported effects,
+incomplete prefixes or proof exhaustion refuse certification. The implementation
+uses the same checked GNU x86 ILP32 normal-mutex representation as native arena
+reservations; 64-bit scalar payloads are supported on this ABI. It changes no
+points-to, interference, coverage or BMC semantics.

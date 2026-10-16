@@ -46,6 +46,7 @@
 #include <ikos/analyzer/checker/first_publication.hpp>
 #include <ikos/analyzer/checker/thread_private_heap.hpp>
 #include <ikos/analyzer/checker/arena_reservation.hpp>
+#include <ikos/analyzer/checker/once_initialization.hpp>
 #include <ikos/analyzer/checker/thread_completion.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_key_effects.hpp>
@@ -1100,6 +1101,7 @@ DataRaceChecker::~DataRaceChecker() {
   FirstPublication first_publication(this->_ctx, this->_accesses);
   ThreadPrivateHeap private_heap(this->_ctx, this->_accesses);
   ArenaReservation arena_reservation(this->_ctx, this->_accesses);
+  OnceInitialization once_initialization(this->_ctx, this->_accesses);
   for (std::size_t i = 0; i < this->_accesses.size(); ++i) {
     AccessRecord& w = this->_accesses[i];
     if (w.kind != AccessKind::Write || !w.locks.empty() ||
@@ -1252,6 +1254,14 @@ DataRaceChecker::~DataRaceChecker() {
       }
       if (arena_reservation.excludes(a, b)) {
         auto proof = arena_reservation.info(a);
+        if (auto location = source_location(a.stmt)) proof.put("access_a_line", location.line());
+        if (auto location = source_location(b.stmt)) proof.put("access_b_line", location.line());
+        this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+                             a.stmt, a.call_context, {}, proof);
+        continue;
+      }
+      if (once_initialization.ordered(a, b)) {
+        auto proof = once_initialization.info(a, b);
         if (auto location = source_location(a.stmt)) proof.put("access_a_line", location.line());
         if (auto location = source_location(b.stmt)) proof.put("access_b_line", location.line());
         this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
