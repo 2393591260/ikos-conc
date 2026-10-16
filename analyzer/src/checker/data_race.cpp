@@ -49,6 +49,7 @@
 #include <ikos/analyzer/checker/self_publication.hpp>
 #include <ikos/analyzer/checker/thread_private_heap.hpp>
 #include <ikos/analyzer/checker/arena_reservation.hpp>
+#include <ikos/analyzer/checker/array_slices.hpp>
 #include <ikos/analyzer/checker/binary_token.hpp>
 #include <ikos/analyzer/checker/once_initialization.hpp>
 #include <ikos/analyzer/checker/thread_completion.hpp>
@@ -1106,6 +1107,7 @@ DataRaceChecker::~DataRaceChecker() {
   ThreadPrivateHeap private_heap(this->_ctx, this->_accesses);
   BinaryTokenOwnership binary_token(this->_ctx, this->_accesses);
   ArenaReservation arena_reservation(this->_ctx, this->_accesses, binary_token);
+  ArraySlices array_slices(this->_ctx);
   OnceInitialization once_initialization(this->_ctx, this->_accesses, binary_token);
   MutexHandover mutex_handover(this->_ctx);
   ScProtocol sc_protocol(this->_ctx);
@@ -1444,6 +1446,15 @@ DataRaceChecker::~DataRaceChecker() {
         if (auto location = source_location(b.stmt)) {
           proof.put("access_b_line", location.line());
         }
+        this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+                             a.stmt, a.call_context, {}, proof);
+        continue;
+      }
+
+      if (array_slices.excludes(a, b)) {
+        auto proof = array_slices.info();
+        proof.put("safe_reason",
+                  "disjoint inductive byte ranges of one stable array base");
         this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
                              a.stmt, a.call_context, {}, proof);
         continue;

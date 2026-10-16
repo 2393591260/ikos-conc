@@ -752,6 +752,32 @@ including pre-gate invocations. This binding grants no atomicity and never
 orders ordinary later/later conflicts. Ambiguous aliases, escaped outputs,
 partial effects or another actual payload refuse the binding.
 
+## Stable flat-array slices
+
+`ArraySlices` can exclude a pair of heap accesses when complete native/AR
+frames establish disjoint inductive ranges over the same stable global pointer.
+The current ILP32 subset handles one signed i32 induction loop per worker and
+per array constructor, with exact scalar helpers and pre-create initialization.
+Each loop uses an arbitrary iteration satisfying its inductive lower bound;
+the actual guard, stride, allocation extent and full access width must be
+proved. The increment must preserve the invariant without wrapping. This is
+an unbounded range proof, not bounded-search UNSAT.
+
+Every supported main, constructor, helper and worker effect is checked. Global
+updates after the first create, partial cell writes, unknown calls, pointer
+fields, frees, extra cycles and module assembly refuse the certificate.
+Heap reads remain fresh values; they never acquire read-from equalities.
+All possible startup states and all ranges of both endpoints must satisfy the
+disjointness query. Shared translation by the same actual stable base preserves
+disjointness, including modulo pointer arithmetic; no allocation success,
+nonnullness, pointer validity or thread completion is inferred. Accesses after
+the loop receive no loop-body certificate. Unsupported frames and solver
+limits retain the existing candidate.
+
+Run `python3 scripts/test_array_slices.py` for renamed positive, overlap,
+effect-frame and byte-width controls, including 64-bit payloads on ILP32.
+Implementation: `checker/array_slices.hpp` and `src/checker/array_slices.cpp`.
+
 Ordinary and auxiliary BMC queries pass the same file-level deadline to path
 enumeration and encoding. Exhaustion remains inconclusive, and each solver
 direction receives a timeout bounded by the remaining budget. This is cooperative cancellation;
