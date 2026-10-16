@@ -395,3 +395,31 @@ For FM-Tools registration changes, use the official checks through
 `svcomp/check-fm-entry.py --fm-tools /path/to/fm-tools`. It checks LF, formatting,
 sorting, and 2027 registration rules. Verify uploaded bytes and archive behavior
 separately; a local pass is not an official CI or witness acceptance.
+
+### Closed first-publication ordering
+
+The race checker can independently certify a finite publication protocol for
+heap records with one pointer link and scalar payload. A closed allocation
+prefix binds initialization stores to the actual helper call frame and installs
+an initialized-pointer fact only at completion. Every subsequent root/link
+publication must store NULL or an initialized pointer under the same concrete
+normal mutex; every link acquisition requires that mutex. Immutable startup
+roots may be acquired without it only after all possible root writers have been
+checked. Exact copies, all-valid control-flow joins and helper returns preserve
+the initialization ordering after unlock. Indexed root storage additionally
+requires complete, aligned byte ranges from every final abstract access fact;
+independent mutex-array effect certificates grant no publication lock.
+
+The resulting rule excludes only initialization/initialization or
+initialization/acquired-access pairs on covered live heap objects. It proves
+neither pointer validity nor allocation-site uniqueness, and does not exclude
+ordinary post-publication data races. Unknown effects, representation changes,
+missing sources, unmatched ABI/callback uses, partial graph accesses or an
+unproved protocol path disable the rule. This is separate from the disabled
+legacy `private_init` heuristic and from the indexed ownership proof.
+
+The ordering uses program order, thread creation and the POSIX mutex release /
+acquisition memory synchronization contract. The first implementation limits
+normal mutex representation to the checked GNU x86 ILP32 ABI (24 complete zero
+bytes, aligned storage and the actual typed pthread API). It is not a claim of
+support for arbitrary weak-memory publication protocols or for LP64.

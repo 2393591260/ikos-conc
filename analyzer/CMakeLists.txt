@@ -252,6 +252,7 @@ add_executable(ikos-analyzer
   src/checker/division_by_zero.cpp
   src/checker/double_free.cpp
   src/checker/data_race.cpp
+  src/checker/first_publication.cpp
   src/analysis/region_ownership.cpp
   src/checker/function_call.cpp
   src/checker/int_overflow_base.cpp

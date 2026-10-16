@@ -6,6 +6,20 @@
 namespace ikos {
 namespace analyzer {
 
+struct HeapInitializationDescription {
+  struct Write {
+    ar::Store* statement;
+    core::ZNumber offset;
+    core::ZNumber width;
+    bool helper;
+  };
+  ar::Statement* completion = nullptr;
+  ar::CallBase* helper = nullptr;
+  std::map< ar::Value*, core::ZNumber > aliases;
+  std::set< ar::GlobalVariable* > relays;
+  std::vector< Write > writes;
+};
+
 // This certifies initialized fields, never a unique or private allocation site.
 class HeapInitializationPrefix {
   using Addresses = std::map< ar::Value*, core::ZNumber >;
@@ -14,6 +28,8 @@ class HeapInitializationPrefix {
   core::ZNumber _field;
   core::ZNumber _width;
   unsigned _budget = 4096;
+  HeapInitializationDescription _description;
+  bool _in_helper = false;
 
   bool spend() { return _budget != 0 && (--_budget, true); }
 
@@ -86,6 +102,7 @@ class HeapInitializationPrefix {
     } else if (!type->is_integer() && !type->is_float()) return false;
     if (offset < _field + _width && _field < offset + size)
       initialized = offset == _field && size == _width && isa< ar::NullConstant >(statement->value());
+    _description.writes.push_back({statement, offset, size, _in_helper});
     return true;
   }
 
@@ -117,6 +134,7 @@ class HeapInitializationPrefix {
     auto* code = function->body();
     for (auto* block : *code) if (block != code->entry_block()) return false;
     if (code->entry_block()->successor_begin() != code->entry_block()->successor_end()) return false;
+    _in_helper = true;
     bool initialized = false, returned = false;
     for (auto* statement : *code->entry_block()) {
       if (!spend() || returned || !definition(statement)) return false;
@@ -129,6 +147,7 @@ class HeapInitializationPrefix {
         returned = true;
       } else if (!address(statement, addresses) && !scalar(statement)) return false;
     }
+    _in_helper = false;
     return returned && initialized;
   }
 
@@ -170,7 +189,7 @@ public:
       : _ctx(ctx), _extent(std::move(extent)), _field(std::move(field)),
         _width(ctx.bundle->data_layout().pointers.bit_width / 8) {}
 
-  bool prove(ar::CallBase* allocation) {
+  bool prove(ar::CallBase* allocation, HeapInitializationDescription* description = nullptr) {
     auto* target = dyn_cast< ar::FunctionPointerConstant >(allocation->called());
     auto* source = allocation->has_frontend() ? llvm::dyn_cast< llvm::CallBase >(allocation->frontend< llvm::Value >()) : nullptr;
     auto* function = source ? llvm::dyn_cast< llvm::Function >(source->getCalledOperand()->stripPointerCasts()) : nullptr;
@@ -195,13 +214,26 @@ public:
       if (auto* call = dyn_cast< ar::CallBase >(statement)) {
         if (nondet(call)) continue;
         if (!helper(call, addresses)) return false;
-        return relays.empty() || startup(allocation, call);
+        if (!relays.empty() && !startup(allocation, call)) return false;
+        _description.completion = call;
+        _description.helper = call;
+        _description.aliases = addresses;
+        for (const auto& relay : relays) _description.relays.insert(relay.first);
+        if (description) *description = std::move(_description);
+        return true;
       }
       if (auto* write = dyn_cast< ar::Store >(statement)) {
         bool initialized = false;
         if (addresses.count(write->pointer())) {
           if (!store(write, addresses, initialized)) return false;
-          if (initialized) return relays.empty() || startup(allocation, write);
+          if (initialized) {
+            if (!relays.empty() && !startup(allocation, write)) return false;
+            _description.completion = write;
+            _description.aliases = addresses;
+            for (const auto& relay : relays) _description.relays.insert(relay.first);
+            if (description) *description = std::move(_description);
+            return true;
+          }
           continue;
         }
         auto* global = dyn_cast< ar::GlobalVariable >(write->pointer());
@@ -224,11 +256,12 @@ public:
 };
 
 inline bool prove_heap_initialization_prefix(ar::CallBase* allocation, const core::ZNumber& field,
-                                             const Context& ctx) {
+                                             const Context& ctx,
+                                             HeapInitializationDescription* description = nullptr) {
   if (!allocation->code()->is_function_body() || allocation->num_arguments() != 1) return false;
   auto* size = dyn_cast< ar::IntegerConstant >(allocation->argument(0));
   if (!size) return false;
-  return HeapInitializationPrefix(ctx, size->value().to_z_number(), field).prove(allocation);
+  return HeapInitializationPrefix(ctx, size->value().to_z_number(), field).prove(allocation, description);
 }
 
 } // namespace analyzer
