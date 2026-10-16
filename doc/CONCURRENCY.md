@@ -587,8 +587,10 @@ changes no LLVM CFG, numerical invariant, coverage or BMC result directly.
 
 ### Closed binary atomic tokens
 
-`BinaryTokenOwnership` can independently certify a global i32 token initialized
-at zero. Actual defined `__VERIFIER_atomic_*` bodies must implement checked
+`BinaryTokenOwnership` can independently certify a global token initialized
+at zero. Supported operations take an i32 pointer or use an exact direct global
+with 8-, 32- or 64-bit integer storage and no arguments. Actual defined
+`__VERIFIER_atomic_*` bodies must implement checked
 zero-to-one acquisition and one-to-zero release. Exact execution at both entry
 values includes their scalar guard helpers: the wrong entry must terminate via
 actual libc abort, rather than return. Full-width token uses, function-address
@@ -602,8 +604,16 @@ Helpers return their actual possible ownership states, loops reach a fixed point
 and every source access intersects its held fact over all reachable contexts.
 A root that returns while held leaves the token occupied; thread exit does not
 release it. Unknown effects, foreign release, ambiguous ownership or incomplete
-proofs refuse the affected certificate. Only two exact direct-global accesses
-that must own the same certified token can be excluded. This neither makes caller
+proofs refuse the affected certificate. Two exact direct-global accesses
+that must own the same certified token can be excluded. A separate rule orders
+an exact atomic transition's token store with a full-width ordinary token read
+that must hold that same token: another thread cannot perform a successful
+acquisition or release during this ownership interval. Transition bodies are
+not marked held, and unheld observations or ordinary token writes receive no
+exemption. Volatile storage supplies no synchronization; the proof still needs
+the actual atomic body and ownership. Integer extension/truncation inside the
+transition is evaluated at both entry values, including byte-stored Boolean
+guards. This neither makes caller
 statements atomic nor exempts unprotected accesses before or after the interval.
 
 Finite arena reservations can consume actual events from this completed token

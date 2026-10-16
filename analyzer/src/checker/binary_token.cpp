@@ -29,6 +29,7 @@ bool plain_call(llvm::CallBase* c, llvm::Function* f) {
 struct Token {
   llvm::GlobalVariable* source = nullptr;
   std::map< llvm::CallBase*, bool > operations;
+  std::set< llvm::Instruction* > transition_effects;
   std::map< llvm::Instruction*, bool > held;
 };
 struct Transition {
@@ -45,7 +46,7 @@ class BinaryTokenOwnership::Impl {
   std::map< llvm::GlobalVariable*, ar::GlobalVariable* > globals;
   std::map< llvm::Function*, ar::Function* > functions;
   std::vector< llvm::Function* > order, roots;
-  std::map< llvm::Function*, int > kinds;
+  std::map< std::pair< llvm::Function*, llvm::GlobalVariable* >, int > kinds;
   std::map< llvm::CallBase*, NormalMutex > mutex_calls;
   std::vector< Token > tokens;
   unsigned budget = 262144;
@@ -143,11 +144,14 @@ class BinaryTokenOwnership::Impl {
   }
   bool token_object(llvm::GlobalVariable* g) const {
     if (!g || !globals.count(g) || g->isConstant() || g->isThreadLocal() || g->isExternallyInitialized() ||
-        g->getAddressSpace() != 0 || !g->hasInitializer() || !g->getValueType()->isIntegerTy(32)) return false;
+        g->getAddressSpace() != 0 || !g->hasInitializer() ||
+        !(g->getValueType()->isIntegerTy(8) || g->getValueType()->isIntegerTy(32) ||
+          g->getValueType()->isIntegerTy(64))) return false;
     auto* n = llvm::dyn_cast< llvm::ConstantInt >(g->getInitializer());
     auto* a = globals.at(g); auto* type = dyn_cast< ar::IntegerType >(a->type()->pointee());
-    if (!n || !n->isZero() || !a->is_definition() || a->is_thread_local() || !type || type->bit_width() != 32 ||
-        ctx.bundle->data_layout().alloc_size_in_bytes(type) != 4) return false;
+    if (!n || !n->isZero() || !a->is_definition() || a->is_thread_local() || !type ||
+        type->bit_width() != n->getBitWidth() ||
+        ctx.bundle->data_layout().alloc_size_in_bytes(type) != n->getBitWidth() / 8) return false;
     unsigned count = 0;
     for (auto* b : *a->initializer()) for (auto* s : *b) {
       auto* store = dyn_cast< ar::Store >(s);
@@ -157,25 +161,31 @@ class BinaryTokenOwnership::Impl {
     }
     return count == 1;
   }
-  bool parameter_effect(llvm::Instruction* i, llvm::Function* f) const {
-    auto* pointer = f->getArg(0); auto* ar_pointer = functions.at(f)->param(0);
+  bool token_effect(llvm::Instruction* i, llvm::Function* f, llvm::GlobalVariable* source) const {
+    llvm::Value* pointer = source ? static_cast< llvm::Value* >(source) : f->getArg(0);
+    ar::Value* ar_pointer = source ? static_cast< ar::Value* >(globals.at(source)) : functions.at(f)->param(0);
+    unsigned bits = source ? source->getValueType()->getIntegerBitWidth() : 32;
     if (auto* l = llvm::dyn_cast< llvm::LoadInst >(i)) {
       auto* a = dyn_cast_or_null< ar::Load >(original(i));
       auto* t = a ? dyn_cast< ar::IntegerType >(a->result()->type()) : nullptr;
-      return a && t && t->bit_width() == 32 && a->operand() == ar_pointer &&
-          l->getPointerOperand() == pointer && l->getType()->isIntegerTy(32) && !l->isVolatile() && !l->isAtomic();
+      return a && t && t->bit_width() == bits &&
+          (source ? exact_handle_slot(a->operand(), globals.at(source)) : a->operand() == ar_pointer) &&
+          l->getPointerOperand() == pointer && l->getType()->isIntegerTy(bits) && !l->isAtomic();
     }
     auto* s = llvm::dyn_cast< llvm::StoreInst >(i);
     auto* a = dyn_cast_or_null< ar::Store >(original(i));
     auto* t = a ? dyn_cast< ar::IntegerType >(a->value()->type()) : nullptr;
-    return s && a && t && t->bit_width() == 32 && a->pointer() == ar_pointer &&
-        s->getPointerOperand() == pointer && s->getValueOperand()->getType()->isIntegerTy(32) &&
-        !s->isVolatile() && !s->isAtomic();
+    return s && a && t && t->bit_width() == bits &&
+        (source ? exact_handle_slot(a->pointer(), globals.at(source)) : a->pointer() == ar_pointer) &&
+        s->getPointerOperand() == pointer && s->getValueOperand()->getType()->isIntegerTy(bits) && !s->isAtomic();
   }
   bool atomic_signature(llvm::Function* f) const {
     auto found = functions.find(f);
-    if (found == functions.end() || f->isVarArg() || f->arg_size() != 1 ||
+    if (found == functions.end() || f->isVarArg() || f->arg_size() > 1 ||
         !f->getReturnType()->isVoidTy() || f->getCallingConv() != llvm::CallingConv::C) return false;
+    if (f->arg_empty()) return found->second->num_parameters() == 0 &&
+        found->second->type()->return_type()->is_void() && found->second->name() == f->getName().str() &&
+        classify_atomic_intrinsic(found->second->name()) == AtomicKind::SingleCall;
     auto* p = llvm::dyn_cast< llvm::PointerType >(f->getArg(0)->getType());
     auto* a = found->second;
     auto* ar_p = a->num_parameters() == 1 ? dyn_cast< ar::PointerType >(a->param(0)->type()) : nullptr;
@@ -184,7 +194,7 @@ class BinaryTokenOwnership::Impl {
         ar_i && ar_i->bit_width() == 32 && a->type()->return_type()->is_void() && a->name() == f->getName().str() &&
         classify_atomic_intrinsic(a->name()) == AtomicKind::SingleCall;
   }
-  Transition transition(llvm::Function* operation, unsigned entry) {
+  Transition transition(llvm::Function* operation, unsigned entry, llvm::GlobalVariable* source) {
     unsigned state = entry, writes = 0;
     std::set< llvm::Function* > active;
     std::function< Transition(llvm::Function*, const llvm::APInt*, bool) > run =
@@ -205,23 +215,29 @@ class BinaryTokenOwnership::Impl {
           if (!spend()) return {};
           if (llvm::isa< llvm::DbgInfoIntrinsic >(i)) continue;
           if (llvm::isa< llvm::LoadInst >(i)) {
-            if (!root || !parameter_effect(&i, f)) return {};
-            values[&i] = llvm::APInt(32, state);
+            if (!root || !token_effect(&i, f, source)) return {};
+            values[&i] = llvm::APInt(i.getType()->getIntegerBitWidth(), state);
           } else if (auto* s = llvm::dyn_cast< llvm::StoreInst >(&i)) {
             auto* n = llvm::dyn_cast< llvm::ConstantInt >(s->getValueOperand());
             auto* a = dyn_cast_or_null< ar::Store >(original(s));
             auto* ar_n = a ? dyn_cast< ar::IntegerConstant >(a->value()) : nullptr;
-            if (!root || !parameter_effect(&i, f) || !n || (!n->isZero() && !n->isOne()) ||
+            if (!root || !token_effect(&i, f, source) || !n || (!n->isZero() && !n->isOne()) ||
                 !ar_n || ar_n->value().to_z_number() != core::ZNumber(n->getZExtValue())) return {};
             state = n->getZExtValue(); ++writes;
           } else if (auto* cmp = llvm::dyn_cast< llvm::ICmpInst >(&i)) {
             llvm::APInt x, y;
             if (!value(cmp->getOperand(0), x) || !value(cmp->getOperand(1), y) || x.getBitWidth() != y.getBitWidth()) return {};
             values[&i] = llvm::APInt(1, llvm::ICmpInst::compare(x, y, cmp->getPredicate()));
-          } else if (auto* z = llvm::dyn_cast< llvm::ZExtInst >(&i)) {
+          } else if (auto* z = llvm::dyn_cast< llvm::CastInst >(&i)) {
             llvm::APInt n;
-            if (!z->getType()->isIntegerTy(32) || !z->getSrcTy()->isIntegerTy(1) || !value(z->getOperand(0), n)) return {};
-            values[&i] = n.zext(32);
+            if (!z->getType()->isIntegerTy() || !z->getSrcTy()->isIntegerTy() ||
+                !value(z->getOperand(0), n)) return {};
+            unsigned bits = z->getType()->getIntegerBitWidth();
+            if (bits > 64) return {};
+            if (llvm::isa< llvm::ZExtInst >(z)) values[&i] = n.zext(bits);
+            else if (llvm::isa< llvm::SExtInst >(z)) values[&i] = n.sext(bits);
+            else if (llvm::isa< llvm::TruncInst >(z)) values[&i] = n.trunc(bits);
+            else return {};
           } else if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
             if (unused_freeze(c)) continue;
             auto* a = binding(c); auto* target = a ? native_handle_callee(a) : nullptr;
@@ -252,25 +268,28 @@ class BinaryTokenOwnership::Impl {
     };
     return run(operation, nullptr, true);
   }
-  int kind(llvm::Function* f) {
-    auto known = kinds.find(f); if (known != kinds.end()) return known->second;
-    kinds.emplace(f, 0);
+  int kind(llvm::Function* f, llvm::GlobalVariable* source = nullptr) {
+    auto key = std::make_pair(f, source);
+    auto known = kinds.find(key); if (known != kinds.end()) return known->second;
+    kinds.emplace(key, 0);
     if (!atomic_signature(f)) return 0;
+    if (f->arg_empty() != (source != nullptr)) return 0;
     // Every pointer use is a complete direct access; no hidden alias/callback.
-    for (auto* u : f->getArg(0)->users()) {
+    if (!source) for (auto* u : f->getArg(0)->users()) {
       if (!spend()) return 0;
       auto* i = llvm::dyn_cast< llvm::Instruction >(u);
-      if (!i || (!llvm::isa< llvm::DbgInfoIntrinsic >(i) && !parameter_effect(i, f))) return 0;
+      if (!i || (!llvm::isa< llvm::DbgInfoIntrinsic >(i) && !token_effect(i, f, nullptr))) return 0;
     }
-    auto zero = transition(f, 0); auto one = transition(f, 1);
+    auto zero = transition(f, 0, source); auto one = transition(f, 1, source);
     if (!zero.supported || !one.supported) return 0;
     int result = 0;
     if (zero.returned && zero.state == 1 && zero.writes == 1 && !one.returned && one.state == 1 && one.writes == 0) result = 1;
     if (!zero.returned && zero.state == 0 && zero.writes == 0 && one.returned && one.state == 0 && one.writes == 1) result = -1;
-    kinds.at(f) = result; return result;
+    kinds.at(key) = result; return result;
   }
   bool close_token(Token& token) {
     std::vector< llvm::Value* > todo{token.source}; std::set< llvm::Value* > seen;
+    std::set< llvm::Function* > direct_operations;
     bool acquire = false, release = false;
     while (!todo.empty()) {
       auto* v = todo.back(); todo.pop_back();
@@ -278,13 +297,35 @@ class BinaryTokenOwnership::Impl {
       if (!seen.insert(v).second) continue;
       for (auto* u : v->users()) {
         if (llvm::isa< llvm::BitCastOperator >(u)) { todo.push_back(u); continue; }
+        if (auto* i = llvm::dyn_cast< llvm::Instruction >(u)) {
+          if (v == token.source && (llvm::isa< llvm::LoadInst >(i) || llvm::isa< llvm::StoreInst >(i))) {
+            auto* f = i->getFunction();
+            if (!functions.count(f) || !token_effect(i, f, token.source)) return false;
+            if (atomic_signature(f) && f->arg_empty()) {
+              if (!kind(f, token.source)) return false;
+              direct_operations.insert(f); token.transition_effects.insert(i);
+            } else if (!llvm::isa< llvm::LoadInst >(i)) return false;
+            continue;
+          }
+        }
         auto* c = llvm::dyn_cast< llvm::CallBase >(u);
         auto* a = c ? binding(c) : nullptr;
-        if (!a || c->arg_size() != 1 || c->getArgOperand(0) != v || !c->use_empty() ||
+        if (!token.source->getValueType()->isIntegerTy(32) ||
+            !a || c->arg_size() != 1 || c->getArgOperand(0) != v || !c->use_empty() ||
             !isa< ar::FunctionPointerConstant >(a->called()) || !exact_handle_slot(a->argument(0), globals.at(token.source))) return false;
         int k = kind(callee(c)); if (!k) return false;
         token.operations.emplace(c, k == 1); acquire |= k == 1; release |= k == -1;
       }
+    }
+    // Global-form operations have no pointer actual. Inventory sealed every
+    // function address; collect all actual calls, including helper/loop uses.
+    if (!direct_operations.empty()) for (auto* f : order) for (auto& b : *f) for (auto& i : b) {
+      if (!spend()) return false;
+      auto* c = llvm::dyn_cast< llvm::CallBase >(&i);
+      if (!c || !direct_operations.count(callee(c))) continue;
+      if (!binding(c) || !c->arg_empty() || !c->use_empty()) return false;
+      int k = kind(callee(c), token.source);
+      token.operations.emplace(c, k == 1); acquire |= k == 1; release |= k == -1;
     }
     return acquire && release;
   }
@@ -347,11 +388,13 @@ class BinaryTokenOwnership::Impl {
     auto* pointer = l ? l->getPointerOperand() : s ? s->getPointerOperand() : nullptr;
     auto* type = l ? l->getType() : s ? s->getValueOperand()->getType() : nullptr;
     if (pointer != g || !type || !type->isIntegerTy() || type != g->getValueType() ||
-        (l && (r.kind != AccessKind::Read || l->isVolatile() || l->isAtomic())) ||
-        (s && (r.kind != AccessKind::Write || s->isVolatile() || s->isAtomic()))) return nullptr;
+        (l && (r.kind != AccessKind::Read || l->isAtomic())) ||
+        (s && (r.kind != AccessKind::Write || s->isAtomic()))) return nullptr;
     auto* a_l = dyn_cast< ar::Load >(r.stmt); auto* a_s = dyn_cast< ar::Store >(r.stmt);
-    if ((l && (!a_l || a_l->operand() != p->global_var() || a_l->result()->type() != p->global_var()->type()->pointee())) ||
-        (s && (!a_s || a_s->pointer() != p->global_var() || a_s->value()->type() != p->global_var()->type()->pointee()))) return nullptr;
+    auto* ar_type = dyn_cast_or_null< ar::IntegerType >(l && a_l ? a_l->result()->type() : s && a_s ? a_s->value()->type() : nullptr);
+    if (!ar_type || ar_type->bit_width() != type->getIntegerBitWidth() ||
+        (l && (!a_l || !exact_handle_slot(a_l->operand(), p->global_var()))) ||
+        (s && (!a_s || !exact_handle_slot(a_s->pointer(), p->global_var())))) return nullptr;
     return i->getModule()->getDataLayout().getTypeStoreSize(type).getFixedValue() == r.width ? i : nullptr;
   }
   const Token* pair(const AccessRecord& a, const AccessRecord& b) const {
@@ -360,6 +403,15 @@ class BinaryTokenOwnership::Impl {
     for (const auto& t : tokens) {
       auto p = t.held.find(x); auto q = t.held.find(y);
       if (p != t.held.end() && q != t.held.end() && p->second && q->second) return &t;
+      // A complete atomic transition cannot write the token concurrently with
+      // a different holder's ordinary token read. Never exempt an unheld read.
+      auto held_read = [&](llvm::Instruction* i) {
+        auto h = t.held.find(i);
+        auto* load = llvm::dyn_cast< llvm::LoadInst >(i);
+        return load && load->getPointerOperand() == t.source && h != t.held.end() && h->second;
+      };
+      if ((llvm::isa< llvm::StoreInst >(x) && t.transition_effects.count(x) && held_read(y)) ||
+          (llvm::isa< llvm::StoreInst >(y) && t.transition_effects.count(y) && held_read(x))) return &t;
     }
     return nullptr;
   }
@@ -411,8 +463,12 @@ public:
   bool excludes(const AccessRecord& a, const AccessRecord& b) const { return pair(a, b); }
   JsonDict info(const AccessRecord& a, const AccessRecord& b) const {
     auto* t = pair(a, b);
-    return t ? JsonDict{{"safe_reason", "both accesses must own the same closed atomic token"},
-                        {"binary_token_contract", "closed-binary-token-ownership-v1"},
+    const bool observation = t &&
+        (t->transition_effects.count(access(a)) || t->transition_effects.count(access(b)));
+    return t ? JsonDict{{"safe_reason", observation ? "atomic token transition ordered with holder observation" :
+                                                    "both accesses must own the same closed atomic token"},
+                        {"binary_token_contract", observation ? "closed-binary-token-held-observation-v1" :
+                                                                "closed-binary-token-ownership-v1"},
                         {"token", t->source->getName().str()}} : JsonDict{};
   }
 };
