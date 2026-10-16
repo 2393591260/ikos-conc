@@ -6,13 +6,14 @@
 #include <algorithm>
 #include <array>
 #include <deque>
+#include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
+#include <ikos/analyzer/checker/data_race.hpp>
+#include <ikos/analyzer/checker/normal_mutex.hpp>
+#include <ikos/analyzer/util/log.hpp>
 #include <map>
 #include <set>
 #include <tuple>
 #include <vector>
-#include <ikos/analyzer/checker/data_race.hpp>
-#include <ikos/analyzer/checker/normal_mutex.hpp>
-#include <ikos/analyzer/util/log.hpp>
 
 namespace ikos {
 namespace analyzer {
@@ -44,16 +45,39 @@ struct State {
   std::vector<uint64_t> atomics;
   std::vector<unsigned> releases;
   std::array<unsigned, 2> causal{{0, 0}};
+  std::vector< int > mutex_owner;
+  std::vector< unsigned > mutex_release;
   unsigned executed = 0;
   bool operator<(const State& o) const {
-    return std::tie(pc, locals, atomics, releases, causal, executed) <
-           std::tie(o.pc, o.locals, o.atomics, o.releases, o.causal, o.executed);
+    return std::tie(pc,
+                    locals,
+                    atomics,
+                    releases,
+                    causal,
+                    mutex_owner,
+                    mutex_release,
+                    executed) < std::tie(o.pc,
+                                         o.locals,
+                                         o.atomics,
+                                         o.releases,
+                                         o.causal,
+                                         o.mutex_owner,
+                                         o.mutex_release,
+                                         o.executed);
   }
 };
 } // namespace
 
 class ScProtocol::Impl {
   Context& ctx;
+  bool protected_mode;
+  std::vector< llvm::GlobalVariable* > mutexes;
+  std::map< llvm::CallBase*, std::pair< unsigned, bool > > mutex_events;
+  std::map< llvm::GlobalVariable*, unsigned > guard_protectors;
+  std::map< llvm::GlobalVariable*, unsigned > all_access_locks;
+  std::map< llvm::CallBase*, std::pair< llvm::GlobalVariable*, bool > >
+      lifetimes;
+
   std::map<llvm::Value*, ar::Statement*> originals;
   std::map<llvm::Function*, ar::Function*> functions;
   llvm::Function* main = nullptr;
@@ -74,10 +98,21 @@ class ScProtocol::Impl {
     auto* a = dyn_cast_or_null< ar::CallBase >(original(c));
     auto* target = a ? native_handle_callee(a) : nullptr;
     auto* f = callee(c);
-    if (!f || !target || !isa< ar::Call >(a) || !plain_call(c, f) || !target->has_frontend() ||
-        target->frontend< llvm::Value >() != f || a->num_arguments() != c->arg_size() ||
-        target->num_parameters() != a->num_arguments() || target->type()->is_var_arg() ||
-        !(f->isDeclaration() ? target->is_declaration() : target->is_definition())) return nullptr;
+    const bool mapped_mutex =
+        protected_mode && f && f->isDeclaration() && target &&
+        ((f->getName() == "pthread_mutex_lock" &&
+          target->intrinsic_id() == ar::Intrinsic::PthreadMutexLock) ||
+         (f->getName() == "pthread_mutex_unlock" &&
+          target->intrinsic_id() == ar::Intrinsic::PthreadMutexUnlock));
+    if (!f || !target || !isa< ar::Call >(a) || !plain_call(c, f) ||
+        (!target->has_frontend() && !mapped_mutex) ||
+        (target->has_frontend() && target->frontend< llvm::Value >() != f) ||
+        a->num_arguments() != c->arg_size() ||
+        target->num_parameters() != a->num_arguments() ||
+        target->type()->is_var_arg() ||
+        !(f->isDeclaration() ? target->is_declaration()
+                             : target->is_definition()))
+      return nullptr;
     for (unsigned i = 0; i < a->num_arguments(); ++i)
       if (a->argument(i)->type() != target->type()->param_type(i)) return nullptr;
     return a;
@@ -194,6 +229,270 @@ class ScProtocol::Impl {
     }
     return true;
   }
+
+  bool terminal(llvm::CallBase* call) const {
+    auto* a = binding(call);
+    auto* f = a ? native_handle_callee(a) : nullptr;
+    auto* n = callee(call);
+    return f && n->isDeclaration() &&
+           (constant_assertion_effect(a) ||
+            (n->getName() == "abort" && call->arg_empty() &&
+             call->getType()->isVoidTy() &&
+             f->intrinsic_id() == ar::Intrinsic::LibcAbort));
+  }
+  bool mutex_call(llvm::CallBase* call, bool root) {
+    auto* a = binding(call);
+    auto* f = callee(call);
+    if (!a || !f->isDeclaration())
+      return false;
+    if (root) {
+      auto m = normal_mutex(ctx, a);
+      if (!m.source)
+        return false;
+      auto it = std::find(mutexes.begin(), mutexes.end(), m.source);
+      unsigned index = it - mutexes.begin();
+      if (it == mutexes.end())
+        mutexes.push_back(m.source);
+      if (mutexes.size() > 4)
+        return false;
+      mutex_events.emplace(call, std::make_pair(index, m.lock));
+      return true;
+    }
+    if (call->getFunction() != main || !call->use_empty() ||
+        !call->getType()->isIntegerTy(32))
+      return false;
+    bool init = f->getName() == "pthread_mutex_init";
+    if ((!init && f->getName() != "pthread_mutex_destroy") ||
+        call->arg_size() != (init ? 2u : 1u) ||
+        (init &&
+         (!llvm::isa< llvm::ConstantPointerNull >(call->getArgOperand(1)) ||
+          !isa< ar::NullConstant >(a->argument(1)) ||
+          !pthread_initialization_signature(a))))
+      return false;
+    if (!call->getArgOperand(0)->getType()->isPointerTy() ||
+        !a->argument(0)->type()->is_pointer())
+      return false;
+    auto* g = llvm::dyn_cast< llvm::GlobalVariable >(
+        call->getArgOperand(0)->stripPointerCasts());
+    auto* ag = pthread_initialization_object(a->argument(0), true);
+    if (!g || !ag || !ag->has_frontend() ||
+        ag->frontend< llvm::Value >() != g || !g->hasInitializer() ||
+        !g->getInitializer()->isNullValue())
+      return false;
+    lifetimes.emplace(call, std::make_pair(g, init));
+    return true;
+  }
+  bool protected_frame() {
+    if (mutexes.empty() || !atomic_slots.empty())
+      return false;
+    llvm::Triple triple(main->getParent()->getTargetTriple());
+    if (triple.getArch() != llvm::Triple::x86 || !triple.isOSLinux() ||
+        triple.getEnvironment() != llvm::Triple::GNU)
+      return false;
+    for (auto& b : *main)
+      if (cyclic(&b))
+        return false;
+    llvm::DominatorTree dom(*main);
+    std::map< llvm::CallBase*, llvm::CallBase* > completed;
+    for (auto& b : *main)
+      for (auto& i : b) {
+        auto* join = llvm::dyn_cast< llvm::CallBase >(&i);
+        if (!join || !native_handle_api(join, false))
+          continue;
+        auto* load = llvm::dyn_cast< llvm::LoadInst >(join->getArgOperand(0));
+        auto* slot = load ? llvm::dyn_cast< llvm::AllocaInst >(
+                                load->getPointerOperand()->stripPointerCasts())
+                          : nullptr;
+        llvm::CallBase* create = nullptr;
+        for (auto& bb : *main)
+          for (auto& ii : bb)
+            if (auto* c = llvm::dyn_cast< llvm::CallBase >(&ii))
+              if (native_handle_api(c, true) &&
+                  c->getArgOperand(0)->stripPointerCasts() == slot) {
+                if (create)
+                  return false;
+                create = c;
+              }
+        if (!create || !dom.dominates(create, join) ||
+            !completed.emplace(create, join).second)
+          return false;
+      }
+    if (completed.size() != 2)
+      return false;
+    for (auto* g : mutexes) {
+      llvm::CallBase* init = nullptr;
+      llvm::CallBase* destroy = nullptr;
+      for (const auto& life : lifetimes)
+        if (life.second.first == g) {
+          auto*& one = life.second.second ? init : destroy;
+          if (one)
+            return false;
+          one = life.first;
+        }
+      if (!init || !destroy)
+        return false;
+      for (const auto& finish : completed)
+        if (!dom.dominates(init, finish.first) ||
+            !dom.dominates(finish.second, destroy))
+          return false;
+      std::vector< llvm::Value* > pending{g};
+      std::set< llvm::Value* > seen;
+      while (!pending.empty()) {
+        if (!spend())
+          return false;
+        auto* v = pending.back();
+        pending.pop_back();
+        if (!seen.insert(v).second)
+          continue;
+        for (auto* u : v->users()) {
+          if (llvm::isa< llvm::BitCastOperator >(u)) {
+            pending.push_back(u);
+            continue;
+          }
+          auto* c = llvm::dyn_cast< llvm::CallBase >(u);
+          if (!c || c->getArgOperand(0) != v ||
+              (!mutex_events.count(c) && c != init && c != destroy))
+            return false;
+        }
+      }
+    }
+    if (lifetimes.size() != mutexes.size() * 2)
+      return false;
+    // Main's reads participate in the closure: only quiescent reads are omitted
+    // from the independent concurrent ALL-access lock intersection.
+    for (auto& b : *main)
+      for (auto& i : b)
+        if (auto* l = llvm::dyn_cast< llvm::LoadInst >(&i)) {
+          if (!llvm::isa< llvm::GlobalVariable >(
+                  l->getPointerOperand()->stripPointerCasts()))
+            continue;
+          bool before = true, after = true;
+          for (const auto& finish : completed) {
+            before &= dom.dominates(l, finish.first);
+            after &= dom.dominates(finish.second, l);
+          }
+          if (!before && !after)
+            return false;
+        }
+    // Value-independent preproof: cover every CFG branch and normal return.
+    for (auto* f : roots) {
+      std::deque< std::pair< llvm::BasicBlock*, unsigned > > todo{
+          {&f->getEntryBlock(), 0}};
+      std::set< std::pair< llvm::BasicBlock*, unsigned > > seen;
+      while (!todo.empty()) {
+        if (!spend())
+          return false;
+        auto item = todo.front();
+        todo.pop_front();
+        if (!seen.insert(item).second)
+          continue;
+        unsigned held = item.second;
+        bool stopped = false;
+        for (auto& i : *item.first) {
+          if (!spend())
+            return false;
+          auto* l = llvm::dyn_cast< llvm::LoadInst >(&i);
+          auto* s = llvm::dyn_cast< llvm::StoreInst >(&i);
+          if (l || s) {
+            auto* g = llvm::dyn_cast< llvm::GlobalVariable >(
+                (l ? l->getPointerOperand() : s->getPointerOperand())
+                    ->stripPointerCasts());
+            if (g) {
+              auto old = all_access_locks.emplace(g, held);
+              if (!old.second)
+                old.first->second &= held;
+            }
+          }
+          if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
+            auto event = mutex_events.find(c);
+            if (event != mutex_events.end()) {
+              unsigned bit = 1u << event->second.first;
+              if (event->second.second) {
+                if (held & bit)
+                  return false;
+                held |= bit;
+              } else {
+                if (!(held & bit))
+                  return false;
+                held &= ~bit;
+              }
+            }
+            if (terminal(c)) {
+              stopped = true;
+              break;
+            }
+          }
+          if (llvm::isa< llvm::ReturnInst >(i) && held)
+            return false;
+        }
+        if (!stopped)
+          for (auto* next : llvm::successors(item.first))
+            todo.emplace_back(next, held);
+      }
+    }
+    for (auto& g : main->getParent()->globals()) {
+      auto found = all_access_locks.find(&g);
+      if (found == all_access_locks.end() || !found->second)
+        continue;
+      unsigned mutex = 0;
+      while (!(found->second & (1u << mutex)))
+        ++mutex;
+      auto* native = llvm::dyn_cast< llvm::ConstantInt >(g.getInitializer());
+      if (!native)
+        return false;
+      ar::GlobalVariable* ag = nullptr;
+      for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end();
+           ++it)
+        if ((*it)->has_frontend() && (*it)->frontend< llvm::Value >() == &g)
+          ag = *it;
+      if (!ag || !ag->is_definition() || ag->is_thread_local())
+        return false;
+      auto* type = dyn_cast< ar::IntegerType >(ag->type()->pointee());
+      if (!type || type->bit_width() != native->getBitWidth())
+        return false;
+      unsigned count = 0;
+      for (auto* b : *ag->initializer())
+        for (auto* st : *b) {
+          auto* store = dyn_cast< ar::Store >(st);
+          auto* v =
+              store ? dyn_cast< ar::IntegerConstant >(store->value()) : nullptr;
+          if (!store || store->pointer() != ag || !v ||
+              v->value().bit_width() != native->getBitWidth() ||
+              v->value().to_z_number() !=
+                  integer(native->getValue(), type->is_signed()))
+            return false;
+          ++count;
+        }
+      if (count != 1)
+        return false;
+      bool literals = true;
+      for (auto* f : roots)
+        for (auto& b : *f)
+          for (auto& i : b)
+            if (auto* store = llvm::dyn_cast< llvm::StoreInst >(&i)) {
+              if (store->getPointerOperand()->stripPointerCasts() != &g)
+                continue;
+              auto* v =
+                  llvm::dyn_cast< llvm::ConstantInt >(store->getValueOperand());
+              auto* a = dyn_cast< ar::Store >(original(store));
+              auto* av = dyn_cast< ar::IntegerConstant >(a->value());
+              auto* at = cast< ar::IntegerType >(a->value()->type());
+              if (!v || !av || av->value().bit_width() != v->getBitWidth() ||
+                  av->value().to_z_number() !=
+                      integer(v->getValue(), at->is_signed()))
+                literals = false;
+            }
+      if (!literals)
+        continue;
+      if (initial.size() == 8)
+        return false;
+      guard_protectors.emplace(&g, mutex);
+      atomic_slots.emplace(&g, initial.size());
+      initial.push_back(native->getZExtValue());
+    }
+    return !guard_protectors.empty();
+  }
+
   core::ZNumber integer(const llvm::APInt& n, bool sign) const {
     llvm::SmallString<32> text; n.toString(text, 10, sign);
     return core::ZNumber::from_string(text.str().str());
@@ -205,15 +504,23 @@ class ScProtocol::Impl {
     auto* a = original(&i); auto* al = dyn_cast_or_null<ar::Load>(a); auto* as = dyn_cast_or_null<ar::Store>(a);
     auto* at = al ? al->result()->type() : as ? as->value()->type() : nullptr;
     auto* base = al ? address_base(al->operand()) : as ? address_base(as->pointer()) : nullptr;
-    if (!type->isIntegerTy() || type->getIntegerBitWidth() > 64 || !at || !at->is_integer() ||
-        (l && !al) || (s && !as) || !base || !base->has_frontend() ||
-        base->frontend<llvm::Value>() != address ||
-        cast<ar::PointerType>(base->type())->pointee() != at ||
-        cast<ar::IntegerType>(at)->bit_width() != type->getIntegerBitWidth() ||
+    if (!type->isIntegerTy() || type->getIntegerBitWidth() > 64 || !at ||
+        !at->is_integer() || (l && !al) || (s && !as) || !base ||
+        !base->has_frontend() || base->frontend< llvm::Value >() != address ||
+        (!protected_mode &&
+         cast< ar::PointerType >(base->type())->pointee() != at) ||
+        cast< ar::IntegerType >(at)->bit_width() !=
+            type->getIntegerBitWidth() ||
         ctx.bundle->data_layout().store_size_in_bytes(at) !=
-            i.getModule()->getDataLayout().getTypeStoreSize(type).getFixedValue()) return false;
+            i.getModule()
+                ->getDataLayout()
+                .getTypeStoreSize(type)
+                .getFixedValue())
+      return false;
     bool atomic = l ? l->isAtomic() : s->isAtomic();
     if (atomic != (al ? al->is_atomic() : as->is_atomic())) return false;
+    if (protected_mode && atomic)
+      return false;
     if (atomic && ((l ? l->getOrdering() : s->getOrdering()) != llvm::AtomicOrdering::SequentiallyConsistent ||
         (l ? l->getSyncScopeID() : s->getSyncScopeID()) != llvm::SyncScope::System ||
         (al ? al->ordering() : as->ordering()) != ar::AtomicOrdering::SeqCst)) return false;
@@ -298,7 +605,9 @@ class ScProtocol::Impl {
           bool thread = &f == main &&
               ((native_handle_api(c, true) && outputs.count(llvm::dyn_cast<llvm::AllocaInst>(c->getArgOperand(0)->stripPointerCasts()))) ||
                (native_handle_api(c, false) && isa<ar::NullConstant>(a->argument(1))));
-          if (!thread && !pure_call(c)) return false;
+          if (!thread && !(protected_mode && mutex_call(c, root)) &&
+              !pure_call(c))
+              return false;
         } else if (auto* local = llvm::dyn_cast<llvm::AllocaInst>(&i)) {
           auto* count = llvm::dyn_cast<llvm::ConstantInt>(local->getArraySize());
           auto* a = dyn_cast_or_null<ar::Allocate>(original(local));
@@ -311,7 +620,11 @@ class ScProtocol::Impl {
           consumed.insert(local);
         } else if (llvm::isa<llvm::UnreachableInst>(i)) {
           // Helpers are projected as may-return, including their abort paths.
-          if (root || &f == main) return false;
+          auto* previous =
+              llvm::dyn_cast_or_null< llvm::CallBase >(i.getPrevNode());
+          if ((root || &f == main) &&
+              !(protected_mode && previous && terminal(previous)))
+              return false;
         } else if (!llvm::isa<llvm::BinaryOperator>(i) && !llvm::isa<llvm::CastInst>(i) &&
                    !llvm::isa<llvm::CmpInst>(i) && !llvm::isa<llvm::PHINode>(i) &&
                    !llvm::isa<llvm::SelectInst>(i) && !llvm::isa<llvm::GetElementPtrInst>(i) &&
@@ -320,7 +633,8 @@ class ScProtocol::Impl {
       }
     }
     for (const auto& item : originals) if (!consumed.count(item.first)) return false;
-    if (atomic_slots.empty()) return false;
+    if (protected_mode ? !protected_frame() : atomic_slots.empty())
+      return false;
     for (auto* f : roots) for (auto& b : *f) for (auto& i : b) {
       pcs.emplace(&i, instructions.size()); instructions.push_back(&i);
       if (llvm::isa<llvm::LoadInst>(i) || llvm::isa<llvm::PHINode>(i)) slots.emplace(&i, slots.size());
@@ -378,59 +692,132 @@ class ScProtocol::Impl {
   }
   bool explore(llvm::Instruction* a, llvm::Instruction* b) {
     State initial_state;
-    initial_state.locals.resize(slots.size()); initial_state.atomics = initial;
+    initial_state.locals.resize(slots.size());
+    initial_state.atomics = initial;
     initial_state.releases.resize(initial.size());
-    for (unsigned t = 0; t < 2; ++t) initial_state.pc[t] = pcs.at(&roots[t]->getEntryBlock().front());
-    std::set<State> seen{initial_state}; std::deque<State> work{initial_state};
+    if (protected_mode) {
+      initial_state.mutex_owner.resize(mutexes.size(), -1);
+      initial_state.mutex_release.resize(mutexes.size());
+    }
+    for (unsigned t = 0; t < 2; ++t)
+      initial_state.pc[t] = pcs.at(&roots[t]->getEntryBlock().front());
+    std::set< State > seen{initial_state};
+    std::deque< State > work{initial_state};
     while (!work.empty()) {
-      auto before = std::move(work.front()); work.pop_front();
+      auto before = std::move(work.front());
+      work.pop_front();
       for (unsigned t = 0; t < 2; ++t) {
-        if (!before.pc[t]) continue;
-        if (!spend() || seen.size() > 65536) return false;
-        auto s = before; auto* i = instructions[s.pc[t]];
+        if (!before.pc[t])
+          continue;
+        if (!spend() || seen.size() > 65536)
+          return false;
+        auto s = before;
+        auto* i = instructions[s.pc[t]];
+        if (protected_mode)
+          if (auto* call = llvm::dyn_cast< llvm::CallBase >(i)) {
+            auto event = mutex_events.find(call);
+            if (event != mutex_events.end()) {
+              auto n = event->second.first;
+              if (event->second.second) {
+                if (s.mutex_owner[n] >= 0)
+                  continue;
+                s.mutex_owner[n] = t;
+                s.causal[t] |= s.mutex_release[n];
+              } else {
+                if (s.mutex_owner[n] != static_cast< int >(t))
+                  return false;
+                s.mutex_owner[n] = -1;
+                s.mutex_release[n] = s.causal[t];
+              }
+            }
+            if (terminal(call)) {
+              s.pc[t] = 0;
+              if (seen.insert(s).second)
+                work.push_back(std::move(s));
+              continue;
+            }
+          }
         unsigned event = i == a ? 1 : i == b ? 2 : 0;
         if (event) {
           unsigned other = event ^ 3;
-          if ((s.executed & other) && !(s.causal[t] & other)) return false;
+          if ((s.executed & other) && !(s.causal[t] & other))
+            return false;
           // Endpoint source blocks are acyclic: these bits name unique events.
-          if (s.executed & event) return false;
-          s.executed |= event; s.causal[t] |= event;
+          if (s.executed & event)
+            return false;
+          s.executed |= event;
+          s.causal[t] |= event;
         }
-        std::vector<State> successors;
-        if (auto* branch = llvm::dyn_cast<llvm::BranchInst>(i)) {
-          auto condition = branch->isConditional() ? evaluate(branch->getCondition(), s) : Value{};
+        std::vector< State > successors;
+        if (auto* branch = llvm::dyn_cast< llvm::BranchInst >(i)) {
+          auto condition = branch->isConditional()
+                               ? evaluate(branch->getCondition(), s)
+                               : Value{};
           for (unsigned k = 0; k < branch->getNumSuccessors(); ++k) {
-            if (branch->isConditional() && condition.known && k != (condition.bits ? 0u : 1u)) continue;
-            auto next = s; enter(next, t, i->getParent(), branch->getSuccessor(k));
+            if (branch->isConditional() && condition.known &&
+                k != (condition.bits ? 0u : 1u))
+              continue;
+            auto next = s;
+            enter(next, t, i->getParent(), branch->getSuccessor(k));
             successors.push_back(std::move(next));
           }
-        } else if (auto* sw = llvm::dyn_cast<llvm::SwitchInst>(i)) {
-          auto v = evaluate(sw->getCondition(), s); llvm::BasicBlock* selected = sw->getDefaultDest();
-          if (v.known) for (auto c : sw->cases()) if (c.getCaseValue()->getValue().getLimitedValue() == v.bits) selected = c.getCaseSuccessor();
+        } else if (auto* sw = llvm::dyn_cast< llvm::SwitchInst >(i)) {
+          auto v = evaluate(sw->getCondition(), s);
+          llvm::BasicBlock* selected = sw->getDefaultDest();
+          if (v.known)
+            for (auto c : sw->cases())
+              if (c.getCaseValue()->getValue().getLimitedValue() == v.bits)
+                selected = c.getCaseSuccessor();
           for (unsigned k = 0; k < sw->getNumSuccessors(); ++k) {
-            if (v.known && sw->getSuccessor(k) != selected) continue;
-            auto next = s; enter(next, t, i->getParent(), sw->getSuccessor(k));
+            if (v.known && sw->getSuccessor(k) != selected)
+              continue;
+            auto next = s;
+            enter(next, t, i->getParent(), sw->getSuccessor(k));
             successors.push_back(std::move(next));
           }
         } else {
-          if (auto* l = llvm::dyn_cast<llvm::LoadInst>(i)) {
+          if (auto* l = llvm::dyn_cast< llvm::LoadInst >(i)) {
             Value value;
-            if (l->isAtomic()) {
-              auto n = atomic_slots.at(llvm::cast<llvm::GlobalVariable>(l->getPointerOperand()->stripPointerCasts()));
-              value = {true, s.atomics[n]}; s.causal[t] |= s.releases[n];
+            auto* global = llvm::dyn_cast< llvm::GlobalVariable >(
+                l->getPointerOperand()->stripPointerCasts());
+            if (protected_mode && global && guard_protectors.count(global)) {
+              auto m = guard_protectors.at(global);
+              if (s.mutex_owner[m] != static_cast< int >(t))
+                return false;
+              value = {true, s.atomics[atomic_slots.at(global)]};
+            } else if (l->isAtomic()) {
+              auto n = atomic_slots.at(llvm::cast< llvm::GlobalVariable >(
+                  l->getPointerOperand()->stripPointerCasts()));
+              value = {true, s.atomics[n]};
+              s.causal[t] |= s.releases[n];
             }
             s.locals[slots.at(l)] = value;
-          } else if (auto* store = llvm::dyn_cast<llvm::StoreInst>(i)) {
-            if (store->isAtomic()) {
-              auto n = atomic_slots.at(llvm::cast<llvm::GlobalVariable>(store->getPointerOperand()->stripPointerCasts()));
-              s.atomics[n] = llvm::cast<llvm::ConstantInt>(store->getValueOperand())->getZExtValue();
+          } else if (auto* store = llvm::dyn_cast< llvm::StoreInst >(i)) {
+            auto* global = llvm::dyn_cast< llvm::GlobalVariable >(
+                store->getPointerOperand()->stripPointerCasts());
+            if (protected_mode && global && guard_protectors.count(global)) {
+              auto m = guard_protectors.at(global);
+              if (s.mutex_owner[m] != static_cast< int >(t))
+                return false;
+              s.atomics[atomic_slots.at(global)] =
+                  llvm::cast< llvm::ConstantInt >(store->getValueOperand())
+                      ->getZExtValue();
+            } else if (store->isAtomic()) {
+              auto n = atomic_slots.at(llvm::cast< llvm::GlobalVariable >(
+                  store->getPointerOperand()->stripPointerCasts()));
+              s.atomics[n] =
+                  llvm::cast< llvm::ConstantInt >(store->getValueOperand())
+                      ->getZExtValue();
               s.releases[n] = s.causal[t];
             }
           }
-          auto* next = i->getNextNode(); s.pc[t] = next ? pcs.at(next) : 0;
+          auto* next = i->getNextNode();
+          s.pc[t] = next ? pcs.at(next) : 0;
           successors.push_back(std::move(s));
         }
-        for (auto& next : successors) if (seen.insert(next).second) work.push_back(std::move(next));
+        for (auto& next : successors)
+          if (seen.insert(next).second)
+            work.push_back(std::move(next));
       }
     }
     return true;
@@ -441,12 +828,23 @@ class ScProtocol::Impl {
     if (!i || original(i) != r.stmt || std::find(roots.begin(), roots.end(), i->getFunction()) == roots.end() ||
         cyclic(i->getParent())) return nullptr;
     auto* l = llvm::dyn_cast<llvm::LoadInst>(i); auto* s = llvm::dyn_cast<llvm::StoreInst>(i);
+    if (protected_mode &&
+        (!r.call_context || !r.call_context->empty() ||
+         r.thread_id != i->getFunction()->getName().str() ||
+         ((!l && !s) ||
+          r.width != i->getModule()
+                         ->getDataLayout()
+                         .getTypeStoreSize(l ? l->getType()
+                                             : s->getValueOperand()->getType())
+                         .getFixedValue())))
+      return nullptr;
     if ((l && !l->isAtomic() && r.kind == AccessKind::Read) ||
         (s && !s->isAtomic() && r.kind == AccessKind::Write)) return i;
     return nullptr;
   }
 public:
-  explicit Impl(Context& context) : ctx(context) {
+  explicit Impl(Context& context, bool mode = false)
+      : ctx(context), protected_mode(mode) {
     if (!ctx.opts.enable_thread_modular || ctx.opts.procedural == Procedural::Intraprocedural ||
         ctx.opts.entry_points.size() != 1 || ctx.opts.entry_points.front()->name() != "main" ||
         ctx.opts.entry_points.front()->num_parameters() != 0 || !ctx.opts.entry_points.front()->has_frontend() ||
@@ -472,6 +870,8 @@ public:
     valid = inventory();
     if (!valid) log::debug("SC protocol inventory refused");
   }
+  bool supported() const { return valid; }
+  Context& context() const { return ctx; }
   bool ordered(const AccessRecord& a, const AccessRecord& b) {
     if (!valid) return false;
     auto* ia = endpoint(a); auto* ib = endpoint(b);
@@ -482,13 +882,41 @@ public:
     proofs.emplace(key, ordered); return ordered;
   }
   JsonDict info(const AccessRecord&, const AccessRecord&) const {
-    return {{"safe_reason", "finite SC protocol fixed point excludes unordered target events"},
+    if (protected_mode) {
+      JsonList guards;
+      std::vector< std::pair< std::string, std::string > > labels;
+      for (const auto& item : guard_protectors)
+        labels.emplace_back(item.first->getName().str(),
+                            mutexes[item.second]->getName().str());
+      std::sort(labels.begin(), labels.end());
+      for (const auto& item : labels)
+        guards.add(JsonDict{{"cell", item.first}, {"mutex", item.second}});
+      return {{"safe_reason",
+               "protected scalar protocol fixed point excludes unordered "
+               "target events"},
+              {"protected_protocol_contract",
+               "closed-two-root-protected-scalar-mutex-hb-v1"},
+              {"guards", guards},
+              {"scope",
+               "GNU default mutex and ordinary join; inherited no-child effect "
+               "envelope"}};
+    }
+    return {{"safe_reason",
+             "finite SC protocol fixed point excludes unordered target events"},
             {"sc_protocol_contract", "closed-two-root-system-sc-scalar-hb-v1"}};
   }
 };
 ScProtocol::ScProtocol(Context& ctx) : _impl(std::make_unique<Impl>(ctx)) {}
 ScProtocol::~ScProtocol() = default;
-bool ScProtocol::ordered(const AccessRecord& a, const AccessRecord& b) const { return _impl->ordered(a, b); }
-JsonDict ScProtocol::info(const AccessRecord& a, const AccessRecord& b) const { return _impl->info(a, b); }
+bool ScProtocol::ordered(const AccessRecord& a, const AccessRecord& b) const {
+  if (_impl->supported())
+    return _impl->ordered(a, b);
+  if (!_protected)
+    _protected = std::make_unique< Impl >(_impl->context(), true);
+  return _protected->ordered(a, b);
+}
+JsonDict ScProtocol::info(const AccessRecord& a, const AccessRecord& b) const {
+  return _protected ? _protected->info(a, b) : _impl->info(a, b);
+}
 } // namespace analyzer
 } // namespace ikos

@@ -821,3 +821,38 @@ enumeration and encoding. Exhaustion remains inconclusive, and each solver
 direction receives a timeout bounded by the remaining budget. This is cooperative cancellation;
 abstract interpretation, indivisible internal steps and frontend work are not
 a hard wall-time guarantee. The outer runner timeout remains separate.
+
+## Mutex-protected scalar protocols
+
+`ScProtocol` has a separate protected-mutex mode, with fresh inventory and state;
+the existing System-SC atomic mode keeps its own rules. The current subset is
+GNU/Linux i386, two distinct single-created roots, isolated global normal mutexes,
+whole scalar accesses and a closed native/AR effect frame. An independent prepass
+explores every root CFG branch without consulting guard values, intersects the
+locks at **all** accesses to each cell, and checks balanced normal returns.
+Only consistently protected cells with matching initializer bits and exclusively
+literal stores become finite exact registers. Other shared reads remain TOP.
+Helpers must be memory-, synchronization-, thread- and callback-effect free.
+
+The finite kernel retains saved guard reads, actual mutex owners and causal tags
+published by unlock and imported by the next lock. Ordinary value communication
+or interleaving order supplies no happens-before edge. A pair is excluded only
+after the complete reachable-state worklist contains no unordered target events;
+limits or unsupported effects retain the candidate. Endpoint blocks are acyclic
+and bound to actual root accesses and whole native/AR widths. This proof does not
+use bounded BMC UNSAT, assertions about payload values or allocation assumptions.
+
+The lifetime frame requires default NULL-attribute initialization before both
+creates, both actual current-child joins before destruction, private unobserved
+handle slots, no reinitialization or later sync uses, and only quiescent main
+shared reads. Default initialization/normal synchronization and ordinary join
+continuation model GNU glibc 2.39 behavior under the stated isolated-storage,
+sole-joiner, no-detach/cancel premises; they are not arbitrary ignored-return
+POSIX success guarantees. Create failure retains IKOS's existing no-child,
+no-HB/output-only unknown-handle envelope, not a claim that invalid real glibc
+handles are safe. Abort projections preserve preceding events and supply no
+normal completion. No mutex success is inferred from a wrapper return value.
+
+Run `python3 scripts/test_protected_protocol.py` for protocol, lifecycle,
+ALL-access protection, source API and ILP32 wide-integer controls.
+Implementation: `checker/sc_protocol.hpp` and `src/checker/sc_protocol.cpp`.
