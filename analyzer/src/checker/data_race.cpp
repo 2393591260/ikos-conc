@@ -46,6 +46,7 @@
 #include <ikos/analyzer/checker/first_publication.hpp>
 #include <ikos/analyzer/checker/thread_completion.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
+#include <ikos/analyzer/analysis/execution_engine/pthread_key_effects.hpp>
 #include <ikos/analyzer/analysis/bmc/bmc.hpp>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
 #include <ikos/analyzer/analysis/pair_exclusion.hpp>
@@ -3040,6 +3041,10 @@ void DataRaceChecker::check_extern_call_effects(
   // buffer destinations, %n and pointer conversions can access shared data.
   if (bmc::constant_output_call(call)) return;
 
+  const auto key_effect = pthread_key_effect(call, this->_ctx);
+  if (key_effect == PthreadKeyEffect::Get || key_effect == PthreadKeyEffect::Set)
+    return; // Runtime TLS slots, not memory pointed to by the stored value.
+
   auto* exact = bmc::exact_callee(call);
   const std::string callee_nm = exact != nullptr ? exact->name() : "";
   const bool initialization = certified_pthread_initialization(call, this->_ctx);
@@ -3057,6 +3062,7 @@ void DataRaceChecker::check_extern_call_effects(
   }
 
   if (initialization) ignored_arguments = 0;
+  if (key_effect == PthreadKeyEffect::Create) ignored_arguments = 2;
 
   // Default to a Write per pointer argument; an exact strcpy source is Read.
   // Other libraries may read or write through it (scanf(&x), fgets, ...). The
@@ -3140,7 +3146,7 @@ void DataRaceChecker::check_extern_call_effects(
                      locks,
                      read_locks,
                      this->resolve_offset(arg, inv),
-                     /* width = */ initialization
+                     /* width = */ key_effect == PthreadKeyEffect::Create ? 4u : initialization
                          ? (argument_index == 0 && callee_nm == "pthread_mutex_init"
                                 ? (this->_ctx.bundle->data_layout().pointers.bit_width == 32 ? 24u : 40u) : 4u)
                          : 0u,

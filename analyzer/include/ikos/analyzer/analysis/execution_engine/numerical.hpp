@@ -60,6 +60,7 @@
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 #include <ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
+#include <ikos/analyzer/analysis/execution_engine/pthread_key_effects.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
 #include <ikos/analyzer/analysis/liveness.hpp>
 #include <ikos/analyzer/analysis/option.hpp>
@@ -1162,7 +1163,7 @@ public:
               ? IntInterval(rhs.scalar().machine_int())
               : this->data().normal().int_to_interval(rhs.scalar().var());
           auto exact = value.singleton();
-          if (!exact || !exact->is_zero()) {
+          if ((!exact || !exact->is_zero()) && !pthread_key_opaque_token(s, this->_ctx)) {
             // The scalar domain uses AbsoluteZero+offset for integer addresses.
             // It cannot relate that cell back to a published stack/heap/global
             // object, so neither disjoint points-to nor private-cell filters
@@ -2328,6 +2329,44 @@ public:
       auto* actual = dyn_cast< ar::IntegerType >(call->argument(0)->type());
       if (returned && formal && actual && returned->bit_width() == 32 &&
           formal->bit_width() == 32 && actual->bit_width() == 32) {
+        this->exec_unknown_call(call, false, false, false, false);
+        return;
+      }
+    }
+
+    if (this->_ctx.opts.enable_thread_modular) {
+      auto effect = pthread_key_effect(call, this->_ctx);
+      if (effect != PthreadKeyEffect::None) {
+        this->init_global_operands(call);
+        if (effect == PthreadKeyEffect::Create) {
+          const auto& dest = this->_lit_factory.get_scalar(call->argument(0));
+          if (!this->prepare_mem_access(dest)) return;
+          check_synthetic_handle_effect(*this, call, dest);
+          auto* source_output = pthread_key_scalar_output(call);
+          auto pointer = this->data().normal().pointer_to_pointer(dest.var());
+          auto offset = pointer.offset().singleton();
+          bool opaque_output = false;
+          if (source_output && offset && offset->is_zero() &&
+              pointer.points_to().is_set() && pointer.points_to().size() == 1) {
+            auto* global = dyn_cast< GlobalMemoryLocation >(*pointer.points_to().begin());
+            opaque_output = global && global->global_var()->has_frontend() &&
+                global->global_var()->template frontend< llvm::Value >() == source_output;
+          }
+          if (!publish_unknown_byte_effect(*this, call, dest, opaque_output)) {
+            this->_ctx.concurrent_env.record_unknown_pointer_write();
+            this->_ctx.concurrent_env.record_unmodeled_effect(
+                call, "pthread key output effects not covered");
+            this->data().normal().mem_forget_all();
+          } else {
+            // Havoc also covers the unchanged output on allocation failure.
+            this->data().normal().mem_forget_reachable(dest.var());
+          }
+        }
+        // Association alone does not publish to another thread. Actual escape
+        // through a retrieved TOP value keeps the usual store/spawn coverage;
+        // non-NULL destructor registration remains an uncovered callback.
+        // Neither operation accesses the value's pointee. Return TOP, including
+        // NULL for get and failure for create/set; do not infer TLS equalities.
         this->exec_unknown_call(call, false, false, false, false);
         return;
       }

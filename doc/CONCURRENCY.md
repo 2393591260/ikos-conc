@@ -226,6 +226,31 @@ the conservative coverage boundary. This subset requires NULL attributes,
 worker arguments and join-result outputs, and unused API return values.
 It does not establish list ownership, initialization or first-publication safety.
 
+The interprocedural interpreter has conservative POSIX pthread-key effect
+summaries for Linux GNU ILP32 programs entered at `main`, with no entry-specific
+omissions of global initialization or global constructors/destructors. The
+original LLVM declaration, call ABI and imported AR callee must agree.
+`pthread_key_create` with a NULL destructor
+havocs its output and returns an unknown status; `pthread_setspecific` returns an
+unknown status, and `pthread_getspecific` returns an unknown pointer including
+NULL. Allocation failures are included. Association does not dereference the
+stored pointer or publish it to another thread. Actual publication through a
+retrieved value retains ordinary escape handling. These summaries confer no
+ownership, lock or happens-before facts and do not prove get/set value equality.
+
+Key-output writes still invalidate numeric, pointer and mutex summaries and
+participate in race checking. A standalone global key avoids pointer-exposure
+havoc only when its complete address/value use graph stays within the verified
+key APIs and the runtime destination matches that exact object and offset.
+Constant integer pointer tokens avoid the unsupported-address gate only when
+every use is a bitcast or the value argument of verified `pthread_setspecific`.
+Dereferencing, storing or passing such a token elsewhere retains the gate;
+retrieved pointers remain unknown. Non-NULL destructors, key deletion, incompatible
+APIs and intraprocedural pointer analysis retain conservative coverage boundaries.
+See POSIX.1-2024
+[key creation](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_key_create.html)
+and [thread-specific values](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_getspecific.html).
+
 ## Resource limits
 
 The local benchmark script defaults to 30 seconds of **wall time** per task.

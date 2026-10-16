@@ -2063,8 +2063,10 @@ inline bool byte_copy_cannot_expose_pointers(
 
 // Unknown-length copies havoc every possible destination allocation. Publish
 // matching interference instead of retaining typed values or pointer bounds.
+// The optional exemption needs an independent whole-storage pointer-use proof.
 template < typename E >
-bool publish_unknown_byte_effect(E& eng, ar::CallBase* copy, const ScalarLit& dest) {
+bool publish_unknown_byte_effect(E& eng, ar::CallBase* copy, const ScalarLit& dest,
+                                 bool cannot_expose_pointers = false) {
   auto points = eng.data().normal().pointer_to_points_to(dest.var());
   if (!points.is_set() || points.is_empty()) return false;
   for (MemoryLocation* loc : points) {
@@ -2090,7 +2092,8 @@ bool publish_unknown_byte_effect(E& eng, ar::CallBase* copy, const ScalarLit& de
     }
   }
   // Partial bytes can create a pointer even from a pointer-free source.
-  if (!byte_copy_cannot_expose_pointers(eng.ctx().bundle, copy, points))
+  if (!cannot_expose_pointers &&
+      !byte_copy_cannot_expose_pointers(eng.ctx().bundle, copy, points))
     env.record_possible_escape(core::PointsToSet< MemoryLocation* >::top());
   return true;
 }
