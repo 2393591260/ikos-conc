@@ -45,6 +45,7 @@
 #include <ikos/analyzer/checker/init_publication.hpp>
 #include <ikos/analyzer/checker/first_publication.hpp>
 #include <ikos/analyzer/checker/mutex_handover.hpp>
+#include <ikos/analyzer/checker/sc_protocol.hpp>
 #include <ikos/analyzer/checker/thread_private_heap.hpp>
 #include <ikos/analyzer/checker/arena_reservation.hpp>
 #include <ikos/analyzer/checker/binary_token.hpp>
@@ -1106,6 +1107,7 @@ DataRaceChecker::~DataRaceChecker() {
   ArenaReservation arena_reservation(this->_ctx, this->_accesses, binary_token);
   OnceInitialization once_initialization(this->_ctx, this->_accesses, binary_token);
   MutexHandover mutex_handover(this->_ctx);
+  ScProtocol sc_protocol(this->_ctx);
   for (std::size_t i = 0; i < this->_accesses.size(); ++i) {
     AccessRecord& w = this->_accesses[i];
     if (w.kind != AccessKind::Write || !w.locks.empty() ||
@@ -1282,6 +1284,14 @@ DataRaceChecker::~DataRaceChecker() {
       }
       if (mutex_handover.ordered(a, b)) {
         auto proof = mutex_handover.info(a, b);
+        if (auto location = source_location(a.stmt)) proof.put("access_a_line", location.line());
+        if (auto location = source_location(b.stmt)) proof.put("access_b_line", location.line());
+        this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+                             a.stmt, a.call_context, {}, proof);
+        continue;
+      }
+      if (sc_protocol.ordered(a, b)) {
+        auto proof = sc_protocol.info(a, b);
         if (auto location = source_location(a.stmt)) proof.put("access_a_line", location.line());
         if (auto location = source_location(b.stmt)) proof.put("access_b_line", location.line());
         this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,

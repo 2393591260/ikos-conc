@@ -130,6 +130,28 @@ all C/POSIX programs.
 | Unknown effects | Conservative coverage boundaries or explicit import/execution errors; omitted effects do not prove SAFE |
 | Other properties | Original IKOS analyses remain available; deadlock/reachability are not claimed as complete concurrency properties |
 
+The race checker can independently saturate a finite SC protocol state space.
+Its initial subset closes two distinct, once-created worker roots, direct whole
+1–64-bit integer scalar effects, and all LLVM/AR call and memory effects on
+ILP32. Each protocol global has an exact constant initializer and only actual
+system-scope sequentially consistent loads and literal stores. RMW, fences,
+weak or mixed accesses, escaped addresses, heap/array effects and unknown calls
+refuse this certificate. The parent cannot write globals; its private scalar
+handle effects are checked, and ignoring its joins grants no completion fact.
+Memory-free helper calls may return in the projection, even when a concrete
+call aborts; this does not prove assertions, progress or successful termination.
+
+For each pair of unique worker access events, the pass retains possible PCs,
+dynamic load/parallel-PHI snapshots, atomic last values and release causal tags.
+It explores all scheduler prefixes to a reachable-state fixed point, including
+progress by one worker after the other returns. Release/acquire propagation,
+not the SC total order itself, must order the two events. Alternative histories
+remain distinct; their causal tags are never unioned into a purported MUST fact.
+Protocol loops may be unbounded, while a repeated target instruction or worker
+instance refuses this first certificate. Unsupported scalar values become TOP;
+branch alternatives are retained. Exhausted graph/state/transition budgets
+refuse the proof. No bounded UNSAT or lack of a found race establishes SAFE.
+
 The race checker can also certify a closed two-mutex handover. An access inside
 a continuous `D` interval after acquiring `A` is ordered against an access that
 still holds `A` acquired under `D` after releasing `D`. Whichever `D` interval
