@@ -54,6 +54,8 @@ add_concurrency_test(first-publication "${CONCURRENCY_ROOT}/scripts/test_first_p
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(pthread-key-effects "${CONCURRENCY_ROOT}/scripts/test_pthread_key_effects.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(calloc-overflow "${CONCURRENCY_ROOT}/scripts/test_calloc_overflow.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(region-ownership "${CONCURRENCY_ROOT}/scripts/test_region_ownership.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(boolean-partitioning "${CONCURRENCY_ROOT}/scripts/test_boolean_partitioning.py"

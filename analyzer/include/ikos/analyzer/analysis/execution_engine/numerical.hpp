@@ -3608,6 +3608,29 @@ private:
     ikos_assert_msg(lhs.is_pointer_var(),
                     "left hand side is not a pointer variable");
 
+    auto interval = [&](const ScalarLit& value) {
+      return value.is_machine_int() ? IntInterval(value.machine_int())
+          : this->data().normal().int_to_interval(value.var());
+    };
+    auto count_range = interval(count), size_range = interval(size);
+    if (count_range.is_bottom() || size_range.is_bottom()) {
+      this->data().set_normal_flow_to_bottom();
+      return;
+    }
+    const auto limit = MachineInt::max(this->_data_layout.pointers.bit_width,
+                                       Unsigned).to_z_number();
+    if (count_range.lb().to_z_number() * size_range.lb().to_z_number() > limit) {
+      // calloc failure is not arithmetic UB. Do not allocate/zero a reused
+      // abstract site or discard the caller's continuation on this path.
+      this->data().normal().pointer_assign_null(lhs.var());
+      return;
+    }
+    std::unique_ptr< AbstractDomain > overflow_failure;
+    if (count_range.ub().to_z_number() * size_range.ub().to_z_number() > limit) {
+      overflow_failure = std::make_unique< AbstractDomain >(this->_inv);
+      data_of(*overflow_failure).normal().pointer_assign_null(lhs.var());
+    }
+
     // Allocate the memory
     MemoryLocation* addr =
         this->_mem_factory.get_dyn_alloc(call, this->_call_context);
@@ -3624,6 +3647,7 @@ private:
     }
 
     if (!this->_opts.test(ExecutionEngine::UpdateAllocSizeVar)) {
+      if (overflow_failure) this->_inv.join_with(*overflow_failure);
       return;
     }
 
@@ -3634,11 +3658,8 @@ private:
         bool overflow;
         MachineInt alloc_size_int =
             mul(count.machine_int(), size.machine_int(), overflow);
-        if (overflow) {
-          this->data().set_normal_flow_to_bottom(); // Undefined behavior
-        } else {
-          this->data().normal().int_assign(alloc_size_var, alloc_size_int);
-        }
+        ikos_assert(!overflow); // Definite overflow returned NULL above.
+        this->data().normal().int_assign(alloc_size_var, alloc_size_int);
       } else if (size.is_machine_int_var()) {
         this->data().normal().int_apply(IntBinaryOperator::MulNoWrap,
                                       alloc_size_var,
@@ -3664,6 +3685,9 @@ private:
     } else {
       ikos_unreachable("unexpected count parameter");
     }
+    // MulNoWrap describes the representable-size branch only. Restore inputs,
+    // old memory/lifetimes and MUST facts for possible overflow failures.
+    if (overflow_failure) this->_inv.join_with(*overflow_failure);
   }
 
   /// \brief Execute a call to libc valloc

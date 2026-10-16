@@ -253,6 +253,18 @@ and [thread-specific values](https://pubs.opengroup.org/onlinepubs/9799919799/fu
 
 ## Resource limits
 
+`calloc` size overflow preserves the caller's normal failure continuation.
+The interpreter multiplies interval bounds of the converted `size_t` arguments
+using mathematical integers. Certain overflow returns NULL before allocation,
+zeroing or lifetime updates. Possible overflow retains a NULL branch with the
+complete preallocation state and joins it with the existing representable-size
+transfer, including MUST facts. It cannot silently remove later shared accesses
+by treating library allocation failure as arithmetic undefined behavior.
+Caller arithmetic such as `calloc(n * 2, 4)` is evaluated before this check;
+unsigned wrapping there is distinct from the API's internal size multiplication.
+This correction covers overflow paths. It does not establish a general heap
+generation or complete resource-failure model for repeated allocation sites.
+
 The local benchmark script defaults to 30 seconds of **wall time** per task.
 BMC defaults to a 20-second cooperative search deadline and a 1-second SMT
 timeout per race-query direction. The `ikos` and `ikos-analyzer` options
