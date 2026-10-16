@@ -3164,6 +3164,13 @@ private:
   // Local memory havoc does not publish cross-thread buffer writes. Until
   // those summaries exist, an affected shared destination blocks SAFE.
   void check_library_effect_coverage(ar::CallBase* call, ar::Intrinsic::ID id) {
+    // Output havoc alone does not cover observable parser state (e.g. errno).
+    // A cached runtime pointer may otherwise keep a stale value and prune races.
+    if (id == ar::Intrinsic::LibcScanf || id == ar::Intrinsic::LibcFscanf ||
+        id == ar::Intrinsic::LibcSscanf) {
+      this->_ctx.concurrent_env.record_unmodeled_effect(
+          call, "formatted input effects not covered");
+    }
     auto may_write = [&](std::size_t i) {
       this->init_global_operand(call->argument(i));
       const auto& pointer = this->_lit_factory.get_scalar(call->argument(i));

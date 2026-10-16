@@ -914,3 +914,18 @@ It also does not certify stdio effects or general VLA safety.
 zero, dynamic, high-bit and wide counts, multiple allocations, loops and PHIs.
 `python3 scripts/test_freeze_array.py` checks ILP32 scalar/array values and
 continuations with 32-bit and long-long payloads and BMC disabled.
+
+## Formatted-input coverage
+
+Formatted input can update observable parser state such as `errno` as well as
+conversion destinations. Forgetting only pointer arguments can leave a cached
+`__errno_location()` pointer at its old value and incorrectly discard an error
+branch containing a race. Until a complete applicable summary covers these
+effects, mapped `scanf`, `fscanf` and `sscanf` retain an uncovered-effect warning,
+including calls whose conversion outputs are private. Raw extern calls keep
+their existing conservative handling. This coverage gate asserts neither a
+conversion result nor a particular errno value.
+
+`python3 scripts/test_scanf_errno.py` covers raw and mapped APIs, cached-error
+branches, unconditional conflicts and a no-input impossible-branch control,
+with both int and long-long payloads under ILP32.
