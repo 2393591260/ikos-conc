@@ -106,7 +106,7 @@ def classify(output: str, returncode: int, timed_out: bool) -> str:
 def run_one(src: Path, ikos: Path, timeout_sec: int, out_db: Path, concurrency: str,
             data_model: str, demote_races: bool, *, report_path=None,
             bmc_deadline_ms=None, bmc_solver_timeout_ms=None, command=None,
-            cancel_event=None):
+            cancel_event=None, partitioning=None):
     start = time.perf_counter()
     timed_out = False
     returncode = -1
@@ -114,6 +114,8 @@ def run_one(src: Path, ikos: Path, timeout_sec: int, out_db: Path, concurrency: 
     machine = ["-m", "32" if data_model == "ILP32" else "64"]
     demote = ["--demote-race-to-unknown"] if demote_races else []
     options = []
+    if partitioning is not None:
+        options.append("--partitioning=" + partitioning)
     if report_path is not None:
         options += ["--format=json", "--report-file=" + str(report_path)]
     for name, value in (("bmc-deadline-ms", bmc_deadline_ms),
@@ -277,6 +279,8 @@ def main(argv) -> int:
     ap.add_argument("--timeout", type=int, default=30)
     ap.add_argument("--jobs", type=int, default=8)
     ap.add_argument("--concurrency", default="auto", choices=["auto", "on", "off"])
+    ap.add_argument("--partitioning", choices=("no", "manual", "return", "guards"),
+                    help="explicit value partition strategy; omitted uses the identified wrapper default")
     ap.add_argument("--demote", action="store_true",
                     help="pass --demote-race-to-unknown (races become UNKNOWN)")
     ap.add_argument("--limit", type=int, default=0)
@@ -334,6 +338,7 @@ def main(argv) -> int:
                                      "Local wall time with JSON reporting overhead; not official CPU/performance results"),
                        evidence_source=args.evidence_source,
                        options=dict(concurrency=args.concurrency, demote=args.demote,
+                                    partitioning=args.partitioning,
                                     jobs=args.jobs, wall_timeout_seconds=args.timeout,
                                     bmc_deadline_ms=args.bmc_deadline_ms,
                                     bmc_solver_timeout_ms=args.bmc_solver_timeout_ms),
@@ -380,7 +385,8 @@ def main(argv) -> int:
                     report_path=None if "raw_database" in record else report_path,
                     bmc_deadline_ms=args.bmc_deadline_ms,
                     bmc_solver_timeout_ms=args.bmc_solver_timeout_ms,
-                    command=command, cancel_event=cancel_event)
+                    command=command, cancel_event=cancel_event,
+                    partitioning=args.partitioning)
                 record.update(verdict=verdict, elapsed_seconds=elapsed)
             except OSError as exc:
                 record.update(verdict="Error (runner)", runner_error=str(exc))

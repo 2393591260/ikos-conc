@@ -50,6 +50,8 @@ add_concurrency_test(heap-constructors "${CONCURRENCY_ROOT}/scripts/test_heap_co
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(region-ownership "${CONCURRENCY_ROOT}/scripts/test_region_ownership.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(boolean-partitioning "${CONCURRENCY_ROOT}/scripts/test_boolean_partitioning.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(ffs "${CONCURRENCY_ROOT}/scripts/test_bmc_ffs.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(atomic-completion "${CONCURRENCY_ROOT}/scripts/test_bmc_atomic_completion.py"

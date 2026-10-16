@@ -41,6 +41,23 @@ An abstract warning from another mode is not evidence of an actual race.
 Without confirmation, unresolved candidates are reported as warnings rather
 than definite races. This applies to the ordinary non-demote mode as well.
 
+### Explicit Boolean partitions
+
+Add `--partitioning=guards` to keep Boolean alternatives separate through scalar
+copies, integer conversions, bitcasts, and helper parameters. A guard helper's
+actual normal-return paths can then retain index bounds lost by interval joins.
+The policy selects partition keys; it adds no assumptions and does not recognize
+helpers by name. Redefinition and non-injective conversion use the underlying
+machine-integer transfers and conservative partition merging.
+
+Ordinary `ikos` still defaults to `--partitioning=no`. The existing `manual` and
+`return` strategies retain their previous behavior. In `guards` mode one
+partition key is managed automatically; this is not a relational integer domain.
+For example, when a helper receives the integer index and computes its condition
+internally, bounds on that formal do not necessarily refine the caller's copy.
+Unsupported cases remain inconclusive. The initial end-to-end ownership tests
+use ILP32, including programs with 64-bit data.
+
 ### Competition entry and source witnesses
 
 In an unpacked archive:
@@ -56,7 +73,8 @@ From a source checkout after installation:
   --data-model ILP32 --out witness.yml input.c
 ```
 
-The wrapper fixes the analysis to demote plus BMC, accepts `.c`/`.i` inputs,
+The wrapper fixes the analysis to demote plus BMC and explicit Boolean
+partitions (`--partitioning=guards`), accepts `.c`/`.i` inputs,
 and emits a witness in SV-Witnesses format 2.2 for a confirmed race. It defaults
 to ILP32; direct `ikos` defaults to LP64, so specify the model explicitly.
 Use `--property FILE.prp` for a competition task. The supported property is:
@@ -270,6 +288,13 @@ pointer writes or unproved address bounds disable the family certificate.
 Coverage warnings remain independent. Unsupported programs use the existing
 analysis and may remain UNKNOWN.
 
+For guarded indexes, `--partitioning=guards` can supply the required array and
+mutex ranges. The pass accepts verified zero-argument `__VERIFIER_nondet_int`
+declarations, including the C old-style declaration representation. It follows
+ordinary definitions rather than granting their names special effects. A verified
+`abort` terminates that path after checking earlier accesses; it does not make the
+whole prefix unreachable. Other return paths remain part of the proof.
+
 Implementation: `analysis/region_ownership.hpp` and
 `src/analysis/region_ownership.cpp`. The checker consumes certificates only after
 the original value analysis has converged. With `--format=json`, add
@@ -307,7 +332,7 @@ For a fixed external benchmark checkout:
 
 ```bash
 IKOS_BMC_RECOVER=1 python3 svcomp_race_test.py /path/to/sv-benchmarks \
-  --ikos "$PWD/install/bin/ikos" --demote --jobs 4 --timeout 30
+  --ikos "$PWD/install/bin/ikos" --demote --partitioning guards --jobs 4 --timeout 30
 ```
 
 This measures the analyzer under a local wall limit, not the entire competition

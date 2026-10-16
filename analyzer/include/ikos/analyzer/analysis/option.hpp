@@ -329,6 +329,9 @@ public:
   /// \brief Wether we should use the partitioning abstract domain or not
   bool use_partitioning_domain;
 
+  /// \brief Automatically keep Boolean-value partitions through scalar copies
+  bool auto_boolean_partitioning = false;
+
   /// \brief Wether we should save fixpoints on called functions or not
   bool use_fixpoint_cache;
 

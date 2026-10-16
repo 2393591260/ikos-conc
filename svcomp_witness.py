@@ -570,6 +570,7 @@ def main():
                     args.ikos,
                     "--analyses=race",
                     "--concurrency=auto",
+                    "--partitioning=guards",
                     "--demote-race-to-unknown",
                     "-m",
                     "32" if args.data_model == "ILP32" else "64",

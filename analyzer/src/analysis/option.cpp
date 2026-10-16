@@ -108,6 +108,7 @@ void AnalysisOptions::save(SettingsTable& table) {
   table.insert("use-widening-hints", this->use_widening_hints);
 
   table.insert("use-partitioning-domain", this->use_partitioning_domain);
+  table.insert("auto-boolean-partitioning", this->auto_boolean_partitioning);
 
   table.insert("use-fixpoint-cache", this->use_fixpoint_cache);
 

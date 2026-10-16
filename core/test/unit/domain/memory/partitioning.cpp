@@ -827,3 +827,29 @@ BOOST_AUTO_TEST_CASE(inclusion_matches_finite_concretizations) {
     }
   }
 }
+
+BOOST_AUTO_TEST_CASE(retargeting_after_lossy_conversion_preserves_both_sources) {
+  VariableFactory vfac;
+  Variable x(vfac.get_int("source", 32, Unsigned));
+  Variable byte(vfac.get_int("byte", 8, Unsigned));
+  Variable payload(vfac.get_int("payload", 64, Signed));
+  auto first = make_top();
+  first.int_assign(x, Int(1, 32, Unsigned));
+  first.int_assign(payload, Int(11, 64, Signed));
+  first.partitioning_set_variable(x);
+  auto second = make_top();
+  second.int_assign(x, Int(257, 32, Unsigned));
+  second.int_assign(payload, Int(22, 64, Signed));
+  second.partitioning_set_variable(x);
+  auto merged = first.join(second);
+  merged.int_apply(UnaryOperator::Trunc, byte, x);
+  merged.partitioning_set_variable(byte);
+
+  first.int_apply(UnaryOperator::Trunc, byte, x);
+  second.int_apply(UnaryOperator::Trunc, byte, x);
+  BOOST_CHECK(first.leq(merged));
+  BOOST_CHECK(second.leq(merged));
+  BOOST_CHECK(merged.int_to_interval(byte) == Interval(Int(1, 8, Unsigned)));
+  BOOST_CHECK(merged.int_to_interval(payload) ==
+              Interval(Int(11, 64, Signed), Int(22, 64, Signed)));
+}

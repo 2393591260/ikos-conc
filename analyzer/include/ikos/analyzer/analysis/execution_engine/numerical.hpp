@@ -658,6 +658,18 @@ private:
 
   }; // end class PointerAssign
 
+  // Preserve a Boolean split through its scalar copies and call parameters.
+  // Existing partition operations merge incompatible keys conservatively.
+  void propagate_boolean_partition(const ScalarLit& lhs, const ScalarLit& rhs) {
+    if (!this->_ctx.opts.auto_boolean_partitioning || !lhs.is_machine_int_var()) return;
+    auto key = this->data().normal().partitioning_variable();
+    auto* type = cast< ar::IntegerType >(lhs.var()->type());
+    if (type->bit_width() == 1 ||
+        (rhs.is_machine_int_var() && key && *key == rhs.var())) {
+      this->data().normal().partitioning_set_variable(lhs.var());
+    }
+  }
+
   /// \brief Scalar assignment `lhs = rhs`
   ///
   /// Requires that `lhs` and `rhs` have the same type.
@@ -666,6 +678,7 @@ private:
     if (lhs.is_machine_int_var()) {
       IntegerAssign v(lhs.var(), this->data());
       rhs.apply_visitor(v);
+      this->propagate_boolean_partition(lhs, rhs);
     } else if (lhs.is_floating_point_var()) {
       FloatingPointAssign v(lhs.var(), this->data());
       rhs.apply_visitor(v);
@@ -811,6 +824,7 @@ private:
     if (lhs.is_machine_int_var()) {
       IntegerImplicitBitcast v(lhs.var(), this->data());
       rhs.apply_visitor(v);
+      this->propagate_boolean_partition(lhs, rhs);
     } else if (lhs.is_floating_point_var()) {
       FloatingPointImplicitBitcast v(lhs.var(), this->data());
       rhs.apply_visitor(v);
@@ -1186,6 +1200,7 @@ private:
     } else {
       ikos_unreachable("unexpected arguments");
     }
+    this->propagate_boolean_partition(lhs, rhs);
   }
 
   /// \brief Execute a floating point conversion
@@ -1311,6 +1326,10 @@ private:
                                       rhs.scalar().var());
       } else {
         this->data().normal().int_assign_nondet(lhs.var());
+      }
+      if (rhs.is_scalar() && (rhs.scalar().is_machine_int_var() ||
+                              rhs.scalar().is_machine_int())) {
+        this->propagate_boolean_partition(lhs, rhs.scalar());
       }
     } else {
       ikos_unreachable("unexpected left hand side");

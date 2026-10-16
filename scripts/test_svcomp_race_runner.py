@@ -107,7 +107,8 @@ class RunnerTests(unittest.TestCase):
         with mock.patch.object(suite, "collect_report", side_effect=collect) as collector, \
                 mock.patch.object(sweep_bmc_execution, "validate_report", side_effect=validate) as check:
             code, summary, results = self.run_evidence("--bmc-deadline-ms", "20000",
-                                                       "--bmc-solver-timeout-ms", "1000")
+                                                       "--bmc-solver-timeout-ms", "1000",
+                                                       "--partitioning", "guards")
         self.assertEqual(code, 0)
         self.assertEqual(check.call_count, 2)
         self.assertEqual(collector.call_count, 2)
@@ -120,6 +121,8 @@ class RunnerTests(unittest.TestCase):
             calls = source.with_suffix(".calls").read_text().splitlines()
             self.assertEqual(len(calls), 1)
             command = json.loads(calls[0])
+            self.assertEqual(summary["options"]["partitioning"], "guards")
+            self.assertIn("--partitioning=guards", command)
             self.assertIn("--bmc-deadline-ms=20000", command)
             self.assertIn("--bmc-solver-timeout-ms=1000", command)
             self.assertIn("--format=json", command)

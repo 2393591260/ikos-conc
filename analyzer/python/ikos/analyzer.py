@@ -855,6 +855,8 @@ def ikos_analyzer(db_path, pp_path, opt):
         cmd.append('-no-widening-hints')
     if opt.partitioning != 'no':
         cmd.append('-enable-partitioning-domain')
+    if opt.partitioning == 'guards':
+        cmd.append('-auto-boolean-partitioning')
     if opt.no_fixpoint_cache:
         cmd.append('-no-fixpoint-cache')
     if opt.no_checks:

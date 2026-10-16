@@ -140,23 +140,48 @@ bool nondet_api(ar::CallBase* call) {
   auto* target = source ? llvm::dyn_cast< llvm::Function >(
                               source->getCalledOperand()->stripPointerCasts())
                         : nullptr;
+  const bool verifier = function && function->name() == "__VERIFIER_nondet_int";
   if (!function || !function->is_declaration() ||
-      function->intrinsic_id() != ar::Intrinsic::IkosNonDet || !type ||
-      call->num_arguments() != 0 || !target || !target->isDeclaration() ||
-      target->isVarArg() || target->arg_size() != 0 ||
-      source->arg_size() != 0 ||
+      (function->intrinsic_id() != ar::Intrinsic::IkosNonDet && !verifier) ||
+      !type || call->num_arguments() != 0 || !target ||
+      !target->isDeclaration() || (target->isVarArg() && !verifier) ||
+      target->arg_size() != 0 || source->arg_size() != 0 ||
       source->getCallingConv() != llvm::CallingConv::C ||
       target->getCallingConv() != llvm::CallingConv::C ||
       !source->getType()->isIntegerTy(type->bit_width()) ||
       !target->getReturnType()->isIntegerTy(type->bit_width()))
     return false;
   auto name = target->getName();
+  if (verifier) {
+    // A C zero-parameter old-style declaration is represented as variadic.
+    return name == "__VERIFIER_nondet_int" && type->bit_width() == 32 &&
+           type->is_signed();
+  }
   return (type->bit_width() == 32 &&
           name == (type->is_signed() ? "__ikos_nondet_int"
                                      : "__ikos_nondet_uint")) ||
          (type->bit_width() == 64 &&
           name == (type->is_signed() ? "__ikos_nondet_int64"
                                      : "__ikos_nondet_uint64"));
+}
+
+bool abort_api(ar::CallBase* call) {
+  auto* function = callee(call);
+  auto* source =
+      call->has_frontend()
+          ? llvm::dyn_cast< llvm::CallInst >(call->frontend< llvm::Value >())
+          : nullptr;
+  auto* target = source ? llvm::dyn_cast< llvm::Function >(
+                              source->getCalledOperand()->stripPointerCasts())
+                        : nullptr;
+  return function && function->is_declaration() &&
+         function->intrinsic_id() == ar::Intrinsic::LibcAbort &&
+         call->num_arguments() == 0 && target && target->isDeclaration() &&
+         target->getName() == "abort" && !target->isVarArg() &&
+         target->arg_size() == 0 && source->arg_size() == 0 &&
+         target->getReturnType()->isVoidTy() && source->getType()->isVoidTy() &&
+         source->getCallingConv() == llvm::CallingConv::C &&
+         target->getCallingConv() == llvm::CallingConv::C;
 }
 
 bool malloc_api(ar::CallBase* call) {
@@ -633,8 +658,9 @@ public:
             fail("indirect call effects");
             return;
           }
-          if (target->is_definition() || nondet_api(call) || malloc_api(call) ||
-              output_api(call) || mutex_api(call, "pthread_mutex_init", 2) ||
+          if (target->is_definition() || nondet_api(call) || abort_api(call) ||
+              malloc_api(call) || output_api(call) ||
+              mutex_api(call, "pthread_mutex_init", 2) ||
               mutex_api(call, "pthread_mutex_lock", 1) ||
               mutex_api(call, "pthread_mutex_unlock", 1))
             continue;
@@ -963,6 +989,13 @@ bool RegionOwnership::Impl::function(ar::Function* fun,
       if (isa< ar::Unreachable >(statement)) {
         terminal = true;
         break;
+      }
+      if (auto* call = dyn_cast< ar::CallBase >(statement)) {
+        if (abort_api(call)) {
+          // Preserve preceding accesses, but there is no normal continuation.
+          terminal = true;
+          break;
+        }
       }
       if (!transfer(statement, cc, current)) {
         if (log::is_enabled_for(LogLevel::Debug)) {

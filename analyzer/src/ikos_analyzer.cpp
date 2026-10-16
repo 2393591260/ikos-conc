@@ -551,6 +551,12 @@ static llvm::cl::opt< bool > EnablePartitioningDomain(
     llvm::cl::desc("Enable the partitioning abstract domain"),
     llvm::cl::cat(AnalysisCategory));
 
+static llvm::cl::opt< bool > AutoBooleanPartitioning(
+    "auto-boolean-partitioning",
+    llvm::cl::desc("Select Boolean partition keys and follow scalar copies"),
+    llvm::cl::init(false),
+    llvm::cl::cat(AnalysisCategory));
+
 static llvm::cl::opt< bool > NoFixpointCache(
     "no-fixpoint-cache",
     llvm::cl::desc("Disable the cache of fixpoints"),
@@ -931,7 +937,8 @@ static analyzer::AnalysisOptions make_analysis_options(ar::Bundle* bundle) {
       .use_liveness = !NoLiveness,
       .use_pointer = !NoPointer,
       .use_widening_hints = !NoWideningHints,
-      .use_partitioning_domain = EnablePartitioningDomain,
+      .use_partitioning_domain = EnablePartitioningDomain || AutoBooleanPartitioning,
+      .auto_boolean_partitioning = AutoBooleanPartitioning,
       .use_fixpoint_cache = !NoFixpointCache,
       .use_checks = !NoChecks,
       .trace_ar_statements = TraceARStmts,
