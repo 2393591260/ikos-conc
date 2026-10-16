@@ -1,7 +1,7 @@
 // Copyright and license: see numerical.hpp.
 #pragma once
 
-#include <ikos/analyzer/analysis/execution_engine/handle_origin.hpp>
+#include <ikos/analyzer/analysis/execution_engine/heap_pointer_effects.hpp>
 
 namespace ikos {
 namespace analyzer {

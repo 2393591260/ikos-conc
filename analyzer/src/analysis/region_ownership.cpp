@@ -410,73 +410,7 @@ class RegionOwnership::Impl {
   }
 
   bool mutex_scope(ar::GlobalVariable* global) {
-    if (!global->has_frontend() || !global->is_definition() ||
-        global->is_thread_local())
-      return false;
-    auto* source = global->frontend< llvm::GlobalVariable >();
-    auto* array = llvm::dyn_cast< llvm::ArrayType >(source->getValueType());
-    auto* ar_array = dyn_cast< ar::ArrayType >(global->type()->pointee());
-    auto* leaf =
-        array ? llvm::dyn_cast< llvm::StructType >(array->getElementType())
-              : nullptr;
-    llvm::Triple target(source->getParent()->getTargetTriple());
-    if (!array || !ar_array || !leaf || leaf->isOpaque() || !leaf->hasName() ||
-        leaf->getName() != "union.pthread_mutex_t" || !target.isOSLinux() ||
-        target.getEnvironment() != llvm::Triple::GNU ||
-        target.getArch() != llvm::Triple::x86 ||
-        source->getAddressSpace() != 0 || source->isExternallyInitialized() ||
-        source->isConstant() || !source->hasInitializer() ||
-        !source->getInitializer()->isNullValue() ||
-        ZNumber(array->getNumElements()) != count ||
-        ar_array->num_elements() != count)
-      return false;
-    const auto& layout = source->getParent()->getDataLayout();
-    auto alignment = source->getAlign() ? source->getAlign()->value()
-                                        : layout.getABITypeAlign(array).value();
-    if (alignment < 4 || layout.getTypeAllocSize(leaf) != 24 ||
-        layout.getTypeAllocSize(array) != 24 * array->getNumElements() ||
-        ctx.bundle->data_layout().alloc_size_in_bytes(ar_array) != 24 * count)
-      return false;
-    std::set< llvm::Value* > visited;
-    std::vector< llvm::Value* > pending{source};
-    while (!pending.empty()) {
-      auto* value = pending.back();
-      pending.pop_back();
-      if (!visited.insert(value).second)
-        continue;
-      if (visited.size() > 4096)
-        return false;
-      for (auto* user : value->users()) {
-        if (auto* gep = llvm::dyn_cast< llvm::GEPOperator >(user)) {
-          auto* zero =
-              gep->getNumIndices() == 2
-                  ? llvm::dyn_cast< llvm::ConstantInt >(gep->getOperand(1))
-                  : nullptr;
-          if (!gep->isInBounds() || gep->getPointerOperand() != source ||
-              gep->getSourceElementType() != array || !zero || !zero->isZero())
-            return false;
-          pending.push_back(user);
-        } else if (llvm::isa< llvm::BitCastOperator >(user)) {
-          pending.push_back(user);
-        } else if (auto* call = llvm::dyn_cast< llvm::CallBase >(user)) {
-          auto* function = llvm::dyn_cast< llvm::Function >(
-              call->getCalledOperand()->stripPointerCasts());
-          if (!function || !function->isDeclaration() ||
-              call->arg_size() == 0 || call->getArgOperand(0) != value ||
-              (function->getName() != "pthread_mutex_init" &&
-               function->getName() != "pthread_mutex_lock" &&
-               function->getName() != "pthread_mutex_unlock"))
-            return false;
-          auto* actual =
-              llvm::dyn_cast< llvm::GEPOperator >(value->stripPointerCasts());
-          if (!actual || actual->getPointerOperand() != source ||
-              actual->getSourceElementType() != array)
-            return false;
-        } else
-          return false;
-      }
-    }
-    return true;
+    return mutex_array_storage_scope(global, count);
   }
 
   bool shift(ar::PointerShift* statement, State& state) {

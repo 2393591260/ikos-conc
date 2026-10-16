@@ -295,6 +295,18 @@ ordinary definitions rather than granting their names special effects. A verifie
 `abort` terminates that path after checking earlier accesses; it does not make the
 whole prefix unreachable. Other return paths remain part of the proof.
 
+
+Constructor-field recovery can also use a separate conservative analysis to
+certify the byte effects of indexed mutex calls. Every observed address must
+select a complete mutex inside the actual array, with exact API and layout
+checks. Only the resulting effect certificates enter a fresh analysis; memory,
+thread summaries, coverage warnings and failed caches are not reused. Missing
+or invalid observations retain the original conservative behavior. The first
+subset requires private, unread thread-handle outputs and unused create results;
+helper-derived indices and consumed handles may remain unsupported. This does
+not assert mutex-call success or establish heap-object uniqueness. Controls run
+with BMC disabled via `python3 scripts/test_mutex_array_effects.py`.
+
 Implementation: `analysis/region_ownership.hpp` and
 `src/analysis/region_ownership.cpp`. The checker consumes certificates only after
 the original value analysis has converged. With `--format=json`, add

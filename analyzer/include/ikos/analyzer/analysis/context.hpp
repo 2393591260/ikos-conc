@@ -43,6 +43,9 @@
 
 #pragma once
 
+#include <map>
+#include <set>
+
 #include <boost/filesystem.hpp>
 
 #include <ikos/ar/semantic/bundle.hpp>
@@ -122,6 +125,13 @@ public:
   /// environment per analysis run, shared by the thread-modular driver,
   /// the transfer engine, and the data-race checker.
   core::ConcurrentGlobalEnv concurrent_env;
+
+  // Populated only in the independent conservative preflight. A failed
+  // observation is permanent; only certificates cross into the fresh analysis.
+  std::map< ar::CallBase*, ar::GlobalVariable* > mutex_effect_queries;
+  std::map< ar::CallBase*, bool > mutex_effect_observations;
+  std::set< ar::CallBase* > mutex_effect_certificates;
+
 
 public:
   /// \brief Constructor

@@ -47,6 +47,7 @@
 
 #include <ikos/analyzer/analysis/context.hpp>
 #include <ikos/analyzer/analysis/execution_engine/protected_values.hpp>
+#include <ikos/analyzer/analysis/execution_engine/heap_pointer_initialization.hpp>
 #include <ikos/analyzer/analysis/value/abstract_domain.hpp>
 #include <ikos/analyzer/analysis/value/global_variable.hpp>
 #include <ikos/analyzer/analysis/value/interprocedural/init_invariant.hpp>
@@ -82,6 +83,88 @@ void ThreadModularAnalysis::run() {
   namespace seq = interprocedural::sequential;
 
   ar::Bundle* bundle = _ctx.bundle;
+
+  // Certify only opaque mutex effects in an independent, conservative run.
+  // Its memory, coverage flags, threads and caches never enter the real run.
+  if (_ctx.opts.use_checks && _ctx.opts.entry_points.size() == 1 &&
+      _ctx.opts.entry_points.front()->name() == "main" &&
+      _ctx.opts.entry_points.front()->num_parameters() == 0 &&
+      _ctx.opts.no_init_globals.empty() &&
+      !bundle->global_or_null("ar.global_ctors") &&
+      !bundle->global_or_null("ar.global_dtors") &&
+      std::find(_ctx.opts.analyses.begin(), _ctx.opts.analyses.end(),
+                CheckerName::DataRace) != _ctx.opts.analyses.end()) {
+    std::map< ar::CallBase*, ar::GlobalVariable* > queries;
+    bool closed = true, constructor = false;
+    unsigned budget = 8192;
+    for (auto it = bundle->function_begin(); it != bundle->function_end(); ++it) {
+      if (!(*it)->is_definition()) continue;
+      for (auto* block : *(*it)->body()) for (auto* statement : *block) {
+        if (budget == 0) { closed = false; break; }
+        --budget;
+        if (auto* cast = dyn_cast< ar::UnaryOperation >(statement)) {
+          if (cast->op() == ar::UnaryOperation::UIToPtr ||
+              cast->op() == ar::UnaryOperation::SIToPtr ||
+              cast->op() == ar::UnaryOperation::PtrToUI ||
+              cast->op() == ar::UnaryOperation::PtrToSI) closed = false;
+        }
+        auto* call = dyn_cast< ar::CallBase >(statement);
+        if (!call) continue;
+        auto* exact = dyn_cast< ar::FunctionPointerConstant >(call->called());
+        auto* source = call->has_frontend()
+            ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+        auto* source_callee = source ? llvm::dyn_cast< llvm::Function >(
+            source->getCalledOperand()->stripPointerCasts()) : nullptr;
+        if ((exact && (exact->function()->name() == "pthread_create" ||
+                       exact->function()->intrinsic_id() == ar::Intrinsic::PthreadCreate)) ||
+            (source_callee && source_callee->getName() == "pthread_create"))
+          closed &= unread_private_thread_output(call);
+        if (auto* object = mutex_array_effect_object(call)) {
+          queries.emplace(call, object);
+          continue;
+        }
+        if (!heap_pointer_call_covered(call)) closed = false;
+        auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+        constructor |= target &&
+            target->function()->intrinsic_id() == ar::Intrinsic::LibcMalloc;
+      }
+    }
+    if (closed && constructor && !queries.empty()) {
+      auto* source = queries.begin()->second->frontend< llvm::GlobalVariable >();
+      closed = mutex_effect_pointer_representations_closed(*source->getParent());
+    }
+    if (closed && constructor && !queries.empty()) {
+      auto options = _ctx.opts;
+      options.use_checks = false;
+      Context preflight(bundle, std::move(options), _ctx.wd, *_ctx.output_db,
+                        *_ctx.mem_factory, *_ctx.var_factory, *_ctx.lit_factory,
+                        *_ctx.call_context_factory, *_ctx.fixpoint_parameters);
+      preflight.liveness = _ctx.liveness;
+      preflight.function_pointer = _ctx.function_pointer;
+      preflight.pointer = _ctx.pointer;
+      preflight.mutex_effect_queries = queries;
+      ThreadModularAnalysis(preflight, false).run();
+      bool complete = !preflight.concurrent_env.is_dirty() &&
+                      preflight.concurrent_env.unmodeled_thread_creations().empty();
+      // Only conservative pointer-memory loss is tolerated. Other missing
+      // semantics must not supply premises for a refined analysis.
+      for (const auto& effect : preflight.concurrent_env.unmodeled_effects())
+        complete &= effect.second == "synthetic pthread handle representation not modeled" ||
+                    effect.second == "unknown destination write effects not covered";
+      for (const auto& query : queries) {
+        auto result = preflight.mutex_effect_observations.find(query.first);
+        complete &= result != preflight.mutex_effect_observations.end() && result->second;
+      }
+      if (complete) {
+        for (const auto& query : queries)
+          _ctx.mutex_effect_certificates.insert(query.first);
+        log::debug("Heap pointer effects: mutex-array preflight certified " +
+                   std::to_string(queries.size()) + " calls");
+      } else {
+        log::debug("Heap pointer effects: incomplete mutex-array preflight");
+      }
+    }
+  }
 
   // Create checkers
   std::vector< std::unique_ptr< Checker > > checkers;

@@ -86,7 +86,8 @@ inline bool prove_heap_constructor_body(ar::CallBase* allocation, const core::ZN
   return true;
 }
 
-inline bool prove_heap_constructor(ar::CallBase* allocation, const core::ZNumber& field) {
+inline bool prove_heap_constructor(ar::CallBase* allocation, const core::ZNumber& field,
+                                   const Context& ctx) {
   if (!prove_heap_constructor_body(allocation, field)) return false;
   auto* function = allocation->code()->function();
   auto* bundle = function->bundle();
@@ -97,7 +98,8 @@ inline bool prove_heap_constructor(ar::CallBase* allocation, const core::ZNumber
     for (auto* bb : *body) for (auto* statement : *bb) {
       if (budget-- == 0) return false;
       if (auto* call = dyn_cast< ar::CallBase >(statement))
-        if (!heap_pointer_call_covered(call)) return false;
+        if (!heap_pointer_call_covered(call) &&
+            !ctx.mutex_effect_certificates.count(call)) return false;
     }
     return true;
   };
@@ -125,7 +127,7 @@ bool initialized_heap_field_value(E& eng, ar::Load* load, const ScalarLit& point
     if (!heap) return false;
     bool certified = false;
     if (!env.get_heap_constructor_certificate(heap->call(), offset->to_z_number(), certified)) {
-      certified = prove_heap_constructor(heap->call(), offset->to_z_number());
+      certified = prove_heap_constructor(heap->call(), offset->to_z_number(), eng.ctx());
       env.cache_heap_constructor_certificate(heap->call(), offset->to_z_number(), certified);
     }
     auto incoming = core::ConcurrentGlobalEnv::PointerValue::top(

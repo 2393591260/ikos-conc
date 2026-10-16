@@ -2139,6 +2139,8 @@ public:
     ikos_assert(fun->is_declaration());
     ikos_assert(ar::TypeVerifier::is_valid_call(call, fun->type()));
 
+    if (!fun->is_intrinsic()) observe_mutex_array_effect(*this, call);
+
     if (fun->is_intrinsic()) {
       this->exec_intrinsic_call(call, fun->intrinsic_id());
       return;
@@ -2403,6 +2405,8 @@ public:
     if (this->data().is_normal_flow_bottom()) {
       return;
     }
+
+    observe_mutex_array_effect(*this, call);
 
     if (id == ar::Intrinsic::IkosPartitioningVar) {
       // Unlike most functions, it propagates uninitialized variables

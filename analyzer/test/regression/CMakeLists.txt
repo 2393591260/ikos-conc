@@ -52,6 +52,8 @@ add_concurrency_test(region-ownership "${CONCURRENCY_ROOT}/scripts/test_region_o
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(boolean-partitioning "${CONCURRENCY_ROOT}/scripts/test_boolean_partitioning.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(mutex-array-effects "${CONCURRENCY_ROOT}/scripts/test_mutex_array_effects.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(ffs "${CONCURRENCY_ROOT}/scripts/test_bmc_ffs.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(atomic-completion "${CONCURRENCY_ROOT}/scripts/test_bmc_atomic_completion.py"

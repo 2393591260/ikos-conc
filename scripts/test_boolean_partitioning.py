@@ -63,9 +63,21 @@ def main():
                 proven = 'The program is SAFE' in proc.stdout
                 expected = case in {0, 10, 11}
                 assert proven == expected, (case, wide, proc.stdout, proc.stderr)
-                proofs = [r for r in json.loads(report.read_text())['reports']
+                rows = json.loads(report.read_text())['reports']
+                proofs = [r for r in rows
                           if r['info'].get('ownership_contract') == 'indexed-live-heap-owner-v1']
-                assert bool(proofs) == expected, (case, wide, proofs, proc.stdout)
+                if case == 15:
+                    # Other protected pairs may be proved safe; the actual
+                    # conditional pre-abort write must retain its warning.
+                    lines = {n for n, line in enumerate(source.read_text().splitlines(), 1)
+                             if 'heads[key]->next->value = 9' in line}
+                    assert any(r['status'] == 1 and any(
+                        r['info'].get(side, {}).get('line') in lines
+                        for side in ('access_a', 'access_b')) for r in rows), (wide, rows)
+                    assert all(p['info'].get(side) not in lines for p in proofs
+                               for side in ('access_a_line', 'access_b_line')), (wide, proofs)
+                else:
+                    assert bool(proofs) == expected, (case, wide, proofs, proc.stdout)
                 print(f'guarded owner case={case}/wide={wide}: proven={proven}; proofs={len(proofs)}', flush=True)
 
 
