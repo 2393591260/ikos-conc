@@ -1185,6 +1185,11 @@ public:
     return it != _synthetic_handle_ranges.end() && it->second.count(sid) != 0;
   }
 
+  bool has_synthetic_handle_slots() const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    return !_synthetic_handle_slots.empty();
+  }
+
   bool is_synthetic_handle_slot(analyzer::MemoryLocation* location) const {
     std::lock_guard< std::mutex > lock(_mutex);
     return _synthetic_handle_slots.count(location) != 0;

@@ -26,7 +26,9 @@ inline bool direct_storage_address(ar::Value* value) {
 
 // Only this closed effects subset may treat the heap Store board as complete.
 // Other intrinsics can havoc bytes without publishing a typed pointer write.
-inline bool heap_pointer_call_covered(ar::CallBase* call) {
+inline bool heap_pointer_call_covered(ar::CallBase* call, const Context* ctx = nullptr) {
+  if (ctx && (ctx->native_handle_effect_certificates.count(call) ||
+              (ctx->native_handles_only && constant_assertion_effect(call)))) return true;
   auto* called = call->called();
   for (unsigned depth = 0; depth < 16; ++depth) {
     auto* variable = dyn_cast< ar::InternalVariable >(called);
@@ -79,7 +81,8 @@ inline bool heap_pointer_call_covered(ar::CallBase* call) {
 // Close every invocation of the worker, including address escapes and aliases.
 inline bool worker_created_after(ar::Store* writer, ar::Function* worker,
                                   core::ConcurrentGlobalEnv& env,
-                                  bool require_heap_effects = false) {
+                                  bool require_heap_effects = false,
+                                  const Context* ctx = nullptr) {
   if (!env.function_executes_at_most_once(writer->code()->function())) return false;
   std::vector< ar::CallBase* > creates;
   unsigned budget = 8192;
@@ -106,7 +109,7 @@ inline bool worker_created_after(ar::Store* writer, ar::Function* worker,
           if (statement->result_or_null() == *it) return false;
       }
       if (auto* call = dyn_cast< ar::CallBase >(statement)) {
-        if (require_heap_effects && !heap_pointer_call_covered(call)) return false;
+        if (require_heap_effects && !heap_pointer_call_covered(call, ctx)) return false;
         if (mentions_worker(mentions_worker, call->called(), 0)) return false;
         for (unsigned i = 0; i < call->num_arguments(); ++i) {
           if (!mentions_worker(mentions_worker, call->argument(i), 0)) continue;

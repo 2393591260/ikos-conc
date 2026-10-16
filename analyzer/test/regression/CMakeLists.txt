@@ -56,6 +56,8 @@ add_concurrency_test(mutex-array-effects "${CONCURRENCY_ROOT}/scripts/test_mutex
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(nested-array-ownership "${CONCURRENCY_ROOT}/scripts/test_nested_array_ownership.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(native-thread-handles "${CONCURRENCY_ROOT}/scripts/test_native_thread_handles.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(ffs "${CONCURRENCY_ROOT}/scripts/test_bmc_ffs.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(atomic-completion "${CONCURRENCY_ROOT}/scripts/test_bmc_atomic_completion.py"

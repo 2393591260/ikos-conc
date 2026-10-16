@@ -174,6 +174,39 @@ inline GlobalArraySubobject mutex_array_effect_object(ar::CallBase* call) {
   return {};
 }
 
+inline bool constant_assertion_effect(ar::CallBase* call) {
+  if (!call->has_frontend() || call->num_arguments() != 4) return false;
+  auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+  auto* source = llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >());
+  auto* function = source ? llvm::dyn_cast< llvm::Function >(source->getCalledOperand()->stripPointerCasts()) : nullptr;
+  if (!target || !target->function()->is_declaration() || target->function()->name() != "__assert_fail" ||
+      !target->function()->type()->return_type()->is_void() || target->function()->type()->is_var_arg() ||
+      target->function()->num_parameters() != 4 || !function || !function->isDeclaration() ||
+      function->getName() != "__assert_fail" || !target->function()->has_frontend() ||
+      target->function()->frontend< llvm::Value >() != function || !function->getReturnType()->isVoidTy() ||
+      function->isVarArg() || function->arg_size() != 4 || source->arg_size() != 4 ||
+      !source->getType()->isVoidTy() || source->getCallingConv() != llvm::CallingConv::C ||
+      function->getCallingConv() != llvm::CallingConv::C || source->getFunctionType() != function->getFunctionType()) return false;
+  for (unsigned i = 0; i < 4; ++i) {
+    if (call->argument(i)->type() != target->function()->type()->param_type(i)) return false;
+    if (i == 2) {
+      auto* integer = dyn_cast< ar::IntegerType >(call->argument(i)->type());
+      if (!integer || integer->bit_width() != 32 || !source->getArgOperand(i)->getType()->isIntegerTy(32)) return false;
+    } else {
+      auto* pointer = dyn_cast< ar::PointerType >(call->argument(i)->type());
+      auto* byte = pointer ? dyn_cast< ar::IntegerType >(pointer->pointee()) : nullptr;
+      auto* source_pointer = llvm::dyn_cast< llvm::PointerType >(source->getArgOperand(i)->getType());
+      auto* text = llvm::dyn_cast< llvm::GlobalVariable >(source->getArgOperand(i)->stripPointerCasts());
+      if (!byte || byte->bit_width() != 8 || !source_pointer || source_pointer->getAddressSpace() != 0 ||
+          !source_pointer->getPointerElementType()->isIntegerTy(8) || !text || !text->isConstant() ||
+          !text->hasInitializer() || text->getAddressSpace() != 0) return false;
+      auto* literal = llvm::dyn_cast< llvm::ConstantDataArray >(text->getInitializer());
+      if (!literal || !literal->getElementType()->isIntegerTy(8) || !literal->isCString()) return false;
+    }
+  }
+  return true;
+}
+
 // Native pthread_t values are opaque tokens in the current AI. This first
 // preflight subset admits only private outputs which are never read or escaped;
 // consequently an artificial token cannot select a range-proof control edge.

@@ -69,6 +69,13 @@ class FunctionPointerAnalysis;
 class PointerAnalysis;
 class FixpointParameters;
 
+// Native storage has no numerical encoding of a thread-instance identity.
+struct NativeHandleArray {
+  ar::LocalVariable* storage;
+  ar::IntegerType* type;
+  core::ZNumber size;
+};
+
 /// \brief Global analysis context
 ///
 /// Class holding all the global state of the analyses
@@ -137,6 +144,13 @@ public:
   std::map< ar::Statement*, bool > subarray_bounds_observations;
   std::map< ar::Statement*, GlobalArraySubobject > subarray_bounds_certificates;
   std::map< std::tuple< ar::GlobalVariable*, ar::ArrayType*, core::ZNumber, core::ZNumber >, bool > readonly_subarray_certificates;
+
+  bool native_handle_inventory_checked = false;
+  bool native_handles_only = false;
+  std::map< ar::Statement*, NativeHandleArray > native_handle_accesses;
+  std::set< ar::CallBase* > native_handle_joins;
+  std::map< ar::Statement*, bool > native_handle_observations;
+  std::set< ar::CallBase* > native_handle_effect_certificates;
 
 
 

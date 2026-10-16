@@ -201,6 +201,20 @@ actual bodies; incompatible signatures and calling conventions are unsupported.
 AI and BMC have different coverage responsibilities. A fact sufficient to exclude
 all conflicts is not necessarily a concrete value source for a BMC execution.
 
+For closed Linux GNU ILP32 programs, the abstract interpreter also supports
+repeated creates into private, fixed-size main-stack arrays of native 32-bit
+`pthread_t` values. It checks the original LLVM and imported AR declarations,
+every producer and array use, and independently proves the full output/load
+ranges before exporting create-effect certificates into a fresh analysis.
+Handle outputs and reads are unknown initialized native values, rather than
+creation-site numbers. Joins through these values add no completion or
+happens-before facts: neither joining one array element nor overwriting and
+joining a handle proves that all instances of a worker have ended.
+Escapes, representation inspection, uncovered calls and unproved ranges retain
+the conservative coverage boundary. This subset requires NULL attributes,
+worker arguments and join-result outputs, and unused API return values.
+It does not establish list ownership, initialization or first-publication safety.
+
 ## Resource limits
 
 The local benchmark script defaults to 30 seconds of **wall time** per task.

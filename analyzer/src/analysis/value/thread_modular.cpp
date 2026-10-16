@@ -83,6 +83,7 @@ void ThreadModularAnalysis::run() {
   namespace seq = interprocedural::sequential;
 
   ar::Bundle* bundle = _ctx.bundle;
+  configure_native_thread_handles(_ctx);
 
   // Certify only opaque mutex effects in an independent, conservative run.
   // Its memory, coverage flags, threads and caches never enter the real run.
@@ -130,22 +131,23 @@ void ThreadModularAnalysis::run() {
         if ((exact && (exact->function()->name() == "pthread_create" ||
                        exact->function()->intrinsic_id() == ar::Intrinsic::PthreadCreate)) ||
             (source_callee && source_callee->getName() == "pthread_create"))
-          closed &= unread_private_thread_output(call);
+          closed &= _ctx.native_handle_accesses.count(call) || unread_private_thread_output(call);
         if (auto object = mutex_array_effect_object(call)) {
           queries.emplace(call, object);
           continue;
         }
-        if (!heap_pointer_call_covered(call)) closed = false;
+        if (!_ctx.native_handle_accesses.count(call) && !heap_pointer_call_covered(call, &_ctx)) closed = false;
         auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
         constructor |= target &&
             target->function()->intrinsic_id() == ar::Intrinsic::LibcMalloc;
       }
     }
-    if (closed && constructor && !queries.empty()) {
-      auto* source = queries.begin()->second.global->frontend< llvm::GlobalVariable >();
+    const bool native_queries = _ctx.native_handles_only && !_ctx.native_handle_accesses.empty();
+    if (closed && ((constructor && !queries.empty()) || native_queries)) {
+      auto* source = _ctx.opts.entry_points.front()->frontend< llvm::Function >();
       closed = mutex_effect_pointer_representations_closed(*source->getParent());
     }
-    if (closed && constructor && !queries.empty()) {
+    if (closed && ((constructor && !queries.empty()) || native_queries)) {
       auto options = _ctx.opts;
       options.use_checks = false;
       Context preflight(bundle, std::move(options), _ctx.wd, *_ctx.output_db,
@@ -154,6 +156,10 @@ void ThreadModularAnalysis::run() {
       preflight.liveness = _ctx.liveness;
       preflight.function_pointer = _ctx.function_pointer;
       preflight.pointer = _ctx.pointer;
+      preflight.native_handle_inventory_checked = true;
+      preflight.native_handles_only = _ctx.native_handles_only;
+      preflight.native_handle_accesses = _ctx.native_handle_accesses;
+      preflight.native_handle_joins = _ctx.native_handle_joins;
       preflight.mutex_effect_queries = queries;
       preflight.subarray_bounds_queries = bounds;
       ThreadModularAnalysis(preflight, false).run();
@@ -172,7 +178,15 @@ void ThreadModularAnalysis::run() {
         auto result = preflight.subarray_bounds_observations.find(query.first);
         complete &= result != preflight.subarray_bounds_observations.end() && result->second;
       }
+      for (const auto& query : _ctx.native_handle_accesses) {
+        auto result = preflight.native_handle_observations.find(query.first);
+        complete &= result != preflight.native_handle_observations.end() && result->second;
+      }
       if (complete) {
+        for (const auto& query : _ctx.native_handle_accesses)
+          if (auto* call = dyn_cast< ar::CallBase >(query.first))
+            _ctx.native_handle_effect_certificates.insert(call);
+        if (native_queries) log::debug("Native pthread handles: complete output-effect preflight");
         _ctx.subarray_bounds_certificates = bounds;
         for (const auto& query : queries)
           _ctx.mutex_effect_certificates.insert(query.first);

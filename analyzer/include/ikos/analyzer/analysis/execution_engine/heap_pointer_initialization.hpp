@@ -98,7 +98,7 @@ inline bool prove_heap_constructor(ar::CallBase* allocation, const core::ZNumber
     for (auto* bb : *body) for (auto* statement : *bb) {
       if (budget-- == 0) return false;
       if (auto* call = dyn_cast< ar::CallBase >(statement))
-        if (!heap_pointer_call_covered(call) &&
+        if (!heap_pointer_call_covered(call, &ctx) &&
             !ctx.mutex_effect_certificates.count(call)) return false;
     }
     return true;

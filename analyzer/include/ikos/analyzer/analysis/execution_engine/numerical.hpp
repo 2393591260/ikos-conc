@@ -1833,6 +1833,7 @@ public:
 
     const ScalarLit& ptr = this->_lit_factory.get_scalar(s->operand());
     observe_subarray_bounds(*this, s, s->operand(), s->result()->type());
+    observe_native_handle_range(*this, s, s->operand());
 
     if (!this->prepare_mem_access(ptr)) {
       return;
@@ -1869,7 +1870,11 @@ public:
         on_load_integer_interference(*this, s, ptr, lhs, size);
         if (lhs.is_pointer_var()) on_load_pointer_restore(*this, s, ptr, lhs, size);
       }
-      if (!s->is_volatile()) {
+      if (this->_ctx.native_handle_accesses.count(s)) {
+        // Native IDs have no chosen numeric representation. Losing equality
+        // between reads enlarges executions and avoids synthetic-token pruning.
+        this->data().normal().scalar_assign_nondet(lhs.var());
+      } else if (!s->is_volatile()) {
         // Perform memory read in the value domain
         this->data().normal().mem_read(lhs, ptr.var(), size);
       } else {
@@ -2141,7 +2146,10 @@ public:
     ikos_assert(fun->is_declaration());
     ikos_assert(ar::TypeVerifier::is_valid_call(call, fun->type()));
 
-    if (!fun->is_intrinsic()) observe_mutex_array_effect(*this, call);
+    if (!fun->is_intrinsic()) {
+      observe_mutex_array_effect(*this, call);
+      if (this->_ctx.native_handle_accesses.count(call)) observe_native_handle_range(*this, call, call->argument(0));
+    }
 
     if (fun->is_intrinsic()) {
       this->exec_intrinsic_call(call, fun->intrinsic_id());
@@ -2409,6 +2417,7 @@ public:
     }
 
     observe_mutex_array_effect(*this, call);
+    if (this->_ctx.native_handle_accesses.count(call)) observe_native_handle_range(*this, call, call->argument(0));
 
     if (id == ar::Intrinsic::IkosPartitioningVar) {
       // Unlike most functions, it propagates uninitialized variables

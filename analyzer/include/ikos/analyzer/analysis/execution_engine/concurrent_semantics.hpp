@@ -39,6 +39,7 @@
 #include <ikos/analyzer/analysis/execution_engine/readonly_pointer_array.hpp>
 #include <ikos/analyzer/analysis/execution_engine/heap_pointer_initialization.hpp>
 #include <ikos/analyzer/analysis/execution_engine/protected_values.hpp>
+#include <ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
 #include <ikos/analyzer/analysis/memory_location.hpp>
 #include <ikos/analyzer/analysis/variable.hpp>
@@ -200,7 +201,7 @@ inline bool identity_only_handle_uses(ar::InternalVariable* root) {
 
 template < typename E >
 bool touches_synthetic_handle(E& eng, const ScalarLit& pointer) {
-  if (!pointer.is_pointer_var()) return false;
+  if (eng.ctx().native_handles_only || !pointer.is_pointer_var()) return false;
   auto points = eng.data().normal().pointer_to_points_to(pointer.var());
   if (points.is_top()) return true;
   if (!points.is_set()) return false;
@@ -1103,6 +1104,14 @@ void exec_pthread_mutex_unlock(E& eng, ar::CallBase* call, bool also_read = fals
 /// not suppress a race. Sound direction: fewer HB edges ⇒ wider race set.
 template < typename E >
 void exec_pthread_join(E& eng, ar::CallBase* call) {
+  if (eng.ctx().native_handle_joins.count(call)) {
+    // Dropping the wait admits schedules; a MAY native value proves no join.
+    if (call->has_result()) {
+      const auto& ret = eng.lit_factory().get_scalar(call->result());
+      eng.data().normal().scalar_assign_nondet(ret.var());
+    }
+    return;
+  }
   auto& env = eng.ctx().concurrent_env;
   std::unordered_set< std::uint64_t > joined_sids;
 
@@ -1619,7 +1628,7 @@ void on_load_pointer_restore(E& eng,
       for (auto* initializer : env.heap_initializers(key)) {
         bool ordered = false;
         if (!env.get_heap_initializer_certificate(initializer, load->code()->function(), ordered)) {
-          ordered = worker_created_after(initializer, load->code()->function(), env, true);
+          ordered = worker_created_after(initializer, load->code()->function(), env, true, &eng.ctx());
           env.cache_heap_initializer_certificate(initializer, load->code()->function(), ordered);
         }
         auto value = core::ConcurrentGlobalEnv::PointerValue::top(size.bit_width(), core::Unsigned);
@@ -2225,47 +2234,62 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
     if (handle_lit.is_scalar()) {
       const auto& scalar_lit = handle_lit.scalar();
       if (scalar_lit.is_pointer_var()) {
-        if (uncovered_mutex_value_write(eng, handle_arg, scalar_lit)) {
-          eng.ctx().concurrent_env.record_unmodeled_effect(
-              call, "pthread_create handle output effects not covered");
-        }
-        auto pts = eng.data().normal().pointer_to_points_to(scalar_lit.var());
-        if (pts.is_top()) {
-          // Local provenance excludes global writes, not stale local contents.
-          if (auto* local = local_output_base(handle_arg))
-            eng.data().normal().mem_forget(eng.ctx().mem_factory->get_local(local));
-        }
-        auto* pointee = cast< ar::PointerType >(handle_arg->type())->pointee();
-        auto* type = dyn_cast< ar::IntegerType >(pointee);
-        bool supported_bases = pts.is_set() && !pts.is_empty();
-        if (pts.is_set()) for (auto* location : pts)
-          supported_bases &= isa< LocalMemoryLocation >(location) ||
-                             isa< GlobalMemoryLocation >(location);
-        if (supported_bases && sid != 0 && type != nullptr) {
-          const auto width = eng.data_layout().store_size_in_bytes(type);
-          auto offset = eng.data().normal().pointer_to_pointer(scalar_lit.var()).offset();
-          // Origins are monotone MAY observations. Current contents still come
-          // from memory; non-identity writes retain the coverage gate above.
-          for (auto* location : pts)
-            eng.ctx().concurrent_env.record_synthetic_handle_slot(
-                location, sid, offset.singleton() ? offset.lb().to_z_number()
-                                                 : core::ZNumber(0),
-                width, bool(offset.singleton()));
-          // One write through the actual pointer preserves may-alias weak
-          // updates and targets scalar subobjects rather than the whole array.
-          eng.data().normal().mem_write(
-              scalar_lit.var(),
-              core::Literal< Variable*, MemoryLocation* >::machine_int(
-                  core::MachineInt(sid, type->bit_width(), type->sign())),
-              core::MachineInt(width, eng.data_layout().pointers.bit_width,
-                               core::Unsigned));
-        } else if (pts.is_set()) {
-          // An unresolved create supplies initialized, unknown handle bytes.
-          for (auto* location : pts) eng.data().normal().mem_forget(location);
+        auto native = eng.ctx().native_handle_accesses.find(call);
+        if (native != eng.ctx().native_handle_accesses.end()) {
+          if (native_handle_range(eng, call, handle_arg)) {
+            auto* tmp = eng.ctx().var_factory->get_named_shadow(native->second.type, "concurrency.native.handle");
+            eng.data().normal().scalar_assign_nondet(tmp);
+            eng.data().normal().mem_write(scalar_lit.var(), ScalarLit::machine_int_var(tmp),
+                core::MachineInt(4, eng.data_layout().pointers.bit_width, core::Unsigned));
+            eng.data().normal().scalar_forget(tmp);
+          } else {
+            eng.data().normal().mem_forget(eng.ctx().mem_factory->get_local(native->second.storage));
+            eng.ctx().concurrent_env.record_unmodeled_effect(call, "native pthread handle storage range not covered");
+          }
+        } else {
+          if (uncovered_mutex_value_write(eng, handle_arg, scalar_lit)) {
+            eng.ctx().concurrent_env.record_unmodeled_effect(
+                call, "pthread_create handle output effects not covered");
+          }
+          auto pts = eng.data().normal().pointer_to_points_to(scalar_lit.var());
+          if (pts.is_top()) {
+            // Local provenance excludes global writes, not stale local contents.
+            if (auto* local = local_output_base(handle_arg))
+              eng.data().normal().mem_forget(eng.ctx().mem_factory->get_local(local));
+          }
+          auto* pointee = cast< ar::PointerType >(handle_arg->type())->pointee();
+          auto* type = dyn_cast< ar::IntegerType >(pointee);
+          bool supported_bases = pts.is_set() && !pts.is_empty();
+          if (pts.is_set()) for (auto* location : pts)
+            supported_bases &= isa< LocalMemoryLocation >(location) ||
+                               isa< GlobalMemoryLocation >(location);
+          if (supported_bases && sid != 0 && type != nullptr) {
+            const auto width = eng.data_layout().store_size_in_bytes(type);
+            auto offset = eng.data().normal().pointer_to_pointer(scalar_lit.var()).offset();
+            // Origins are monotone MAY observations. Current contents still come
+            // from memory; non-identity writes retain the coverage gate above.
+            for (auto* location : pts)
+              eng.ctx().concurrent_env.record_synthetic_handle_slot(
+                  location, sid, offset.singleton() ? offset.lb().to_z_number()
+                                                   : core::ZNumber(0),
+                  width, bool(offset.singleton()));
+            // One write through the actual pointer preserves may-alias weak
+            // updates and targets scalar subobjects rather than the whole array.
+            eng.data().normal().mem_write(
+                scalar_lit.var(),
+                core::Literal< Variable*, MemoryLocation* >::machine_int(
+                    core::MachineInt(sid, type->bit_width(), type->sign())),
+                core::MachineInt(width, eng.data_layout().pointers.bit_width,
+                                 core::Unsigned));
+          } else if (pts.is_set()) {
+            // An unresolved create supplies initialized, unknown handle bytes.
+            for (auto* location : pts) eng.data().normal().mem_forget(location);
+          }
         }
       }
     }
   }
+
 
   // IPA context binding: record the points-to set of the 4th argument
   // (the thread's `arg` actual) so the child's formal parameter can be
