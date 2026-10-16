@@ -32,7 +32,10 @@ struct Index {
   }
 };
 
-enum class Kind { Unknown, Null, Root, Mutex, Owned, Fresh, Local, Global };
+enum class Kind {
+  Unknown, Null, Root, Mutex, Owned, Fresh, Local, Global,
+  Head, SharedOld, FromHead
+};
 struct Pointer {
   Kind kind = Kind::Unknown;
   Index index;
@@ -299,10 +302,14 @@ class RegionOwnership::Impl {
   ZNumber count{0}, extent{0}, next{0};
   std::map< Key, Snapshot > snapshots;
   std::map< Key, bool > certificates;
+  std::set< Key > conditional;
+  std::map< MemoryLocation*, bool > concurrent_families;
   std::map< ar::CallBase*, bool > constructors;
   std::set< ar::Function* > active;
   std::set< ar::Function* > workers;
   bool valid = true;
+  bool direct_heads = false;
+  bool worker_analysis = false;
   unsigned remaining = 32768;
   std::string reason;
 
@@ -390,18 +397,22 @@ class RegionOwnership::Impl {
     auto* operand = isa< ar::Load >(stmt) ? cast< ar::Load >(stmt)->operand()
                                           : cast< ar::Store >(stmt)->pointer();
     auto* fact = address(stmt, cc, operand);
-    bool protected_access = p.kind == Kind::Owned && state.lock.held &&
+    bool protected_access = (p.kind == Kind::Owned || p.kind == Kind::Head ||
+                             p.kind == Kind::FromHead) && state.lock.held &&
                             p.index == state.lock.index && fact &&
                             held_at(stmt, cc, state.lock);
     auto inserted = certificates.emplace(Key{stmt, cc}, protected_access);
     if (!inserted.second)
       inserted.first->second &= protected_access;
+    if (p.kind == Kind::FromHead)
+      conditional.insert({stmt, cc});
   }
-  void adopt(State& state, const Pointer& fresh, const Index& owner) {
+  void adopt(State& state, const Pointer& fresh, const Index& owner,
+             Kind kind = Kind::Owned) {
     for (auto& binding : state.pointers)
       if (binding.second.kind == Kind::Fresh &&
           binding.second.identity == fresh.identity) {
-        binding.second.kind = Kind::Owned;
+        binding.second.kind = kind;
         binding.second.index = owner;
         binding.second.identity = nullptr;
       }
@@ -467,7 +478,9 @@ class RegionOwnership::Impl {
       if (variable)
         return fail("symbolic object-field offset");
       p.offset += constant;
-      if ((p.kind == Kind::Owned || p.kind == Kind::Fresh) &&
+      if ((p.kind == Kind::Owned || p.kind == Kind::Fresh ||
+           p.kind == Kind::Head || p.kind == Kind::SharedOld ||
+           p.kind == Kind::FromHead) &&
           (p.offset < 0 || p.offset > extent))
         return fail("object-field offset outside extent");
     }
@@ -647,6 +660,23 @@ public:
       fail("no closed workers");
       return;
     }
+    prove();
+    if (!valid) {
+      // Recheck the complete frame with a weaker graph invariant. No facts
+      // from the failed unique-region proof may enter the direct-head proof.
+      valid = true;
+      direct_heads = true;
+      reason.clear();
+      remaining = 32768;
+      active.clear();
+      certificates.clear();
+      conditional.clear();
+      concurrent_families.clear();
+      prove();
+    }
+  }
+  void prove() {
+    worker_analysis = false;
     auto* cc = ctx.call_context_factory->get_empty();
     State state;
     Pointer ignored;
@@ -660,6 +690,7 @@ public:
                 return a->name() < b->name();
               });
     for (auto* worker : ordered_workers) {
+      worker_analysis = true;
       State entry;
       entry.concurrent = true;
       if (worker->num_parameters() != 1 ||
@@ -678,13 +709,22 @@ public:
   bool excludes(ar::Statement* a,
                 CallContext* ac,
                 ar::Statement* b,
-                CallContext* bc) const {
+                CallContext* bc,
+                MemoryLocation* common) const {
     auto x = certificates.find({a, ac}), y = certificates.find({b, bc});
-    return valid && roots && mutexes && x != certificates.end() &&
-           y != certificates.end() && x->second && y->second;
+    if (!valid || !roots || !mutexes || x == certificates.end() ||
+        y == certificates.end() || !x->second || !y->second)
+      return false;
+    if (conditional.count({a, ac}) || conditional.count({b, bc})) {
+      auto family = concurrent_families.find(common);
+      return family != concurrent_families.end() && family->second;
+    }
+    return true;
   }
   JsonDict info() const {
-    return {{"ownership_contract", "indexed-live-heap-owner-v1"},
+    return {{"ownership_contract", direct_heads
+                                      ? "indexed-head-publication-owner-v1"
+                                      : "indexed-live-heap-owner-v1"},
             {"scope", "paired live-heap byte conflicts, not pointer validity"},
             {"root_array", roots ? roots.global->name() : ""},
             {"mutex_array", mutexes ? mutexes.global->name() : ""},
@@ -765,24 +805,50 @@ bool RegionOwnership::Impl::transfer(ar::Statement* stmt,
           !within(stmt, cc, operand, roots, 4))
         return fail("root leaf range");
       if (load) {
-        value.kind = Kind::Owned;
+        value.kind = direct_heads ? Kind::Head : Kind::Owned;
         value.index = p.index;
       } else {
         if (state.concurrent || !type->is_pointer())
           return fail("root publication after create");
         auto rhs = pointer(store->value(), state);
         if (rhs.kind == Kind::Fresh && rhs.offset == 0)
-          adopt(state, rhs, p.index);
+          adopt(state, rhs, p.index, direct_heads ? Kind::Head : Kind::Owned);
         else if (rhs.kind != Kind::Null)
           return fail("non-fresh root publication");
       }
-    } else if (p.kind == Kind::Owned || p.kind == Kind::Fresh) {
+    } else if (p.kind == Kind::Owned || p.kind == Kind::Fresh ||
+               p.kind == Kind::Head || p.kind == Kind::SharedOld ||
+               p.kind == Kind::FromHead) {
       if (p.offset < 0 || p.offset + width > extent || width <= 0)
         return fail("incomplete object access extent");
       if (type->is_pointer()) {
         if (p.offset != next || width != 4)
           return fail("uncovered pointer field layout");
-        if (load) {
+        if (direct_heads) {
+          if (load) {
+            if (p.kind != Kind::Head && p.kind != Kind::Owned)
+              return fail("unproved transitive head traversal");
+            value.kind = Kind::FromHead;
+            value.index = p.index;
+          } else {
+            auto rhs = pointer(store->value(), state);
+            if (p.kind == Kind::FromHead || rhs.offset != 0)
+              return fail("indirect graph publication");
+            if (state.concurrent) {
+              if ((p.kind != Kind::Head && p.kind != Kind::Owned) ||
+                  (rhs.kind != Kind::Null &&
+                   !((rhs.kind == Kind::Owned || rhs.kind == Kind::FromHead) &&
+                     rhs.index == p.index)))
+                return fail("foreign concurrent head publication");
+            } else {
+              if (rhs.kind == Kind::Fresh)
+                adopt(state, rhs, Index{}, Kind::SharedOld);
+              else if (rhs.kind != Kind::Null && rhs.kind != Kind::SharedOld &&
+                       rhs.kind != Kind::FromHead)
+                return fail("head or unknown node stored in old graph");
+            }
+          }
+        } else if (load) {
           if (p.kind != Kind::Owned)
             return fail("unbound fresh field load");
           value.kind = Kind::Owned;
@@ -851,7 +917,16 @@ bool RegionOwnership::Impl::transfer(ar::Statement* stmt,
           return fail("multiple unbound fresh instances");
       if (state.concurrent && !state.lock.held)
         return fail("unprotected concurrent construction");
-      if (state.lock.held) {
+      if (direct_heads) {
+        // MAY-spawned at a CFG join does not certify an allocation phase.
+        // Only actual worker-root executions qualify, with every birth held.
+        auto* family = ctx.mem_factory->get_dyn_alloc(call, cc);
+        const bool eligible = worker_analysis && state.lock.held;
+        auto inserted = concurrent_families.emplace(family, eligible);
+        if (!inserted.second)
+          inserted.first->second &= eligible;
+      }
+      if (state.lock.held && (!direct_heads || worker_analysis)) {
         result.kind = Kind::Owned;
         result.index = state.lock.index;
       } else {
@@ -1027,8 +1102,9 @@ void RegionOwnership::run() {
 bool RegionOwnership::excludes(ar::Statement* a,
                                CallContext* ac,
                                ar::Statement* b,
-                               CallContext* bc) const {
-  return _impl->excludes(a, ac, b, bc);
+                               CallContext* bc,
+                               MemoryLocation* common) const {
+  return _impl->excludes(a, ac, b, bc, common);
 }
 JsonDict RegionOwnership::info() const {
   return _impl->info();

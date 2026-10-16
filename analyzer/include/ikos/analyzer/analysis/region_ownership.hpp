@@ -25,10 +25,13 @@ public:
   ~RegionOwnership();
   void observe(ar::Statement*, const value::AbstractDomain&, CallContext*);
   void run();
+  // The consumer must check every common points-to location. Conditional
+  // link facts do not apply to pre-publication/shared allocation families.
   bool excludes(ar::Statement*,
                 CallContext*,
                 ar::Statement*,
-                CallContext*) const;
+                CallContext*,
+                MemoryLocation* common) const;
   JsonDict info() const;
 };
 

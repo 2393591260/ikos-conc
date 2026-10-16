@@ -1425,8 +1425,17 @@ DataRaceChecker::~DataRaceChecker() {
       };
       // Actual heap overlap implies equal immutable owners, hence the same
       // corresponding concrete mutex. This is not a non-nullness assertion.
-      if (heap_only(a.pts) && heap_only(b.pts) &&
-          this->_ownership->excludes(a.stmt, a.call_context, b.stmt, b.call_context)) {
+      auto owned_conflicts = [&]() {
+        if (!heap_only(a.pts) || !heap_only(b.pts)) return false;
+        const auto common = a.pts.meet(b.pts);
+        if (common.is_empty()) return false;
+        for (auto* object : common)
+          if (!this->_ownership->excludes(a.stmt, a.call_context,
+                                          b.stmt, b.call_context, object))
+            return false;
+        return true;
+      };
+      if (owned_conflicts()) {
         auto proof = this->_ownership->info();
         proof.put("safe_reason", "indexed ownership with corresponding mutexes");
         if (auto location = source_location(a.stmt)) {

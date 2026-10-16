@@ -527,6 +527,25 @@ pointer writes or unproved address bounds disable the family certificate.
 Coverage warnings remain independent. Unsupported programs use the existing
 analysis and may remain UNKNOWN.
 
+A second complete pass can retain distinct root heads while allowing nodes
+shared by several lists before thread creation. A fresh object stored in a root
+slot becomes a head and cannot be stored in another slot or link. Old link
+targets may be shared; they receive no unique-owner certificate. New worker
+objects must be constructed under their corresponding actual mutex and may
+only be published through a head or new object with the same owner. The pass
+closes all pointer writes, helpers and allocation contexts; unknown publication,
+free, partial writes or changing an old link concurrently disable this mode.
+
+A one-hop link load carries a conditional owner: only if its actual object is
+from a verified worker allocation family does that owner apply. Every birth of
+that exact allocation/context family must qualify; a MAY-spawned state alone is
+insufficient. The consumer checks every location in the intersection of both
+complete pure-heap points-to sets. Old or mixed allocation families retain the
+candidate. Transitive link traversal is deliberately unsupported. This mode
+reports `indexed-head-publication-owner-v1`; its BMC-disabled positive, negative,
+renamed and 64-bit payload controls run with
+`python3 scripts/test_head_publication.py`.
+
 For guarded indexes, `--partitioning=guards` can supply the required array and
 mutex ranges. The pass accepts verified zero-argument `__VERIFIER_nondet_int`
 declarations, including the C old-style declaration representation. It follows
