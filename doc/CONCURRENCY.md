@@ -361,6 +361,28 @@ failure branches, coverage and shared interference.
 
 ## Serialized arena reservations
 
+An independent symbolic mode handles a closed, immutable heap array initialized
+before all worker creation. It interprets every normal startup prefix and proves
+the allocation size equals the positive element count times its stride without
+32-bit wrap. Under one real default-normal mutex, the shared counter starts at
+zero and every successful transaction strictly increases it within that count.
+A success at zero is a nonempty reservation; a transaction without a Store must
+have a provably empty processing loop. Later workers see an arbitrary counter
+in the inductive range, rather than the first worker's startup value.
+
+For a supported natural loop, the checker proves the iterator invariant at
+entry, checks an arbitrary iteration and its backedge, and checks every full
+element access against the owning half-open slice. It does not enumerate array
+sizes, workers or loop iterations. Native GEP and AR PointerShift base, index,
+stride and widths must agree. Scalar snapshots are per execution; data values
+and memory-free helper returns are overapproximated. Overflow flags are proof
+obligations, never assumptions. Both candidate endpoints must refer exclusively
+to the checked live-heap allocation. This conditional byte-conflict certificate
+does not establish successful malloc, pointer validity, completion or fairness.
+Missing effects, aliases, lifetime or loop evidence, incomplete SMT checks and
+resource exhaustion retain the ordinary candidate. Static SMT limits are
+separate from BMC budgets; the finite global-array mode below is unchanged.
+
 The checker can prove disjoint byte ranges in a flat global integer array when
 each access uses a fresh reservation from a sealed counter. The initial subset
 uses a real, defined `__VERIFIER_atomic_*` function with exact `void(int*)` ABI;

@@ -72,6 +72,7 @@ struct Proof {
 
 class ArenaReservation::Impl {
   Context& ctx;
+  SymbolicArenaReservation symbolic;
   const BinaryTokenOwnership& binary_tokens;
   std::map< llvm::Value*, ar::Statement* > originals;
   std::map< llvm::GlobalVariable*, ar::GlobalVariable* > globals;
@@ -643,7 +644,7 @@ class ArenaReservation::Impl {
   }
 public:
   Impl(Context& context, const std::vector< AccessRecord >& records, const BinaryTokenOwnership& tokens)
-      : ctx(context), binary_tokens(tokens) {
+      : ctx(context), symbolic(context), binary_tokens(tokens) {
     if (!ctx.opts.enable_thread_modular || ctx.opts.procedural == Procedural::Intraprocedural ||
         ctx.opts.entry_points.size() != 1 || ctx.opts.entry_points.front()->name() != "main" ||
         ctx.opts.entry_points.front()->num_parameters() != 0 || !ctx.opts.entry_points.front()->has_frontend() ||
@@ -703,10 +704,13 @@ public:
     }
   }
   bool excludes(const AccessRecord& a, const AccessRecord& b) const {
+    if (symbolic.excludes(a, b)) return true;
     auto* pa = access(a); auto* pb = access(b);
     return pa && pb && pa->arena == pb->arena && pa->counter == pb->counter;
   }
   JsonDict info(const AccessRecord& r) const {
+    auto symbolic_info = symbolic.info(r);
+    if (!symbolic_info.empty()) return symbolic_info;
     auto* p = access(r);
     for (const auto& counter : counters) if (p && counter.global == p->counter)
       return {{"safe_reason", "disjoint serialized arena reservations"},

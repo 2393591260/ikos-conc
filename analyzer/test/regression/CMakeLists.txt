@@ -66,6 +66,8 @@ add_concurrency_test(heap-handoff "${CONCURRENCY_ROOT}/scripts/test_heap_handoff
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(arena-reservation "${CONCURRENCY_ROOT}/scripts/test_arena_reservation.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(symbolic-arena "${CONCURRENCY_ROOT}/scripts/test_symbolic_arena.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(token-once "${CONCURRENCY_ROOT}/scripts/test_token_once.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(token-arena "${CONCURRENCY_ROOT}/scripts/test_token_arena.py"

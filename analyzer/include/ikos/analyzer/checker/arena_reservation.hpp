@@ -11,6 +11,17 @@ class Context;
 class BinaryTokenOwnership;
 struct AccessRecord;
 
+// Symbolic, inductively checked live-heap slices; consumed by ArenaReservation.
+class SymbolicArenaReservation {
+  class Impl;
+  std::unique_ptr< Impl > _impl;
+public:
+  explicit SymbolicArenaReservation(Context&);
+  ~SymbolicArenaReservation();
+  bool excludes(const AccessRecord&, const AccessRecord&) const;
+  JsonDict info(const AccessRecord&) const;
+};
+
 // Disjoint slices from a sealed, serialized finite counter transition system.
 // A proof budget is a refusal boundary, never an unrolling-based SAFE result.
 class ArenaReservation {
