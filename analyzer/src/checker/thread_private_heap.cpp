@@ -61,6 +61,7 @@ struct Offset {
 };
 struct Certificate {
   ar::CallBase* allocation = nullptr;
+  ar::Function* worker = nullptr;
   std::set< llvm::Instruction* > accesses;
 };
 } // namespace
@@ -124,7 +125,7 @@ class ThreadPrivateHeap::Impl {
   }
   bool effects_closed(llvm::Function* f, llvm::CallBase* allocation,
                       std::set< llvm::Function* >& active,
-                      std::set< llvm::Function* >& done) {
+                      std::set< llvm::Function* >& done, llvm::CallBase* transfer = nullptr) {
     if (done.count(f)) return true;
     if (!active.insert(f).second) return false;
     for (auto& block : *f) for (auto& instruction : block) {
@@ -138,8 +139,13 @@ class ThreadPrivateHeap::Impl {
       if (nondet(call, target)) continue;
       if (!plain_call(call, target)) return false;
       if (!target->isDeclaration()) {
-        if (!effects_closed(target, allocation, active, done)) return false;
-      } else if (call == allocation) {
+        if (!effects_closed(target, allocation, active, done, transfer)) return false;
+      } else if (call == allocation || call == transfer) {
+        continue;
+      } else if (transfer && ((target->getName() == "malloc" && target->arg_size() == 1 &&
+                  target->getReturnType()->isPointerTy() &&
+                  target->getFunctionType()->getParamType(0)->isIntegerTy(32)) ||
+                  native_handle_api(call, false) || native_handle_api(call, true))) {
         continue;
       } else if (target->getName() == "free" && target->arg_size() == 1 &&
                  target->getReturnType()->isVoidTy() &&
@@ -306,6 +312,221 @@ class ThreadPrivateHeap::Impl {
     result.allocation = ar_allocation;
     return result;
   }
+  // One create attempt consumes the current allocation, even on failure.
+  // Stop at the allocation event, not its entire block (A and C may share it).
+  bool fresh_before_each(llvm::CallBase* allocation, llvm::CallBase* create) {
+    llvm::DominatorTree dom(*create->getFunction());
+    if (!dom.dominates(allocation, create)) return false;
+    std::vector< llvm::Instruction* > pending{create->getNextNode()};
+    std::set< llvm::Instruction* > seen;
+    while (!pending.empty()) {
+      auto* instruction = pending.back(); pending.pop_back();
+      if (!instruction || instruction == allocation) continue;
+      if (!spend() || instruction == create) return false;
+      if (!seen.insert(instruction).second) continue;
+      if (instruction->isTerminator()) {
+        for (auto* next : llvm::successors(instruction->getParent()))
+          pending.push_back(&next->front());
+      } else pending.push_back(instruction->getNextNode());
+    }
+    return true;
+  }
+  bool ar_pointer_origin(ar::Value* value, ar::Value* allocation) {
+    for (unsigned depth = 0; depth < 32; ++depth) {
+      if (value == allocation) return true;
+      if (!value->type()->is_pointer()) return false;
+      auto* variable = dyn_cast< ar::InternalVariable >(value);
+      auto* definition = variable ? unique_def(variable) : nullptr;
+      auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition);
+      if (!cast || cast->op() != ar::UnaryOperation::Bitcast ||
+          !cast->operand()->type()->is_pointer()) return false;
+      value = cast->operand();
+    }
+    return false;
+  }
+  // This ABI gate is deliberately separate from native_handle_api's NULL
+  // argument contract. Only the closed allocation chain may supply arg 4.
+  ar::Function* handoff_entry(llvm::CallBase* create, ar::CallBase* allocation) {
+    auto* api = callee(create);
+    if (!plain_call(create, api) || !api->isDeclaration() || api->getName() != "pthread_create" ||
+        create->arg_size() != 4 || !create->use_empty() || !create->getType()->isIntegerTy(32) ||
+        !llvm::isa< llvm::ConstantPointerNull >(create->getArgOperand(1)) ||
+        !calls.count(create) || !calls.at(create)) return nullptr;
+    for (unsigned i = 0; i < 4; ++i) {
+      auto* type = llvm::dyn_cast< llvm::PointerType >(create->getArgOperand(i)->getType());
+      if (!type || type->getAddressSpace() != 0) return nullptr;
+    }
+    auto* output = llvm::cast< llvm::PointerType >(create->getArgOperand(0)->getType());
+    auto* worker = llvm::dyn_cast< llvm::Function >(create->getArgOperand(2)->stripPointerCasts());
+    auto* signature = llvm::cast< llvm::PointerType >(create->getArgOperand(2)->getType());
+    auto* byte_pointer = llvm::Type::getInt8PtrTy(create->getContext());
+    if (!output->getPointerElementType()->isIntegerTy(32) || !worker || worker->isDeclaration() ||
+        worker->isVarArg() || worker->arg_size() != 1 || worker->getReturnType() != byte_pointer ||
+        worker->getFunctionType()->getParamType(0) != byte_pointer ||
+        create->getArgOperand(3)->getType() != byte_pointer ||
+        signature->getPointerElementType() != worker->getFunctionType() ||
+        worker->getCallingConv() != llvm::CallingConv::C || worker->getName() == "main") return nullptr;
+    auto* ar_create = calls.at(create);
+    auto* ar_api = native_handle_callee(ar_create);
+    auto* result = ar_api ? dyn_cast< ar::IntegerType >(ar_api->type()->return_type()) : nullptr;
+    if (!ar_api || !ar_api->is_declaration() || ar_api->name() != "pthread_create" ||
+        !result || result->bit_width() != 32 || ar_api->type()->is_var_arg() ||
+        ar_api->num_parameters() != 4 || ar_create->num_arguments() != 4 ||
+        ar_create->code() != allocation->code() ||
+        !isa< ar::NullConstant >(ar_create->argument(1)) ||
+        !isa< ar::FunctionPointerConstant >(ar_create->argument(2)) ||
+        !ar_pointer_origin(ar_create->argument(3), allocation->result())) return nullptr;
+    for (unsigned i = 0; i < 4; ++i)
+      if (ar_api->type()->param_type(i) != ar_create->argument(i)->type()) return nullptr;
+    auto* child = cast< ar::FunctionPointerConstant >(ar_create->argument(2))->function();
+    if (!child->is_definition() || child->num_parameters() != 1 || !child->param(0)->type()->is_pointer() ||
+        !child->type()->return_type()->is_pointer() || !child->has_frontend() ||
+        child->frontend< llvm::Value >() != worker) return nullptr;
+    // All actual worker activations must use this one certified transfer.
+    std::vector< llvm::Value* > pending{worker};
+    std::set< llvm::Value* > seen;
+    while (!pending.empty()) {
+      auto* value = pending.back(); pending.pop_back();
+      if (!spend()) return nullptr;
+      if (!seen.insert(value).second) continue;
+      for (auto* user : value->users()) {
+        if (llvm::isa< llvm::BitCastOperator >(user)) pending.push_back(user);
+        else if (user != create || create->getArgOperand(2) != value) return nullptr;
+      }
+    }
+    return child;
+  }
+  bool constant_offset(llvm::GetElementPtrInst* gep, core::ZNumber& offset) {
+    auto* type = gep->getSourceElementType();
+    const auto& layout = gep->getModule()->getDataLayout();
+    bool first = true;
+    for (auto it = gep->idx_begin(); it != gep->idx_end(); ++it) {
+      auto* index = llvm::dyn_cast< llvm::ConstantInt >(it->get());
+      if (!index || !index->getType()->isIntegerTy(32) || !type->isSized()) return false;
+      auto value = core::ZNumber(index->getSExtValue());
+      if (first) {
+        if (layout.getTypeAllocSize(type).isScalable()) return false;
+        offset += value * core::ZNumber(layout.getTypeAllocSize(type).getFixedValue());
+        first = false;
+      } else if (auto* structure = llvm::dyn_cast< llvm::StructType >(type)) {
+        if (value < 0 || value >= core::ZNumber(structure->getNumElements())) return false;
+        auto field = index->getZExtValue();
+        offset += core::ZNumber(layout.getStructLayout(structure)->getElementOffset(field));
+        type = structure->getElementType(field);
+      } else if (auto* array = llvm::dyn_cast< llvm::ArrayType >(type)) {
+        type = array->getElementType();
+        if (!type->isSized() || layout.getTypeAllocSize(type).isScalable()) return false;
+        offset += value * core::ZNumber(layout.getTypeAllocSize(type).getFixedValue());
+      } else return false;
+    }
+    return true;
+  }
+  Certificate certify_handoff(ar::CallBase* ar_allocation) {
+    Certificate result;
+    auto* allocation = ar_allocation->has_frontend()
+        ? llvm::dyn_cast< llvm::CallBase >(ar_allocation->frontend< llvm::Value >()) : nullptr;
+    auto* api = allocation ? callee(allocation) : nullptr;
+    auto* ar_api = native_handle_callee(ar_allocation);
+    auto* main = ctx.opts.entry_points.front();
+    if (!api || !ar_api || !ar_api->is_declaration() || ar_api->intrinsic_id() != ar::Intrinsic::LibcMalloc ||
+        !plain_call(allocation, api) || !api->isDeclaration() || api->getName() != "malloc" ||
+        allocation->arg_size() != 1 || ar_allocation->num_arguments() != 1 || !ar_allocation->has_result() ||
+        ar_allocation->code() != main->body() || !main->has_frontend() ||
+        main->frontend< llvm::Function >() != allocation->getFunction() ||
+        !allocation->getFunction()->use_empty() || !calls.count(allocation) || calls.at(allocation) != ar_allocation ||
+        !same_bits(ar_allocation->argument(0), allocation->getArgOperand(0)) ||
+        allocation->getType() != llvm::Type::getInt8PtrTy(allocation->getContext()) ||
+        !api->getFunctionType()->getParamType(0)->isIntegerTy(32)) return result;
+    auto* size = llvm::dyn_cast< llvm::ConstantInt >(allocation->getArgOperand(0));
+    if (!size || size->isZero()) return result;
+    auto* source_main = allocation->getFunction();
+    const auto& layout = source_main->getParent()->getDataLayout();
+    llvm::Triple target(source_main->getParent()->getTargetTriple());
+    if (layout.getPointerSizeInBits() != 32 || layout.getIndexSizeInBits(0) != 32 ||
+        target.getArch() != llvm::Triple::x86 || !target.isOSLinux() ||
+        target.getEnvironment() != llvm::Triple::GNU ||
+        !mutex_effect_pointer_representations_closed(*source_main->getParent())) return result;
+    llvm::CallBase* create = nullptr;
+    std::vector< llvm::Value* > pending{allocation};
+    std::set< llvm::Value* > seen;
+    while (!pending.empty()) {
+      auto* pointer = pending.back(); pending.pop_back();
+      if (!spend()) return {};
+      if (!seen.insert(pointer).second) continue;
+      for (auto* user : pointer->users()) {
+        auto* instruction = llvm::dyn_cast< llvm::Instruction >(user);
+        if (!instruction || instruction->getFunction() != source_main) return {};
+        if (llvm::isa< llvm::DbgInfoIntrinsic >(instruction)) continue;
+        if (auto* cast = llvm::dyn_cast< llvm::BitCastInst >(instruction)) {
+          auto* type = llvm::dyn_cast< llvm::PointerType >(cast->getType());
+          if (!type || type->getAddressSpace() != 0) return {};
+          pending.push_back(cast);
+        } else if (auto* call = llvm::dyn_cast< llvm::CallBase >(instruction)) {
+          if ((create && create != call) || call->arg_size() != 4 || call->getArgOperand(3) != pointer) return {};
+          create = call;
+          for (unsigned i = 0; i < 3; ++i) if (call->getArgOperand(i) == pointer) return {};
+        } else return {};
+      }
+    }
+    if (!create || !fresh_before_each(allocation, create)) return {};
+    auto* worker = handoff_entry(create, ar_allocation);
+    if (!worker) return {};
+    auto* source_worker = worker->frontend< llvm::Function >();
+    std::set< llvm::Function* > active, done;
+    if (!effects_closed(source_main, allocation, active, done, create)) return {};
+    active.clear(); done.clear();
+    if (!effects_closed(source_worker, allocation, active, done)) return {};
+    const auto extent = core::ZNumber(size->getZExtValue());
+    std::map< llvm::Value*, core::ZNumber > offsets{{source_worker->getArg(0), core::ZNumber(0)}};
+    pending = {source_worker->getArg(0)}; seen.clear();
+    std::set< llvm::Instruction* > uses;
+    llvm::CallBase* release = nullptr;
+    while (!pending.empty()) {
+      auto* pointer = pending.back(); pending.pop_back();
+      if (!spend()) return {};
+      if (!seen.insert(pointer).second) continue;
+      auto offset = offsets.at(pointer);
+      for (auto* user : pointer->users()) {
+        auto* instruction = llvm::dyn_cast< llvm::Instruction >(user);
+        if (!instruction || instruction->getFunction() != source_worker) return {};
+        if (llvm::isa< llvm::DbgInfoIntrinsic >(instruction)) continue;
+        uses.insert(instruction);
+        if (auto* cast = llvm::dyn_cast< llvm::BitCastInst >(instruction)) {
+          auto* type = llvm::dyn_cast< llvm::PointerType >(cast->getType());
+          if (!type || type->getAddressSpace() != 0) return {};
+          offsets.emplace(cast, offset); pending.push_back(cast);
+        } else if (auto* gep = llvm::dyn_cast< llvm::GetElementPtrInst >(instruction)) {
+          auto derived = offset;
+          if (gep->getPointerOperand() != pointer || !constant_offset(gep, derived) || derived < 0 || derived > extent) return {};
+          offsets.emplace(gep, derived); pending.push_back(gep);
+        } else if (auto* load = llvm::dyn_cast< llvm::LoadInst >(instruction)) {
+          if (load->getPointerOperand() != pointer || !load->getType()->isIntegerTy() ||
+              offset < 0 || offset + core::ZNumber(layout.getTypeStoreSize(load->getType()).getFixedValue()) > extent) return {};
+          result.accesses.insert(load);
+        } else if (auto* store = llvm::dyn_cast< llvm::StoreInst >(instruction)) {
+          if (store->getPointerOperand() != pointer || !store->getValueOperand()->getType()->isIntegerTy() ||
+              offset < 0 || offset + core::ZNumber(layout.getTypeStoreSize(store->getValueOperand()->getType()).getFixedValue()) > extent) return {};
+          result.accesses.insert(store);
+        } else if (auto* call = llvm::dyn_cast< llvm::CallBase >(instruction)) {
+          auto* called = callee(call);
+          if (release || offset != 0 || !plain_call(call, called) || !called->isDeclaration() ||
+              called->getName() != "free" || call->arg_size() != 1 || call->getArgOperand(0) != pointer ||
+              !call->getType()->isVoidTy() || may_follow(call, call)) return {};
+          release = call;
+        } else if (auto* compare = llvm::dyn_cast< llvm::ICmpInst >(instruction)) {
+          if (!compare->isEquality() || !(llvm::isa< llvm::ConstantPointerNull >(compare->getOperand(0)) ||
+                                        llvm::isa< llvm::ConstantPointerNull >(compare->getOperand(1)))) return {};
+        } else return {};
+      }
+    }
+    if (release) for (auto* use : uses) if (use != release && may_follow(release, use)) return {};
+    // Returning the argument is a publication, already rejected by use closure.
+    for (auto& block : *source_worker)
+      if (auto* ret = llvm::dyn_cast< llvm::ReturnInst >(block.getTerminator()))
+        if (!llvm::isa< llvm::ConstantPointerNull >(ret->getReturnValue())) return {};
+    result.allocation = ar_allocation; result.worker = worker;
+    return result;
+  }
   bool access(const AccessRecord& record) const {
     if (!record.pts.is_set() || record.pts.is_empty() || !record.stmt->has_frontend() || record.width == 0) return false;
     auto* source = llvm::dyn_cast< llvm::Instruction >(record.stmt->frontend< llvm::Value >());
@@ -314,9 +535,12 @@ class ThreadPrivateHeap::Impl {
       auto* heap = dyn_cast< DynAllocMemoryLocation >(object);
       auto it = heap ? certificates.find(heap->call()) : certificates.end();
       if (!heap || it == certificates.end() || !it->second.allocation ||
-          !it->second.accesses.count(source) || heap->context() != record.call_context ||
-          heap->call()->code() != record.stmt->code() ||
+          !it->second.accesses.count(source) ||
           record.thread_id != record.stmt->code()->function()->name()) return false;
+      if (auto* worker = it->second.worker) {
+        if (record.stmt->code() != worker->body() || !record.call_context || !record.call_context->empty() ||
+            !heap->context() || !heap->context()->empty()) return false;
+      } else if (heap->context() != record.call_context || heap->call()->code() != record.stmt->code()) return false;
       auto* load = llvm::dyn_cast< llvm::LoadInst >(source);
       auto* store = llvm::dyn_cast< llvm::StoreInst >(source);
       if ((!load && !store) || (load && record.kind != AccessKind::Read) ||
@@ -351,13 +575,26 @@ public:
       }
     for (const auto& record : accesses) if (record.pts.is_set()) for (auto* object : record.pts)
       if (auto* heap = dyn_cast< DynAllocMemoryLocation >(object))
-        if (!certificates.count(heap->call())) certificates.emplace(heap->call(), certify(heap->call()));
+        if (!certificates.count(heap->call())) {
+          auto* api = native_handle_callee(heap->call());
+          auto proof = api && api->intrinsic_id() == ar::Intrinsic::LibcMalloc
+              ? certify_handoff(heap->call()) : certify(heap->call());
+          certificates.emplace(heap->call(), std::move(proof));
+        }
   }
   bool excludes(const AccessRecord& a, const AccessRecord& b) const { return access(a) && access(b); }
+  const char* contract(const AccessRecord& record) const {
+    for (auto* object : record.pts) {
+      auto* heap = cast< DynAllocMemoryLocation >(object);
+      if (certificates.at(heap->call()).worker) return "closed-main-child-malloc-handoff-v1";
+    }
+    return "closed-worker-calloc-v1";
+  }
 };
 ThreadPrivateHeap::ThreadPrivateHeap(Context& ctx, const std::vector< AccessRecord >& accesses)
     : _impl(std::make_unique< Impl >(ctx, accesses)) {}
 ThreadPrivateHeap::~ThreadPrivateHeap() = default;
+const char* ThreadPrivateHeap::contract(const AccessRecord& a) const { return _impl->contract(a); }
 bool ThreadPrivateHeap::excludes(const AccessRecord& a, const AccessRecord& b) const { return _impl->excludes(a, b); }
 } // namespace analyzer
 } // namespace ikos

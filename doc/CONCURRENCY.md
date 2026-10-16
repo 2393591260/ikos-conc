@@ -271,9 +271,25 @@ Allocation failure does not grant non-nullness or prune the caller's path.
 
 Only pairs whose two recorded accesses match certified LLVM/AR effects and exact
 heap provenance are excluded. All existing access records, shared interference,
-coverage checks and unrelated race candidates remain active. Creator-to-child
-ownership transfer and per-iteration allocation identities are outside this
-certificate. The initial implementation targets the ILP32 Linux/GNU ABI.
+coverage checks and unrelated race candidates remain active. The calloc
+certificate targets the ILP32 Linux/GNU ABI and does not establish general
+creator-to-child or per-iteration ownership.
+
+A separate certificate supports a positive constant-size `malloc` in `main`
+whose result is passed to exactly one child. The allocation must dominate the
+create, and every path between two create attempts must cross a new allocation
+event. Pointer uses in the creator are limited to SSA bitcasts and that transfer;
+all entry-function uses must identify the same actual create. Failed attempts
+also consume the object, so retrying with an old pointer is rejected. No success
+or worker-termination premise is added.
+
+The child may use constant-offset integer fields inside the real allocation
+extent and optionally free the original base. Exact mathematical offsets cover
+the full access width; a use reachable after free invalidates the certificate.
+Publication, parent accesses, array-stored aliases, extra creates, unknown
+callbacks and joins needed to reclaim an object from the parent require further
+proof and remain outside this subset. This rule preserves the existing NULL
+failure branches, coverage and shared interference.
 
 ## Resource limits
 

@@ -1241,7 +1241,7 @@ DataRaceChecker::~DataRaceChecker() {
       }
       if (private_heap.excludes(a, b)) {
         JsonDict proof{{"safe_reason", "unexported live worker allocations"},
-                       {"private_heap_contract", "closed-worker-calloc-v1"}};
+                       {"private_heap_contract", private_heap.contract(a)}};
         if (auto location = source_location(a.stmt)) proof.put("access_a_line", location.line());
         if (auto location = source_location(b.stmt)) proof.put("access_b_line", location.line());
         this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,

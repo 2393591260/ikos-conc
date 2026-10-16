@@ -19,6 +19,8 @@ public:
   ThreadPrivateHeap(Context&, const std::vector< AccessRecord >&);
   ~ThreadPrivateHeap();
   bool excludes(const AccessRecord&, const AccessRecord&) const;
+  // Call only after excludes() establishes the complete certificate.
+  const char* contract(const AccessRecord&) const;
 };
 } // namespace analyzer
 } // namespace ikos
