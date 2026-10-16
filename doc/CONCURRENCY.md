@@ -245,8 +245,20 @@ key APIs and the runtime destination matches that exact object and offset.
 Constant integer pointer tokens avoid the unsupported-address gate only when
 every use is a bitcast or the value argument of verified `pthread_setspecific`.
 Dereferencing, storing or passing such a token elsewhere retains the gate;
-retrieved pointers remain unknown. Non-NULL destructors, key deletion, incompatible
-APIs and intraprocedural pointer analysis retain conservative coverage boundaries.
+retrieved pointers remain unknown. A separate effect certificate accepts a
+non-NULL destructor only when DataRace is the sole requested analysis. Its
+actual defined `void(void*)` body and every direct helper are scanned in LLVM
+and AR without argument-based pruning. Loads, stores, allocation, synchronization,
+unknown/indirect calls and hidden ABI effects refuse the certificate. Pure
+computation and control, verified nondeterminism, real abort and constant
+assertion diagnostics may remain; aborting or diverging is not treated as
+successful completion. The checker records this memory projection separately.
+Mixed analyses keep the old callback fallback, and BMC/execution validation
+still cannot omit TLS registration or callback executions. This proves no
+callback assertion, successful key operation or TLS value identity. The older
+source-only output/selector predicates remain NULL-destructor-only. Other
+destructors, key deletion, incompatible APIs and intraprocedural pointer
+analysis retain conservative coverage boundaries.
 See POSIX.1-2024
 [key creation](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_key_create.html)
 and [thread-specific values](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_getspecific.html).

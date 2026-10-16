@@ -2364,7 +2364,8 @@ public:
         }
         // Association alone does not publish to another thread. Actual escape
         // through a retrieved TOP value keeps the usual store/spawn coverage;
-        // non-NULL destructor registration remains an uncovered callback.
+        // A non-NULL destructor is covered only by the separate race-only
+        // complete no-memory-effect certificate; other analyses keep fallback.
         // Neither operation accesses the value's pointee. Return TOP, including
         // NULL for get and failure for create/set; do not infer TLS equalities.
         this->exec_unknown_call(call, false, false, false, false);

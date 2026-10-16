@@ -3085,6 +3085,16 @@ void DataRaceChecker::check_extern_call_effects(
   const auto key_effect = pthread_key_effect(call, this->_ctx);
   if (key_effect == PthreadKeyEffect::Get || key_effect == PthreadKeyEffect::Set)
     return; // Runtime TLS slots, not memory pointed to by the stored value.
+  if (key_effect == PthreadKeyEffect::Create &&
+      !isa< ar::NullConstant >(call->argument(1))) {
+    auto* callback = cast< ar::FunctionPointerConstant >(call->argument(1))->function();
+    this->_checks.insert(
+        CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+        call, call_context, {},
+        JsonDict{{"safe_reason", "complete TLS destructor has no application-memory or synchronization effects"},
+                 {"tls_destructor_contract", "race-only-closed-memory-free-callback-v1"},
+                 {"callback", callback->name()}});
+  }
 
   auto* exact = bmc::exact_callee(call);
   const std::string callee_nm = exact != nullptr ? exact->name() : "";
