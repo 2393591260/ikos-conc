@@ -130,6 +130,27 @@ all C/POSIX programs.
 | Unknown effects | Conservative coverage boundaries or explicit import/execution errors; omitted effects do not prove SAFE |
 | Other properties | Original IKOS analyses remain available; deadlock/reachability are not claimed as complete concurrency properties |
 
+A separate self-publication certificate handles a scalar which is both the
+state and the published value. Under one closed default-normal mutex, every
+normal critical-section exit must leave the final value: an initial entry
+executes exactly one Store, while an already-final entry executes no Store.
+Even a same-value later Store refuses this rule. Induction over mutex ownership
+proves a unique dynamic write across arbitrarily many worker instances. A finite
+per-instance phase proof then orders that write before each certified post-gate
+read, including repeated reads. It does not order arbitrary later writes.
+
+The initial subset requires a closed uniform-zero integer array and scalar
+body arguments. The complete memory-free entry prefix and guard helpers produce
+argument constraints; every feasible argument tuple is enumerated, with a final
+UNSAT check proving exhaustion. A model or enumeration limit is inconclusive.
+The actual body is explored to a finite fixed point for every tuple, with
+parallel PHIs, captured loads, exact array byte bounds and checked arithmetic.
+Unprotected state loads remain TOP; their values do not justify their own race
+exclusion. Unknown effects, escaping addresses, missing normal-return coverage,
+weakening the write invariant, solver unknown or incomplete traversal refuse the
+certificate. The parent is limited to private scalar effects and checked native
+creates; no thread-count bound, successful completion or join fact is inferred.
+
 The race checker can independently saturate a finite SC protocol state space.
 Its initial subset closes two distinct, once-created worker roots, direct whole
 1–64-bit integer scalar effects, and all LLVM/AR call and memory effects on

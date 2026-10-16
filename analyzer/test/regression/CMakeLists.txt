@@ -56,6 +56,8 @@ add_concurrency_test(pthread-key-effects "${CONCURRENCY_ROOT}/scripts/test_pthre
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(tls-destructor-effects "${CONCURRENCY_ROOT}/scripts/test_tls_destructor_effects.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(self-publication "${CONCURRENCY_ROOT}/scripts/test_self_publication.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(sc-protocol "${CONCURRENCY_ROOT}/scripts/test_sc_protocol.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(mutex-handover "${CONCURRENCY_ROOT}/scripts/test_mutex_handover.py"
