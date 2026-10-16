@@ -48,6 +48,8 @@ add_concurrency_test(heap-initialization "${CONCURRENCY_ROOT}/scripts/test_heap_
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(heap-constructors "${CONCURRENCY_ROOT}/scripts/test_heap_constructor_fields.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(heap-initialization-prefix "${CONCURRENCY_ROOT}/scripts/test_heap_initialization_prefix.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(region-ownership "${CONCURRENCY_ROOT}/scripts/test_region_ownership.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(boolean-partitioning "${CONCURRENCY_ROOT}/scripts/test_boolean_partitioning.py"

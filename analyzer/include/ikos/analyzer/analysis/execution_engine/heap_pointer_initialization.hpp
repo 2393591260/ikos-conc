@@ -2,7 +2,9 @@
 #pragma once
 
 #include <ikos/analyzer/analysis/execution_engine/stable_publication.hpp>
+#include <ikos/analyzer/analysis/execution_engine/heap_initialization_prefix.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
+#include <ikos/analyzer/util/log.hpp>
 
 namespace ikos {
 namespace analyzer {
@@ -88,7 +90,8 @@ inline bool prove_heap_constructor_body(ar::CallBase* allocation, const core::ZN
 
 inline bool prove_heap_constructor(ar::CallBase* allocation, const core::ZNumber& field,
                                    const Context& ctx) {
-  if (!prove_heap_constructor_body(allocation, field)) return false;
+  const bool constructor = prove_heap_constructor_body(allocation, field);
+  if (!constructor && !prove_heap_initialization_prefix(allocation, field, ctx)) return false;
   auto* function = allocation->code()->function();
   auto* bundle = function->bundle();
   if (bundle->global_or_null("ar.global_ctors")) return false;
@@ -98,8 +101,16 @@ inline bool prove_heap_constructor(ar::CallBase* allocation, const core::ZNumber
     for (auto* bb : *body) for (auto* statement : *bb) {
       if (budget-- == 0) return false;
       if (auto* call = dyn_cast< ar::CallBase >(statement))
-        if (!heap_pointer_call_covered(call, &ctx) &&
-            !ctx.mutex_effect_certificates.count(call)) return false;
+        {
+          auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+          auto* source = call->has_frontend() ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+          auto* original = source ? llvm::dyn_cast< llvm::Function >(source->getCalledOperand()->stripPointerCasts()) : nullptr;
+          if (!constructor && target && (target->function()->intrinsic_id() == ar::Intrinsic::LibcFree ||
+                                         target->function()->intrinsic_id() == ar::Intrinsic::LibcRealloc)) return false;
+          if (!constructor && original && (original->getName() == "free" || original->getName() == "realloc")) return false;
+          if (!heap_pointer_call_covered(call, &ctx) &&
+              !ctx.mutex_effect_certificates.count(call)) return false;
+        }
     }
     return true;
   };
@@ -107,6 +118,7 @@ inline bool prove_heap_constructor(ar::CallBase* allocation, const core::ZNumber
     if (!covered((*it)->body_or_null())) return false;
   for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it)
     if (!covered((*it)->initializer_or_null())) return false;
+  if (!constructor) log::debug("Heap field initialization: closed allocation prefix");
   return true;
 }
 

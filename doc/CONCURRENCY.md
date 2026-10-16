@@ -192,6 +192,17 @@ identity. Integer payload conversions are supported. Branching constructors,
 interior returns, pointer export, unknown calls, byte overlap and missing source
 coverage fall back conservatively. Lifetime checks remain separate.
 
+Field coverage can also follow a closed initialization prefix in a larger
+function: each malloc result reaches full-field initialization in the same
+basic block before any read or escape. A direct, checked helper may initialize
+the object through one pointer parameter and scalar payload parameters.
+A main-global store/reload relay additionally requires an exact local source,
+no return to the allocation block, and initialization before every possible
+create. The complete field value still includes all sources and later writes;
+byte overlap, uncovered effects and unsupported lifetime operations disable the
+refinement. This certificate only refines field values: it grants neither
+ownership nor exclusion of initializer-versus-published-access race pairs.
+
 BMC models the POSIX `ffs(int)` library declaration with its exact 32-bit
 argument: zero returns zero, otherwise the result is the 1-based index of the
 least significant set bit. The independent AR checker computes that result
