@@ -574,3 +574,13 @@ incomplete prefixes or proof exhaustion refuse certification. The implementation
 uses the same checked GNU x86 ILP32 normal-mutex representation as native arena
 reservations; 64-bit scalar payloads are supported on this ABI. It changes no
 points-to, interference, coverage or BMC semantics.
+
+Arena success guards also recognize a narrowly proved terminating zero branch
+when raw CFG dominance retains a continuation after a defined helper. The guard
+must dominate the selected access. Its zero-successor block must encounter an
+actual libc `abort` call, or an actual `void(i32)` helper called with literal
+zero whose exact scalar comparison/branch path reaches that abort. Only unused,
+verified freeze metadata calls are transparent; an earlier ordinary call, an
+unknown condition, a return, a loop or a bare `unreachable` refuses this extension.
+This does not infer termination from a helper name or `noreturn` attribute, and
+changes no LLVM CFG, numerical invariant, coverage or BMC result directly.

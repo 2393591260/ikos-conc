@@ -449,6 +449,66 @@ class ArenaReservation::Impl {
     }
     return call;
   }
+  bool abort_call(llvm::CallBase* c) const {
+    auto* a = call_binding(c);
+    auto* f = a ? native_handle_callee(a) : nullptr;
+    auto* source = callee(c);
+    return f && source->isDeclaration() && source->getName() == "abort" &&
+        f->intrinsic_id() == ar::Intrinsic::LibcAbort && c->arg_size() == 0 &&
+        c->getType()->isVoidTy() && f->type()->return_type()->is_void();
+  }
+  bool terminating_zero_call(llvm::CallBase* call) {
+    if (abort_call(call)) return true;
+    auto* a = call_binding(call); auto* f = callee(call);
+    auto* zero = call->arg_size() == 1 ? llvm::dyn_cast< llvm::ConstantInt >(call->getArgOperand(0)) : nullptr;
+    auto* ar_zero = a && a->num_arguments() == 1 ? dyn_cast< ar::IntegerConstant >(a->argument(0)) : nullptr;
+    if (!a || !f || f->isDeclaration() || !call->use_empty() || !f->getReturnType()->isVoidTy() ||
+        f->arg_size() != 1 || !f->getArg(0)->getType()->isIntegerTy(32) ||
+        !zero || !zero->getType()->isIntegerTy(32) || !zero->isZero() ||
+        !ar_zero || ar_zero->value().to_z_number() != 0) return false;
+    std::map< llvm::Value*, llvm::APInt > values;
+    values[f->getArg(0)] = llvm::APInt(32, 0);
+    auto value = [&](llvm::Value* v, llvm::APInt& n) {
+      if (auto* c = llvm::dyn_cast< llvm::ConstantInt >(v)) { n = c->getValue(); return true; }
+      auto it = values.find(v); if (it == values.end()) return false;
+      n = it->second; return true;
+    };
+    auto* block = &f->getEntryBlock(); std::set< llvm::BasicBlock* > seen;
+    while (seen.insert(block).second) {
+      bool branched = false;
+      for (auto& i : *block) {
+        if (!spend()) return false;
+        if (llvm::isa< llvm::DbgInfoIntrinsic >(i)) continue;
+        if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
+          if (unused_freeze(c)) continue;
+          return abort_call(c);
+        }
+        if (auto* cmp = llvm::dyn_cast< llvm::ICmpInst >(&i)) {
+          llvm::APInt x, y;
+          if (!value(cmp->getOperand(0), x) || !value(cmp->getOperand(1), y) ||
+              x.getBitWidth() != y.getBitWidth()) return false;
+          values[cmp] = llvm::APInt(1, llvm::ICmpInst::compare(x, y, cmp->getPredicate()));
+        } else if (auto* br = llvm::dyn_cast< llvm::BranchInst >(&i)) {
+          unsigned edge = 0; llvm::APInt condition;
+          if (br->isConditional()) { if (!value(br->getCondition(), condition)) return false; edge = condition.isZero() ? 1 : 0; }
+          block = br->getSuccessor(edge); branched = true; break;
+        } else return false;
+      }
+      if (!branched) return false;
+    }
+    return false;
+  }
+  bool terminating_zero_block(llvm::BasicBlock* block, llvm::Instruction* access) {
+    for (auto& i : *block) {
+      if (!spend() || &i == access) return false;
+      if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
+        if (llvm::isa< llvm::DbgInfoIntrinsic >(c) || unused_freeze(c)) continue;
+        // No earlier call may re-enter the access before this termination.
+        return terminating_zero_call(c);
+      }
+    }
+    return false;
+  }
   bool nonzero(llvm::Instruction* origin, llvm::Instruction* access, llvm::DominatorTree& dom) {
     for (auto& b : *origin->getFunction()) {
       auto* br = llvm::dyn_cast< llvm::BranchInst >(b.getTerminator());
@@ -461,6 +521,9 @@ class ArenaReservation::Impl {
       if (!same || !zero || !zero->isZero()) continue;
       unsigned edge = cmp->getPredicate() == llvm::CmpInst::ICMP_NE ? 0 : 1;
       if (dom.dominates(llvm::BasicBlockEdge(br->getParent(), br->getSuccessor(edge)), access->getParent())) return true;
+      // The raw CFG retains a continuation after a defined assume helper.
+      // Cut only a zero edge with an independently proved actual abort path.
+      if (dom.dominates(br, access) && terminating_zero_block(br->getSuccessor(1 - edge), access)) return true;
     }
     return false;
   }
