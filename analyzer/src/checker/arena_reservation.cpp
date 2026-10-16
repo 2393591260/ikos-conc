@@ -6,6 +6,9 @@
 #include <ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp>
 #include <ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
+#include <ikos/analyzer/checker/normal_mutex.hpp>
+#include <deque>
+#include <functional>
 #include <map>
 #include <set>
 
@@ -50,6 +53,7 @@ bool follows(llvm::Instruction* from, llvm::Instruction* to) {
 struct Counter {
   llvm::GlobalVariable* global = nullptr;
   llvm::Function* allocator = nullptr;
+  llvm::GlobalVariable* mutex = nullptr;
   // Complete reachable counter states; each success reserves [start, end).
   std::vector< std::pair< ZNumber, ZNumber > > slices;
 };
@@ -67,6 +71,8 @@ class ArenaReservation::Impl {
   std::vector< llvm::Function* > function_order;
   std::vector< Counter > counters;
   std::map< llvm::GlobalVariable*, bool > closed_arenas;
+  std::map< llvm::CallBase*, NormalMutex > mutex_calls;
+  std::map< llvm::GlobalVariable*, bool > mutex_protocols;
   std::map< llvm::Instruction*, Proof > proofs;
   unsigned budget = 131072;
   bool spend() { if (!budget) return false; --budget; return true; }
@@ -83,6 +89,91 @@ class ArenaReservation::Impl {
     // Library intrinsics have synthetic AR functions; their exact source ABI
     // and effect contract are checked by module_closed, not by a name alias.
     return identity && plain_call(c, f) && call->num_arguments() == c->arg_size() ? call : nullptr;
+  }
+  NormalMutex mutex_call(llvm::CallBase* c) {
+    auto it = mutex_calls.find(c);
+    if (it != mutex_calls.end()) return it->second;
+    auto p = normal_mutex(ctx, call_binding(c));
+    mutex_calls.emplace(c, p); return p;
+  }
+  bool unused_freeze(llvm::CallBase* c) const {
+    auto* a = call_binding(c);
+    auto* f = a ? native_handle_callee(a) : nullptr;
+    auto* source = callee(c);
+    return a && f && source->isDeclaration() && f->intrinsic_id() == ar::Intrinsic::IkosNonDet &&
+        c->use_empty() && c->arg_size() == 0 && c->getMetadata("ikos.freeze_uninit") &&
+        ((source->getName() == "__ikos_nondet_int" && c->getType()->isIntegerTy(32)) ||
+         (source->getName() == "__ikos_nondet_int64" && c->getType()->isIntegerTy(64)));
+  }
+  bool mutex_protocol(llvm::GlobalVariable* g) {
+    auto cached = mutex_protocols.find(g);
+    if (cached != mutex_protocols.end()) return cached->second;
+    mutex_protocols.emplace(g, false);
+    std::set< llvm::CallBase* > operations;
+    std::vector< llvm::Value* > todo{g}; std::set< llvm::Value* > seen;
+    while (!todo.empty()) {
+      auto* p = todo.back(); todo.pop_back();
+      if (!spend()) return false;
+      if (!seen.insert(p).second) continue;
+      for (auto* u : p->users()) {
+        if (llvm::isa< llvm::BitCastOperator >(u)) {
+          if (u->getType()->getPointerAddressSpace() != 0) return false;
+          todo.push_back(u); continue;
+        }
+        auto* c = llvm::dyn_cast< llvm::CallBase >(u);
+        if (!c || c->arg_size() != 1 || c->getArgOperand(0) != p || mutex_call(c).source != g) return false;
+        operations.insert(c);
+      }
+    }
+    if (operations.empty()) return false;
+    std::map< llvm::Function*, bool > touches;
+    std::set< llvm::Function* > active;
+    std::function< bool(llvm::Function*) > check = [&](llvm::Function* f) {
+      if (touches.count(f)) return true;
+      if (active.size() == 64 || !active.insert(f).second) return false;
+      bool effect = false;
+      for (auto& b : *f) for (auto& i : b) {
+        if (!spend()) return false;
+        auto* c = llvm::dyn_cast< llvm::CallBase >(&i);
+        if (!c || llvm::isa< llvm::DbgInfoIntrinsic >(c)) continue;
+        if (operations.count(c)) effect = true;
+        auto* child = callee(c);
+        if (child && !child->isDeclaration()) {
+          if (!check(child)) return false;
+          effect |= touches.at(child);
+        }
+      }
+      // MAY ownership: joins are union, so both lock and unlock require a
+      // singleton precondition. Helpers that touch L have net-zero ownership.
+      if (effect) {
+        std::map< llvm::BasicBlock*, unsigned > inputs;
+        std::deque< llvm::BasicBlock* > work{&f->getEntryBlock()};
+        inputs[&f->getEntryBlock()] = 1; // U=1, H=2, U|H=3
+        while (!work.empty()) {
+          auto* b = work.front(); work.pop_front(); auto state = inputs.at(b);
+          for (auto& i : *b) {
+            if (!spend()) return false;
+            if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
+              if (operations.count(c)) {
+                const bool lock = mutex_call(c).lock;
+                if (state != (lock ? 1u : 2u)) return false;
+                state = lock ? 2 : 1;
+              } else if (auto* child = callee(c)) {
+                if (!child->isDeclaration() && touches.at(child) && state != 1) return false;
+              }
+            }
+            if (llvm::isa< llvm::ReturnInst >(i) && state != 1) return false;
+          }
+          for (auto* next : llvm::successors(b)) {
+            auto old = inputs[next]; inputs[next] |= state;
+            if (old != inputs[next]) work.push_back(next);
+          }
+        }
+      }
+      active.erase(f); touches.emplace(f, effect); return true;
+    };
+    for (auto* f : function_order) if (!check(f)) return false;
+    mutex_protocols.at(g) = true; return true;
   }
   bool module_closed(llvm::Module& module) {
     // Module assembly can hide writers and startup entries from IR users.
@@ -119,6 +210,10 @@ class ArenaReservation::Impl {
             ctx.mutex_effect_certificates.count(ar_call)) continue;
         if (native_handle_api(c, true) && unread_private_thread_output(ar_call)) continue;
         const auto id = target->intrinsic_id();
+        if ((source->getName() == "__VERIFIER_atomic_begin" || source->getName() == "__VERIFIER_atomic_end") &&
+            c->arg_size() == 0 && c->getType()->isVoidTy() &&
+            target->name() == source->getName().str() && target->num_parameters() == 0 &&
+            target->type()->return_type()->is_void()) continue;
         if ((id == ar::Intrinsic::PthreadMutexLock || id == ar::Intrinsic::PthreadMutexUnlock) &&
             c->arg_size() == 1 && c->getArgOperand(0)->getType()->isPointerTy() &&
             c->getType()->isIntegerTy(32) &&
@@ -154,6 +249,7 @@ class ArenaReservation::Impl {
   bool transaction(Counter& proof, const ZNumber& entry, ZNumber& next, ZNumber& output) {
     auto* f = proof.allocator;
     next = entry; unsigned writes = 0, outputs = 0;
+    bool held = false; unsigned acquisitions = 0, releases = 0;
     std::map< llvm::Value*, ZNumber > values;
     auto value = [&](llvm::Value* v, ZNumber& n) {
       if (constant(v, n)) return true;
@@ -161,20 +257,46 @@ class ArenaReservation::Impl {
       n = it->second; return true;
     };
     auto* block = &f->getEntryBlock();
+    llvm::BasicBlock* predecessor = nullptr;
     std::set< llvm::BasicBlock* > visited;
     while (visited.insert(block).second) {
       bool branched = false;
+      // Phi inputs are read simultaneously from the actual predecessor.
+      std::vector< std::pair< llvm::Value*, ZNumber > > phis;
+      for (auto& i : *block) if (auto* phi = llvm::dyn_cast< llvm::PHINode >(&i)) {
+        ZNumber n(0);
+        if (!spend() || !predecessor || !phi->getType()->isIntegerTy(32) ||
+            !value(phi->getIncomingValueForBlock(predecessor), n)) return false;
+        phis.emplace_back(phi, n);
+      }
+      for (const auto& p : phis) values[p.first] = p.second;
       for (auto& i : *block) {
         if (!spend()) return false;
-        if (llvm::isa< llvm::DbgInfoIntrinsic >(i)) continue;
+        if (llvm::isa< llvm::DbgInfoIntrinsic >(i) || llvm::isa< llvm::PHINode >(i)) continue;
         if (auto* l = llvm::dyn_cast< llvm::LoadInst >(&i)) {
+          if (proof.mutex && !held) return false;
           if (l->getPointerOperand() == proof.global) values[&i] = next;
           else return false;
         } else if (auto* s = llvm::dyn_cast< llvm::StoreInst >(&i)) {
+          if (proof.mutex && !held) return false;
           ZNumber n(0); if (!value(s->getValueOperand(), n)) return false;
           if (s->getPointerOperand() == proof.global) { next = n; ++writes; }
-          else if (s->getPointerOperand() == f->getArg(0)) { output = n; ++outputs; }
+          else if (!proof.mutex && s->getPointerOperand() == f->getArg(0)) { output = n; ++outputs; }
           else return false;
+        } else if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
+          if (unused_freeze(c)) continue;
+          auto operation = mutex_call(c);
+          if (!proof.mutex || operation.source != proof.mutex) return false;
+          if (operation.lock) {
+            if (held || acquisitions++) return false;
+            held = true;
+          } else {
+            if (!held || releases++) return false;
+            held = false;
+          }
+        } else if (llvm::isa< llvm::BitCastInst >(i)) {
+          // Preflight admits only pointer casts of this actual mutex.
+          if (!proof.mutex) return false;
         } else if (auto* op = llvm::dyn_cast< llvm::BinaryOperator >(&i)) {
           ZNumber a(0), b(0), n(0);
           if (!op->getType()->isIntegerTy(32) || !value(op->getOperand(0), a) || !value(op->getOperand(1), b)) return false;
@@ -208,9 +330,14 @@ class ArenaReservation::Impl {
             auto found = values.find(br->getCondition()); if (found == values.end()) return false;
             edge = found->second == 0 ? 1 : 0;
           }
-          block = br->getSuccessor(edge); branched = true; break;
+          predecessor = block; block = br->getSuccessor(edge); branched = true; break;
         } else if (auto* ret = llvm::dyn_cast< llvm::ReturnInst >(&i)) {
-          return !ret->getReturnValue() && outputs == 1 &&
+          if (proof.mutex) {
+            if (held || acquisitions != 1 || releases != 1 || !ret->getReturnValue() ||
+                !value(ret->getReturnValue(), output)) return false;
+            outputs = 1;
+          } else if (ret->getReturnValue()) return false;
+          return outputs == 1 &&
               ((output == 0 && next == entry && writes == 0) ||
                (output == entry && next > entry && writes == 1));
         } else return false;
@@ -222,11 +349,14 @@ class ArenaReservation::Impl {
   Counter certify_counter(llvm::Function* f) {
     Counter p;
     auto* ar_f = functions.at(f);
-    if (f->getName() != ar_f->name() || f->isVarArg() || f->arg_size() != 1 || !f->getReturnType()->isVoidTy() ||
-        !f->getFunctionType()->getParamType(0)->isPointerTy() ||
-        f->getFunctionType()->getParamType(0)->getPointerAddressSpace() != 0 ||
-        !f->getFunctionType()->getParamType(0)->getPointerElementType()->isIntegerTy(32) ||
-        classify_atomic_intrinsic(ar_f->name()) != AtomicKind::SingleCall) return {};
+    const bool native = f->arg_size() == 0 && f->getReturnType()->isIntegerTy(32);
+    const bool atomic = f->arg_size() == 1 && f->getReturnType()->isVoidTy() &&
+        f->getFunctionType()->getParamType(0)->isPointerTy() &&
+        f->getFunctionType()->getParamType(0)->getPointerAddressSpace() == 0 &&
+        f->getFunctionType()->getParamType(0)->getPointerElementType()->isIntegerTy(32) &&
+        classify_atomic_intrinsic(ar_f->name()) == AtomicKind::SingleCall;
+    if (f->getName() != ar_f->name() || f->isVarArg() || (!native && !atomic)) return {};
+    std::vector< llvm::BitCastInst* > mutex_casts;
     // Inspect the complete body, not just the paths encountered during closure.
     for (auto& b : *f) for (auto& i : b) {
       if (!spend()) return {};
@@ -235,7 +365,7 @@ class ArenaReservation::Impl {
       if (auto* l = llvm::dyn_cast< llvm::LoadInst >(&i)) pointer = l->getPointerOperand();
       if (auto* s = llvm::dyn_cast< llvm::StoreInst >(&i)) pointer = s->getPointerOperand();
       if (pointer) {
-        if (pointer == f->getArg(0)) {
+        if (!native && pointer == f->getArg(0)) {
           if (!llvm::isa< llvm::StoreInst >(i) || !integer_effect(&i, pointer, ar_f->param(0))) return {};
         } else {
           auto* g = llvm::dyn_cast< llvm::GlobalVariable >(pointer);
@@ -243,8 +373,23 @@ class ArenaReservation::Impl {
               !integer_effect(&i, g, globals.at(g))) return {};
           p.global = g;
         }
+      } else if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
+        if (!native) return {};
+        if (unused_freeze(c)) continue;
+        auto m = mutex_call(c);
+        if (!m.source || (p.mutex && p.mutex != m.source)) return {};
+        p.mutex = m.source;
+      } else if (auto* cast = llvm::dyn_cast< llvm::BitCastInst >(&i)) {
+        if (!native || !cast->getType()->isPointerTy() || cast->getType()->getPointerAddressSpace() != 0) return {};
+        mutex_casts.push_back(cast);
       } else if (!llvm::isa< llvm::BinaryOperator >(i) && !llvm::isa< llvm::ICmpInst >(i) &&
-                 !llvm::isa< llvm::BranchInst >(i) && !llvm::isa< llvm::ReturnInst >(i)) return {};
+                 !llvm::isa< llvm::BranchInst >(i) && !llvm::isa< llvm::ReturnInst >(i) &&
+                 !(native && llvm::isa< llvm::PHINode >(i))) return {};
+    }
+    if (native) {
+      if (!p.mutex) return {};
+      for (auto* c : mutex_casts) if (c->getOperand(0)->stripPointerCasts() != p.mutex) return {};
+      if (!mutex_protocol(p.mutex)) return {};
     }
     auto* g = p.global;
     ZNumber start(0);
@@ -304,31 +449,41 @@ class ArenaReservation::Impl {
     }
     return call;
   }
-  bool nonzero(llvm::AllocaInst* slot, llvm::Instruction* access, llvm::DominatorTree& dom) {
-    for (auto& b : *slot->getFunction()) {
+  bool nonzero(llvm::Instruction* origin, llvm::Instruction* access, llvm::DominatorTree& dom) {
+    for (auto& b : *origin->getFunction()) {
       auto* br = llvm::dyn_cast< llvm::BranchInst >(b.getTerminator());
       auto* cmp = br && br->isConditional() ? llvm::dyn_cast< llvm::ICmpInst >(br->getCondition()) : nullptr;
       if (!cmp || !cmp->isEquality()) continue;
       auto* load = llvm::dyn_cast< llvm::LoadInst >(cmp->getOperand(0));
       auto* zero = llvm::dyn_cast< llvm::ConstantInt >(cmp->getOperand(1));
-      if (!load || load->getPointerOperand() != slot || !zero || !zero->isZero()) continue;
+      const bool same = llvm::isa< llvm::AllocaInst >(origin)
+          ? load && load->getPointerOperand() == origin : cmp->getOperand(0) == origin;
+      if (!same || !zero || !zero->isZero()) continue;
       unsigned edge = cmp->getPredicate() == llvm::CmpInst::ICMP_NE ? 0 : 1;
       if (dom.dominates(llvm::BasicBlockEdge(br->getParent(), br->getSuccessor(edge)), access->getParent())) return true;
     }
     return false;
   }
-  bool index(llvm::Value* v, llvm::AllocaInst*& slot, ZNumber& delta,
+  bool index(llvm::Value* v, llvm::Instruction*& origin, ZNumber& delta,
              const Counter& counter, unsigned depth = 0) {
     if (depth == 16 || !spend()) return false;
     if (auto* l = llvm::dyn_cast< llvm::LoadInst >(v)) {
-      slot = llvm::dyn_cast< llvm::AllocaInst >(l->getPointerOperand()); delta = ZNumber(0);
-      return slot && private_output(slot, counter.allocator);
+      if (counter.mutex) return false;
+      auto* slot = llvm::dyn_cast< llvm::AllocaInst >(l->getPointerOperand()); delta = ZNumber(0);
+      origin = slot; return slot && private_output(slot, counter.allocator);
+    }
+    if (auto* c = llvm::dyn_cast< llvm::CallBase >(v)) {
+      auto* a = call_binding(c);
+      auto* t = a && a->has_result() ? dyn_cast< ar::IntegerType >(a->result()->type()) : nullptr;
+      origin = c; delta = ZNumber(0);
+      return counter.mutex && callee(c) == counter.allocator && a && t && t->bit_width() == 32 &&
+          isa< ar::FunctionPointerConstant >(a->called()) && !follows(c, c);
     }
     auto* op = llvm::dyn_cast< llvm::BinaryOperator >(v);
     ZNumber c(0);
     if (!op || !op->getType()->isIntegerTy(32) ||
         (op->getOpcode() != llvm::Instruction::Add && op->getOpcode() != llvm::Instruction::Sub) ||
-        !constant(op->getOperand(1), c) || !index(op->getOperand(0), slot, delta, counter, depth + 1)) return false;
+        !constant(op->getOperand(1), c) || !index(op->getOperand(0), origin, delta, counter, depth + 1)) return false;
     if (op->getOpcode() == llvm::Instruction::Add) delta += c; else delta -= c;
     // Includes exhausted output0, since expression evaluation may precede its guard.
     if (!signed32(delta)) return false;
@@ -382,10 +537,10 @@ class ArenaReservation::Impl {
         ctx.bundle->data_layout().alloc_size_in_bytes(globals.at(g)->type()->pointee()) != extent) return {};
     for (const auto& counter : counters) {
       if (!counter.global) continue;
-      llvm::AllocaInst* slot = nullptr; ZNumber delta(0);
-      if (!index(gep->getOperand(2), slot, delta, counter)) continue;
+      llvm::Instruction* origin = nullptr; ZNumber delta(0);
+      if (!index(gep->getOperand(2), origin, delta, counter)) continue;
       llvm::DominatorTree dom(*access->getFunction());
-      if (slot->getFunction() != access->getFunction() || !nonzero(slot, access, dom)) continue;
+      if (origin->getFunction() != access->getFunction() || !dom.dominates(origin, access) || !nonzero(origin, access, dom)) continue;
       bool bounded = delta >= 0;
       for (const auto& slice : counter.slices) {
         const auto begin = (slice.first + delta) * stride;
@@ -439,17 +594,25 @@ public:
     }
     // Avoid a whole-module preflight on programs with no possible allocator.
     bool potential = false;
-    for (auto* f : function_order) if (classify_atomic_intrinsic(functions.at(f)->name()) == AtomicKind::SingleCall &&
-                                      f->arg_size() == 1 && f->getReturnType()->isVoidTy()) potential = true;
+    for (auto* f : function_order)
+      if ((classify_atomic_intrinsic(functions.at(f)->name()) == AtomicKind::SingleCall &&
+           f->arg_size() == 1 && f->getReturnType()->isVoidTy()) ||
+          (f->arg_size() == 0 && f->getReturnType()->isIntegerTy(32))) potential = true;
     if (!potential || !module_closed(*main->getParent())) return;
     for (auto* f : function_order) {
-      if (classify_atomic_intrinsic(functions.at(f)->name()) != AtomicKind::SingleCall) continue;
+      if (classify_atomic_intrinsic(functions.at(f)->name()) != AtomicKind::SingleCall &&
+          !(f->arg_size() == 0 && f->getReturnType()->isIntegerTy(32))) continue;
       auto proof = certify_counter(f);
       if (!proof.global) continue;
       // Every actual allocator use has an activation-private, closed output.
       bool closed = !f->use_empty();
       for (auto* u : f->users()) {
         auto* c = llvm::dyn_cast< llvm::CallBase >(u);
+        if (proof.mutex) {
+          auto* a = c ? call_binding(c) : nullptr;
+          if (!a || c->getCalledOperand() != f || !isa< ar::FunctionPointerConstant >(a->called())) { closed = false; break; }
+          continue;
+        }
         auto* slot = c && c->arg_size() == 1 ? llvm::dyn_cast< llvm::AllocaInst >(c->getArgOperand(0)) : nullptr;
         if (!slot || private_output(slot, f) != c) { closed = false; break; }
       }
@@ -475,7 +638,8 @@ public:
               {"counter_initial", counter.slices.front().first.str()},
               {"counter_exhausted", counter.slices.back().second.str()},
               {"successful_reservations", std::to_string(counter.slices.size())},
-              {"serialization", "complete defined SV-COMP named-atomic body"}};
+              {"serialization", counter.mutex ? "continuous default-normal mutex transaction" : "complete defined SV-COMP named-atomic body"},
+              {"reservation_mutex", counter.mutex ? counter.mutex->getName().str() : ""}};
     return {};
   }
 };

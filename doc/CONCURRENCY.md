@@ -310,7 +310,7 @@ arbitrarily many later calls cannot reuse a successful slice. Every intermediate
 arithmetic operation is checked before later guards, without assuming LLVM
 `nsw` or `inbounds`.
 
-All counter writers and actual calls are closed. Each call must write to one
+All counter writers and actual calls are closed. Each out-parameter call writes to one
 activation-private integer stack slot, with no address escape, later writer or
 repeated call in that activation. A successful-result guard must dominate each
 certified access, and its full byte width must fit both the reserved slice and
@@ -318,8 +318,25 @@ the real array. Both endpoints of an excluded pair need these facts for the
 same counter and array. A shared-load reuse of a published index, zero result,
 counter reset, escaping arena address or unknown effect keeps the ordinary
 candidate. Points-to, interference, access records, BMC and coverage are unchanged.
-This subset targets ILP32 Linux/GNU; return-value/mutex reservations and general
-initialization phases need separate proofs.
+An additional mode supports an integer-returning allocator protected by one
+concrete, completely zero-initialized default-normal glibc mutex. Its complete
+address inventory allows only the actual lock/unlock APIs. A finite ownership
+analysis checks all defined helpers: lock requires certainly unheld, unlock
+requires certainly held, and a returning helper that touches this mutex has
+net-zero ownership. Possible ownership states join by union; loops reach a
+finite fixed point. Reinitialization, escaping addresses, unmatched unlocks,
+nested acquisitions and ambiguous ownership refuse the certificate.
+
+The counter transaction itself requires exactly one continuous acquisition and
+release. An old-counter read before lock, a release/reacquire between capture
+and update, or a counter reload after release is rejected. The interpreter
+selects each return phi from its actual predecessor. Only a direct SSA result
+with a dominating successful-result guard supplies a fresh ticket; shared
+reloads, stale merges and unsupported spills retain candidates.
+
+These subsets target ILP32 Linux/GNU. They do not order an unrelated runtime
+initialization against later accesses; general initialization phases still
+need separate proofs.
 
 ## Resource limits
 

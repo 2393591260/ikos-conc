@@ -58,6 +58,8 @@ add_concurrency_test(heap-handoff "${CONCURRENCY_ROOT}/scripts/test_heap_handoff
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(arena-reservation "${CONCURRENCY_ROOT}/scripts/test_arena_reservation.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(native-arena "${CONCURRENCY_ROOT}/scripts/test_native_arena.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(thread-private-heap "${CONCURRENCY_ROOT}/scripts/test_thread_private_heap.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(calloc-overflow "${CONCURRENCY_ROOT}/scripts/test_calloc_overflow.py"
