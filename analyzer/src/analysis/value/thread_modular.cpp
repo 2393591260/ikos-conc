@@ -46,6 +46,7 @@
 #include <vector>
 
 #include <ikos/analyzer/analysis/context.hpp>
+#include <ikos/analyzer/analysis/runtime_stdio_frame.hpp>
 #include <ikos/analyzer/analysis/execution_engine/protected_values.hpp>
 #include <ikos/analyzer/analysis/execution_engine/heap_pointer_initialization.hpp>
 #include <ikos/analyzer/analysis/value/abstract_domain.hpp>
@@ -83,6 +84,9 @@ void ThreadModularAnalysis::run() {
   namespace seq = interprocedural::sequential;
 
   ar::Bundle* bundle = _ctx.bundle;
+  // Driver options and native/AR input are now fixed. Each preflight Context
+  // configures its own certificate, before any scan can publish MAY escape.
+  configure_runtime_stdio_frame(_ctx);
   configure_native_thread_handles(_ctx);
 
   // Certify only opaque mutex effects in an independent, conservative run.

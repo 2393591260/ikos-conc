@@ -44,6 +44,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <tuple>
 #include <set>
 
@@ -68,6 +69,7 @@ class LivenessAnalysis;
 class FunctionPointerAnalysis;
 class PointerAnalysis;
 class FixpointParameters;
+class RuntimeStdioFrame;
 
 // Native storage has no numerical encoding of a thread-instance identity.
 struct NativeHandleArray {
@@ -144,6 +146,10 @@ public:
   std::map< ar::Statement*, bool > subarray_bounds_observations;
   std::map< ar::Statement*, GlobalArraySubobject > subarray_bounds_certificates;
   std::map< std::tuple< ar::GlobalVariable*, ar::ArrayType*, core::ZNumber, core::ZNumber >, bool > readonly_subarray_certificates;
+
+  // Immutable source/AR certificate, configured before numerical publication.
+  // This is independent of concurrent_env and must not be copied across bundles.
+  std::shared_ptr< const RuntimeStdioFrame > runtime_stdio_frame_certificate;
 
   bool native_handle_inventory_checked = false;
   bool native_handles_only = false;

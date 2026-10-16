@@ -74,6 +74,8 @@ add_concurrency_test(token-arena "${CONCURRENCY_ROOT}/scripts/test_token_arena.p
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(scanf-errno "${CONCURRENCY_ROOT}/scripts/test_scanf_errno.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(runtime-stdio "${CONCURRENCY_ROOT}/scripts/test_runtime_stdio.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(scalar-scan "${CONCURRENCY_ROOT}/scripts/test_scalar_scan.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(freeze-array "${CONCURRENCY_ROOT}/scripts/test_freeze_array.py"

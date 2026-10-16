@@ -62,6 +62,7 @@
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_key_effects.hpp>
 #include <ikos/analyzer/analysis/execution_engine/stdio_effects.hpp>
+#include <ikos/analyzer/analysis/runtime_stdio_frame.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
 #include <ikos/analyzer/analysis/liveness.hpp>
 #include <ikos/analyzer/analysis/option.hpp>
@@ -3188,7 +3189,23 @@ private:
     const auto& dest = this->_lit_factory.get_scalar(call->argument(2));
     if (!this->prepare_mem_access(dest)) return true;
     check_synthetic_handle_effect(*this, call, dest);
-    if (!publish_unknown_byte_effect(*this, call, dest)) {
+    bool cannot_expose_pointers = false;
+    const auto& frame = this->_ctx.runtime_stdio_frame_certificate;
+    if (frame && dest.is_pointer_var()) {
+      auto* output = frame->non_exposing_scan_output(call);
+      if (output && effect->call == call && effect->output == output &&
+          ScalarScanEffect::output_bytes == 4 &&
+          this->data_layout().store_size_in_bytes(output->type()->pointee()) == 4) {
+        auto points = this->data().normal().pointer_to_points_to(dest.var());
+        auto offset = this->data().normal().pointer_to_pointer(dest.var()).offset();
+        cannot_expose_pointers = points.is_set() && points.size() == 1 &&
+            *points.begin() == this->_mem_factory.get_global(output) &&
+            offset.singleton() && offset.lb().is_zero();
+      }
+    }
+    // Only the complete source certificate suppresses this call's synthetic
+    // escape. Pointer-write, mutex and integer interference still publish.
+    if (!publish_unknown_byte_effect(*this, call, dest, cannot_expose_pointers)) {
       this->_ctx.concurrent_env.record_unknown_pointer_write();
       this->_ctx.concurrent_env.record_unmodeled_effect(
           call, "scanf output interference not covered");

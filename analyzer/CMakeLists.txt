@@ -203,6 +203,7 @@ add_executable(ikos-analyzer
   src/analysis/memory_location.cpp
   src/analysis/option.cpp
   src/analysis/stdio_effects.cpp
+  src/analysis/runtime_stdio_frame.cpp
   src/analysis/pointer/constraint.cpp
   src/analysis/pointer/function.cpp
   src/analysis/pointer/pointer.cpp

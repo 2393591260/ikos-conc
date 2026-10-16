@@ -955,3 +955,41 @@ controls, shifted-input and partial-output overlaps, read-lock versus exclusive
 mutex protection, and ILP32 long-long payloads. Implementation: `stdio_effects.hpp/.cpp`
 in `analysis/execution_engine` and `src/analysis`, consumed by numerical transfer
 and the data-race checker.
+
+## Closed runtime stdio frame
+
+An optional, immutable `RuntimeStdioFrame` is configured in each thread-modular
+Context before numerical analysis. It inventories the actual reachable LLVM and
+AR effects, entry options, source identities and GNU i386 ABI. Only a complete
+frame supplies either of its two capabilities:
+
+* A verified `fprintf(stderr, literal, ...)` with only promoted `%d` and `%%`
+  conversions may omit its stream argument's synthetic application Write. All
+  ordinary accesses and other argument effects remain.
+* An exact startup scalar scan may suppress its own synthetic pointer escape
+  only for the certified whole global output, checked again against the current
+  singleton destination and zero offset. Pointer-write publication, integer and
+  mutex invalidation, errno/output havoc and failure coverage remain unchanged.
+
+The first subset admits whole integer storage, sealed serial argv input and
+counted private i32 stack pools. Actual signed upper edges, stable counts,
+zero/unit induction, native/AR byte strides, physical nonzero seed guards and
+stack lifetime must match. Each pool's creation phase must cover every consumed
+slot with a successful actual create; failure cannot reach a join. Its sole join
+phase consumes each slot at most once. Native header and AR PHI-commit checks
+reject repeated occurrences, irreducible cycles and restarted phases. These are
+internal runtime-storage premises, not exported thread-success, handle-value,
+completion or happens-before facts.
+
+Unknown effects, pointer reconstruction/escape, FILE aliases or mutation,
+unsupported formats, partial/foreign accesses, heap objects, missing range or
+lifetime evidence refuse both capabilities. Existing warnings are never cleared.
+The conditional seed extent uses the existing interprocedural Allocate normal-
+continuation contract; this pass neither proves general pointer validity nor
+changes allocation failure or zero-count continuations.
+
+Implementation: `analysis/runtime_stdio_frame.hpp`,
+`src/analysis/runtime_stdio_frame.cpp`, numerical transfer and the data-race
+checker. `python3 scripts/test_runtime_stdio.py` covers refusal controls, real
+neighboring races, renamed objects, raw/mapped scans, changed bounds, zero and
+negative counts, repeated consumption and ILP32 long-long payloads.

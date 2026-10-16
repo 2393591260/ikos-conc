@@ -57,6 +57,7 @@
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_key_effects.hpp>
 #include <ikos/analyzer/analysis/execution_engine/stdio_effects.hpp>
+#include <ikos/analyzer/analysis/runtime_stdio_frame.hpp>
 #include <ikos/analyzer/analysis/bmc/bmc.hpp>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
 #include <ikos/analyzer/analysis/pair_exclusion.hpp>
@@ -3182,6 +3183,14 @@ void DataRaceChecker::check_extern_call_effects(
 
   if (initialization) ignored_arguments = 0;
   if (key_effect == PthreadKeyEffect::Create) ignored_arguments = 2;
+  const auto& frame = this->_ctx.runtime_stdio_frame_certificate;
+  if (frame && frame->omits_stderr_write(call, call_context)) {
+    ignored_arguments |= 1u; // Only fprintf's actual runtime stream argument.
+    auto info = frame->info(call);
+    info.put("safe_reason", "runtime stderr is outside the complete application effect frame");
+    this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+                         call, call_context, {}, std::move(info));
+  }
 
   // Default to a Write per pointer argument; an exact strcpy source is Read.
   // Other libraries may read or write through it (scanf(&x), fgets, ...). The
