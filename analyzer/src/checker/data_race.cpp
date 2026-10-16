@@ -56,6 +56,7 @@
 #include <ikos/analyzer/checker/thread_completion.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_key_effects.hpp>
+#include <ikos/analyzer/analysis/execution_engine/stdio_effects.hpp>
 #include <ikos/analyzer/analysis/bmc/bmc.hpp>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
 #include <ikos/analyzer/analysis/pair_exclusion.hpp>
@@ -3139,6 +3140,16 @@ void DataRaceChecker::check_extern_call_effects(
   // buffer destinations, %n and pointer conversions can access shared data.
   if (bmc::constant_output_call(call)) return;
 
+  auto scan = scalar_scan_effect(call);
+  if (scan && !scan->implicit_state_closed) scan = boost::none;
+  if (scan) {
+    this->_checks.insert(
+        CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+        call, call_context, {},
+        JsonDict{{"safe_reason", "exact scalar scanf application-memory effects"},
+                 {"stdio_scan_contract", "scalar-percent-d-output-and-errno-v1"}});
+  }
+
   const auto key_effect = pthread_key_effect(call, this->_ctx);
   if (key_effect == PthreadKeyEffect::Get || key_effect == PthreadKeyEffect::Set)
     return; // Runtime TLS slots, not memory pointed to by the stored value.
@@ -3187,6 +3198,7 @@ void DataRaceChecker::check_extern_call_effects(
   std::size_t argument_index = 0;
   for (auto it = call->arg_begin(), et = call->arg_end(); it != et; ++it, ++argument_index) {
     if (argument_index < 4 && (ignored_arguments & (1u << argument_index)) != 0) continue;
+    if (scan && argument_index == 1) continue; // Verified immutable format.
     ar::Value* arg = *it;
     PointsToSet pts = this->resolve_points_to(arg, inv);
     // A bottom set has no target; a concrete-but-thread-private set is not
@@ -3244,17 +3256,19 @@ void DataRaceChecker::check_extern_call_effects(
     this->_accesses.push_back(
         AccessRecord{call,
                      call_context,
-                     exact != nullptr && argument_index == 1 &&
+                     (scan && argument_index == 0) ||
+                     (exact != nullptr && argument_index == 1 &&
                              (exact->intrinsic_id() == ar::Intrinsic::LibcStrcpy ||
                               exact->intrinsic_id() == ar::Intrinsic::LibcStrcpyCheck ||
-                              (initialization && callee_nm == "pthread_mutex_init"))
+                              (initialization && callee_nm == "pthread_mutex_init")))
                          ? AccessKind::Read
                          : AccessKind::Write,
                      std::move(pts),
                      locks,
                      read_locks,
                      this->resolve_offset(arg, inv),
-                     /* width = */ key_effect == PthreadKeyEffect::Create ? 4u : initialization
+                     /* width = */ scan ? (argument_index == 2 ? 4u : 0u) :
+                         key_effect == PthreadKeyEffect::Create ? 4u : initialization
                          ? (argument_index == 0 && callee_nm == "pthread_mutex_init"
                                 ? (this->_ctx.bundle->data_layout().pointers.bit_width == 32 ? 24u : 40u) : 4u)
                          : 0u,

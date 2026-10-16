@@ -61,6 +61,7 @@
 #include <ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_key_effects.hpp>
+#include <ikos/analyzer/analysis/execution_engine/stdio_effects.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
 #include <ikos/analyzer/analysis/liveness.hpp>
 #include <ikos/analyzer/analysis/option.hpp>
@@ -2157,6 +2158,8 @@ public:
       return;
     }
 
+    if (this->try_exec_scalar_scan(call)) return;
+
     // === POSIX lock API routing (rwlock / trylock) =====================
     //
     // ikos-pp maps the plain mutex pair; route rwlocks and conditional
@@ -2510,6 +2513,8 @@ public:
     if (this->data().is_normal_flow_bottom()) {
       return;
     }
+
+    if (this->try_exec_scalar_scan(call)) return;
 
     if (this->_ctx.opts.enable_thread_modular) {
       this->check_library_effect_coverage(call, id);
@@ -2907,6 +2912,8 @@ public:
 
   /// \brief Execute a call to an unknown extern function
   void exec_unknown_extern_call(ar::CallBase* call) override {
+    if (this->try_exec_scalar_scan(call)) return;
+
     // Check if this is pthread_mutex_lock or pthread_mutex_unlock
     auto called_val = call->called();
     if (isa< ar::FunctionPointerConstant >(called_val)) {
@@ -3160,6 +3167,38 @@ private:
   /// @}
   /// \name Execution of intrinsic functions
   /// @{
+
+  // A shape match with unsupported implicit state must retain a coverage gate,
+  // including mapped scanf calls whose private output would not add one.
+  bool try_exec_scalar_scan(ar::CallBase* call) {
+    if (!this->_ctx.opts.enable_thread_modular) return false;
+    auto effect = scalar_scan_effect(call);
+    if (!effect) return false;
+    if (!effect->implicit_state_closed) {
+      this->_ctx.concurrent_env.record_unmodeled_effect(
+          call, "scanf implicit state not covered");
+      return false;
+    }
+    this->exec_unknown_call(call, false, false, false, false);
+    if (this->data().is_normal_flow_bottom()) return true;
+    this->init_global_operands(call);
+    // A cached errno pointer can observe parser errors without calling the
+    // getter again. Its sealed uses keep this runtime object thread-local.
+    this->data().normal().mem_forget(this->_mem_factory.get_libc_errno());
+    const auto& dest = this->_lit_factory.get_scalar(call->argument(2));
+    if (!this->prepare_mem_access(dest)) return true;
+    check_synthetic_handle_effect(*this, call, dest);
+    if (!publish_unknown_byte_effect(*this, call, dest)) {
+      this->_ctx.concurrent_env.record_unknown_pointer_write();
+      this->_ctx.concurrent_env.record_unmodeled_effect(
+          call, "scanf output interference not covered");
+      this->data().normal().mem_forget_all();
+    } else {
+      // TOP includes failed conversion leaving an old or uninitialized value.
+      this->data().normal().mem_forget_reachable(dest.var());
+    }
+    return true;
+  }
 
   // Local memory havoc does not publish cross-thread buffer writes. Until
   // those summaries exist, an affected shared destination blocks SAFE.

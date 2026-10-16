@@ -929,3 +929,29 @@ conversion result nor a particular errno value.
 `python3 scripts/test_scanf_errno.py` covers raw and mapped APIs, cached-error
 branches, unconditional conflicts and a no-input impossible-branch control,
 with both int and long-long payloads under ILP32.
+
+## Exact scalar string input
+
+The thread-modular analyzer supports a narrow source/AR-verified string-input
+summary: actual declared `sscanf` or `__isoc99_sscanf`, GNU/Linux i386 ABI, an
+immutable literal `%d`, and one complete signed 32-bit global or scalar-local
+output object. Both raw extern and mapped libc routes use the same descriptor.
+The input remains a possibly unbounded Read; the output is a four-byte possible
+Write. The immutable format is separately verified. Return and output values
+are TOP, including failed conversion leaving an old or uninitialized output.
+Every call also forgets the existing errno memory object, so cached errno
+pointers cannot retain a stale value. No parsing success or value range is inferred.
+
+Errno accessor addresses must stay in same-function, whole-int load/store uses.
+Escaping those addresses or exposing foreign runtime data refuses this summary
+and retains explicit coverage even with a private output. Other unsupported
+formats use the formatted-input gate above. Locale and unknown-call coverage
+remain in force. This summary does not establish stream isolation or remove
+`fprintf` effects, and is not added as a BMC or execution-checker leaf.
+
+`python3 scripts/test_scalar_scan.py` checks raw/mapped calls, failure and cached
+errno paths, private-output fallback, input/output conflicts, API/format/width
+controls, shifted-input and partial-output overlaps, read-lock versus exclusive
+mutex protection, and ILP32 long-long payloads. Implementation: `stdio_effects.hpp/.cpp`
+in `analysis/execution_engine` and `src/analysis`, consumed by numerical transfer
+and the data-race checker.
