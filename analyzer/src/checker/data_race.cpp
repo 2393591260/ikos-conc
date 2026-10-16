@@ -50,6 +50,7 @@
 #include <ikos/analyzer/checker/thread_private_heap.hpp>
 #include <ikos/analyzer/checker/arena_reservation.hpp>
 #include <ikos/analyzer/checker/array_slices.hpp>
+#include <ikos/analyzer/checker/thread_lifecycle.hpp>
 #include <ikos/analyzer/checker/binary_token.hpp>
 #include <ikos/analyzer/checker/once_initialization.hpp>
 #include <ikos/analyzer/checker/thread_completion.hpp>
@@ -1108,6 +1109,7 @@ DataRaceChecker::~DataRaceChecker() {
   BinaryTokenOwnership binary_token(this->_ctx, this->_accesses);
   ArenaReservation arena_reservation(this->_ctx, this->_accesses, binary_token);
   ArraySlices array_slices(this->_ctx);
+  ThreadLifecycle thread_lifecycle(this->_ctx);
   OnceInitialization once_initialization(this->_ctx, this->_accesses, binary_token);
   MutexHandover mutex_handover(this->_ctx);
   ScProtocol sc_protocol(this->_ctx);
@@ -1292,6 +1294,11 @@ DataRaceChecker::~DataRaceChecker() {
         if (auto location = source_location(b.stmt)) proof.put("access_b_line", location.line());
         this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
                              a.stmt, a.call_context, {}, proof);
+        continue;
+      }
+      if (thread_lifecycle.excludes(a, b)) {
+        this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+                             a.stmt, a.call_context, {}, thread_lifecycle.info(a, b));
         continue;
       }
       if (sc_protocol.ordered(a, b)) {

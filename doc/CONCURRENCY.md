@@ -752,6 +752,44 @@ including pre-gate invocations. This binding grants no atomicity and never
 orders ordinary later/later conflicts. Ambiguous aliases, escaped outputs,
 partial effects or another actual payload refuse the binding.
 
+## Serial dynamic thread lifecycles
+
+`ThreadLifecycle` preserves a finite relation between actual scalar control,
+helper returns and an outstanding current child. Creation includes both an
+existing joinable child and a failure with no child and unknown handle bits.
+An owned handle can be reused only after its prior child was consumed; saved,
+partial, escaped and foreign handle flows refuse certification. Each admitted
+join consumes the actual immediate full-width slot load. Every non-NULL result
+must be a private, live, unread pointer-sized local object; its value stays
+unknown. The first subset uses global scalar native handle slots and a closed
+acyclic spawn tree with at most one outstanding child per parent activation.
+
+CFG and helper results join by a set of possible states. Loops run to a finite
+fixed point; work exhaustion emits no proof. An absence fact intersects every
+state and calling context of the actual access. Child exit summaries are checked
+bottom-up at every real Return, so a parent's join can discharge descendants
+only when its child always drains them. The same argument serializes repeated
+activations without changing the ordinary thread-uniqueness or joined digests.
+Payload reads stay unknown. Exact ordinary source/AR effects remain in the
+checker; implicit call effects do not consume these temporal certificates.
+
+The ignored-return completion rule models ordinary GNU/Linux i386 join as in
+[glibc 2.39](https://sourceware.org/git/?p=glibc.git;a=blob_plain;f=nptl/pthread_join_common.c;hb=glibc-2.39):
+an existing unconsumed joinable child, one parent joiner, no detach/cancel,
+parent-held locks or waits outside the acyclic parent-to-child topology.
+This is narrower than a portable POSIX guarantee for every ignored-return join.
+A no-child join keeps IKOS's existing no-HB, output-only unknown-handle envelope;
+it supplies no successful-join edge. That envelope is an explicit library model,
+not a guarantee about real libc behavior for arbitrary invalid handles.
+Default NULL-attribute mutex calls are confined to disjoint opaque global storage;
+initialization/destruction require quiescent descendants. This proof supplies
+no mutex-success or mutual-exclusion fact. Unknown effects, callbacks, aliasing,
+incomplete normal exits or additional creators keep the candidate.
+
+Run `python3 scripts/test_thread_lifecycle.py` for ILP32 serial-loop, transitive,
+failure, stale-handle, helper-context and wide-payload controls.
+Implementation: `checker/thread_lifecycle.hpp` and `src/checker/thread_lifecycle.cpp`.
+
 ## Stable flat-array slices
 
 `ArraySlices` can exclude a pair of heap accesses when complete native/AR
