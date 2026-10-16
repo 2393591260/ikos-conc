@@ -94,7 +94,12 @@ void ThreadModularAnalysis::run() {
       !bundle->global_or_null("ar.global_dtors") &&
       std::find(_ctx.opts.analyses.begin(), _ctx.opts.analyses.end(),
                 CheckerName::DataRace) != _ctx.opts.analyses.end()) {
-    std::map< ar::CallBase*, ar::GlobalVariable* > queries;
+    std::map< ar::CallBase*, GlobalArraySubobject > queries;
+    std::map< ar::Statement*, GlobalArraySubobject > bounds;
+    std::vector< GlobalArraySubobject > nested;
+    for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it)
+      for (const auto& object : global_array_subobjects(*it))
+        if (object.nested() && object.type->element_type()->is_pointer()) nested.push_back(object);
     bool closed = true, constructor = false;
     unsigned budget = 8192;
     for (auto it = bundle->function_begin(); it != bundle->function_end(); ++it) {
@@ -108,6 +113,13 @@ void ThreadModularAnalysis::run() {
               cast->op() == ar::UnaryOperation::PtrToUI ||
               cast->op() == ar::UnaryOperation::PtrToSI) closed = false;
         }
+        for (const auto& object : nested) {
+          llvm::Value* index = nullptr;
+          if (pointer_array_access(statement, object, &index)) {
+            closed &= pure_local_array_index(index);
+            bounds.emplace(statement, object);
+          }
+        }
         auto* call = dyn_cast< ar::CallBase >(statement);
         if (!call) continue;
         auto* exact = dyn_cast< ar::FunctionPointerConstant >(call->called());
@@ -119,7 +131,7 @@ void ThreadModularAnalysis::run() {
                        exact->function()->intrinsic_id() == ar::Intrinsic::PthreadCreate)) ||
             (source_callee && source_callee->getName() == "pthread_create"))
           closed &= unread_private_thread_output(call);
-        if (auto* object = mutex_array_effect_object(call)) {
+        if (auto object = mutex_array_effect_object(call)) {
           queries.emplace(call, object);
           continue;
         }
@@ -130,7 +142,7 @@ void ThreadModularAnalysis::run() {
       }
     }
     if (closed && constructor && !queries.empty()) {
-      auto* source = queries.begin()->second->frontend< llvm::GlobalVariable >();
+      auto* source = queries.begin()->second.global->frontend< llvm::GlobalVariable >();
       closed = mutex_effect_pointer_representations_closed(*source->getParent());
     }
     if (closed && constructor && !queries.empty()) {
@@ -143,6 +155,7 @@ void ThreadModularAnalysis::run() {
       preflight.function_pointer = _ctx.function_pointer;
       preflight.pointer = _ctx.pointer;
       preflight.mutex_effect_queries = queries;
+      preflight.subarray_bounds_queries = bounds;
       ThreadModularAnalysis(preflight, false).run();
       bool complete = !preflight.concurrent_env.is_dirty() &&
                       preflight.concurrent_env.unmodeled_thread_creations().empty();
@@ -155,7 +168,12 @@ void ThreadModularAnalysis::run() {
         auto result = preflight.mutex_effect_observations.find(query.first);
         complete &= result != preflight.mutex_effect_observations.end() && result->second;
       }
+      for (const auto& query : bounds) {
+        auto result = preflight.subarray_bounds_observations.find(query.first);
+        complete &= result != preflight.subarray_bounds_observations.end() && result->second;
+      }
       if (complete) {
+        _ctx.subarray_bounds_certificates = bounds;
         for (const auto& query : queries)
           _ctx.mutex_effect_certificates.insert(query.first);
         log::debug("Heap pointer effects: mutex-array preflight certified " +

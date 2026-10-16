@@ -307,6 +307,20 @@ helper-derived indices and consumed handles may remain unsupported. This does
 not assert mutex-call success or establish heap-object uniqueness. Controls run
 with BMC disabled via `python3 scripts/test_mutex_array_effects.py`.
 
+Root and mutex arrays may also be separate subobjects of the same global
+structure, including fixed nested structures and reordered fields. Each retains
+its typed field path and absolute byte extent. LLVM `inbounds` alone does not
+bound a nested array: the independent analysis must observe every pointer-slot
+load/store and mutex call within its own complete subarray. All contexts and
+iterations must pass; missing observations disable recovery. The fresh analysis
+checks each recovered load's actual address again. Ownership indexes are relative
+to the selected subarray; held mutex keys keep their absolute allocation offsets.
+The shared pointer board remains a MAY union, and ordinary write invalidation is
+unchanged. Escaping addresses, overlapping writes, unsupported siblings, packed
+or union containers, and ambiguous families retain conservative behavior.
+Run `python3 scripts/test_nested_array_ownership.py` for these ILP32 controls,
+including 64-bit payloads and wrapping index conversions.
+
 Implementation: `analysis/region_ownership.hpp` and
 `src/analysis/region_ownership.cpp`. The checker consumes certificates only after
 the original value analysis has converged. With `--format=json`, add

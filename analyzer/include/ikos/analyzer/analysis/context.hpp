@@ -44,6 +44,7 @@
 #pragma once
 
 #include <map>
+#include <tuple>
 #include <set>
 
 #include <boost/filesystem.hpp>
@@ -51,6 +52,7 @@
 #include <ikos/ar/semantic/bundle.hpp>
 
 #include <ikos/analyzer/analysis/option.hpp>
+#include <ikos/analyzer/analysis/execution_engine/global_array_subobject.hpp>
 #include <ikos/core/domain/concurrent_global_env.hpp>
 
 namespace ikos {
@@ -128,9 +130,14 @@ public:
 
   // Populated only in the independent conservative preflight. A failed
   // observation is permanent; only certificates cross into the fresh analysis.
-  std::map< ar::CallBase*, ar::GlobalVariable* > mutex_effect_queries;
+  std::map< ar::CallBase*, GlobalArraySubobject > mutex_effect_queries;
   std::map< ar::CallBase*, bool > mutex_effect_observations;
   std::set< ar::CallBase* > mutex_effect_certificates;
+  std::map< ar::Statement*, GlobalArraySubobject > subarray_bounds_queries;
+  std::map< ar::Statement*, bool > subarray_bounds_observations;
+  std::map< ar::Statement*, GlobalArraySubobject > subarray_bounds_certificates;
+  std::map< std::tuple< ar::GlobalVariable*, ar::ArrayType*, core::ZNumber, core::ZNumber >, bool > readonly_subarray_certificates;
+
 
 
 public:

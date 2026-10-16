@@ -295,8 +295,7 @@ bool cyclic_edge(ar::BasicBlock* from, ar::BasicBlock* to) {
 
 class RegionOwnership::Impl {
   Context& ctx;
-  ar::GlobalVariable* roots = nullptr;
-  ar::GlobalVariable* mutexes = nullptr;
+  GlobalArraySubobject roots, mutexes;
   ZNumber count{0}, extent{0}, next{0};
   std::map< Key, Snapshot > snapshots;
   std::map< Key, bool > certificates;
@@ -321,9 +320,9 @@ class RegionOwnership::Impl {
     Pointer result;
     if (isa< ar::NullConstant >(value))
       result.kind = Kind::Null;
-    else if (value == roots)
+    else if (value == roots.global && !roots.nested())
       result.kind = Kind::Root;
-    else if (value == mutexes)
+    else if (value == mutexes.global && !mutexes.nested())
       result.kind = Kind::Mutex;
     else if (isa< ar::GlobalVariable >(value)) {
       result.kind = Kind::Global;
@@ -357,21 +356,20 @@ class RegionOwnership::Impl {
   bool within(ar::Statement* stmt,
               CallContext* cc,
               ar::Value* value,
-              ar::GlobalVariable* object,
+              const GlobalArraySubobject& object,
               unsigned width) const {
     auto* fact = address(stmt, cc, value);
     auto* base =
         fact ? dyn_cast_or_null< GlobalMemoryLocation >(fact->base) : nullptr;
     return fact && fact->bounded && fact->nonnull && base &&
-           base->global_var() == object && fact->lower >= 0 &&
-           fact->upper + width <= ctx.bundle->data_layout().alloc_size_in_bytes(
-                                      object->type()->pointee());
+           base->global_var() == object.global && fact->lower >= object.begin &&
+           fact->upper + width <= object.begin + object.size;
   }
   bool held_at(ar::Statement* stmt, CallContext* cc, const Lock& lock) const {
     auto* snap = snapshot(stmt, cc);
     if (!lock.held || !snap)
       return false;
-    auto* location = ctx.mem_factory->get_global(mutexes);
+    auto* location = ctx.mem_factory->get_global(mutexes.global);
     auto base = core::IndexableTraits< MemoryLocation* >::index(location);
     for (auto key : snap->locks) {
       if (!lock.symbolic && key == lock.key)
@@ -409,8 +407,19 @@ class RegionOwnership::Impl {
       }
   }
 
-  bool mutex_scope(ar::GlobalVariable* global) {
-    return mutex_array_storage_scope(global, count);
+  Pointer leaf_pointer(ar::Value* value, const State& state,
+                       const GlobalArraySubobject& object, Kind kind) const {
+    auto p = pointer(value, state);
+    const ZNumber stride(kind == Kind::Root ? 4 : 24);
+    if (p.kind == Kind::Global && p.identity == object.global &&
+        p.offset >= object.begin && p.offset < object.begin + object.size &&
+        (p.offset - object.begin) % stride == 0) {
+      p.kind = kind;
+      p.index = Index{nullptr, (p.offset - object.begin) / stride};
+      p.offset = 0;
+      p.identity = nullptr;
+    }
+    return p;
   }
 
   bool shift(ar::PointerShift* statement, State& state) {
@@ -429,6 +438,22 @@ class RegionOwnership::Impl {
         variable = v;
         coefficient = c;
       }
+    }
+    if (p.kind == Kind::Global && variable) {
+      auto select = [&](const GlobalArraySubobject& object, Kind kind, unsigned stride) {
+        const auto absolute = p.offset + constant;
+        if (!object || p.identity != object.global || coefficient != stride ||
+            absolute < object.begin || absolute >= object.begin + object.size ||
+            (absolute - object.begin) % stride != 0) return false;
+        p.kind = kind;
+        p.index.constant = (absolute - object.begin) / stride;
+        p.offset = 0;
+        p.identity = nullptr;
+        constant = 0;
+        return true;
+      };
+      if (!select(roots, Kind::Root, 4) && !select(mutexes, Kind::Mutex, 24))
+        return fail("unsupported subarray selection");
     }
     if (p.kind == Kind::Root || p.kind == Kind::Mutex) {
       ZNumber stride(p.kind == Kind::Root ? 4 : 24);
@@ -463,7 +488,8 @@ public:
       return;
     for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end();
          ++it) {
-      auto* array = dyn_cast< ar::ArrayType >((*it)->type()->pointee());
+      for (const auto& descriptor : global_array_subobjects(*it)) {
+      auto* array = descriptor.type;
       auto* element =
           array ? dyn_cast< ar::PointerType >(array->element_type()) : nullptr;
       auto* object =
@@ -486,13 +512,14 @@ public:
       // The initial subset handles one family; ambiguity keeps the old may
       // analysis.
       if (roots) {
-        roots = nullptr;
+        roots = {};
         return;
       }
-      roots = *it;
+      roots = descriptor;
       count = array->num_elements();
       next = field;
       extent = ctx.bundle->data_layout().alloc_size_in_bytes(object);
+      }
     }
   }
 
@@ -555,20 +582,21 @@ public:
         !ctx.concurrent_env.unmodeled_thread_creations().empty() ||
         ctx.bundle->global_or_null("ar.global_ctors") ||
         ctx.bundle->global_or_null("ar.global_dtors") ||
-        !prove_readonly_pointer_array(roots)) {
+        !prove_readonly_pointer_array(roots, ctx)) {
       fail("root/publication coverage");
       return;
     }
     for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end();
          ++it) {
-      if (*it == roots)
-        continue;
-      if (mutex_scope(*it)) {
-        if (mutexes) {
-          fail("ambiguous mutex family");
-          return;
+      for (const auto& descriptor : global_array_subobjects(*it)) {
+        if (descriptor == roots) continue;
+        if (mutex_array_storage_scope(descriptor, count)) {
+          if (mutexes) {
+            fail("ambiguous mutex family");
+            return;
+          }
+          mutexes = descriptor;
         }
-        mutexes = *it;
       }
     }
     if (!mutexes) {
@@ -658,8 +686,11 @@ public:
   JsonDict info() const {
     return {{"ownership_contract", "indexed-live-heap-owner-v1"},
             {"scope", "paired live-heap byte conflicts, not pointer validity"},
-            {"root_array", roots ? roots->name() : ""},
-            {"mutex_array", mutexes ? mutexes->name() : ""},
+            {"root_array", roots ? roots.global->name() : ""},
+            {"mutex_array", mutexes ? mutexes.global->name() : ""},
+            {"root_byte_begin", roots.begin.str()},
+            {"mutex_byte_begin", mutexes.begin.str()},
+            {"array_count", count.str()},
             {"object_extent", extent.str()},
             {"pointer_field_offset", next.str()}};
   }
@@ -724,13 +755,13 @@ bool RegionOwnership::Impl::transfer(ar::Statement* stmt,
     auto* operand = load ? load->operand() : store->pointer();
     auto* type = load ? load->result()->type() : store->value()->type();
     auto width = ctx.bundle->data_layout().store_size_in_bytes(type);
-    auto p = pointer(operand, state);
+    auto p = leaf_pointer(operand, state, roots, Kind::Root);
     if ((load && (load->is_atomic() || load->is_volatile())) ||
         (store && (store->is_atomic() || store->is_volatile())))
       return fail("atomic/volatile graph access");
     Pointer value;
     if (p.kind == Kind::Root) {
-      if (!whole_pointer_array_access(stmt, roots) ||
+      if (!pointer_array_access(stmt, roots) ||
           !within(stmt, cc, operand, roots, 4))
         return fail("root leaf range");
       if (load) {
@@ -828,13 +859,13 @@ bool RegionOwnership::Impl::transfer(ar::Statement* stmt,
         result.identity = call->result();
       }
     } else if (mutex_api(call, "pthread_mutex_init", 2)) {
-      auto p = pointer(call->argument(0), state);
+      auto p = leaf_pointer(call->argument(0), state, mutexes, Kind::Mutex);
       if (state.concurrent || state.lock.held || p.kind != Kind::Mutex ||
           !isa< ar::NullConstant >(call->argument(1)) ||
           !within(call, cc, call->argument(0), mutexes, 24))
         return fail("mutex initialization scope");
     } else if (mutex_api(call, "pthread_mutex_lock", 1)) {
-      auto p = pointer(call->argument(0), state);
+      auto p = leaf_pointer(call->argument(0), state, mutexes, Kind::Mutex);
       auto* fact = address(call, cc, call->argument(0));
       if (p.kind != Kind::Mutex || state.lock.held ||
           !within(call, cc, call->argument(0), mutexes, 24))
@@ -842,7 +873,7 @@ bool RegionOwnership::Impl::transfer(ar::Statement* stmt,
       state.lock.held = true;
       state.lock.index = p.index;
       auto base = core::IndexableTraits< MemoryLocation* >::index(
-          ctx.mem_factory->get_global(mutexes));
+          ctx.mem_factory->get_global(mutexes.global));
       if (fact->lower == fact->upper)
         state.lock.key = offset_lock_key(base, fact->lower);
       else {
@@ -851,7 +882,7 @@ bool RegionOwnership::Impl::transfer(ar::Statement* stmt,
           return fail("missing actual mutex expression");
       }
     } else if (mutex_api(call, "pthread_mutex_unlock", 1)) {
-      auto p = pointer(call->argument(0), state);
+      auto p = leaf_pointer(call->argument(0), state, mutexes, Kind::Mutex);
       if (p.kind != Kind::Mutex || !state.lock.held ||
           !(p.index == state.lock.index) ||
           !within(call, cc, call->argument(0), mutexes, 24))

@@ -86,10 +86,55 @@ inline bool mutex_array_storage_scope(ar::GlobalVariable* global,
   return true;
 }
 
+inline bool mutex_array_storage_scope(const GlobalArraySubobject& object,
+                                       const core::ZNumber& count) {
+  if (!object) return false;
+  if (!object.nested()) return mutex_array_storage_scope(object.global, count);
+  auto* source = object.global->frontend< llvm::GlobalVariable >();
+  auto* leaf = llvm::dyn_cast< llvm::StructType >(object.source_type->getElementType());
+  const llvm::Triple target(source->getParent()->getTargetTriple());
+  const auto& layout = source->getParent()->getDataLayout();
+  const auto alignment = source->getAlign() ? source->getAlign()->value()
+      : layout.getABITypeAlign(source->getValueType()).value();
+  if (!leaf || leaf->isOpaque() || !leaf->hasName() ||
+      leaf->getName() != "union.pthread_mutex_t" || !target.isOSLinux() ||
+      target.getEnvironment() != llvm::Triple::GNU || target.getArch() != llvm::Triple::x86 ||
+      object.global->bundle()->data_layout().pointers.bit_width != 32 ||
+      source->isConstant() || !source->hasInitializer() || !source->getInitializer()->isNullValue() ||
+      object.type->num_elements() != count || alignment < 4 || object.begin % 4 != 0 ||
+      layout.getTypeAllocSize(leaf).getFixedValue() != 24 || object.size != 24 * count)
+    return false;
+  const auto arrays = global_array_subobjects(object.global);
+  return closed_global_array_uses(object.global, [&](llvm::User* user) {
+    if (auto* call = llvm::dyn_cast< llvm::CallBase >(user)) {
+      auto* function = llvm::dyn_cast< llvm::Function >(call->getCalledOperand()->stripPointerCasts());
+      return function && function->isDeclaration() && call->arg_size() > 0 &&
+          (function->getName() == "pthread_mutex_init" || function->getName() == "pthread_mutex_lock" ||
+           function->getName() == "pthread_mutex_unlock") &&
+          global_array_element(call->getArgOperand(0), object);
+    }
+    llvm::Value* address = nullptr;
+    llvm::Type* type = nullptr;
+    if (auto* load = llvm::dyn_cast< llvm::LoadInst >(user)) {
+      if (load->isAtomic() || load->isVolatile()) return false;
+      address = load->getPointerOperand(); type = load->getType();
+    } else if (auto* store = llvm::dyn_cast< llvm::StoreInst >(user)) {
+      if (store->isAtomic() || store->isVolatile()) return false;
+      address = store->getPointerOperand(); type = store->getValueOperand()->getType();
+    } else return false;
+    for (const auto& sibling : arrays)
+      if (data_pointer_array(sibling) &&
+          (sibling.begin + sibling.size <= object.begin || object.begin + object.size <= sibling.begin) &&
+          type == sibling.source_type->getElementType() && global_array_element(address, sibling))
+        return true;
+    return false;
+  });
+}
+
 // The numerical bounds are collected separately; neither inbounds nor a type
 // name establishes the byte range of a dynamic index.
-inline ar::GlobalVariable* mutex_array_effect_object(ar::CallBase* call) {
-  if (!call->has_frontend()) return nullptr;
+inline GlobalArraySubobject mutex_array_effect_object(ar::CallBase* call) {
+  if (!call->has_frontend()) return {};
   auto* source = llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >());
   auto* target = source ? llvm::dyn_cast< llvm::Function >(
       source->getCalledOperand()->stripPointerCasts()) : nullptr;
@@ -97,75 +142,36 @@ inline ar::GlobalVariable* mutex_array_effect_object(ar::CallBase* call) {
       source->getCallingConv() != llvm::CallingConv::C ||
       target->getCallingConv() != llvm::CallingConv::C ||
       !target->getReturnType()->isIntegerTy(32) ||
-      !source->getType()->isIntegerTy(32)) return nullptr;
+      !source->getType()->isIntegerTy(32)) return {};
   auto* address = dyn_cast< ar::FunctionPointerConstant >(call->called());
   auto* function = address ? address->function() : nullptr;
-  if (!function || !function->is_declaration()) return nullptr;
+  if (!function || !function->is_declaration()) return {};
   const auto id = function->intrinsic_id();
   if ((target->getName() == "pthread_mutex_init" && function->name() != "pthread_mutex_init") ||
       (target->getName() == "pthread_mutex_lock" &&
        function->name() != "pthread_mutex_lock" && id != ar::Intrinsic::PthreadMutexLock) ||
       (target->getName() == "pthread_mutex_unlock" &&
        function->name() != "pthread_mutex_unlock" && id != ar::Intrinsic::PthreadMutexUnlock))
-    return nullptr;
+    return {};
   const bool init = target->getName() == "pthread_mutex_init";
   if (!init && target->getName() != "pthread_mutex_lock" &&
-      target->getName() != "pthread_mutex_unlock") return nullptr;
+      target->getName() != "pthread_mutex_unlock") return {};
   unsigned n = init ? 2 : 1;
   if (call->num_arguments() != n || source->arg_size() != n ||
-      target->arg_size() != n) return nullptr;
+      target->arg_size() != n) return {};
   for (unsigned i = 0; i < n; ++i)
     if (!target->getFunctionType()->getParamType(i)->isPointerTy() ||
         !source->getArgOperand(i)->getType()->isPointerTy() ||
-        !call->argument(i)->type()->is_pointer()) return nullptr;
-  if (init && !isa< ar::NullConstant >(call->argument(1))) return nullptr;
-  auto* gep = llvm::dyn_cast< llvm::GEPOperator >(
-      source->getArgOperand(0)->stripPointerCasts());
-  auto* root = gep ? llvm::dyn_cast< llvm::GlobalVariable >(gep->getPointerOperand()) : nullptr;
-  auto* array = root ? llvm::dyn_cast< llvm::ArrayType >(root->getValueType()) : nullptr;
-  auto* zero = gep && gep->getNumIndices() == 2
-      ? llvm::dyn_cast< llvm::ConstantInt >(gep->getOperand(1)) : nullptr;
-  if (!array || gep->getSourceElementType() != array || !zero || !zero->isZero())
-    return nullptr;
-  // First subset: index values have no memory, parameter, or unknown-call
-  // sources. Loops are allowed, but every incoming definition is inspected.
-  std::vector< llvm::Value* > pending{gep->getOperand(2)};
-  std::unordered_set< llvm::Value* > visited;
-  while (!pending.empty()) {
-    auto* value = pending.back(); pending.pop_back();
-    if (!visited.insert(value).second) continue;
-    if (visited.size() > 1024 || !value->getType()->isIntegerTy()) return nullptr;
-    if (llvm::isa< llvm::ConstantInt >(value)) continue;
-    if (auto* input = llvm::dyn_cast< llvm::CallBase >(value)) {
-      auto* function = llvm::dyn_cast< llvm::Function >(
-          input->getCalledOperand()->stripPointerCasts());
-      if (!function || !function->isDeclaration() ||
-          function->getName() != "__VERIFIER_nondet_int" ||
-          function->arg_size() != 0 || input->arg_size() != 0 ||
-          !function->getReturnType()->isIntegerTy(32) ||
-          !input->getType()->isIntegerTy(32) ||
-          input->getCallingConv() != llvm::CallingConv::C ||
-          function->getCallingConv() != llvm::CallingConv::C) return nullptr;
-      continue;
+        !call->argument(i)->type()->is_pointer()) return {};
+  if (init && !isa< ar::NullConstant >(call->argument(1))) return {};
+  for (auto it = call->bundle()->global_begin(); it != call->bundle()->global_end(); ++it)
+    for (const auto& object : global_array_subobjects(*it)) {
+      llvm::Value* index = nullptr;
+      if (global_array_element(source->getArgOperand(0), object, &index) &&
+          pure_local_array_index(index) &&
+          mutex_array_storage_scope(object, object.type->num_elements())) return object;
     }
-    auto* instruction = llvm::dyn_cast< llvm::Instruction >(value);
-    if (!instruction ||
-        !(llvm::isa< llvm::PHINode >(instruction) ||
-          llvm::isa< llvm::BinaryOperator >(instruction) ||
-          llvm::isa< llvm::ICmpInst >(instruction) ||
-          llvm::isa< llvm::SelectInst >(instruction) ||
-          (llvm::isa< llvm::CastInst >(instruction) &&
-           instruction->getOperand(0)->getType()->isIntegerTy()))) return nullptr;
-    for (auto& operand : instruction->operands()) pending.push_back(operand.get());
-  }
-  for (auto it = call->bundle()->global_begin(); it != call->bundle()->global_end(); ++it) {
-    auto* global = *it;
-    if (!global->has_frontend() || global->frontend< llvm::GlobalVariable >() != root) continue;
-    auto* ar_array = dyn_cast< ar::ArrayType >(global->type()->pointee());
-    if (ar_array && ar_array->num_elements() > 0 &&
-        mutex_array_storage_scope(global, ar_array->num_elements())) return global;
-  }
-  return nullptr;
+  return {};
 }
 
 // Native pthread_t values are opaque tokens in the current AI. This first
@@ -259,6 +265,35 @@ inline bool mutex_effect_pointer_representations_closed(const llvm::Module& modu
 }
 
 template < typename E >
+bool subarray_address_within(E& eng, ar::Value* operand,
+                             const GlobalArraySubobject& object,
+                             const core::ZNumber& width) {
+  const auto& literal = eng.ctx().lit_factory->get_scalar(operand);
+  if (!literal.is_pointer_var() || eng.data().is_normal_flow_bottom()) return false;
+  const auto address = eng.data().normal().pointer_to_pointer(literal.var());
+  const auto& points = address.points_to();
+  const auto& offset = address.offset();
+  return eng.data().normal().nullity_is_non_null(literal.var()) &&
+      points.is_set() && points.size() == 1 &&
+      *points.begin() == eng.ctx().mem_factory->get_global(object.global) &&
+      !offset.is_bottom() && !offset.is_top() &&
+      offset.lb().to_z_number() >= object.begin &&
+      offset.ub().to_z_number() + width <= object.begin + object.size;
+}
+
+template < typename E >
+void observe_subarray_bounds(E& eng, ar::Statement* statement, ar::Value* operand,
+                             ar::Type* type) {
+  auto& ctx = eng.ctx();
+  auto query = ctx.subarray_bounds_queries.find(statement);
+  if (query == ctx.subarray_bounds_queries.end() || eng.data().is_normal_flow_bottom()) return;
+  bool valid = subarray_address_within(eng, operand, query->second,
+      ctx.bundle->data_layout().store_size_in_bytes(type));
+  auto inserted = ctx.subarray_bounds_observations.emplace(statement, valid);
+  if (!inserted.second) inserted.first->second &= valid;
+}
+
+template < typename E >
 void observe_mutex_array_effect(E& eng, ar::CallBase* call) {
   auto& ctx = eng.ctx();
   auto query = ctx.mutex_effect_queries.find(call);
@@ -272,10 +307,10 @@ void observe_mutex_array_effect(E& eng, ar::CallBase* call) {
     const auto& offset = address.offset();
     valid = eng.data().normal().nullity_is_non_null(literal.var()) &&
         points.is_set() && points.size() == 1 &&
-        *points.begin() == ctx.mem_factory->get_global(query->second) &&
-        !offset.is_bottom() && !offset.is_top() && offset.lb().to_z_number() >= 0 &&
+        *points.begin() == ctx.mem_factory->get_global(query->second.global) &&
+        !offset.is_bottom() && !offset.is_top() && offset.lb().to_z_number() >= query->second.begin &&
         offset.ub().to_z_number() + 24 <=
-            ctx.bundle->data_layout().alloc_size_in_bytes(query->second->type()->pointee());
+            query->second.begin + query->second.size;
   }
   auto inserted = ctx.mutex_effect_observations.emplace(call, valid);
   if (!inserted.second) inserted.first->second &= valid;

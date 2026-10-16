@@ -1832,6 +1832,7 @@ public:
     this->init_global_operands(s);
 
     const ScalarLit& ptr = this->_lit_factory.get_scalar(s->operand());
+    observe_subarray_bounds(*this, s, s->operand(), s->result()->type());
 
     if (!this->prepare_mem_access(ptr)) {
       return;
@@ -1923,6 +1924,7 @@ public:
     this->init_global_operands(s);
 
     const ScalarLit& ptr = this->_lit_factory.get_scalar(s->pointer());
+    observe_subarray_bounds(*this, s, s->pointer(), s->value()->type());
 
     if (!this->prepare_mem_access(ptr)) {
       return;

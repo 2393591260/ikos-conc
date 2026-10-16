@@ -5,6 +5,7 @@
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/Module.h>
 #include <ikos/analyzer/analysis/literal.hpp>
+#include <ikos/analyzer/analysis/execution_engine/heap_pointer_effects.hpp>
 #include <ikos/analyzer/analysis/execution_engine/handle_origin.hpp>
 
 namespace ikos {
@@ -44,33 +45,42 @@ inline bool whole_pointer_array_access(ar::Statement* statement,
       core::ZNumber(layout.getTypeAllocSize(array).getFixedValue()) == global->bundle()->data_layout().alloc_size_in_bytes(ar_array);
 }
 
-inline bool prove_readonly_pointer_array(ar::GlobalVariable* global) {
-  auto* array = dyn_cast< ar::ArrayType >(global->type()->pointee());
+inline bool prove_readonly_pointer_array(ar::GlobalVariable* global,
+                                          Context* ctx = nullptr,
+                                          const GlobalArraySubobject* object = nullptr) {
+  auto* array = object ? object->type : dyn_cast< ar::ArrayType >(global->type()->pointee());
+  auto access = [&](ar::Statement* statement) {
+    if (!object || !object->nested()) return whole_pointer_array_access(statement, global);
+    auto proof = ctx->subarray_bounds_certificates.find(statement);
+    return proof != ctx->subarray_bounds_certificates.end() && proof->second == *object &&
+           pointer_array_access(statement, *object);
+  };
+  auto mutex_call = [&](ar::CallBase* call) {
+    if (!ctx || !object || !object->nested() ||
+        !ctx->mutex_effect_certificates.count(call)) return false;
+    auto mutex = mutex_array_effect_object(call);
+    return mutex && mutex.global == global &&
+        (mutex.begin + mutex.size <= object->begin || object->begin + object->size <= mutex.begin);
+  };
   if (!array || !array->element_type()->is_pointer() || array->num_elements() <= 0 ||
       !global->is_definition() || global->is_thread_local() || !global->has_frontend()) return false;
   auto* source = global->frontend< llvm::GlobalVariable >();
   if (!source->hasInitializer() || !source->getInitializer()->isNullValue() ||
       source->getAddressSpace() != 0 || source->isExternallyInitialized()) return false;
-  // LLVM uses independently close aliases omitted by an AR provenance chain.
-  std::unordered_set< llvm::Value* > seen_values;
-  std::vector< llvm::Value* > values{source};
-  while (!values.empty()) {
-    auto* value = values.back(); values.pop_back();
-    if (!seen_values.insert(value).second) continue;
-    if (seen_values.size() > 8192) return false;
-    for (auto* use : value->users()) {
-      if (auto* gep = llvm::dyn_cast< llvm::GEPOperator >(use)) {
-        if (gep->getPointerOperand() != value) return false;
-        values.push_back(use);
-      } else if (auto* cast = llvm::dyn_cast< llvm::BitCastOperator >(use)) {
-        values.push_back(use);
-      } else if (auto* load = llvm::dyn_cast< llvm::LoadInst >(use)) {
-        if (load->getPointerOperand() != value) return false;
-      } else if (auto* store = llvm::dyn_cast< llvm::StoreInst >(use)) {
-        if (store->getPointerOperand() != value || store->getValueOperand() == value) return false;
-      } else return false;
-    }
-  }
+  if (object && object->nested()) {
+    if (!ctx) return false;
+    std::set< llvm::Value* > accesses, calls;
+    for (const auto& item : ctx->subarray_bounds_certificates)
+      if (item.second == *object && item.first->has_frontend())
+        accesses.insert(item.first->frontend< llvm::Value >());
+    for (auto* call : ctx->mutex_effect_certificates)
+      if (mutex_call(call) && call->has_frontend()) calls.insert(call->frontend< llvm::Value >());
+    if (!closed_global_array_uses(global, [&](llvm::User* use) {
+          return accesses.count(use) || calls.count(use);
+        })) return false;
+  } else if (!closed_global_array_uses(global, [](llvm::User* use) {
+               return llvm::isa< llvm::LoadInst >(use) || llvm::isa< llvm::StoreInst >(use);
+             })) return false;
   std::vector< ar::Store* > writers;
   std::vector< ar::CallBase* > creates;
   unsigned budget = 8192;
@@ -92,24 +102,26 @@ inline bool prove_readonly_pointer_array(ar::GlobalVariable* global) {
         // An indirect call could introduce another entry before initialization.
         if (!target) return false;
       }
+      if (auto* call = dyn_cast< ar::CallBase >(statement))
+        if (mutex_call(call)) continue;
       bool mentioned = false;
       for (auto it = statement->op_begin(); it != statement->op_end(); ++it)
         mentioned |= mentions_handle_slot(*it, global);
       if (!mentioned) continue;
       if (auto* load = dyn_cast< ar::Load >(statement)) {
         if (load->result()->type()->is_pointer() &&
-            whole_pointer_array_access(load, global)) continue;
+            access(load)) continue;
       } else if (auto* store = dyn_cast< ar::Store >(statement)) {
         if (!code->is_function_body()) {
           if (code == global->initializer_or_null() && store->pointer() == global &&
               isa< ar::AggregateZeroConstant >(store->value()) &&
-              store->value()->type() == array) continue;
+              store->value()->type() == global->type()->pointee()) continue;
           return false;
         }
         if (code->function()->name() == "main" &&
             store->value()->type()->is_pointer() &&
             !mentions_handle_slot(store->value(), global) &&
-            whole_pointer_array_access(store, global)) {
+            access(store)) {
           writers.push_back(store); continue;
         }
       } else if (auto* copy = dyn_cast< ar::Assignment >(statement)) {
@@ -149,6 +161,10 @@ inline bool prove_readonly_pointer_array(ar::GlobalVariable* global) {
   return true;
 }
 
+inline bool prove_readonly_pointer_array(const GlobalArraySubobject& object, Context& ctx) {
+  return object && prove_readonly_pointer_array(object.global, &ctx, &object);
+}
+
 template < typename E >
 bool readonly_array_value(E& eng, ar::Load* load, const ScalarLit& pointer,
                            core::ConcurrentGlobalEnv::PointerValue& value) {
@@ -157,17 +173,30 @@ bool readonly_array_value(E& eng, ar::Load* load, const ScalarLit& pointer,
   auto sources = eng.data().normal().pointer_to_points_to(pointer.var());
   if (!sources.is_set() || sources.size() != 1) return false;
   auto* source = dyn_cast< GlobalMemoryLocation >(*sources.begin());
-  if (!source || !whole_pointer_array_access(load, source->global_var())) return false;
-  auto& env = eng.ctx().concurrent_env;
-  if (!env.function_executes_at_most_once(source->global_var()->bundle()->function_or_null("main")))
-    return false;
-  bool certified = false;
-  if (!env.get_readonly_array_certificate(source->global_var(), certified)) {
-    certified = prove_readonly_pointer_array(source->global_var());
-    env.cache_readonly_array_certificate(source->global_var(), certified);
+  if (!source) return false;
+  auto& ctx = eng.ctx();
+  auto& env = ctx.concurrent_env;
+  auto* global = source->global_var();
+  if (!env.function_executes_at_most_once(global->bundle()->function_or_null("main"))) return false;
+  if (whole_pointer_array_access(load, global)) {
+    bool certified = false;
+    if (!env.get_readonly_array_certificate(global, certified)) {
+      certified = prove_readonly_pointer_array(global);
+      env.cache_readonly_array_certificate(global, certified);
+    }
+    return certified && env.get_readonly_array_pointer(source, value);
   }
-  bool available = certified && env.get_readonly_array_pointer(source, value);
-  return available;
+  auto proof = ctx.subarray_bounds_certificates.find(load);
+  if (proof == ctx.subarray_bounds_certificates.end()) return false;
+  const auto& object = proof->second;
+  if (object.global != global || !object.nested() || !pointer_array_access(load, object) ||
+      !subarray_address_within(eng, load->operand(), object,
+          ctx.bundle->data_layout().store_size_in_bytes(load->result()->type()))) return false;
+  auto key = std::make_tuple(global, object.type, object.begin, object.size);
+  auto cached = ctx.readonly_subarray_certificates.find(key);
+  if (cached == ctx.readonly_subarray_certificates.end())
+    cached = ctx.readonly_subarray_certificates.emplace(key, prove_readonly_pointer_array(object, ctx)).first;
+  return cached->second && env.get_readonly_array_pointer(source, value);
 }
 
 } // namespace analyzer
