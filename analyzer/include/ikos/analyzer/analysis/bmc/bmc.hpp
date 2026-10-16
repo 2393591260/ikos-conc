@@ -206,6 +206,12 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
                          ar::CallBase* finite_source = nullptr,
                          unsigned finite_value = 0) {
   Result outcome(Status::NotSearched);
+  if (budget != nullptr && budget->expired()) {
+    budget->record_exhaustion(diagnostics);
+    return Result(Status::BudgetExceeded);
+  }
+  // Cancellation must cover enumeration and solving, not just path-pair entry.
+  const auto* deadline = budget != nullptr ? &budget->deadline : nullptr;
   // Enumerate a few actual values of one source in main. This is a bounded
   // witness search: each choice is attached to the executed call occurrence,
   // and the encoder must bind the same value before accepting a model. Run it
@@ -227,9 +233,9 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   // The actual startup and worker prefixes reject unsupported atomic memory
   // events/calls. Synchronization outside them need not be executable here.
   UnrollResult rA = unroll_to(funcA, stmtA, 1, loop_bound, true,
-                              nullptr, nullptr, finite_source, finite_value);
+                              nullptr, deadline, finite_source, finite_value);
   UnrollResult rB = unroll_to(funcB, stmtB, 1, loop_bound, true,
-                              nullptr, nullptr, finite_source, finite_value);
+                              nullptr, deadline, finite_source, finite_value);
   auto needs_completion_search = [](ar::Function* parent, ar::Function* child, const UnrollResult& paths) {
     if (parent->name() != "main" || child->name() == "main") return false;
     if (paths.pruned_join) return true;
@@ -258,9 +264,9 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
   if (needs_completion(rA) || needs_completion(rB)) {
     // The completed main suffix can contain joins absent before either target.
     outcome.needs_completion |= (funcA->name() == "main") != (funcB->name() == "main");
-    rA = unroll_completed(funcA, stmtA, loop_bound, nullptr,
+    rA = unroll_completed(funcA, stmtA, loop_bound, deadline,
                           finite_source, finite_value);
-    rB = unroll_completed(funcB, stmtB, loop_bound, nullptr,
+    rB = unroll_completed(funcB, stmtB, loop_bound, deadline,
                           finite_source, finite_value);
     record(diagnostics, "atomic_completed_paths");
   }
@@ -403,7 +409,7 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
       }
       GuardRejection rejection;
       outcome.merge(check_race(pA, pB, funcA, funcB, diagnostics, facts, &rejection,
-                              &outcome.metrics, nullptr, nullptr,
+                              &outcome.metrics, nullptr, deadline,
                               budget != nullptr ? budget->solver_timeout_ms : 1000u));
       if (rejection.startup_infeasible) {
         // Every worker alternative in this call shares the same startup;

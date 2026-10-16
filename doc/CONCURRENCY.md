@@ -624,3 +624,9 @@ an immutable ticket. Post-gate facts intersect over all calling contexts,
 including pre-gate invocations. This binding grants no atomicity and never
 orders ordinary later/later conflicts. Ambiguous aliases, escaped outputs,
 partial effects or another actual payload refuse the binding.
+
+Ordinary and auxiliary BMC queries pass the same file-level deadline to path
+enumeration and encoding. Exhaustion remains inconclusive, and each solver
+direction receives a timeout bounded by the remaining budget. This is cooperative cancellation;
+abstract interpretation, indivisible internal steps and frontend work are not
+a hard wall-time guarantee. The outer runner timeout remains separate.
