@@ -257,6 +257,7 @@ add_executable(ikos-analyzer
   src/checker/arena_reservation.cpp
   src/checker/binary_token.cpp
   src/checker/once_initialization.cpp
+  src/checker/mutex_handover.cpp
   src/analysis/region_ownership.cpp
   src/checker/function_call.cpp
   src/checker/int_overflow_base.cpp

@@ -130,6 +130,19 @@ all C/POSIX programs.
 | Unknown effects | Conservative coverage boundaries or explicit import/execution errors; omitted effects do not prove SAFE |
 | Other properties | Original IKOS analyses remain available; deadlock/reachability are not claimed as complete concurrency properties |
 
+The race checker can also certify a closed two-mutex handover. An access inside
+a continuous `D` interval after acquiring `A` is ordered against an access that
+still holds `A` acquired under `D` after releasing `D`. Whichever `D` interval
+comes first establishes the order, directly or through `A`. The finite analysis
+joins possible lock-history states and requires each endpoint's role in every
+reaching state and helper context. Releasing/reacquiring a mutex resets the
+corresponding history; returns do not release mutexes. Unmatched unlocks,
+recursive acquisitions, unknown calls or proof exhaustion refuse the certificate.
+The initial scope requires exactly two closed default-normal global mutexes on
+Linux ILP32, direct scalar memory effects, direct helpers and native thread
+creation with a private scalar output and NULL argument. It adds neither a join
+completion fact nor a BMC synchronization shortcut.
+
 For supported main/worker candidates, BMC can retain finite auxiliary child
 executions through their actual returns before a successful join. Those children
 contribute their reads, writes and synchronization to the same concrete execution;

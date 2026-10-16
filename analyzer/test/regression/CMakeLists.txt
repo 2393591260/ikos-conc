@@ -56,6 +56,8 @@ add_concurrency_test(pthread-key-effects "${CONCURRENCY_ROOT}/scripts/test_pthre
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(tls-destructor-effects "${CONCURRENCY_ROOT}/scripts/test_tls_destructor_effects.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(mutex-handover "${CONCURRENCY_ROOT}/scripts/test_mutex_handover.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(heap-handoff "${CONCURRENCY_ROOT}/scripts/test_heap_handoff.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(arena-reservation "${CONCURRENCY_ROOT}/scripts/test_arena_reservation.py"
