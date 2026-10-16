@@ -192,13 +192,13 @@ class OnceInitialization::Impl {
     if (auto* l = llvm::dyn_cast< llvm::LoadInst >(i)) {
       auto* s = dyn_cast_or_null< ar::Load >(original(i));
       return s && s->operand() == a && s->result()->type() == a->type()->pointee() &&
-          l->getPointerOperand() == g && l->getType() == g->getValueType() && !l->isVolatile() && !l->isAtomic();
+          l->getPointerOperand() == g && l->getType() == g->getValueType() && !l->isAtomic();
     }
     auto* s = llvm::dyn_cast< llvm::StoreInst >(i);
     auto* a_s = dyn_cast_or_null< ar::Store >(original(i));
     return s && a_s && a_s->pointer() == a && a_s->value()->type() == a->type()->pointee() &&
         s->getPointerOperand() == g && s->getValueOperand()->getType() == g->getValueType() &&
-        !s->isVolatile() && !s->isAtomic();
+        !s->isAtomic();
   }
   bool integer_effect(llvm::Instruction* i, llvm::Value* p, ar::Value* a) const {
     auto* type = dyn_cast< ar::PointerType >(a->type());
@@ -210,13 +210,13 @@ class OnceInitialization::Impl {
       auto* load = dyn_cast_or_null< ar::Load >(original(i));
       return load && load->operand() == a && load->result()->type() == integer &&
           l->getPointerOperand() == p && l->getType() == native->getPointerElementType() &&
-          !l->isVolatile() && !l->isAtomic();
+          !l->isAtomic();
     }
     auto* store = dyn_cast_or_null< ar::Store >(original(i));
     auto* s = llvm::dyn_cast< llvm::StoreInst >(i);
     return s && store && store->pointer() == a && store->value()->type() == integer &&
         s->getPointerOperand() == p && s->getValueOperand()->getType() == native->getPointerElementType() &&
-        !s->isVolatile() && !s->isAtomic();
+        !s->isAtomic();
   }
   bool private_output(llvm::CallBase* call) {
     auto* slot = llvm::dyn_cast< llvm::AllocaInst >(call->getArgOperand(3));
@@ -320,6 +320,20 @@ class OnceInitialization::Impl {
         integer_effect(i, arg, functions.at(arg->getParent())->param(0));
   }
   bool gate_uses(Gate& g) {
+    if (g.binary_token) {
+      // The token producer already sealed source uses and actual operations.
+      for (auto* f : order) for (auto& b : *f) for (auto& i : b) {
+        if (!spend()) return false;
+        auto* c = llvm::dyn_cast< llvm::CallBase >(&i);
+        if (!c) continue;
+        auto event = binary_tokens.event(c);
+        if (event.source != g.serializer) continue;
+        if (!reachable.count(f)) return false;
+        if (event.acquire) { if (g.lock && g.lock != c) return false; g.lock = c; }
+        else g.unlocks.insert(c);
+      }
+      return g.lock && !g.unlocks.empty();
+    }
     std::vector< llvm::Value* > todo{g.serializer}; std::set< llvm::Value* > seen;
     while (!todo.empty()) {
       auto* v = todo.back(); todo.pop_back();
@@ -336,8 +350,15 @@ class OnceInitialization::Impl {
     }
     return g.lock && !g.unlocks.empty();
   }
+  bool constant_bits(ar::Value* value, const llvm::APInt& bits) const {
+    auto* c = dyn_cast< ar::IntegerConstant >(value);
+    auto* type = c ? dyn_cast< ar::IntegerType >(c->type()) : nullptr;
+    if (!c || !type || bits.getBitWidth() > 64 || type->bit_width() != bits.getBitWidth()) return false;
+    auto n = c->value().to_z_number();
+    if (n < 0) n += core::ZNumber(1) << bits.getBitWidth();
+    return n == core::ZNumber(bits.getZExtValue());
+  }
   bool prefix(Gate& g, unsigned entry) {
-    using core::ZNumber;
     std::map< llvm::Value*, llvm::APInt > values;
     std::set< llvm::Function* > active;
     unsigned state = entry, initializations = 0, writes = 0;
@@ -369,9 +390,10 @@ class OnceInitialization::Impl {
             g.state_effects.insert(i); values[i] = llvm::APInt(32, state);
           } else if (auto* s = llvm::dyn_cast< llvm::StoreInst >(i)) {
             auto* c = llvm::dyn_cast< llvm::ConstantInt >(s->getValueOperand());
-            if (!c) return false;
+            llvm::APInt encoded;
+            if (!value(s->getValueOperand(), encoded)) return false;
             if (s->getPointerOperand() == g.state) {
-              if (entry != 0 || initializations != 1 || writes++ || !c->isOne() || !effect(i, g.state) ||
+              if (!c || entry != 0 || initializations != 1 || writes++ || !c->isOne() || !effect(i, g.state) ||
                   (g.publish && g.publish != s)) return false;
               auto* a = dyn_cast< ar::Store >(original(s));
               auto* n = a ? dyn_cast< ar::IntegerConstant >(a->value()) : nullptr;
@@ -382,8 +404,11 @@ class OnceInitialization::Impl {
               if (entry != 0 || writes || initializations++ || !scalar(payload, false) || !effect(i, payload) ||
                   (g.initialization && g.initialization != s)) return false;
               auto* ar_s = dyn_cast< ar::Store >(original(s));
-              auto* ar_c = ar_s ? dyn_cast< ar::IntegerConstant >(ar_s->value()) : nullptr;
-              if (!ar_c || ar_c->value().to_z_number() != ZNumber(c->getSExtValue())) return false;
+              auto* argument = llvm::dyn_cast< llvm::Argument >(s->getValueOperand());
+              const bool formal = argument && argument->getParent() == f && argument->getArgNo() == 0 &&
+                  functions.count(f) && functions.at(f)->num_parameters() == 1 && ar_s &&
+                  ar_s->value() == functions.at(f)->param(0);
+              if (!ar_s || !(formal || (c && constant_bits(ar_s->value(), encoded)))) return false;
               g.initialization = s; g.payload = payload;
             }
           } else if (auto* c = llvm::dyn_cast< llvm::CallBase >(i)) {
@@ -394,9 +419,17 @@ class OnceInitialization::Impl {
                   state != 1 || initializations != (entry == 0 ? 1u : 0u) || writes != (entry == 0 ? 1u : 0u)) return false;
               released = true; active.erase(f); return true;
             }
-            auto* child = callee(c);
-            if (!binding(c) || !child || child->isDeclaration() || !c->use_empty() || c->arg_size() != 0 ||
-                !child->getReturnType()->isVoidTy() || !run(child, &child->getEntryBlock().front()) || released) return false;
+            auto* child = callee(c); auto* ar_call = binding(c);
+            if (!ar_call || !child || child->isDeclaration() || !c->use_empty() || c->arg_size() > 1 ||
+                !child->getReturnType()->isVoidTy()) return false;
+            if (c->arg_size() == 1) {
+              auto* argument = llvm::dyn_cast< llvm::ConstantInt >(c->getArgOperand(0));
+              if (!argument || (argument->getBitWidth() != 32 && argument->getBitWidth() != 64) ||
+                  !functions.count(child) || functions.at(child)->num_parameters() != 1 ||
+                  !constant_bits(ar_call->argument(0), argument->getValue())) return false;
+              values[child->getArg(0)] = argument->getValue();
+            }
+            if (!run(child, &child->getEntryBlock().front()) || released) return false;
           } else if (auto* cast = llvm::dyn_cast< llvm::BitCastInst >(i)) {
             if (!cast->getType()->isPointerTy() || cast->getOperand(0)->stripPointerCasts() != g.serializer) return false;
           } else if (auto* cmp = llvm::dyn_cast< llvm::ICmpInst >(i)) {

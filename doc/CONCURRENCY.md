@@ -625,7 +625,15 @@ not represented as native pthread mutexes.
 
 Sealed once-initialization gates can also consume these actual token events.
 Their exact state-zero/state-one prefixes and MUST post-gate facts remain
-independent obligations. A narrow payload helper binding additionally accepts
+independent obligations. Token gates consume the producer's complete actual
+event set, including operations with no pointer argument; the gate still needs
+one physical acquisition and a closed release set. A prefix may call a defined
+void helper with one actual 32- or 64-bit integer constant. Native and AR actual
+bits must match, and an initialization through its formal must store that exact
+AR formal. A helper invocation before or after the initializing prefix cannot
+reuse its prefix-only binding: the whole-program phase check still checks every
+invocation. Volatile state or payload accesses keep these same obligations and
+supply no synchronization. A narrow payload helper binding additionally accepts
 actual defined `void(D*, D, D, i32*)` bodies: all calls must pass the same exact
 32- or 64-bit global as D and a closed caller-private i32 output slot. Every
 pointer use, full-width source/AR effect and complete helper body is checked.
