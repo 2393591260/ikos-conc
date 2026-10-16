@@ -8,6 +8,7 @@
 namespace ikos {
 namespace analyzer {
 class Context;
+class BinaryTokenOwnership;
 struct AccessRecord;
 
 // Disjoint slices from a sealed, serialized finite counter transition system.
@@ -17,7 +18,7 @@ class ArenaReservation {
   std::unique_ptr< Impl > _impl;
 
 public:
-  ArenaReservation(Context&, const std::vector< AccessRecord >&);
+  ArenaReservation(Context&, const std::vector< AccessRecord >&, const BinaryTokenOwnership&);
   ~ArenaReservation();
   bool excludes(const AccessRecord&, const AccessRecord&) const;
   JsonDict info(const AccessRecord&) const;

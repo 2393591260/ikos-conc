@@ -401,6 +401,13 @@ public:
       if (close_token(t) && ownership(t)) tokens.push_back(std::move(t));
     }
   }
+  BinaryTokenEvent event(llvm::CallBase* call) const {
+    for (const auto& token : tokens) {
+      auto found = token.operations.find(call);
+      if (found != token.operations.end()) return {token.source, found->second};
+    }
+    return {};
+  }
   bool excludes(const AccessRecord& a, const AccessRecord& b) const { return pair(a, b); }
   JsonDict info(const AccessRecord& a, const AccessRecord& b) const {
     auto* t = pair(a, b);
@@ -412,6 +419,7 @@ public:
 BinaryTokenOwnership::BinaryTokenOwnership(Context& ctx, const std::vector< AccessRecord >& records)
     : _impl(std::make_unique< Impl >(ctx, records)) {}
 BinaryTokenOwnership::~BinaryTokenOwnership() = default;
+BinaryTokenEvent BinaryTokenOwnership::event(llvm::CallBase* call) const { return _impl->event(call); }
 bool BinaryTokenOwnership::excludes(const AccessRecord& a, const AccessRecord& b) const { return _impl->excludes(a, b); }
 JsonDict BinaryTokenOwnership::info(const AccessRecord& a, const AccessRecord& b) const { return _impl->info(a, b); }
 } // namespace analyzer

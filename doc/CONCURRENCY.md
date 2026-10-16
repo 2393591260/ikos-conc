@@ -605,3 +605,10 @@ release it. Unknown effects, foreign release, ambiguous ownership or incomplete
 proofs refuse the affected certificate. Only two exact direct-global accesses
 that must own the same certified token can be excluded. This neither makes caller
 statements atomic nor exempts unprotected accesses before or after the interval.
+
+Finite arena reservations can consume actual events from this completed token
+certificate. They still require exactly one acquisition and release around every
+counter read, capture and update, and the original complete finite counter
+closure and byte-range proof. A balanced release/reacquire protocol is therefore
+insufficient for a reservation. These events retain their token identity and are
+not represented as native pthread mutexes.

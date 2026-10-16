@@ -1,5 +1,6 @@
 // Copyright and license: see data_race.hpp.
 #include <ikos/analyzer/checker/arena_reservation.hpp>
+#include <ikos/analyzer/checker/binary_token.hpp>
 
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/IntrinsicInst.h>
@@ -53,9 +54,15 @@ bool follows(llvm::Instruction* from, llvm::Instruction* to) {
 struct Counter {
   llvm::GlobalVariable* global = nullptr;
   llvm::Function* allocator = nullptr;
-  llvm::GlobalVariable* mutex = nullptr;
+  llvm::GlobalVariable* serializer = nullptr;
+  bool binary_token = false;
   // Complete reachable counter states; each success reserves [start, end).
   std::vector< std::pair< ZNumber, ZNumber > > slices;
+};
+struct SerializationOperation {
+  llvm::GlobalVariable* source = nullptr;
+  bool acquire = false;
+  bool token = false;
 };
 struct Proof {
   llvm::GlobalVariable* arena = nullptr;
@@ -65,6 +72,7 @@ struct Proof {
 
 class ArenaReservation::Impl {
   Context& ctx;
+  const BinaryTokenOwnership& binary_tokens;
   std::map< llvm::Value*, ar::Statement* > originals;
   std::map< llvm::GlobalVariable*, ar::GlobalVariable* > globals;
   std::map< llvm::Function*, ar::Function* > functions;
@@ -95,6 +103,12 @@ class ArenaReservation::Impl {
     if (it != mutex_calls.end()) return it->second;
     auto p = normal_mutex(ctx, call_binding(c));
     mutex_calls.emplace(c, p); return p;
+  }
+  SerializationOperation serialization_call(llvm::CallBase* call) {
+    auto native = mutex_call(call);
+    if (native.source) return {native.source, native.lock, false};
+    auto token = binary_tokens.event(call);
+    return {token.source, token.acquire, true};
   }
   bool unused_freeze(llvm::CallBase* c) const {
     auto* a = call_binding(c);
@@ -274,20 +288,20 @@ class ArenaReservation::Impl {
         if (!spend()) return false;
         if (llvm::isa< llvm::DbgInfoIntrinsic >(i) || llvm::isa< llvm::PHINode >(i)) continue;
         if (auto* l = llvm::dyn_cast< llvm::LoadInst >(&i)) {
-          if (proof.mutex && !held) return false;
+          if (proof.serializer && !held) return false;
           if (l->getPointerOperand() == proof.global) values[&i] = next;
           else return false;
         } else if (auto* s = llvm::dyn_cast< llvm::StoreInst >(&i)) {
-          if (proof.mutex && !held) return false;
+          if (proof.serializer && !held) return false;
           ZNumber n(0); if (!value(s->getValueOperand(), n)) return false;
           if (s->getPointerOperand() == proof.global) { next = n; ++writes; }
-          else if (!proof.mutex && s->getPointerOperand() == f->getArg(0)) { output = n; ++outputs; }
+          else if (!proof.serializer && s->getPointerOperand() == f->getArg(0)) { output = n; ++outputs; }
           else return false;
         } else if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
           if (unused_freeze(c)) continue;
-          auto operation = mutex_call(c);
-          if (!proof.mutex || operation.source != proof.mutex) return false;
-          if (operation.lock) {
+          auto operation = serialization_call(c);
+          if (!proof.serializer || operation.source != proof.serializer || operation.token != proof.binary_token) return false;
+          if (operation.acquire) {
             if (held || acquisitions++) return false;
             held = true;
           } else {
@@ -295,8 +309,8 @@ class ArenaReservation::Impl {
             held = false;
           }
         } else if (llvm::isa< llvm::BitCastInst >(i)) {
-          // Preflight admits only pointer casts of this actual mutex.
-          if (!proof.mutex) return false;
+          // Preflight admits only pointer casts of this actual serializer.
+          if (!proof.serializer) return false;
         } else if (auto* op = llvm::dyn_cast< llvm::BinaryOperator >(&i)) {
           ZNumber a(0), b(0), n(0);
           if (!op->getType()->isIntegerTy(32) || !value(op->getOperand(0), a) || !value(op->getOperand(1), b)) return false;
@@ -332,7 +346,7 @@ class ArenaReservation::Impl {
           }
           predecessor = block; block = br->getSuccessor(edge); branched = true; break;
         } else if (auto* ret = llvm::dyn_cast< llvm::ReturnInst >(&i)) {
-          if (proof.mutex) {
+          if (proof.serializer) {
             if (held || acquisitions != 1 || releases != 1 || !ret->getReturnValue() ||
                 !value(ret->getReturnValue(), output)) return false;
             outputs = 1;
@@ -349,14 +363,14 @@ class ArenaReservation::Impl {
   Counter certify_counter(llvm::Function* f) {
     Counter p;
     auto* ar_f = functions.at(f);
-    const bool native = f->arg_size() == 0 && f->getReturnType()->isIntegerTy(32);
+    const bool returns_value = f->arg_size() == 0 && f->getReturnType()->isIntegerTy(32);
     const bool atomic = f->arg_size() == 1 && f->getReturnType()->isVoidTy() &&
         f->getFunctionType()->getParamType(0)->isPointerTy() &&
         f->getFunctionType()->getParamType(0)->getPointerAddressSpace() == 0 &&
         f->getFunctionType()->getParamType(0)->getPointerElementType()->isIntegerTy(32) &&
         classify_atomic_intrinsic(ar_f->name()) == AtomicKind::SingleCall;
-    if (f->getName() != ar_f->name() || f->isVarArg() || (!native && !atomic)) return {};
-    std::vector< llvm::BitCastInst* > mutex_casts;
+    if (f->getName() != ar_f->name() || f->isVarArg() || (!returns_value && !atomic)) return {};
+    std::vector< llvm::BitCastInst* > serializer_casts;
     // Inspect the complete body, not just the paths encountered during closure.
     for (auto& b : *f) for (auto& i : b) {
       if (!spend()) return {};
@@ -365,7 +379,7 @@ class ArenaReservation::Impl {
       if (auto* l = llvm::dyn_cast< llvm::LoadInst >(&i)) pointer = l->getPointerOperand();
       if (auto* s = llvm::dyn_cast< llvm::StoreInst >(&i)) pointer = s->getPointerOperand();
       if (pointer) {
-        if (!native && pointer == f->getArg(0)) {
+        if (!returns_value && pointer == f->getArg(0)) {
           if (!llvm::isa< llvm::StoreInst >(i) || !integer_effect(&i, pointer, ar_f->param(0))) return {};
         } else {
           auto* g = llvm::dyn_cast< llvm::GlobalVariable >(pointer);
@@ -374,22 +388,22 @@ class ArenaReservation::Impl {
           p.global = g;
         }
       } else if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
-        if (!native) return {};
+        if (!returns_value) return {};
         if (unused_freeze(c)) continue;
-        auto m = mutex_call(c);
-        if (!m.source || (p.mutex && p.mutex != m.source)) return {};
-        p.mutex = m.source;
+        auto m = serialization_call(c);
+        if (!m.source || (p.serializer && (p.serializer != m.source || p.binary_token != m.token))) return {};
+        p.serializer = m.source; p.binary_token = m.token;
       } else if (auto* cast = llvm::dyn_cast< llvm::BitCastInst >(&i)) {
-        if (!native || !cast->getType()->isPointerTy() || cast->getType()->getPointerAddressSpace() != 0) return {};
-        mutex_casts.push_back(cast);
+        if (!returns_value || !cast->getType()->isPointerTy() || cast->getType()->getPointerAddressSpace() != 0) return {};
+        serializer_casts.push_back(cast);
       } else if (!llvm::isa< llvm::BinaryOperator >(i) && !llvm::isa< llvm::ICmpInst >(i) &&
                  !llvm::isa< llvm::BranchInst >(i) && !llvm::isa< llvm::ReturnInst >(i) &&
-                 !(native && llvm::isa< llvm::PHINode >(i))) return {};
+                 !(returns_value && llvm::isa< llvm::PHINode >(i))) return {};
     }
-    if (native) {
-      if (!p.mutex) return {};
-      for (auto* c : mutex_casts) if (c->getOperand(0)->stripPointerCasts() != p.mutex) return {};
-      if (!mutex_protocol(p.mutex)) return {};
+    if (returns_value) {
+      if (!p.serializer) return {};
+      for (auto* c : serializer_casts) if (c->getOperand(0)->stripPointerCasts() != p.serializer) return {};
+      if (!p.binary_token && !mutex_protocol(p.serializer)) return {};
     }
     auto* g = p.global;
     ZNumber start(0);
@@ -531,7 +545,7 @@ class ArenaReservation::Impl {
              const Counter& counter, unsigned depth = 0) {
     if (depth == 16 || !spend()) return false;
     if (auto* l = llvm::dyn_cast< llvm::LoadInst >(v)) {
-      if (counter.mutex) return false;
+      if (counter.serializer) return false;
       auto* slot = llvm::dyn_cast< llvm::AllocaInst >(l->getPointerOperand()); delta = ZNumber(0);
       origin = slot; return slot && private_output(slot, counter.allocator);
     }
@@ -539,7 +553,7 @@ class ArenaReservation::Impl {
       auto* a = call_binding(c);
       auto* t = a && a->has_result() ? dyn_cast< ar::IntegerType >(a->result()->type()) : nullptr;
       origin = c; delta = ZNumber(0);
-      return counter.mutex && callee(c) == counter.allocator && a && t && t->bit_width() == 32 &&
+      return counter.serializer && callee(c) == counter.allocator && a && t && t->bit_width() == 32 &&
           isa< ar::FunctionPointerConstant >(a->called()) && !follows(c, c);
     }
     auto* op = llvm::dyn_cast< llvm::BinaryOperator >(v);
@@ -628,7 +642,8 @@ class ArenaReservation::Impl {
     return &it->second;
   }
 public:
-  Impl(Context& context, const std::vector< AccessRecord >& records) : ctx(context) {
+  Impl(Context& context, const std::vector< AccessRecord >& records, const BinaryTokenOwnership& tokens)
+      : ctx(context), binary_tokens(tokens) {
     if (!ctx.opts.enable_thread_modular || ctx.opts.procedural == Procedural::Intraprocedural ||
         ctx.opts.entry_points.size() != 1 || ctx.opts.entry_points.front()->name() != "main" ||
         ctx.opts.entry_points.front()->num_parameters() != 0 || !ctx.opts.entry_points.front()->has_frontend() ||
@@ -671,7 +686,7 @@ public:
       bool closed = !f->use_empty();
       for (auto* u : f->users()) {
         auto* c = llvm::dyn_cast< llvm::CallBase >(u);
-        if (proof.mutex) {
+        if (proof.serializer) {
           auto* a = c ? call_binding(c) : nullptr;
           if (!a || c->getCalledOperand() != f || !isa< ar::FunctionPointerConstant >(a->called())) { closed = false; break; }
           continue;
@@ -701,13 +716,15 @@ public:
               {"counter_initial", counter.slices.front().first.str()},
               {"counter_exhausted", counter.slices.back().second.str()},
               {"successful_reservations", std::to_string(counter.slices.size())},
-              {"serialization", counter.mutex ? "continuous default-normal mutex transaction" : "complete defined SV-COMP named-atomic body"},
-              {"reservation_mutex", counter.mutex ? counter.mutex->getName().str() : ""}};
+              {"serialization", counter.binary_token ? "continuous owned named-atomic token interval" : counter.serializer ? "continuous default-normal mutex transaction" : "complete defined SV-COMP named-atomic body"},
+              {"reservation_mutex", counter.serializer && !counter.binary_token ? counter.serializer->getName().str() : ""},
+              {"reservation_token", counter.binary_token ? counter.serializer->getName().str() : ""}};
     return {};
   }
 };
-ArenaReservation::ArenaReservation(Context& ctx, const std::vector< AccessRecord >& records)
-    : _impl(std::make_unique< Impl >(ctx, records)) {}
+ArenaReservation::ArenaReservation(Context& ctx, const std::vector< AccessRecord >& records,
+                                   const BinaryTokenOwnership& tokens)
+    : _impl(std::make_unique< Impl >(ctx, records, tokens)) {}
 ArenaReservation::~ArenaReservation() = default;
 bool ArenaReservation::excludes(const AccessRecord& a, const AccessRecord& b) const { return _impl->excludes(a, b); }
 JsonDict ArenaReservation::info(const AccessRecord& r) const { return _impl->info(r); }
