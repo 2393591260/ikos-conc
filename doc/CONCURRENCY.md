@@ -892,3 +892,25 @@ including early release, cross-context helpers, repeat issuance, missing atomic
 sections, native API identities and overflow boundaries.
 Implementation: `src/checker/binary_token.cpp`; these are pair-exclusion facts,
 not BMC UNSAT, thread-completion, allocation-success or pointer-validity facts.
+
+## Zero-element artificial initialization
+
+The frontend's integer-allocation freeze pass preserves the first-cell nondet
+seed for positive constant counts. A zero constant count has no seed. A dynamic
+count branches on `count != 0` in the original LLVM count width; only that edge
+contains the adjacent, tagged nondet call and Store. Both edges continue with the
+original suffix. The pass adds no assumption, abort or zero-length-path pruning.
+Existing scalar seeds and positive first-cell coverage are retained. Moving a
+suffix during CFG splitting can prevent promotion of a later scalar allocation;
+the seed still remains. Array-memory
+read correlation remains the responsibility of the numerical memory domain.
+
+This correction proves neither allocation success nor pointer validity or byte
+extent. In particular, a raw wide LLVM allocation count can still exceed the
+ILP32 importer's count width; this change does not repair that separate boundary.
+It also does not certify stdio effects or general VLA safety.
+
+`pass-freeze-uninit` checks both the isolated pass and basic pipeline, including
+zero, dynamic, high-bit and wide counts, multiple allocations, loops and PHIs.
+`python3 scripts/test_freeze_array.py` checks ILP32 scalar/array values and
+continuations with 32-bit and long-long payloads and BMC disabled.

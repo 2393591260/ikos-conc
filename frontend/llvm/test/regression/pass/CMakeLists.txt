@@ -34,3 +34,8 @@ add_pass_test(lower-cst-expr lower_cst_expr)
 add_pass_test(lower-select lower_select)
 add_pass_test(remove-printf-calls remove_printf_calls)
 add_pass_test(remove-unreachable-blocks remove_unreachable_blocks)
+
+add_pass_test(freeze-uninit freeze_uninit)
+if (LLVM_FILE_CHECK_EXECUTABLE AND BASH_EXECUTABLE)
+  set_tests_properties(pass-freeze-uninit PROPERTIES LABELS concurrency)
+endif()

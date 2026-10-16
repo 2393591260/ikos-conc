@@ -72,6 +72,8 @@ add_concurrency_test(token-once "${CONCURRENCY_ROOT}/scripts/test_token_once.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(token-arena "${CONCURRENCY_ROOT}/scripts/test_token_arena.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(freeze-array "${CONCURRENCY_ROOT}/scripts/test_freeze_array.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(ticket-ownership "${CONCURRENCY_ROOT}/scripts/test_ticket_ownership.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(binary-token "${CONCURRENCY_ROOT}/scripts/test_binary_token.py"

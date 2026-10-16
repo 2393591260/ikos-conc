@@ -11,9 +11,11 @@
  *
  ******************************************************************************/
 
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 #include <ikos/frontend/llvm/pass.hpp>
 
@@ -22,21 +24,23 @@ using namespace llvm;
 
 namespace {
 
-/// \brief Initialize every i32/i64 alloca with a single nondet value.
+/// \brief Seed the first cell of each nonempty i32/i64 alloca once.
 ///
-/// mem2reg (the first pass of `-opt=basic`) folds a `load` of a write-before-read
-/// alloca into `undef`. An `undef` is then treated by the analyzer as "this path
-/// is dead" (BOTTOM), which for RACE DETECTION is an UNDER-approximation: the
-/// uninitialized value could be ANY value, and the program still races. Worse,
-/// two loads of the SAME uninitialized alloca become two INDEPENDENT `undef`s,
-/// losing the "same cell" correlation that path-sensitive programs rely on
-/// (04-mutex_52-confid_rc.c FN, 10-synch_19-join_path_nr.c FP).
+/// mem2reg (the first pass of `-opt=basic`) folds a `load` of a
+/// read-before-write alloca into `undef`. An `undef` is then treated by the
+/// analyzer as "this path is dead" (BOTTOM), which for RACE DETECTION is an
+/// UNDER-approximation: the uninitialized value could be ANY value, and the
+/// program still races. Worse, two loads of the SAME uninitialized alloca
+/// become two INDEPENDENT `undef`s, losing the "same cell" correlation that
+/// path-sensitive programs rely on (04-mutex_52-confid_rc.c FN,
+/// 10-synch_19-join_path_nr.c FP).
 ///
 /// Freezing the alloca with a single `store nondet` BEFORE mem2reg gives:
-///   1. no `undef` is produced (the alloca is now written before read);
-///   2. both loads read the SAME nondet value (correlation preserved).
-/// A properly-initialized alloca already has a dominating store, so its freeze
-/// store is dead and harmless.
+///   1. a scalar read has a value before mem2reg;
+///   2. promoted scalar loads share that same nondet value.
+/// For arrays only the first cell is seeded; memory-domain correlation is
+/// separate. A properly-initialized alloca already has a dominating store, so
+/// its freeze store is dead and harmless.
 struct FreezeUninitPass final : public FunctionPass {
   static char ID; // Pass identification
 
@@ -76,9 +80,22 @@ struct FreezeUninitPass final : public FunctionPass {
       if (name == nullptr) {
         continue;
       }
+      Value* count = AI->getArraySize();
+      auto* constant = dyn_cast< ConstantInt >(count);
+      if (constant && constant->isZero()) {
+        continue;
+      }
+      Instruction* insert_pt = AI->getNextNode();
+      if (!constant) {
+        // Keep the zero-count continuation; no first cell exists to seed.
+        auto* nonempty = new ICmpInst(insert_pt,
+                                      ICmpInst::ICMP_NE,
+                                      count,
+                                      ConstantInt::get(count->getType(), 0));
+        insert_pt = SplitBlockAndInsertIfThen(nonempty, insert_pt, false);
+      }
       FunctionCallee nd =
           M->getOrInsertFunction(name, FunctionType::get(elem, false));
-      Instruction* insert_pt = AI->getNextNode();
       auto* call = CallInst::Create(nd, {}, "", insert_pt);
       // BMC must distinguish an abstract initializer from a source nondet call.
       call->setMetadata("ikos.freeze_uninit", MDNode::get(F.getContext(), {}));

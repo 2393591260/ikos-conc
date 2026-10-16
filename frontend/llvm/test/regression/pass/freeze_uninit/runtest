@@ -1,0 +1,16 @@
+#!/bin/bash
+# Copyright and license: see ../../../../src/pass/freeze_uninit.cpp.
+set -euo pipefail
+ikos_pp=ikos-pp
+file_check=FileCheck
+while (($#)); do
+  case "$1" in
+    --ikos-pp) ikos_pp=$2; shift 2 ;;
+    --file-check) file_check=$2; shift 2 ;;
+    *) echo "Unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+for input in *.ll; do
+  "$ikos_pp" -opt=custom -freeze-uninit -S "$input" | "$file_check" "$input"
+  "$ikos_pp" -opt=basic -freeze-undef -S "$input" | "$file_check" "$input"
+done
