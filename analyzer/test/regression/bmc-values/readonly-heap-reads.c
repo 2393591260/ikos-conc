@@ -10,10 +10,18 @@ extern long long __VERIFIER_nondet_longlong(void);
 #define arbitrary __VERIFIER_nondet_longlong
 #else
 typedef int datum;
+#if CASE == 48
+extern int __attribute__((fastcall)) __VERIFIER_nondet_int(void);
+#else
 extern int __VERIFIER_nondet_int(void);
+#endif
 #define arbitrary __VERIFIER_nondet_int
 #endif
+#if CASE == 48
+extern int __attribute__((fastcall)) __VERIFIER_nondet_int(void);
+#else
 extern int __VERIFIER_nondet_int(void);
+#endif
 extern void __VERIFIER_atomic_begin(void);
 extern void __VERIFIER_atomic_end(void);
 static void guard(int condition) { if (!condition) abort(); }

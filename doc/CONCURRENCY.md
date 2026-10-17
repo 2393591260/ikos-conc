@@ -1025,6 +1025,12 @@ Implementation: `checker/readonly_heap_reads.hpp` and
 incomplete construction, changed indices, publication and alias mutation controls,
 and real races remaining after heap reads have been certified.
 
+The immutable-read and bucket-membership analyses share the stateless
+`analysis/source_call_binding.hpp` check for the actual LLVM/AR callee, C calling
+convention, argument agreement and unsupported ABI attributes. Each analysis
+keeps its own source inventory and effect/safety proof; a successful binding
+alone grants no memory, synchronization or safety fact.
+
 ## Immutable bucket membership with protected payloads
 
 `BucketListOwnership` checks a closed startup-built graph of embedded two-pointer

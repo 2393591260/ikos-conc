@@ -12,7 +12,7 @@ from ikos_runtime import runtime_command, runtime_identity, verify_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = (0, 1, 2, 4, 5, 8, 9, 10, 11, 12, 14, 15, 18, 20, 21, 22, 23,
-         24, 25, 26, 27, 28, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 45, 46)
+         24, 25, 26, 27, 28, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 45, 46, 47)
 # CASE26 omits reset.prev, but insertion initializes every required prev cell.
 POSITIVE = {0, 23, 26, 33, 37}
 

@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <deque>
 #include <functional>
-#include <ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp>
+#include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/util/log.hpp>
 #include <map>
@@ -120,37 +120,7 @@ class ReadonlyHeapReads::Impl {
     return i == originals.end() ? nullptr : i->second;
   }
   ar::CallBase* binding(llvm::CallBase* c) const {
-    auto* a = dyn_cast_or_null< ar::CallBase >(original(c));
-    auto* f = target(c);
-    auto* t = a ? native_handle_callee(a) : nullptr;
-    if (!a || !isa< ar::Call >(a) || !f || !t ||
-        !llvm::isa< llvm::CallInst >(c) || c->isInlineAsm() ||
-        c->hasOperandBundles() || c->getCallingConv() != llvm::CallingConv::C ||
-        f->getCallingConv() != llvm::CallingConv::C ||
-        a->num_arguments() != c->arg_size() ||
-        t->num_parameters() != a->num_arguments() ||
-        (t->has_frontend() && t->frontend< llvm::Value >() != f) ||
-        (f->isDeclaration() ? !t->is_declaration()
-                            : !t->is_definition() || !t->has_frontend()))
-      return nullptr;
-    const bool old_nondet = f->isDeclaration() && c->arg_empty() &&
-                            (f->getName() == "__VERIFIER_nondet_int" ||
-                             f->getName() == "__VERIFIER_nondet_uint");
-    if (c->arg_size() != f->arg_size() ||
-        (!old_nondet &&
-         (f->isVarArg() || c->getFunctionType() != f->getFunctionType())))
-      return nullptr;
-    for (unsigned n = 0; n < c->arg_size(); ++n) {
-      if (a->argument(n)->type() != t->type()->param_type(n))
-        return nullptr;
-      for (auto attr : {llvm::Attribute::ByVal,
-                        llvm::Attribute::StructRet,
-                        llvm::Attribute::InAlloca,
-                        llvm::Attribute::Preallocated})
-        if (c->paramHasAttr(n, attr) || f->hasParamAttribute(n, attr))
-          return nullptr;
-    }
-    return a;
+    return source_call_binding(c, original(c));
   }
   bool nondet(llvm::CallBase* c) const {
     auto* a = binding(c);

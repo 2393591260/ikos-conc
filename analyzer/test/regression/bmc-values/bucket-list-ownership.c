@@ -16,7 +16,11 @@ typedef long long datum;
 #else
 typedef int datum;
 #endif
+#if CASE == 47
+extern int __attribute__((fastcall)) __VERIFIER_nondet_int(void);
+#else
 extern int __VERIFIER_nondet_int(void);
+#endif
 #if CASE == 38
 int pthread_mutex_init(pthread_mutex_t *p, const pthread_mutexattr_t *a) {
   (void)p; (void)a; return 0;

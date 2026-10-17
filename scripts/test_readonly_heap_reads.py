@@ -12,7 +12,7 @@ from ikos_runtime import runtime_command, runtime_identity, verify_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = (*range(20), 21, 22, 23, 24, 25, 27, 28, 29, 31,
-         33, 34, 35, 36, 37, 38, 39, 41, 42, 43, 45, 46, 47)
+         33, 34, 35, 36, 37, 38, 39, 41, 42, 43, 45, 46, 47, 48)
 POSITIVE = {0, 7, 24, 33}
 
 
