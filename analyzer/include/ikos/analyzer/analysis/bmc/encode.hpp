@@ -732,6 +732,43 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         record(diagnostics, "opaque_library_storage", event.stmt); return Result(Status::Unsupported);
       }
 
+  std::map< const BmcEvent*, BmcEvent > object_pointer_reads;
+  const auto publication = std::find_if(allocation_origin.begin(), allocation_origin.end(),
+                                       [](const auto& e) {return e.kind == EvKind::Create;});
+  const auto publication_index = static_cast< std::size_t >(publication - allocation_origin.begin());
+  for (const auto& trace : traces) {
+    const auto& path = trace.events;
+    for (std::size_t i = 0; i < path.size(); ++i) {
+      auto* load = core::dyn_cast< ar::Load >(path[i].stmt);
+      if (load == nullptr || !load->result()->type()->is_pointer() ||
+          path[i].heap_allocation == nullptr) continue;
+      BmcEvent slot, value;
+      std::size_t source = 0;
+      if (initialized_heap_pointer(load, path, i, trace.root, trace.argument,
+                                   allocation_origin, slot, source, 0) == nullptr ||
+          !pointer_on_path(load->result(), path, i + 1, trace.root, trace.argument,
+                           value, &allocation_origin) ||
+          value.heap_allocation == nullptr || value.var_id != 0 ||
+          aliases_library(path[i], &path, false)) {
+        record(diagnostics, "heap_pointer_source", load); return Result(Status::Unsupported);
+      }
+      for (const auto& writer : traces) {
+        for (std::size_t j = 0; j < writer.events.size(); ++j) {
+          const auto& write = writer.events[j];
+          if (write.kind != EvKind::Write || write.heap_allocation != slot.heap_allocation ||
+              (&writer.events == &allocation_origin && j < publication_index)) continue;
+          if (write.var_id != 0 || write.width == 0 ||
+              (write.const_off < slot.const_off + path[i].width &&
+               slot.const_off < write.const_off + write.width)) {
+            record(diagnostics, "heap_pointer_slot_modified", write.stmt);
+            return Result(Status::Unsupported);
+          }
+        }
+      }
+      object_pointer_reads.emplace(&path[i], value);
+    }
+  }
+
   z3::context ctx;
   z3::solver s(ctx);
 
@@ -1525,6 +1562,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         // Even an unused shared read must have a defined actual SC source.
         // Pointer or unsupported sources cannot become free malloc data.
         auto* load = core::cast< ar::Load >(path[i].stmt);
+        if (object_pointer_reads.count(&path[i])) continue;
         z3::expr value(ctx);
         if (!encode_value(load->result(), value, cache, prefix, 0, i + 1)) {
           record(diagnostics, "heap_read_origin", load);
@@ -1931,7 +1969,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       Result outcome(Status::Confirmed);
       auto model = query.get_model();
       auto export_start = std::chrono::steady_clock::now();
-      outcome.evidence = export_counterexample(traces, caches, clock, replay_offsets, model, &functions);
+      outcome.evidence = export_counterexample(traces, caches, clock, replay_offsets, model, &functions,
+                                               &object_pointer_reads);
       if (metrics != nullptr) metrics->evidence_us += std::chrono::duration_cast< std::chrono::microseconds >(
           std::chrono::steady_clock::now() - export_start).count();
       return outcome;

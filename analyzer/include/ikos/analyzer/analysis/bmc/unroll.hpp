@@ -975,17 +975,56 @@ inline bool shared_main_allocation(ar::LocalVariable* local,
 // Resolve pointers from executed definitions and actual helper/thread args.
 // Root arguments were consumed on the already checked creation prefix; only
 // constant global address chains may be followed outside the selected path.
+inline bool pointer_on_path(ar::Value*, const std::vector< BmcEvent >&, std::size_t,
+                            ar::Function*, ThreadArgument, BmcEvent&,
+                            const std::vector< BmcEvent >* = nullptr, unsigned = 0);
+
+// This selects a source, not an immutable-memory proof. The encoder must still
+// reject every retained post-publication write overlapping this exact slot.
+inline ar::Store* initialized_heap_pointer(
+    ar::Load* load, const std::vector< BmcEvent >& path, std::size_t index,
+    ar::Function* root, ThreadArgument argument,
+    const std::vector< BmcEvent >& origin, BmcEvent& slot,
+    std::size_t& source_index, unsigned depth) {
+  if (depth >= 32 || !load->result()->type()->is_pointer() ||
+      !pointer_on_path(load->operand(), path, index, root, argument, slot, &origin, depth + 1) ||
+      slot.heap_allocation == nullptr || slot.var_id != 0) return nullptr;
+  const auto width = load->bundle()->data_layout().pointers.bit_width / 8;
+  auto end = std::find_if(origin.begin(), origin.end(),
+                          [](const auto& e) {return e.kind == EvKind::Create;});
+  const auto publication = static_cast< std::size_t >(end - origin.begin());
+  // In particular, never let a later initialization supply an earlier load.
+  if (end == origin.end() || (&path == &origin && index <= publication)) return nullptr;
+  ar::Store* found = nullptr;
+  for (std::size_t j = 0; j < publication; ++j) {
+    auto* store = core::dyn_cast< ar::Store >(origin[j].stmt);
+    if (store == nullptr) continue;
+    BmcEvent address;
+    if (!pointer_on_path(store->pointer(), origin, j, origin[j].stmt->code()->function_or_null(),
+                         nullptr, address, &origin, depth + 1)) return nullptr;
+    if (address.heap_allocation != slot.heap_allocation) continue;
+    if (address.var_id != 0 || origin[j].width == 0) return nullptr;
+    if (address.const_off >= slot.const_off + width ||
+        slot.const_off >= address.const_off + origin[j].width) continue;
+    if (address.const_off != slot.const_off || origin[j].width != width ||
+        !store->value()->type()->is_pointer()) return nullptr;
+    found = store; source_index = j;
+  }
+  return found;
+}
+
 inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& path,
                              std::size_t before, ar::Function* root,
                              ThreadArgument root_argument, BmcEvent& event,
-                             const std::vector< BmcEvent >* origins = nullptr) {
+                             const std::vector< BmcEvent >* origins, unsigned level) {
+  if (level >= 32) return false;
   if (origins == nullptr && root != nullptr && root->name() == "main") origins = &path;
   const auto* definitions = &path;
   bool external = false;
   bool returned = false;
   bool exact_external_chain = true;
   bool selected_argument_origin = false;
-  for (unsigned depth = 0; depth < 32; ++depth) {
+  for (unsigned depth = level; depth < 32; ++depth) {
     if (auto* global = core::dyn_cast< ar::GlobalVariable >(value)) {event.base = reinterpret_cast< std::uint64_t >(global); return true;}
     if (auto* local = core::dyn_cast< ar::LocalVariable >(value)) {
       if (returned) return false;
@@ -1093,6 +1132,11 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
       auto* slot = global_pointer_slot(load->operand());
       std::size_t store_index = 0;
       auto* store = slot != nullptr && origins != nullptr ? published_pointer(slot, *origins, store_index) : nullptr;
+      if (slot == nullptr && origins != nullptr && !external) {
+        BmcEvent address;
+        store = initialized_heap_pointer(load, path, index, root, root_argument,
+                                         *origins, address, store_index, depth + 1);
+      }
       if (store == nullptr || !load->result()->type()->is_pointer() ||
           (definitions == origins && store_index >= index)) return false;
       value = store->value(); external = true; definitions = origins; before = store_index;

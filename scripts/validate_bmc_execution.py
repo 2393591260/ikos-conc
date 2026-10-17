@@ -273,6 +273,9 @@ class Replay:
             require(result == expected, 'SMT pointer identity differs from concrete replay')
         if 'encoded_function' in step:
             require(result == ('function', step['encoded_function']), 'SMT function identity differs from concrete replay')
+        if 'encoded_object_pointer' in step:
+            self.region(result, 0)
+            self.encoded_address({'encoded_address': step['encoded_object_pointer']}, result, 0)
         frame.env[instruction['result']['id']] = result
 
     def arithmetic(self, inst, values):

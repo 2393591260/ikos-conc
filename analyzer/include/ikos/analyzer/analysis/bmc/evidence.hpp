@@ -14,7 +14,8 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
     const std::vector< ValueCache >& caches,
     const std::vector< z3::expr >& clock,
     const std::map< const BmcEvent*, z3::expr >& replay_offsets, z3::model& model,
-    const FunctionValues* functions = nullptr) {
+    const FunctionValues* functions = nullptr,
+    const std::map< const BmcEvent*, BmcEvent >* object_pointer_reads = nullptr) {
   Counterexample evidence;
   auto& ctx = model.ctx();
   const auto& startup = traces[0].events;
@@ -128,6 +129,18 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
         if (found != values.end()) step.put("encoded_pointer", functions->identity(found->second, model));
       }
       const auto& e = path[i];
+      if (object_pointer_reads != nullptr) {
+        auto found = object_pointer_reads->find(&e);
+        if (found != object_pointer_reads->end()) {
+          const auto& pointer = found->second;
+          step.put("encoded_object_pointer", JsonDict{
+              {"object", JsonDict{{"kind", "heap"},
+                                  {"allocation", snapshot.statement_id(pointer.heap_allocation)},
+                                  {"owner", "main"}, {"occurrence", 1},
+                                  {"extent", pointer.heap_extent.str()}}},
+              {"offset", pointer.const_off.str()}, {"width", 0}});
+        }
+      }
       if (e.kind == EvKind::Read && (e.base != 0 || e.heap_allocation != nullptr || e.shared_main_local) && e.width <= 256 &&
           (e.var_id == 0 || replay_offsets.count(&e) != 0))
         step.put("read_from", read_sources(e, trace_index, i));

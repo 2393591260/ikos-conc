@@ -1131,3 +1131,20 @@ private unread native create outputs. Unproved cases retain the old fallback.
 Implementation: `analysis/pthread_initialization_frame.hpp` and its source;
 regressions: `python3 scripts/test_heap_pthread_initialization.py` (ILP32,
 including long-long payloads and invalidation controls). LP64 is deferred.
+
+## Startup heap pointer fields in bounded executions
+
+The BMC address resolver can follow a full-width object-pointer Store into a
+fixed heap field before the first thread creation. It uses the last actual Store
+occurrence, including a prior NULL initialization, and resolves its value in that
+call's dynamic context. Every retained trace is then checked: a later overlapping
+write, symbolic alias, partial write, or library output makes this route
+unsupported. The rule does not model mutable pointer read-from or allocations in
+worker threads, and keeps the existing activation, lifetime and atomic contracts.
+
+A certified pointer Load exports its allocation instance, extent and byte offset.
+The independent AR checker compares them with the pointer obtained from its own
+byte-memory replay and also verifies the actual read-from source. This validates
+the selected AR prefix, not a C-source witness. Run
+`python3 scripts/test_initialized_pointer_fields.py` for ILP32 int/long-long
+controls, alias/output corruption and damaged execution evidence.
