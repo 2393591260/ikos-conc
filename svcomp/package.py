@@ -149,9 +149,11 @@ option. Setting IKOS_BMC_RECOVER=0 still enables it. Unresolved abstract candida
 and bounded UNSAT cannot prove a race or unbounded safety respectively.
 Internal search/SMT/structural limits are separate from external resource limits.
 
-Runtime: the archive targets Linux x86-64 with the declared Ubuntu 24.04 system
+Runtime: the archive targets Linux x86-64 with the declared Ubuntu 26.04 system
 packages and Python. LLVM/abstract-domain libraries are bundled; the archive does
 not promise a native Windows/macOS installation or independence of system libraries.
+The LLVM 14 build's ICU 74 and libxml2 ABI dependencies are bundled because
+Ubuntu 26.04 supplies newer, incompatible library names.
 User installation and troubleshooting are maintained in the source repository's
 README.md, doc/CONCURRENCY.md, and TROUBLESHOOTING.md.
 
@@ -212,15 +214,14 @@ def patch_settings(py_path):
     import re
     with open(py_path) as f:
         src = f.read()
-    if "PREFIX = os.path.abspath(" in src:
-        return  # already relocatable (idempotent re-run / re-package)
     new_prefix = (
         "PREFIX = os.path.abspath(\n"
         "    os.path.join(os.path.dirname(os.path.abspath(__file__)),\n"
         "                 *([os.pardir] * 6)))"
     )
-    src, n = re.subn(r"^PREFIX = '[^']*'$", new_prefix, src, flags=re.M)
-    assert n == 1, "settings.py PREFIX line not found"
+    if "PREFIX = os.path.abspath(" not in src:
+        src, n = re.subn(r"^PREFIX = '[^']*'$", new_prefix, src, flags=re.M)
+        assert n == 1, "settings.py PREFIX line not found"
     repl = [
         ("LLVM_PREFIX = '/usr/lib/llvm-14'", "LLVM_PREFIX = os.path.join(PREFIX, 'llvm')"),
         ("LLVM_BIN_DIR = '/usr/lib/llvm-14/bin'", "LLVM_BIN_DIR = os.path.join(PREFIX, 'llvm', 'bin')"),
@@ -230,7 +231,8 @@ def patch_settings(py_path):
         ("CLANGXX = '/usr/lib/llvm-14/bin/clang++'", "CLANGXX = os.path.join(PREFIX, 'llvm', 'bin', 'clang++')"),
     ]
     for old, new in repl:
-        assert old in src, f"settings.py missing pattern: {old[:40]}..."
+        # CMake already relocates PREFIX, independently of the LLVM paths.
+        assert old in src or new in src, f"settings.py missing pattern: {old[:40]}..."
         src = src.replace(old, new)
     with open(py_path, "w") as f:
         f.write(src)
@@ -267,6 +269,10 @@ def package(install_dir, out, llvm_root, apron_dir):
                     os.path.join(install, "llvm", "lib", lib))
     shutil.copy("/usr/lib/x86_64-linux-gnu/libLLVM-14.so.1",
                 os.path.join(install, "llvm", "lib", "libLLVM-14.so.1"))
+    # Ubuntu 26.04 no longer provides these LLVM 14 ABI dependencies.
+    for lib in ["libicuuc.so.74", "libicudata.so.74", "libxml2.so.2"]:
+        shutil.copy(os.path.join("/usr/lib/x86_64-linux-gnu", lib),
+                    os.path.join(install, "lib", lib))
     # clang 内建头文件（stddef.h / stdarg.h / float.h / ...）：编译 C 必需。
     # 不打包的话，干净容器（无 gcc）里 clang 找不到 stddef.h（模拟考官环境
     # 踩到的坑：仅装 required_ubuntu_packages + gcc 也不够，因为 clang 只认自己
@@ -290,6 +296,19 @@ def package(install_dir, out, llvm_root, apron_dir):
             shutil.rmtree(p)
         elif os.path.isfile(p):
             os.remove(p)
+
+    # The frontend needs only IKOS and Pygments; build/test packages are not runtime inputs.
+    site_packages = os.path.join(
+        install, "libexec", "lib", "python3.12", "site-packages")
+    for name in os.listdir(site_packages):
+        if name in {"ikos", "pygments"} or (
+                name.startswith(("ikos-", "pygments-")) and name.endswith(".dist-info")):
+            continue
+        path = os.path.join(site_packages, name)
+        if os.path.isdir(path) and not os.path.islink(path):
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
 
     # 5. relocatable wrappers
     for name, script in SCRIPTS.items():
@@ -379,7 +398,7 @@ def package(install_dir, out, llvm_root, apron_dir):
             dirs[:] = sorted(d for d in dirs if d != "__pycache__" and d != ".git")
             files.sort()
             for name in files:
-                if name.endswith((".pyc", ".db")):
+                if name.endswith((".pyc", ".db", ":Zone.Identifier")):
                     continue
                 full = os.path.join(root, name)
                 rel = os.path.relpath(full, install)

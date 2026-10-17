@@ -42,10 +42,8 @@ versions:
       - libtbb12
       - libsqlite3-0
       - libtinfo6
-      - libz1
+      - zlib1g
       - libz3-4
-      - libicu74
-      - libxml2
       - libffi8
       - libedit2
       - libbsd0
@@ -53,7 +51,7 @@ versions:
       - libmd0
       - python3
     base_container_images:
-      - docker.io/ubuntu:24.04
+      - docker.io/ubuntu:26.04
     full_container_images: []   # 由 FM-Tools CI 构建镜像后自动回填
 
 competition_participations:

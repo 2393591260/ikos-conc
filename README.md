@@ -16,12 +16,13 @@ remaining race candidates. Its competition entry targets `no-data-race`.
 
 The registered archive is available at
 [Zenodo, DOI 10.5281/zenodo.23122650](https://doi.org/10.5281/zenodo.23122650).
-It targets **Linux x86-64 with Ubuntu 24.04 runtime packages**; Windows users can
-use an Ubuntu WSL2 environment. This archive identifies its own source revision
-and runtime hashes in `BUILD-INFO.json`. A newer development branch does not
-update an already published archive.
+Packages built from this revision target **Linux x86-64 with Ubuntu 26.04 runtime
+packages**, matching the SV-COMP 2027 environment. Windows users can use Ubuntu
+26.04 under WSL2. The DOI may still serve an earlier build: check the packaged
+README and `BUILD-INFO.json` for its runtime requirements, source revision and
+binary hashes. A newer development branch does not update a published archive.
 
-On Ubuntu 24.04, install the archive's declared runtime dependencies:
+For the Ubuntu 26.04 package, install the declared runtime dependencies:
 
 ```bash
 sudo apt-get update
@@ -29,7 +30,7 @@ sudo apt-get install --yes \
   unzip python3 libc6-dev libc6-dev-i386 lib32gcc-13-dev \
   libgmp10 libgmpxx4ldbl libmpfr6 libppl14 \
   libboost-filesystem1.83.0 libboost-thread1.83.0 libtbb12 \
-  libsqlite3-0 libtinfo6 libz1 libz3-4 libicu74 libxml2 libffi8 \
+  libsqlite3-0 libtinfo6 zlib1g libz3-4 libffi8 \
   libedit2 libbsd0 liblzma5 libmd0
 ```
 
@@ -44,8 +45,9 @@ cd ikos-conc
 
 The smoke test checks race and mutex-protected examples in ILP32 and LP64, using
 the real entry point. It checks witness output, not independent witness validity.
-The archive bundles LLVM and abstract-domain libraries but still uses system
-Python and runtime libraries. There is no separate published container image
+The archive bundles LLVM, abstract-domain libraries, and the older ICU/libxml2
+ABIs needed by LLVM 14. It still uses system Python and the declared runtime
+libraries. There is no separate published container image
 promised by these instructions.
 Native macOS is not a validated release target. Its exploratory build workflow
 is manual-only and currently has an unresolved compilation failure. Automatic
@@ -64,7 +66,8 @@ Use this repository for the concurrency extension. The upstream command
 The `concurrency` branch is a development branch; fix a reviewed commit when
 reproducing results or distributing a build.
 
-On Ubuntu 24.04, install the build and dual-ABI header dependencies:
+The developer build below uses Ubuntu 24.04 and LLVM 14; the packaged runtime
+is separately checked on Ubuntu 26.04. Install the build and dual-ABI dependencies:
 
 ```bash
 sudo apt-get update

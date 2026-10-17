@@ -27,6 +27,7 @@ jobs:
         run: |
           python3 scripts/test_ikos_runtime.py
           python3 scripts/test_svcomp_race_runner.py
+          python3 scripts/test_svcomp_package.py
       - name: Compile IKOS
         run: |
           mkdir build
