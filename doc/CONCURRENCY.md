@@ -993,3 +993,34 @@ Implementation: `analysis/runtime_stdio_frame.hpp`,
 checker. `python3 scripts/test_runtime_stdio.py` covers refusal controls, real
 neighboring races, renamed objects, raw/mapped scans, changed bounds, zero and
 negative counts, repeated consumption and ILP32 long-long payloads.
+
+## Immutable heap-array reads
+
+`ReadonlyHeapReads` provides a separate, conservative source certificate for
+startup-initialized scalar arrays and a depth-two pointer table. It traverses
+the reachable main, constructors, workers and scalar helpers in the actual
+LLVM/AR program. Mandatory whole-cell stores establish initialized prefixes by
+induction; every published table must finish construction before any create.
+The table is a fresh main allocation, avoiding reuse of a scalar snapshot through
+a retyped alias. Published roots, dimensions and heap cells remain immutable.
+
+Each full-width scalar-array read uses an arbitrary function of its allocation
+snapshot and exact byte offset, so repeated reads of the same cell retain guard
+bounds. Different cells remain unconstrained. Worker-written scalar globals and
+row payloads remain arbitrary. Each consumed table and row access requires a
+complete initialized source and a proved byte range; unknown effects, unsupported
+aliases, partial writes, solver uncertainty or exhausted proof budgets refuse
+the entire certificate.
+
+The checker can explain only the exact certified read's synthetic handle warning
+and exclude its false alias with an actual direct whole-scalar global write.
+All other effects and pairs remain. No shared MAY board, numerical pointer value,
+nullity, allocation success, lock, join or completion fact is changed. BMC retains
+its original handle-representation gate. These are conditional nullable heap
+source facts under the existing access model, not memory-safety validation.
+
+Implementation: `checker/readonly_heap_reads.hpp` and
+`src/checker/readonly_heap_reads.cpp`. Regression entry:
+`python3 scripts/test_readonly_heap_reads.py`; it includes ILP32 long-long data,
+incomplete construction, changed indices, publication and alias mutation controls,
+and real races remaining after heap reads have been certified.

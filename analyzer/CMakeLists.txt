@@ -259,6 +259,7 @@ add_executable(ikos-analyzer
   src/checker/arena_reservation.cpp
   src/checker/symbolic_arena.cpp
   src/checker/array_slices.cpp
+  src/checker/readonly_heap_reads.cpp
   src/checker/thread_lifecycle.cpp
   src/checker/binary_token.cpp
   src/checker/once_initialization.cpp

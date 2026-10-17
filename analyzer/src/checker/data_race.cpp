@@ -50,6 +50,7 @@
 #include <ikos/analyzer/checker/thread_private_heap.hpp>
 #include <ikos/analyzer/checker/arena_reservation.hpp>
 #include <ikos/analyzer/checker/array_slices.hpp>
+#include <ikos/analyzer/checker/readonly_heap_reads.hpp>
 #include <ikos/analyzer/checker/thread_lifecycle.hpp>
 #include <ikos/analyzer/checker/binary_token.hpp>
 #include <ikos/analyzer/checker/once_initialization.hpp>
@@ -741,6 +742,7 @@ DataRaceChecker::DataRaceChecker(Context& ctx) : Checker(ctx) {
 
 DataRaceChecker::~DataRaceChecker() {
   this->_ownership->run();
+  ReadonlyHeapReads readonly_heap_reads(this->_ctx);
   bool synthetic_handle_unsupported = false;
   for (ar::CallBase* call : this->_ctx.concurrent_env.unmodeled_thread_creations()) {
     this->_checks.insert(
@@ -751,8 +753,17 @@ DataRaceChecker::~DataRaceChecker() {
   }
 
   for (const auto& effect : this->_ctx.concurrent_env.unmodeled_effects()) {
+    // The source-only SAFE proof does not relax BMC's representation gate.
     synthetic_handle_unsupported |=
         effect.second == "synthetic pthread handle representation not modeled";
+    if (effect.second == "synthetic pthread handle representation not modeled" &&
+        readonly_heap_reads.certifies(effect.first)) {
+      auto proof = readonly_heap_reads.info();
+      proof.put("safe_reason", "bounded immutable heap read cannot consume a pthread handle");
+      this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+                           effect.first, this->_ctx.call_context_factory->get_empty(), {}, proof);
+      continue;
+    }
     ar::Statement* anchor = effect.first;
     JsonDict info{{"unknown_reason", effect.second}};
     if (!anchor->code()->is_function_body()) {
@@ -1455,6 +1466,14 @@ DataRaceChecker::~DataRaceChecker() {
         if (auto location = source_location(b.stmt)) {
           proof.put("access_b_line", location.line());
         }
+        this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+                             a.stmt, a.call_context, {}, proof);
+        continue;
+      }
+
+      if (readonly_heap_reads.excludes(a, b)) {
+        auto proof = readonly_heap_reads.info();
+        proof.put("safe_reason", "immutable heap read is disjoint from direct scalar global storage");
         this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
                              a.stmt, a.call_context, {}, proof);
         continue;
