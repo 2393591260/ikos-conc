@@ -71,6 +71,7 @@ class PointerAnalysis;
 class FixpointParameters;
 class RuntimeStdioFrame;
 class PthreadInitializationFrame;
+class PosixSemaphore;
 
 // Native storage has no numerical encoding of a thread-instance identity.
 struct NativeHandleArray {
@@ -152,6 +153,7 @@ public:
   // This is independent of concurrent_env and must not be copied across bundles.
   std::shared_ptr< const RuntimeStdioFrame > runtime_stdio_frame_certificate;
   std::shared_ptr< const PthreadInitializationFrame > pthread_initialization_frame;
+  std::shared_ptr< const PosixSemaphore > posix_semaphore;
 
   bool native_handle_inventory_checked = false;
   bool native_handles_only = false;

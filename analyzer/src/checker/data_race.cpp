@@ -61,6 +61,7 @@
 #include <ikos/analyzer/analysis/execution_engine/stdio_effects.hpp>
 #include <ikos/analyzer/analysis/runtime_stdio_frame.hpp>
 #include <ikos/analyzer/analysis/pthread_initialization_frame.hpp>
+#include <ikos/analyzer/analysis/posix_semaphore.hpp>
 #include <ikos/analyzer/analysis/bmc/bmc.hpp>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
 #include <ikos/analyzer/analysis/pair_exclusion.hpp>
@@ -3172,6 +3173,13 @@ void DataRaceChecker::check_extern_call_effects(
     return; // undefined / null / asm / data: no side-effect synthesis
   }
   if (!extern_call) {
+    return;
+  }
+  if (this->_ctx.posix_semaphore && this->_ctx.posix_semaphore->effect(call)) {
+    this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+                         call, call_context, {},
+                         JsonDict{{"safe_reason", "sealed opaque GNU semaphore control storage"},
+                                  {"semaphore_effect_contract", "closed-gnu-semaphore-effects-v1"}});
     return;
   }
   // Reuse the verified literal/integer-only summary, not a stdio name family:

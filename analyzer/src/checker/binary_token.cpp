@@ -2,6 +2,8 @@
 #include <ikos/analyzer/checker/binary_token.hpp>
 
 #include <ikos/analyzer/checker/data_race.hpp>
+#include <ikos/analyzer/analysis/posix_semaphore.hpp>
+#include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/checker/normal_mutex.hpp>
 #include <ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp>
 #include <deque>
@@ -15,19 +17,9 @@ namespace {
 llvm::Function* callee(llvm::CallBase* c) {
   return llvm::dyn_cast< llvm::Function >(c->getCalledOperand()->stripPointerCasts());
 }
-bool plain_call(llvm::CallBase* c, llvm::Function* f) {
-  if (!f || !llvm::isa< llvm::CallInst >(c) || c->isInlineAsm() || c->hasOperandBundles() ||
-      c->getFunctionType() != f->getFunctionType() || f->isVarArg() ||
-      c->getCallingConv() != llvm::CallingConv::C || f->getCallingConv() != llvm::CallingConv::C ||
-      c->arg_size() != f->arg_size()) return false;
-  for (unsigned i = 0; i < c->arg_size(); ++i)
-    for (auto a : {llvm::Attribute::ByVal, llvm::Attribute::StructRet,
-                   llvm::Attribute::InAlloca, llvm::Attribute::Preallocated})
-      if (c->paramHasAttr(i, a) || f->hasParamAttribute(i, a)) return false;
-  return true;
-}
 struct Token {
   llvm::GlobalVariable* source = nullptr;
+  bool semaphore = false;
   llvm::GlobalVariable* issued = nullptr;
   llvm::Function* issuer = nullptr;
   std::map< llvm::CallBase*, bool > operations;
@@ -57,13 +49,9 @@ class BinaryTokenOwnership::Impl {
     auto it = originals.find(v); return it == originals.end() ? nullptr : it->second;
   }
   ar::CallBase* binding(llvm::CallBase* c) const {
-    auto* a = dyn_cast_or_null< ar::CallBase >(original(c));
-    auto* target = a ? native_handle_callee(a) : nullptr;
-    auto* f = callee(c);
-    return f && target && plain_call(c, f) && a->num_arguments() == c->arg_size() &&
-        (f->isDeclaration() ? target->is_declaration() : target->is_definition() &&
-         target->has_frontend() && target->frontend< llvm::Value >() == f) ? a : nullptr;
+    return source_call_binding(c, original(c));
   }
+
   NormalMutex mutex_call(llvm::CallBase* c) {
     auto it = mutex_calls.find(c);
     if (it != mutex_calls.end()) return it->second;
@@ -80,7 +68,8 @@ class BinaryTokenOwnership::Impl {
   bool create(llvm::CallBase* c) const {
     auto* a = binding(c);
     return a && native_handle_api(c, true) &&
-        (ctx.native_handle_effect_certificates.count(a) || unread_private_thread_output(a));
+        (ctx.native_handle_effect_certificates.count(a) || unread_private_thread_output(a) ||
+         (ctx.posix_semaphore && ctx.posix_semaphore->opaque_handle_call(c)));
   }
   bool terminal(llvm::CallBase* c) const {
     auto* a = binding(c); auto* f = a ? native_handle_callee(a) : nullptr;
@@ -96,6 +85,8 @@ class BinaryTokenOwnership::Impl {
     auto* source = callee(c);
     if (!a || !target || !source->isDeclaration()) return false;
     if (create(c) || ctx.native_handle_joins.count(a) || ctx.mutex_effect_certificates.count(a)) return true;
+    if (ctx.posix_semaphore && (ctx.posix_semaphore->effect(a) ||
+        ctx.posix_semaphore->opaque_handle_call(c) || ctx.posix_semaphore->allocation_call(c))) return true;
     if (mutex_call(c).source || terminal(c)) return true;
     const auto id = target->intrinsic_id();
     if ((source->getName() == "__VERIFIER_atomic_begin" || source->getName() == "__VERIFIER_atomic_end") &&
@@ -977,7 +968,7 @@ public:
         if (!inserted.second) inserted.first->second = nullptr;
       }
     }
-    bool potential = false;
+    bool potential = ctx.posix_semaphore && !ctx.posix_semaphore->tokens().empty();
     for (auto* f : order) if (atomic_signature(f)) potential = true;
     roots.push_back(main);
     if (!potential || !inventory(*main->getParent(), main)) return;
@@ -992,9 +983,14 @@ public:
       Token t;
       if (ticket_ownership(f, t)) tokens.push_back(std::move(t));
     }
+    if (ctx.posix_semaphore) for (const auto& sem : ctx.posix_semaphore->tokens()) {
+      Token t; t.source = sem.source; t.semaphore = true; t.operations = sem.operations;
+      if (ownership(t)) tokens.push_back(std::move(t));
+    }
   }
   BinaryTokenEvent event(llvm::CallBase* call) const {
     for (const auto& token : tokens) {
+      if (token.semaphore) continue;
       auto found = token.operations.find(call);
       if (found != token.operations.end()) return {token.source, found->second};
     }
@@ -1003,6 +999,10 @@ public:
   bool excludes(const AccessRecord& a, const AccessRecord& b) const { return pair(a, b); }
   JsonDict info(const AccessRecord& a, const AccessRecord& b) const {
     auto* t = pair(a, b);
+    if (t && t->semaphore)
+      return {{"safe_reason", "both accesses must hold the unique closed GNU semaphore permit"},
+              {"semaphore_ownership_contract", "closed-gnu-binary-semaphore-ownership-v1"},
+              {"token", t->source->getName().str()}};
     if (t && t->issued)
       return {{"safe_reason",
                "both accesses own the unique current nonwrapping ticket"},

@@ -1148,3 +1148,44 @@ byte-memory replay and also verifies the actual read-from source. This validates
 the selected AR prefix, not a C-source witness. Run
 `python3 scripts/test_initialized_pointer_fields.py` for ILP32 int/long-long
 controls, alias/output corruption and damaged execution evidence.
+
+## Closed GNU binary semaphores
+
+A shared `PosixSemaphore` description covers an aligned, zero-initialized,
+16-byte global `sem_t` in the GNU/Linux i386 profile. It requires one actual
+`sem_init(&object, 0, 1)` in main's entry block before all helper/worker entry,
+exact source/AR calls, and closed object uses through `sem_wait`/`sem_post` only.
+Numerical transfer forgets the control bytes and publishes their interference;
+results remain TOP. The checker omits only this sealed opaque control storage,
+whose representation cannot be observed or changed by application accesses.
+
+Normal return from untimed wait acquires a permit in the supported modern Linux
+no-user-handler profile. This is supported by [glibc 2.39 sem_wait](https://github.com/bminor/glibc/blob/ef321e23c20eebc6d6fb4044425c00e6df27b05f/nptl/sem_wait.c),
+its [slow path](https://github.com/bminor/glibc/blob/ef321e23c20eebc6d6fb4044425c00e6df27b05f/nptl/sem_waitcommon.c),
+and the Linux v6.6 [untimed futex](https://github.com/torvalds/linux/blob/v6.6/kernel/futex/waitwake.c)
+and [signal restart](https://github.com/torvalds/linux/blob/v6.6/arch/x86/kernel/signal.c)
+paths. GNU ABI selection is a model selection, not a probe of the executing
+kernel. Generic POSIX EINTR behavior is not assumed away: user handlers,
+cancellation/setxid APIs, timed/try waits, foreign runtime data observations,
+unknown calls and escaping callbacks refuse this profile.
+
+`BinaryTokenOwnership` reuses its existing finite U/H CFG and helper fixed point:
+wait requires U and yields H; post requires H and yields U; merges retain both
+possibilities and each access must be held in every reaching context. Initial
+capacity one and these balanced transitions establish mutual exclusion; an extra
+post, omitted wait or mixed-held branch cannot establish the theorem. Returning
+while held retains occupancy. Only pairs with both endpoints certified held are
+excluded; semaphore events are not exported to arena or once analyses.
+
+A separate malloc-derived handle array can be admitted to this token inventory
+when pointers flow only through casts/GEPs, exact NULL-attribute create outputs,
+whole handle loads used only by NULL-output joins, and base free. It retains the
+existing object-based pthread effect envelope: heap outputs are havoced, unknown
+handles grant no HB, and normal checker accesses remain. This does not establish
+allocation bounds, nonwrap, nonnull, handle validity or join completion, and does
+not certify concrete libc behavior for arbitrary invalid handles. Native handle
+range certificates and their checks are unchanged.
+
+Implementation: `analysis/posix_semaphore.hpp` and its source, numerical transfer,
+and `src/checker/binary_token.cpp`. Run `python3 scripts/test_posix_semaphore.py`
+for ILP32 int/long-long, branching, capacity, lifecycle, alias, TLS and API controls.
