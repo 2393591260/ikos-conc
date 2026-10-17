@@ -12,9 +12,9 @@ from ikos_runtime import runtime_command, runtime_identity, verify_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = (0, 1, 2, 4, 5, 8, 9, 10, 11, 12, 14, 15, 18, 20, 21, 22, 23,
-         24, 25, 26, 27, 28, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 45, 46, 47)
+         24, 25, 26, 27, 28, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 61, 62, 63, 64, 65, 66, 67, 69)
 # CASE26 omits reset.prev, but insertion initializes every required prev cell.
-POSITIVE = {0, 23, 26, 33, 37}
+POSITIVE = {0, 23, 26, 33, 37, 48, 64, 65, 69}
 
 
 def main():
@@ -53,7 +53,7 @@ def main():
                 else:
                     assert not proofs, (case, wide, checks, output)
                     # CASE2 is a safe lock permutation outside this subset.
-                    if case in {1, 5, 12, 15}:
+                    if case in {1, 5, 12, 15, 49, 53}:
                         assert not safe, (case, wide, checks, output)
                 print(f'CASE={case}/WIDE={int(wide)}: safe={safe}, '
                       f'proofs={len(proofs)}', flush=True)

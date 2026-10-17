@@ -120,7 +120,8 @@ void ThreadModularAnalysis::run() {
           if (cast->op() == ar::UnaryOperation::UIToPtr ||
               cast->op() == ar::UnaryOperation::SIToPtr ||
               cast->op() == ar::UnaryOperation::PtrToUI ||
-              cast->op() == ar::UnaryOperation::PtrToSI) closed = false;
+              cast->op() == ar::UnaryOperation::PtrToSI)
+            closed &= zero_based_layout_projection(cast);
         }
         for (const auto& object : nested) {
           llvm::Value* index = nullptr;

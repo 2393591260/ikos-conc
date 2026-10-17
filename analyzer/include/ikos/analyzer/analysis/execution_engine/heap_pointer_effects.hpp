@@ -268,6 +268,70 @@ inline bool unread_private_thread_output(ar::CallBase* call) {
   return true;
 }
 
+// A NULL-root constant layout calculation observes no application object address.
+inline bool zero_based_layout_projection(const llvm::Value* value,
+                                         const llvm::DataLayout& layout,
+                                         std::uint64_t* result = nullptr) {
+  auto* cast = llvm::dyn_cast< llvm::Operator >(value);
+  if (!cast || cast->getOpcode() != llvm::Instruction::PtrToInt ||
+      !cast->getType()->isIntegerTy(32) || layout.getPointerSizeInBits(0) != 32)
+    return false;
+  value = cast->getOperand(0);
+  llvm::APInt offset(32, 0);
+  for (unsigned depth = 0; depth < 32; ++depth) {
+    if (!value->getType()->isPointerTy() ||
+        value->getType()->getPointerAddressSpace() != 0) return false;
+    if (llvm::isa< llvm::ConstantPointerNull >(value)) {
+      if (result) *result = offset.getZExtValue();
+      return true;
+    }
+    if (auto* gep = llvm::dyn_cast< llvm::GEPOperator >(value)) {
+      llvm::APInt delta(32, 0);
+      if (!gep->accumulateConstantOffset(layout, delta)) return false;
+      offset += delta;
+      value = gep->getPointerOperand();
+    } else if (auto* bitcast = llvm::dyn_cast< llvm::BitCastOperator >(value))
+      value = bitcast->getOperand(0);
+    else return false;
+  }
+  return false;
+}
+
+inline bool zero_based_layout_projection(ar::UnaryOperation* cast) {
+  if ((cast->op() != ar::UnaryOperation::PtrToUI &&
+       cast->op() != ar::UnaryOperation::PtrToSI) || !cast->has_frontend() ||
+      !cast->result()->type()->is_integer() ||
+      ar::cast< ar::IntegerType >(cast->result()->type())->bit_width() != 32)
+    return false;
+  auto* source = llvm::dyn_cast< llvm::PtrToIntInst >(cast->frontend< llvm::Value >());
+  std::uint64_t expected;
+  if (!source || !zero_based_layout_projection(source, source->getModule()->getDataLayout(), &expected)) return false;
+  auto* value = cast->operand();
+  core::ZNumber offset(0), modulus = core::ZNumber(1) << 32;
+  for (unsigned depth = 0; depth < 32; ++depth) {
+    if (isa< ar::NullConstant >(value)) {
+      offset = ((offset % modulus) + modulus) % modulus;
+      return offset == core::ZNumber(expected);
+    }
+    auto* variable = dyn_cast< ar::InternalVariable >(value);
+    auto* definition = variable ? unique_def(variable) : nullptr;
+    if (auto* copy = dyn_cast_or_null< ar::Assignment >(definition)) value = copy->operand();
+    else if (auto* bitcast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
+      if (bitcast->op() != ar::UnaryOperation::Bitcast) return false;
+      value = bitcast->operand();
+    } else if (auto* shift = dyn_cast_or_null< ar::PointerShift >(definition)) {
+      for (auto it = shift->term_begin(); it != shift->term_end(); ++it) {
+        auto term = *it;
+        auto* constant = dyn_cast< ar::IntegerConstant >(term.second);
+        if (!constant) return false;
+        offset += term.first.to_z_number() * constant->value().to_z_number();
+      }
+      value = shift->pointer();
+    } else return false;
+  }
+  return false;
+}
+
 inline bool mutex_effect_pointer_representations_closed(const llvm::Module& module) {
   std::vector< const llvm::Constant* > pending;
   unsigned budget = 16384;
@@ -275,7 +339,8 @@ inline bool mutex_effect_pointer_representations_closed(const llvm::Module& modu
     if (global.hasInitializer()) pending.push_back(global.getInitializer());
   for (const auto& function : module) for (const auto& block : function)
     for (const auto& instruction : block) {
-      if (budget-- == 0 || llvm::isa< llvm::PtrToIntInst >(instruction) ||
+      if (budget-- == 0 || (llvm::isa< llvm::PtrToIntInst >(instruction) &&
+          !zero_based_layout_projection(&instruction, module.getDataLayout())) ||
           llvm::isa< llvm::IntToPtrInst >(instruction)) return false;
       for (const auto& operand : instruction.operands())
         if (auto* constant = llvm::dyn_cast< llvm::Constant >(operand.get()))
@@ -287,7 +352,8 @@ inline bool mutex_effect_pointer_representations_closed(const llvm::Module& modu
     if (!seen.insert(value).second) continue;
     if (budget-- == 0) return false;
     if (auto* expression = llvm::dyn_cast< llvm::ConstantExpr >(value))
-      if (expression->getOpcode() == llvm::Instruction::PtrToInt ||
+      if ((expression->getOpcode() == llvm::Instruction::PtrToInt &&
+           !zero_based_layout_projection(expression, module.getDataLayout())) ||
           expression->getOpcode() == llvm::Instruction::IntToPtr) return false;
     if (llvm::isa< llvm::GlobalValue >(value)) continue;
     for (const auto& operand : value->operands())

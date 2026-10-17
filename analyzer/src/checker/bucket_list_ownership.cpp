@@ -8,6 +8,7 @@
 #include <functional>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/checker/bucket_list_ownership.hpp>
+#include <ikos/analyzer/checker/normal_mutex.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/util/log.hpp>
 #include <map>
@@ -87,6 +88,7 @@ struct FunctionResult {
   bool opaque = false;
 };
 struct Argument {
+  bool opaque = false;
   boost::optional< z3::expr > number;
   boost::optional< Pointer > pointer;
 };
@@ -97,6 +99,8 @@ struct Endpoint {
   Place place;
   std::uint64_t object, offset, width;
   bool write, startup, payload, held;
+  // For a private array, offset/width enclose every possible four-byte access.
+  bool private_range;
   boost::optional< std::uint64_t > owner;
 };
 } // namespace
@@ -115,6 +119,11 @@ class BucketListOwnership::Impl {
   std::map< llvm::Value*, ar::Statement* > originals;
   std::map< llvm::Function*, ar::Function* > functions;
   std::set< llvm::Function* > active, workers, visited_functions;
+  std::set< llvm::GlobalVariable* > literals, auxiliary_mutexes;
+  std::set< llvm::CallBase* > auxiliary_locks;
+  std::set< ar::Statement* > covered_native_calls;
+  std::map< llvm::AllocaInst*, ar::LocalVariable* > native_arrays;
+
   std::vector< State > worlds;
   std::map< llvm::Instruction*, std::vector< Endpoint > > endpoints;
   std::set< llvm::Instruction* > original_mem_effects;
@@ -363,7 +372,8 @@ class BucketListOwnership::Impl {
     if (!top)
       return false;
     need(scalar(i->getType()) && (llvm::isa< llvm::BinaryOperator >(i) ||
-                                  llvm::isa< llvm::CastInst >(i)));
+                                  llvm::isa< llvm::CastInst >(i) ||
+                                  llvm::isa< llvm::ICmpInst >(i)));
     opaque(s, i);
     return true;
   }
@@ -556,7 +566,8 @@ class BucketListOwnership::Impl {
               std::uint64_t off,
               std::uint64_t width,
               bool write,
-              bool payload) {
+              bool payload,
+              bool private_range = false) {
     Endpoint e{i,
                root,
                context,
@@ -568,6 +579,7 @@ class BucketListOwnership::Impl {
                !s.spawned,
                payload,
                false,
+               private_range,
                {}};
     if (p.place == Place::Heap && s.spawned) {
       auto o = s.owners.find(p.object);
@@ -587,7 +599,7 @@ class BucketListOwnership::Impl {
           old.object == e.object && old.offset == e.offset &&
           old.width == e.width && old.write == e.write &&
           old.startup == e.startup && old.payload == e.payload &&
-          old.held == e.held && old.owner == e.owner)
+          old.held == e.held && old.private_range == e.private_range && old.owner == e.owner)
         return;
     out.push_back(std::move(e));
   }
@@ -818,6 +830,154 @@ class BucketListOwnership::Impl {
     }
     return true;
   }
+  bool literal_projection(llvm::Value* value) const {
+    auto* source = llvm::dyn_cast< llvm::GlobalVariable >(value->stripPointerCasts());
+    if (!source || !literals.count(source)) return false;
+    std::vector< llvm::Value* > todo{value}; std::set< llvm::Value* > seen;
+    while (!todo.empty()) {
+      auto* v = todo.back(); todo.pop_back();
+      if (!seen.insert(v).second) continue;
+      if (seen.size() > 2048) return false;
+      for (auto* user : v->users()) {
+        if (auto* g = llvm::dyn_cast< llvm::GEPOperator >(user)) {
+          if (g->getPointerOperand() != v || !g->hasAllZeroIndices()) return false;
+          todo.push_back(user);
+        } else if (llvm::isa< llvm::BitCastOperator >(user)) todo.push_back(user);
+        else {
+          auto* c = llvm::dyn_cast< llvm::CallBase >(user);
+          auto* a = c ? binding(c) : nullptr;
+          if (!a || !constant_assertion_effect(a)) return false;
+        }
+      }
+    }
+    return true;
+  }
+  bool branch_only(llvm::Value* value) const {
+    std::vector< llvm::Value* > todo{value}; std::set< llvm::Value* > seen;
+    while (!todo.empty()) {
+      auto* v = todo.back(); todo.pop_back();
+      if (!seen.insert(v).second) continue;
+      if (seen.size() > 2048) return false;
+      for (auto* user : v->users()) {
+        if (auto* b = llvm::dyn_cast< llvm::BranchInst >(user)) {
+          if (!b->isConditional() || b->getCondition() != v) return false;
+          continue;
+        }
+        auto* i = llvm::dyn_cast< llvm::Instruction >(user);
+        if (!i || !scalar(i->getType()) ||
+            !(llvm::isa< llvm::BinaryOperator >(i) || llvm::isa< llvm::ICmpInst >(i) ||
+              llvm::isa< llvm::CastInst >(i) || llvm::isa< llvm::PHINode >(i) ||
+              llvm::isa< llvm::SelectInst >(i))) return false;
+        todo.push_back(i);
+      }
+    }
+    return true;
+  }
+  using Live = std::set< llvm::Value* >;
+  std::map< llvm::Instruction*, Live > liveness(llvm::Function* f) {
+    std::map< llvm::BasicBlock*, Live > input, output;
+    auto local = [f](llvm::Value* v) {
+      if (auto* i = llvm::dyn_cast< llvm::Instruction >(v)) return i->getFunction() == f;
+      if (auto* a = llvm::dyn_cast< llvm::Argument >(v)) return a->getParent() == f;
+      return false;
+    };
+    bool changed = true;
+    while (changed) {
+      changed = false;
+      for (auto b = f->getBasicBlockList().rbegin(); b != f->getBasicBlockList().rend(); ++b) {
+        spend(); Live out;
+        for (auto* successor : llvm::successors(&*b)) {
+          out.insert(input[successor].begin(), input[successor].end());
+          for (auto& i : *successor) {
+            auto* phi = llvm::dyn_cast< llvm::PHINode >(&i); if (!phi) break;
+            auto* v = phi->getIncomingValueForBlock(&*b); if (local(v)) out.insert(v);
+          }
+        }
+        Live in = out;
+        for (auto i = b->rbegin(); i != b->rend(); ++i) {
+          in.erase(&*i);
+          if (!llvm::isa< llvm::PHINode >(*i))
+            for (auto& operand : i->operands()) if (local(operand.get())) in.insert(operand.get());
+        }
+        if (in != input[&*b] || out != output[&*b]) { changed = true; input[&*b] = std::move(in); output[&*b] = std::move(out); }
+      }
+    }
+    std::map< llvm::Instruction*, Live > result;
+    for (auto& b : *f) {
+      Live live = output[&b];
+      for (auto i = b.rbegin(); i != b.rend(); ++i) {
+        live.erase(&*i);
+        if (!llvm::isa< llvm::PHINode >(*i))
+          for (auto& operand : i->operands()) if (local(operand.get())) live.insert(operand.get());
+        result.emplace(&*i, live);
+      }
+    }
+    return result;
+  }
+  void project(State& s, llvm::Function* f, const Live& live) {
+    auto dead = [&](llvm::Value* v) {
+      auto* i = llvm::dyn_cast< llvm::Instruction >(v);
+      auto* a = llvm::dyn_cast< llvm::Argument >(v);
+      return ((i && i->getFunction() == f) || (a && a->getParent() == f)) && !live.count(v);
+    };
+    for (auto i = s.values.begin(); i != s.values.end();) if (dead(i->first)) i = s.values.erase(i); else ++i;
+    for (auto i = s.pointers.begin(); i != s.pointers.end();) if (dead(i->first)) i = s.pointers.erase(i); else ++i;
+    for (auto i = s.opaque.begin(); i != s.opaque.end();) if (dead(*i)) i = s.opaque.erase(i); else ++i;
+    // Path constraints, memory, owners and caller frames are deliberately retained.
+  }
+  void native_suffix(llvm::Instruction* start, State& s) {
+    need(ctx.native_handles_only && !ctx.native_handle_accesses.empty() && s.spawned &&
+         root == main && context.empty() && !ctx.concurrent_env.is_dirty() &&
+         ctx.concurrent_env.unmodeled_thread_creations().empty());
+    for (const auto& access : ctx.native_handle_accesses) {
+      // Final real-AI observations cover every call/load, iteration and context.
+      // Native output/Load TOP and join's no-HB transfer do not depend on us.
+      auto observation = ctx.native_handle_observations.find(access.first);
+      need(observation != ctx.native_handle_observations.end() && observation->second);
+    }
+    auto access = [&](llvm::Instruction* i, bool write) {
+      auto* a = original(i); auto found = ctx.native_handle_accesses.find(a);
+      need(found != ctx.native_handle_accesses.end());
+      llvm::AllocaInst* allocation = nullptr;
+      for (const auto& array : native_arrays) if (array.second == found->second.storage) allocation = array.first;
+      need(allocation && s.pointers.count(allocation));
+      auto p = s.pointers.at(allocation); need(p.place == Place::Local && s.objects.at(p.object).extent >= 4);
+      // One enclosing range, used solely for object disjointness, not a slot identity.
+      record(s, i, p, 0, s.objects.at(p.object).extent, write, false, true);
+    };
+    std::vector< llvm::Instruction* > todo{start}; std::set< llvm::Instruction* > seen;
+    while (!todo.empty()) {
+      auto* i = todo.back(); todo.pop_back(); spend();
+      if (!seen.insert(i).second) continue;
+      if (auto* c = llvm::dyn_cast< llvm::CallBase >(i)) {
+        if (llvm::isa< llvm::DbgInfoIntrinsic >(c)) {}
+        else {
+          auto* a = binding(c); need(a);
+          if (terminal(c)) continue;
+          if (native_handle_api(c, true)) {
+            need(ctx.native_handle_accesses.count(a));
+            auto* worker = llvm::cast< llvm::Function >(c->getArgOperand(2)->stripPointerCasts());
+            need(functions.count(worker)); workers.insert(worker); access(i, true);
+          } else need(native_handle_api(c, false) && ctx.native_handle_joins.count(a));
+          covered_native_calls.insert(a);
+        }
+      } else if (auto* load = llvm::dyn_cast< llvm::LoadInst >(i)) {
+        need(load->getType()->isIntegerTy(32) && !load->isAtomic() && !load->isVolatile()); access(i, false);
+      } else if (auto* gep = llvm::dyn_cast< llvm::GetElementPtrInst >(i)) {
+        auto* allocation = llvm::dyn_cast< llvm::AllocaInst >(gep->getPointerOperand()->stripPointerCasts());
+        need(allocation && native_arrays.count(allocation) && native_handle_element(gep, allocation));
+      } else if (auto* ret = llvm::dyn_cast< llvm::ReturnInst >(i)) {
+        need(ret->getReturnValue() && ret->getReturnValue()->getType()->isIntegerTy(32)); continue;
+      } else if (llvm::isa< llvm::BranchInst >(i)) {
+        for (auto* successor : llvm::successors(i->getParent())) todo.push_back(&successor->front());
+        continue;
+      } else need(scalar(i->getType()) &&
+                  (llvm::isa< llvm::PHINode >(i) || llvm::isa< llvm::BinaryOperator >(i) ||
+                   llvm::isa< llvm::ICmpInst >(i) || llvm::isa< llvm::SelectInst >(i) ||
+                   llvm::isa< llvm::CastInst >(i)));
+      need(i->getNextNode()); todo.push_back(i->getNextNode());
+    }
+  }
   std::vector< FunctionResult > execute(
       llvm::Function* f,
       State initial,
@@ -835,7 +995,9 @@ class BucketListOwnership::Impl {
       initial.values.erase(f->getArg(n));
       initial.pointers.erase(f->getArg(n));
       initial.opaque.erase(f->getArg(n));
-      if (arguments[n].pointer)
+      if (arguments[n].opaque)
+        opaque(initial, f->getArg(n));
+      else if (arguments[n].pointer)
         put(initial.pointers, f->getArg(n), *arguments[n].pointer);
       else {
         need(bool(arguments[n].number));
@@ -860,6 +1022,8 @@ class BucketListOwnership::Impl {
     };
     for (auto* l : loops)
       add_loop(l);
+    auto live = liveness(f);
+    for (auto& b : *f) if (llvm::pred_size(&b) > 1) headers.insert(b.getFirstNonPHI());
     std::set< std::string > visited_states;
     std::deque< Job > pending;
     pending.push_back(
@@ -873,13 +1037,22 @@ class BucketListOwnership::Impl {
         spend();
         auto* i = job.pc;
         last = i;
-        if (s.spawned && root != main && headers.count(i) &&
-            !visited_states.insert(signature(s, i)).second)
-          break;
+        if (s.spawned && root != main && headers.count(i)) {
+          project(s, f, live.at(i));
+          if (!visited_states.insert(signature(s, i)).second) break;
+        }
         if (auto* br = llvm::dyn_cast< llvm::BranchInst >(i)) {
           if (!br->isConditional()) {
             job.pc = enter(s, br->getSuccessor(0), i->getParent());
             continue;
+          }
+          if (s.opaque.count(br->getCondition())) {
+            for (unsigned n = 0; n < 2; ++n) {
+              State child = s;
+              auto* next = enter(child, br->getSuccessor(n), i->getParent());
+              pending.push_back({std::move(child), next});
+            }
+            break;
           }
           auto condition = number(s, br->getCondition()).simplify();
           if (condition.is_numeral()) {
@@ -915,6 +1088,11 @@ class BucketListOwnership::Impl {
             else
               r.number = number(r.state, v);
           }
+          // Capture the return first, then discard only this completed frame's SSA.
+          for (auto& arg : f->args()) { r.state.values.erase(&arg); r.state.pointers.erase(&arg); r.state.opaque.erase(&arg); }
+          for (auto& block : *f) for (auto& instruction : block) {
+            r.state.values.erase(&instruction); r.state.pointers.erase(&instruction); r.state.opaque.erase(&instruction);
+          }
           results.push_back(std::move(r));
           break;
         }
@@ -926,7 +1104,7 @@ class BucketListOwnership::Impl {
           auto* a = dyn_cast_or_null< ar::Allocate >(original(i));
           need(root == main && !s.spawned && a && count && count->isOne() &&
                alloca->getAddressSpace() == 0 &&
-               scalar(alloca->getAllocatedType()) &&
+               (scalar(alloca->getAllocatedType()) || native_arrays.count(alloca)) &&
                alloca->getParent() == &f->getEntryBlock());
           auto id = ++tokens;
           s.objects.emplace(id,
@@ -935,8 +1113,9 @@ class BucketListOwnership::Impl {
                                    extent(alloca->getAllocatedType()),
                                    true});
           put(s.pointers, i, Pointer(z, Place::Local, id));
-        } else if (auto* g = llvm::dyn_cast< llvm::GetElementPtrInst >(i))
-          put(s.pointers, i, gep(s, g));
+        } else if (auto* g = llvm::dyn_cast< llvm::GetElementPtrInst >(i)) {
+          if (!literal_projection(g)) put(s.pointers, i, gep(s, g));
+        }
         else if (auto* cast = llvm::dyn_cast< llvm::BitCastInst >(i)) {
           if (llvm::isa< llvm::Function >(
                   cast->getOperand(0)->stripPointerCasts())) {
@@ -946,6 +1125,8 @@ class BucketListOwnership::Impl {
               auto* c = llvm::dyn_cast< llvm::CallBase >(user);
               need(c && c->getCalledOperand() == cast && target(c) == function);
             }
+          } else if (auxiliary_mutexes.count(llvm::dyn_cast< llvm::GlobalVariable >(cast->getOperand(0)->stripPointerCasts()))) {
+            // Its entire use closure is already restricted to ignored extra locks.
           } else if (cast->getType()->isPointerTy() &&
                      cast->getOperand(0)->getType()->isPointerTy()) {
             need(cast->getType()->getPointerAddressSpace() == 0 &&
@@ -967,7 +1148,7 @@ class BucketListOwnership::Impl {
             opaque(s, i);
           }
         } else if (auto* cmp = llvm::dyn_cast< llvm::ICmpInst >(i)) {
-          set(s,
+          if (!opaque_operation(s, i)) set(s,
               i,
               cmp->getOperand(0)->getType()->isPointerTy()
                   ? pointer_compare(s, cmp)
@@ -992,14 +1173,18 @@ class BucketListOwnership::Impl {
           need(a && called);
           if (terminal(call))
             break;
-          if (nondet(call))
-            set(s, i, fresh(call->getType()->getIntegerBitWidth()));
+          if (nondet(call)) {
+            if (call->use_empty() || (root != main && branch_only(call))) opaque(s, i);
+            else set(s, i, fresh(call->getType()->getIntegerBitWidth()));
+          }
           else if (!called->isDeclaration()) {
             std::vector< Argument > args;
             for (auto& arg : call->args()) {
               Argument v;
               if (arg->getType()->isPointerTy())
                 v.pointer = pointer(s, arg.get());
+              else if (s.opaque.count(arg.get()))
+                v.opaque = true;
               else
                 v.number = number(s, arg.get());
               args.push_back(std::move(v));
@@ -1032,6 +1217,8 @@ class BucketListOwnership::Impl {
             auto id = ++tokens;
             s.objects.emplace(id, Object{Place::Heap, call, size, false});
             put(s.pointers, i, Pointer(z, Place::Heap, id));
+          } else if (auxiliary_locks.count(call)) {
+            opaque(s, i); // Closed normal runtime effects, no owner/HB fact.
           } else if (mutex_api(call)) {
             auto p = pointer(s, call->getArgOperand(0));
             need(p.place == Place::Global && p.object == global_id);
@@ -1072,10 +1259,16 @@ class BucketListOwnership::Impl {
             workers.insert(worker);
             auto p = pointer(s, call->getArgOperand(0));
             need(p.place == Place::Local);
-            auto offset = constant(s, p.offset);
             auto* allocation = llvm::dyn_cast< llvm::AllocaInst >(
                 s.objects.at(p.object).source);
-            need(offset == 0 && s.objects.at(p.object).extent == 4 &&
+            if (allocation && native_arrays.count(allocation)) {
+              if (!s.spawned) { freeze(s); worlds.push_back(s); }
+              native_suffix(call, s);
+              // The suffix may return or diverge; neither result supplies completion.
+              results.push_back(FunctionResult{std::move(s), {}, {}, false});
+              break;
+            }
+            need(constant(s, p.offset) == 0 && s.objects.at(p.object).extent == 4 &&
                  allocation &&
                  allocation->getAllocatedType()->isIntegerTy(32) &&
                  allocation->getAlign().value() >= 4);
@@ -1122,9 +1315,17 @@ class BucketListOwnership::Impl {
          triple.getArch() == llvm::Triple::x86 && triple.isOSLinux() &&
          triple.getEnvironment() == llvm::Triple::GNU);
     for (auto& g : module->globals()) {
+      if (g.isConstant()) {
+        auto* text = g.hasInitializer() ? llvm::dyn_cast< llvm::ConstantDataArray >(g.getInitializer()) : nullptr;
+        need(text && text->isCString() && g.getAddressSpace() == 0 && !g.isThreadLocal() && !g.isExternallyInitialized());
+        literals.insert(&g); continue;
+      }
+      auto* type = llvm::dyn_cast< llvm::StructType >(g.getValueType());
+      if (type && !type->isOpaque() && extent(type) == 24) {
+        auxiliary_mutexes.insert(&g); continue;
+      }
       need(!global && !g.isThreadLocal() && !g.isExternallyInitialized() &&
-           !g.isConstant() && g.getAddressSpace() == 0 && g.hasInitializer() &&
-           g.getInitializer()->isNullValue());
+           g.getAddressSpace() == 0 && g.hasInitializer() && g.getInitializer()->isNullValue());
       global = &g;
     }
     need(global);
@@ -1200,13 +1401,24 @@ class BucketListOwnership::Impl {
           need(i && i->getFunction() == f && originals.emplace(i, a).second);
         }
     }
+    for (const auto& original : originals) {
+      auto* allocation = dyn_cast< ar::Allocate >(original.second);
+      auto* source = llvm::dyn_cast< llvm::AllocaInst >(original.first);
+      if (!allocation || !source || source->getFunction() != main) continue;
+      for (const auto& access : ctx.native_handle_accesses)
+        if (access.second.storage == allocation->result()) native_arrays.emplace(source, allocation->result());
+    }
     // Verify imported global initialization agrees with the exact LLVM object.
     unsigned found = 0;
     for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end();
          ++it) {
       auto* g = *it;
-      need(g->has_frontend() && g->frontend< llvm::Value >() == global &&
-           g->is_definition() && !g->is_thread_local());
+      need(g->has_frontend() && g->is_definition() && !g->is_thread_local());
+      if (g->frontend< llvm::Value >() != global) {
+        auto* source = llvm::dyn_cast< llvm::GlobalVariable >(g->frontend< llvm::Value >());
+        need(source && (literals.count(source) || auxiliary_mutexes.count(source)));
+        continue;
+      }
       need(ctx.bundle->data_layout().alloc_size_in_bytes(
                g->type()->pointee()) == core::ZNumber(extent(gtype)));
       for (auto* b : *g->initializer())
@@ -1219,6 +1431,23 @@ class BucketListOwnership::Impl {
         }
     }
     need(found == 1);
+    for (auto* g : literals) need(literal_projection(g));
+    for (auto* g : auxiliary_mutexes) {
+      std::vector< llvm::Value* > pending{g}; std::set< llvm::Value* > seen;
+      bool used = false;
+      while (!pending.empty()) {
+        auto* v = pending.back(); pending.pop_back(); spend();
+        if (!seen.insert(v).second) continue;
+        for (auto* user : v->users()) {
+          if (llvm::isa< llvm::BitCastOperator >(user)) { pending.push_back(user); continue; }
+          auto* c = llvm::dyn_cast< llvm::CallBase >(user);
+          auto m = c ? normal_mutex(ctx, binding(c)) : NormalMutex{};
+          need(c && m.source == g && c->getArgOperand(0) == v);
+          auxiliary_locks.insert(c); used = true;
+        }
+      }
+      need(used);
+    }
   }
   std::string worker_frame(const State& s) {
     // Workers can only read immutable links and TOP payloads. Main SSA values,
@@ -1332,7 +1561,10 @@ class BucketListOwnership::Impl {
     std::reverse(cc.begin(), cc.end());
     for (const auto& e : found->second)
       if (e.root->getName() == r.thread_id && e.calls == cc &&
-          (e.width == r.width ||
+          ((e.private_range && (r.width == 4 ||
+              (r.width == 0 && llvm::isa< llvm::CallBase >(i) &&
+               native_handle_api(llvm::cast< llvm::CallBase >(i), true)))) ||
+           e.width == r.width ||
            (r.width == 0 && e.place == Place::Local && e.width == 4 &&
             llvm::isa< llvm::CallBase >(i) &&
             native_handle_api(llvm::cast< llvm::CallBase >(i), true))) &&
@@ -1376,8 +1608,10 @@ public:
         return false;
     }
     ensure();
-    if (!valid || !original_mem_effects.count(i))
-      return false;
+    if (!valid) return false;
+    if (reason == "synthetic pthread handle representation not modeled" &&
+        covered_native_calls.count(statement)) return true;
+    if (!original_mem_effects.count(i)) return false;
     if (reason == "unknown destination write effects not covered" &&
         !isa< ar::Store >(statement))
       return false;

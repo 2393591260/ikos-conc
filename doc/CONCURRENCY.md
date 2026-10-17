@@ -1071,7 +1071,10 @@ exactly one head. Concurrent link mutation, cross-bucket membership, unknown
 calls, lifetime changes, incomplete cells and unproved byte bounds refuse the
 whole certificate.
 
-Worker payloads are TOP and cannot determine control flow or addresses. Complete
+Worker payloads are TOP. Scalar comparisons and actual helper arguments preserve
+TOP; a TOP condition explores both successors without adding a chosen value.
+TOP still cannot determine an address, extent or owner. Branch-only nondeterministic
+choices may likewise become TOP after a complete scalar-use closure check. Complete
 state exploration covers every reaching access, including repeated graph states;
 resource exhaustion is refusal, never a bounded safety argument. Main is checked
 on all paths before workers are projected onto their immutable graph frame.
@@ -1091,6 +1094,34 @@ may only feed integer casts and the main return value; it never becomes a usable
 numeric address. Numerical/MAY summaries and BMC's original representation gate
 remain unchanged. This is a live-byte race certificate, not pointer-safety,
 allocation-success, termination, thread-completion or official witness validation.
+
+Closed extra normal mutexes can be treated as runtime stutters; they grant no
+bucket ownership. Readonly assertion strings are accepted only through actual
+validated terminal assertion calls. At CFG joins, standard source-SSA liveness
+includes PHI operands on predecessor edges. Dead current-frame SSA can be
+forgotten before exact-state deduplication; caller frames, path constraints,
+memory, precise live pointers and held owner locks are retained. A helper's return
+is captured before its completed SSA frame is cleared.
+
+Fixed private native `pthread_t` arrays reuse the real abstract interpreter's
+whole-plan range observations: every create output and handle Load must have an
+existing true observation, accumulated by AND across contexts and iterations.
+Dirty fixpoints and missing thread coverage refuse. The native transfers already
+use TOP values and grant no join HB independently of this checker. After the
+first possible creation freezes the graph, a finite suffix pass checks every
+CFG edge and admits only these native operations and pure control computations.
+It collects all possible callbacks and enclosing private-array ranges. Those
+ranges prove only object disjointness, never one precise slot or thread identity.
+Application writes, graph changes and unsupported suffix calls refuse even after
+a join. Only a complete source proof can explain its exact synthetic-native-call
+coverage warnings; it does not clear the shared environment's coverage markers.
+
+A shared narrow address gate recognizes NULL-root, constant, 32-bit layout
+projections with identical computed LLVM/AR offsets. This observes no application
+object address and supplies no nonnull, lifetime or inbounds/UB premise. Real
+address observations, dynamic offsets and integer-to-pointer casts keep their
+previous conservative gates. The native-array route does not extend this
+exception to a pointer returned as main's exit code.
 
 Implementation: `checker/bucket_list_ownership.hpp` and
 `src/checker/bucket_list_ownership.cpp`. Regression entry:
