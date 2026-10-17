@@ -23,6 +23,52 @@ class UploadError(RuntimeError):
         self.status = status
 
 
+class ProgressReader:
+    """Track client reads without changing the file bytes or HTTP body length."""
+
+    def __init__(self, stream, size):
+        self.stream = stream
+        self.size = size
+        self.sent = 0
+        self.started = self.updated = time.monotonic()
+        self.complete = False
+        self.show()
+
+    def __len__(self):
+        return self.size
+
+    def tell(self):
+        return self.stream.tell()
+
+    def show(self):
+        now = time.monotonic()
+        rate = self.sent / max(now - self.started, 0.001)
+        fraction = self.sent / self.size if self.size else 1
+        filled = min(20, int(fraction * 20))
+        eta = f"{(self.size - self.sent) / rate:.0f}s" if rate else "--"
+        print(f"\r[{'#' * filled}{'-' * (20 - filled)}] {fraction:6.1%} "
+              f"{self.sent}/{self.size} B | {rate / 1024:.1f} KiB/s | ETA {eta}   ",
+              end="", file=sys.stderr, flush=True)
+        self.updated = now
+
+    def read(self, size=-1):
+        block = self.stream.read(size)
+        self.sent += len(block)
+        if not self.complete and self.sent == self.size:
+            self.show()
+            print("\nFile read complete; waiting for server response (not yet verified).",
+                  file=sys.stderr, flush=True)
+            self.complete = True
+        elif not self.complete and time.monotonic() - self.updated >= 0.5:
+            self.show()
+        return block
+
+    def finish(self):
+        if not self.complete:
+            self.show()
+            print(file=sys.stderr, flush=True)
+
+
 class Zenodo:
     def __init__(self, token, record):
         self.token = token
@@ -126,7 +172,7 @@ def finish_upload(api, files_url, path, filename, digests):
     print(f"Verified remote size and checksum: {current['checksum']}", flush=True)
 
 
-def upload(api, files_url, path, filename, digests):
+def upload(api, files_url, path, filename, digests, progress=True):
     listing = api.request("GET", files_url)
     if not listing.get("enabled"):
         raise UploadError("Draft files are disabled; enable Edit published files first.")
@@ -146,8 +192,14 @@ def upload(api, files_url, path, filename, digests):
         try:
             print(f"Uploading {size} bytes, attempt {attempt}/3…", flush=True)
             with path.open("rb") as stream:
-                api.request("PUT", entry["links"]["content"], data=stream,
-                            headers={"Content-Type": "application/octet-stream"})
+                reader = ProgressReader(stream, size) if progress else stream
+                try:
+                    api.request("PUT", entry["links"]["content"], data=reader,
+                                headers={"Content-Type": "application/octet-stream"})
+                finally:
+                    if progress:
+                        reader.finish()
+            print("Server accepted upload content; committing file…", flush=True)
             api.request("POST", entry["links"]["commit"])
             break
         except (requests.RequestException, UploadError) as exc:
@@ -167,6 +219,7 @@ def upload(api, files_url, path, filename, digests):
             if current.get("status") == "completed" or attempt == 3:
                 raise
             time.sleep(5)
+    print("Checking remote size and checksum…", flush=True)
     current = api.request("GET", file_url)
     if not matches(current, size, digests):
         raise UploadError(f"Remote file verification failed: {current.get('checksum')!r}.")
@@ -180,6 +233,8 @@ def main():
     parser.add_argument("--filename", help="Remote name; defaults to the local filename")
     parser.add_argument("--finish-upload", action="store_true",
                         help="Commit and verify an existing upload without retransmitting its content")
+    parser.add_argument("--no-progress", action="store_true",
+                        help="Disable the client-read progress bar")
     args = parser.parse_args()
     path = args.file.resolve(strict=True)
     filename = args.filename or path.name
@@ -195,8 +250,11 @@ def main():
     if not token:
         raise UploadError("Empty token.")
     api = Zenodo(token, args.record)
-    action = finish_upload if args.finish_upload else upload
-    action(api, api.draft_files(args.record), path, filename, digests)
+    files_url = api.draft_files(args.record)
+    if args.finish_upload:
+        finish_upload(api, files_url, path, filename, digests)
+    else:
+        upload(api, files_url, path, filename, digests, progress=not args.no_progress)
     print(f"Upload complete. Review and publish the file-edit draft in your browser:\n"
           f"https://zenodo.org/uploads/{args.record}\n"
           "This script did not publish or create a version.", flush=True)

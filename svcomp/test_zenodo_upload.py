@@ -1,15 +1,77 @@
 """Offline checks for draft identity, upload integrity and retry boundaries."""
 
 import contextlib
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import io
 from pathlib import Path
 import tempfile
+import threading
 import unittest
 from unittest.mock import Mock, call, patch
 
 import requests
 
-from zenodo_upload import UploadError, Zenodo, finish_upload, hashes, upload
+from zenodo_upload import ProgressReader, UploadError, Zenodo, finish_upload, hashes, upload
+
+
+class ProgressTests(unittest.TestCase):
+    def test_actual_http_body_and_length_match_with_or_without_progress(self):
+        payload = bytes(range(256)) * 1024
+        received = []
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_PUT(self):
+                length = self.headers.get("Content-Length")
+                received.append((length, self.headers.get("Transfer-Encoding"),
+                                 self.rfile.read(int(length))))
+                self.send_response(200)
+                self.send_header("Content-Length", "2")
+                self.end_headers()
+                self.wfile.write(b"{}")
+
+            def log_message(self, *args):
+                pass
+
+        with HTTPServer(("127.0.0.1", 0), Handler) as server, requests.Session() as session:
+            session.trust_env = False
+            thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.05},
+                                      daemon=True)
+            thread.start()
+            try:
+                for progress in (False, True):
+                    with self.subTest(progress=progress), tempfile.TemporaryFile() as stream, \
+                            contextlib.redirect_stderr(io.StringIO()) as output:
+                        stream.write(payload)
+                        stream.seek(0)
+                        reader = ProgressReader(stream, len(payload)) if progress else stream
+                        response = session.put(
+                            f"http://127.0.0.1:{server.server_port}/upload", data=reader,
+                            headers={"Content-Type": "application/octet-stream"}, timeout=(2, 3))
+                        self.assertEqual(response.status_code, 200)
+                        if progress:
+                            reader.finish()
+                            self.assertIn("100.0%", output.getvalue())
+                            self.assertIn("not yet verified", output.getvalue())
+                        else:
+                            self.assertEqual(output.getvalue(), "")
+            finally:
+                server.shutdown()
+                thread.join(timeout=3)
+            self.assertFalse(thread.is_alive())
+        self.assertEqual(received, [(str(len(payload)), None, payload)] * 2)
+
+    def test_interrupted_read_does_not_report_completion(self):
+        with contextlib.redirect_stderr(io.StringIO()) as output, \
+                patch("zenodo_upload.time.monotonic", return_value=10):
+            reader = ProgressReader(io.BytesIO(b"abcdefgh"), 8)
+            self.assertEqual(reader.read(2), b"ab")
+            reader.finish()
+        text = output.getvalue()
+        self.assertIn("0.0%", text)
+        self.assertIn("25.0%", text)
+        self.assertIn("2/8 B", text)
+        self.assertNotIn("100.0%", text)
+        self.assertNotIn("File read complete", text)
 
 
 class RequestTests(unittest.TestCase):
@@ -136,6 +198,10 @@ class UploadTests(unittest.TestCase):
             if url == self.files:
                 return {"enabled": True, "entries": [] if method == "GET" else [self.pending]}
             if method == "PUT":
+                self.assertEqual(kwargs["data"].tell(), 0)
+                prepared = requests.Request("PUT", url, data=kwargs["data"]).prepare()
+                self.assertEqual(prepared.headers["Content-Length"], str(self.path.stat().st_size))
+                self.assertNotIn("Transfer-Encoding", prepared.headers)
                 transmissions.append(kwargs["data"].read())
                 if len(transmissions) == 1:
                     raise requests.ConnectionError("Connection lost after partial transfer")
@@ -147,6 +213,20 @@ class UploadTests(unittest.TestCase):
         with patch.object(api, "request", side_effect=request), patch("zenodo_upload.time.sleep"):
             self.run_upload(api)
         self.assertEqual(transmissions, [self.path.read_bytes()] * 2)
+
+    def test_progress_can_be_disabled_for_upload(self):
+        api = Zenodo("fake-token", 23122650)
+
+        def request(method, url, **kwargs):
+            if url == self.files:
+                return {"enabled": True, "entries": [self.pending]}
+            if method == "PUT":
+                self.assertNotIsInstance(kwargs["data"], ProgressReader)
+                self.assertEqual(kwargs["data"].read(), self.path.read_bytes())
+            return self.complete
+
+        with patch.object(api, "request", side_effect=request):
+            upload(api, self.files, self.path, "tool.zip", self.digests, progress=False)
 
     def test_bad_remote_checksum_fails(self):
         api = Zenodo("fake-token", 23122650)
