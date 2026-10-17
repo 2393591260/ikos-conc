@@ -82,10 +82,12 @@ class Zenodo:
         parsed = urlsplit(url)
         if parsed.scheme != "https" or parsed.netloc != "zenodo.org":
             raise UploadError("Unexpected API host; token was not sent.")
+        # urllib3 also uses the connect socket timeout while writing the body.
+        timeout = (120, 600) if method == "PUT" else (20, 300)
         # Retry transient reads only; mutations have their own recovery logic.
         for attempt in range(1, 4):
             response = self.session.request(
-                method, url, timeout=(20, 300), allow_redirects=False, **kwargs
+                method, url, timeout=timeout, allow_redirects=False, **kwargs
             )
             if (method != "GET" or response.status_code not in (500, 502, 503, 504)
                     or attempt == 3):

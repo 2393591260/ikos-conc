@@ -79,6 +79,16 @@ class RequestTests(unittest.TestCase):
         return Mock(status_code=status, text="server error fake-token",
                     json=Mock(return_value={"id": "23122650"}))
 
+    def test_content_upload_tolerates_longer_socket_stalls_than_metadata(self):
+        for method, timeout in (("PUT", (120, 600)), ("GET", (20, 300)),
+                                ("POST", (20, 300))):
+            with self.subTest(method=method):
+                api = Zenodo("fake-token", 23122650)
+                with patch.object(api.session, "request", return_value=self.response(200)) as request:
+                    api.request(method, api.root + "/draft/files/tool.zip/content")
+                self.assertEqual(request.call_args.kwargs["timeout"], timeout)
+                self.assertFalse(request.call_args.kwargs["allow_redirects"])
+
     def test_transient_get_recovers(self):
         for status in (500, 502, 503, 504):
             with self.subTest(status=status):
