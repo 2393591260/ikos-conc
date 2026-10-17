@@ -82,6 +82,8 @@ add_concurrency_test(freeze-array "${CONCURRENCY_ROOT}/scripts/test_freeze_array
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(ticket-ownership "${CONCURRENCY_ROOT}/scripts/test_ticket_ownership.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(guarded-publication "${CONCURRENCY_ROOT}/scripts/test_guarded_publication.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(posix-semaphore "${CONCURRENCY_ROOT}/scripts/test_posix_semaphore.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(binary-token "${CONCURRENCY_ROOT}/scripts/test_binary_token.py"

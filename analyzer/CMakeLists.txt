@@ -267,6 +267,7 @@ add_executable(ikos-analyzer
   src/checker/binary_token.cpp
   src/checker/once_initialization.cpp
   src/checker/mutex_handover.cpp
+  src/checker/guarded_publication.cpp
   src/checker/sc_protocol.cpp
   src/checker/self_publication.cpp
   src/analysis/region_ownership.cpp

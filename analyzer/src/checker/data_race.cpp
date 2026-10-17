@@ -45,6 +45,7 @@
 #include <ikos/analyzer/checker/init_publication.hpp>
 #include <ikos/analyzer/checker/first_publication.hpp>
 #include <ikos/analyzer/checker/mutex_handover.hpp>
+#include <ikos/analyzer/checker/guarded_publication.hpp>
 #include <ikos/analyzer/checker/sc_protocol.hpp>
 #include <ikos/analyzer/checker/self_publication.hpp>
 #include <ikos/analyzer/checker/thread_private_heap.hpp>
@@ -1136,6 +1137,7 @@ DataRaceChecker::~DataRaceChecker() {
   ThreadLifecycle thread_lifecycle(this->_ctx);
   OnceInitialization once_initialization(this->_ctx, this->_accesses, binary_token);
   MutexHandover mutex_handover(this->_ctx);
+  GuardedPublication guarded_publication(this->_ctx);
   ScProtocol sc_protocol(this->_ctx);
   SelfPublication self_publication(this->_ctx);
   for (std::size_t i = 0; i < this->_accesses.size(); ++i) {
@@ -1323,6 +1325,14 @@ DataRaceChecker::~DataRaceChecker() {
       if (thread_lifecycle.excludes(a, b)) {
         this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
                              a.stmt, a.call_context, {}, thread_lifecycle.info(a, b));
+        continue;
+      }
+      if (guarded_publication.ordered(a, b)) {
+        auto proof = guarded_publication.info(a, b);
+        if (auto location = source_location(a.stmt)) proof.put("access_a_line", location.line());
+        if (auto location = source_location(b.stmt)) proof.put("access_b_line", location.line());
+        this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+                             a.stmt, a.call_context, {}, proof);
         continue;
       }
       if (sc_protocol.ordered(a, b)) {

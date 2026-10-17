@@ -1189,3 +1189,43 @@ range certificates and their checks are unchanged.
 Implementation: `analysis/posix_semaphore.hpp` and its source, numerical transfer,
 and `src/checker/binary_token.cpp`. Run `python3 scripts/test_posix_semaphore.py`
 for ILP32 int/long-long, branching, capacity, lifecycle, alias, TLS and API controls.
+
+## Monotone publication through a mutex-protected flag
+
+`GuardedPublication` proves a pair-specific ordering from main's scalar writes
+to reads by any number of workers. A closed, non-TLS global flag starts at zero
+and has one noncyclic constant-one Store in nonreentrant main. All its accesses
+use the same actual default-normal GNU i386 mutex. Watched payload globals have
+only full-width direct accesses; every writer is main, and no CFG path from the
+publication Store reaches another payload write. Helpers cannot hide watched
+accesses or mutex/condition operations. Calls, function addresses, foreign runtime
+data and pointer representations are closed independently of numerical values.
+
+A finite CFG worklist tracks possible held states (union), observed publication
+(AND), and continuously protected flag-Load identities (intersection). Only an
+exact Boolean guard edge implying one from a real protected Load establishes
+observation. Other branches are both explored. Unlock and condition wait clear
+cached Loads. Under the sealed zero-initialized 48-byte condition variable and
+24-byte default-normal mutex contract, a normal cond-wait return retains mutex
+ownership; spurious wakeups and failure statuses grant no observation. Robust,
+priority-protect, custom initialization, cancellation, destruction and unknown
+object uses are outside this contract. Source evidence is the [glibc 2.39
+condition-wait implementation](https://github.com/bminor/glibc/blob/ef321e23c20eebc6d6fb4044425c00e6df27b05f/nptl/pthread_cond_wait.c).
+
+Because only main can publish one, a worker observing one while owning that
+mutex follows the publisher's actual release, transitively through intervening
+owners. Earlier main writes therefore precede its later payload read, including
+reads after unlock. This finite MUST proof covers loops and arbitrary worker
+multiplicity; it does not enumerate bounded schedules or infer termination.
+Only matching actual source/AR write/read endpoints consume it. Unsupported
+aliases, effects, control origins and exhausted budgets grant no certificate.
+Real API termination is checked by declaration and intrinsic identity; a
+returning user-defined `abort` or bare `unreachable` cannot remove a predecessor.
+
+The analysis leaves numerical/MAY state, public lock/HB/join facts and BMC
+unchanged. It inherits the existing object-based pthread API effect envelope,
+without proving arbitrary invalid-handle libc behavior. Run
+`python3 scripts/test_guarded_publication.py` for ILP32 int/long-long payloads,
+8/32-bit flags, loops, guard polarity, spurious-wakeup, late-write, alias and
+termination controls. Implementation: `checker/guarded_publication.hpp` and
+`src/checker/guarded_publication.cpp`.
