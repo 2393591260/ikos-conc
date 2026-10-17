@@ -60,6 +60,7 @@
 #include <ikos/analyzer/analysis/execution_engine/pthread_key_effects.hpp>
 #include <ikos/analyzer/analysis/execution_engine/stdio_effects.hpp>
 #include <ikos/analyzer/analysis/runtime_stdio_frame.hpp>
+#include <ikos/analyzer/analysis/pthread_initialization_frame.hpp>
 #include <ikos/analyzer/analysis/bmc/bmc.hpp>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
 #include <ikos/analyzer/analysis/pair_exclusion.hpp>
@@ -3203,7 +3204,15 @@ void DataRaceChecker::check_extern_call_effects(
 
   auto* exact = bmc::exact_callee(call);
   const std::string callee_nm = exact != nullptr ? exact->name() : "";
-  const bool initialization = certified_pthread_initialization(call, this->_ctx);
+  const auto* byte_effect = this->_ctx.pthread_initialization_frame
+      ? this->_ctx.pthread_initialization_frame->effect(call) : nullptr;
+  const bool initialization = byte_effect || certified_pthread_initialization(call, this->_ctx);
+  if (byte_effect) {
+    this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+                         call, call_context, {},
+                         JsonDict{{"safe_reason", "closed constant heap pthread initialization effects"},
+                                  {"pthread_initialization_contract", "constant-heap-runtime-byte-frame-v1"}});
+  }
   unsigned ignored_arguments = 0;
   if (exact != nullptr && exact->is_declaration()) {
     // Preserve the existing lifetime/stack handling separately from user buffers.
@@ -3313,7 +3322,9 @@ void DataRaceChecker::check_extern_call_effects(
                      read_locks,
                      this->resolve_offset(arg, inv),
                      /* width = */ scan ? (argument_index == 2 ? 4u : 0u) :
-                         key_effect == PthreadKeyEffect::Create ? 4u : initialization
+                         key_effect == PthreadKeyEffect::Create ? 4u : byte_effect
+                         ? (argument_index == 0 ? byte_effect->write_bytes : byte_effect->read_bytes)
+                         : initialization
                          ? (argument_index == 0 && callee_nm == "pthread_mutex_init"
                                 ? (this->_ctx.bundle->data_layout().pointers.bit_width == 32 ? 24u : 40u) : 4u)
                          : 0u,

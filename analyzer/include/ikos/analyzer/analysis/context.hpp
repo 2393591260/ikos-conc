@@ -70,6 +70,7 @@ class FunctionPointerAnalysis;
 class PointerAnalysis;
 class FixpointParameters;
 class RuntimeStdioFrame;
+class PthreadInitializationFrame;
 
 // Native storage has no numerical encoding of a thread-instance identity.
 struct NativeHandleArray {
@@ -150,6 +151,7 @@ public:
   // Immutable source/AR certificate, configured before numerical publication.
   // This is independent of concurrent_env and must not be copied across bundles.
   std::shared_ptr< const RuntimeStdioFrame > runtime_stdio_frame_certificate;
+  std::shared_ptr< const PthreadInitializationFrame > pthread_initialization_frame;
 
   bool native_handle_inventory_checked = false;
   bool native_handles_only = false;

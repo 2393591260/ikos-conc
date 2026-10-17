@@ -104,6 +104,8 @@ add_concurrency_test(head-publication "${CONCURRENCY_ROOT}/scripts/test_head_pub
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(array-slices "${CONCURRENCY_ROOT}/scripts/test_array_slices.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(heap-pthread-initialization "${CONCURRENCY_ROOT}/scripts/test_heap_pthread_initialization.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(readonly-heap-reads "${CONCURRENCY_ROOT}/scripts/test_readonly_heap_reads.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(bucket-list-ownership "${CONCURRENCY_ROOT}/scripts/test_bucket_list_ownership.py"

@@ -1071,3 +1071,36 @@ Implementation: `checker/bucket_list_ownership.hpp` and
 payloads, a nonterminating traversal, wrong locks, cross-bucket links, incomplete
 initialization, early creation, native lifecycle changes, byte corruption and
 integer-address observations with application-memory effects.
+
+
+## Fixed heap pthread initialization effects
+
+A source-only `PthreadInitializationFrame` can seal constant byte effects for
+`pthread_mutexattr_init`, recognized NORMAL/ERRORCHECK setters, and heap mutex
+initialization before thread creation. The supported GNU i386/glibc route keeps
+default private, nonrobust, PRIO_NONE attribute flags; successful valid
+initialization is justified by this restricted runtime contract. Results remain
+TOP in the numerical analysis. This is not a POSIX-general success assumption.
+
+The frame checks the actual source/AR calls and memory operands, layout and
+widths, every direct helper activation, immutable pointer relays, actual
+allocation extents, preceding normal Store continuations, and all ordinary
+accesses to runtime storage. It refuses repeated/overlapping initialization,
+representation aliases, lifetime changes, unsupported CFG/effects and exhausted
+budgets. A layout-only NULL-based offsetof expression may contribute an exact
+LLVM-folded integer displacement; it cannot become an application address.
+
+Both numerical transfer and the race checker consume the same immutable effect
+description. Transfer checks the actual destination root and byte offset,
+forgets only the described bytes and publishes interference; the checker keeps
+initialization writes and attribute reads. Existing mutex acquisition/release,
+NULL handling, MAY escape, thread completion and BMC remain separate. A wrong
+ERRORCHECK unlock does not release another mutex. Ordinary data races remain
+warnings even when initialization effects are fully covered.
+
+The first subset admits single-block functions, bounded direct helper expansion,
+constant main allocations, initialized runtime leaves before all creates and
+private unread native create outputs. Unproved cases retain the old fallback.
+Implementation: `analysis/pthread_initialization_frame.hpp` and its source;
+regressions: `python3 scripts/test_heap_pthread_initialization.py` (ILP32,
+including long-long payloads and invalidation controls). LP64 is deferred.

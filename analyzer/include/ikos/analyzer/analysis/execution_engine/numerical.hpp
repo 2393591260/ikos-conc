@@ -63,6 +63,7 @@
 #include <ikos/analyzer/analysis/execution_engine/pthread_key_effects.hpp>
 #include <ikos/analyzer/analysis/execution_engine/stdio_effects.hpp>
 #include <ikos/analyzer/analysis/runtime_stdio_frame.hpp>
+#include <ikos/analyzer/analysis/pthread_initialization_frame.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
 #include <ikos/analyzer/analysis/liveness.hpp>
 #include <ikos/analyzer/analysis/option.hpp>
@@ -2391,6 +2392,38 @@ public:
         this->exec_unknown_call(call, false, false, false, false);
         this->data().set_normal_flow_to_bottom();
         return;
+      }
+    }
+
+    if (this->_ctx.opts.enable_thread_modular && this->_ctx.pthread_initialization_frame) {
+      auto* effect = this->_ctx.pthread_initialization_frame->effect(call);
+      if (effect) {
+        this->init_global_operands(call);
+        const auto& dest = this->_lit_factory.get_scalar(call->argument(0));
+        bool matches = false;
+        if (dest.is_pointer_var()) {
+          auto pointer = this->data().normal().pointer_to_pointer(dest.var());
+          auto offset = pointer.offset().singleton();
+          if (pointer.points_to().is_set() && pointer.points_to().size() == 1 && offset)
+            matches = effect->matches(*pointer.points_to().begin(), offset->to_z_number());
+        }
+        if (matches && this->prepare_mem_access(dest)) {
+          auto pointer = this->data().normal().pointer_to_pointer(dest.var());
+          auto* location = *pointer.points_to().begin();
+          auto address = core::IndexableTraits< MemoryLocation* >::index(location);
+          auto width = MachineInt(effect->write_bytes, this->_data_layout.pointers.bit_width, Unsigned);
+          this->data().normal().mem_forget_reachable(dest.var(), width);
+          this->_ctx.concurrent_env.record_pointer_write(address, pointer.offset(), width.to_z_number(), false);
+          if (this->_ctx.concurrent_env.has_mutex_value_cell(address))
+            this->_ctx.concurrent_env.invalidate_mutex_values();
+          if (isa< GlobalMemoryLocation >(location))
+            this->_ctx.concurrent_env.record_privatized_write(
+                core::ConcurrentGlobalEnv::kNoLockPartitionAddr, address,
+                core::machine_int::Interval::top(64, Signed));
+          // The sealed frame excludes pointer exposure; keep the actual result TOP.
+          this->exec_unknown_call(call, false, false, false, false);
+          return;
+        }
       }
     }
 
