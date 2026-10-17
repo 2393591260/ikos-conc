@@ -105,6 +105,27 @@ def matches(entry, size, digests):
     )
 
 
+def finish_upload(api, files_url, path, filename, digests):
+    """Commit an existing upload without sending its content again."""
+    file_url = files_url.rstrip("/") + "/" + quote(filename, safe="")
+    current = api.request("GET", file_url)
+    size = path.stat().st_size
+    print(f"Remote file: status={current.get('status')}, "
+          f"size={current.get('size')}, checksum={current.get('checksum')}", flush=True)
+    if not matches(current, size, digests):
+        if current.get("status") != "pending":
+            raise UploadError("Remote file is not a matching completed file or pending upload.")
+        if current.get("size") is not None and current["size"] != size:
+            raise UploadError("Remote file size differs; no commit was attempted.")
+        print("Finishing the existing upload; no ZIP bytes will be retransmitted…", flush=True)
+        api.request("POST", file_url + "/commit")
+        current = api.request("GET", file_url)
+    if not matches(current, size, digests):
+        raise UploadError("Remote file verification failed after commit; do not publish. "
+                          "The server may not have received the complete file.")
+    print(f"Verified remote size and checksum: {current['checksum']}", flush=True)
+
+
 def upload(api, files_url, path, filename, digests):
     listing = api.request("GET", files_url)
     if not listing.get("enabled"):
@@ -157,6 +178,8 @@ def main():
     parser.add_argument("--record", required=True, type=int)
     parser.add_argument("--file", required=True, type=Path)
     parser.add_argument("--filename", help="Remote name; defaults to the local filename")
+    parser.add_argument("--finish-upload", action="store_true",
+                        help="Commit and verify an existing upload without retransmitting its content")
     args = parser.parse_args()
     path = args.file.resolve(strict=True)
     filename = args.filename or path.name
@@ -172,7 +195,8 @@ def main():
     if not token:
         raise UploadError("Empty token.")
     api = Zenodo(token, args.record)
-    upload(api, api.draft_files(args.record), path, filename, digests)
+    action = finish_upload if args.finish_upload else upload
+    action(api, api.draft_files(args.record), path, filename, digests)
     print(f"Upload complete. Review and publish the file-edit draft in your browser:\n"
           f"https://zenodo.org/uploads/{args.record}\n"
           "This script did not publish or create a version.", flush=True)

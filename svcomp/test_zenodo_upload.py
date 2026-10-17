@@ -9,7 +9,7 @@ from unittest.mock import Mock, call, patch
 
 import requests
 
-from zenodo_upload import UploadError, Zenodo, hashes, upload
+from zenodo_upload import UploadError, Zenodo, finish_upload, hashes, upload
 
 
 class RequestTests(unittest.TestCase):
@@ -155,6 +155,53 @@ class UploadTests(unittest.TestCase):
             self.complete, dict(self.complete, checksum="md5:corrupted")]):
             with self.assertRaisesRegex(UploadError, "verification failed"):
                 self.run_upload(api)
+
+    def test_finish_pending_upload_does_not_retransmit_or_publish(self):
+        api = Zenodo("fake-token", 23122650)
+        with patch.object(api, "request", side_effect=[
+            self.pending, self.complete, self.complete
+        ]) as request:
+            finish_upload(api, self.files, self.path, "tool.zip", self.digests)
+        self.assertEqual(request.call_args_list, [
+            call("GET", self.file_url), call("POST", self.file_url + "/commit"),
+            call("GET", self.file_url)])
+
+    def test_finish_matching_completed_upload_only_reads(self):
+        api = Zenodo("fake-token", 23122650)
+        with patch.object(api, "request", return_value=self.complete) as request:
+            finish_upload(api, self.files, self.path, "tool.zip", self.digests)
+        request.assert_called_once_with("GET", self.file_url)
+
+    def test_finish_rejects_wrong_completed_file_and_known_wrong_size(self):
+        for entry in (dict(self.complete, checksum="md5:other"),
+                      dict(self.pending, size=self.path.stat().st_size - 1)):
+            with self.subTest(entry=entry):
+                api = Zenodo("fake-token", 23122650)
+                with patch.object(api, "request", return_value=entry) as request:
+                    with self.assertRaises(UploadError):
+                        finish_upload(api, self.files, self.path, "tool.zip", self.digests)
+                request.assert_called_once_with("GET", self.file_url)
+
+    def test_finish_never_accepts_pending_or_corrupted_content(self):
+        for entry in (self.pending, dict(self.complete, checksum="md5:corrupted")):
+            with self.subTest(entry=entry):
+                api = Zenodo("fake-token", 23122650)
+                with patch.object(api, "request", side_effect=[
+                    self.pending, self.pending, entry
+                ]) as request:
+                    with self.assertRaisesRegex(UploadError, "verification failed"):
+                        finish_upload(api, self.files, self.path, "tool.zip", self.digests)
+                self.assertEqual(request.call_count, 3)
+
+    def test_finish_missing_content_does_not_reupload(self):
+        api = Zenodo("fake-token", 23122650)
+        with patch.object(api, "request", side_effect=[
+            self.pending, UploadError("Content not found", 404)
+        ]) as request:
+            with self.assertRaises(UploadError):
+                finish_upload(api, self.files, self.path, "tool.zip", self.digests)
+        self.assertEqual(request.call_args_list, [
+            call("GET", self.file_url), call("POST", self.file_url + "/commit")])
 
     def test_foreign_upload_host_receives_no_token(self):
         api = Zenodo("fake-token", 23122650)
