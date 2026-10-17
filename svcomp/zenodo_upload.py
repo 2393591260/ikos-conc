@@ -60,13 +60,15 @@ class Zenodo:
 
     def draft_files(self, record):
         expected = f"10.5281/zenodo.{record}"
-        published = self.request("GET", self.root)
+        # Metadata uses native RDM JSON; file endpoints retain application/json.
+        headers = {"Accept": "application/vnd.inveniordm.v1+json"}
+        published = self.request("GET", self.root, headers=headers)
         if str(published.get("id")) != str(record):
             raise UploadError("Published record ID does not match.")
         doi = published.get("pids", {}).get("doi", {}).get("identifier") or published.get("doi")
         if doi != expected:
             raise UploadError(f"Published DOI {doi!r} does not match {expected}.")
-        draft = self.request("GET", self.root + "/draft")
+        draft = self.request("GET", self.root + "/draft", headers=headers)
         if str(draft.get("id")) != str(record):
             raise UploadError("Draft ID differs; refusing to upload to a new version.")
         draft_doi = draft.get("pids", {}).get("doi", {}).get("identifier") or draft.get("doi")

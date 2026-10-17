@@ -96,6 +96,24 @@ class UploadTests(unittest.TestCase):
                         api.draft_files(23122650)
                     self.assertTrue(all(c.args[0] == "GET" for c in call.call_args_list))
 
+    def test_metadata_requests_native_rdm_json_only(self):
+        api = Zenodo("fake-token", 23122650)
+        record = {"id": "23122650", "pids": {
+            "doi": {"identifier": "10.5281/zenodo.23122650"}}}
+        draft = dict(record, links={"files": self.files})
+        responses = [Mock(status_code=200, json=Mock(return_value=value))
+                     for value in (record, draft, {"enabled": True, "entries": []})]
+        with patch.object(api.session, "request", side_effect=responses) as request:
+            self.assertEqual(api.draft_files(23122650), self.files)
+            api.request("GET", self.files)
+        self.assertEqual([c.args[:2] for c in request.call_args_list], [
+            ("GET", api.root), ("GET", api.root + "/draft"), ("GET", self.files)])
+        for c in request.call_args_list[:2]:
+            self.assertEqual(c.kwargs["headers"]["Accept"],
+                             "application/vnd.inveniordm.v1+json")
+        self.assertNotIn("headers", request.call_args_list[2].kwargs)
+        self.assertEqual(api.session.headers["Accept"], "application/json")
+
     def test_existing_identical_file_is_not_uploaded_again(self):
         api = Zenodo("fake-token", 23122650)
         with patch.object(api, "request", return_value={"enabled": True, "entries": [self.complete]}) as call:
