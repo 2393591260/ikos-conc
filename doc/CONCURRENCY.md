@@ -1006,8 +1006,30 @@ a retyped alias. Published roots, dimensions and heap cells remain immutable.
 
 Each full-width scalar-array read uses an arbitrary function of its allocation
 snapshot and exact byte offset, so repeated reads of the same cell retain guard
-bounds. Different cells remain unconstrained. Worker-written scalar globals and
-row payloads remain arbitrary. Each consumed table and row access requires a
+bounds. Different cells and row payloads remain unconstrained. Mutable scalar
+globals begin arbitrary; a cell owned by one closed, nonrepeated main-created
+worker may retain that instance's stores and reloads. Other mutable cells may
+retain a snapshot only within one balanced harness atomic region, after every
+possible writer has been checked to use that atomic contract. Region boundaries
+forget shared cells while retaining already-read SSA values. Main's observations
+after creation remain fresh; no worker state is imported into main.
+These scalar caches apply only to the arbitrary-header route below; the older
+canonical route keeps fresh mutable loads. Before cache-assisted path pruning,
+the new route closes all potential stores and calls through its scalar helpers.
+Unknown writes, aliased stores and opaque calls refuse it even in a branch that
+the later path proof could discard.
+
+The canonical induction route remains available. A separate worker route covers
+one noncanonical natural loop by cutting its header edges and checking an
+acyclic traversal from an arbitrary header state. That state retains immutable
+startup sources, but forgets worker-prefix guards, mutable cells and scalar
+live-ins. All bodies, exits, suffixes and scalar helpers are checked; loop-carried
+pointers, unsupported storage, residual cycles and unbalanced atomic paths refuse
+the frame. This is coverage by an inductive overapproximation, not finite
+unrolling or a termination claim. The exact C/AR one-bit nondet-bool declaration
+supplies an arbitrary bit to ordinary byte-array initialization.
+
+Each consumed table and row access requires a
 complete initialized source and a proved byte range; unknown effects, unsupported
 aliases, partial writes, solver uncertainty or exhausted proof budgets refuse
 the entire certificate.
@@ -1024,8 +1046,13 @@ Implementation: `checker/readonly_heap_reads.hpp` and
 `python3 scripts/test_readonly_heap_reads.py`; it includes ILP32 long-long data,
 incomplete construction, changed indices, publication and alias mutation controls,
 and real races remaining after heap reads have been certified.
+`python3 scripts/test_readonly_loop_snapshots.py` additionally covers arbitrary
+loop headers, duplicate worker instances, extra writers, atomic boundaries,
+prefix-only guards, exact bool ABI, long-long row data and real scalar conflicts
+remaining after successful heap certification.
 
-The immutable-read and bucket-membership analyses share the stateless
+The immutable-read, bucket-membership and fixed heap initialization analyses
+share the stateless
 `analysis/source_call_binding.hpp` check for the actual LLVM/AR callee, C calling
 convention, argument agreement and unsupported ABI attributes. Each analysis
 keeps its own source inventory and effect/safety proof; a successful binding

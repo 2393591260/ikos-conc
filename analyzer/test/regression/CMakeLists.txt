@@ -108,6 +108,8 @@ add_concurrency_test(heap-pthread-initialization "${CONCURRENCY_ROOT}/scripts/te
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(readonly-heap-reads "${CONCURRENCY_ROOT}/scripts/test_readonly_heap_reads.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(readonly-loop-snapshots "${CONCURRENCY_ROOT}/scripts/test_readonly_loop_snapshots.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(bucket-list-ownership "${CONCURRENCY_ROOT}/scripts/test_bucket_list_ownership.py"
   --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(protected-protocol "${CONCURRENCY_ROOT}/scripts/test_protected_protocol.py"

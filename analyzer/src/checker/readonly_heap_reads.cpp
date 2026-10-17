@@ -47,6 +47,9 @@ struct State {
   std::map< llvm::Value*, Pointer > pointers;
   z3::expr path;
   bool spawned = false;
+  llvm::Function* worker = nullptr;
+  unsigned atomic_depth = 0;
+  bool scalar_snapshots = false;
   explicit State(z3::context& z) : path(z.bool_val(true)) {}
 };
 struct FunctionResult {
@@ -85,6 +88,9 @@ class ReadonlyHeapReads::Impl {
   unsigned snapshots = 0;
   std::map< unsigned, z3::func_decl > reads;
   std::set< llvm::GlobalVariable* > mutable_globals;
+  std::map< llvm::GlobalVariable*, std::set< llvm::Function* > > writers;
+  std::set< llvm::GlobalVariable* > atomic_cells;
+  std::set< llvm::Function* > unique_workers;
   std::set< llvm::Instruction* > certified;
   std::map< llvm::Instruction*, unsigned > certified_widths;
   bool attempted = false, valid = false;
@@ -130,6 +136,12 @@ class ReadonlyHeapReads::Impl {
       return false;
     const auto name = f->getName();
     const unsigned bits = c->getType()->getIntegerBitWidth();
+    if (name == "__VERIFIER_nondet_bool" && bits == 1 && t->has_frontend()) {
+      auto* type = dyn_cast< ar::IntegerType >(t->type()->return_type());
+      auto* result = a->result_or_null();
+      auto* actual = result ? dyn_cast< ar::IntegerType >(result->type()) : nullptr;
+      return type && actual && type->bit_width() == 1 && actual->bit_width() == 1;
+    }
     if ((name == "__VERIFIER_nondet_int" || name == "__VERIFIER_nondet_uint") &&
         bits == 32 && t->has_frontend())
       return true;
@@ -151,6 +163,153 @@ class ReadonlyHeapReads::Impl {
              c->getType()->isVoidTy() &&
              t->intrinsic_id() == ar::Intrinsic::LibcAbort) ||
             constant_assertion_effect(a));
+  }
+  bool atomic_marker(llvm::CallBase* c, bool begin) const {
+    auto* a = binding(c);
+    auto* f = target(c);
+    auto* t = a ? native_handle_callee(a) : nullptr;
+    return t && t->has_frontend() && f->isDeclaration() && c->arg_empty() &&
+           c->getType()->isVoidTy() && f->getReturnType()->isVoidTy() &&
+           f->getName() == (begin ? "__VERIFIER_atomic_begin"
+                                  : "__VERIFIER_atomic_end");
+  }
+  bool owns(const State& s, llvm::GlobalVariable* g) const {
+    auto i = writers.find(g);
+    return s.scalar_snapshots && s.worker && unique_workers.count(s.worker) && i != writers.end() &&
+           i->second.size() == 1 && *i->second.begin() == s.worker;
+  }
+  void forget_shared_cells(State& s) {
+    for (auto* g : mutable_globals)
+      if (!owns(s, g))
+        set(s, g, fresh(g->getValueType()->getIntegerBitWidth()));
+  }
+  void scalar_inventory() {
+    std::set< llvm::StoreInst* > protected_stores;
+    for (auto& f : *main->getParent()) {
+      if (f.isDeclaration() || &f == main)
+        continue;
+      std::map< llvm::BasicBlock*, unsigned > depths;
+      std::deque< llvm::BasicBlock* > pending{&f.getEntryBlock()};
+      depths.emplace(&f.getEntryBlock(), 0);
+      while (!pending.empty()) {
+        spend();
+        auto* b = pending.front();
+        pending.pop_front();
+        unsigned depth = depths.at(b);
+        for (auto& i : *b) {
+          if (auto* call = llvm::dyn_cast< llvm::CallBase >(&i)) {
+            if (atomic_marker(call, true)) {
+              if (depth)
+                throw Refuse{};
+              depth = 1;
+            } else if (atomic_marker(call, false)) {
+              if (!depth)
+                throw Refuse{};
+              depth = 0;
+            }
+          }
+          if (auto* st = llvm::dyn_cast< llvm::StoreInst >(&i))
+            if (depth)
+              protected_stores.insert(st);
+        }
+        for (auto* next : llvm::successors(b)) {
+          auto inserted = depths.emplace(next, depth);
+          if (inserted.second)
+            pending.push_back(next);
+          else if (inserted.first->second != depth)
+            throw Refuse{};
+        }
+      }
+      for (auto& b : f)
+        for (auto& i : b)
+          if (auto* st = llvm::dyn_cast< llvm::StoreInst >(&i))
+            if (auto* g = llvm::dyn_cast< llvm::GlobalVariable >(
+                    st->getPointerOperand())) {
+              writers[g].insert(&f);
+              if (!protected_stores.count(st))
+                atomic_cells.erase(g);
+            }
+    }
+    for (auto& f : *main->getParent()) {
+      if (f.isDeclaration() || &f == main)
+        continue;
+      std::vector< llvm::Value* > pending{&f};
+      std::set< llvm::Value* > seen;
+      std::set< llvm::CallBase* > creates;
+      bool closed = true;
+      while (!pending.empty() && closed) {
+        spend();
+        auto* value = pending.back(); pending.pop_back();
+        if (!seen.insert(value).second)
+          continue;
+        for (auto* use : value->users()) {
+          if (llvm::isa< llvm::BitCastOperator >(use)) {
+            pending.push_back(use);
+            continue;
+          }
+          auto* call = llvm::dyn_cast< llvm::CallBase >(use);
+          if (!call || call->getFunction() != main ||
+              !native_handle_api(call, true) || !binding(call) ||
+              call->getArgOperand(2)->stripPointerCasts() != &f) {
+            closed = false;
+            break;
+          }
+          creates.insert(call);
+        }
+      }
+      // Main's complete CFG traversal separately refuses repeated create sites.
+      if (closed && creates.size() == 1)
+        unique_workers.insert(&f);
+    }
+  }
+  void closed_scalar_effects(llvm::Function* root) {
+    // Establish writer closure before cache-assisted path pruning.
+    std::set< llvm::Function* > checking, done;
+    std::function< void(llvm::Function*) > check = [&](llvm::Function* f) {
+      if (done.count(f))
+        return;
+      if (!checking.insert(f).second || checking.size() > 16)
+        throw Refuse{};
+      for (auto& b : *f)
+        for (auto& i : b) {
+          spend();
+          if (auto* st = llvm::dyn_cast< llvm::StoreInst >(&i)) {
+            auto* g = llvm::dyn_cast< llvm::GlobalVariable >(st->getPointerOperand());
+            auto* local = llvm::dyn_cast< llvm::AllocaInst >(st->getPointerOperand());
+            auto* type = st->getValueOperand()->getType();
+            if (st->isVolatile() || st->isAtomic() || !scalar(type) ||
+                (g ? f != root || g->getValueType() != type
+                   : !local || local->getAllocatedType() != type))
+              throw Refuse{};
+          } else if (auto* call = llvm::dyn_cast< llvm::CallBase >(&i)) {
+            auto* called = target(call);
+            if (!binding(call) || !called)
+              throw Refuse{};
+            if (nondet(call) || terminal(call))
+              continue;
+            if (atomic_marker(call, true) || atomic_marker(call, false)) {
+              if (f != root)
+                throw Refuse{};
+              continue;
+            }
+            if (called->isDeclaration() ||
+                (!called->getReturnType()->isVoidTy() && !scalar(called->getReturnType())))
+              throw Refuse{};
+            for (auto& arg : call->args())
+              if (!scalar(arg->getType()))
+                throw Refuse{};
+            check(called);
+          } else if (i.mayWriteToMemory()) {
+            throw Refuse{};
+          } else if (auto* ld = llvm::dyn_cast< llvm::LoadInst >(&i)) {
+            if (ld->isVolatile() || ld->isAtomic())
+              throw Refuse{};
+          }
+        }
+      checking.erase(f);
+      done.insert(f);
+    };
+    check(root);
   }
   bool feasible(const z3::expr& path) {
     if (!queries--)
@@ -378,6 +537,12 @@ class ReadonlyHeapReads::Impl {
           !f->getReturnType()->isPointerTy())
         throw Refuse{};
       initial.spawned = true;
+      initial.worker = f;
+      for (auto* g : mutable_globals) {
+        if (!scalar(g->getValueType()))
+          throw Refuse{};
+        set(initial, g, fresh(g->getValueType()->getIntegerBitWidth()));
+      }
       initial.pointers.emplace(f->getArg(0), Pointer(z, Place::Null));
     } else {
       for (auto& a : f->args())
@@ -395,6 +560,8 @@ class ReadonlyHeapReads::Impl {
     llvm::StoreInst* prefix_store = nullptr;
     llvm::CallBase* row_constructor = nullptr;
     llvm::GlobalVariable* table_global = nullptr;
+    bool arbitrary_header = false;
+    const unsigned entering_atomic_depth = initial.atomic_depth;
     if (mode == Mode::Constructor || mode == Mode::Worker ||
         (mode == Mode::Main && !loops.empty())) {
       if (std::distance(loops.begin(), loops.end()) != 1)
@@ -407,8 +574,11 @@ class ReadonlyHeapReads::Impl {
       for (auto& i : *loop->getHeader())
         if (auto* p = llvm::dyn_cast< llvm::PHINode >(&i)) {
           if (phi || !p->getType()->isIntegerTy(32) ||
-              p->getNumIncomingValues() != 2)
-            throw Refuse{};
+              p->getNumIncomingValues() != 2) {
+            if (mode != Mode::Worker || !scalar(p->getType()))
+              throw Refuse{};
+            arbitrary_header = true;
+          }
           phi = p;
         }
       auto* branch = llvm::dyn_cast< llvm::BranchInst >(
@@ -423,35 +593,42 @@ class ReadonlyHeapReads::Impl {
       auto* one = step
                       ? llvm::dyn_cast< llvm::ConstantInt >(step->getOperand(1))
                       : nullptr;
-      if (!phi || !compare ||
+      if (!phi || !compare || arbitrary_header ||
           compare->getPredicate() != llvm::CmpInst::ICMP_SLT ||
           compare->getOperand(0) != phi ||
           !loop->contains(branch->getSuccessor(0)) ||
           loop->contains(branch->getSuccessor(1)) || !step ||
           step->getOpcode() != llvm::Instruction::Add ||
           step->getOperand(0) != phi || !one || !one->isOne() ||
-          !dom.dominates(branch->getSuccessor(0), latch))
-        throw Refuse{};
-      upper = compare->getOperand(1);
-      // A changing heap value or nondet loop bound is not a stable interval
-      // end.
-      std::set< llvm::Value* > seen;
-      std::function< bool(llvm::Value*) > stable = [&](llvm::Value* v) {
-        if (!seen.insert(v).second)
+          !dom.dominates(branch->getSuccessor(0), latch)) {
+        if (mode != Mode::Worker)
+          throw Refuse{};
+        arbitrary_header = true;
+      }
+      if (!arbitrary_header) {
+        upper = compare->getOperand(1);
+        // A changing heap value or nondet loop bound is not a stable interval
+        // end.
+        std::set< llvm::Value* > seen;
+        std::function< bool(llvm::Value*) > stable = [&](llvm::Value* v) {
+          if (!seen.insert(v).second)
+            return false;
+          if (llvm::isa< llvm::ConstantInt >(v) || llvm::isa< llvm::Argument >(v))
+            return true;
+          if (auto* load = llvm::dyn_cast< llvm::LoadInst >(v)) {
+            auto* g =
+                llvm::dyn_cast< llvm::GlobalVariable >(load->getPointerOperand());
+            return g && !mutable_globals.count(g);
+          }
+          if (auto* cast = llvm::dyn_cast< llvm::CastInst >(v))
+            return stable(cast->getOperand(0));
           return false;
-        if (llvm::isa< llvm::ConstantInt >(v) || llvm::isa< llvm::Argument >(v))
-          return true;
-        if (auto* load = llvm::dyn_cast< llvm::LoadInst >(v)) {
-          auto* g =
-              llvm::dyn_cast< llvm::GlobalVariable >(load->getPointerOperand());
-          return g && !mutable_globals.count(g);
-        }
-        if (auto* cast = llvm::dyn_cast< llvm::CastInst >(v))
-          return stable(cast->getOperand(0));
-        return false;
-      };
-      if (!stable(upper))
-        throw Refuse{};
+        };
+        if (!stable(upper))
+          throw Refuse{};
+      } else {
+        phi = nullptr;
+      }
     } else if (!loops.empty())
       throw Refuse{};
     // Check the entire CFG for cycles beyond the one certified backedge.
@@ -553,6 +730,26 @@ class ReadonlyHeapReads::Impl {
       }
     }
     std::deque< Job > pending;
+    if (arbitrary_header) {
+      initial.scalar_snapshots = true;
+      closed_scalar_effects(f);
+      // Every iteration starts in this overapproximation, independently of
+      // worker entry guards. Immutable startup sources alone are retained.
+      State header = initial;
+      if (header.atomic_depth)
+        throw Refuse{};
+      for (auto& b : *f)
+        for (auto& i : b) {
+          if (scalar(i.getType()))
+            set(header, &i, fresh(i.getType()->getIntegerBitWidth()));
+          header.pointers.erase(&i);
+          header.cells.erase(&i);
+        }
+      for (auto* g : mutable_globals)
+        set(header, g, fresh(g->getValueType()->getIntegerBitWidth()));
+      pending.push_back(
+          {std::move(header), &loop->getHeader()->front(), nullptr, {}, {}});
+    }
     pending.push_back(
         {std::move(initial), &f->getEntryBlock().front(), nullptr, {}, {}});
     std::vector< FunctionResult > results;
@@ -565,7 +762,7 @@ class ReadonlyHeapReads::Impl {
       if (!i)
         throw Refuse{};
       last = i;
-      if (loop && i == &loop->getHeader()->front() &&
+      if (loop && !arbitrary_header && i == &loop->getHeader()->front() &&
           j.predecessor == loop->getLoopPreheader()) {
         j.low = number(s, phi->getIncomingValueForBlock(j.predecessor));
         if (mode == Mode::Main) {
@@ -638,7 +835,11 @@ class ReadonlyHeapReads::Impl {
         s.path = s.path && *j.iterator >= *j.low;
       }
       if (auto* p = llvm::dyn_cast< llvm::PHINode >(i)) {
-        if (p != phi) {
+        if (arbitrary_header && p->getParent() == loop->getHeader() &&
+            !j.predecessor) {
+          if (!scalar(p->getType()))
+            throw Refuse{};
+        } else if (p != phi) {
           auto* v = p->getIncomingValueForBlock(j.predecessor);
           if (scalar(p->getType()))
             set(s, p, number(s, v));
@@ -657,6 +858,11 @@ class ReadonlyHeapReads::Impl {
           if (!feasible(child.state.path))
             continue;
           auto* next = branch->getSuccessor(n);
+          if (arbitrary_header && next == loop->getHeader()) {
+            if (child.state.atomic_depth)
+              throw Refuse{};
+            continue;
+          }
           if (loop && i->getParent() == latch && next == loop->getHeader()) {
             auto increment = number(s, phi->getIncomingValueForBlock(latch));
             require(child.state,
@@ -673,6 +879,8 @@ class ReadonlyHeapReads::Impl {
         }
         continue;
       } else if (auto* ret = llvm::dyn_cast< llvm::ReturnInst >(i)) {
+        if (s.atomic_depth != entering_atomic_depth)
+          throw Refuse{};
         FunctionResult r{std::move(s), {}, {}};
         if (auto* v = ret->getReturnValue()) {
           if (scalar(v->getType()))
@@ -790,7 +998,9 @@ class ReadonlyHeapReads::Impl {
           } else if (load)
             set(s,
                 i,
-                (s.spawned && mutable_globals.count(g))
+                (s.spawned && mutable_globals.count(g) &&
+                 !owns(s, g) && !(s.scalar_snapshots && s.worker &&
+                                  s.atomic_depth && atomic_cells.count(g)))
                     ? fresh(type->getIntegerBitWidth())
                     : number(s, g));
           else
@@ -939,14 +1149,14 @@ class ReadonlyHeapReads::Impl {
           p.snapshot = ++snapshots;
           p.extent = extend(size);
           put(s.pointers, i, p);
-        } else if (called->isDeclaration() && call->arg_empty() &&
-                   call->getType()->isVoidTy() &&
-                   (called->getName() == "__VERIFIER_atomic_begin" ||
-                    called->getName() == "__VERIFIER_atomic_end") &&
-                   native_handle_callee(a)->has_frontend()) {
+        } else if (atomic_marker(call, true) || atomic_marker(call, false)) {
           if (mode != Mode::Worker)
             throw Refuse{};
-          // Only memory source/range facts; no synchronization is inferred.
+          const bool begin = atomic_marker(call, true);
+          if (s.atomic_depth != (begin ? 0u : 1u))
+            throw Refuse{};
+          forget_shared_cells(s);
+          s.atomic_depth = begin ? 1u : 0u;
         } else if (native_handle_api(call, true)) {
           if (mode != Mode::Main ||
               (loop &&
@@ -1037,6 +1247,8 @@ class ReadonlyHeapReads::Impl {
               if (auto* g = llvm::dyn_cast< llvm::GlobalVariable >(
                       st->getPointerOperand()))
                 mutable_globals.insert(g);
+    atomic_cells = mutable_globals;
+    scalar_inventory();
     State initial(z);
     for (auto& g : main->getParent()->globals()) {
       if (g.isThreadLocal() || g.getAddressSpace() ||
