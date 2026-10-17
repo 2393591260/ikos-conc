@@ -5,11 +5,58 @@ import io
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, call, patch
 
 import requests
 
 from zenodo_upload import UploadError, Zenodo, hashes, upload
+
+
+class RequestTests(unittest.TestCase):
+    def response(self, status):
+        return Mock(status_code=status, text="server error fake-token",
+                    json=Mock(return_value={"id": "23122650"}))
+
+    def test_transient_get_recovers(self):
+        for status in (500, 502, 503, 504):
+            with self.subTest(status=status):
+                api = Zenodo("fake-token", 23122650)
+                failed = self.response(status)
+                with patch.object(api.session, "request", side_effect=[
+                    failed, self.response(200)
+                ]) as request, patch("zenodo_upload.time.sleep") as sleep, \
+                        contextlib.redirect_stderr(io.StringIO()) as output:
+                    self.assertEqual(api.request("GET", api.root), {"id": "23122650"})
+                self.assertEqual(request.call_count, 2)
+                failed.close.assert_called_once()
+                sleep.assert_called_once_with(5)
+                self.assertIn("retry 2/3", output.getvalue())
+                self.assertNotIn("fake-token", output.getvalue())
+
+    def test_persistent_get_failure_is_bounded_and_redacted(self):
+        api = Zenodo("fake-token", 23122650)
+        with patch.object(api.session, "request", side_effect=[
+            self.response(500) for _ in range(3)
+        ]) as request, patch("zenodo_upload.time.sleep") as sleep, \
+                contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(UploadError) as error:
+                api.request("GET", api.root + "/draft")
+        self.assertEqual(request.call_count, 3)
+        self.assertEqual(sleep.call_args_list, [call(5), call(15)])
+        self.assertEqual(error.exception.status, 500)
+        self.assertNotIn("fake-token", str(error.exception))
+
+    def test_mutations_and_nontransient_errors_are_not_retried(self):
+        for method, status in (("POST", 500), ("PUT", 503), ("GET", 401),
+                               ("GET", 403), ("GET", 404), ("GET", 429)):
+            with self.subTest(method=method, status=status):
+                api = Zenodo("fake-token", 23122650)
+                with patch.object(api.session, "request", return_value=self.response(status)) as request, \
+                        patch("zenodo_upload.time.sleep") as sleep:
+                    with self.assertRaises(UploadError):
+                        api.request(method, api.root)
+                request.assert_called_once()
+                sleep.assert_not_called()
 
 
 class UploadTests(unittest.TestCase):

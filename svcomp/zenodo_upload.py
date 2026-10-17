@@ -36,9 +36,19 @@ class Zenodo:
         parsed = urlsplit(url)
         if parsed.scheme != "https" or parsed.netloc != "zenodo.org":
             raise UploadError("Unexpected API host; token was not sent.")
-        response = self.session.request(
-            method, url, timeout=(20, 300), allow_redirects=False, **kwargs
-        )
+        # Retry transient reads only; mutations have their own recovery logic.
+        for attempt in range(1, 4):
+            response = self.session.request(
+                method, url, timeout=(20, 300), allow_redirects=False, **kwargs
+            )
+            if (method != "GET" or response.status_code not in (500, 502, 503, 504)
+                    or attempt == 3):
+                break
+            delay = 5 if attempt == 1 else 15
+            print(f"HTTP {response.status_code} reading {url}; "
+                  f"retry {attempt + 1}/3 in {delay}s…", file=sys.stderr, flush=True)
+            response.close()
+            time.sleep(delay)
         if not 200 <= response.status_code < 300:
             detail = response.text[:800].replace(self.token, "[redacted]")
             raise UploadError(f"HTTP {response.status_code}: {url}\n{detail}",
