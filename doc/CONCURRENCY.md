@@ -1024,3 +1024,44 @@ Implementation: `checker/readonly_heap_reads.hpp` and
 `python3 scripts/test_readonly_heap_reads.py`; it includes ILP32 long-long data,
 incomplete construction, changed indices, publication and alias mutation controls,
 and real races remaining after heap reads have been certified.
+
+## Immutable bucket membership with protected payloads
+
+`BucketListOwnership` checks a closed startup-built graph of embedded two-pointer
+heads and individually allocated nodes. It interprets the actual LLVM/AR CFG,
+helper calls, machine-width indices and simultaneous PHIs. Successful dynamic
+allocations have separate identities; a real full scalar Store at the exact
+allocation base establishes only the existing normal-continuation premise.
+Every pointer cell must then receive its own complete Store before use.
+At first creation, exhaustive next/previous closure assigns each live node to
+exactly one head. Concurrent link mutation, cross-bucket membership, unknown
+calls, lifetime changes, incomplete cells and unproved byte bounds refuse the
+whole certificate.
+
+Worker payloads are TOP and cannot determine control flow or addresses. Complete
+state exploration covers every reaching access, including repeated graph states;
+resource exhaustion is refusal, never a bounded safety argument. Main is checked
+on all paths before workers are projected onto their immutable graph frame.
+Only identical complete frames are shared; no main path condition or payload
+sample restricts a worker. Link offsets are proved single-valued before projection. All concurrent
+payload accesses must hold the exact mutex of their bucket. This narrow model
+uses GNU/Linux i386 default-normal mutex initialization with NULL attributes
+(the ordinary sealed-runtime route in
+[glibc 2.39](https://github.com/bminor/glibc/blob/ef321e23c20eebc6d6fb4044425c00e6df27b05f/nptl/pthread_mutex_init.c)), with each
+aligned 24-byte leaf initialized once before creation and no later mutation.
+It does not assume arbitrary POSIX initialization succeeds.
+
+Only exact fully covered source effects and all combinations of certified access
+endpoints can discharge warnings. The four-byte private create output has its
+own actual native ABI and alignment proof. A real pointer-to-integer observation
+may only feed integer casts and the main return value; it never becomes a usable
+numeric address. Numerical/MAY summaries and BMC's original representation gate
+remain unchanged. This is a live-byte race certificate, not pointer-safety,
+allocation-success, termination, thread-completion or official witness validation.
+
+Implementation: `checker/bucket_list_ownership.hpp` and
+`src/checker/bucket_list_ownership.cpp`. Regression entry:
+`python3 scripts/test_bucket_list_ownership.py`; ILP32 controls include long-long
+payloads, a nonterminating traversal, wrong locks, cross-bucket links, incomplete
+initialization, early creation, native lifecycle changes, byte corruption and
+integer-address observations with application-memory effects.

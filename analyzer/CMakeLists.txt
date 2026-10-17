@@ -260,6 +260,7 @@ add_executable(ikos-analyzer
   src/checker/symbolic_arena.cpp
   src/checker/array_slices.cpp
   src/checker/readonly_heap_reads.cpp
+  src/checker/bucket_list_ownership.cpp
   src/checker/thread_lifecycle.cpp
   src/checker/binary_token.cpp
   src/checker/once_initialization.cpp

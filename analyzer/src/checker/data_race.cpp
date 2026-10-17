@@ -51,6 +51,7 @@
 #include <ikos/analyzer/checker/arena_reservation.hpp>
 #include <ikos/analyzer/checker/array_slices.hpp>
 #include <ikos/analyzer/checker/readonly_heap_reads.hpp>
+#include <ikos/analyzer/checker/bucket_list_ownership.hpp>
 #include <ikos/analyzer/checker/thread_lifecycle.hpp>
 #include <ikos/analyzer/checker/binary_token.hpp>
 #include <ikos/analyzer/checker/once_initialization.hpp>
@@ -743,6 +744,7 @@ DataRaceChecker::DataRaceChecker(Context& ctx) : Checker(ctx) {
 DataRaceChecker::~DataRaceChecker() {
   this->_ownership->run();
   ReadonlyHeapReads readonly_heap_reads(this->_ctx);
+  BucketListOwnership bucket_list_ownership(this->_ctx);
   bool synthetic_handle_unsupported = false;
   for (ar::CallBase* call : this->_ctx.concurrent_env.unmodeled_thread_creations()) {
     this->_checks.insert(
@@ -760,6 +762,13 @@ DataRaceChecker::~DataRaceChecker() {
         readonly_heap_reads.certifies(effect.first)) {
       auto proof = readonly_heap_reads.info();
       proof.put("safe_reason", "bounded immutable heap read cannot consume a pthread handle");
+      this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+                           effect.first, this->_ctx.call_context_factory->get_empty(), {}, proof);
+      continue;
+    }
+    if (bucket_list_ownership.certifies(effect.first, effect.second)) {
+      auto proof = bucket_list_ownership.info();
+      proof.put("safe_reason", "complete bucket graph source and exact protected byte effects");
       this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
                            effect.first, this->_ctx.call_context_factory->get_empty(), {}, proof);
       continue;
@@ -1466,6 +1475,14 @@ DataRaceChecker::~DataRaceChecker() {
         if (auto location = source_location(b.stmt)) {
           proof.put("access_b_line", location.line());
         }
+        this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
+                             a.stmt, a.call_context, {}, proof);
+        continue;
+      }
+
+      if (bucket_list_ownership.excludes(a, b)) {
+        auto proof = bucket_list_ownership.info();
+        proof.put("safe_reason", "closed bucket membership with corresponding normal mutex");
         this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
                              a.stmt, a.call_context, {}, proof);
         continue;
