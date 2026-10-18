@@ -747,7 +747,7 @@ DataRaceChecker::DataRaceChecker(Context& ctx) : Checker(ctx) {
 DataRaceChecker::~DataRaceChecker() {
   this->_ownership->run();
   ReadonlyHeapReads readonly_heap_reads(this->_ctx);
-  BucketListOwnership bucket_list_ownership(this->_ctx);
+  BucketListOwnership bucket_list_ownership(this->_ctx, this->_accesses);
   bool synthetic_handle_unsupported = false;
   for (ar::CallBase* call : this->_ctx.concurrent_env.unmodeled_thread_creations()) {
     this->_checks.insert(
@@ -771,7 +771,7 @@ DataRaceChecker::~DataRaceChecker() {
     }
     if (bucket_list_ownership.certifies(effect.first, effect.second)) {
       auto proof = bucket_list_ownership.info();
-      proof.put("safe_reason", "complete bucket graph source and exact protected byte effects");
+      proof.put("safe_reason", "complete graph source and fully accounted byte effects");
       this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
                            effect.first, this->_ctx.call_context_factory->get_empty(), {}, proof);
       continue;
@@ -1494,7 +1494,7 @@ DataRaceChecker::~DataRaceChecker() {
 
       if (bucket_list_ownership.excludes(a, b)) {
         auto proof = bucket_list_ownership.info();
-        proof.put("safe_reason", "closed bucket membership with corresponding normal mutex");
+        proof.put("safe_reason", "complete graph facts exclude conflicting byte accesses");
         this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
                              a.stmt, a.call_context, {}, proof);
         continue;

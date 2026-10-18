@@ -986,7 +986,7 @@ alone grants no memory, synchronization or safety fact.
 <details>
 <summary>Immutable bucket membership with protected payloads — check graph membership and bucket locks</summary>
 
-`BucketListOwnership` checks a closed startup-built graph of embedded two-pointer
+The ownership mode of `BucketListOwnership` checks a closed startup-built graph of embedded two-pointer
 heads and individually allocated nodes. It interprets the actual LLVM/AR CFG,
 helper calls, machine-width indices and simultaneous PHIs. Successful dynamic
 allocations have separate identities; a real full scalar Store at the exact
@@ -1051,6 +1051,24 @@ object address and supplies no nonnull, lifetime or inbounds/UB premise. Real
 address observations, dynamic offsets and integer-to-pointer casts keep their
 previous conservative gates. The native-array route does not extend this
 exception to a pointer returned as main's exit code.
+
+A separate typed-graph mode supports complete global nodes and immutable links
+shared between roots. It checks every startup graph before merging link targets
+by union. Heap nodes of the same validated layout form one summary class;
+equal summary tags never imply equal concrete pointers. Heap/heap comparisons
+explore both outcomes, and worker payload reads remain TOP. Global sentinels keep
+their actual byte offsets. This finite overapproximation permits cyclic graphs
+without assuming traversal termination.
+
+The mode provides typed byte footprints, not unique ownership or new lock facts.
+Every post-publication payload access must match an ordinary abstract-analysis access
+record by statement, thread root, call context, width and kind. Coverage discharge
+retains all shared MAY effects. Payload/link and private-runtime byte separation
+can exclude pairs; overlapping payload pairs remain subject to the existing
+concrete-lock and race checks. Removing a common payload lock therefore cannot
+be compensated by the shared graph summary. Missing initialization, structural
+mutation, unknown effects or incomplete closure refuse the certificate.
+Run `python3 scripts/test_shared_node_graph.py` for this mode's controls.
 
 Implementation: `checker/bucket_list_ownership.hpp` and
 `src/checker/bucket_list_ownership.cpp`. Regression entry:

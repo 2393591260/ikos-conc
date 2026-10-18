@@ -63,6 +63,7 @@ struct Object {
   llvm::Value* source;
   std::uint64_t extent;
   bool born; // only existing normal continuation of real zero-base Store
+  bool summary = false; // A set of nodes, never one concrete allocation identity.
 };
 struct State {
   std::map< llvm::Value*, z3::expr > values;
@@ -106,6 +107,7 @@ struct Endpoint {
 } // namespace
 class BucketListOwnership::Impl {
   Context& ctx;
+  const std::vector< AccessRecord >& accesses;
   z3::context z;
   llvm::Function* main = nullptr;
   llvm::GlobalVariable* global = nullptr;
@@ -114,7 +116,11 @@ class BucketListOwnership::Impl {
   std::uint64_t global_id = 1, buckets = 0, head_begin = 0, head_stride = 0,
                 mutex_begin = 0, mutex_stride = 0;
   std::uint64_t node_extent = 0, node_link = 0, datum_width = 0,
-                prev_offset = 0;
+                prev_offset = 0, link_extent = 0;
+  bool shared_graph = false;
+  // Sealed before any worker execution. Each load independently chooses a MAY
+  // target; dropping correlations enlarges the set of possible executions.
+  std::map< Key, std::vector< Pointer > > shared_edges;
   std::uint64_t tokens = 1;
   std::map< llvm::Value*, ar::Statement* > originals;
   std::map< llvm::Function*, ar::Function* > functions;
@@ -377,7 +383,7 @@ class BucketListOwnership::Impl {
     opaque(s, i);
     return true;
   }
-  z3::expr pointer_compare(const State& s, llvm::ICmpInst* c) {
+  boost::optional< z3::expr > pointer_compare(const State& s, llvm::ICmpInst* c) {
     need(c->getPredicate() == llvm::CmpInst::ICMP_EQ ||
          c->getPredicate() == llvm::CmpInst::ICMP_NE);
     auto a = pointer(s, c->getOperand(0)), b = pointer(s, c->getOperand(1));
@@ -395,6 +401,9 @@ class BucketListOwnership::Impl {
                             z.bv_val(s.objects.at(p.object).extent, 64)));
       }
     }
+    if (a.place == Place::Heap && b.place == Place::Heap &&
+        (s.objects.at(a.object).summary || s.objects.at(b.object).summary))
+      return {}; // Equal abstract tags cannot prove concrete pointer equality.
     z3::expr equal = z.bool_val(false);
     if (a.place == b.place && a.object == b.object)
       equal = a.offset == b.offset;
@@ -555,7 +564,14 @@ class BucketListOwnership::Impl {
     if (!index)
       return false;
     auto n = off - head_begin - *index * head_stride;
-    return n == 0 || n == prev_offset;
+    const auto link = shared_graph ? node_link : 0;
+    return n == link || n == link + prev_offset;
+  }
+  bool global_payload(std::uint64_t off, std::uint64_t width,
+                      llvm::Type* type) const {
+    auto index = head_index(off);
+    return shared_graph && index && width == datum_width && scalar(type) &&
+           off == head_begin + *index * head_stride;
   }
   bool node_link_field(std::uint64_t off) const {
     return off == node_link || off == node_link + prev_offset;
@@ -581,7 +597,7 @@ class BucketListOwnership::Impl {
                false,
                private_range,
                {}};
-    if (p.place == Place::Heap && s.spawned) {
+    if (p.place == Place::Heap && s.spawned && !shared_graph) {
       auto o = s.owners.find(p.object);
       need(o != s.owners.end());
       e.owner = o->second;
@@ -606,7 +622,8 @@ class BucketListOwnership::Impl {
   void memory(State& s,
               llvm::Instruction* i,
               const Pointer& p,
-              std::uint64_t off) {
+              std::uint64_t off,
+              const Pointer* selected_link = nullptr) {
     auto* ld = llvm::dyn_cast< llvm::LoadInst >(i);
     auto* st = llvm::dyn_cast< llvm::StoreInst >(i);
     auto* a = original(i);
@@ -624,9 +641,10 @@ class BucketListOwnership::Impl {
     original_mem_effects.insert(i);
     bool payload = false;
     if (p.place == Place::Global) {
-      need(p.object == global_id && type->isPointerTy() && width == 4 &&
-           head_field(off));
-      need(!st || !s.spawned);
+      payload = global_payload(off, width, type);
+      need(p.object == global_id && (payload ||
+           (type->isPointerTy() && width == 4 && head_field(off))));
+      need(!st || !s.spawned || payload);
     } else if (p.place == Place::Heap) {
       need(obj.extent == node_extent);
       payload = off == 0 && width == datum_width && scalar(type);
@@ -650,9 +668,12 @@ class BucketListOwnership::Impl {
     record(s, i, p, off, width, st, payload);
     if (type->isPointerTy()) {
       if (ld) {
-        auto old = s.links.find(key);
-        need(old != s.links.end());
-        put(s.pointers, i, old->second);
+        if (selected_link) put(s.pointers, i, *selected_link);
+        else {
+          auto old = s.links.find(key);
+          need(old != s.links.end());
+          put(s.pointers, i, old->second);
+        }
       } else {
         auto value = pointer(s, st->getValueOperand());
         need(value.place == Place::Global || value.place == Place::Heap);
@@ -661,7 +682,7 @@ class BucketListOwnership::Impl {
         put(s.links, key, value);
       }
     } else if (ld) {
-      if (s.spawned && p.place == Place::Heap && payload) {
+      if (s.spawned && payload) {
         need(s.scalars.count(key));
         opaque(s, i);
       } else {
@@ -672,7 +693,7 @@ class BucketListOwnership::Impl {
     } else if (s.spawned) {
       // Scalar payload is havoced by arbitrary sibling steps; do not export a
       // store-dependent value into later control or reuse one chosen sample.
-      need(p.place == Place::Heap && payload);
+      need(payload && (p.place == Place::Heap || shared_graph));
       if (!s.opaque.count(st->getValueOperand()))
         (void)number(s, st->getValueOperand());
     } else {
@@ -685,6 +706,45 @@ class BucketListOwnership::Impl {
   void freeze(State& s) {
     need(!s.spawned && s.held.empty() &&
          s.initialized_mutexes.size() == buckets);
+    if (shared_graph) {
+      std::deque< Pointer > pending;
+      for (std::uint64_t bucket = 0; bucket < buckets; ++bucket) {
+        need(s.initialized_mutexes.count(bucket));
+        Pointer head(z, Place::Global, global_id);
+        head.offset = z.bv_val(head_begin + bucket * head_stride + node_link, 64);
+        pending.push_back(head);
+      }
+      std::set< std::pair< std::uint64_t, std::uint64_t > > visited;
+      std::set< std::uint64_t > reachable_heap;
+      while (!pending.empty()) {
+        spend();
+        auto p = pending.front(); pending.pop_front();
+        const auto off = constant(s, p.offset);
+        need(normal_pointer(s, p));
+        if (!visited.emplace(p.object, off).second) continue;
+        if (p.place == Place::Global) {
+          auto index = head_index(off);
+          need(p.object == global_id && index &&
+               off == head_begin + *index * head_stride + node_link &&
+               s.scalars.count({global_id, off - node_link, datum_width}));
+        } else {
+          need(p.place == Place::Heap && off == node_link &&
+               s.objects.at(p.object).extent == node_extent &&
+               s.scalars.count({p.object, 0, datum_width}));
+          reachable_heap.insert(p.object);
+        }
+        for (auto delta : {std::uint64_t(0), prev_offset}) {
+          auto link = s.links.find({p.object, off + delta, 4});
+          need(link != s.links.end());
+          pending.push_back(link->second);
+        }
+      }
+      for (const auto& object : s.objects)
+        if (object.second.place == Place::Heap)
+          need(object.second.born && reachable_heap.count(object.first));
+      s.spawned = true;
+      return;
+    }
     for (std::uint64_t bucket = 0; bucket < buckets; ++bucket) {
       need(s.initialized_mutexes.count(bucket));
       std::deque< Pointer > pending;
@@ -1119,11 +1179,13 @@ class BucketListOwnership::Impl {
             opaque(s, i);
           }
         } else if (auto* cmp = llvm::dyn_cast< llvm::ICmpInst >(i)) {
-          if (!opaque_operation(s, i)) set(s,
-              i,
-              cmp->getOperand(0)->getType()->isPointerTy()
-                  ? pointer_compare(s, cmp)
-                  : operation(s, i));
+          if (!opaque_operation(s, i)) {
+            if (cmp->getOperand(0)->getType()->isPointerTy()) {
+              auto result = pointer_compare(s, cmp);
+              if (result) set(s, i, *result);
+              else opaque(s, i);
+            } else set(s, i, operation(s, i));
+          }
         } else if (llvm::isa< llvm::LoadInst >(i) ||
                    llvm::isa< llvm::StoreInst >(i)) {
           auto* ld = llvm::dyn_cast< llvm::LoadInst >(i);
@@ -1134,8 +1196,18 @@ class BucketListOwnership::Impl {
           auto* type = ld ? ld->getType() : st->getValueOperand()->getType();
           auto alternatives = resolve(std::move(s), p, bytes(type));
           for (auto& resolution : alternatives) {
-            memory(resolution.state, i, p, resolution.offset);
-            pending.push_back({std::move(resolution.state), i->getNextNode()});
+            if (shared_graph && root != main && ld && type->isPointerTy()) {
+              auto targets = shared_edges.find({p.object, resolution.offset, bytes(type)});
+              need(targets != shared_edges.end() && !targets->second.empty());
+              for (const auto& target : targets->second) {
+                State child = resolution.state;
+                memory(child, i, p, resolution.offset, &target);
+                pending.push_back({std::move(child), i->getNextNode()});
+              }
+            } else {
+              memory(resolution.state, i, p, resolution.offset);
+              pending.push_back({std::move(resolution.state), i->getNextNode()});
+            }
           }
           break;
         } else if (auto* call = llvm::dyn_cast< llvm::CallBase >(i)) {
@@ -1307,6 +1379,13 @@ class BucketListOwnership::Impl {
     head_type =
         heads ? llvm::dyn_cast< llvm::StructType >(heads->getElementType())
               : nullptr;
+    auto* global_node = head_type;
+    if (head_type && !head_type->isOpaque() &&
+        head_type->getNumElements() == 2 &&
+        scalar(head_type->getElementType(0))) {
+      shared_graph = true;
+      head_type = llvm::dyn_cast< llvm::StructType >(head_type->getElementType(1));
+    }
     auto* mtype =
         mutexes ? llvm::dyn_cast< llvm::StructType >(mutexes->getElementType())
                 : nullptr;
@@ -1325,12 +1404,13 @@ class BucketListOwnership::Impl {
     auto* hl = dl.getStructLayout(head_type);
     auto* gl = dl.getStructLayout(gtype);
     buckets = heads->getNumElements();
-    head_stride = extent(head_type);
+    link_extent = extent(head_type);
+    head_stride = extent(heads->getElementType());
     prev_offset = hl->getElementOffset(1);
     head_begin = gl->getElementOffset(0);
     mutex_begin = gl->getElementOffset(1);
     mutex_stride = extent(mtype);
-    need(hl->getElementOffset(0) == 0 && prev_offset == 4 && head_stride == 8 &&
+    need(hl->getElementOffset(0) == 0 && prev_offset == 4 && link_extent == 8 &&
          head_begin + buckets * head_stride <= mutex_begin &&
          mutex_begin + buckets * mutex_stride <= extent(gtype) &&
          extent(gtype) <= UINT32_MAX &&
@@ -1342,6 +1422,7 @@ class BucketListOwnership::Impl {
           type->getElementType(1) != head_type)
         continue;
       need(!node_type);
+      need(!shared_graph || type == global_node);
       node_type = type;
       auto* layout = dl.getStructLayout(type);
       need(layout->getElementOffset(0) == 0);
@@ -1349,9 +1430,10 @@ class BucketListOwnership::Impl {
       datum_width = bytes(type->getElementType(0));
       node_extent = extent(type);
       need(datum_width && datum_width <= 8 && datum_width <= node_link &&
-           node_link + head_stride <= node_extent && node_extent <= UINT32_MAX);
+           node_link + link_extent <= node_extent && node_extent <= UINT32_MAX);
     }
     need(node_type);
+    need(!shared_graph || head_stride == node_extent);
     for (auto it = ctx.bundle->function_begin();
          it != ctx.bundle->function_end();
          ++it) {
@@ -1447,6 +1529,73 @@ class BucketListOwnership::Impl {
       out << owner.first << ':' << owner.second << ';';
     return out.str();
   }
+  State shared_worker_frame() {
+    need(shared_graph && !worlds.empty());
+    State merged = worlds.front();
+    for (auto i = merged.objects.begin(); i != merged.objects.end();)
+      if (i->second.place == Place::Heap) i = merged.objects.erase(i);
+      else ++i;
+    for (auto i = merged.scalars.begin(); i != merged.scalars.end();)
+      if (!merged.objects.count(i->first.object)) i = merged.scalars.erase(i);
+      else ++i;
+    bool has_heap = false;
+    for (const auto& world : worlds) {
+      need(world.spawned && world.held.empty() &&
+           world.initialized_mutexes == merged.initialized_mutexes);
+      std::size_t ordinary_objects = 0;
+      for (const auto& object : world.objects) {
+        if (object.second.place == Place::Heap) {
+          need(object.second.born && object.second.extent == node_extent);
+          has_heap = true;
+        } else {
+          auto old = merged.objects.find(object.first);
+          need(old != merged.objects.end() && old->second.place == object.second.place &&
+               old->second.source == object.second.source && old->second.extent == object.second.extent &&
+               old->second.born == object.second.born);
+          ++ordinary_objects;
+        }
+      }
+      need(ordinary_objects == merged.objects.size());
+      for (const auto& cell : world.links) {
+        spend();
+        Key key = cell.first;
+        const auto& owner = world.objects.at(key.object);
+        if (owner.place == Place::Heap) key.object = 0;
+        else need(owner.place == Place::Global && key.object == global_id);
+        Pointer value = cell.second;
+        value.offset = z.bv_val(constant(world, value.offset), 64);
+        if (value.place == Place::Heap) value.object = 0;
+        else need(value.place == Place::Global && value.object == global_id);
+        auto& choices = shared_edges[key];
+        if (std::none_of(choices.begin(), choices.end(), [&](const auto& previous) {
+              return pointer_equal(previous, value);
+            })) choices.push_back(value);
+      }
+    }
+    merged.links.clear();
+    merged.owners.clear();
+    if (has_heap) {
+      need(!merged.objects.count(0));
+      merged.objects.emplace(0, Object{Place::Heap, nullptr, node_extent, true, true});
+      // Presence records initialized bytes only. Every worker payload load is TOP.
+      put(merged.scalars, Key{0, 0, datum_width},
+          z.bv_val(0, node_type->getElementType(0)->getIntegerBitWidth()));
+    }
+    return merged;
+  }
+  bool has_access_record(const Endpoint& endpoint) {
+    auto* statement = original(endpoint.statement);
+    for (const auto& access : accesses) {
+      if (access.stmt != statement || access.thread_id != endpoint.root->getName() ||
+          access.width != endpoint.width || access.is_atomic ||
+          (access.kind == AccessKind::Write) != endpoint.write) continue;
+      std::vector< ar::CallBase* > calls;
+      for (auto* c = access.call_context; !c->empty(); c = c->parent()) calls.push_back(c->call());
+      std::reverse(calls.begin(), calls.end());
+      if (calls == endpoint.calls) return true;
+    }
+    return false;
+  }
   void prove() {
     inventory();
     State initial(z);
@@ -1455,11 +1604,21 @@ class BucketListOwnership::Impl {
                                    global,
                                    extent(global->getValueType()),
                                    true});
+    if (shared_graph)
+      for (std::uint64_t bucket = 0; bucket < buckets; ++bucket)
+        put(initial.scalars, Key{global_id, head_begin + bucket * head_stride, datum_width},
+            z.bv_val(0, node_type->getElementType(0)->getIntegerBitWidth()));
     root = main;
     auto main_results = execute(main, std::move(initial), {});
     need(!main_results.empty() && !worlds.empty() && !workers.empty());
+    const auto startup_world_count = worlds.size();
     for (const auto& r : main_results)
       need(r.state.held.empty());
+    if (shared_graph) {
+      State merged = shared_worker_frame();
+      worlds.clear();
+      worlds.push_back(std::move(merged));
+    }
     std::set< std::string > projected;
     for (const auto& world : worlds) {
       need(world.spawned && world.held.empty());
@@ -1484,8 +1643,12 @@ class BucketListOwnership::Impl {
       }
     }
     log::debug(
-        "Bucket-list complete startup worlds=" + std::to_string(worlds.size()) +
+        "Bucket-list complete startup worlds=" + std::to_string(startup_world_count) +
         ", distinct worker frames=" + std::to_string(projected.size()));
+    if (shared_graph)
+      for (const auto& statement : endpoints)
+        for (const auto& endpoint : statement.second)
+          if (!endpoint.startup && endpoint.payload) need(has_access_record(endpoint));
     // Every source statement observed by a later consumer has a complete role,
     // extent, initialized origin and context for all reaching executions.
     valid = true;
@@ -1556,6 +1719,8 @@ class BucketListOwnership::Impl {
     if (a.place != Place::Heap || b.place != Place::Heap)
       return a.object != b.object || a.offset + a.width <= b.offset ||
              b.offset + b.width <= a.offset;
+    if (shared_graph)
+      return a.offset + a.width <= b.offset || b.offset + b.width <= a.offset;
     need(bool(a.owner) && bool(b.owner));
     if (a.owner != b.owner)
       return true;
@@ -1565,7 +1730,15 @@ class BucketListOwnership::Impl {
   }
 
 public:
-  explicit Impl(Context& c) : ctx(c) {}
+  Impl(Context& c, const std::vector< AccessRecord >& records) : ctx(c), accesses(records) {}
+  JsonDict info() const {
+    return {{"bucket_list_contract", shared_graph ? "complete-typed-immutable-node-graph-v1"
+                                                   : "complete-finite-closed-bucket-graph-v1"},
+            {"mutex_model", "GNU/Linux i386 default NORMAL; sealed ordinary runtime"},
+            {"scope", shared_graph
+                ? "conditional typed byte footprints; sealed MAY links; overlapping payloads need ordinary race checks"
+                : "conditional live node sources; complete CFG saturation; no pointer-validity, termination or BMC claim"}};
+  }
   bool certifies(ar::Statement* statement, const std::string& reason) {
     if (!statement || !statement->has_frontend() ||
         (reason != "synthetic pthread handle representation not modeled" &&
@@ -1592,7 +1765,7 @@ public:
     for (const auto& e : alternatives) {
       if (e.place != Place::Heap && e.place != Place::Global)
         return false;
-      if (e.write && !e.startup && !(e.payload && e.held && e.owner))
+      if (e.write && !e.startup && !(e.payload && (shared_graph || (e.held && e.owner))))
         return false;
     }
     return true;
@@ -1611,7 +1784,8 @@ public:
     return true;
   }
 };
-BucketListOwnership::BucketListOwnership(Context& c) : _impl(new Impl(c)) {}
+BucketListOwnership::BucketListOwnership(Context& c, const std::vector< AccessRecord >& records)
+    : _impl(new Impl(c, records)) {}
 BucketListOwnership::~BucketListOwnership() = default;
 bool BucketListOwnership::certifies(ar::Statement* s, const std::string& r) {
   return _impl->certifies(s, r);
@@ -1621,13 +1795,7 @@ bool BucketListOwnership::excludes(const AccessRecord& a,
   return _impl->excludes(a, b);
 }
 JsonDict BucketListOwnership::info() const {
-  return {{"bucket_list_contract", "complete-finite-closed-bucket-graph-v1"},
-          {"mutex_model",
-           "GNU/Linux i386 default NORMAL; glibc 2.39 ef321e23; sealed "
-           "ordinary runtime"},
-          {"scope",
-           "conditional live node sources; complete CFG saturation; no "
-           "pointer-validity, termination or BMC claim"}};
+  return _impl->info();
 }
 } // namespace analyzer
 } // namespace ikos

@@ -3,6 +3,7 @@
 #include <ikos/analyzer/json/json.hpp>
 #include <memory>
 #include <string>
+#include <vector>
 namespace ikos {
 namespace ar {
 class Statement;
@@ -15,7 +16,7 @@ class BucketListOwnership {
   std::unique_ptr< Impl > _impl;
 
 public:
-  explicit BucketListOwnership(Context&);
+  BucketListOwnership(Context&, const std::vector< AccessRecord >&);
   ~BucketListOwnership();
   bool certifies(ar::Statement*, const std::string& exact_reason);
   bool excludes(const AccessRecord&, const AccessRecord&);
