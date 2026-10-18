@@ -135,6 +135,39 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       return Result(Status::Unsupported);
   }
   const auto& allocation_origin = traces[main_index].events;
+  // Local lock identities require the actual creation's argument/context,
+  // before resolving any event in the selected paths.
+  bool main_local_mutex = false;
+  for (const auto& trace : traces) {
+    auto argument = trace.argument;
+    if (trace.root->name() != "main" &&
+        !bind_creation_step(trace.root, allocation_origin, trace.creator_step, argument)) continue;
+    for (std::size_t i = 0; i < trace.events.size(); ++i) {
+      const auto& event = trace.events[i];
+      if ((event.kind != EvKind::Lock && event.kind != EvKind::Unlock) || event.synthetic_atomic) continue;
+      auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+      BmcEvent address;
+      if (call != nullptr && !is_verifier_atomic(call) && call->num_arguments() == 1 &&
+          pointer_on_path(call->argument(0), trace.events, i, trace.root, argument,
+                           address, &allocation_origin) && address.shared_main_local)
+        main_local_mutex = true;
+    }
+  }
+  if (main_local_mutex) {
+    if (completion != nullptr || traces.size() != 3) return Result(Status::Unsupported);
+    for (auto& trace : traces) {
+      if (trace.root->name() != "main" &&
+          !bind_creation_step(trace.root, allocation_origin, trace.creator_step, trace.argument))
+        return Result(Status::Unsupported);
+      for (const auto& event : trace.events) {
+        auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+        if (event.synthetic_atomic || semaphore_event(event.kind) ||
+            (call != nullptr && (is_verifier_atomic(call) || condition_call(call))))
+          return Result(Status::Unsupported);
+      }
+    }
+    argumentA = traces[1].argument; argumentB = traces[2].argument;
+  }
   if (!semaphore_prefix_supported(traces, facts, completion)) {
     record(diagnostics, "semaphore_prefix_profile");
     return Result(Status::Unsupported);
@@ -377,7 +410,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         record(diagnostics, "condition_storage_alias", event.stmt); return Result(Status::Unsupported);
       }
   }
-  std::map< std::pair< std::uint64_t, core::ZNumber >, std::uint64_t > lock_ids;
+  std::map< std::tuple< std::uint64_t, ar::LocalVariable*, core::ZNumber >, std::uint64_t > lock_ids;
   auto prepare = [&](std::vector< BmcEvent >& path, ar::Function* root, ThreadArgument argument) {
     std::set< std::uint64_t > held;
     std::set< std::size_t > consumed_handles;
@@ -429,11 +462,13 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         auto argument_index = event.synthetic_condition ? 1u : 0u;
         if (call->num_arguments() != (event.synthetic_condition ? 2u : 1u) ||
             !pointer_on_path(call->argument(argument_index), path, i, root, argument, address,
-                             selected_workers ? &allocation_origin : nullptr) ||
-            address.base == 0 || !memory_extent(address, size)) {
+                             &allocation_origin) ||
+            (address.base == 0 && !(main_local_mutex && main_mutex_subobject(address))) ||
+            !memory_extent(address, size)) {
           record(diagnostics, "mutex_identity", event.stmt); return false;
         }
         event.base = address.base; event.const_off = address.const_off;
+        event.local_base = address.local_base; event.shared_main_local = address.shared_main_local;
         event.var_id = address.var_id; event.var_before = address.var_before; event.coeff = address.coeff;
         std::uint64_t alignment;
         if (!synchronization_layout(call, argument_index, event.width, alignment)) {
@@ -450,7 +485,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         }
         if (event.synthetic_condition && event.var_id != 0) return false;
         if (event.var_id == 0 && (event.const_off < 0 || event.const_off + event.width > size)) return false;
-        auto id = lock_ids.emplace(std::make_pair(address.base, address.const_off), lock_ids.size() + 1);
+        auto id = lock_ids.emplace(std::make_tuple(address.base, address.local_base, address.const_off), lock_ids.size() + 1);
         if (event.kind == EvKind::Lock) {
           if (symbolic_lock != 0 || (event.var_id != 0 && !held.empty())) {
             record(diagnostics, "symbolic_mutex_nested", event.stmt); return false;
@@ -635,6 +670,41 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       }
     }
     mutex_initializations.push_back(&storage);
+  }
+  for (const auto& storage : library_storage) {
+    const auto& address = storage.address;
+    if (!address.shared_main_local) continue;
+    auto trace = std::find_if(traces.begin(), traces.end(), [&](const auto& t) {
+      return &t.events == storage.path;
+    });
+    if (trace == traces.end()) return Result(Status::Unsupported);
+    auto* call = core::dyn_cast< ar::CallBase >(trace->events[storage.occurrence].stmt);
+    auto* api = call != nullptr ? exact_callee(call) : nullptr;
+    if (!storage.opaque) {
+      for (const auto* init : mutex_initializations)
+        if (same_storage_object(address, storage.path, init->address, init->path) &&
+            storage_overlap(address, init->address)) return Result(Status::Unsupported);
+      continue;
+    }
+    // An unused initialized local object already had a supported call effect.
+    // Acquiring it additionally needs the declared-type and live-owner proof.
+    if (api != nullptr && api->name() == "pthread_mutex_init") continue;
+    if (!main_local_mutex || api == nullptr || !main_mutex_subobject(address) ||
+        address.width != 24 || storage.alignment != 4 ||
+        (api->name() != "pthread_mutex_lock" &&
+         api->name() != "pthread_mutex_unlock" &&
+         api->intrinsic_id() != ar::Intrinsic::PthreadMutexLock &&
+         api->intrinsic_id() != ar::Intrinsic::PthreadMutexUnlock))
+      return Result(Status::Unsupported);
+    if (std::none_of(mutex_initializations.begin(), mutex_initializations.end(), [&](const auto* init) {
+          if (init->path != &allocation_origin ||
+              !same_storage_object(address, storage.path, init->address, init->path) ||
+              address.const_off != init->address.const_off ||
+              init->address.width != 24 || init->alignment != 4) return false;
+          auto* init_call = core::dyn_cast< ar::CallBase >(allocation_origin[init->occurrence].stmt);
+          return init_call != nullptr && init_call->num_arguments() == 2 &&
+                 core::isa< ar::NullConstant >(init_call->argument(1));
+        })) return Result(Status::Unsupported);
   }
   // A fixed startup may publish live allocations to its selected children.
   // Interleaved main/free retains the narrower private-handle contract.
@@ -1834,9 +1904,12 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         if (!encode_offset(e, offset, cache, prefix, i)) return false;
         s.add(offset >= 0 && offset + ctx.int_val(std::to_string(e.width).c_str()) <= ctx.int_val(size.str().c_str()));
         if (e.heap_allocation != nullptr || e.shared_main_local) {
-          auto* type = e.kind == EvKind::Read ? core::cast< ar::Load >(e.stmt)->result()->type()
-                                            : core::cast< ar::Store >(e.stmt)->value()->type();
-          const auto alignment = e.stmt->bundle()->data_layout().abi_alignment(type);
+          core::ZNumber alignment(4);
+          if (e.kind == EvKind::Read || e.kind == EvKind::Write) {
+            auto* type = e.kind == EvKind::Read ? core::cast< ar::Load >(e.stmt)->result()->type()
+                                              : core::cast< ar::Store >(e.stmt)->value()->type();
+            alignment = e.stmt->bundle()->data_layout().abi_alignment(type);
+          } else if (!main_mutex_subobject(e)) return false;
           s.add(z3::mod(offset, ctx.int_val(alignment.str().c_str())) == 0);
         }
       }
@@ -1908,7 +1981,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       for (const auto& section : sections) {
         if (section.mutex == PSEUDO_ATOMIC_LOCK || section.end == path.size()) continue;
         const auto& lock = path[section.begin]; const auto& unlock = path[section.end];
-        if (lock.base != unlock.base) return false;
+        if (!same_storage_object(lock, &path, unlock, &path)) return false;
         z3::expr first(ctx), last(ctx);
         if (!encode_offset(lock, first, cache, prefix, section.begin) ||
             !encode_offset(unlock, last, cache, prefix, section.end)) return false;
@@ -1922,7 +1995,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       for (const auto& a : trace_sections[x]) for (const auto& b : trace_sections[y]) {
         if (a.mutex == PSEUDO_ATOMIC_LOCK || b.mutex == PSEUDO_ATOMIC_LOCK || (a.reader && b.reader)) continue;
         const auto& lock_a = traces[x].events[a.begin]; const auto& lock_b = traces[y].events[b.begin];
-        if (lock_a.base != lock_b.base) continue;
+        if (!same_storage_object(lock_a, &traces[x].events, lock_b, &traces[y].events)) continue;
         z3::expr address_a(ctx), address_b(ctx);
         if (!encode_offset(lock_a, address_a, caches[x], traces[x].value_prefix(), a.begin) ||
             !encode_offset(lock_b, address_b, caches[y], traces[y].value_prefix(), b.begin)) return Result(Status::Unsupported);

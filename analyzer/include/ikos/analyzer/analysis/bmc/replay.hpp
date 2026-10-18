@@ -86,6 +86,33 @@ public:
     return out;
   }
 
+  JsonDict native_type(llvm::Type* type, const llvm::DataLayout& layout,
+                       unsigned& remaining, unsigned depth = 0) {
+    JsonDict out;
+    if (!remaining || depth >= 32 || !type->isSized()) {
+      out.put("kind", "unsupported"); return out;
+    }
+    --remaining;
+    const auto extent = layout.getTypeAllocSize(type);
+    if (extent.isScalable()) {out.put("kind", "unsupported"); return out;}
+    out.put("extent", extent.getFixedValue());
+    out.put("alignment", layout.getABITypeAlign(type).value());
+    if (auto* record = llvm::dyn_cast< llvm::StructType >(type)) {
+      out.put("kind", "struct");
+      if (record->hasName()) out.put("name", record->getName().str());
+      JsonList fields;
+      const auto* offsets = layout.getStructLayout(record);
+      for (unsigned i = 0; i < record->getNumElements(); ++i)
+        fields.add(JsonDict{{"offset", offsets->getElementOffset(i)},
+            {"type", native_type(record->getElementType(i), layout, remaining, depth + 1)}});
+      out.put("fields", fields);
+    } else if (auto* array = llvm::dyn_cast< llvm::ArrayType >(type)) {
+      out.put("kind", "array"); out.put("count", array->getNumElements());
+      out.put("element", native_type(array->getElementType(), layout, remaining, depth + 1));
+    } else out.put("kind", "scalar");
+    return out;
+  }
+
   JsonDict statement(ar::Statement* stmt) {
     JsonDict out;
     out.put("abstract_initializer", abstract_initializer(stmt));
@@ -120,6 +147,16 @@ public:
     } else if (auto* alloc = core::dyn_cast< ar::Allocate >(stmt)) {
       out.put("kind", "allocate"); out.put("allocated_type", type(alloc->allocated_type()));
       out.put("alignment", alloc->result()->alignment());
+      auto* source = alloc->has_frontend()
+          ? llvm::dyn_cast< llvm::AllocaInst >(alloc->frontend< llvm::Value >()) : nullptr;
+      if (source && source->getAllocatedType()->isAggregateType()) {
+        unsigned remaining = 512;
+        out.put("native_layout", native_type(source->getAllocatedType(),
+            source->getModule()->getDataLayout(), remaining));
+        out.put("native_owner", source->getFunction()->getName().str());
+        out.put("native_alignment", source->getAlign().value());
+        out.put("native_address_space", source->getAddressSpace());
+      }
     } else if (auto* load = core::dyn_cast< ar::Load >(stmt)) {
       out.put("kind", "load"); out.put("alignment", load->alignment());
       out.put("atomic", load->is_atomic());

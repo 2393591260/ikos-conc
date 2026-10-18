@@ -157,9 +157,51 @@ class Replay:
         require(meta['live'], 'access after object lifetime')
         require(isinstance(offset, int) and 0 <= offset and offset + size <= meta['size'], 'out-of-object access')
         require(not alignment or offset % alignment == 0, 'misaligned access')
+        if not opaque and size > 0:
+            require(not any(offset < start + width and start < offset + size
+                            for start, width in meta.get('mutex_regions', [])),
+                    'raw access to opaque stack mutex storage')
         if len(self.memory[obj]) != meta['size'] or meta['thread_local']:
             raise Unsupported('large/thread-local object')
         return obj, offset
+
+    def stack_mutex(self, pointer):
+        obj, offset = self.region(pointer, 24, 4, opaque=True)
+        meta = self.objects[obj]
+        triple = self.program.get('target_triple', '').split('-')
+        require(self.program['pointer_bits'] == 32 and triple[0] in ('i386', 'i486', 'i586', 'i686') and
+                'linux' in triple and triple[-1] == 'gnu', 'stack mutex GNU ILP32 ABI')
+        require(meta.get('owner_frame') == getattr(self, 'initial_main_frame', None) and
+                meta.get('owner_function') == 'main' and meta.get('owner_thread') == 0 and
+                meta.get('count') == 1 and not self.functions['main']['parameters'],
+                'stack mutex initial main allocation')
+        require(meta.get('alignment', 0) >= 4 and meta.get('native_alignment', 0) >= 4 and
+                meta.get('native_address_space') == 0 and meta.get('native_owner') == 'main',
+                'stack mutex native allocation')
+        node = meta.get('native_layout', {})
+        require(int(node.get('extent', -1)) == meta['size'], 'stack mutex native extent')
+        relative = offset
+        for _ in range(32):
+            if node.get('kind') == 'struct':
+                if node.get('name') == 'union.pthread_mutex_t':
+                    require(relative == 0 and int(node['extent']) == 24 and node['alignment'] == 4,
+                            'stack mutex declared leaf')
+                    break
+                fields = [f for f in node.get('fields', []) if int(f['offset']) <= relative <
+                          int(f['offset']) + int(f['type'].get('extent', 0))]
+                require(len(fields) == 1, 'stack mutex field identity')
+                relative -= int(fields[0]['offset']); node = fields[0]['type']
+            elif node.get('kind') == 'array':
+                element = node.get('element', {}); stride = int(element.get('extent', 0))
+                require(stride > 0 and 0 <= relative // stride < int(node.get('count', 0)),
+                        'stack mutex array identity')
+                relative %= stride; node = element
+            else:
+                raise Unsupported('stack mutex declared object type')
+        else:
+            raise Unsupported('stack mutex layout depth')
+        require((offset, 24) in meta.get('mutex_regions', []) and pointer in self.locks and
+                self.locks[pointer].get('kind') == 0, 'stack mutex explicit default initialization')
 
     def pointer_shift(self, inst, values):
         pointer = values[0]
@@ -558,7 +600,11 @@ class Replay:
             # Contract: glibc default static mutex/rwlock, target ILP32/LP64.
             rw = 'rwlock' in name
             width = (32 if self.program['pointer_bits']==32 else 56) if rw else (24 if self.program['pointer_bits']==32 else 40)
-            obj, offset = self.region(pointer, width)
+            local = isinstance(pointer, tuple) and str(pointer[0]).startswith('stack:')
+            obj, offset = self.region(pointer, width, opaque=local)
+            if obj.startswith('stack:'):
+                if rw: raise Unsupported('stack rwlock')
+                self.stack_mutex(pointer)
             pointee = inst['operands'][1]['type'].get('pointee')
             self.encoded_address(step, pointer, width)
             state = self.locks.setdefault(pointer, dict(owners={}, released={}, width=width))
@@ -599,13 +645,19 @@ class Replay:
                 if kind != 2: raise Unsupported('nondefault mutex kind')
             width=24 if self.program['pointer_bits']==32 else 40
             self.library_layout(inst, 0, width, self.program['pointer_bits']//8)
-            obj, offset=self.region(args[0],width)
+            local = isinstance(args[0], tuple) and str(args[0][0]).startswith('stack:')
+            obj, offset=self.region(args[0],width,opaque=local)
             if thread.instance != 0 or self.created:
                 raise Unsupported('mutex initialization after spawn or outside main')
             require(not any(previous[0] == obj and previous[1] < offset + width and
                             offset < previous[1] + state['width']
                             for previous, state in self.locks.items()),
                     'reinitialized or previously used mutex storage')
+            if obj.startswith('stack:'):
+                require(not any(a['object'] == obj and a['offset'] < offset + width and
+                                offset < a['offset'] + a['width'] for a in self.accesses.values()),
+                        'raw stack mutex access before initialization')
+                self.objects[obj].setdefault('mutex_regions', []).append((offset, width))
             self.memory[obj][offset:offset+width]=[0]*width
             self.locks[args[0]]=dict(owners={},released={},kind=kind,width=width); return 0
         if name in ('pthread_cond_init', 'pthread_cond_wait', 'pthread_cond_signal', 'pthread_cond_broadcast'):
@@ -722,8 +774,12 @@ class Replay:
             count=values[0]; require(isinstance(count,int) and count>0, 'allocation count')
             obj='stack:'+str(frame.uid)+':'+inst['result']['id']; size=int(inst['allocated_type']['extent'])*count
             if size>1_000_000: raise Unsupported('large stack object')
+            require(obj not in self.objects, 'repeated stack allocation identity')
             self.objects[obj]=dict(size=size,type=inst['allocated_type'],live=True,variable=inst['result']['id'],
-                                   thread_local=False,alignment=inst.get('alignment'))
+                                   thread_local=False,alignment=inst.get('alignment'), count=count,
+                                   owner_frame=frame.uid, owner_function=frame.function, owner_thread=thread.instance,
+                                   **{k: inst[k] for k in ('native_layout', 'native_alignment',
+                                      'native_address_space', 'native_owner') if k in inst})
             self.memory[obj]=[None]*size; result=(obj,0)
         elif kind=='assign': result=values[0]
         elif kind=='unary':
@@ -823,7 +879,9 @@ class Replay:
             self.memory[argv] = [('pointer-byte', (string,0), i) for i in range(width)] + [('pointer-byte', ('null',0), i) for i in range(width)]
             arguments = [1, (argv,0)]
         if 'ar.global_ctors' in self.program['globals']: raise Unsupported('global constructor execution')
-        self.threads[roots[0]]=Thread(0,[self.frame('main',arguments)],{0:0})
+        initial = self.frame('main',arguments)
+        self.initial_main_frame = initial.uid
+        self.threads[roots[0]]=Thread(0,[initial],{0:0})
         startup=self.traces.get('startup',{}).get('steps',[])
         for i,step in enumerate(startup): self.execute('startup',i,step)
         events=[]

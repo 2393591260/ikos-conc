@@ -978,6 +978,60 @@ inline bool shared_main_allocation(ar::LocalVariable* local,
   return found;
 }
 
+// A named mutex subobject of one live, implicit-main allocation. A cast to a
+// mutex pointer does not establish its declared type or storage alignment.
+inline bool main_mutex_subobject(const BmcEvent& address) {
+  auto* local = address.local_base;
+  if (!address.shared_main_local || local == nullptr || address.base != 0 ||
+      address.heap_allocation != nullptr || address.var_id != 0 || address.const_off < 0 ||
+      !local->has_frontend() || local->alignment() < 4) return false;
+  auto* source = llvm::dyn_cast< llvm::AllocaInst >(local->frontend< llvm::Value >());
+  auto* count = source ? llvm::dyn_cast< llvm::ConstantInt >(source->getArraySize()) : nullptr;
+  auto* owner = source ? source->getFunction() : nullptr;
+  if (!owner || owner->getName() != "main" || !owner->arg_empty() || !owner->use_empty() ||
+      !count || !count->equalsInt(1) || source->getAddressSpace() != 0 ||
+      source->getAlign().value() < 4 || !source->getModule()->getModuleInlineAsm().empty() ||
+      local->bundle()->global_or_null("ar.global_ctors") ||
+      local->bundle()->global_or_null("ar.global_dtors")) return false;
+  const llvm::Triple target(source->getModule()->getTargetTriple());
+  if (target.getArch() != llvm::Triple::x86 || !target.isOSLinux() ||
+      target.getEnvironment() != llvm::Triple::GNU ||
+      local->bundle()->data_layout().pointers.bit_width != 32) return false;
+  const auto& layout = source->getModule()->getDataLayout();
+  auto* type = source->getAllocatedType();
+  core::ZNumber extent;
+  if (!type->isSized() || !memory_extent(address, extent) ||
+      layout.getTypeAllocSize(type).isScalable() ||
+      extent != core::ZNumber(layout.getTypeAllocSize(type).getFixedValue()) ||
+      address.const_off + 24 > extent || address.const_off % 4 != 0) return false;
+  auto offset = address.const_off.to< std::uint64_t >();
+  for (unsigned depth = 0; depth < 32; ++depth) {
+    if (auto* record = llvm::dyn_cast< llvm::StructType >(type)) {
+      if (record->isOpaque()) return false;
+      if (record->hasName() && record->getName() == "union.pthread_mutex_t")
+        return offset == 0 && layout.getTypeAllocSize(type) == 24 &&
+               layout.getABITypeAlign(type).value() == 4;
+      const auto* fields = layout.getStructLayout(record);
+      bool found = false;
+      for (unsigned i = 0; i < record->getNumElements(); ++i) {
+        const auto start = fields->getElementOffset(i);
+        auto* field = record->getElementType(i);
+        if (offset >= start && offset - start < layout.getTypeAllocSize(field)) {
+          offset -= start; type = field; found = true; break;
+        }
+      }
+      if (!found) return false;
+    } else if (auto* array = llvm::dyn_cast< llvm::ArrayType >(type)) {
+      const auto size = layout.getTypeAllocSize(array->getElementType());
+      if (size.isScalable()) return false;
+      const auto stride = size.getFixedValue();
+      if (stride == 0 || offset / stride >= array->getNumElements()) return false;
+      offset %= stride; type = array->getElementType();
+    } else return false;
+  }
+  return false;
+}
+
 // Resolve pointers from executed definitions and actual helper/thread args.
 // Root arguments were consumed on the already checked creation prefix; only
 // constant global address chains may be followed outside the selected path.

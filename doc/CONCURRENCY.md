@@ -362,6 +362,18 @@ main prefix before thread creation. Reinitializing overlapping live storage,
 including after an unlock, remains unsupported; an empty owner set does not
 end a mutex lifetime. Distinct, disjoint mutex fields keep separate lifetimes.
 
+Selected ordinary executions may also use an explicitly initialized mutex
+field in one live allocation of the initial main frame, on GNU/Linux ILP32.
+The encoder checks the actual LLVM-declared mutex subobject, its byte bounds
+and alignment, and binds worker arguments to their actual creation and helper
+invocations. The independent AR checker resolves the raw native layout and
+replays initialization, ownership and object lifetime. A same-sized cast,
+missing initialization, ordinary byte access overlapping the mutex, or a
+returned helper frame cannot establish this lock identity. Disjoint payload
+fields remain ordinary memory. Local rwlocks, heap locks and combinations with
+condition variables, atomic targets or completion traces are outside this
+extension; it adds no SAFE rule.
+
 For FM-Tools registration changes, use the official checks through
 `svcomp/check-fm-entry.py --fm-tools /path/to/fm-tools`. It checks LF, formatting,
 sorting, and 2027 registration rules. Verify uploaded bytes and archive behavior

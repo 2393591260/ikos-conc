@@ -97,6 +97,8 @@ add_concurrency_test(bmc-semaphore "${CONCURRENCY_ROOT}/scripts/test_bmc_semapho
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(bmc-mutex-lifetime "${CONCURRENCY_ROOT}/scripts/test_bmc_mutex_lifetime.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(bmc-main-stack-mutex "${CONCURRENCY_ROOT}/scripts/test_bmc_main_stack_mutex.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(binary-token "${CONCURRENCY_ROOT}/scripts/test_binary_token.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(direct-token "${CONCURRENCY_ROOT}/scripts/test_direct_token.py"
