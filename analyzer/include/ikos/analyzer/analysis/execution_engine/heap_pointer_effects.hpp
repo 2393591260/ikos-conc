@@ -388,8 +388,7 @@ void observe_subarray_bounds(E& eng, ar::Statement* statement, ar::Value* operan
   if (query == ctx.subarray_bounds_queries.end() || eng.data().is_normal_flow_bottom()) return;
   bool valid = subarray_address_within(eng, operand, query->second,
       ctx.bundle->data_layout().store_size_in_bytes(type));
-  auto inserted = ctx.subarray_bounds_observations.emplace(statement, valid);
-  if (!inserted.second) inserted.first->second &= valid;
+  ctx.subarray_ranges.observe(statement, valid);
 }
 
 template < typename E >
@@ -411,8 +410,7 @@ void observe_mutex_array_effect(E& eng, ar::CallBase* call) {
         offset.ub().to_z_number() + 24 <=
             query->second.begin + query->second.size;
   }
-  auto inserted = ctx.mutex_effect_observations.emplace(call, valid);
-  if (!inserted.second) inserted.first->second &= valid;
+  ctx.mutex_effect_ranges.observe(call, valid);
 }
 
 } // namespace analyzer

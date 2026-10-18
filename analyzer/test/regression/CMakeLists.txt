@@ -36,6 +36,13 @@ function(add_concurrency_test test_name)
                       LABELS concurrency RUN_SERIAL TRUE TIMEOUT 600)
 endfunction()
 set(CONCURRENCY_IKOS "${CMAKE_INSTALL_PREFIX}/bin/ikos")
+add_executable(test-analysis-all-access-facts all_access_facts.cpp)
+target_include_directories(test-analysis-all-access-facts PRIVATE
+                           "${CONCURRENCY_ROOT}/analyzer/include")
+add_dependencies(build-analyzer-tests test-analysis-all-access-facts)
+add_test(NAME concurrency-all-access-facts
+         COMMAND $<TARGET_FILE:test-analysis-all-access-facts>)
+set_tests_properties(concurrency-all-access-facts PROPERTIES LABELS concurrency)
 add_concurrency_test(modes "${CONCURRENCY_ROOT}/scripts/test_race_modes.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(budgets "${CONCURRENCY_ROOT}/scripts/test_bmc_budgets.py"

@@ -180,16 +180,13 @@ void ThreadModularAnalysis::run() {
         complete &= effect.second == "synthetic pthread handle representation not modeled" ||
                     effect.second == "unknown destination write effects not covered";
       for (const auto& query : queries) {
-        auto result = preflight.mutex_effect_observations.find(query.first);
-        complete &= result != preflight.mutex_effect_observations.end() && result->second;
+        complete &= preflight.mutex_effect_ranges.proves(query.first);
       }
       for (const auto& query : bounds) {
-        auto result = preflight.subarray_bounds_observations.find(query.first);
-        complete &= result != preflight.subarray_bounds_observations.end() && result->second;
+        complete &= preflight.subarray_ranges.proves(query.first);
       }
       for (const auto& query : _ctx.native_handle_accesses) {
-        auto result = preflight.native_handle_observations.find(query.first);
-        complete &= result != preflight.native_handle_observations.end() && result->second;
+        complete &= preflight.native_handle_ranges.proves(query.first);
       }
       if (complete) {
         for (const auto& query : _ctx.native_handle_accesses)
@@ -721,6 +718,14 @@ void ThreadModularAnalysis::run() {
           {{"unknown_reason", "shared summaries changed after convergence"}});
     }
   }
+
+  // Publish only after all replay has finished. Late shared effects invalidate
+  // the snapshot; preflight coverage and each consumer's other premises remain
+  // separate from these all-access range facts.
+  const bool stable_ranges = !_ctx.concurrent_env.is_dirty();
+  _ctx.mutex_effect_ranges.finish(stable_ranges);
+  _ctx.subarray_ranges.finish(stable_ranges);
+  _ctx.native_handle_ranges.finish(stable_ranges);
 
   // Insert all functions in the database.
   for (auto it = bundle->function_begin(), et = bundle->function_end();

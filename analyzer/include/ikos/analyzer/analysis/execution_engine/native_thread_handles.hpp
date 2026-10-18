@@ -278,8 +278,7 @@ void observe_native_handle_range(E& eng, ar::Statement* statement, ar::Value* op
   auto& ctx = eng.ctx();
   if (!ctx.native_handle_accesses.count(statement) || eng.data().is_normal_flow_bottom()) return;
   bool valid = native_handle_range(eng, statement, operand);
-  auto added = ctx.native_handle_observations.emplace(statement, valid);
-  if (!added.second) added.first->second &= valid;
+  ctx.native_handle_ranges.observe(statement, valid);
   if (!valid) ctx.concurrent_env.record_unmodeled_effect(statement, "native pthread handle storage range not covered");
 }
 

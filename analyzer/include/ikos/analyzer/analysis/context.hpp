@@ -53,6 +53,7 @@
 #include <ikos/ar/semantic/bundle.hpp>
 
 #include <ikos/analyzer/analysis/option.hpp>
+#include <ikos/analyzer/analysis/all_access_facts.hpp>
 #include <ikos/analyzer/analysis/execution_engine/global_array_subobject.hpp>
 #include <ikos/core/domain/concurrent_global_env.hpp>
 
@@ -142,10 +143,10 @@ public:
   // Populated only in the independent conservative preflight. A failed
   // observation is permanent; only certificates cross into the fresh analysis.
   std::map< ar::CallBase*, GlobalArraySubobject > mutex_effect_queries;
-  std::map< ar::CallBase*, bool > mutex_effect_observations;
+  AllAccessFacts< ar::CallBase* > mutex_effect_ranges;
   std::set< ar::CallBase* > mutex_effect_certificates;
   std::map< ar::Statement*, GlobalArraySubobject > subarray_bounds_queries;
-  std::map< ar::Statement*, bool > subarray_bounds_observations;
+  AllAccessFacts< ar::Statement* > subarray_ranges;
   std::map< ar::Statement*, GlobalArraySubobject > subarray_bounds_certificates;
   std::map< std::tuple< ar::GlobalVariable*, ar::ArrayType*, core::ZNumber, core::ZNumber >, bool > readonly_subarray_certificates;
 
@@ -159,7 +160,7 @@ public:
   bool native_handles_only = false;
   std::map< ar::Statement*, NativeHandleArray > native_handle_accesses;
   std::set< ar::CallBase* > native_handle_joins;
-  std::map< ar::Statement*, bool > native_handle_observations;
+  AllAccessFacts< ar::Statement* > native_handle_ranges;
   std::set< ar::CallBase* > native_handle_effect_certificates;
 
 

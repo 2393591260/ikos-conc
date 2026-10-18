@@ -100,6 +100,16 @@ Original IKOS numerical analyses and general parameters are described in
 [analyzer/README.md](../analyzer/README.md). Keep property queries separate from
 reusable thread and memory semantics.
 
+Range premises shared by the interpreter and safety analyses use
+`analysis/all_access_facts.hpp`. Each analysis run collects observations for
+the exact statement and object in its query inventory. All reachable contexts
+must satisfy the predicate; a missing or failed observation cannot prove it.
+The driver publishes the facts after replay and shared-summary flushing have
+finished without further changes. A later observation invalidates publication.
+Independent preflight facts still require the existing effect-coverage checks
+before they can refine a fresh interpreter run. A range fact alone grants no
+thread completion, synchronization, or permission to discard a shared write.
+
 ## Results and evidence
 
 | Result | Meaning |

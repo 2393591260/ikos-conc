@@ -932,8 +932,7 @@ class BucketListOwnership::Impl {
     for (const auto& access : ctx.native_handle_accesses) {
       // Final real-AI observations cover every call/load, iteration and context.
       // Native output/Load TOP and join's no-HB transfer do not depend on us.
-      auto observation = ctx.native_handle_observations.find(access.first);
-      need(observation != ctx.native_handle_observations.end() && observation->second);
+      need(ctx.native_handle_ranges.proves(access.first));
     }
     auto access = [&](llvm::Instruction* i, bool write) {
       auto* a = original(i); auto found = ctx.native_handle_accesses.find(a);
