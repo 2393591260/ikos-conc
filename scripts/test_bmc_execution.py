@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def heap_handle_contract():
     replay = Replay.__new__(Replay)
+    replay.semaphores = {}
     replay.atomic_owner = None
     replay.program = dict(pointer_bits=32, target_triple='i386-pc-linux-gnu', little_endian=True)
     replay.functions = {'ar.libc.malloc': {}, 'ar.libc.free': {}, 'pthread_create': {}}

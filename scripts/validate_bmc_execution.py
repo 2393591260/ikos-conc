@@ -104,6 +104,7 @@ class Replay:
         self.pending_markers = {}
         self.writers = {}
         self.attributes, self.conditions = {}, {}
+        self.semaphores = {}
         self.stdout_vc = {}
         for name, glob in program['globals'].items():
             if glob['declaration'] or glob['type']['kind'] == 'unsupported':
@@ -145,9 +146,11 @@ class Replay:
         if k == 'undef': return UNDEFINED
         raise Unsupported('operand kind ' + k)
 
-    def region(self, pointer, size, alignment=0):
+    def region(self, pointer, size, alignment=0, opaque=False):
         require(isinstance(pointer, tuple) and len(pointer) == 2, 'invalid concrete pointer')
         obj, offset = pointer
+        if obj in self.semaphores and not opaque:
+            raise Unsupported('raw access to opaque semaphore storage')
         if obj not in self.objects:
             raise Unsupported('unmodeled object ' + str(obj))
         meta = self.objects[obj]
@@ -378,6 +381,48 @@ class Replay:
                 fn.get('intrinsic_nondet') or name in NONDET or fn.get('intrinsic_assume') or
                 name in ('__VERIFIER_assume', 'ffs', '__VERIFIER_atomic_begin', '__VERIFIER_atomic_end')):
             raise Unsupported('external API inside verifier atomic: ' + name)
+        if name in ('sem_init', 'sem_wait', 'sem_post'):
+            count = 3 if name == 'sem_init' else 1
+            types = fn['parameter_types']
+            require(self.program['pointer_bits'] == 32 and fn['declaration'] and
+                    not fn['variadic'] and len(args) == len(types) == count and
+                    types[0]['kind'] == 'pointer' and fn['return_type']['kind'] == 'integer' and
+                    fn['return_type']['bits'] == 32 and fn['return_type']['signed'], 'semaphore ABI')
+            require(all(op['type'] == t for op, t in zip(inst['operands'][1:], types)) and
+                    ('result' not in inst or inst['result']['type'] == fn['return_type']), 'semaphore call types')
+            self.library_layout(inst, 0, 16, 4)
+            require(inst['argument_layouts'][0].get('name') == 'union.sem_t', 'semaphore argument type')
+            pointer = args[0]
+            self.region(pointer, 16, 4, opaque=True)
+            require(pointer[0].startswith('global:') and pointer[1] == 0, 'semaphore identity')
+            global_name = pointer[0][len('global:'):]
+            glob = self.program['globals'][global_name]
+            require(not glob['declaration'] and not glob['thread_local'] and
+                    glob.get('frontend_type_name') == 'union.sem_t' and
+                    int(glob['type']['extent']) == 16 and glob['alignment'] >= 4, 'semaphore object')
+            if 'result' in inst:
+                result = inst['result']['id']
+                require(not any(op.get('id') == result and op.get('kind') in ('variable', 'local')
+                                for code in self.program['instructions'].values()
+                                for op in code.get('operands', [])), 'used semaphore result')
+            if name == 'sem_init':
+                require(all(t['kind'] == 'integer' and t['bits'] == 32 for t in types[1:]) and
+                        args[1:] == [0, 1] and thread.instance == 0 and not self.created and
+                        pointer[0] not in self.semaphores, 'semaphore initialization')
+                self.semaphores[pointer[0]] = dict(count=1, providers={})
+            else:
+                require(pointer[0] in self.semaphores, 'uninitialized semaphore')
+                state = self.semaphores[pointer[0]]
+                if name == 'sem_post':
+                    require(state['count'] < 2147483647, 'semaphore overflow')
+                    state['count'] += 1
+                    self.join_vc(state['providers'], thread.vc)
+                else:
+                    require(state['count'] > 0, 'blocking semaphore wait')
+                    state['count'] -= 1
+                    # glibc acquire observes all earlier release providers.
+                    self.join_vc(thread.vc, state['providers'])
+            return 0
         if name == 'ffs':
             types = fn['parameter_types'] + [fn['return_type']]
             require(fn['declaration'] and not fn['variadic'] and len(args) == 1 and

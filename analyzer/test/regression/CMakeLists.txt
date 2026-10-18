@@ -93,6 +93,8 @@ add_concurrency_test(guarded-publication "${CONCURRENCY_ROOT}/scripts/test_guard
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(posix-semaphore "${CONCURRENCY_ROOT}/scripts/test_posix_semaphore.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(bmc-semaphore "${CONCURRENCY_ROOT}/scripts/test_bmc_semaphore.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(binary-token "${CONCURRENCY_ROOT}/scripts/test_binary_token.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(direct-token "${CONCURRENCY_ROOT}/scripts/test_direct_token.py"

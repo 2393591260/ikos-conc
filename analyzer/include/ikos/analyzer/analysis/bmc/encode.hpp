@@ -19,6 +19,7 @@
 #include "initial.hpp"
 #include "evidence.hpp"
 #include "function_values.hpp"
+#include "semaphore.hpp"
 #include "result.hpp"
 
 namespace ikos {
@@ -134,6 +135,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       return Result(Status::Unsupported);
   }
   const auto& allocation_origin = traces[main_index].events;
+  if (!semaphore_prefix_supported(traces, facts, completion)) {
+    record(diagnostics, "semaphore_prefix_profile");
+    return Result(Status::Unsupported);
+  }
   using ObjectId = std::pair< std::uint64_t, core::ZNumber >;
   std::map< ObjectId, unsigned > attributes;
   std::vector< BmcEvent > initialized_mutexes;
@@ -536,7 +541,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       const auto& name = function->name();
       std::vector< unsigned > arguments;
       const bool opaque = ((event.kind == EvKind::Lock || event.kind == EvKind::Unlock) &&
-                           !is_verifier_atomic(call)) || mutex_attribute_call(call) || condition_call(call);
+                           !is_verifier_atomic(call)) || mutex_attribute_call(call) || condition_call(call) ||
+                          semaphore_event(event.kind);
       if (opaque || event.kind == EvKind::Create) arguments.push_back(0);
       if (name == "pthread_cond_wait") arguments.push_back(1);
       if (event.kind == EvKind::Join && call->num_arguments() == 2 &&

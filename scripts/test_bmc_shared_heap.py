@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def gep_contract():
     replay = Replay.__new__(Replay)
+    replay.semaphores = {}
     replay.program = dict(pointer_bits=32)
     replay.objects = {'heap': dict(size=8, live=True, thread_local=False, allocation='alloc')}
     replay.memory = {'heap': [None] * 8}

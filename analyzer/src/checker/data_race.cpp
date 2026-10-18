@@ -1842,7 +1842,8 @@ DataRaceChecker::~DataRaceChecker() {
   // checked together with both workers' value/scheduling constraints.
   auto conditional_live_threads = [&](const std::string& thread_a, const std::string& thread_b,
                                       unsigned loop_bound, bool extra_occurrences = false,
-                                      ar::CallBase* finite_source = nullptr, unsigned finite_value = 0) {
+                                      ar::CallBase* finite_source = nullptr, unsigned finite_value = 0,
+                                      bool semaphore_startup = false) {
     auto* main = this->_ctx.bundle->function_or_null("main");
     if (main == nullptr || !main->is_definition()) return false;
     std::map< std::string, unsigned > required{{thread_a, 1}, {thread_b, 1}};
@@ -1856,19 +1857,31 @@ DataRaceChecker::~DataRaceChecker() {
       }
     }
     auto& alternatives = activation_prefixes[std::minmax(thread_a, thread_b)];
-    for (const auto& creation : this->_thread_creations) {
+    std::vector< std::pair< ar::Statement*, unsigned > > endpoints;
+    if (semaphore_startup) {
+      if (this->_ctx.posix_semaphore) for (auto* block : *main->body()) for (auto* stmt : *block) {
+        auto* call = dyn_cast< ar::CallBase >(stmt);
+        auto* function = call ? bmc::exact_callee(call) : nullptr;
+        if (function && function->is_declaration() && function->name() == "sem_post" &&
+            this->_ctx.posix_semaphore->effect(call)) endpoints.emplace_back(stmt, 1);
+      }
+    } else {
+      for (const auto& creation : this->_thread_creations) {
+        if (required.count(creation.child))
+          endpoints.emplace_back(creation.stmt, extra_occurrences ? 2 : required.at(creation.child));
+      }
+    }
+    for (const auto& endpoint : endpoints) {
       if (search_budget.expired()) break;
-      if (!required.count(creation.child)) continue;
-      // An exact-count prefix cannot contain a later occurrence of this entry.
-      const unsigned occurrences = extra_occurrences ? 2 : required.at(creation.child);
+      const unsigned occurrences = endpoint.second;
       for (unsigned occurrence = 1; occurrence <= occurrences; ++occurrence) {
         if (extra_occurrences && search_budget.expired()) break;
         // Activation below rejects every join. Stop unsupported join suffixes
         // during construction instead of enumerating paths we cannot retain.
         auto result = finite_source == nullptr
-            ? bmc::unroll_to(main, creation.stmt, occurrence, loop_bound, true,
+            ? bmc::unroll_to(main, endpoint.first, occurrence, loop_bound, true,
                              extra_occurrences ? nullptr : &create_limits)
-            : bmc::unroll_to(main, creation.stmt, occurrence, loop_bound, true,
+            : bmc::unroll_to(main, endpoint.first, occurrence, loop_bound, true,
                              extra_occurrences ? nullptr : &create_limits,
                              &search_budget.deadline, finite_source, finite_value);
         // Exhaustion omits alternatives, not the complete prefixes already
@@ -1940,14 +1953,14 @@ DataRaceChecker::~DataRaceChecker() {
   std::set< std::string > larger_activation_groups;
   std::set< std::string > occurrence_groups;
   std::set< std::string > hinted_activation_groups;
-  std::set< std::string > completion_groups;
+  std::set< std::string > completion_groups, semaphore_groups;
   std::map< std::string, bmc::Result > deferred_results;
   std::map< std::string, JsonList > deferred_candidates;
   std::map< std::string, JsonList > occurrence_candidates;
   std::map< std::string, std::map< std::string, std::size_t > > deferred_counts;
   bool file_confirmed = false;
   unsigned startup_hint = 16;
-  for (unsigned pass = 0; pass < 6; ++pass) {
+  for (unsigned pass = 0; pass < 7; ++pass) {
     // Try every candidate's short execution before deeper loop alternatives.
     search_budget.defer_large_loops = pass < 2;
     if (pass == 4 && !hinted_activation_groups.empty() && !file_confirmed &&
@@ -1979,7 +1992,8 @@ DataRaceChecker::~DataRaceChecker() {
         (pass == 2 && larger_activation_groups.count(kv.first) == 0) ||
         (pass == 3 && occurrence_groups.count(kv.first) == 0) ||
         (pass == 4 && hinted_activation_groups.count(kv.first) == 0) ||
-        (pass == 5 && completion_groups.count(kv.first) == 0)) continue;
+        (pass == 5 && completion_groups.count(kv.first) == 0) ||
+        (pass == 6 && semaphore_groups.count(kv.first) == 0)) continue;
     search_budget.saw_interrupted = false;
     const std::vector< std::size_t >& pair_indices = kv.second;
     if (pair_indices.empty()) {
@@ -2100,13 +2114,13 @@ DataRaceChecker::~DataRaceChecker() {
           bool live = false;
           if (pass >= 3) {
             if (pass == 4) bmc::record(trace, "startup_literal_loop_hint");
-            live = conditional_live_threads(a.thread_id, b.thread_id, pass == 4 ? startup_hint : 16, true);
-            if (!live && pass == 3) {
+            live = conditional_live_threads(a.thread_id, b.thread_id, pass == 4 ? startup_hint : 16, true, nullptr, 0, pass == 6);
+            if (!live && (pass == 3 || pass == 6)) {
               auto* main = this->_ctx.bundle->function_or_null("main");
               auto* source = bmc::allocation_finite_source(main, 4);
               if (source != nullptr) {
                 for (unsigned value = 1; value <= 4 && !search_budget.expired(); ++value) {
-                  live |= conditional_live_threads(a.thread_id, b.thread_id, 16, true, source, value);
+                  live |= conditional_live_threads(a.thread_id, b.thread_id, 16, true, source, value, pass == 6);
                   if (activation_prefixes[key].size() >= 8) break;
                 }
                 bmc::record(trace, "startup_finite_source");
@@ -2231,6 +2245,11 @@ DataRaceChecker::~DataRaceChecker() {
           bmc::CandidateFacts facts;
           // Keep the historical master switch; independent factors isolate
           // numerical costs from helper-publication support.
+          if (this->_ctx.posix_semaphore) {
+            facts.semaphore_effect = [&](ar::CallBase* call) {
+              return this->_ctx.posix_semaphore->effect(call);
+            };
+          }
           const bool disable_ai_facts = getenv("IKOS_BMC_DISABLE_AI_FACTS") != nullptr;
           if (!disable_ai_facts && getenv("IKOS_BMC_DISABLE_AI_SINGLE_EXECUTION") == nullptr) {
             facts.single_execution = [&](ar::Function* function) {
@@ -2397,7 +2416,11 @@ DataRaceChecker::~DataRaceChecker() {
     const bool hint_deferred = pass == 3 && bmc_enabled && group_worker_pairs && !file_confirmed;
     // New completion searches follow all legacy passes in this same file budget.
     const bool completion_deferred = pass < 5 && bmc_enabled && group_completion_pairs && group_result.needs_completion && !file_confirmed;
-    if (!bmc_confirmed && (legacy_deferred || occurrence_deferred || hint_deferred || completion_deferred)) {
+    if (group_worker_pairs && this->_ctx.posix_semaphore && !this->_ctx.posix_semaphore->tokens().empty())
+      semaphore_groups.insert(kv.first);
+    const bool semaphore_deferred = pass < 6 && bmc_enabled &&
+        semaphore_groups.count(kv.first) != 0 && !file_confirmed;
+    if (!bmc_confirmed && (legacy_deferred || occurrence_deferred || hint_deferred || completion_deferred || semaphore_deferred)) {
       deferred_results[kv.first] = group_result;
       if (legacy_deferred) {
         if (pass == 0) deferred_groups.insert(kv.first);
@@ -2413,6 +2436,7 @@ DataRaceChecker::~DataRaceChecker() {
       continue;
     }
     completion_groups.erase(kv.first);
+    semaphore_groups.erase(kv.first);
     // Flat targets and the report anchor must refer to the confirmed pair.
     JsonDict info{
         {"memory_location", first.first_conflict_loc.empty()

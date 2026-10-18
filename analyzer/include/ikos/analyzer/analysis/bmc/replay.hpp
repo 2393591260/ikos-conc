@@ -189,6 +189,11 @@ public:
       auto* global = *it; JsonDict object;
       object.put("type", type(global->type()->pointee())); object.put("thread_local", global->is_thread_local());
       object.put("alignment", global->alignment());
+      if (global->has_frontend()) {
+        auto* source = global->frontend< llvm::GlobalVariable >();
+        if (auto* structure = llvm::dyn_cast< llvm::StructType >(source->getValueType()))
+          if (structure->hasName()) object.put("frontend_type_name", structure->getName().str());
+      }
       object.put("declaration", global->is_declaration()); JsonList stores;
       if (global->has_frontend() && global->type()->pointee()->is_pointer()) {
         auto* source = global->frontend< llvm::GlobalVariable >();

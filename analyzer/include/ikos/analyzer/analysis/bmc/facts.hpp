@@ -24,6 +24,8 @@ struct CandidateFacts {
   // Direct, acyclic invocation chains rooted at implicit main; missing proof
   // never licenses an external helper publication.
   std::function< bool(ar::Function*) > single_execution;
+  // Independent closed-library effect proof, not an AI numeric or lock hint.
+  std::function< ar::GlobalVariable*(ar::CallBase*) > semaphore_effect;
 };
 
 } } }
