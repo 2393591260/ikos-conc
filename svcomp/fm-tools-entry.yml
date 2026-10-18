@@ -43,7 +43,6 @@ versions:
       - libsqlite3-0
       - libtinfo6
       - zlib1g
-      - libz3-4
       - libffi8
       - libedit2
       - libbsd0

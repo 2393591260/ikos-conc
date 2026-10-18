@@ -29,7 +29,7 @@ docker run --rm \
       libc6-dev libc6-dev-i386 lib32gcc-15-dev \
       libgmp10 libgmpxx4ldbl libmpfr6 libppl14 \
       libboost-filesystem1.83.0 libboost-thread1.83.0 libtbb12 \
-      libsqlite3-0 libtinfo6 zlib1g libz3-4 libffi8 \
+      libsqlite3-0 libtinfo6 zlib1g libffi8 \
       libedit2 libbsd0 liblzma5 libmd0 \
       python3
     cd /tmp
