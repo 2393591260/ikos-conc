@@ -561,7 +561,8 @@ class Replay:
             obj, offset = self.region(pointer, width)
             pointee = inst['operands'][1]['type'].get('pointee')
             self.encoded_address(step, pointer, width)
-            state = self.locks.setdefault(pointer, dict(owners={}, released={}))
+            state = self.locks.setdefault(pointer, dict(owners={}, released={}, width=width))
+            require(state['width'] == width, 'lock storage width changed')
             if action == 'lock':
                 data = self.memory[obj][offset:offset+width]
                 zero = lambda b: b == 0 or (isinstance(b, tuple) and b[:2] == ('pointer-byte', ('null', 0)))
@@ -599,9 +600,14 @@ class Replay:
             width=24 if self.program['pointer_bits']==32 else 40
             self.library_layout(inst, 0, width, self.program['pointer_bits']//8)
             obj, offset=self.region(args[0],width)
-            require(args[0] not in self.locks or not self.locks[args[0]]['owners'], 'initialize owned mutex')
+            if thread.instance != 0 or self.created:
+                raise Unsupported('mutex initialization after spawn or outside main')
+            require(not any(previous[0] == obj and previous[1] < offset + width and
+                            offset < previous[1] + state['width']
+                            for previous, state in self.locks.items()),
+                    'reinitialized or previously used mutex storage')
             self.memory[obj][offset:offset+width]=[0]*width
-            self.locks[args[0]]=dict(owners={},released={},kind=kind); return 0
+            self.locks[args[0]]=dict(owners={},released={},kind=kind,width=width); return 0
         if name in ('pthread_cond_init', 'pthread_cond_wait', 'pthread_cond_signal', 'pthread_cond_broadcast'):
             self.library_layout(inst, 0, 48)
             if name == 'pthread_cond_init':

@@ -587,6 +587,55 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   };
   for (auto& trace : traces)
     if (!library_outputs(trace.events, trace.root, trace.argument)) return Result(Status::Unsupported);
+  auto same_storage_object = [](const BmcEvent& a, const void* path_a,
+                                const BmcEvent& b, const void* path_b) {
+    return a.base != 0 ? a.base == b.base :
+        a.heap_allocation != nullptr ? a.heap_allocation == b.heap_allocation :
+        a.local_base != nullptr && a.local_base == b.local_base &&
+        (path_a == path_b || (a.shared_main_local && b.shared_main_local));
+  };
+  auto storage_overlap = [](const BmcEvent& a, const BmcEvent& b) {
+    return a.var_id != 0 || b.var_id != 0 || a.width == 0 || b.width == 0 ||
+        (a.const_off < b.const_off + b.width && b.const_off < a.const_off + a.width);
+  };
+  // Default init also starts a lifetime; an empty owner set is not permission
+  // to reset a live mutex. Destroy has no supported execution summary here.
+  std::vector< const LibraryStorage* > mutex_initializations;
+  for (const auto& storage : library_storage) {
+    auto trace = std::find_if(traces.begin(), traces.end(), [&](const auto& t) {
+      return &t.events == storage.path;
+    });
+    if (trace == traces.end()) return Result(Status::Unsupported);
+    auto* call = core::dyn_cast< ar::CallBase >(trace->events[storage.occurrence].stmt);
+    auto* function = call != nullptr ? exact_callee(call) : nullptr;
+    if (function == nullptr || function->name() != "pthread_mutex_init") continue;
+    const auto& address = storage.address;
+    core::ZNumber extent;
+    if (trace->root->name() != "main" || address.var_id != 0 ||
+        !memory_extent(address, extent) || storage.alignment == 0 ||
+        address.const_off < 0 || address.const_off + address.width > extent ||
+        address.const_off % storage.alignment != 0 ||
+        std::any_of(trace->events.begin(), trace->events.begin() + storage.occurrence,
+                    [](const auto& e) {return e.kind == EvKind::Create;})) {
+      record(diagnostics, "mutex_initialization_lifetime", call);
+      return Result(Status::Unsupported);
+    }
+    for (const auto* previous : mutex_initializations)
+      if (same_storage_object(address, storage.path, previous->address, previous->path) &&
+          storage_overlap(address, previous->address)) {
+        record(diagnostics, "mutex_reinitialized", call); return Result(Status::Unsupported);
+      }
+    for (const auto& previous : library_storage) {
+      if (previous.path != storage.path || previous.occurrence >= storage.occurrence) continue;
+      const auto kind = trace->events[previous.occurrence].kind;
+      if ((kind == EvKind::Lock || kind == EvKind::Unlock) &&
+          same_storage_object(address, storage.path, previous.address, previous.path) &&
+          storage_overlap(address, previous.address)) {
+        record(diagnostics, "mutex_initialized_after_use", call); return Result(Status::Unsupported);
+      }
+    }
+    mutex_initializations.push_back(&storage);
+  }
   // A fixed startup may publish live allocations to its selected children.
   // Interleaved main/free retains the narrower private-handle contract.
   auto private_heap_lifetime = [&](std::vector< BmcEvent >& path) {
@@ -708,10 +757,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     for (const auto& storage : library_storage) {
       if (opaque_only && !storage.opaque) continue;
       const auto& output = storage.address;
-      const bool same = access.base != 0 ? access.base == output.base :
-          access.heap_allocation != nullptr ? access.heap_allocation == output.heap_allocation :
-          access.local_base != nullptr && (path == storage.path ||
-              (access.shared_main_local && output.shared_main_local)) && access.local_base == output.local_base;
+      const bool same = same_storage_object(access, path, output, storage.path);
       // Fields in repeated records can be disjoint for every index. A common
       // stride plus nonwrapping, disjoint residues proves byte nonaliasing.
       core::ZNumber stride = access.var_id != 0 ? (access.coeff < 0 ? -access.coeff : access.coeff) : core::ZNumber(0);

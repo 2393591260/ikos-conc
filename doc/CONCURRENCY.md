@@ -357,6 +357,11 @@ model; unsupported cases remain inconclusive.
 Only initialization with one permit supplies a token to the separate SAFE
 ownership proof. General library-effect coverage does not grant mutual exclusion.
 
+Explicit mutex initialization in a selected BMC execution must occur in the
+main prefix before thread creation. Reinitializing overlapping live storage,
+including after an unlock, remains unsupported; an empty owner set does not
+end a mutex lifetime. Distinct, disjoint mutex fields keep separate lifetimes.
+
 For FM-Tools registration changes, use the official checks through
 `svcomp/check-fm-entry.py --fm-tools /path/to/fm-tools`. It checks LF, formatting,
 sorting, and 2027 registration rules. Verify uploaded bytes and archive behavior
