@@ -163,7 +163,8 @@ def finish_upload(api, files_url, path, filename, digests):
     if not matches(current, size, digests):
         if current.get("status") != "pending":
             raise UploadError("Remote file is not a matching completed file or pending upload.")
-        if current.get("size") is not None and current["size"] != size:
+        # Pending metadata can report zero before content has been committed.
+        if current.get("size") not in (None, 0, size):
             raise UploadError("Remote file size differs; no commit was attempted.")
         print("Finishing the existing upload; no ZIP bytes will be retransmitted…", flush=True)
         api.request("POST", file_url + "/commit")
@@ -189,38 +190,32 @@ def upload(api, files_url, path, filename, digests, progress=True):
         initialized = api.request("POST", files_url, json=[{"key": filename}])
         entry = next(e for e in initialized["entries"] if e["key"] == filename)
     file_url = files_url.rstrip("/") + "/" + quote(filename, safe="")
-    # PUT is retried with the full file. This does not promise byte-offset resume.
-    for attempt in range(1, 4):
-        try:
-            print(f"Uploading {size} bytes, attempt {attempt}/3…", flush=True)
-            with path.open("rb") as stream:
-                reader = ProgressReader(stream, size) if progress else stream
-                try:
-                    api.request("PUT", entry["links"]["content"], data=reader,
-                                headers={"Content-Type": "application/octet-stream"})
-                finally:
-                    if progress:
-                        reader.finish()
-            print("Server accepted upload content; committing file…", flush=True)
-            api.request("POST", entry["links"]["commit"])
-            break
-        except (requests.RequestException, UploadError) as exc:
-            print(str(exc), file=sys.stderr, flush=True)
-            if (isinstance(exc, UploadError) and exc.status != 429
-                    and not 500 <= exc.status < 600):
-                raise
-            # A response may have been lost after the server completed commit.
+    # A disconnected PUT may still be running remotely; do not start another.
+    try:
+        print(f"Uploading {size} bytes (one attempt; no automatic retransmission)…", flush=True)
+        with path.open("rb") as stream:
+            reader = ProgressReader(stream, size) if progress else stream
             try:
-                current = api.request("GET", file_url)
-            except (requests.RequestException, UploadError):
-                if attempt == 3:
-                    raise
-                current = {}
-            if matches(current, size, digests):
-                break
-            if current.get("status") == "completed" or attempt == 3:
-                raise
-            time.sleep(5)
+                api.request("PUT", entry["links"]["content"], data=reader,
+                            headers={"Content-Type": "application/octet-stream"})
+            finally:
+                if progress:
+                    reader.finish()
+        print("Server accepted upload content; committing file…", flush=True)
+        api.request("POST", entry["links"]["commit"])
+    except (requests.RequestException, UploadError) as exc:
+        # A response may have been lost after the server completed commit.
+        try:
+            current = api.request("GET", file_url)
+        except (requests.RequestException, UploadError):
+            raise exc
+        if not matches(current, size, digests):
+            raise UploadError(
+                f"{exc}\nRemote file: status={current.get('status')}, "
+                f"size={current.get('size')}, checksum={current.get('checksum')}. "
+                "No automatic retransmission was attempted.",
+                getattr(exc, "status", 0),
+            ) from exc
     print("Checking remote size and checksum…", flush=True)
     current = api.request("GET", file_url)
     if not matches(current, size, digests):

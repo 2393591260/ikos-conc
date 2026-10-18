@@ -199,7 +199,7 @@ class UploadTests(unittest.TestCase):
                 self.run_upload(api)
             self.assertEqual(call.call_count, 1)
 
-    def test_full_bytes_retried_and_committed_without_publication(self):
+    def test_interrupted_upload_checks_state_without_retransmitting(self):
         api = Zenodo("fake-token", 23122650)
         transmissions = []
 
@@ -213,16 +213,25 @@ class UploadTests(unittest.TestCase):
                 self.assertEqual(prepared.headers["Content-Length"], str(self.path.stat().st_size))
                 self.assertNotIn("Transfer-Encoding", prepared.headers)
                 transmissions.append(kwargs["data"].read())
-                if len(transmissions) == 1:
-                    raise requests.ConnectionError("Connection lost after partial transfer")
-                return self.pending
+                raise requests.ConnectionError("Connection lost after partial transfer")
             if method == "POST":
                 return self.complete
             return self.pending if len(transmissions) == 1 else self.complete
 
         with patch.object(api, "request", side_effect=request), patch("zenodo_upload.time.sleep"):
+            with self.assertRaisesRegex(UploadError, "No automatic retransmission"):
+                self.run_upload(api)
+        self.assertEqual(transmissions, [self.path.read_bytes()])
+
+    def test_lost_commit_response_is_verified_without_reupload(self):
+        api = Zenodo("fake-token", 23122650)
+        with patch.object(api, "request", side_effect=[
+            {"enabled": True, "entries": [self.pending]}, self.pending,
+            requests.ReadTimeout("Commit response lost"), self.complete, self.complete
+        ]) as request:
             self.run_upload(api)
-        self.assertEqual(transmissions, [self.path.read_bytes()] * 2)
+        self.assertEqual([c.args[0] for c in request.call_args_list],
+                         ["GET", "PUT", "POST", "GET", "GET"])
 
     def test_progress_can_be_disabled_for_upload(self):
         api = Zenodo("fake-token", 23122650)
@@ -256,6 +265,16 @@ class UploadTests(unittest.TestCase):
             call("GET", self.file_url), call("POST", self.file_url + "/commit"),
             call("GET", self.file_url)])
 
+    def test_finish_pending_zero_size_attempts_commit_then_checks_checksum(self):
+        api = Zenodo("fake-token", 23122650)
+        with patch.object(api, "request", side_effect=[
+            dict(self.pending, size=0, checksum=None), self.complete, self.complete
+        ]) as request:
+            finish_upload(api, self.files, self.path, "tool.zip", self.digests)
+        self.assertEqual(request.call_args_list, [
+            call("GET", self.file_url), call("POST", self.file_url + "/commit"),
+            call("GET", self.file_url)])
+
     def test_finish_matching_completed_upload_only_reads(self):
         api = Zenodo("fake-token", 23122650)
         with patch.object(api, "request", return_value=self.complete) as request:
@@ -273,7 +292,8 @@ class UploadTests(unittest.TestCase):
                 request.assert_called_once_with("GET", self.file_url)
 
     def test_finish_never_accepts_pending_or_corrupted_content(self):
-        for entry in (self.pending, dict(self.complete, checksum="md5:corrupted")):
+        for entry in (self.pending, dict(self.complete, checksum="md5:corrupted"),
+                      dict(self.complete, size=0)):
             with self.subTest(entry=entry):
                 api = Zenodo("fake-token", 23122650)
                 with patch.object(api, "request", side_effect=[
