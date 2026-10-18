@@ -51,7 +51,9 @@ jobs:
           cmake --build build --target test-core-domain-memory-partitioning
           ctest --test-dir build -R '^core-domain-memory-partitioning$' --output-on-failure
       - name: Check concurrent analysis and evidence
-        run: ctest --test-dir build -L concurrency --output-on-failure --output-junit "$RUNNER_TEMP/concurrency.xml"
+        run: |
+          cmake --build build --target build-analyzer-tests
+          ctest --test-dir build -L concurrency --output-on-failure --output-junit "$RUNNER_TEMP/concurrency.xml"
       - name: Report failed concurrency tests
         if: failure()
         run: |
@@ -63,7 +65,9 @@ jobs:
           report = Path(os.environ["RUNNER_TEMP"]) / "concurrency.xml"
           if report.is_file():
               for case in ET.parse(report).iter("testcase"):
-                  if case.find("failure") is None:
+                  if (case.find("failure") is None
+                          and case.find("error") is None
+                          and case.attrib.get("status") != "notrun"):
                       continue
                   output = case.findtext("system-out", "")
                   output = output[:2000] + output[2000:][-6000:]
