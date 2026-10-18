@@ -333,6 +333,10 @@ thread completion, or race freedom; subsequent analyses retain those duties.
 
 For the benchmark runner and competition wrapper, `--try-inline-allocators`
 instead keeps the original conclusive result and retries only a valid UNKNOWN.
+It first requests a read-only frontend inventory and skips the retry when no
+eligible direct constructor call exists. The inventory reuses the inlining
+predicate, does not change the LLVM module, and grants no safety or race proof.
+Missing or malformed inventory for UNKNOWN is an execution error.
 The second analysis uses its own report and must pass the same checks. Missing
 reports, crashes, and inconsistent verdicts remain errors. This mode avoids
 replacing existing proofs when a different LLVM representation loses precision.

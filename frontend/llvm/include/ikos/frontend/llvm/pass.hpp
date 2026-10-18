@@ -45,6 +45,7 @@
 
 #include <llvm/Pass.h>
 #include <llvm/PassRegistry.h>
+#include <llvm/Support/raw_ostream.h>
 
 namespace ikos {
 namespace frontend {
@@ -63,6 +64,8 @@ llvm::ModulePass* create_mark_internal_inline_pass();
 
 /// \brief Inline direct calls to bounded straight-line allocation constructors
 llvm::ModulePass* create_inline_allocator_wrappers_pass();
+/// \brief Report eligible direct constructor calls without changing the module
+llvm::ModulePass* create_allocator_inventory_pass(llvm::raw_ostream& output);
 
 /// \brief Name all unnamed values
 llvm::ModulePass* create_name_values_pass();

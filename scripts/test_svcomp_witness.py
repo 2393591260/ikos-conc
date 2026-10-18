@@ -478,7 +478,7 @@ class WitnessTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             wrapper.first_race({})
 
-    def run_wrapper(self, mode, pair=None, out=None, extra_options=()):
+    def run_wrapper(self, mode, pair=None, out=None, extra_options=(), inventory=1):
         fake = self.folder / "fake-ikos"
         fake.write_text(r"""#!/usr/bin/env python3
 import json, os, pathlib, sys
@@ -489,6 +489,11 @@ pathlib.Path(os.environ["FAKE_ARGV"]).write_text(json.dumps(sys.argv[1:]))
 with pathlib.Path(os.environ["FAKE_ARGV"] + '.calls').open('a') as calls:
  calls.write(json.dumps(sys.argv[1:]) + '\n')
 for p in (db,db+"-wal",db+"-shm"): pathlib.Path(p).write_text("temp")
+for arg in sys.argv:
+ if arg.startswith('--allocator-inventory='):
+  value = json.loads(os.environ['FAKE_INVENTORY'])
+  if value is not None:
+   pathlib.Path(arg.split('=', 1)[1]).write_text(json.dumps({'schema': 1, 'eligible_calls': value}))
 mode = os.environ["FAKE_MODE"]
 if mode.startswith('refine-'):
  mode = mode[len('refine-'):] if '--inline-allocators' in sys.argv else 'unknown'
@@ -537,6 +542,7 @@ sys.exit(3 if mode == "crash" else 0)
         env = dict(
             os.environ,
             FAKE_MODE=mode,
+            FAKE_INVENTORY=json.dumps(inventory),
             FAKE_REPORT=str(report),
             FAKE_PATHS=str(paths),
             FAKE_ARGV=str(self.folder / "analyzer-arguments.json"),
@@ -593,6 +599,25 @@ sys.exit(3 if mode == "crash" else 0)
                 if mode == 'refine-safe':
                     self.assertNotIn('The program is UNKNOWN', proc.stdout)
                     self.assertIn('The program is SAFE', proc.stdout)
+                self.assertFalse(out.exists())
+
+    def test_no_constructor_skips_refinement(self):
+        proc, out = self.run_wrapper("unknown", inventory=0,
+                                    extra_options=("--try-inline-allocators",))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout.strip(), 'The program is UNKNOWN')
+        self.assertEqual(len((self.folder / 'analyzer-arguments.json.calls').read_text().splitlines()), 1)
+        self.assertFalse(out.exists())
+
+    def test_invalid_constructor_inventory_is_error(self):
+        for value in (None, -1, True, "1", {}):
+            with self.subTest(value=value):
+                calls = self.folder / 'analyzer-arguments.json.calls'
+                calls.unlink(missing_ok=True)
+                proc, out = self.run_wrapper("unknown", inventory=value,
+                                            extra_options=("--try-inline-allocators",))
+                self.assertNotEqual(proc.returncode, 0)
+                self.assertEqual(len(calls.read_text().splitlines()), 1)
                 self.assertFalse(out.exists())
 
     def test_refinement_failure_and_malformed_output_remain_errors(self):

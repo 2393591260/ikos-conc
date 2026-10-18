@@ -172,6 +172,42 @@ bool allocator_wrapper(Function& f) {
   return allocation && observed.size() == f.arg_size();
 }
 
+std::vector< CallInst* > allocator_calls(Module& m, bool local_only) {
+  std::vector< CallInst* > calls;
+  for (Function& f : m) {
+    if ((local_only && !f.hasLocalLinkage()) || !allocator_wrapper(f))
+      continue;
+    for (auto* use : f.users()) {
+      auto* call = dyn_cast< CallInst >(use);
+      if (call && call->getCalledFunction() == &f &&
+          !call->hasOperandBundles() &&
+          call->getCallingConv() == CallingConv::C &&
+          call->getFunctionType() == f.getFunctionType())
+        calls.push_back(call);
+    }
+  }
+  return calls;
+}
+
+struct AllocatorInventoryPass final : public ModulePass {
+  static char ID;
+  raw_ostream& Output;
+
+  explicit AllocatorInventoryPass(raw_ostream& output)
+      : ModulePass(ID), Output(output) {}
+
+  void getAnalysisUsage(AnalysisUsage& usage) const override {
+    usage.setPreservesAll();
+  }
+
+  bool runOnModule(Module& m) override {
+    // External definitions may become local in the optional second analysis.
+    Output << "{\"schema\":1,\"eligible_calls\":"
+           << allocator_calls(m, false).size() << "}\n";
+    return false;
+  }
+};
+
 struct MarkInternalInlinePass final : public ModulePass {
   static char ID; // Pass identification
   bool AllocatorsOnly;
@@ -187,19 +223,7 @@ struct MarkInternalInlinePass final : public ModulePass {
   bool runOnModule(Module& m) override {
     bool change = false;
     if (AllocatorsOnly) {
-      std::vector< CallInst* > calls;
-      for (Function& f : m) {
-        if (!f.hasLocalLinkage() || !allocator_wrapper(f))
-          continue;
-        for (auto* use : f.users()) {
-          auto* call = dyn_cast< CallInst >(use);
-          if (call && call->getCalledFunction() == &f &&
-              !call->hasOperandBundles() &&
-              call->getCallingConv() == CallingConv::C &&
-              call->getFunctionType() == f.getFunctionType())
-            calls.push_back(call);
-        }
-      }
+      auto calls = allocator_calls(m, true);
       for (auto* call : calls) {
         InlineFunctionInfo info;
         change |= InlineFunction(*call, info).isSuccess();
@@ -221,6 +245,7 @@ struct MarkInternalInlinePass final : public ModulePass {
 } // end anonymous namespace
 
 char MarkInternalInlinePass::ID = 0;
+char AllocatorInventoryPass::ID = 0;
 
 INITIALIZE_PASS(MarkInternalInlinePass,
                 "mark-internal-inline",
@@ -234,4 +259,9 @@ ModulePass* ikos::frontend::pass::create_mark_internal_inline_pass() {
 
 ModulePass* ikos::frontend::pass::create_inline_allocator_wrappers_pass() {
   return new MarkInternalInlinePass(true);
+}
+
+ModulePass* ikos::frontend::pass::create_allocator_inventory_pass(
+    llvm::raw_ostream& output) {
+  return new AllocatorInventoryPass(output);
 }

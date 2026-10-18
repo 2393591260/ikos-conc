@@ -118,6 +118,10 @@ def run_one(src: Path, ikos: Path, timeout_sec: int, out_db: Path, concurrency: 
     machine = ["-m", "32" if data_model == "ILP32" else "64"]
     demote = ["--demote-race-to-unknown"] if demote_races else []
     options = []
+    inventory = out_db.with_name(out_db.name + '.allocators.json')
+    if try_inline_allocators:
+        inventory.unlink(missing_ok=True)
+        options.append('--allocator-inventory=' + str(inventory))
     if inline_allocators:
         options.append("--inline-allocators")
     if partitioning is not None:
@@ -188,6 +192,18 @@ def run_one(src: Path, ikos: Path, timeout_sec: int, out_db: Path, concurrency: 
             raise OSError('invalid initial refinement evidence: ' + str(error)) from error
         if file_sha256(src) != source_hash:
             raise OSError("source changed before allocator refinement")
+        try:
+            candidates = json.loads(inventory.read_text())
+            count = candidates['eligible_calls']
+            if (type(candidates.get('schema')) is not int or candidates['schema'] != 1 or
+                    type(count) is not int or count < 0):
+                raise ValueError('invalid constructor count')
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            raise OSError('invalid allocator inventory: ' + str(error)) from error
+        if attempts is not None:
+            attempts[-1]['allocator_candidates'] = count
+        if count == 0:
+            return verdict, time.perf_counter() - start
         # A failed second attempt must not leave evidence from the first one.
         for path in (out_db, report_path):
             if path is not None:
@@ -444,6 +460,8 @@ def main(argv) -> int:
                     record["analysis_attempts"] = attempts
             except OSError as exc:
                 record.update(verdict="Error (runner)", runner_error=str(exc))
+            finally:
+                database_path.with_name(database_path.name + '.allocators.json').unlink(missing_ok=True)
         return record
 
     exit_code = 0

@@ -27,6 +27,10 @@ if '--inline-allocators' in sys.argv:
     config.update(config.get('refinement', {}))
 with source.with_suffix('.calls').open('a') as stream:
     stream.write(json.dumps(sys.argv[1:]) + '\\n')
+for arg in sys.argv:
+    if arg.startswith('--allocator-inventory=') and config.get('inventory', 1) is not None:
+        pathlib.Path(arg.split('=', 1)[1]).write_text(json.dumps(
+            {'schema': 1, 'eligible_calls': config.get('inventory', 1)}))
 database = pathlib.Path(sys.argv[sys.argv.index('-o') + 1])
 if config.get('database', True):
     if config.get('sqlite'):
@@ -189,6 +193,26 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertNotIn('--inline-allocators', calls[0])
         self.assertIn('--inline-allocators', calls[1])
+
+    def test_no_constructor_skips_refinement(self):
+        source = self.task(expected="true", output="The program is UNKNOWN",
+                           report={"reports": []}, inventory=0)
+        code, summary, rows = self.run_evidence("--try-inline-allocators")
+        self.assertEqual(code, 0)
+        self.assertEqual(rows[0]['verdict'], 'Unknown')
+        self.assertEqual(len(rows[0]['analysis_attempts']), 1)
+        self.assertEqual(rows[0]['analysis_attempts'][0]['allocator_candidates'], 0)
+        self.assertEqual(len(source.with_suffix('.calls').read_text().splitlines()), 1)
+
+    def test_invalid_constructor_inventory_is_error(self):
+        for value in (None, -1, True, "1", {}):
+            with self.subTest(value=value):
+                source = self.task(str(value), output="The program is UNKNOWN",
+                                   report={"reports": []}, inventory=value)
+        code, summary, rows = self.run_evidence("--try-inline-allocators")
+        self.assertEqual(code, 0)
+        self.assertEqual(summary['counts']['err'], 5)
+        self.assertTrue(all('invalid allocator inventory' in row['runner_error'] for row in rows))
 
     def test_conclusive_results_and_errors_are_not_refined(self):
         sources = [self.task("safe", expected="true", output="The program is SAFE", report={"reports": []}),

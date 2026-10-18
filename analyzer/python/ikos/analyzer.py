@@ -316,6 +316,7 @@ def parse_arguments(argv):
     inlining.add_argument('--inline-allocators',
                             help='Inline bounded allocation constructors only',
                             action='store_true', default=False)
+    preprocess.add_argument('--allocator-inventory', help=argparse.SUPPRESS)
     preprocess.add_argument('--no-bc-verify',
                             dest='no_bc_verify',
                             help='Do not run the LLVM bitcode verifier',
@@ -750,7 +751,7 @@ def clang(
 
 
 def ikos_pp(pp_path, bc_path, entry_points, opt_level, inline_all, verify,
-            freeze_undef=False, inline_allocators=False):
+            freeze_undef=False, inline_allocators=False, allocator_inventory=None):
     if opt_level == 'aggressive':
         log.warning('Using aggressive optimizations is not recommended')
         log.warning('The translation from LLVM bitcode to AR might fail')
@@ -763,6 +764,8 @@ def ikos_pp(pp_path, bc_path, entry_points, opt_level, inline_all, verify,
         cmd.append('-inline-all')
     if inline_allocators:
         cmd.append('-inline-allocators')
+    if allocator_inventory is not None:
+        cmd.append('-allocator-inventory=' + allocator_inventory)
 
     # Race detection needs uninitialized reads modeled as a nondet value, not
     # `undef` (which the analyzer would treat as a dead path — hiding races).
@@ -1065,7 +1068,8 @@ def main(argv):
             ikos_pp(pp_path, input_path,
                     opt.entry_points, opt.opt_level,
                     opt.inline_all, not opt.no_bc_verify,
-                    'race' in opt.analyses, opt.inline_allocators)
+                    'race' in opt.analyses, opt.inline_allocators,
+                    opt.allocator_inventory)
     except subprocess.CalledProcessError as e:
         printf('%s: error while preprocessing llvm bitcode, abort.\n',
                progname, file=sys.stderr)

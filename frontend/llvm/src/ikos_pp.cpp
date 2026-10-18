@@ -96,6 +96,10 @@ static llvm::cl::opt< bool > InlineAll("inline-all",
 static llvm::cl::opt< bool > InlineAllocators(
     "inline-allocators", llvm::cl::desc("Inline bounded allocation constructors"));
 
+static llvm::cl::opt< std::string > AllocatorInventory(
+    "allocator-inventory", llvm::cl::desc("Write constructor candidate inventory"),
+    llvm::cl::Hidden);
+
 static llvm::cl::opt< bool > NoVerify(
     "no-verify", llvm::cl::desc("Do not run the LLVM bitcode verifier"));
 
@@ -251,6 +255,16 @@ int main(int argc, char** argv) {
   /*
    * Build a PassManager
    */
+
+  std::unique_ptr< llvm::ToolOutputFile > inventory;
+  if (!AllocatorInventory.empty()) {
+    inventory = std::make_unique< llvm::ToolOutputFile >(
+        AllocatorInventory, ec, llvm::sys::fs::OF_None);
+    if (ec) {
+      llvm::errs() << progname << ": " << ec.message() << '\n';
+      return 1;
+    }
+  }
 
   llvm::legacy::PassManager pass_manager;
 
@@ -477,6 +491,9 @@ int main(int argc, char** argv) {
   // (otherwise A/F/B[i] alias one DynAlloc and false-race). Runs AFTER the
   // opt-level passes (so basic's mem2reg already SSA'd the bodies) but BEFORE
   // the output pass.
+  if (inventory) {
+    pass_manager.add(ikos_pp::create_allocator_inventory_pass(inventory->os()));
+  }
   if (InlineAll || InlineAllocators) {
     llvm::StringSet<> exclude_set;
     if (EntryPoints.empty()) {
@@ -527,6 +544,14 @@ int main(int argc, char** argv) {
   // Run all the passes
   pass_manager.run(*module);
 
+  if (inventory) {
+    inventory->os().flush();
+    if (inventory->os().has_error()) {
+      llvm::errs() << progname << ": cannot write allocator inventory\n";
+      return 1;
+    }
+    inventory->keep();
+  }
   output->keep();
 
   return 0;

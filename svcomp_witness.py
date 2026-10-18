@@ -584,6 +584,7 @@ def main():
         with tempfile.TemporaryDirectory(prefix="ikos-race-") as temp:
             report = os.path.join(temp, "report.json")
             db = os.path.join(temp, "output.db")
+            inventory = os.path.join(temp, "allocators.json")
             budget_options = [
                 "{}={}".format(name, value)
                 for name, value in (
@@ -606,6 +607,8 @@ def main():
                         "--partitioning=guards",
                         "--demote-race-to-unknown",
                         *(["--inline-allocators"] if inline else []),
+                        *(["--allocator-inventory=" + inventory]
+                          if args.try_inline_allocators and not inline else []),
                         *budget_options,
                         "-m",
                         "32" if args.data_model == "ILP32" else "64",
@@ -637,6 +640,14 @@ def main():
                         "verdict and confirmed race report disagree")
                 if not (args.try_inline_allocators and not inline and
                         verdict in {"The program is potentially UNSAFE", "The program is UNKNOWN"}):
+                    break
+                with open(inventory, encoding="utf-8") as f:
+                    candidates = json.load(f)
+                count = candidates['eligible_calls']
+                require(type(candidates.get('schema')) is int and candidates['schema'] == 1 and
+                        type(count) is int and count >= 0,
+                        'invalid allocator inventory')
+                if count == 0:
                     break
                 sys.stderr.write(proc.stderr)
                 sys.stderr.write("[ikos-conc] Inconclusive analysis; trying allocation constructors.\n")

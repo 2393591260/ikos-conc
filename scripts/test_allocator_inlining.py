@@ -68,6 +68,15 @@ define i32 @main() {
             text = text.replace('declare i8* @malloc(i32)',
                                 'define i8* @malloc(i32 %bytes) { ret i8* null }')
         source.write_text(text)
+        inventory = work / 'inventory.json'
+        plain = subprocess.run([str(pp), '-opt=custom', '-S', str(source)],
+                               capture_output=True, text=True, timeout=30)
+        probe = subprocess.run([str(pp), '-opt=custom', '-S',
+                                '-allocator-inventory=' + str(inventory), str(source)],
+                               capture_output=True, text=True, timeout=30)
+        assert plain.returncode == probe.returncode == 0, (name, probe.stderr)
+        assert plain.stdout == probe.stdout, (name, 'inventory changed LLVM')
+        assert json.loads(inventory.read_text()) == {'schema': 1, 'eligible_calls': 2 if accepted else 0}, name
         run = subprocess.run([str(pp), '-opt=custom', '-inline-allocators', '-S', str(source)],
                              capture_output=True, text=True, timeout=30)
         assert run.returncode == 0, (name, run.stderr)
