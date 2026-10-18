@@ -32,7 +32,7 @@ versions:
     required_ubuntu_packages:
       - libc6-dev
       - libc6-dev-i386
-      - lib32gcc-13-dev
+      - lib32gcc-15-dev
       - libgmp10
       - libgmpxx4ldbl
       - libmpfr6
