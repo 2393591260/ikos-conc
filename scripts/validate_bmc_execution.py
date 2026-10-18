@@ -407,9 +407,10 @@ class Replay:
                                 for op in code.get('operands', [])), 'used semaphore result')
             if name == 'sem_init':
                 require(all(t['kind'] == 'integer' and t['bits'] == 32 for t in types[1:]) and
-                        args[1:] == [0, 1] and thread.instance == 0 and not self.created and
+                        args[1] == 0 and type(args[2]) is int and 0 <= args[2] <= 2147483647 and
+                        thread.instance == 0 and not self.created and
                         pointer[0] not in self.semaphores, 'semaphore initialization')
-                self.semaphores[pointer[0]] = dict(count=1, providers={})
+                self.semaphores[pointer[0]] = dict(count=args[2], providers={})
             else:
                 require(pointer[0] in self.semaphores, 'uninitialized semaphore')
                 state = self.semaphores[pointer[0]]

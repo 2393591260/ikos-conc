@@ -20,8 +20,10 @@ public:
   explicit PosixSemaphore(Context&);
   ~PosixSemaphore();
   ar::GlobalVariable* effect(ar::CallBase*) const;
+  bool has_effects() const;
   bool opaque_handle_call(llvm::CallBase*) const;
   bool allocation_call(llvm::CallBase*) const;
+  // Only initialization with one permit can supply an ownership token.
   const std::vector< Token >& tokens() const;
 };
 void configure_posix_semaphore(Context&);

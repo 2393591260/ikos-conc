@@ -50,9 +50,10 @@ inline bool semaphore_prefix_supported(const std::vector< ExecutionTrace >& trac
       if (event.kind == EvKind::SemaphoreInit) {
         auto* shared = core::dyn_cast< ar::IntegerConstant >(call->argument(1));
         auto* value = core::dyn_cast< ar::IntegerConstant >(call->argument(2));
-        if (credits.count(global) || !shared || !shared->value().is_zero() ||
-            !value || value->value().to_z_number() != 1) return false;
-        credits.emplace(global, 1);
+        if (credits.count(global) || !shared || !shared->value().is_zero() || !value) return false;
+        const auto initial = value->value().to_z_number();
+        if (initial < 0 || initial > 2147483647) return false;
+        credits.emplace(global, initial.to< unsigned >());
       } else {
         auto found = credits.find(global);
         if (found == credits.end()) return false;

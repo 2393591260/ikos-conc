@@ -98,6 +98,7 @@ class PosixSemaphore::Impl {
         (g->getAlign() ? g->getAlign()->value() : module->getDataLayout().getABITypeAlign(type).value()) < 4 ||
         ctx.bundle->data_layout().alloc_size_in_bytes(globals.at(g)->type()->pointee()) != 16) return false;
     llvm::CallBase* init = nullptr;
+    bool binary_permit = false;
     Token token{g, {}}; std::map< ar::CallBase*, ar::GlobalVariable* > candidate;
     std::vector< llvm::Value* > todo{g}; std::set< llvm::Value* > seen;
     while (!todo.empty()) {
@@ -118,8 +119,11 @@ class PosixSemaphore::Impl {
           for (unsigned n = 1; n < 3; ++n) {
             auto* k = llvm::dyn_cast< llvm::ConstantInt >(c->getArgOperand(n));
             auto* ak = dyn_cast< ar::IntegerConstant >(a->argument(n));
-            if (!k || k->getBitWidth() != 32 || k->getZExtValue() != n - 1 ||
-                !ak || ak->value().bit_width() != 32 || ak->value().to_z_number() != n - 1) return false;
+            if (!k || k->getBitWidth() != 32 || !ak || ak->value().bit_width() != 32) return false;
+            const auto value = k->getZExtValue();
+            if ((n == 1 && value != 0) || (n == 2 && value > 2147483647) ||
+                ak->value().to_z_number() != core::ZNumber(value)) return false;
+            if (n == 2) binary_permit = value == 1;
           }
           init = c;
         } else if ((name == "sem_wait" || name == "sem_post") && c->arg_size() == 1)
@@ -135,7 +139,9 @@ class PosixSemaphore::Impl {
       auto* c = llvm::dyn_cast< llvm::CallBase >(&i);
       if (c && !llvm::isa< llvm::DbgInfoIntrinsic >(c) && !pure(c)) return false;
     }
-    effects.insert(candidate.begin(), candidate.end()); tokens.push_back(std::move(token)); return true;
+    effects.insert(candidate.begin(), candidate.end());
+    if (binary_permit) tokens.push_back(std::move(token));
+    return true;
   }
   bool build() {
     if (!ctx.opts.enable_thread_modular || ctx.opts.procedural == Procedural::Intraprocedural ||
@@ -169,7 +175,7 @@ class PosixSemaphore::Impl {
       auto* t = llvm::dyn_cast< llvm::StructType >(item.first->getValueType());
       if (t && t->hasName() && t->getName() == "union.sem_t" && !semaphore(item.first, main)) return false;
     }
-    if (tokens.empty()) return false;
+    if (effects.empty()) return false;
     for (auto& f : *main->getParent()) for (auto& b : f) for (auto& i : b) {
       if (!step()) return false;
       auto* c = llvm::dyn_cast< llvm::CallBase >(&i);
@@ -223,6 +229,7 @@ PosixSemaphore::~PosixSemaphore() = default;
 ar::GlobalVariable* PosixSemaphore::effect(ar::CallBase* c) const {
   auto i = _impl->effects.find(c); return i == _impl->effects.end() ? nullptr : i->second;
 }
+bool PosixSemaphore::has_effects() const { return !_impl->effects.empty(); }
 bool PosixSemaphore::opaque_handle_call(llvm::CallBase* c) const { return _impl->handles.count(c); }
 bool PosixSemaphore::allocation_call(llvm::CallBase* c) const { return _impl->allocations.count(c); }
 const std::vector< PosixSemaphore::Token >& PosixSemaphore::tokens() const { return _impl->tokens; }

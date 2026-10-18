@@ -24,7 +24,7 @@ void update(void) {
 #if CASE == 7
   payload = __VERIFIER_nondet_int();
 #endif
-#if CASE == 6
+#if CASE == 6 || CASE == 20
   sem_post(&permit);
 #endif
 #if CASE == 5
@@ -40,8 +40,24 @@ int main(void) {
 #if CASE == 10
   errno = 0;
 #endif
+#if CASE == 11 || CASE == 19 || CASE == 20
+  sem_init(&permit, 0, 2);
+#elif CASE == 12 || CASE == 13
+  sem_init(&permit, 0, 0);
+#elif CASE == 14
+  sem_init(&permit, 0, 3);
+#elif CASE == 15
+  sem_init(&permit, 0, (unsigned)-1);
+#elif CASE == 16
+  sem_init(&permit, 0, 2147483647);
+#elif CASE == 17
+  if (sem_init(&permit, 0, 2)) abort();
+#elif CASE == 18
+  sem_init(&permit, 1, 2);
+#else
   sem_init(&permit, 0, 1);
-#if CASE == 8
+#endif
+#if CASE == 8 || CASE == 19
   ((unsigned char *)&permit)[0] = 0;
 #endif
   int n = __VERIFIER_nondet_int();
@@ -57,7 +73,7 @@ int main(void) {
   sem_post(&other);
 #elif CASE == 3
   if (n < 0) sem_post(&permit);
-#elif CASE != 1
+#elif CASE != 1 && (CASE < 11 || CASE == 13)
   sem_post(&permit);
 #endif
   for (int i = 0; i < n; ++i) pthread_join(ids[i], 0);

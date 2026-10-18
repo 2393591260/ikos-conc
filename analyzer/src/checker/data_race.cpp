@@ -2416,7 +2416,7 @@ DataRaceChecker::~DataRaceChecker() {
     const bool hint_deferred = pass == 3 && bmc_enabled && group_worker_pairs && !file_confirmed;
     // New completion searches follow all legacy passes in this same file budget.
     const bool completion_deferred = pass < 5 && bmc_enabled && group_completion_pairs && group_result.needs_completion && !file_confirmed;
-    if (group_worker_pairs && this->_ctx.posix_semaphore && !this->_ctx.posix_semaphore->tokens().empty())
+    if (group_worker_pairs && this->_ctx.posix_semaphore && this->_ctx.posix_semaphore->has_effects())
       semaphore_groups.insert(kv.first);
     const bool semaphore_deferred = pass < 6 && bmc_enabled &&
         semaphore_groups.count(kv.first) != 0 && !file_confirmed;

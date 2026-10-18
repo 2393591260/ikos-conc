@@ -50,6 +50,21 @@ def check_providers(program, certificate):
         pass
     else:
         raise AssertionError('second wait consumed a nonexistent permit')
+    for initial in (0, 2, 3, 2147483647):
+        counted = Replay(program, certificate)
+        counted.api('sem_init', [pointer, 0, initial], call('sem_init'), {}, 'startup', 0, main, None)
+        assert counted.semaphores[pointer[0]]['count'] == initial
+        if initial:
+            counted.api('sem_wait', [pointer], call('sem_wait'), {}, 'a', 0, provider, None)
+            assert counted.semaphores[pointer[0]]['count'] == initial - 1
+        if initial == 2147483647:
+            counted.api('sem_post', [pointer], call('sem_post'), {}, 'startup', 1, main, None)
+            try:
+                counted.api('sem_post', [pointer], call('sem_post'), {}, 'startup', 2, main, None)
+            except Reject:
+                pass
+            else:
+                raise AssertionError('semaphore overflow accepted')
 
 
 def check_damage(program, certificate):
@@ -86,7 +101,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='ikos-semaphore-') as tmp:
         work = Path(tmp)
         for wide in (False, True):
-            for case in range(11):
+            for case in range(21):
                 source = work / 'renamed.c'
                 source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') +
                                   body.replace('permit', 'credit').replace('worker', 'entry'))
@@ -99,7 +114,9 @@ def main():
                     env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True, text=True, timeout=35)
                 verdict = classify(proc.stdout + proc.stderr, proc.returncode, False)
                 assert proc.returncode == 0, (case, wide, proc.stdout + proc.stderr)
-                assert (verdict == 'Race Found') == (case in (0, 7)), (case, wide, verdict, proc.stdout + proc.stderr)
+                assert (verdict == 'Race Found') == (case in (0, 7, 11, 14, 16)), (case, wide, verdict, proc.stdout + proc.stderr)
+                if case in (11, 14, 16, 17, 18, 20):
+                    assert verdict != 'Safe', (case, wide, verdict)
                 if case == 7:
                     data = json.loads(report.read_text())
                     groups = [(r['statement_id'], r['info']['memory_location']) for r in data['reports']

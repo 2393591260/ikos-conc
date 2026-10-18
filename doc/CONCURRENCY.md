@@ -345,7 +345,8 @@ attempt (at most two); an external BenchExec CPU limit still covers the whole
 tool invocation. Both refinement and forced inlining are disabled by default.
 
 The BMC also supports a narrow GNU/Linux ILP32 semaphore prefix. It reuses the
-closed library-effect proof, requires a real initialization with one permit,
+closed library-effect proof, requires a real initialization with a constant
+permit count from zero through the GNU semaphore maximum,
 and retains actual main-thread posts before starting the selected workers.
 Every worker wait before the two ordinary targets must fit those existing
 credits; worker posts before the targets, used API results, atomic targets and
@@ -353,6 +354,8 @@ interleaved main/completion traces remain unsupported. Replay executes the
 semaphore calls, checks opaque storage and joins all preceding providers'
 clocks on acquisition. This does not add a safety rule or a general semaphore
 model; unsupported cases remain inconclusive.
+Only initialization with one permit supplies a token to the separate SAFE
+ownership proof. General library-effect coverage does not grant mutual exclusion.
 
 For FM-Tools registration changes, use the official checks through
 `svcomp/check-fm-entry.py --fm-tools /path/to/fm-tools`. It checks LF, formatting,

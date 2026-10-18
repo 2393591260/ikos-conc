@@ -35,6 +35,8 @@ def main():
                 proofs = [r for r in rows if r.get('semaphore_ownership_contract')]
                 positive = case in {0, 6, 15}
                 assert bool(proofs) == positive, (case, wide, proofs, output)
+                if case == 2:
+                    assert any(r.get('semaphore_effect_contract') for r in rows), (case, wide, rows)
                 assert ('The program is SAFE' in output) == (case in {0, 6}), (case, wide, output)
                 print(f'semaphore={case}/wide={wide}: proofs={len(proofs)}', flush=True)
 
