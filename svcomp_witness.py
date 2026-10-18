@@ -534,7 +534,21 @@ def main():
     ap.add_argument("--property", help="SV-COMP property file (no-data-race)")
     ap.add_argument("--data-model", default="ILP32", choices=["LP64", "ILP32"])
     ap.add_argument("--out", default="witness.yml")
+    ap.add_argument(
+        "--bmc-deadline-ms",
+        type=int,
+        help="BMC cooperative deadline in milliseconds (0 disables BMC)",
+    )
+    ap.add_argument(
+        "--bmc-solver-timeout-ms",
+        type=int,
+        help="time limit per SMT query in milliseconds",
+    )
     args = ap.parse_args()
+    if args.bmc_deadline_ms is not None and args.bmc_deadline_ms < 0:
+        ap.error("--bmc-deadline-ms must be non-negative")
+    if args.bmc_solver_timeout_ms is not None and args.bmc_solver_timeout_ms <= 0:
+        ap.error("--bmc-solver-timeout-ms must be positive")
     if not args.version and args.source is None:
         ap.error("a source file is required unless --version is given")
     temporary_witness = None
@@ -565,6 +579,14 @@ def main():
         with tempfile.TemporaryDirectory(prefix="ikos-race-") as temp:
             report = os.path.join(temp, "report.json")
             db = os.path.join(temp, "output.db")
+            budget_options = [
+                "{}={}".format(name, value)
+                for name, value in (
+                    ("--bmc-deadline-ms", args.bmc_deadline_ms),
+                    ("--bmc-solver-timeout-ms", args.bmc_solver_timeout_ms),
+                )
+                if value is not None
+            ]
             proc = subprocess.run(
                 [
                     args.ikos,
@@ -572,6 +594,7 @@ def main():
                     "--concurrency=auto",
                     "--partitioning=guards",
                     "--demote-race-to-unknown",
+                    *budget_options,
                     "-m",
                     "32" if args.data_model == "ILP32" else "64",
                     "--format=json",

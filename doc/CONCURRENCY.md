@@ -257,6 +257,9 @@ those time limits. A zero deadline disables confirmation searches; unresolved
 candidates remain UNKNOWN. The solver timeout must be positive: zero must not
 silently request unlimited Z3 solving.
 
+The competition wrapper `svcomp_witness.py` accepts these same two options and
+forwards explicit values to IKOS. Omitting them preserves the analyzer defaults.
+
 The deadline starts after abstract analysis and is checked cooperatively, so it
 does not hard-limit the whole invocation. The legacy search checks the deadline
 before each path-pair query; auxiliary completion queries also cap their solver

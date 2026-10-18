@@ -478,13 +478,14 @@ class WitnessTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             wrapper.first_race({})
 
-    def run_wrapper(self, mode, pair=None, out=None):
+    def run_wrapper(self, mode, pair=None, out=None, extra_options=()):
         fake = self.folder / "fake-ikos"
         fake.write_text(r"""#!/usr/bin/env python3
 import json, os, pathlib, sys
 report = next(x.split("=",1)[1] for x in sys.argv if x.startswith("--report-file="))
 db = sys.argv[sys.argv.index("-o")+1]
 pathlib.Path(os.environ["FAKE_PATHS"]).write_text(json.dumps([report,db,db+"-wal",db+"-shm"]))
+pathlib.Path(os.environ["FAKE_ARGV"]).write_text(json.dumps(sys.argv[1:]))
 for p in (db,db+"-wal",db+"-shm"): pathlib.Path(p).write_text("temp")
 mode = os.environ["FAKE_MODE"]
 if mode == "changed":
@@ -526,7 +527,11 @@ sys.exit(3 if mode == "crash" else 0)
             out.write_text("obsolete FALSE witness")
         paths = self.folder / "temporary-paths.json"
         env = dict(
-            os.environ, FAKE_MODE=mode, FAKE_REPORT=str(report), FAKE_PATHS=str(paths)
+            os.environ,
+            FAKE_MODE=mode,
+            FAKE_REPORT=str(report),
+            FAKE_PATHS=str(paths),
+            FAKE_ARGV=str(self.folder / "analyzer-arguments.json"),
         )
         proc = subprocess.run(
             [
@@ -537,6 +542,7 @@ sys.exit(3 if mode == "crash" else 0)
                 str(fake),
                 "--out",
                 str(out),
+                *extra_options,
             ],
             env=env,
             text=True,
@@ -548,6 +554,38 @@ sys.exit(3 if mode == "crash" else 0)
             list(self.folder.glob(".ikos-witness-*")), "partial witness survived"
         )
         return proc, out
+
+    def test_default_budgets_inherit_analyzer_settings(self):
+        proc, _ = self.run_wrapper("safe")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        argv = json.loads((self.folder / "analyzer-arguments.json").read_text())
+        self.assertFalse(any(arg.startswith("--bmc-") for arg in argv))
+
+    def test_explicit_budgets_reach_analyzer(self):
+        for deadline in (0, 60000):
+            with self.subTest(deadline=deadline):
+                proc, _ = self.run_wrapper("safe", extra_options=(
+                    "--bmc-deadline-ms", str(deadline),
+                    "--bmc-solver-timeout-ms=3000",
+                ))
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                argv = json.loads((self.folder / "analyzer-arguments.json").read_text())
+                self.assertIn("--bmc-deadline-ms={}".format(deadline), argv)
+                self.assertIn("--bmc-solver-timeout-ms=3000", argv)
+                self.assertEqual(argv[-1], str(self.source))
+
+    def test_invalid_budgets_fail_before_analysis(self):
+        for flag, value in (("--bmc-deadline-ms", "-1"),
+                            ("--bmc-solver-timeout-ms", "0"),
+                            ("--bmc-solver-timeout-ms", "-1")):
+            with self.subTest(flag=flag, value=value):
+                proc = subprocess.run([
+                    sys.executable, str(ROOT / "svcomp_witness.py"),
+                    str(self.source), "--ikos", "absent", flag + "=" + value,
+                ], capture_output=True, text=True)
+                self.assertEqual(proc.returncode, 2)
+                self.assertEqual(proc.stdout, "")
+                self.assertIn(flag + " must be", proc.stderr)
 
     def test_success_writes_witness_before_false(self):
         proc, out = self.run_wrapper("race", self.pair())
