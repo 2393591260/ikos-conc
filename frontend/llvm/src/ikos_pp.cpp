@@ -93,6 +93,9 @@ static llvm::cl::list< std::string > EntryPoints(
 static llvm::cl::opt< bool > InlineAll("inline-all",
                                        llvm::cl::desc("Inline all functions"));
 
+static llvm::cl::opt< bool > InlineAllocators(
+    "inline-allocators", llvm::cl::desc("Inline bounded allocation constructors"));
+
 static llvm::cl::opt< bool > NoVerify(
     "no-verify", llvm::cl::desc("Do not run the LLVM bitcode verifier"));
 
@@ -203,6 +206,10 @@ int main(int argc, char** argv) {
   const char* overview =
       "ikos-pp -- LLVM bitcode Pre-Processor for Static Analysis\n";
   llvm::cl::ParseCommandLineOptions(argc, argv, overview);
+  if (InlineAll && InlineAllocators) {
+    llvm::errs() << "-inline-all and -inline-allocators are mutually exclusive\n";
+    return 1;
+  }
 
   // Error diagnostic
   llvm::SMDiagnostic err;
@@ -470,7 +477,7 @@ int main(int argc, char** argv) {
   // (otherwise A/F/B[i] alias one DynAlloc and false-race). Runs AFTER the
   // opt-level passes (so basic's mem2reg already SSA'd the bodies) but BEFORE
   // the output pass.
-  if (InlineAll) {
+  if (InlineAll || InlineAllocators) {
     llvm::StringSet<> exclude_set;
     if (EntryPoints.empty()) {
       exclude_set.insert("main");
@@ -493,8 +500,12 @@ int main(int argc, char** argv) {
             return false;
           }));
     }
-    pass_manager.add(ikos_pp::create_mark_internal_inline_pass());
-    pass_manager.add(llvm::createAlwaysInlinerLegacyPass());
+    if (InlineAll) {
+      pass_manager.add(ikos_pp::create_mark_internal_inline_pass());
+      pass_manager.add(llvm::createAlwaysInlinerLegacyPass());
+    } else {
+      pass_manager.add(ikos_pp::create_inline_allocator_wrappers_pass());
+    }
     pass_manager.add(llvm::createGlobalDCEPass());
   }
 

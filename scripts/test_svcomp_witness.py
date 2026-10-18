@@ -486,14 +486,22 @@ report = next(x.split("=",1)[1] for x in sys.argv if x.startswith("--report-file
 db = sys.argv[sys.argv.index("-o")+1]
 pathlib.Path(os.environ["FAKE_PATHS"]).write_text(json.dumps([report,db,db+"-wal",db+"-shm"]))
 pathlib.Path(os.environ["FAKE_ARGV"]).write_text(json.dumps(sys.argv[1:]))
+with pathlib.Path(os.environ["FAKE_ARGV"] + '.calls').open('a') as calls:
+ calls.write(json.dumps(sys.argv[1:]) + '\n')
 for p in (db,db+"-wal",db+"-shm"): pathlib.Path(p).write_text("temp")
 mode = os.environ["FAKE_MODE"]
+if mode.startswith('refine-'):
+ mode = mode[len('refine-'):] if '--inline-allocators' in sys.argv else 'unknown'
 if mode == "changed":
  pathlib.Path(sys.argv[-1]).write_text(pathlib.Path(sys.argv[-1]).read_text()+"\n/*changed*/\n")
 if mode == "crash": print("The program is definitely UNSAFE", file=sys.stderr)
 if mode != "missing":
  pathlib.Path(report).write_text("{" if mode == "json" else pathlib.Path(os.environ["FAKE_REPORT"]).read_text())
-if mode == "unknown":
+if mode == "silent":
+    pass
+elif mode == "conflict":
+    print("The program is UNKNOWN\nThe program is SAFE")
+elif mode == "unknown":
     print("The program is UNKNOWN")
 else:
     print("The program is SAFE" if mode in ("safe","json") else "The program is definitely UNSAFE")
@@ -560,6 +568,50 @@ sys.exit(3 if mode == "crash" else 0)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         argv = json.loads((self.folder / "analyzer-arguments.json").read_text())
         self.assertFalse(any(arg.startswith("--bmc-") for arg in argv))
+        self.assertNotIn("--inline-allocators", argv)
+
+    def test_allocator_inlining_reaches_analyzer(self):
+        proc, _ = self.run_wrapper("safe", extra_options=("--inline-allocators",))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        argv = json.loads((self.folder / "analyzer-arguments.json").read_text())
+        self.assertEqual(argv.count("--inline-allocators"), 1)
+        self.assertNotIn("--inline-all", argv)
+        self.assertEqual(argv[-1], str(self.source))
+
+    def test_allocator_refinement_is_unknown_only(self):
+        for mode, expected in (("safe", 1), ("unknown", 2), ("refine-safe", 2)):
+            with self.subTest(mode=mode):
+                calls = self.folder / 'analyzer-arguments.json.calls'
+                calls.unlink(missing_ok=True)
+                proc, out = self.run_wrapper(mode, extra_options=("--try-inline-allocators",))
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                rows = [json.loads(x) for x in calls.read_text().splitlines()]
+                self.assertEqual(len(rows), expected)
+                self.assertNotIn('--inline-allocators', rows[0])
+                if expected == 2:
+                    self.assertIn('--inline-allocators', rows[1])
+                if mode == 'refine-safe':
+                    self.assertNotIn('The program is UNKNOWN', proc.stdout)
+                    self.assertIn('The program is SAFE', proc.stdout)
+                self.assertFalse(out.exists())
+
+    def test_refinement_failure_and_malformed_output_remain_errors(self):
+        for mode, count in (("refine-crash", 2), ("refine-missing", 2),
+                            ("silent", 1), ("conflict", 1), ("crash", 1)):
+            with self.subTest(mode=mode):
+                calls = self.folder / 'analyzer-arguments.json.calls'
+                calls.unlink(missing_ok=True)
+                proc, out = self.run_wrapper(mode, extra_options=("--try-inline-allocators",))
+                self.assertNotEqual(proc.returncode, 0)
+                self.assertEqual(len(calls.read_text().splitlines()), count)
+                self.assertFalse(out.exists())
+
+    def test_inlining_modes_are_mutually_exclusive(self):
+        proc = subprocess.run([sys.executable, str(ROOT / 'svcomp_witness.py'),
+            '--inline-allocators', '--try-inline-allocators', '--version'],
+            capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn('not allowed with argument', proc.stderr)
 
     def test_explicit_budgets_reach_analyzer(self):
         for deadline in (0, 60000):

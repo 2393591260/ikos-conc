@@ -61,6 +61,9 @@ llvm::FunctionPass* create_lower_select_pass();
 /// \brief Mark all internal functions with the AlwaysInline attribute
 llvm::ModulePass* create_mark_internal_inline_pass();
 
+/// \brief Inline direct calls to bounded straight-line allocation constructors
+llvm::ModulePass* create_inline_allocator_wrappers_pass();
+
 /// \brief Name all unnamed values
 llvm::ModulePass* create_name_values_pass();
 

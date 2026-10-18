@@ -23,11 +23,20 @@ import sweep_bmc_execution
 FAKE = '''import json, pathlib, subprocess, sys, time
 source = pathlib.Path(sys.argv[-1])
 config = json.loads(source.read_text())
+if '--inline-allocators' in sys.argv:
+    config.update(config.get('refinement', {}))
 with source.with_suffix('.calls').open('a') as stream:
     stream.write(json.dumps(sys.argv[1:]) + '\\n')
 database = pathlib.Path(sys.argv[sys.argv.index('-o') + 1])
 if config.get('database', True):
-    database.write_text(json.dumps(config.get('report')))
+    if config.get('sqlite'):
+        import sqlite3
+        with sqlite3.connect(database) as db:
+            db.execute('CREATE TABLE checks (info TEXT)')
+            db.executemany('INSERT INTO checks VALUES (?)',
+                [(json.dumps(row['info']),) for row in config['report']['reports']])
+    else:
+        database.write_text(json.dumps(config.get('report')))
 if config.get('database_sidecar'):
     database.with_name(database.name + '-journal').write_text('interrupted transaction')
 if config.get('child'):
@@ -39,6 +48,8 @@ for arg in sys.argv:
     if arg.startswith('--report-file=') and config.get('report') is not None:
         pathlib.Path(arg.split('=', 1)[1]).write_text(json.dumps(config['report']))
 source.with_suffix('.done').touch()
+if config.get('mutate_source'):
+    source.write_text(source.read_text() + ' ')
 print(config.get('output', 'The program is definitely UNSAFE'), flush=True)
 raise SystemExit(config.get('exit', 0))
 '''
@@ -125,6 +136,8 @@ class RunnerTests(unittest.TestCase):
             self.assertIn("--partitioning=guards", command)
             self.assertIn("--bmc-deadline-ms=20000", command)
             self.assertIn("--bmc-solver-timeout-ms=1000", command)
+            self.assertNotIn("--inline-allocators", command)
+            self.assertNotIn("inline_allocators", summary["options"])
             self.assertIn("--format=json", command)
             self.assertFalse(Path(command[command.index("-o") + 1]).parent.exists())
             self.assertEqual(row["executions"][0]["group"], 1)
@@ -145,6 +158,111 @@ class RunnerTests(unittest.TestCase):
         self.assertFalse(summary["execution_checks_passed"])
         self.assertEqual(results[0]["report_status"], "missing")
         self.assertEqual(len(source.with_suffix(".calls").read_text().splitlines()), 1)
+
+    def test_inline_configuration_does_not_change_offline_report_command(self):
+        source = self.task(expected="true", output="The program is SAFE", report={"reports": []})
+
+        def export(database, destination, command):
+            self.assertEqual(command, [sys.executable, str(self.fake)])
+            destination.write_text(database.read_text())
+
+        with mock.patch.object(suite, "export_database_report", side_effect=export):
+            code, summary, rows = self.run_evidence("--evidence-source", "database", "--inline-allocators")
+        self.assertEqual(code, 0)
+        self.assertTrue(summary["options"]["inline_allocators"])
+        self.assertEqual(rows[0]["verdict"], "Safe")
+        calls = source.with_suffix(".calls").read_text().splitlines()
+        self.assertEqual(len(calls), 1)
+        command = json.loads(calls[0])
+        self.assertEqual(command.count("--inline-allocators"), 1)
+        self.assertEqual(command[-1], str(source))
+
+    def test_unknown_refinement_records_both_attempts(self):
+        source = self.task(expected="true", output="The program is UNKNOWN", report={"reports": []},
+                           refinement={"output": "The program is SAFE"})
+        code, summary, rows = self.run_evidence("--try-inline-allocators")
+        self.assertEqual(code, 0)
+        self.assertTrue(summary["options"]["try_inline_allocators"])
+        self.assertEqual(rows[0]["verdict"], "Safe")
+        self.assertEqual([x["verdict"] for x in rows[0]["analysis_attempts"]], ["Unknown", "Safe"])
+        calls = [json.loads(x) for x in source.with_suffix('.calls').read_text().splitlines()]
+        self.assertEqual(len(calls), 2)
+        self.assertNotIn('--inline-allocators', calls[0])
+        self.assertIn('--inline-allocators', calls[1])
+
+    def test_conclusive_results_and_errors_are_not_refined(self):
+        sources = [self.task("safe", expected="true", output="The program is SAFE", report={"reports": []}),
+                   self.task("race", report=self.selected_report()),
+                   self.task("error", output="The program is UNKNOWN", exit=2)]
+        with mock.patch.object(sweep_bmc_execution, "validate_report", return_value=[{"group": 0, "status": "ACCEPT"}]):
+            code, summary, rows = self.run_evidence("--try-inline-allocators")
+        self.assertEqual(code, 0)
+        self.assertEqual(summary['counts']['err'], 1)
+        for source in sources:
+            self.assertEqual(len(source.with_suffix('.calls').read_text().splitlines()), 1)
+
+    def test_refinement_does_not_hide_missing_or_conflicting_initial_evidence(self):
+        first = self.task("missing", output="The program is UNKNOWN", database=False)
+        second = self.task("conflict", output="The program is UNKNOWN", report=self.selected_report())
+        code, summary, rows = self.run_evidence("--try-inline-allocators")
+        self.assertEqual(code, 0)
+        self.assertEqual(summary['counts']['err'], 2)
+        for source in (first, second):
+            self.assertEqual(len(source.with_suffix('.calls').read_text().splitlines()), 1)
+        self.assertTrue(all(row['executions'] == [] for row in rows))
+
+    def test_refinement_failure_does_not_reuse_initial_report(self):
+        source = self.task(output="The program is UNKNOWN", report={"reports": []},
+                           refinement={"output": "The program is SAFE", "report": None, "exit": 2})
+        code, summary, rows = self.run_evidence("--try-inline-allocators")
+        self.assertEqual(code, 0)
+        self.assertEqual(summary['counts']['err'], 1)
+        self.assertEqual(rows[0]['executions'], [])
+        self.assertEqual(len(source.with_suffix('.calls').read_text().splitlines()), 2)
+
+    def test_refinement_rejects_source_mutation(self):
+        source = self.task(output="The program is UNKNOWN", report={"reports": []}, mutate_source=True)
+        code, summary, rows = self.run_evidence("--try-inline-allocators")
+        self.assertEqual(code, 2)
+        self.assertEqual(summary['counts']['err'], 1)
+        self.assertIn('source changed', rows[0]['runner_error'])
+        self.assertEqual(len(source.with_suffix('.calls').read_text().splitlines()), 1)
+
+    def test_database_refinement_keeps_only_selected_attempt_report(self):
+        source = self.task(expected="true", output="The program is UNKNOWN", sqlite=True,
+                           report={"reports": [{"info": {"origin": "initial"}}]},
+                           refinement={"output": "The program is SAFE", "report": {"reports": []}})
+
+        def export(database, destination, command):
+            import sqlite3
+            with sqlite3.connect(database) as db:
+                rows = [{"info": json.loads(r[0])} for r in db.execute('SELECT info FROM checks')]
+            self.assertEqual(rows, [])
+            destination.write_text(json.dumps({"reports": rows}))
+
+        with mock.patch.object(suite, 'export_database_report', side_effect=export):
+            code, summary, rows = self.run_evidence('--evidence-source', 'database', '--try-inline-allocators')
+        self.assertEqual(code, 0)
+        self.assertTrue(summary['reports_complete'])
+        self.assertEqual(rows[0]['verdict'], 'Safe')
+        self.assertEqual(len(source.with_suffix('.calls').read_text().splitlines()), 2)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX process groups")
+    def test_refinement_timeout_stops_second_attempt_child(self):
+        source = self.task(output='The program is UNKNOWN', report={'reports': []},
+                           refinement={'child': True})
+        report = self.root / 'report.json'
+        attempts = []
+        verdict, elapsed = suite.run_one(source, self.fake, 0.3, self.root / 'output.db',
+            'auto', 'ILP32', True, report_path=report, try_inline_allocators=True,
+            attempts=attempts, command=[sys.executable, str(self.fake)])
+        self.assertEqual(verdict, 'Error (timeout)')
+        self.assertEqual(len(attempts), 2)
+        self.assertLess(elapsed, 2)
+        self.assertFalse(report.exists())
+        pid = int(source.with_suffix('.child').read_text())
+        self.addCleanup(self.kill_if_live, pid)
+        self.assert_process_stopped(pid)
 
     def test_database_capture_is_offline_and_uses_same_invocation(self):
         report = self.selected_report()

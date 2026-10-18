@@ -534,6 +534,11 @@ def main():
     ap.add_argument("--property", help="SV-COMP property file (no-data-race)")
     ap.add_argument("--data-model", default="ILP32", choices=["LP64", "ILP32"])
     ap.add_argument("--out", default="witness.yml")
+    inlining = ap.add_mutually_exclusive_group()
+    inlining.add_argument("--inline-allocators", action="store_true",
+                         help="expand bounded allocation constructors before analysis")
+    inlining.add_argument("--try-inline-allocators", action="store_true",
+                         help="retry an inconclusive analysis with constructor inlining")
     ap.add_argument(
         "--bmc-deadline-ms",
         type=int,
@@ -587,42 +592,54 @@ def main():
                 )
                 if value is not None
             ]
-            proc = subprocess.run(
-                [
-                    args.ikos,
-                    "--analyses=race",
-                    "--concurrency=auto",
-                    "--partitioning=guards",
-                    "--demote-race-to-unknown",
-                    *budget_options,
-                    "-m",
-                    "32" if args.data_model == "ILP32" else "64",
-                    "--format=json",
-                    "--report-file=" + report,
-                    "-o",
-                    db,
-                    args.source,
-                ],
-                capture_output=True,
-                text=True,
-                env=dict(os.environ, IKOS_BMC_RECOVER="1"),
-            )
-            require(
-                proc.returncode == 0, "IKOS failed (exit {})".format(proc.returncode)
-            )
-            with open(report, encoding="utf-8") as f:
-                data = json.load(f)
-            with open(args.source, "rb") as f:
-                require(
-                    hashlib.sha256(f.read()).digest() == source_hash,
-                    "source changed during analysis",
+            modes = [False, True] if args.try_inline_allocators else [args.inline_allocators]
+            for inline in modes:
+                try:
+                    os.remove(report)
+                except FileNotFoundError:
+                    pass
+                proc = subprocess.run(
+                    [
+                        args.ikos,
+                        "--analyses=race",
+                        "--concurrency=auto",
+                        "--partitioning=guards",
+                        "--demote-race-to-unknown",
+                        *(["--inline-allocators"] if inline else []),
+                        *budget_options,
+                        "-m",
+                        "32" if args.data_model == "ILP32" else "64",
+                        "--format=json",
+                        "--report-file=" + report,
+                        "-o",
+                        db,
+                        args.source,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    env=dict(os.environ, IKOS_BMC_RECOVER="1"),
                 )
-            info = first_race(data)
-            confirmed = "The program is definitely UNSAFE" in proc.stdout
-            require(
-                confirmed == (info is not None),
-                "verdict and confirmed race report disagree",
-            )
+                require(proc.returncode == 0, "IKOS failed (exit {})".format(proc.returncode))
+                with open(report, encoding="utf-8") as f:
+                    data = json.load(f)
+                with open(args.source, "rb") as f:
+                    require(hashlib.sha256(f.read()).digest() == source_hash,
+                            "source changed during analysis")
+                info = first_race(data)
+                verdicts = {line.strip() for line in proc.stdout.splitlines()
+                            if line.strip() in {"The program is SAFE",
+                                                "The program is definitely UNSAFE",
+                                                "The program is potentially UNSAFE",
+                                                "The program is UNKNOWN"}}
+                require(len(verdicts) == 1, "missing or conflicting analyzer verdict")
+                verdict = next(iter(verdicts))
+                require((verdict == "The program is definitely UNSAFE") == (info is not None),
+                        "verdict and confirmed race report disagree")
+                if not (args.try_inline_allocators and not inline and
+                        verdict in {"The program is potentially UNSAFE", "The program is UNKNOWN"}):
+                    break
+                sys.stderr.write(proc.stderr)
+                sys.stderr.write("[ikos-conc] Inconclusive analysis; trying allocation constructors.\n")
             if info is not None:
                 witness = build_witness(args.source, info, args.data_model, args.ikos)
                 with tempfile.NamedTemporaryFile(

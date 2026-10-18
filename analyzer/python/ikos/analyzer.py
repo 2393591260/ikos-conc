@@ -307,11 +307,15 @@ def parse_arguments(argv):
                                            args.default_opt_level),
                             choices=args.choices(args.opt_levels),
                             default=args.default_opt_level)
-    preprocess.add_argument('--inline-all',
+    inlining = preprocess.add_mutually_exclusive_group()
+    inlining.add_argument('--inline-all',
                             dest='inline_all',
                             help='Front-end inline all functions',
                             action='store_true',
                             default=False)
+    inlining.add_argument('--inline-allocators',
+                            help='Inline bounded allocation constructors only',
+                            action='store_true', default=False)
     preprocess.add_argument('--no-bc-verify',
                             dest='no_bc_verify',
                             help='Do not run the LLVM bitcode verifier',
@@ -746,7 +750,7 @@ def clang(
 
 
 def ikos_pp(pp_path, bc_path, entry_points, opt_level, inline_all, verify,
-            freeze_undef=False):
+            freeze_undef=False, inline_allocators=False):
     if opt_level == 'aggressive':
         log.warning('Using aggressive optimizations is not recommended')
         log.warning('The translation from LLVM bitcode to AR might fail')
@@ -757,6 +761,8 @@ def ikos_pp(pp_path, bc_path, entry_points, opt_level, inline_all, verify,
 
     if inline_all:
         cmd.append('-inline-all')
+    if inline_allocators:
+        cmd.append('-inline-allocators')
 
     # Race detection needs uninitialized reads modeled as a nondet value, not
     # `undef` (which the analyzer would treat as a dead path — hiding races).
@@ -1059,7 +1065,7 @@ def main(argv):
             ikos_pp(pp_path, input_path,
                     opt.entry_points, opt.opt_level,
                     opt.inline_all, not opt.no_bc_verify,
-                    'race' in opt.analyses)
+                    'race' in opt.analyses, opt.inline_allocators)
     except subprocess.CalledProcessError as e:
         printf('%s: error while preprocessing llvm bitcode, abort.\n',
                progname, file=sys.stderr)
@@ -1096,6 +1102,7 @@ def main(argv):
         ('ikos-pp', settings.ikos_pp()),
         ('opt-level', opt.opt_level),
         ('inline-all', json.dumps(opt.inline_all)),
+        ('inline-allocators', json.dumps(opt.inline_allocators)),
         ('use-libc-intrinsics', json.dumps(not opt.no_libc)),
         ('use-libcpp-intrinsics', json.dumps(not opt.no_libcpp)),
         ('use-libikos-intrinsics', json.dumps(not opt.no_libikos)),

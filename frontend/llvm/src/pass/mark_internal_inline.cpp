@@ -41,8 +41,15 @@
  *
  ******************************************************************************/
 
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
+#include <llvm/Transforms/Utils/Cloning.h>
+
+#include <map>
+#include <set>
+#include <vector>
 
 #include <ikos/frontend/llvm/pass.hpp>
 
@@ -51,17 +58,154 @@ using namespace llvm;
 
 namespace {
 
+// Each actual remains observed by a non-overlapping store after inlining.
+bool allocator_wrapper(Function& f) {
+  if (f.isDeclaration() || f.size() != 1 || f.isVarArg() ||
+      f.getCallingConv() != CallingConv::C ||
+      !f.getReturnType()->isPointerTy() || f.hasAddressTaken())
+    return false;
+  const auto& layout = f.getParent()->getDataLayout();
+  const auto bits = layout.getPointerSizeInBits();
+  if (bits != 32 && bits != 64)
+    return false;
+  for (auto& argument : f.args())
+    if (!argument.getType()->isIntegerTy(32) &&
+        !argument.getType()->isIntegerTy(64))
+      return false;
+  std::map< Value*, uint64_t > addresses;
+  std::vector< std::pair< uint64_t, uint64_t > > stores;
+  std::set< Value* > observed;
+  CallInst* allocation = nullptr;
+  uint64_t extent = 0;
+  unsigned budget = 128;
+  for (auto& instruction : f.front()) {
+    if (!budget--)
+      return false;
+    if (isa< DbgInfoIntrinsic >(instruction))
+      continue;
+    if (auto* call = dyn_cast< CallInst >(&instruction)) {
+      auto* target = call->getCalledFunction();
+      if (!target || !target->isDeclaration() || target->isVarArg() ||
+          call->getCallingConv() != CallingConv::C ||
+          target->getCallingConv() != CallingConv::C ||
+          call->hasOperandBundles() ||
+          call->getFunctionType() != target->getFunctionType())
+        return false;
+      if (call->getMetadata("ikos.freeze_uninit") && call->use_empty() &&
+          call->arg_empty() &&
+          ((target->getName() == "__ikos_nondet_int" &&
+            call->getType()->isIntegerTy(32)) ||
+           (target->getName() == "__ikos_nondet_int64" &&
+            call->getType()->isIntegerTy(64))))
+        continue;
+      auto* size = call->arg_size() == 1
+                       ? dyn_cast< ConstantInt >(call->getArgOperand(0))
+                       : nullptr;
+      if (allocation || target->getName() != "malloc" ||
+          target->arg_size() != 1 || !call->getType()->isPointerTy() ||
+          cast< PointerType >(call->getType())->getAddressSpace() != 0 ||
+          !size || !size->getType()->isIntegerTy(bits) || size->isZero() ||
+          size->getValue().ugt(1048576))
+        return false;
+      extent = size->getZExtValue();
+      allocation = call;
+      addresses.emplace(call, 0);
+    } else if (auto* bitcast = dyn_cast< BitCastInst >(&instruction)) {
+      auto source = addresses.find(bitcast->getOperand(0));
+      auto* type = dyn_cast< PointerType >(bitcast->getType());
+      if (source == addresses.end() || !type || type->getAddressSpace())
+        return false;
+      addresses.emplace(bitcast, source->second);
+    } else if (auto* gep = dyn_cast< GetElementPtrInst >(&instruction)) {
+      auto source = addresses.find(gep->getPointerOperand());
+      auto* type = dyn_cast< StructType >(gep->getSourceElementType());
+      auto* zero = gep->getNumIndices() == 2
+                       ? dyn_cast< ConstantInt >(gep->getOperand(1))
+                       : nullptr;
+      auto* field = gep->getNumIndices() == 2
+                        ? dyn_cast< ConstantInt >(gep->getOperand(2))
+                        : nullptr;
+      if (source == addresses.end() || !gep->isInBounds() || !type ||
+          !type->isSized() || !zero || !zero->isZero() || !field ||
+          field->getValue().uge(type->getNumElements()))
+        return false;
+      const auto offset =
+          layout.getStructLayout(type)->getElementOffset(field->getZExtValue());
+      if (offset > extent || source->second > extent - offset)
+        return false;
+      addresses.emplace(gep, source->second + offset);
+    } else if (auto* store = dyn_cast< StoreInst >(&instruction)) {
+      auto address = addresses.find(store->getPointerOperand());
+      auto* value = store->getValueOperand();
+      const bool formal =
+          isa< Argument >(value) && cast< Argument >(value)->getParent() == &f;
+      if (store->isAtomic() || store->isVolatile() ||
+          address == addresses.end() ||
+          (!formal && !isa< ConstantInt >(value) &&
+           !isa< ConstantPointerNull >(value)))
+        return false;
+      if (auto* integer = dyn_cast< IntegerType >(value->getType()))
+        if (integer->getBitWidth() > 64)
+          return false;
+      auto size = layout.getTypeStoreSize(value->getType());
+      if (size.isScalable() || size.getFixedValue() == 0 ||
+          address->second > extent ||
+          size.getFixedValue() > extent - address->second ||
+          store->getAlign() > layout.getABITypeAlign(value->getType()) ||
+          address->second % store->getAlign().value())
+        return false;
+      const auto end = address->second + size.getFixedValue();
+      for (const auto& old : stores)
+        if (address->second < old.second && old.first < end)
+          return false;
+      stores.emplace_back(address->second, end);
+      if (formal)
+        observed.insert(value);
+    } else if (auto* ret = dyn_cast< ReturnInst >(&instruction)) {
+      auto pointer = addresses.find(ret->getReturnValue());
+      if (!allocation || pointer == addresses.end() || pointer->second != 0)
+        return false;
+    } else {
+      return false;
+    }
+  }
+  return allocation && observed.size() == f.arg_size();
+}
+
 struct MarkInternalInlinePass final : public ModulePass {
   static char ID; // Pass identification
+  bool AllocatorsOnly;
 
-  MarkInternalInlinePass() : ModulePass(ID) {}
+  explicit MarkInternalInlinePass(bool allocators_only = false)
+      : ModulePass(ID), AllocatorsOnly(allocators_only) {}
 
   void getAnalysisUsage(AnalysisUsage& AU) const override {
-    AU.setPreservesAll();
+    if (!AllocatorsOnly)
+      AU.setPreservesAll();
   }
 
   bool runOnModule(Module& m) override {
     bool change = false;
+    if (AllocatorsOnly) {
+      std::vector< CallInst* > calls;
+      for (Function& f : m) {
+        if (!f.hasLocalLinkage() || !allocator_wrapper(f))
+          continue;
+        for (auto* use : f.users()) {
+          auto* call = dyn_cast< CallInst >(use);
+          if (call && call->getCalledFunction() == &f &&
+              !call->hasOperandBundles() &&
+              call->getCallingConv() == CallingConv::C &&
+              call->getFunctionType() == f.getFunctionType())
+            calls.push_back(call);
+        }
+      }
+      for (auto* call : calls) {
+        InlineFunctionInfo info;
+        change |= InlineFunction(*call, info).isSuccess();
+      }
+      return change;
+    }
     for (Function& f : m) {
       if (!f.isDeclaration() && f.hasLocalLinkage()) {
         f.removeFnAttr(Attribute::NoInline);
@@ -86,4 +230,8 @@ INITIALIZE_PASS(MarkInternalInlinePass,
 
 ModulePass* ikos::frontend::pass::create_mark_internal_inline_pass() {
   return new MarkInternalInlinePass();
+}
+
+ModulePass* ikos::frontend::pass::create_inline_allocator_wrappers_pass() {
+  return new MarkInternalInlinePass(true);
 }

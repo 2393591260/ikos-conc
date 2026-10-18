@@ -22,12 +22,14 @@ import json
 import os
 import re
 import signal
+import sqlite3
 import subprocess
 import sys
 import tempfile
 import time
 import threading
 from collections import Counter
+from contextlib import closing
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -106,14 +108,18 @@ def classify(output: str, returncode: int, timed_out: bool) -> str:
 def run_one(src: Path, ikos: Path, timeout_sec: int, out_db: Path, concurrency: str,
             data_model: str, demote_races: bool, *, report_path=None,
             bmc_deadline_ms=None, bmc_solver_timeout_ms=None, command=None,
-            cancel_event=None, partitioning=None):
+            cancel_event=None, partitioning=None, inline_allocators=False,
+            try_inline_allocators=False, attempts=None):
     start = time.perf_counter()
+    source_hash = file_sha256(src) if try_inline_allocators else None
     timed_out = False
     returncode = -1
     out = ""
     machine = ["-m", "32" if data_model == "ILP32" else "64"]
     demote = ["--demote-race-to-unknown"] if demote_races else []
     options = []
+    if inline_allocators:
+        options.append("--inline-allocators")
     if partitioning is not None:
         options.append("--partitioning=" + partitioning)
     if report_path is not None:
@@ -162,7 +168,41 @@ def run_one(src: Path, ikos: Path, timeout_sec: int, out_db: Path, concurrency: 
     out = stdout.decode(errors="replace") + stderr.decode(errors="replace")
     if cancelled:
         return "Error (cancelled)", time.perf_counter() - start
-    return classify(out, returncode, timed_out), time.perf_counter() - start
+    verdict = classify(out, returncode, timed_out)
+    if attempts is not None:
+        attempts.append(dict(inline_allocators=inline_allocators, verdict=verdict,
+                             elapsed_seconds=time.perf_counter() - start))
+    if try_inline_allocators and verdict == VERDICT_UNKNOWN:
+        try:
+            if report_path is not None:
+                data = json.loads(Path(report_path).read_text())
+                infos = [row['info'] for row in data['reports']]
+            else:
+                with closing(sqlite3.connect(Path(out_db).resolve().as_uri() + '?mode=ro', uri=True)) as database:
+                    infos = [json.loads(row[0]) for row in database.execute('SELECT info FROM checks')]
+            if not all(isinstance(info, dict) for info in infos):
+                raise ValueError('malformed check information')
+            if any('confirmed_pair_id' in info or 'counterexample' in info for info in infos):
+                raise ValueError('UNKNOWN contains confirmed execution evidence')
+        except (OSError, ValueError, KeyError, TypeError, sqlite3.Error) as error:
+            raise OSError('invalid initial refinement evidence: ' + str(error)) from error
+        if file_sha256(src) != source_hash:
+            raise OSError("source changed before allocator refinement")
+        # A failed second attempt must not leave evidence from the first one.
+        for path in (out_db, report_path):
+            if path is not None:
+                Path(path).unlink(missing_ok=True)
+        for suffix in ("-journal", "-wal", "-shm"):
+            Path(str(out_db) + suffix).unlink(missing_ok=True)
+        verdict, _ = run_one(
+            src, ikos, timeout_sec, out_db, concurrency, data_model, demote_races,
+            report_path=report_path, bmc_deadline_ms=bmc_deadline_ms,
+            bmc_solver_timeout_ms=bmc_solver_timeout_ms, command=command,
+            cancel_event=cancel_event, partitioning=partitioning,
+            inline_allocators=True, attempts=attempts)
+        if file_sha256(src) != source_hash:
+            raise OSError("source changed during allocator refinement")
+    return verdict, time.perf_counter() - start
 
 
 def confusion(rows):
@@ -281,6 +321,11 @@ def main(argv) -> int:
     ap.add_argument("--concurrency", default="auto", choices=["auto", "on", "off"])
     ap.add_argument("--partitioning", choices=("no", "manual", "return", "guards"),
                     help="explicit value partition strategy; omitted uses the identified wrapper default")
+    inlining = ap.add_mutually_exclusive_group()
+    inlining.add_argument("--inline-allocators", action="store_true",
+                    help="use the existing frontend inliner; record this configuration separately")
+    inlining.add_argument("--try-inline-allocators", action="store_true",
+                         help="retry UNKNOWN with constructor inlining; timeout/BMC limits apply to each of at most two attempts")
     ap.add_argument("--demote", action="store_true",
                     help="pass --demote-race-to-unknown (races become UNKNOWN)")
     ap.add_argument("--limit", type=int, default=0)
@@ -343,6 +388,11 @@ def main(argv) -> int:
                                     bmc_deadline_ms=args.bmc_deadline_ms,
                                     bmc_solver_timeout_ms=args.bmc_solver_timeout_ms),
                        budget_note="null BMC options use the identified wrapper defaults")
+        if args.inline_allocators:
+            summary["options"]["inline_allocators"] = True
+        if args.try_inline_allocators:
+            summary["options"]["try_inline_allocators"] = True
+            summary["budget_note"] += "; per-attempt limits, at most two attempts per task"
         write_json(evidence_dir / "summary.json", summary)
         validator_files = [Path(__file__).resolve().parent / "scripts" / name for name in
                            ("sweep_bmc_execution.py", "validate_bmc_execution.py")]
@@ -379,15 +429,19 @@ def main(argv) -> int:
             database_path = (evidence_dir / record["raw_database"] if "raw_database" in record
                              else folder / "output.db")
             try:
+                attempts = [] if args.try_inline_allocators else None
                 verdict, elapsed = run_one(
                     src, args.ikos, args.timeout, database_path, args.concurrency,
                     data_model, args.demote,
                     report_path=None if "raw_database" in record else report_path,
                     bmc_deadline_ms=args.bmc_deadline_ms,
                     bmc_solver_timeout_ms=args.bmc_solver_timeout_ms,
-                    command=command, cancel_event=cancel_event,
+                    command=command, cancel_event=cancel_event, inline_allocators=args.inline_allocators,
+                    try_inline_allocators=args.try_inline_allocators, attempts=attempts,
                     partitioning=args.partitioning)
                 record.update(verdict=verdict, elapsed_seconds=elapsed)
+                if attempts is not None:
+                    record["analysis_attempts"] = attempts
             except OSError as exc:
                 record.update(verdict="Error (runner)", runner_error=str(exc))
         return record

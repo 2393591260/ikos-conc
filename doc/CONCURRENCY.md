@@ -321,6 +321,25 @@ wrapper or official CPU budget. Record source revision, binary/frontend hashes,
 input revision, ABI, flags, environment, resource limits, and validator version.
 Finite zero FP/FN observations do not prove soundness for all programs.
 
+The optional `--inline-allocators` setting is available in `ikos`, the benchmark
+runner, and the competition wrapper. It expands direct calls to bounded,
+straight-line allocation constructors, giving each expanded call its own LLVM
+allocation site. The checked subset has a fixed positive allocation size,
+non-overlapping field initialization, and an initialization store that preserves
+every integer argument. It leaves ordinary helpers and source-definedness checks
+in place. It is disabled by default and cannot be combined with `--inline-all`.
+This frontend transformation does not itself prove freshness, non-nullness,
+thread completion, or race freedom; subsequent analyses retain those duties.
+
+For the benchmark runner and competition wrapper, `--try-inline-allocators`
+instead keeps the original conclusive result and retries only a valid UNKNOWN.
+The second analysis uses its own report and must pass the same checks. Missing
+reports, crashes, and inconsistent verdicts remain errors. This mode avoids
+replacing existing proofs when a different LLVM representation loses precision.
+The runner records both attempts. Its wall timeout and BMC limits apply to each
+attempt (at most two); an external BenchExec CPU limit still covers the whole
+tool invocation. Both refinement and forced inlining are disabled by default.
+
 For FM-Tools registration changes, use the official checks through
 `svcomp/check-fm-entry.py --fm-tools /path/to/fm-tools`. It checks LF, formatting,
 sorting, and 2027 registration rules. Verify uploaded bytes and archive behavior
