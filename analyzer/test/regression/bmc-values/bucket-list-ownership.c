@@ -136,6 +136,16 @@ static void *visit(void *ignored) {
   return 0;
 }
 
+#if CASE == 75
+static int address_result(void *source) { return (int)(size_t)source; }
+#elif CASE == 80
+static struct edge *choose_exit_source(void) {
+  int index = __VERIFIER_nondet_int();
+  bound(index >= 0 && index < BUCKETS);
+  return directory.entries[index].next;
+}
+#endif
+
 int main(void) {
   pthread_t one, two;
   struct item *saved = 0;
@@ -174,6 +184,9 @@ int main(void) {
   ((char *)&directory.locks[0])[0] = 0;
 #elif CASE == 46
   pthread_mutex_destroy(&directory.locks[0]);
+#endif
+#if CASE == 80
+  struct edge *exit_source = choose_exit_source();
 #endif
 #if CASE >= 48
 #if CASE == 65
@@ -238,6 +251,34 @@ int main(void) {
   observe((unsigned)&directory.entries[0]);
 #elif CASE == 37
   return (int)(unsigned long long)(size_t)&directory.entries[0];
+#elif CASE == 70
+  return (int)(size_t)saved;
+#elif CASE == 71
+  return (int)(unsigned long long)(size_t)saved;
+#elif CASE == 72
+  unsigned address = (unsigned)(size_t)saved;
+  if (address == (unsigned)__VERIFIER_nondet_int()) saved->value = 4;
+  return (int)address;
+#elif CASE == 73
+  extern void observe_address(unsigned);
+  unsigned address = (unsigned)(size_t)saved;
+  observe_address(address);
+  return (int)address;
+#elif CASE == 74
+  volatile unsigned address = (unsigned)(size_t)saved;
+  return (int)address;
+#elif CASE == 75
+  return address_result(saved);
+#elif CASE == 77
+  return (int)(size_t)identifiers;
+#elif CASE == 78
+  return (int)identifiers[0];
+#elif CASE == 79
+  return (int)((unsigned)(size_t)saved + 1u);
+#elif CASE == 80
+  return (int)(size_t)exit_source;
+#elif CASE == 81
+  return (int)(short)(unsigned long long)(size_t)saved;
 #endif
 #if CASE == 12
   saved->value = 0;
@@ -248,3 +289,7 @@ int main(void) {
 #endif
   return 0;
 }
+
+#if CASE == 76
+int entry_again(void) { return main(); }
+#endif

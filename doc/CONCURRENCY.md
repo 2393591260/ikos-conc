@@ -961,7 +961,10 @@ Only exact fully covered source effects and all combinations of certified access
 endpoints can discharge warnings. The four-byte private create output has its
 own actual native ABI and alignment proof. A real pointer-to-integer observation
 may only feed integer casts and the main return value; it never becomes a usable
-numeric address. Numerical/MAY summaries and BMC's original representation gate
+numeric address. The shared representation inventory checks this complete use
+closure for an unreferenced, argument-free `main`; a branch, store, call or
+non-main return refuses. Native handle arrays retain their separate closed-use
+checks. Numerical/MAY summaries and BMC's original representation gate
 remain unchanged. This is a live-byte race certificate, not pointer-safety,
 allocation-success, termination, thread-completion or official witness validation.
 

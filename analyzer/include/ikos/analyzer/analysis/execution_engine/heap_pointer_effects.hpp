@@ -332,6 +332,43 @@ inline bool zero_based_layout_projection(ar::UnaryOperation* cast) {
   return false;
 }
 
+// An exit status cannot feed an address, branch, memory effect or callback.
+inline bool main_exit_pointer_projection(const llvm::Value* value) {
+  auto* projection = llvm::dyn_cast< llvm::PtrToIntInst >(value);
+  auto* main = projection ? projection->getFunction() : nullptr;
+  if (!main || main->getName() != "main" || !main->use_empty() ||
+      !main->arg_empty() || !main->getReturnType()->isIntegerTy(32) ||
+      projection->getOperand(0)->getType()->getPointerAddressSpace() != 0 ||
+      !projection->getType()->isIntegerTy() ||
+      projection->getType()->getIntegerBitWidth() > 64)
+    return false;
+  std::vector< const llvm::Value* > pending{projection};
+  std::set< const llvm::Value* > seen;
+  unsigned budget = 2048;
+  while (!pending.empty()) {
+    auto* current = pending.back();
+    pending.pop_back();
+    if (!seen.insert(current).second) continue;
+    for (auto* user : current->users()) {
+      if (budget-- == 0) return false;
+      auto* ret = llvm::dyn_cast< llvm::ReturnInst >(user);
+      if (ret && ret->getFunction() == main && ret->getReturnValue() == current)
+        continue;
+      auto* cast = llvm::dyn_cast< llvm::CastInst >(user);
+      if (!cast || cast->getFunction() != main ||
+          !cast->getType()->isIntegerTy() ||
+          cast->getType()->getIntegerBitWidth() > 64 ||
+          (cast->getOpcode() != llvm::Instruction::SExt &&
+           cast->getOpcode() != llvm::Instruction::ZExt &&
+           cast->getOpcode() != llvm::Instruction::Trunc &&
+           cast->getOpcode() != llvm::Instruction::BitCast))
+        return false;
+      pending.push_back(cast);
+    }
+  }
+  return true;
+}
+
 inline bool mutex_effect_pointer_representations_closed(const llvm::Module& module) {
   std::vector< const llvm::Constant* > pending;
   unsigned budget = 16384;
@@ -340,7 +377,8 @@ inline bool mutex_effect_pointer_representations_closed(const llvm::Module& modu
   for (const auto& function : module) for (const auto& block : function)
     for (const auto& instruction : block) {
       if (budget-- == 0 || (llvm::isa< llvm::PtrToIntInst >(instruction) &&
-          !zero_based_layout_projection(&instruction, module.getDataLayout())) ||
+          !zero_based_layout_projection(&instruction, module.getDataLayout()) &&
+          !main_exit_pointer_projection(&instruction)) ||
           llvm::isa< llvm::IntToPtrInst >(instruction)) return false;
       for (const auto& operand : instruction.operands())
         if (auto* constant = llvm::dyn_cast< llvm::Constant >(operand.get()))

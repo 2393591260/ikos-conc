@@ -802,34 +802,6 @@ class BucketListOwnership::Impl {
            (!init ||
             llvm::isa< llvm::ConstantPointerNull >(c->getArgOperand(1)));
   }
-  bool main_return_observation(llvm::PtrToIntInst* projection) {
-    if (root != main || projection->getFunction() != main)
-      return false;
-    std::vector< llvm::Value* > pending{projection};
-    std::set< llvm::Value* > seen;
-    while (!pending.empty()) {
-      auto* value = pending.back();
-      pending.pop_back();
-      if (!seen.insert(value).second)
-        continue;
-      for (auto* user : value->users()) {
-        spend();
-        auto* ret = llvm::dyn_cast< llvm::ReturnInst >(user);
-        if (ret && ret->getFunction() == main && ret->getReturnValue() == value)
-          continue;
-        auto* cast = llvm::dyn_cast< llvm::CastInst >(user);
-        if (!cast || cast->getFunction() != main || !scalar(cast->getType()) ||
-            !scalar(cast->getOperand(0)->getType()) ||
-            (cast->getOpcode() != llvm::Instruction::SExt &&
-             cast->getOpcode() != llvm::Instruction::ZExt &&
-             cast->getOpcode() != llvm::Instruction::Trunc &&
-             cast->getOpcode() != llvm::Instruction::BitCast))
-          return false;
-        pending.push_back(cast);
-      }
-    }
-    return true;
-  }
   bool literal_projection(llvm::Value* value) const {
     auto* source = llvm::dyn_cast< llvm::GlobalVariable >(value->stripPointerCasts());
     if (!source || !literals.count(source)) return false;
@@ -1143,7 +1115,7 @@ class BucketListOwnership::Impl {
           } else {
             // Program exit code is not an application-memory observation.
             // Never turn this address into an integer usable by the program.
-            need(main_return_observation(projection));
+            need(root == main && main_exit_pointer_projection(projection));
             opaque(s, i);
           }
         } else if (auto* cmp = llvm::dyn_cast< llvm::ICmpInst >(i)) {
