@@ -54,6 +54,13 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                        const CompletionPlan* completion = nullptr,
                        const std::chrono::steady_clock::time_point* deadline = nullptr,
                        unsigned solver_timeout_ms = 1000) {
+  auto* entry = funcA->bundle()->function_or_null("main");
+  // Address folding can consume argc without demanding an SMT integer value.
+  // Reject an incompatible configured input before any such folded execution.
+  if (facts && !facts->main_argc_one && entry && entry->num_parameters() != 0) {
+    record(diagnostics, "main_entry_environment");
+    return Result(Status::Unsupported);
+  }
   if (metrics != nullptr) {
     ++metrics->path_queries;
     metrics->prefix_events += inputA.size() + inputB.size() + (facts != nullptr ? facts->startup.size() : 0);
@@ -450,7 +457,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       if (auto* store = core::dyn_cast< ar::Store >(event.stmt)) pointer = store->pointer();
       if (pointer != nullptr) {
         event.base = 0; event.local_base = nullptr; event.shared_main_local = false; event.const_off = 0; event.var_id = 0; event.coeff = 0;
-        event.heap_allocation = nullptr; event.heap_extent = 0;
+        event.heap_allocation = nullptr; event.heap_extent = 0; event.local_extent = 0;
         if (!pointer_on_path(pointer, path, i, root, argument, event, &allocation_origin)) {record(diagnostics, "prefix_address", event.stmt); return false;}
       }
       if ((event.kind == EvKind::Lock || event.kind == EvKind::Unlock) &&
@@ -469,6 +476,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         }
         event.base = address.base; event.const_off = address.const_off;
         event.local_base = address.local_base; event.shared_main_local = address.shared_main_local;
+        event.local_extent = address.local_extent;
         event.var_id = address.var_id; event.var_before = address.var_before; event.coeff = address.coeff;
         std::uint64_t alignment;
         if (!synchronization_layout(call, argument_index, event.width, alignment)) {
@@ -611,6 +619,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           auto& output = path[i];
           output.base = address.base; output.local_base = address.local_base;
           output.shared_main_local = address.shared_main_local;
+          output.local_extent = address.local_extent;
           output.heap_allocation = address.heap_allocation; output.heap_extent = address.heap_extent;
           output.const_off = address.const_off; output.var_id = address.var_id;
           output.var_before = address.var_before; output.coeff = address.coeff; output.width = address.width;
@@ -1086,6 +1095,11 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       return true;
     }
     if (def == nullptr) {
+      if (concrete_main_argc(iv) && (facts == nullptr || facts->main_argc_one)) {
+        guard_reusable = false;
+        out = ctx.int_val(1);
+        return true;
+      }
       record(diagnostics, "value_no_definition");
       return false;
     }
@@ -1838,6 +1852,19 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     const auto& path = traces[id].events;
     if (traces[id].root == nullptr || traces[id].root->name() != "main") continue;
     for (std::size_t i = 0; i < path.size(); ++i) {
+      auto* allocation = core::dyn_cast< ar::Allocate >(path[i].stmt);
+      if (allocation && !core::isa< ar::IntegerConstant >(allocation->array_size())) {
+        core::ZNumber extent;
+        z3::expr actual(ctx);
+        if (!dynamic_stack_extent(allocation->result(), path, extent) ||
+            !encode_value(allocation->array_size(), actual, caches[id],
+                          traces[id].value_prefix(), 0, i)) {
+          record(diagnostics, "stack_extent_source", allocation);
+          return Result(Status::Unsupported);
+        }
+        const auto stride = allocation->bundle()->data_layout().alloc_size_in_bytes(allocation->allocated_type());
+        s.add(actual > 0 && actual * ctx.int_val(stride.str().c_str()) == ctx.int_val(extent.str().c_str()));
+      }
       auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt);
       if (call == nullptr || !malloc_call(call)) continue;
       core::ZNumber extent;
@@ -1920,9 +1947,12 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     // claim that unused LLVM poison itself is immediate UB.
     const bool has_heap = std::any_of(allocation_origin.begin(), allocation_origin.end(), [](const auto& event) {
       auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
-      return call != nullptr && malloc_call(call);
+      return event.local_extent > 0 || (call != nullptr && malloc_call(call));
     });
-    for (std::size_t id = 0; has_heap && id < traces.size(); ++id) {
+    const bool has_dynamic_stack = std::any_of(traces.begin(), traces.end(), [](const auto& trace) {
+      return std::any_of(trace.events.begin(), trace.events.end(), [](const auto& e) {return e.local_extent > 0;});
+    });
+    for (std::size_t id = 0; (has_heap || has_dynamic_stack) && id < traces.size(); ++id) {
       const auto& trace = traces[id];
       for (std::size_t i = 0; i < trace.events.size(); ++i) {
         auto* shift = core::dyn_cast< ar::PointerShift >(trace.events[i].stmt);
@@ -1930,7 +1960,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         BmcEvent base;
         if (!pointer_on_path(shift->pointer(), trace.events, i, trace.root, trace.argument,
                              base, &allocation_origin)) return Result(Status::Unsupported);
-        if (base.heap_allocation == nullptr) continue;
+        if (base.heap_allocation == nullptr && base.local_extent == 0) continue;
         auto* native = shift->has_frontend()
             ? llvm::dyn_cast< llvm::GetElementPtrInst >(shift->frontend< llvm::Value >()) : nullptr;
         if (native == nullptr || !native->isInBounds()) return Result(Status::Unsupported);
@@ -1938,7 +1968,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         if (bits == 0 || bits > 64) return Result(Status::Unsupported);
         const auto low = ctx.int_val((-(core::ZNumber(1) << (bits - 1))).str().c_str());
         const auto high = ctx.int_val(((core::ZNumber(1) << (bits - 1)) - 1).str().c_str());
-        const auto size = ctx.int_val(base.heap_extent.str().c_str());
+        const auto size = ctx.int_val((base.heap_allocation ? base.heap_extent : base.local_extent).str().c_str());
         z3::expr offset(ctx), delta = ctx.int_val(0);
         if (!encode_offset(base, offset, caches[id], trace.value_prefix(), i)) return Result(Status::Unsupported);
         replay_offsets.erase(&base);

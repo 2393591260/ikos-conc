@@ -14,6 +14,7 @@ namespace ikos { namespace analyzer { namespace bmc {
 // check. A missing single_execution proof can leave helper publication unsupported.
 // Source/alias/lifetime coverage still requires the complete chosen prefixes.
 struct CandidateFacts {
+  bool main_argc_one = true; // Respect an explicitly constrained entry environment.
   std::vector< BmcEvent > startup;
   bool selected_worker_occurrences = false;
   // Matching-entry creation ordinals in startup; false preserves legacy choice.

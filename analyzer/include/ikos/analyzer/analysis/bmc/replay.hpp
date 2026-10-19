@@ -169,6 +169,9 @@ public:
       if (stmt->has_frontend()) {
         auto* call = llvm::dyn_cast< llvm::CallBase >(stmt->frontend< llvm::Value >());
         if (call != nullptr) {
+          auto* callee = call->getCalledFunction();
+          if (callee && callee->getIntrinsicID() == llvm::Intrinsic::stacksave)
+            out.put("native_intrinsic", "llvm.stacksave");
           out.put("calling_convention", call->getCallingConv());
           JsonList layouts;
           const auto& layout = call->getModule()->getDataLayout();

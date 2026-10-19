@@ -1764,6 +1764,7 @@ DataRaceChecker::~DataRaceChecker() {
   // intervening waits or unknown calls. Loop/conditional creation needs modeling.
   std::map< std::pair< std::string, std::string >, std::vector< std::vector< bmc::BmcEvent > > > activation_prefixes;
   decltype(activation_prefixes) short_activation_prefixes;
+  std::map< std::pair< std::string, std::string >, bmc::Diagnostics > activation_diagnostics;
   auto two_live_threads = [&](const std::string& thread_a, const std::string& thread_b) {
     ar::Function* main = this->_ctx.bundle->function_or_null("main");
     if (main == nullptr || main->body_or_null() == nullptr ||
@@ -1857,6 +1858,8 @@ DataRaceChecker::~DataRaceChecker() {
       }
     }
     auto& alternatives = activation_prefixes[std::minmax(thread_a, thread_b)];
+    auto* startup_diagnostics = diagnostics_enabled
+        ? &activation_diagnostics[std::minmax(thread_a, thread_b)] : nullptr;
     std::vector< std::pair< ar::Statement*, unsigned > > endpoints;
     if (semaphore_startup) {
       if (this->_ctx.posix_semaphore) for (auto* block : *main->body()) for (auto* stmt : *block) {
@@ -1884,6 +1887,8 @@ DataRaceChecker::~DataRaceChecker() {
             : bmc::unroll_to(main, endpoint.first, occurrence, loop_bound, true,
                              extra_occurrences ? nullptr : &create_limits,
                              &search_budget.deadline, finite_source, finite_value);
+        if (result.rejected_reason)
+          bmc::record(startup_diagnostics, result.rejected_reason, result.rejected_statement);
         // Exhaustion omits alternatives, not the complete prefixes already
         // emitted. Keep their target/guard/definedness/activation obligations.
         for (auto& path : result.paths) {
@@ -1921,7 +1926,7 @@ DataRaceChecker::~DataRaceChecker() {
                                   ? cast< ar::Load >(event.stmt)->operand()
                                   : cast< ar::Store >(event.stmt)->pointer();
               // Resolve each executed iteration, not the static index variable.
-              event.base = 0; event.local_base = nullptr; event.const_off = 0;
+              event.base = 0; event.local_base = nullptr; event.const_off = 0; event.local_extent = 0;
               event.var_id = 0; event.var_before = 0; event.coeff = 0;
               core::ZNumber size;
               if (!bmc::pointer_on_path(pointer, path, step, main, nullptr, event) ||
@@ -1935,7 +1940,7 @@ DataRaceChecker::~DataRaceChecker() {
             for (const auto& entry : required) enough &= spawns[entry.first] >= entry.second;
           }
           if (supported && held.empty() && enough &&
-              bmc::prefix_values_defined(path, nullptr, nullptr, nullptr, nullptr, extra_occurrences)) {
+              bmc::prefix_values_defined(path, startup_diagnostics, nullptr, nullptr, nullptr, extra_occurrences)) {
             alternatives.push_back(std::move(path));
             if (alternatives.size() == 8) return true;
           }
@@ -2144,6 +2149,9 @@ DataRaceChecker::~DataRaceChecker() {
           }
           proof = instance_proofs.emplace(key, live).first;
         }
+        if (!proof->second && trace)
+          for (const auto& example : activation_diagnostics[key].examples)
+            bmc::record(trace, "activation_" + example.reason, example.stmt);
         gate(!proof->second, "thread_activation_unproven");
         if (small_activation.count(key) != 0) {
           group_small_activation = true;
@@ -2243,6 +2251,7 @@ DataRaceChecker::~DataRaceChecker() {
           ++group_attempts;
           --search_budget.candidates;
           bmc::CandidateFacts facts;
+          facts.main_argc_one = !this->_ctx.opts.argc || *this->_ctx.opts.argc == 1;
           // Keep the historical master switch; independent factors isolate
           // numerical costs from helper-publication support.
           if (this->_ctx.posix_semaphore) {

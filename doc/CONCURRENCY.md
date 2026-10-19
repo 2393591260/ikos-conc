@@ -1535,6 +1535,20 @@ it or perform pointer arithmetic. Object-pointer conversions and non-native
 width round trips remain unsupported. This is a contract for the imported AR
 and configured LLVM target, not a portable C pointer-representation guarantee.
 
+For an uncalled C `main(int, char**)`, BMC can choose the legal input `argc=1`
+and retain its actual guards; an incompatible explicit `--argc` setting prevents
+this choice. This does not restrict abstract analysis or justify a SAFE result.
+A supported variable-length stack array is allocated once in main before thread
+creation, with a positive path-constant count and at most 1,000,000 bytes. Counts
+may use private scalar globals only when their complete address-use closure
+excludes worker writes and earlier executed calls have not received the address.
+The SMT encoding checks the actual allocation operand, every intermediate
+inbounds pointer shift, and typed, aligned, in-range thread-handle outputs.
+The independent AR checker recomputes the count and repeated element bounds.
+Only a genuine LLVM stack-save intrinsic is admitted, as an opaque token;
+any executed stack restore, repeated allocation or unresolved extent keeps the
+execution unconfirmed. These checks reuse the existing path and object model.
+
 BMC can search a single main allocation whose size depends on one genuine
 integer nondeterministic source. After the established path search fails, it
 tries source values 1 through 4, retaining the real loop guards and binding the

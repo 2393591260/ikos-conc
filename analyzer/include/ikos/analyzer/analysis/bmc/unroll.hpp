@@ -16,10 +16,12 @@
 #include <functional>
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/Module.h>
 
 #include "diagnostics.hpp"
+#include "global_initial.hpp"
 
 #include <ikos/ar/semantic/code.hpp>
 #include <ikos/ar/semantic/statement.hpp>
@@ -62,6 +64,7 @@ struct BmcEvent {
   // var_id/coeff = 单个变量下标项 `coeff * var`（var_id==0 ⟹ 纯常量偏移）。
   // 提取失败时保持 base==0（调用方保守不确认）。
   ar::LocalVariable* local_base = nullptr;
+  core::ZNumber local_extent{0}; // Executed, path-constant dynamic stack extent.
   bool shared_main_local = false; // One live allocation in the implicit main prefix.
   bool single_function_execution = false; // Static lifetime certificate, not thread liveness.
   ar::CallBase* heap_allocation = nullptr; // One executed allocation in implicit main.
@@ -290,6 +293,10 @@ inline bool memory_extent(const BmcEvent& event, core::ZNumber& size) {
     return true;
   }
   if (event.local_base == nullptr) return false;
+  if (event.local_extent > 0) {
+    size = event.local_extent;
+    return size <= 1048576;
+  }
   ar::Allocate* found = nullptr;
   for (ar::BasicBlock* bb : *event.local_base->function()->body_or_null()) {
     for (ar::Statement* s : *bb) {
@@ -488,9 +495,30 @@ inline bool ffs_call(ar::CallBase* call) {
              function->frontend< llvm::Function >();
 }
 
+// Saving the stack has no memory effect. Its token has no pointer capability;
+// every executed restore remains unsupported in this prefix-only subset.
+inline bool stack_save_call(ar::CallBase* call) {
+  auto* f = exact_callee(call);
+  auto* native = call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+  auto* source = native ? native->getCalledFunction() : nullptr;
+  if (!(f && f->intrinsic_id() == ar::Intrinsic::StackSave &&
+         call->num_arguments() == 0 && call->has_result() &&
+         call->result()->type()->is_pointer() && source &&
+         source->getIntrinsicID() == llvm::Intrinsic::stacksave)) return false;
+  for (auto* user : native->users()) {
+    auto* restore = llvm::dyn_cast< llvm::CallBase >(user);
+    if (!restore || !restore->getCalledFunction() || restore->arg_size() != 1 ||
+        restore->getArgOperand(0) != native ||
+        restore->getCalledFunction()->getIntrinsicID() != llvm::Intrinsic::stackrestore) return false;
+  }
+  return true;
+}
+
 inline bool supported_leaf_call(ar::CallBase* call) {
   auto* f = exact_callee(call);
   if (f == nullptr || !f->is_declaration()) return false;
+  if (stack_save_call(call)) return true;
   if (constant_output_call(call) || ffs_call(call)) return true;
   if (f->intrinsic_id() == ar::Intrinsic::IkosNonDet) return true;
   if (f->intrinsic_id() == ar::Intrinsic::LibcMalloc)
@@ -775,7 +803,55 @@ inline ar::Value* created_argument(ar::Function* child,
   return nullptr;
 }
 
-// Fold only executed, pure integer definitions with representable results.
+// One concrete legal C entry environment, solely for existential BMC search.
+// Address-taking/calling main would require distinct invocation arguments.
+inline bool concrete_main_argc(ar::InternalVariable* value) {
+  auto* f = value->code() ? value->code()->function_or_null() : nullptr;
+  if (!f || f->name() != "main" || f->num_parameters() != 2 ||
+      f->param(0) != value || !f->has_frontend()) return false;
+  auto* source = f->frontend< llvm::Function >();
+  if (source->arg_size() != 2) return false;
+  auto* integer = core::dyn_cast< ar::IntegerType >(value->type());
+  auto* argv = llvm::dyn_cast< llvm::PointerType >(source->getFunctionType()->getParamType(1));
+  auto* string = argv && !argv->isOpaque()
+      ? llvm::dyn_cast< llvm::PointerType >(argv->getPointerElementType()) : nullptr;
+  return integer && integer->bit_width() == 32 && integer->is_signed() &&
+         !source->isVarArg() && source->arg_size() == 2 && source->use_empty() &&
+         source->getCallingConv() == llvm::CallingConv::C &&
+         source->getReturnType()->isIntegerTy(32) &&
+         source->getFunctionType()->getParamType(0)->isIntegerTy(32) &&
+         argv && !argv->isOpaque() && argv->getAddressSpace() == 0 &&
+         string && !string->isOpaque() && string->getAddressSpace() == 0 &&
+         string->getPointerElementType()->isIntegerTy(8);
+}
+
+// A private scalar whose complete address-use closure prevents worker writes.
+// Executed main calls receiving its address are rejected by the path scan.
+inline bool main_scalar_global(ar::GlobalVariable* global, ar::IntegerType* type) {
+  auto* declared = global ? core::dyn_cast< ar::IntegerType >(global->type()->pointee()) : nullptr;
+  if (!global || !global->is_definition() || global->is_thread_local() ||
+      !declared || declared->bit_width() != type->bit_width() || !global->has_frontend()) return false;
+  auto* source = global->frontend< llvm::GlobalVariable >();
+  if (!source->hasLocalLinkage() || source->getValueType()->isIntegerTy(type->bit_width()) == false)
+    return false;
+  for (auto* user : source->users()) {
+    if (auto* load = llvm::dyn_cast< llvm::LoadInst >(user)) {
+      if (load->getPointerOperand() != source || load->isVolatile() || load->isAtomic() ||
+          load->getType() != source->getValueType()) return false;
+      continue;
+    }
+    auto* instruction = llvm::dyn_cast< llvm::Instruction >(user);
+    auto* main = instruction ? instruction->getFunction() : nullptr;
+    if (!main || main->getName() != "main" || !main->use_empty()) return false;
+    if (auto* store = llvm::dyn_cast< llvm::StoreInst >(user)) {
+      if (store->getPointerOperand() != source || store->isVolatile() || store->isAtomic() ||
+          store->getValueOperand()->getType() != source->getValueType()) return false;
+    } else if (!llvm::isa< llvm::CallInst >(user)) return false;
+  }
+  return true;
+}
+
+// Fold only executed integer definitions with representable results.
 // Symbolic/loaded indices still require SMT; overflow never proves an address.
 inline bool constant_integer_on_path(ar::Value* value,
                                      const std::vector< BmcEvent >& path,
@@ -791,6 +867,7 @@ inline bool constant_integer_on_path(ar::Value* value,
   std::size_t index = 0;
   auto* definition = reaching_definition(variable, path, before, index);
   if (definition == nullptr) {
+    if (concrete_main_argc(variable)) {result = 1; return true;}
     auto* actual = formal_argument(variable, path, before, index);
     return actual != nullptr && actual->type() == variable->type() &&
            constant_integer_on_path(actual, path, index, result, depth + 1);
@@ -834,6 +911,39 @@ inline bool constant_integer_on_path(ar::Value* value,
         (cast->op() == ar::UnaryOperation::ZExt && result < 0) ||
         (cast->op() == ar::UnaryOperation::SExt && !source->is_signed() &&
          result >= (core::ZNumber(1) << (source->bit_width() - 1)))) return false;
+  } else if (auto* load = core::dyn_cast< ar::Load >(definition)) {
+    BmcEvent address;
+    if (!symbolic_byte_offset(load->operand(), address) || !address.base ||
+        address.var_id != 0 || address.const_off != 0) return false;
+    auto* global = reinterpret_cast< ar::GlobalVariable* >(address.base);
+    if (load->is_atomic() || load->is_volatile() || !main_scalar_global(global, type) ||
+        load->code()->function_or_null() == nullptr ||
+        load->code()->function()->name() != "main") return false;
+    ar::Store* last = nullptr;
+    std::size_t last_index = 0;
+    for (std::size_t j = 0; j < index; ++j) {
+      if (auto* store = core::dyn_cast< ar::Store >(path[j].stmt)) {
+        if (abstract_initializer(store)) continue;
+        if (store->pointer() == global) {last = store; last_index = j;}
+        else if (!core::isa< ar::GlobalVariable >(store->pointer()) &&
+                 !core::isa< ar::LocalVariable >(store->pointer())) return false;
+      }
+      if (auto* call = core::dyn_cast< ar::CallBase >(path[j].stmt))
+        for (std::size_t arg = 0; arg < call->num_arguments(); ++arg) {
+          BmcEvent passed;
+          if (call->argument(arg)->type()->is_pointer() &&
+              symbolic_byte_offset(call->argument(arg), passed) && passed.base == address.base) return false;
+        }
+    }
+    if (last) {
+      auto* written = core::dyn_cast< ar::IntegerType >(last->value()->type());
+      if (!written || written->bit_width() != type->bit_width() ||
+          !constant_integer_on_path(last->value(), path, last_index, result, depth + 1)) return false;
+    } else if (!initial_integer(global, core::ZNumber(0), type->bit_width(), result)) return false;
+    const auto modulus = core::ZNumber(1) << type->bit_width();
+    result %= modulus;
+    if (result < 0) result += modulus;
+    if (type->is_signed() && result >= modulus / 2) result -= modulus;
   } else if (auto* call = core::dyn_cast< ar::CallBase >(definition)) {
     if (!path[index].finite_source || !source_nondet(call)) return false;
     result = core::ZNumber(path[index].finite_value);
@@ -841,6 +951,44 @@ inline bool constant_integer_on_path(ar::Value* value,
   core::ZNumber lo = type->is_signed() ? -(core::ZNumber(1) << (type->bit_width() - 1)) : core::ZNumber(0);
   core::ZNumber hi = (core::ZNumber(1) << (type->is_signed() ? type->bit_width() - 1 : type->bit_width())) - 1;
   return result >= lo && result <= hi;
+}
+
+// A single live allocation with an actually evaluated count, before any spawn.
+inline bool dynamic_stack_extent(ar::LocalVariable* local,
+    const std::vector< BmcEvent >& path, core::ZNumber& size, const char** rejection = nullptr) {
+  auto fail = [&](const char* reason) {if (rejection) *rejection = reason; return false;};
+  if (!local->function() || local->function()->name() != "main" ||
+      !local->function()->has_frontend() ||
+      !local->function()->frontend< llvm::Function >()->use_empty()) return fail("stack_main_identity");
+  ar::Allocate* allocation = nullptr;
+  std::size_t position = 0;
+  bool spawned = false;
+  for (std::size_t i = 0; i < path.size(); ++i) {
+    if (auto* f = core::dyn_cast< ar::CallBase >(path[i].stmt)) {
+      auto* callee = exact_callee(f);
+      if (callee && callee->intrinsic_id() == ar::Intrinsic::StackRestore) return fail("stack_restore_prefix");
+    }
+    if (path[i].stmt->result_or_null() == local) {
+      if (allocation || spawned) return fail("stack_allocation_generation");
+      allocation = core::dyn_cast< ar::Allocate >(path[i].stmt); position = i;
+      if (!allocation || allocation->allocated_type()->is_opaque() ||
+          invocation_call(path, allocation->code(), i) != path.size()) return fail("stack_allocation_invocation");
+    }
+    spawned |= path[i].kind == EvKind::Create;
+  }
+  if (!allocation || core::isa< ar::IntegerConstant >(allocation->array_size())) return fail("stack_dynamic_count");
+  auto* source = allocation->has_frontend()
+      ? llvm::dyn_cast< llvm::AllocaInst >(allocation->frontend< llvm::Value >()) : nullptr;
+  auto* element = core::dyn_cast< ar::IntegerType >(allocation->allocated_type());
+  if (!source || !element || source->getAddressSpace() != 0 ||
+      !source->getAllocatedType()->isIntegerTy(element->bit_width()) ||
+      source->getModule()->getDataLayout().getTypeAllocSize(source->getAllocatedType()).getFixedValue() !=
+          local->bundle()->data_layout().alloc_size_in_bytes(allocation->allocated_type())) return fail("stack_native_layout");
+  core::ZNumber count;
+  if (!constant_integer_on_path(allocation->array_size(), path, position, count)) return fail("stack_count_origin");
+  if (count <= 0) return fail("stack_nonpositive_count");
+  size = local->bundle()->data_layout().alloc_size_in_bytes(allocation->allocated_type()) * count;
+  return size > 0 && size <= 1000000 && size < (core::ZNumber(1) << local->bundle()->data_layout().pointers.bit_width);
 }
 
 // Normalize x + c only through value-preserving assignments and no-wrap
@@ -1091,7 +1239,9 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
       event.shared_main_local = origins != nullptr && (external || definitions == origins) && exact_external_chain &&
                                 shared_main_allocation(local, *origins);
       if (external && !event.shared_main_local) return false;
-      event.local_base = local; return true;
+      event.local_base = local;
+      dynamic_stack_extent(local, *definitions, event.local_extent);
+      return true;
     }
     auto* variable = core::dyn_cast< ar::InternalVariable >(value);
     if (variable == nullptr) return false;
@@ -1409,6 +1559,7 @@ inline bool symbolic_startup_create_output(const std::vector< BmcEvent >& path,
       same_allocation = path[i].stmt->frontend< llvm::Value >() == allocation;
   if (!same_allocation) return false;
   output.base = address.base; output.local_base = address.local_base;
+  output.local_extent = address.local_extent;
   output.shared_main_local = address.shared_main_local;
   output.heap_allocation = address.heap_allocation; output.heap_extent = address.heap_extent;
   output.const_off = address.const_off; output.var_id = address.var_id;
@@ -1442,6 +1593,7 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
     if (auto* variable = core::dyn_cast< ar::InternalVariable >(value)) {
       def = reaching_definition(variable, path, before, index);
       if (def == nullptr) {
+        if (concrete_main_argc(variable)) return true;
         auto* actual = formal_argument(variable, path, before, index);
         if (actual != nullptr) return defined(actual, index, depth + 1);
         if (root_parameter(variable, root) && root_argument.value != nullptr) {
@@ -2025,6 +2177,18 @@ inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
         if (call == budget.finite_source && source_nondet(call)) {
           current.back().finite_source = true;
           current.back().finite_value = budget.finite_value;
+        }
+      } else if (auto* allocation = core::dyn_cast< ar::Allocate >(s)) {
+        current.emplace_back(s, EvKind::Local);
+        BmcEvent address;
+        address.local_base = allocation->result();
+        core::ZNumber extent;
+        const char* rejection = "stack_allocation_extent";
+        if (!memory_extent(address, extent) &&
+            !dynamic_stack_extent(allocation->result(), current, current.back().local_extent, &rejection)) {
+          budget.rejected_reason = rejection;
+          budget.rejected_statement = s;
+          return;
         }
       } else if (total_local_statement(s)) {
         current.emplace_back(s, EvKind::Local);

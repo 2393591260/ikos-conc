@@ -210,7 +210,8 @@ class Replay:
         require(isinstance(pointer, tuple) and pointer[0] not in ('null', 'function'), 'pointer shift base')
         require(len(inst['factors']) == len(values) - 1, 'pointer shift arity')
         require(all(isinstance(v, int) for v in values[1:]), 'pointer shift index')
-        heap = pointer[0] in self.objects and 'allocation' in self.objects[pointer[0]]
+        meta = self.objects.get(pointer[0], {})
+        heap = 'allocation' in meta or meta.get('dynamic_stack', False)
         offset, delta = pointer[1], 0
         if heap:
             if inst.get('inbounds') is not True or inst.get('index_bits') != self.program['pointer_bits']:
@@ -419,6 +420,11 @@ class Replay:
 
     def api(self, name, args, inst, step, trace_id, index, thread, frame):
         fn = self.functions[name]
+        if inst.get('native_intrinsic') == 'llvm.stacksave':
+            require(name == 'ar.stacksave' and fn['declaration'] and not args and
+                    fn['return_type']['kind'] == 'pointer', 'stack save intrinsic')
+            # Opaque token: no modeled object, dereference or restore capability.
+            return ('stack-save-token', frame.uid)
         if self.atomic_owner is not None and not (
                 fn.get('intrinsic_nondet') or name in NONDET or fn.get('intrinsic_assume') or
                 name in ('__VERIFIER_assume', 'ffs', '__VERIFIER_atomic_begin', '__VERIFIER_atomic_end')):
@@ -505,8 +511,13 @@ class Replay:
                         base_alignment >= width and base_alignment % width == 0,
                         'thread output object alignment')
                 # Malloc storage is untyped; other objects must have a declared pthread_t subobject.
-                if 'allocation' not in meta and not self.thread_output_subobject(meta.get('type', {}), offset, width):
-                    raise Unsupported('thread output declared object type')
+                if 'allocation' not in meta:
+                    declared = meta.get('type', {})
+                    stride = int(declared.get('extent', 0))
+                    count = meta.get('count', 1)
+                    if (stride <= 0 or not 0 <= offset // stride < count or
+                            not self.thread_output_subobject(declared, offset % stride, width)):
+                        raise Unsupported('thread output declared object type')
                 self.encoded_address(step, args[0], width)
             elif 'allocation' in self.objects[obj]:
                 raise Reject('missing encoded heap output address')
@@ -776,6 +787,7 @@ class Replay:
             if size>1_000_000: raise Unsupported('large stack object')
             require(obj not in self.objects, 'repeated stack allocation identity')
             self.objects[obj]=dict(size=size,type=inst['allocated_type'],live=True,variable=inst['result']['id'],
+                                   dynamic_stack=operands[0]['kind'] != 'integer',
                                    thread_local=False,alignment=inst.get('alignment'), count=count,
                                    owner_frame=frame.uid, owner_function=frame.function, owner_thread=thread.instance,
                                    **{k: inst[k] for k in ('native_layout', 'native_alignment',
