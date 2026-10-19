@@ -36,6 +36,24 @@ def check_creator_instances(ikos, env, work):
             assert proc.returncode == 0, (case, wide, proc.stderr)
             print(f'creators case={case}/wide={wide}: {verdict}', flush=True)
 
+def check_self_join(ikos, env, work):
+    fixture = (ROOT / 'analyzer/test/regression/bmc-values/pthread-self-join.c').read_text()
+    for wide in (False, True):
+        for case in range(14):
+            source = work / 'self-join.c'
+            source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') +
+                              fixture.replace('worker', 'entry').replace('payload', 'shared_data'))
+            proc = subprocess.run([str(ikos.resolve()), '--analyses=race', '--concurrency=auto',
+                '--partitioning=guards', '--demote-race-to-unknown', '--bmc-deadline-ms=0',
+                '-m32', '-o', str(work / 'self-join.db'), str(source)], env=env,
+                capture_output=True, text=True, timeout=30)
+            verdict = classify(proc.stdout, proc.returncode, False)
+            expected = VERDICT_SAFE if case in (8, 9, 12, 13) else VERDICT_UNKNOWN
+            assert proc.returncode == 0 and verdict == expected, (
+                case, wide, verdict, proc.stdout, proc.stderr)
+            print(f'self join case={case}/wide={wide}: {verdict}', flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
@@ -47,6 +65,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='ikos-lifecycle-') as temp:
         work = Path(temp)
         check_creator_instances(args.ikos, env, work)
+        check_self_join(args.ikos, env, work)
         for wide in (False, True):
             for case in cases:
                 text = fixture.replace('phase', 'stage_value').replace('payload', 'shared_data')

@@ -1088,6 +1088,17 @@ void exec_pthread_mutex_unlock(E& eng, ar::CallBase* call, bool also_read = fals
   }
 }
 
+/// The empty call context also occurs in worker entries, not just in main.
+inline ar::Function* concurrent_thread_entry(ar::Statement* statement,
+                                              const CallContext* context) {
+  auto* entry = statement->code()->function_or_null();
+  while (context != nullptr && context->has_parent()) {
+    entry = context->call()->code()->function_or_null();
+    context = context->parent();
+  }
+  return entry;
+}
+
 /// \brief Execute pthread_join
 ///
 /// Resolves the pthread_t handle (arg 0) to the thread INSTANCE (create-site
@@ -1151,7 +1162,15 @@ void exec_pthread_join(E& eng, ar::CallBase* call) {
         call, "synthetic pthread handle representation not modeled");
   }
 
+  auto* entry = concurrent_thread_entry(call, eng.call_context());
   for (std::uint64_t sid : joined_sids) {
+    // A failed self-join does not complete the caller. Same-entry instances
+    // are not distinguished here, so they cannot prove a non-self target.
+    if (entry == nullptr ||
+        (sid == core::kMainThreadSid && entry->name() == "main") ||
+        env.site_func(sid) == entry) {
+      continue;
+    }
     eng.lockset().add_joined_thread(sid);
     // Transitive join HB: joining a thread also joins every thread IT
     // definitely joined before exiting (main joins t_benign, t_benign joins
@@ -1306,19 +1325,9 @@ void exec_pthread_self(E& eng, ar::CallBase* call) {
   // Determine the enclosing thread entry: walk the call-context chain UP to
   // the outermost non-empty frame — its call statement's containing function
   // is the thread entry (main / t_fun), mirroring DataRaceChecker::
-  // current_thread_id. An empty chain means we are directly in the entry (main).
-  bool in_main = true;
-  const CallContext* cc = eng.call_context();
-  const CallContext* outermost = nullptr;
-  while (cc != nullptr && cc->has_parent()) {
-    outermost = cc;
-    cc = cc->parent();
-  }
-  if (outermost != nullptr) {
-    if (ar::Function* fn = outermost->call()->code()->function_or_null()) {
-      in_main = (fn->name() == "main");
-    }
-  }
+  // current_thread_id. With no frames, use the actual containing function.
+  auto* entry = concurrent_thread_entry(call, eng.call_context());
+  const bool in_main = entry != nullptr && entry->name() == "main";
   if (call->has_result()) {
     if (!identity_only_handle_uses(call->result())) {
       eng.ctx().concurrent_env.record_unmodeled_effect(

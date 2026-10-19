@@ -101,6 +101,10 @@ static instance of a shared worker entry. An instance missing from one thread's
 creation history may already be running under another creator. Such absence is
 never treated as a completed join. Creation-before-access and inactive-child
 exclusions use their own creator and lifetime conditions.
+`pthread_self()` is bound to the actual thread entry, including calls through
+helpers. A join that may target the caller cannot establish completion, remove
+a live instance, or import the target's completion summary. Same-entry dynamic
+instances remain conservative when their identities cannot be distinguished.
 
 Original IKOS numerical analyses and general parameters are described in
 [analyzer/README.md](../analyzer/README.md). Keep property queries separate from
