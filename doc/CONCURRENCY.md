@@ -131,7 +131,7 @@ of evidence distinct:
 | Check | What it checks |
 | --- | --- |
 | Witness format | The exported file follows its schema. |
-| Offline AR execution check | The exported AR execution satisfies the checker's frontend and library assumptions. This is not automatic during a normal run. |
+| Independent AR execution check | The competition wrapper checks its selected execution before emitting FALSE. Direct `ikos` results and other saved executions need separate checks. The checker retains frontend and library assumptions. |
 | Independent source-level validation | A separate validator checks the witness against the source program. Finding a different race does not validate this witness. |
 
 Exporting format 2.2 or passing an AR check does not by itself establish official
@@ -300,11 +300,19 @@ To save analyzer details, add `--format=json --report-file=report.json` to an
 outcomes. `IKOS_BMC_DIAGNOSTICS=1` enables more detailed candidate diagnostics;
 these may be large. A group may have several unsuccessful search reasons.
 
-Confirmed executions can be checked offline by
-`scripts/validate_bmc_execution.py`. This interprets exported AR executions under
-explicit frontend and library assumptions. A normal run does not automatically
-receive that acceptance. Witness format validity, AR acceptance, and acceptance
-by an independent source-level validator must be reported separately.
+The competition entry `svcomp_witness.py` independently checks the selected
+execution with `validate_bmc_execution.py` before writing a witness and emitting
+FALSE. ACCEPT permits that result; UNSUPPORTED returns UNKNOWN without a witness;
+REJECT, missing evidence, or a checker failure returns ERROR. The installed entry
+and release archive include the checker. Direct `ikos` does not apply this gate.
+
+Other saved executions can be checked offline with
+`scripts/validate_bmc_execution.py`. The batch checker
+`scripts/sweep_bmc_execution.py` requires nonempty selected evidence, ACCEPT for
+every execution, and evidence for every non-SAFE task; unsupported or missing
+evidence fails acceptance. These checks interpret exported AR under explicit
+frontend and library assumptions. Witness format validity, AR acceptance, and
+acceptance by an independent source-level validator must be reported separately.
 An independent tool finding another race does not validate this tool's witness.
 
 The original soundness regression cases and their controls are in

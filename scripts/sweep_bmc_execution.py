@@ -57,10 +57,13 @@ def main():
                    reason_counts=dict(Counter(r.get('reason', 'accepted') for r in selected)),
                    scope='Concrete AR execution with explicit API contracts; not official C/witness validation',
                    validator_sha256=hashlib.sha256(Path(__file__).with_name('validate_bmc_execution.py').read_bytes()).hexdigest())
+    summary['execution_checks_passed'] = bool(selected) and all(
+        r['status'] == 'ACCEPT' for r in selected) and all(
+        row['executions'] or row['verdict'] == 'Safe' for row in rows)
     (args.output / 'results.json').write_text(json.dumps(rows, indent=2) + '\n')
     (args.output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(json.dumps(summary, indent=2))
-    return int(any(r['status'] == 'REJECT' for r in selected))
+    return int(not summary['execution_checks_passed'])
 
 
 if __name__ == '__main__':

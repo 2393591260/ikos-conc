@@ -163,9 +163,12 @@ BenchExec tool-info module: `benchexec/tools/ikos-conc.py` (tool id `ikos-conc`)
 The tool fixes the analysis to `--analyses=race --concurrency=auto
 --demote-race-to-unknown` + the bounded re-confirmation (`IKOS_BMC_RECOVER=1`),
 and emits TRUE (SAFE) / FALSE (confirmed race) / UNKNOWN. On a confirmed race,
-the wrapper writes witness.yml in YAML-compatible JSON, format 2.2.
+the wrapper independently checks its selected AR execution, then writes witness.yml
+in YAML-compatible JSON, format 2.2. Unsupported replay returns UNKNOWN; rejected
+or missing evidence is an ERROR. The checker is included in bin/.
 Run ./smoketest.sh to check the wrapper on bundled race and safe examples in
-ILP32 and LP64. The smoke check does not perform independent witness validation.
+ILP32 and LP64. AR checking is separate from independent C-source witness validation;
+the smoke check does not perform the latter.
 
 ## Source and build identity
 
@@ -335,13 +338,14 @@ def package(install_dir, out, llvm_root, apron_dir):
     # next to `ikos`; BenchExec runs this entry directly using its shebang.
     shutil.copy("svcomp_witness.py", os.path.join(install, "bin", "svcomp_witness.py"))
     os.chmod(os.path.join(install, "bin", "svcomp_witness.py"), 0o755)
+    shutil.copy("scripts/validate_bmc_execution.py", os.path.join(install, "bin", "validate_bmc_execution.py"))
 
     # Record the concrete binaries; HEAD alone cannot identify a dirty build.
     def git_output(*args):
         return subprocess.check_output(["git", *args], text=True).strip()
 
     runtime_files = [
-        "bin/ikos-analyzer", "bin/ikos-pp", "bin/svcomp_witness.py",
+        "bin/ikos-analyzer", "bin/ikos-pp", "bin/svcomp_witness.py", "bin/validate_bmc_execution.py",
         "llvm/bin/clang", "llvm/bin/opt",
         "llvm/lib/libLLVM-14.so.1", "llvm/lib/libclang-cpp.so.14",
     ]

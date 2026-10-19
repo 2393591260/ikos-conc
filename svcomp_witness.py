@@ -2,7 +2,7 @@
 """Run IKOS and emit a confirmed no-data-race violation witness (format 2.2).
 
 Thread registrations and targets use dynamic occurrences in the selected BMC
-counterexample. FALSE is printed only after the witness has been written.
+counterexample. FALSE requires independent AR replay and a written witness.
 The pinned specification is https://zenodo.org/records/21993990.
 """
 
@@ -47,6 +47,26 @@ def first_race(data):
         ):
             return info
     return None
+
+
+def validate_selected_execution(info, data_model):
+    """Check the selected execution, without changing its paths or values."""
+    if os.path.isfile(os.path.join(os.path.dirname(__file__), "validate_bmc_execution.py")):
+        from validate_bmc_execution import check, digest_json
+    else:
+        from scripts.validate_bmc_execution import check, digest_json
+
+    replay = info.get("counterexample")
+    require(isinstance(replay, dict), "missing selected BMC execution")
+    certificate = dict(replay)
+    program = certificate.pop("program")
+    require(program.get("pointer_bits") == (32 if data_model == "ILP32" else 64),
+            "execution data model differs from the task")
+    certificate["program_sha256"] = digest_json(program)
+    result = check(program, certificate)
+    require(result.get("status") in {"ACCEPT", "UNSUPPORTED"},
+            "selected BMC execution rejected: " + str(result.get("reason", result)))
+    return result
 
 
 class SourceMap:
@@ -652,7 +672,20 @@ def main():
                 sys.stderr.write(proc.stderr)
                 sys.stderr.write("[ikos-conc] Inconclusive analysis; trying allocation constructors.\n")
             if info is not None:
+                validation = validate_selected_execution(info, args.data_model)
+                if validation["status"] == "UNSUPPORTED":
+                    sys.stderr.write(proc.stderr)
+                    sys.stderr.write("[ikos-conc] AR validation unsupported: {}\n".format(
+                        validation.get("reason", "unsupported execution")))
+                    print("The program is UNKNOWN")
+                    return 0
                 witness = build_witness(args.source, info, args.data_model, args.ikos)
+                with open(args.source, "rb") as f:
+                    require(hashlib.sha256(f.read()).digest() == source_hash,
+                            "source changed during execution validation or witness mapping")
+                require(witness[0]["metadata"]["task"]["input_file_hashes"][
+                    os.path.basename(args.source)] == source_hash.hex(),
+                    "witness source differs from the analyzed input")
                 with tempfile.NamedTemporaryFile(
                     mode="w",
                     encoding="utf-8",
@@ -674,6 +707,8 @@ def main():
         KeyError,
         TypeError,
         AttributeError,
+        ImportError,
+        RuntimeError,
         RecursionError,
     ) as exc:
         sys.stderr.write("error: cannot produce a competition result: {}\n".format(exc))

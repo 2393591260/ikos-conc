@@ -578,5 +578,29 @@ raise SystemExit(code)
         self.fail(f"child {pid} survived timeout")
 
 
+class SweepAcceptanceTests(unittest.TestCase):
+    def test_cli_rejects_unsupported_rejected_and_empty_evidence(self):
+        with tempfile.TemporaryDirectory(prefix='ikos-sweep-policy-') as temp:
+            work = Path(temp)
+            reports = work / 'reports'
+            reports.mkdir()
+            (reports / 'report.json').write_text(json.dumps({'reports': []}))
+            (reports / 'result.json').write_text(json.dumps({'verdict': 'Race Found'}))
+            for label, checks, expected in (
+                    ('unsupported', [{'status': 'UNSUPPORTED'}], 1),
+                    ('rejected', [{'status': 'REJECT'}], 1),
+                    ('empty', [], 1),
+                    ('accepted', [{'status': 'ACCEPT'}], 0)):
+                with self.subTest(label=label):
+                    output = work / label
+                    with mock.patch.object(sweep_bmc_execution, 'validate_report', return_value=checks), \
+                            mock.patch.object(sys, 'argv', ['sweep', '--reports', str(reports),
+                                                           '--output', str(output)]), \
+                            contextlib.redirect_stdout(io.StringIO()):
+                        self.assertEqual(sweep_bmc_execution.main(), expected)
+                    summary = json.loads((output / 'summary.json').read_text())
+                    self.assertEqual(summary['execution_checks_passed'], expected == 0)
+
+
 if __name__ == "__main__":
     unittest.main()

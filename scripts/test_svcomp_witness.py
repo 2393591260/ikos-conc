@@ -569,6 +569,27 @@ sys.exit(3 if mode == "crash" else 0)
         )
         return proc, out
 
+    def real_pair(self):
+        self.source.write_text("""#include <pthread.h>
+int shared;
+void *worker(void *arg) { shared = 1; return 0; }
+int main(void) {
+  pthread_t thread;
+  pthread_create(&thread, 0, worker, 0);
+  shared = 2;
+  return 0;
+}
+""")
+        report = self.folder / "real-report.json"
+        proc = subprocess.run([str(self.ikos), '--analyses=race', '--concurrency=auto',
+            '--partitioning=guards', '--demote-race-to-unknown', '-m32', '--format=json',
+            '--report-file=' + str(report), '-o', str(self.folder / 'real.db'), str(self.source)],
+            env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True, text=True, timeout=30)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        pair = wrapper.first_race(json.loads(report.read_text()))
+        self.assertIsNotNone(pair, proc.stdout + proc.stderr)
+        return pair
+
     def test_default_budgets_inherit_analyzer_settings(self):
         proc, _ = self.run_wrapper("safe")
         self.assertEqual(proc.returncode, 0, proc.stderr)
@@ -665,17 +686,47 @@ sys.exit(3 if mode == "crash" else 0)
                 self.assertIn(flag + " must be", proc.stderr)
 
     def test_success_writes_witness_before_false(self):
-        proc, out = self.run_wrapper("race", self.pair())
+        proc, out = self.run_wrapper("race", self.real_pair())
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("definitely UNSAFE", proc.stdout)
         witness = json.loads(out.read_text())
         self.assertEqual(
             witness[0]["metadata"]["task"]["input_files"], [self.source.name]
         )
-        self.assertEqual(
-            [w["waypoint"]["thread_id"] for w in witness[0]["content"][-1]["segment"]],
-            [3, 2],
-        )
+        targets = [w["waypoint"]["thread_id"] for w in witness[0]["content"][-1]["segment"]]
+        self.assertEqual(set(targets), {0, 1})
+
+    def test_replay_rejection_does_not_publish_false(self):
+        pair = self.real_pair()
+        replay = pair['counterexample']
+        target = replay['targets'][0]
+        trace = next(t for t in replay['traces'] if t['id'] == target['trace'])
+        trace['steps'][target['step']]['encoded_address']['offset'] = '1'
+        proc, out = self.run_wrapper('race', pair)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertEqual(proc.stdout, '')
+        self.assertIn('selected BMC execution rejected', proc.stderr)
+        self.assertFalse(out.exists())
+
+    def test_unsupported_replay_returns_unknown_without_witness(self):
+        pair = self.real_pair()
+        replay = pair['counterexample']
+        target = replay['targets'][0]
+        trace = next(t for t in replay['traces'] if t['id'] == target['trace'])
+        statement = trace['steps'][target['step']]['statement']
+        replay['program']['instructions'][statement]['kind'] = 'unsupported'
+        proc, out = self.run_wrapper('race', pair)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout, 'The program is UNKNOWN\n')
+        self.assertIn('AR validation unsupported', proc.stderr)
+        self.assertFalse(out.exists())
+
+    def test_replay_data_model_must_match_task(self):
+        proc, out = self.run_wrapper('race', self.real_pair(), extra_options=('--data-model=LP64',))
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertEqual(proc.stdout, '')
+        self.assertIn('execution data model differs', proc.stderr)
+        self.assertFalse(out.exists())
 
     def test_safe_clears_stale_witness(self):
         proc, out = self.run_wrapper("safe")
@@ -712,8 +763,8 @@ sys.exit(3 if mode == "crash" else 0)
                 self.assertFalse(out.exists())
 
     def test_ast_failure_does_not_publish_false(self):
-        pair = self.pair()
-        self.source.write_text(SOURCE + "\nint invalid = ;\n")
+        pair = self.real_pair()
+        self.source.write_text(self.source.read_text() + "\nint invalid = ;\n")
         proc, out = self.run_wrapper("race", pair)
         self.assertNotEqual(proc.returncode, 0)
         self.assertEqual(proc.stdout, "")
