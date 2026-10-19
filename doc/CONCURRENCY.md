@@ -115,6 +115,12 @@ finished without further changes. A later observation invalidates publication.
 Independent preflight facts still require the existing effect-coverage checks
 before they can refine a fresh interpreter run. A range fact alone grants no
 thread completion, synchronization, or permission to discard a shared write.
+An unknown-destination write in preflight blocks all exported range/effect
+certificates: it could change a shared value that selects an index. The private,
+unread pthread-output exception remains subject to its closed-use checks.
+Some safe heap programs consequently return UNKNOWN until the missing write
+effects can be modeled conservatively; a later refined run cannot justify the
+premises used to enable its own refinement.
 
 ## Results and evidence
 

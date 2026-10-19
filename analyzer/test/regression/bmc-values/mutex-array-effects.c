@@ -9,6 +9,50 @@ typedef long long datum_type;
 #else
 typedef int datum_type;
 #endif
+#if CASE >= 17
+extern int __VERIFIER_nondet_int(void);
+struct box { datum_type *target; };
+struct box *shared_box;
+datum_type range_guard;
+#if CASE == 17 || CASE == 20
+// Out-of-range pressure only; CASE18/19 use valid storage for both branches.
+pthread_mutex_t range_locks[1];
+#else
+pthread_mutex_t range_locks[2];
+#endif
+static struct box *make_box(void) {
+  struct box *p = malloc(sizeof *p);
+  p->target = NULL;
+  return p;
+}
+static void *write_guard(void *unused) {
+#if CASE == 21
+  // No shared write: private unread pthread outputs may still be tolerated.
+#elif CASE == 19 || CASE == 20
+  range_guard = 1;
+#else
+  *shared_box->target = 1;
+#endif
+  return NULL;
+}
+static void *read_guard(void *unused) {
+  int index;
+  // Retain a control-flow PHI rather than a data-dependent select.
+  if (range_guard) { (void)__VERIFIER_nondet_int(); index = 1; }
+  else { index = 0; }
+  pthread_mutex_lock(&range_locks[index]);
+  pthread_mutex_unlock(&range_locks[index]);
+  return NULL;
+}
+int main(void) {
+  pthread_t writer, reader;
+  shared_box = make_box();
+  shared_box->target = &range_guard;
+  pthread_create(&writer, NULL, write_guard, NULL);
+  pthread_create(&reader, NULL, read_guard, NULL);
+  return 0;
+}
+#else
 #define COUNT 3
 extern int __VERIFIER_nondet_int();
 struct element { datum_type value; struct element *next; };
@@ -131,3 +175,4 @@ int main(void) {
 #endif
   return (int)result;
 }
+#endif

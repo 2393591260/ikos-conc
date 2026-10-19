@@ -174,11 +174,10 @@ void ThreadModularAnalysis::run() {
       ThreadModularAnalysis(preflight, false).run();
       bool complete = !preflight.concurrent_env.is_dirty() &&
                       preflight.concurrent_env.unmodeled_thread_creations().empty();
-      // Only conservative pointer-memory loss is tolerated. Other missing
-      // semantics must not supply premises for a refined analysis.
+      // Private unread handle slots cannot affect range decisions. Unknown
+      // writes can change shared guards, so they must not certify ranges.
       for (const auto& effect : preflight.concurrent_env.unmodeled_effects())
-        complete &= effect.second == "synthetic pthread handle representation not modeled" ||
-                    effect.second == "unknown destination write effects not covered";
+        complete &= effect.second == "synthetic pthread handle representation not modeled";
       for (const auto& query : queries) {
         complete &= preflight.mutex_effect_ranges.proves(query.first);
       }

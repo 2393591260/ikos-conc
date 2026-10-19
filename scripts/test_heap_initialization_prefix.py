@@ -35,7 +35,12 @@ def main():
                 with sqlite3.connect(dbpath) as db:
                     reasons = db.execute("SELECT info FROM checks WHERE info LIKE '%unknown_reason%'").fetchall()
                 if case in (0, 13):
-                    assert safe and certified and not reasons, (case, wide, output, reasons)
+                    # Valid safe programs, currently outside the preflight's
+                    # supported write effects; do not reuse their old premise.
+                    assert not safe and not certified and reasons, (case, wide, output, reasons)
+                    assert 'incomplete mutex-array preflight' in output, (case, wide, output)
+                    assert any(v in output for v in ('The program is UNKNOWN',
+                               'The program is potentially UNSAFE')), (case, wide, output)
                 elif case not in (11, 12):
                     assert not safe, (case, wide, output)
                 if case == 21:
