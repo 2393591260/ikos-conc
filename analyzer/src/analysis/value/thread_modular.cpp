@@ -647,6 +647,10 @@ void ThreadModularAnalysis::run() {
         ScopeTimerDatabase t(_ctx.output_db->times,
                              "ikos-analyzer.check." + func->name());
         fixpoint.run(entry_inv);
+        // Replay must satisfy the same MUST-summary equation as convergence.
+        // A changed result leaves dirty set for the final coverage gate.
+        _ctx.concurrent_env.set_join_summary(
+            func, fixpoint.exit_invariant().second().get_joined_threads());
         fixpoint.run_checks();
       }
     }

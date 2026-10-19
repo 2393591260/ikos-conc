@@ -43,6 +43,17 @@ add_dependencies(build-analyzer-tests test-analysis-all-access-facts)
 add_test(NAME concurrency-all-access-facts
          COMMAND $<TARGET_FILE:test-analysis-all-access-facts>)
 set_tests_properties(concurrency-all-access-facts PROPERTIES LABELS concurrency)
+add_executable(test-analysis-concurrent-global-env
+               concurrent_global_env.cpp
+               "${CONCURRENCY_ROOT}/analyzer/src/analysis/variable.cpp"
+               "${CONCURRENCY_ROOT}/analyzer/src/exception.cpp")
+target_link_libraries(test-analysis-concurrent-global-env
+                      ${AR_LIB} ${IKOS_ANALYZER_LLVM_LIBS}
+                      ${Boost_LIBRARIES} Threads::Threads)
+add_dependencies(build-analyzer-tests test-analysis-concurrent-global-env)
+add_test(NAME concurrency-global-env
+         COMMAND $<TARGET_FILE:test-analysis-concurrent-global-env>)
+set_tests_properties(concurrency-global-env PROPERTIES LABELS concurrency)
 add_concurrency_test(modes "${CONCURRENCY_ROOT}/scripts/test_race_modes.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(budgets "${CONCURRENCY_ROOT}/scripts/test_bmc_budgets.py"

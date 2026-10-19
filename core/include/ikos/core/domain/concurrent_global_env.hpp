@@ -1453,7 +1453,8 @@ public:
       return;
     }
     std::lock_guard< std::mutex > lock(_mutex);
-    _glob_flown_vars.insert(v);
+    // This input widens indirect callees in the FS+FI resolver.
+    if (_glob_flown_vars.insert(v).second) _is_dirty = true;
   }
 
   /// \brief Was `v` loaded from global memory? (see mark_glob_flown)

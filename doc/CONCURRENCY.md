@@ -119,6 +119,10 @@ finished without further changes. A later observation invalidates publication.
 Independent preflight facts still require the existing effect-coverage checks
 before they can refine a fresh interpreter run. A range fact alone grants no
 thread completion, synchronization, or permission to discard a shared write.
+The final checking replay rechecks each function's MUST-join summary against
+the converged result. A changed summary leaves an unresolved convergence warning.
+New provenance used to widen indirect callees also invalidates convergence;
+repeated observations do not.
 An unknown-destination write in preflight blocks all exported range/effect
 certificates: it could change a shared value that selects an index. The private,
 unread pthread-output exception remains subject to its closed-use checks.
