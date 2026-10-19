@@ -1093,18 +1093,23 @@ their actual byte offsets. This finite overapproximation permits cyclic graphs
 without assuming traversal termination.
 
 The mode provides typed byte footprints, not unique ownership or new lock facts.
-Every post-publication payload access must match an ordinary abstract-analysis access
-record by statement, thread root, call context, width and kind. This match alone
-does not prove that AI pointer summaries cover every source target. Unknown-address
-pointer stores therefore retain their coverage warnings: the graph proof cannot
-establish that existing MAY summaries include those omitted link writes. These
-warnings prevent SAFE; independently confirmed races can still yield FALSE.
-Scalar footprint and independent owned-graph rules are unchanged.
-Payload/link and private-runtime byte separation
-can exclude pairs; overlapping payload pairs remain subject to the existing
-concrete-lock and race checks. Removing a common payload lock therefore cannot
-be compensated by the shared graph summary. Missing initialization, structural
-mutation, unknown effects or incomplete closure refuse the certificate.
+Every post-publication payload access must match an ordinary abstract-analysis
+access record by statement, thread root, call context, width and kind. This match
+alone does not prove that AI pointer summaries cover every source target. To
+discharge an unknown-address startup link write, the source graph proof must also
+establish that every concurrent payload endpoint holds a common, exact, sealed
+GNU/Linux ILP32 NORMAL mutex. Its lock state is tracked across helpers and kept
+in loop-state signatures and endpoint alternatives; it is not inherited by child
+threads. Conditional acquisition, early release or an unprotected main/worker
+access prevents this complete synchronization proof.
+
+This branch independently proves payload synchronization; it does not repair the
+ordinary MAY pointer summaries. Without that proof, unknown pointer stores retain
+their coverage warnings. Scalar footprint and independent owned-graph rules are
+unchanged. Payload/link and private-runtime byte separation can exclude pairs;
+overlapping payload pairs still require a valid synchronization proof. Missing
+initialization, structural mutation, unknown effects or incomplete closure refuse
+the certificate.
 Run `python3 scripts/test_shared_node_graph.py` for this mode's controls.
 
 Implementation: `checker/bucket_list_ownership.hpp` and

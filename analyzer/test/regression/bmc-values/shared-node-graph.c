@@ -47,7 +47,35 @@ static void insert(struct edge *p, struct edge *head) {
   p->previous = head;
   head->next = p;
 }
+#if CASE == 19 || CASE == 26
+static void release_common(void) { pthread_mutex_unlock(&common); }
+#endif
+#if CASE == 21
+static void acquire_common(void) { pthread_mutex_lock(&common); }
+#endif
+#if CASE == 30
+static void maybe_acquire_common(void) {
+  if (__VERIFIER_nondet_int()) pthread_mutex_lock(&common);
+}
+#endif
 static void touch(struct item *p) {
+#if CASE == 27 || CASE == 30
+#if CASE == 30
+  maybe_acquire_common();
+#else
+  if (__VERIFIER_nondet_int()) pthread_mutex_lock(&common);
+#endif
+  p->value++;
+  abort();
+#endif
+#if CASE == 18
+  if (__VERIFIER_nondet_int()) {
+    p->value++;
+    return;
+  }
+#elif CASE == 22
+  pthread_mutex_unlock(&common);
+#endif
 #if CASE == 2
   if (__VERIFIER_nondet_int()) {
     pthread_mutex_lock(&other);
@@ -56,7 +84,17 @@ static void touch(struct item *p) {
     return;
   }
 #endif
+#if CASE == 21
+  acquire_common();
+#else
   pthread_mutex_lock(&common);
+#endif
+#if CASE == 23
+  pthread_mutex_lock(&common);
+#endif
+#if CASE == 19
+  release_common();
+#endif
 #if CASE == 1
   pthread_mutex_unlock(&common);
 #endif
@@ -65,8 +103,13 @@ static void touch(struct item *p) {
 #else
   p->value++;
 #endif
-#if CASE != 1
+#if CASE == 26
+  release_common();
+#elif CASE != 1 && CASE != 19 && CASE != 24
   pthread_mutex_unlock(&common);
+#endif
+#if CASE == 25
+  if (__VERIFIER_nondet_int()) p->value++;
 #endif
 }
 static void *worker(void *argument) {
@@ -98,8 +141,19 @@ static void *worker(void *argument) {
 #endif
   return 0;
 }
+#if CASE == 20
+static void *unlocked_worker(void *argument) {
+  (void)argument;
+  directory.entries[1].value++;
+  return 0;
+}
+#endif
 int main(void) {
+#if CASE == 29
+  pthread_t first, second;
+#else
   pthread_t threads[2];
+#endif
   for (int i = 0; i < 3; ++i) {
     reset(HEAD(i));
     pthread_mutex_init(&directory.locks[i], 0);
@@ -119,11 +173,27 @@ int main(void) {
 #else
   a->next = b->next;
 #endif
-  for (int i = 0; i < 2; ++i)
+#if CASE == 28
+  pthread_mutex_lock(&common);
+#endif
+#if CASE == 29
+  pthread_create(&first, 0, worker, 0);
+  pthread_create(&second, 0, worker, 0);
+  // Scalar outputs are never read: source execution must visit this write.
+  directory.entries[1].value = 9;
+#else
+  for (int i = 0; i < 2; ++i) {
+#if CASE == 20
+    if (i == 0) pthread_create(&threads[i], 0, worker, 0);
+    else pthread_create(&threads[i], 0, unlocked_worker, 0);
+#else
     pthread_create(&threads[i + (CASE == 15)], 0, worker, 0);
+#endif
+  }
 #if CASE == 14
   directory.entries[1].value = 9;
 #endif
   for (int i = 0; i < 2; ++i) pthread_join(threads[i], 0);
+#endif
   return 0;
 }

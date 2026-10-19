@@ -11,15 +11,15 @@ import tempfile
 from ikos_runtime import runtime_command, runtime_identity, verify_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
-# These graphs have valid footprints, but their unknown startup link writes
-# cannot yet be transferred into the ordinary AI pointer summaries.
-LINK_COVERAGE_REQUIRED = {0, 11, 13, 16}
+# Source analysis independently proves synchronization of every payload endpoint;
+# no claim that unknown startup link writes entered ordinary AI pointer summaries.
+CLOSED_PAYLOAD_CASES = {0, 11, 13, 16, 21, 26}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
-    parser.add_argument('--case', type=int, choices=range(18), action='append')
+    parser.add_argument('--case', type=int, choices=range(31), action='append')
     args = parser.parse_args()
     entry = args.ikos.resolve()
     identity = runtime_identity(entry)
@@ -30,7 +30,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='ikos-shared-graph-') as temp:
         work = Path(temp)
         for wide in (False, True):
-            for case in (range(18) if args.case is None else args.case):
+            for case in (range(31) if args.case is None else args.case):
                 source = work / 'renamed.c'
                 source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') +
                                   fixture.replace('worker', 'entry').replace('directory', 'registry'))
@@ -46,18 +46,26 @@ def main():
                 proofs = [c for c in checks if c.get('bucket_list_contract') ==
                           'complete-typed-immutable-node-graph-v1']
                 safe = 'The program is SAFE' in output
-                if case in LINK_COVERAGE_REQUIRED:
-                    assert proofs and not safe, (case, wide, checks, output)
-                    assert any(c.get('unknown_reason') ==
-                               'unknown destination write effects not covered'
-                               for c in checks), (case, wide, checks, output)
+                closed = [c for c in proofs if c.get('shared_payload_proof') ==
+                          'all-concurrent-payloads-share-sealed-normal-mutex']
+                if case in CLOSED_PAYLOAD_CASES:
+                    assert safe and closed, (case, wide, checks, output)
+                    assert not any(c.get('unknown_reason') ==
+                                   'unknown destination write effects not covered'
+                                   for c in checks), (case, wide, checks, output)
                 else:
                     assert not safe, (case, wide, checks, output)
-                    if case not in {1, 2, 9, 12, 14, 17}:
+                    assert not closed, (case, wide, checks, output)
+                    if case not in {1, 2, 9, 12, 14, 17, 18, 19, 20, 25, 27, 29, 30}:
                         assert not proofs, (case, wide, checks, output)
-                if case in {1, 2, 17}:
+                if case in {1, 2, 17, 29, 30}:
+                    # CASE29/30 must reach the new source endpoint proof, rather
+                    # than pass merely because some earlier gate rejected them.
                     assert proofs, (case, wide, checks, output)
-                print(f'CASE={case}/WIDE={int(wide)} safe={safe} proofs={len(proofs)} PASS', flush=True)
+                if case == 28:
+                    assert not proofs, (case, wide, checks, output)
+                print(f'CASE={case}/WIDE={int(wide)} safe={safe} proofs={len(proofs)} '
+                      f'closed={len(closed)} PASS', flush=True)
     verify_runtime(identity)
 
 

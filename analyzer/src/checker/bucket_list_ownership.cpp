@@ -73,6 +73,7 @@ struct State {
   std::map< Key, Pointer > links;
   std::map< std::uint64_t, Object > objects;
   std::set< std::uint64_t > initialized_mutexes, held;
+  std::set< llvm::GlobalVariable* > auxiliary_held;
   std::map< std::uint64_t, std::uint64_t > owners;
   z3::expr path;
   bool spawned = false;
@@ -103,6 +104,7 @@ struct Endpoint {
   // For a private array, offset/width enclose every possible four-byte access.
   bool private_range;
   boost::optional< std::uint64_t > owner;
+  std::set< llvm::GlobalVariable* > auxiliary_held;
 };
 } // namespace
 class BucketListOwnership::Impl {
@@ -118,6 +120,7 @@ class BucketListOwnership::Impl {
   std::uint64_t node_extent = 0, node_link = 0, datum_width = 0,
                 prev_offset = 0, link_extent = 0;
   bool shared_graph = false;
+  bool shared_payload_closed = false;
   // Sealed before any worker execution. Each load independently chooses a MAY
   // target; dropping correlations enlarges the set of possible executions.
   std::map< Key, std::vector< Pointer > > shared_edges;
@@ -596,7 +599,8 @@ class BucketListOwnership::Impl {
                payload,
                false,
                private_range,
-               {}};
+               {},
+               s.auxiliary_held};
     if (p.place == Place::Heap && s.spawned && !shared_graph) {
       auto o = s.owners.find(p.object);
       need(o != s.owners.end());
@@ -615,7 +619,8 @@ class BucketListOwnership::Impl {
           old.object == e.object && old.offset == e.offset &&
           old.width == e.width && old.write == e.write &&
           old.startup == e.startup && old.payload == e.payload &&
-          old.held == e.held && old.private_range == e.private_range && old.owner == e.owner)
+          old.held == e.held && old.private_range == e.private_range && old.owner == e.owner &&
+          old.auxiliary_held == e.auxiliary_held)
         return;
     out.push_back(std::move(e));
   }
@@ -704,7 +709,7 @@ class BucketListOwnership::Impl {
     }
   }
   void freeze(State& s) {
-    need(!s.spawned && s.held.empty() &&
+    need(!s.spawned && s.held.empty() && s.auxiliary_held.empty() &&
          s.initialized_mutexes.size() == buckets);
     if (shared_graph) {
       std::deque< Pointer > pending;
@@ -828,6 +833,9 @@ class BucketListOwnership::Impl {
     o << '|';
     for (auto v : s.held)
       o << v << ';';
+    o << '|';
+    for (auto* mutex : s.auxiliary_held)
+      o << mutex << ';';
     // Worker links, objects, owners and initialized cells are immutable within
     // this execute invocation. Payload writes update TOP, never this snapshot.
     return o.str();
@@ -1108,6 +1116,7 @@ class BucketListOwnership::Impl {
         }
         if (auto* ret = llvm::dyn_cast< llvm::ReturnInst >(i)) {
           need(s.held.empty() || root == main || f != root);
+          need(s.auxiliary_held.empty() || f != root);
           FunctionResult r{std::move(s), {}, {}, false};
           if (auto* v = ret->getReturnValue()) {
             if (v->getType()->isPointerTy()) {
@@ -1157,7 +1166,7 @@ class BucketListOwnership::Impl {
               need(c && c->getCalledOperand() == cast && target(c) == function);
             }
           } else if (auxiliary_mutexes.count(llvm::dyn_cast< llvm::GlobalVariable >(cast->getOperand(0)->stripPointerCasts()))) {
-            // Its entire use closure is already restricted to ignored extra locks.
+            // Its entire use closure is restricted to exact normal lock/unlock calls.
           } else if (cast->getType()->isPointerTy() &&
                      cast->getOperand(0)->getType()->isPointerTy()) {
             need(cast->getType()->getPointerAddressSpace() == 0 &&
@@ -1261,7 +1270,15 @@ class BucketListOwnership::Impl {
             s.objects.emplace(id, Object{Place::Heap, call, size, false});
             put(s.pointers, i, Pointer(z, Place::Heap, id));
           } else if (auxiliary_locks.count(call)) {
-            opaque(s, i); // Closed normal runtime effects, no owner/HB fact.
+            if (shared_graph) {
+              const auto mutex = normal_mutex(ctx, a);
+              need(mutex.source && auxiliary_mutexes.count(mutex.source));
+              if (mutex.lock)
+                need(s.auxiliary_held.insert(mutex.source).second);
+              else
+                need(s.auxiliary_held.erase(mutex.source) == 1);
+            }
+            opaque(s, i); // No numerical result or bucket-owner fact.
           } else if (mutex_api(call)) {
             auto p = pointer(s, call->getArgOperand(0));
             need(p.place == Place::Global && p.object == global_id);
@@ -1540,7 +1557,7 @@ class BucketListOwnership::Impl {
       else ++i;
     bool has_heap = false;
     for (const auto& world : worlds) {
-      need(world.spawned && world.held.empty() &&
+      need(world.spawned && world.held.empty() && world.auxiliary_held.empty() &&
            world.initialized_mutexes == merged.initialized_mutexes);
       std::size_t ordinary_objects = 0;
       for (const auto& object : world.objects) {
@@ -1613,7 +1630,7 @@ class BucketListOwnership::Impl {
     need(!main_results.empty() && !worlds.empty() && !workers.empty());
     const auto startup_world_count = worlds.size();
     for (const auto& r : main_results)
-      need(r.state.held.empty());
+      need(r.state.held.empty() && r.state.auxiliary_held.empty());
     if (shared_graph) {
       State merged = shared_worker_frame();
       worlds.clear();
@@ -1621,7 +1638,7 @@ class BucketListOwnership::Impl {
     }
     std::set< std::string > projected;
     for (const auto& world : worlds) {
-      need(world.spawned && world.held.empty());
+      need(world.spawned && world.held.empty() && world.auxiliary_held.empty());
       State frozen = world;
       for (auto& cell : frozen.links)
         cell.second.offset = z.bv_val(constant(world, cell.second.offset), 64);
@@ -1645,10 +1662,26 @@ class BucketListOwnership::Impl {
     log::debug(
         "Bucket-list complete startup worlds=" + std::to_string(startup_world_count) +
         ", distinct worker frames=" + std::to_string(projected.size()));
-    if (shared_graph)
-      for (const auto& statement : endpoints)
-        for (const auto& endpoint : statement.second)
-          if (!endpoint.startup && endpoint.payload) need(has_access_record(endpoint));
+    if (shared_graph) {
+      bool saw_payload = false;
+      std::set< llvm::GlobalVariable* > common;
+      for (const auto& statement : endpoints) {
+        for (const auto& endpoint : statement.second) {
+          if (endpoint.startup || !endpoint.payload) continue;
+          need(has_access_record(endpoint));
+          if (!saw_payload) {
+            common = endpoint.auxiliary_held;
+            saw_payload = true;
+          } else {
+            for (auto it = common.begin(); it != common.end();)
+              if (!endpoint.auxiliary_held.count(*it)) it = common.erase(it);
+              else ++it;
+          }
+        }
+      }
+      // Every source payload access is synchronized independently of AI addresses.
+      shared_payload_closed = saw_payload && !common.empty();
+    }
     // Every source statement observed by a later consumer has a complete role,
     // extent, initialized origin and context for all reaching executions.
     valid = true;
@@ -1667,6 +1700,7 @@ class BucketListOwnership::Impl {
       valid = false;
     }
     if (!valid) {
+      shared_payload_closed = false;
       endpoints.clear();
       original_mem_effects.clear();
       if (log::is_enabled_for(LogLevel::Debug)) {
@@ -1711,6 +1745,9 @@ class BucketListOwnership::Impl {
       return true;
     if (a.startup || b.startup)
       return true;
+    if (shared_graph && a.payload && b.payload)
+      for (auto* mutex : a.auxiliary_held)
+        if (b.auxiliary_held.count(mutex)) return true;
     if ((a.place == Place::Heap && b.place != Place::Heap) ||
         (b.place == Place::Heap && a.place != Place::Heap))
       return true;
@@ -1735,8 +1772,12 @@ public:
     return {{"bucket_list_contract", shared_graph ? "complete-typed-immutable-node-graph-v1"
                                                    : "complete-finite-closed-bucket-graph-v1"},
             {"mutex_model", "GNU/Linux i386 default NORMAL; sealed ordinary runtime"},
+            {"shared_payload_proof", shared_payload_closed
+                ? "all-concurrent-payloads-share-sealed-normal-mutex" : "not-established"},
             {"scope", shared_graph
-                ? "conditional typed byte footprints; sealed MAY links; overlapping payloads need ordinary race checks"
+                ? (shared_payload_closed
+                    ? "sealed MAY links; all concurrent payload accesses independently synchronized"
+                    : "conditional typed byte footprints; sealed MAY links; overlapping payloads need ordinary race checks")
                 : "conditional live node sources; complete CFG saturation; no pointer-validity, termination or BMC claim"}};
   }
   bool certifies(ar::Statement* statement, const std::string& reason) {
@@ -1753,11 +1794,12 @@ public:
     }
     ensure();
     if (!valid) return false;
-    // Overlapping payloads still rely on ordinary AI: an omitted link write
-    // has no proof of inclusion in its existing MAY pointer summaries.
+    // Unknown link writes need an independent complete payload proof; ordinary
+    // AI's existing pointer summaries have no inclusion guarantee for them.
     if (shared_graph && reason == "unknown destination write effects not covered" &&
         isa< ar::Store >(statement) &&
-        cast< ar::Store >(statement)->value()->type()->is_pointer())
+        cast< ar::Store >(statement)->value()->type()->is_pointer() &&
+        !shared_payload_closed)
       return false;
     if (reason == "synthetic pthread handle representation not modeled" &&
         covered_native_calls.count(statement)) return true;
