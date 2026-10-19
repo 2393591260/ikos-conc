@@ -1753,6 +1753,12 @@ public:
     }
     ensure();
     if (!valid) return false;
+    // Overlapping payloads still rely on ordinary AI: an omitted link write
+    // has no proof of inclusion in its existing MAY pointer summaries.
+    if (shared_graph && reason == "unknown destination write effects not covered" &&
+        isa< ar::Store >(statement) &&
+        cast< ar::Store >(statement)->value()->type()->is_pointer())
+      return false;
     if (reason == "synthetic pthread handle representation not modeled" &&
         covered_native_calls.count(statement)) return true;
     if (!original_mem_effects.count(i)) return false;

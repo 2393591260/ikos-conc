@@ -1086,8 +1086,13 @@ without assuming traversal termination.
 
 The mode provides typed byte footprints, not unique ownership or new lock facts.
 Every post-publication payload access must match an ordinary abstract-analysis access
-record by statement, thread root, call context, width and kind. Coverage discharge
-retains all shared MAY effects. Payload/link and private-runtime byte separation
+record by statement, thread root, call context, width and kind. This match alone
+does not prove that AI pointer summaries cover every source target. Unknown-address
+pointer stores therefore retain their coverage warnings: the graph proof cannot
+establish that existing MAY summaries include those omitted link writes. These
+warnings prevent SAFE; independently confirmed races can still yield FALSE.
+Scalar footprint and independent owned-graph rules are unchanged.
+Payload/link and private-runtime byte separation
 can exclude pairs; overlapping payload pairs remain subject to the existing
 concrete-lock and race checks. Removing a common payload lock therefore cannot
 be compensated by the shared graph summary. Missing initialization, structural
