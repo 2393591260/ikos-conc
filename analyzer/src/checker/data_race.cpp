@@ -1075,8 +1075,6 @@ DataRaceChecker::~DataRaceChecker() {
     for (std::size_t k = 0; k < this->_accesses.size(); ++k) {
       const auto& joined = this->_accesses[k].joined_threads;
       inactive_names[k] = completion.inactive_before(this->_accesses[k]);
-      const auto& spawned_insts = this->_accesses[k].spawned_instances;
-      bool spawned_top = this->_accesses[k].spawned_is_top;
       for (ar::Function* f : thread_funcs) {
         if (f == nullptr) {
           continue;
@@ -1104,10 +1102,10 @@ DataRaceChecker::~DataRaceChecker() {
         if (inactive) inactive_names[k].insert(f->name());
         bool all = true;
         for (std::uint64_t sid : instances) {
-          bool joined_it = joined.count(sid) != 0;
-          bool not_spawned =
-              is_creator && !spawned_top && spawned_insts.count(sid) == 0;
-          if (!joined_it && !not_spawned) {
+          // Another creator's instance is absent from this thread's spawn
+          // history even while live. Only actual completion proves a join;
+          // before-create and inactive-child proofs have separate contracts.
+          if (joined.count(sid) == 0) {
             all = false;
             break;
           }

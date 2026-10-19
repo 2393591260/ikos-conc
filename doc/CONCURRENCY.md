@@ -96,6 +96,12 @@ abstract warning alone cannot establish a real race.
 | Independent exported AR execution checks | `scripts/validate_bmc_execution.py` |
 | Source witness export and BenchExec interface | `svcomp_witness.py`, `benchexec/tools/ikos-conc.py` |
 
+Thread completion facts cover actual instance IDs, including every registered
+static instance of a shared worker entry. An instance missing from one thread's
+creation history may already be running under another creator. Such absence is
+never treated as a completed join. Creation-before-access and inactive-child
+exclusions use their own creator and lifetime conditions.
+
 Original IKOS numerical analyses and general parameters are described in
 [analyzer/README.md](../analyzer/README.md). Keep property queries separate from
 reusable thread and memory semantics.
