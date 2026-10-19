@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Ensure packaged settings use bundled LLVM after moving the tool directory."""
 
+import hashlib
 import importlib.util
 from pathlib import Path
 import shutil
@@ -16,6 +17,25 @@ SPEC.loader.exec_module(package)
 
 
 class PackageSettingsTests(unittest.TestCase):
+    def test_ppl_corresponding_source_integrity(self):
+        with tempfile.TemporaryDirectory(prefix="ikos-ppl-source-") as directory:
+            root = Path(directory)
+            files = {"ppl_1.2.orig.tar.xz": b"upstream source",
+                     "ppl_1.2-8.1build5.debian.tar.xz": b"distribution patches"}
+            checksums = []
+            for name, data in files.items():
+                (root / name).write_bytes(data)
+                checksums.append(f" {hashlib.sha256(data).hexdigest()} {len(data)} {name}")
+            dsc = root / "ppl_1.2-8.1build5.dsc"
+            dsc.write_text("Format: 3.0 (quilt)\nSource: ppl\nVersion: 1:1.2-8.1build5\n"
+                           "Checksums-Sha256:\n" + "\n".join(checksums) + "\nFiles:\n")
+            self.assertEqual(len(package.ppl_source_files(root, "1:1.2-8.1build5")), 3)
+            with self.assertRaises(FileNotFoundError):
+                package.ppl_source_files(root, "1:1.2-other")
+            (root / next(iter(files))).write_bytes(b"tampered source")
+            with self.assertRaisesRegex(ValueError, "checksum mismatch"):
+                package.ppl_source_files(root, "1:1.2-8.1build5")
+
     def check_relocation(self, prefix_assignment):
         with tempfile.TemporaryDirectory(prefix="ikos-package-") as directory:
             prefix = Path(directory) / "original tool"

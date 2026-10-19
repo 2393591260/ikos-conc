@@ -16,7 +16,10 @@ Run after `make install` (or `cmake --build build --target install`).
 
 Usage:
     python3 svcomp/package.py [--install DIR] [--out FILE] \
-        [--llvm /usr/lib/llvm-14] [--apron /usr/local/lib]
+        [--llvm /usr/lib/llvm-14] [--apron /usr/local/lib] --ppl-source DIR
+
+DIR contains the installed PPL version's Ubuntu .dsc and the source archives
+listed in its Checksums-Sha256 field (downloaded with apt-get source --download-only).
 """
 
 import argparse
@@ -148,12 +151,17 @@ For abstract safety analysis only, remove IKOS_BMC_RECOVER and retain the demote
 option. Setting IKOS_BMC_RECOVER=0 still enables it. Unresolved abstract candidates
 and bounded UNSAT cannot prove a race or unbounded safety respectively.
 Internal search/SMT/structural limits are separate from external resource limits.
+Concurrent analysis requires the underlying analyzer's default --jobs=1.
+Other analyzer worker counts are unsupported; the competition entry does not
+expose this option. A benchmark harness may still run several separate tasks.
 
 Runtime: the archive targets Linux x86-64 with the declared Ubuntu 26.04 system
 packages and Python. LLVM/abstract-domain libraries are bundled; the archive does
 not promise a native Windows/macOS installation or independence of system libraries.
-The LLVM 14 build's ICU 74 and libxml2 ABI dependencies are bundled because
-Ubuntu 26.04 supplies newer, incompatible library names.
+Boost Filesystem/Thread, PPL, oneTBB and its allocator are bundled, as are
+the LLVM 14 build's ICU 74 and libxml2 ABI dependencies. These libraries do
+not need to be installed as system packages. BUNDLED-LIBRARIES.json records
+their versions and hashes. PPL's corresponding source is in licenses/ppl-source/.
 User installation and troubleshooting are maintained in the source repository's
 README.md, doc/CONCURRENCY.md, and TROUBLESHOOTING.md.
 
@@ -184,7 +192,7 @@ Third-party notices for bundled components are in licenses/.
 
     bin/        frontend + analyzer binaries
     libexec/    bundled Python frontend (site-packages)
-    lib/        APRON abstract-domain libraries
+    lib/        APRON and bundled runtime libraries
     llvm/       clang + opt + LLVM shared libraries (LLVM 14)
     include/    C/C++ headers
     examples/   smoke-test example
@@ -241,10 +249,78 @@ def patch_settings(py_path):
         f.write(src)
 
 
-def package(install_dir, out, llvm_root, apron_dir):
+def ppl_source_files(directory, version):
+    """Require the matching PPL source package and verify its archive hashes."""
+    from pathlib import Path
+
+    directory = Path(directory)
+    # Debian source filenames omit the epoch (e.g. 1:1.2-8.1build5).
+    dsc = directory / ("ppl_" + version.split(":", 1)[-1] + ".dsc")
+    contents = dsc.read_text()
+    if "\nSource: ppl\n" not in contents or f"\nVersion: {version}\n" not in contents:
+        raise ValueError("PPL source package does not match the installed library")
+    files = [dsc]
+    for line in contents.split("\nChecksums-Sha256:\n", 1)[1].splitlines():
+        if not line.startswith(" "):
+            break
+        digest, size, name = line.split()
+        if Path(name).name != name:
+            raise ValueError("invalid PPL source filename")
+        path = directory / name
+        data = path.read_bytes()
+        if len(data) != int(size) or hashlib.sha256(data).hexdigest() != digest:
+            raise ValueError(f"PPL source checksum mismatch: {name}")
+        files.append(path)
+    if len(files) < 3:
+        raise ValueError("PPL source package is incomplete")
+    return files
+
+
+def bundle_runtime_libraries(install, ppl_source):
+    """Ship the build host's exact ABIs without bundling glibc or its loader."""
+    libraries = {
+        "libboost-filesystem1.83.0": ["libboost_filesystem.so.1.83.0"],
+        "libboost-thread1.83.0": ["libboost_thread.so.1.83.0"],
+        "libppl14": ["libppl.so.14"],
+        "libtbb12": ["libtbb.so.12"],
+        "libtbbmalloc2": ["libtbbmalloc.so.2"],
+    }
+    notices = os.path.join(install, "licenses")
+    os.makedirs(notices, exist_ok=True)
+    manifest = []
+    for name, sonames in libraries.items():
+        version, source, source_version = subprocess.check_output(
+            ["dpkg-query", "-W", "-f=${Version}\t${source:Package}\t${source:Version}", name],
+            text=True,
+        ).split("\t")
+        if name == "libppl14":
+            source_dir = os.path.join(notices, "ppl-source")
+            os.makedirs(source_dir, exist_ok=True)
+            for path in ppl_source_files(ppl_source, source_version):
+                shutil.copy(path, source_dir)
+        shutil.copy(os.path.join("/usr/share/doc", name, "copyright"),
+                    os.path.join(notices, name + "-copyright"))
+        for soname in sonames:
+            target = os.path.join(install, "lib", soname)
+            shutil.copy(os.path.join("/usr/lib/x86_64-linux-gnu", soname), target)
+            with open(target, "rb") as stream:
+                digest = hashlib.sha256(stream.read()).hexdigest()
+            manifest.append(dict(file="lib/" + soname, package=name, version=version,
+                                 source_package=source, source_version=source_version,
+                                 sha256=digest))
+    for license_name in ("GPL-3", "Apache-2.0"):
+        shutil.copy(os.path.join("/usr/share/common-licenses", license_name), notices)
+    with open(os.path.join(install, "BUNDLED-LIBRARIES.json"), "w") as stream:
+        json.dump(manifest, stream, indent=2)
+        stream.write("\n")
+
+
+def package(install_dir, out, llvm_root, apron_dir, ppl_source):
     install = os.path.abspath(install_dir)
     llvm = os.path.abspath(llvm_root)
     apron = os.path.abspath(apron_dir)
+
+    bundle_runtime_libraries(install, ppl_source)
 
     # 1. bundle APRON shared libs
     for lib in ["libapron.so", "libboxMPQ.so", "liboctMPQ.so",
@@ -425,5 +501,7 @@ if __name__ == "__main__":
     ap.add_argument("--out", default="ikos-conc.zip")
     ap.add_argument("--llvm", default="/usr/lib/llvm-14")
     ap.add_argument("--apron", default="/usr/local/lib")
+    ap.add_argument("--ppl-source", required=True,
+                    help="directory with the installed PPL version's .dsc and source archives")
     args = ap.parse_args()
-    package(args.install, args.out, args.llvm, args.apron)
+    package(args.install, args.out, args.llvm, args.apron, args.ppl_source)

@@ -27,10 +27,9 @@ For the Ubuntu 26.04 package, install the declared runtime dependencies:
 ```bash
 sudo apt-get update
 sudo apt-get install --yes \
-  unzip python3 libc6-dev libc6-dev-i386 lib32gcc-13-dev \
-  libgmp10 libgmpxx4ldbl libmpfr6 libppl14 \
-  libboost-filesystem1.83.0 libboost-thread1.83.0 libtbb12 \
-  libsqlite3-0 libtinfo6 zlib1g libz3-4 libffi8 \
+  unzip python3 libc6-dev libc6-dev-i386 lib32gcc-15-dev \
+  libgmp10 libgmpxx4ldbl libmpfr6 \
+  libsqlite3-0 libtinfo6 zlib1g libffi8 \
   libedit2 libbsd0 liblzma5 libmd0
 ```
 
@@ -45,10 +44,18 @@ cd ikos-conc
 
 The smoke test checks race and mutex-protected examples in ILP32 and LP64, using
 the real entry point. It checks witness output, not independent witness validity.
-The archive bundles LLVM, abstract-domain libraries, and the older ICU/libxml2
-ABIs needed by LLVM 14. It still uses system Python and the declared runtime
+New archives bundle LLVM, APRON, Z3, Boost Filesystem/Thread, PPL, oneTBB and
+its allocator, plus the older ICU/libxml2 ABIs needed by LLVM 14. Check
+`BUNDLED-LIBRARIES.json` for the added libraries' versions and hashes; PPL's
+corresponding source and third-party licenses are included in `licenses/`.
+Older archives may still require the four system packages `libppl14`,
+`libboost-filesystem1.83.0`, `libboost-thread1.83.0` and `libtbb12`.
+The archive still uses system Python and the declared runtime
 libraries. There is no separate published container image
 promised by these instructions.
+For concurrent analysis, retain the underlying analyzer's default `--jobs=1`;
+other analyzer worker counts are unsupported. Running multiple separate benchmark
+tasks with the harness's `--jobs` option is independent of this restriction.
 Native macOS is not a validated release target. Its exploratory build workflow
 is manual-only and currently has an unresolved compilation failure. Automatic
 build and concurrent-analysis acceptance target Linux.

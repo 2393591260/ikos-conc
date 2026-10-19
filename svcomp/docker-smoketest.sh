@@ -27,11 +27,16 @@ docker run --rm \
     apt-get install -y --no-install-recommends \
       unzip \
       libc6-dev libc6-dev-i386 lib32gcc-15-dev \
-      libgmp10 libgmpxx4ldbl libmpfr6 libppl14 \
-      libboost-filesystem1.83.0 libboost-thread1.83.0 libtbb12 \
+      libgmp10 libgmpxx4ldbl libmpfr6 \
       libsqlite3-0 libtinfo6 zlib1g libffi8 \
       libedit2 libbsd0 liblzma5 libmd0 \
       python3
+    for pkg in libppl14 libboost-filesystem1.83.0 libboost-thread1.83.0 libtbb12 libtbbmalloc2; do
+      if dpkg-query -W -f="\${Status}" "$pkg" 2>/dev/null | grep -qx "install ok installed"; then
+        echo "Unexpected system package masks bundled library: $pkg" >&2
+        exit 1
+      fi
+    done
     cd /tmp
     unzip -q ikos-conc.zip
     cd ikos-conc
