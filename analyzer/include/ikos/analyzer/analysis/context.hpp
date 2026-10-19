@@ -140,6 +140,9 @@ public:
   /// the transfer engine, and the data-race checker.
   core::ConcurrentGlobalEnv concurrent_env;
 
+  // Range certificates may not depend on application memory or FI aliases.
+  bool memory_independent_ranges = false;
+
   // Populated only in the independent conservative preflight. A failed
   // observation is permanent; only certificates cross into the fresh analysis.
   std::map< ar::CallBase*, GlobalArraySubobject > mutex_effect_queries;

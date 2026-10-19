@@ -164,7 +164,8 @@ void ThreadModularAnalysis::run() {
                         *_ctx.call_context_factory, *_ctx.fixpoint_parameters);
       preflight.liveness = _ctx.liveness;
       preflight.function_pointer = _ctx.function_pointer;
-      preflight.pointer = _ctx.pointer;
+      preflight.pointer = nullptr;
+      preflight.memory_independent_ranges = true;
       preflight.native_handle_inventory_checked = true;
       preflight.native_handles_only = _ctx.native_handles_only;
       preflight.native_handle_accesses = _ctx.native_handle_accesses;

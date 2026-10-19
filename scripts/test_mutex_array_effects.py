@@ -34,25 +34,24 @@ def main():
                 certified = 'mutex-array preflight certified' in proc.stderr + proc.stdout
                 # CASE1 intentionally puts the index behind a helper: it is a
                 # valid program, but scalar source closure may still reject it.
-                if case == 21:
+                if case in {0, 15, 21}:
                     assert safe and certified, (case, wide, proc.stdout, proc.stderr)
                 elif case not in {1, 14}:
                     assert not safe, (case, wide, proc.stdout, proc.stderr)
-                # CASE0/15 remain valid safe programs, but their preflight has
-                # unknown writes; until those are modeled they cannot certify.
-                if case in {0, 3, 4, 5, 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 20}:
+                # Memory-independent ranges do not trust shared guard values.
+                if case in {3, 4, 5, 6, 7, 8, 10, 12, 13, 14, 16, 17, 20}:
                     assert not certified, (case, wide, proc.stdout, proc.stderr)
-                if case in {0, 15, 17, 18}:
+                if case == 17:
                     assert 'incomplete mutex-array preflight' in proc.stdout + proc.stderr, (
                         case, wide, proc.stdout, proc.stderr)
                     assert any(v in proc.stdout for v in ('The program is UNKNOWN',
                                'The program is potentially UNSAFE')), (case, wide, proc.stdout)
-                if case == 19:
+                if case in {18, 19}:
                     assert certified, (case, wide, proc.stdout, proc.stderr)
                 with sqlite3.connect(database) as db:
                     proofs = db.execute("SELECT info FROM checks WHERE info LIKE '%indexed-live-heap-owner-v1%'").fetchall()
                 if case in {0, 15}:
-                    assert not proofs, (case, wide, proc.stdout)
+                    assert proofs, (case, wide, proc.stdout)
                 print(f'mutex effects case={case}/wide={wide}: safe={safe}, certified={certified}', flush=True)
 
 

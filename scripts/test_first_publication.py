@@ -37,16 +37,13 @@ def main():
                     proofs = [json.loads(text) for text, in db.execute(
                         "SELECT info FROM checks WHERE info LIKE '%closed-first-publication-v1%'")]
                 if case in positives:
-                    # Unknown writes now block preflight/native certificates.
-                    assert not safe and not proofs, (case, wide, output, proofs)
-                    assert 'incomplete mutex-array preflight' in output, (case, wide, output)
-                    assert any(v in output for v in ('The program is UNKNOWN',
-                               'The program is potentially UNSAFE')), (case, wide, output)
+                    assert safe and proofs, (case, wide, output, proofs)
                 else:
                     assert not safe, (case, wide, output)
                 if case == 5:
-                    # The unknown-write boundary also blocks birth proofs.
-                    assert not proofs and 'incomplete mutex-array preflight' in output, (case, wide, output)
+                    # Good/Good is deliberately not an exclusion, even if some
+                    # birth pairs received a sound order certificate.
+                    assert proofs, (case, wide, output)
                 print(f'first publication={case}/wide={wide}: safe={safe}, proofs={len(proofs)}', flush=True)
 
         for wide in (False, True):
@@ -57,13 +54,10 @@ def main():
                 renamed = renamed.replace(old, new)
             source.write_text('#define COUNT 10000\n' + ('#define WIDE\n' if wide else '') + renamed)
             proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race', '--concurrency=auto',
-                '--partitioning=guards', '--demote-race-to-unknown', '--bmc-deadline-ms=0', '--log=debug', '-m32',
+                '--partitioning=guards', '--demote-race-to-unknown', '--bmc-deadline-ms=0', '-m32',
                 '-o', str(work / 'output.db'), str(source)], env=env, capture_output=True, text=True, timeout=30)
-            output = proc.stdout + proc.stderr
-            assert proc.returncode == 0 and 'The program is SAFE' not in output and 'incomplete mutex-array preflight' in output, (wide, output)
-            assert any(v in output for v in ('The program is UNKNOWN',
-                       'The program is potentially UNSAFE')), (wide, output)
-            print(f'renamed publication/10000/wide={wide}: conservative fallback', flush=True)
+            assert proc.returncode == 0 and 'The program is SAFE' in proc.stdout + proc.stderr, (wide, proc.stdout, proc.stderr)
+            print(f'renamed publication/10000/wide={wide}: SAFE', flush=True)
 
         fixture = (ROOT / 'analyzer/test/regression/bmc-values/first-publication-arrays.c').read_text()
         for wide in (False, True):
@@ -81,9 +75,7 @@ def main():
                     proofs = list(db.execute("SELECT info FROM checks WHERE info LIKE '%closed-first-publication-v1%'"))
                 safe = 'The program is SAFE' in output
                 if case == 0:
-                    assert not safe and not proofs and 'incomplete mutex-array preflight' in output, (case, wide, output, proofs)
-                    assert any(v in output for v in ('The program is UNKNOWN',
-                               'The program is potentially UNSAFE')), (case, wide, output)
+                    assert safe and proofs, (case, wide, output, proofs)
                 elif case == 9:
                     assert not safe and not proofs, (case, wide, output)
                 else:

@@ -123,12 +123,16 @@ The final checking replay rechecks each function's MUST-join summary against
 the converged result. A changed summary leaves an unresolved convergence warning.
 New provenance used to widen indirect callees also invalidates convergence;
 repeated observations do not.
-An unknown-destination write in preflight blocks all exported range/effect
-certificates: it could change a shared value that selects an index. The private,
-unread pthread-output exception remains subject to its closed-use checks.
-Some safe heap programs consequently return UNKNOWN until the missing write
-effects can be modeled conservatively; a later refined run cannot justify the
-premises used to enable its own refinement.
+The independent range preflight treats every application-memory load as a
+fresh arbitrary value and does not execute application-memory stores. It also
+uses no external pointer refinement. Thus a missing write cannot preserve an old
+shared guard or prune a control-dependent index branch. SSA arithmetic, explicit
+constraints, helper calls and loop fixpoints still establish all-access bounds;
+aggregate loads forget their complete contents. Only the resulting stable bounds
+cross into the fresh ordinary analysis. They do not discharge that analysis's
+unknown-write warnings or prove pointer values, synchronization, or safety by
+themselves. Unsupported calls, thread coverage gaps or missing/failed observations
+still block certificates.
 
 ## Results and evidence
 

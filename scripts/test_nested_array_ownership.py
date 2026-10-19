@@ -89,13 +89,6 @@ def main():
         work = Path(temp)
         for wide in (False, True):
             for name, (text, expected_safe, expected_preflight) in variants.items():
-                # These old precision positives relied on a preflight with
-                # unknown writes. Keep their inputs, but require refusal now.
-                fallback = name in {'nested', 'reordered', 'double', 'case15',
-                    'constant-0', 'constant-1',
-                    'constant-wrong-lock-0', 'constant-wrong-lock-1'}
-                if fallback:
-                    expected_safe = expected_preflight = False
                 source = work / 'renamed.c'
                 source.write_text(('#define WIDE\n' if wide else '') + text)
                 database = work / 'output.db'
@@ -107,10 +100,6 @@ def main():
                 safe = 'The program is SAFE' in output
                 preflight = 'mutex-array preflight certified' in output
                 assert proc.returncode == 0 and safe == expected_safe, (name, wide, output)
-                if fallback:
-                    assert 'incomplete mutex-array preflight' in output, (name, wide, output)
-                    assert any(v in output for v in ('The program is UNKNOWN',
-                               'The program is potentially UNSAFE')), (name, wide, output)
                 if expected_preflight is not None:
                     assert preflight == expected_preflight, (name, wide, output)
                 with sqlite3.connect(database) as db:

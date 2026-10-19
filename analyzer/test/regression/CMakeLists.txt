@@ -156,6 +156,8 @@ add_concurrency_test(boolean-partitioning "${CONCURRENCY_ROOT}/scripts/test_bool
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(mutex-array-effects "${CONCURRENCY_ROOT}/scripts/test_mutex_array_effects.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(preflight-memory-ranges "${CONCURRENCY_ROOT}/scripts/test_preflight_memory_ranges.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(nested-array-ownership "${CONCURRENCY_ROOT}/scripts/test_nested_array_ownership.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(native-thread-handles "${CONCURRENCY_ROOT}/scripts/test_native_thread_handles.py"

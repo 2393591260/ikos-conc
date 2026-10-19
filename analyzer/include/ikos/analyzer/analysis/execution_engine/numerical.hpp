@@ -1829,6 +1829,20 @@ public:
   ///
   /// Reading uninitialized memory is an error.
   void exec(ar::Load* s) override {
+    if (this->_ctx.memory_independent_ranges) {
+      this->init_global_operands(s);
+      observe_subarray_bounds(*this, s, s->operand(), s->result()->type());
+      observe_native_handle_range(*this, s, s->operand());
+      const Literal& result = this->_lit_factory.get(s->result());
+      if (result.is_scalar()) {
+        this->data().normal().scalar_assign_nondet(result.scalar().var());
+      } else {
+        Variable* aggregate = this->init_aggregate_memory(result.aggregate());
+        this->data().normal().mem_forget_reachable(aggregate);
+      }
+      return;
+    }
+
     if (s->has_undefined_constant_operand()) {
       this->data().set_normal_flow_to_bottom();
       return;
@@ -1926,6 +1940,12 @@ public:
   ///
   /// Writing an uninitialized variable is an error.
   void exec(ar::Store* s) override {
+    if (this->_ctx.memory_independent_ranges) {
+      this->init_global_operands(s);
+      observe_subarray_bounds(*this, s, s->pointer(), s->value()->type());
+      return;
+    }
+
     if (s->has_undefined_constant_operand()) {
       this->data().set_normal_flow_to_bottom();
       return;
