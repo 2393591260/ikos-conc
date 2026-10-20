@@ -9,6 +9,8 @@ import sqlite3
 import subprocess
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -19,6 +21,7 @@ def main():
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/pthread-key-effects.c').read_text()
     env = dict(os.environ)
     env.pop('IKOS_BMC_RECOVER', None)
+    command = runtime_command(args.ikos)
     positives = {0, 3, 18}
     with tempfile.TemporaryDirectory(prefix='ikos-pthread-key-') as temp:
         work = Path(temp)
@@ -27,7 +30,7 @@ def main():
                 source = work / 'renamed.c'
                 source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') + fixture)
                 db = work / 'output.db'
-                proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                proc = subprocess.run([*command, '--analyses=race',
                     '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
                     '--bmc-deadline-ms=0', '-m32', '-o', str(db), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
@@ -49,14 +52,19 @@ def main():
             source = work / 'permuted.c'
             renamed = re.sub(r'\bkey\b', 'tls_selector', fixture).replace('worker', 'entry_body')
             source.write_text('#define CASE 3\n' + renamed)
-            proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+            proc = subprocess.run([*command, '--analyses=race',
                 '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
                 '--bmc-deadline-ms=0', '-m32', '--proc=' + ('intra' if intra else 'inter'),
                 '-o', str(work / 'output.db'), str(source)], env=env,
                 capture_output=True, text=True, timeout=30)
             output = proc.stdout + proc.stderr
-            assert proc.returncode == 0 and ('The program is SAFE' in output) == (not intra), output
-            print(f'renamed opaque token/intraprocedural={intra}: safe={not intra}', flush=True)
+            if intra:
+                assert proc.returncode != 0, output
+                assert 'thread-modular analysis requires -j=1 and -proc=inter' in output, output
+                assert 'The program is SAFE' not in output, output
+            else:
+                assert proc.returncode == 0 and 'The program is SAFE' in output, output
+            print(f'renamed opaque token/intraprocedural={intra}: rejected={intra}', flush=True)
 
 
 if __name__ == '__main__':
