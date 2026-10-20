@@ -12,6 +12,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from svcomp_race_test import classify, VERDICT_RACE, VERDICT_SAFE, VERDICT_UNKNOWN
+from ikos_runtime import runtime_command
 
 SOURCE = """#include <pthread.h>
 int payload;
@@ -35,6 +36,43 @@ int main(void) {
 
 
 class VerdictTests(unittest.TestCase):
+    def test_unsupported_concurrent_engines(self):
+        with tempfile.TemporaryDirectory(prefix='ikos engine modes ') as temp:
+            work = Path(temp)
+            source = work / 'renamed.c'
+            backend = self.ikos.parent / 'ikos-analyzer'
+            for locked in (False, True):
+                source.write_text(SOURCE.replace('BEFORE',
+                    'pthread_mutex_lock(&mutex);' if locked else '').replace('AFTER',
+                    'pthread_mutex_unlock(&mutex);' if locked else ''))
+                for options in (['-j', '2'], ['--proc', 'intra'],
+                                ['-j', '2', '--proc', 'intra']):
+                    proc = subprocess.run([*self.ikos_command, '--analyses=race',
+                        '-m', self.bits, *options, '-o', str(work / 'output.db'),
+                        str(source)], cwd=work, capture_output=True, text=True,
+                        timeout=30)
+                    self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+                    self.assertIn('thread-modular analysis requires', proc.stderr)
+                    self.assertNotIn('The program is SAFE', proc.stdout)
+            for request in (['-a=race'], ['-a=boa', '--concurrency']):
+                for options in (['-j=2'], ['-proc=intra']):
+                    database = work / 'backend.db'
+                    proc = subprocess.run([str(backend), '-entry-points=main', *request, *options,
+                        '-o=' + str(database), str(work / 'missing.bc')], cwd=work,
+                        capture_output=True, text=True, timeout=10)
+                    self.assertNotEqual(proc.returncode, 0)
+                    self.assertIn('thread-modular analysis requires', proc.stderr)
+                    self.assertFalse(database.exists())
+            source.write_text('int main(void) { return 0; }\n')
+            for options in (['-j', '2'], ['--proc', 'intra'],
+                            ['-j', '2', '--proc', 'intra']):
+                proc = subprocess.run([*self.ikos_command, '--analyses=boa',
+                    '-m', self.bits, *options, '-o', str(work / 'ordinary.db'),
+                    str(source)], cwd=work, capture_output=True, text=True,
+                    timeout=30)
+                self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+                self.assertEqual(classify(proc.stdout, 0, False), VERDICT_SAFE)
+
     def test_complete_lines_only(self):
         for output in ('potential data race', 'diagnostic: The program is SAFE',
                        'The program is SAFE-ish', '', 'analysis failed'):
@@ -72,7 +110,7 @@ class VerdictTests(unittest.TestCase):
                         if mode == 'bmc':
                             env['IKOS_BMC_RECOVER'] = '1'
                         report = work / 'report.json'
-                        proc = subprocess.run([str(self.ikos), '--analyses=race',
+                        proc = subprocess.run([*self.ikos_command, '--analyses=race',
                             '--concurrency=auto', '-m', bits, *options, '--format=json',
                             '--report-file=' + str(report), '-o', str(work / 'output.db'),
                             str(source)], cwd=work, env=env, capture_output=True,
@@ -106,6 +144,7 @@ if __name__ == '__main__':
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     args = parser.parse_args()
     VerdictTests.ikos = args.ikos.resolve()
+    VerdictTests.ikos_command = runtime_command(VerdictTests.ikos)
     VerdictTests.bits = args.bits
     result = unittest.TextTestRunner(verbosity=2).run(
         unittest.defaultTestLoader.loadTestsFromTestCase(VerdictTests))

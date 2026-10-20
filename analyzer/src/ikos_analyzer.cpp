@@ -1023,6 +1023,17 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  bool thread_modular_requested = EnableThreadModular;
+  for (analyzer::CheckerName name : Analyses) {
+    thread_modular_requested |= name == analyzer::CheckerName::DataRace;
+  }
+  if (thread_modular_requested &&
+      (Jobs != 1 || Procedural != analyzer::Procedural::Interprocedural)) {
+    llvm::errs() << progname
+                 << ": thread-modular analysis requires -j=1 and -proc=inter\n";
+    return 1;
+  }
+
   // Set log level
   analyzer::log::Level = LogLevel;
 
@@ -1291,14 +1302,6 @@ int main(int argc, char** argv) {
       // the baseline behaviour we auto-enable the plugin whenever the user
       // requests `race`. An explicit `--concurrency` flag forces the plugin
       // even without the race checker (useful for instrumentation).
-      bool thread_modular_requested = EnableThreadModular;
-      for (analyzer::CheckerName name : ctx.opts.analyses) {
-        if (name == analyzer::CheckerName::DataRace) {
-          thread_modular_requested = true;
-          break;
-        }
-      }
-
       // ── Zero-config concurrency auto-detection (tri-state) ──────────────
       // The user's --concurrency switch behaves tri-state:
       //   -a race                    → thread-modular (above; race needs it)
