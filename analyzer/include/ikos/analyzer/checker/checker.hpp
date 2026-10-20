@@ -103,6 +103,9 @@ public:
   /// \brief Destructor
   virtual ~Checker() = default;
 
+  /// Complete deferred checks after the analysis driver finishes normally.
+  virtual void finalize() {}
+
   /// \brief Get the checker name
   virtual CheckerName name() const = 0;
 

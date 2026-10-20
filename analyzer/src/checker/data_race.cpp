@@ -81,6 +81,7 @@
 #include <functional>
 #include <map>
 #include <sstream>
+#include <stdexcept>
 #include <vector>
 
 namespace ikos {
@@ -744,7 +745,23 @@ DataRaceChecker::DataRaceChecker(Context& ctx) : Checker(ctx) {
   this->_pair_exclusion_solver = mode == "1";
 }
 
-DataRaceChecker::~DataRaceChecker() {
+DataRaceChecker::~DataRaceChecker() = default;
+
+void DataRaceChecker::finalize() {
+  if (this->_phase != Phase::Collecting) {
+    throw std::logic_error("data-race checks finalized more than once");
+  }
+  this->_phase = Phase::Finalizing;
+  try {
+    this->finalize_checks();
+    this->_phase = Phase::Complete;
+  } catch (...) {
+    this->_phase = Phase::Failed;
+    throw;
+  }
+}
+
+void DataRaceChecker::finalize_checks() {
   this->_ownership->run();
   ReadonlyHeapReads readonly_heap_reads(this->_ctx);
   BucketListOwnership bucket_list_ownership(this->_ctx, this->_accesses);
@@ -885,7 +902,7 @@ DataRaceChecker::~DataRaceChecker() {
   //     ONLY if that thread function is "unique" (Thread Uniqueness
   //     abstraction: spawned exactly once across the program). The flag
   //     `is_unique_thread` is precomputed when the AccessRecord is logged,
-  //     so this destructor never re-enters the global blackboard.
+  //     so this finalization never re-enters the global blackboard.
   //   - If A has joined every instance represented by B.thread_id, then
   //     B terminated before A's continuation: HB(B, A).
   //   - Symmetrically for B.joined_threads contains A.thread_id.
@@ -2512,6 +2529,10 @@ const char* DataRaceChecker::description() const {
 void DataRaceChecker::check(ar::Statement* stmt,
                             const value::AbstractDomain& inv,
                             CallContext* call_context) {
+  if (this->_phase != Phase::Collecting) {
+    throw std::logic_error("data-race access recorded after finalization");
+  }
+
   if (inv.first().is_normal_flow_bottom()) {
     // Statement is unreachable
     return;
@@ -2614,7 +2635,7 @@ DataRaceChecker::PointsToSet DataRaceChecker::resolve_points_to(
   // the thread-private stack: its base is a LocalVariable. With a VARIABLE
   // loop index `i` over a 10000-element array the GEP's points-to collapses
   // to ⊤, so `touches_shared_memory` conservatively records it as shared and
-  // the destructor's meet (⊤ is the identity) pairs it against EVERY shared
+  // the final pair meet (⊤ is the identity) pairs it against EVERY shared
   // write — the 28-race_reach_* FP flood (main's handle read "races" t_fun's
   // @global write). Pin the GEP result to the local's cell: sound (a stack
   // slot never aliases global/heap; cross-thread visibility is tracked via
@@ -3475,7 +3496,7 @@ void DataRaceChecker::check_load(ar::Load* load,
     return;
   }
   std::string tid = this->current_thread_id(load, call_context);
-  // Precompute the Thread Uniqueness flag so the destructor never re-enters
+  // Precompute the Thread Uniqueness flag so the finalization never re-enters
   // the global blackboard for every race pair.
   bool unique = this->_ctx.concurrent_env.is_thread_unique(tid);
   std::uint64_t base = 0;
@@ -3535,7 +3556,7 @@ void DataRaceChecker::check_store(ar::Store* store,
     return;
   }
   std::string tid = this->current_thread_id(store, call_context);
-  // Precompute the Thread Uniqueness flag so the destructor never re-enters
+  // Precompute the Thread Uniqueness flag so the finalization never re-enters
   // the global blackboard for every race pair.
   bool unique = this->_ctx.concurrent_env.is_thread_unique(tid);
   std::uint64_t base = 0;
@@ -3549,7 +3570,7 @@ void DataRaceChecker::check_store(ar::Store* store,
     has_region = region_of(store->pointer(), this->_ctx, call_context, region);
   }
   // Forward region label: when a heap node (DynAlloc) is STORED into a
-  // flat-array slot, record `node -> slot region` so the destructor can fill
+  // flat-array slot, record `node -> slot region` so finalization can fill
   // the region of the node's WRITE accesses (`new`'s `p->datum = x`), which
   // the def-chain region_collect cannot recover (11/13/17/19). The store
   // lives in the caller after the allocating function returns the node.

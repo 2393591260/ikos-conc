@@ -121,6 +121,10 @@ void Analysis::run() {
       fixpoint.run_checks(checkers);
     }
   }
+
+  for (const auto& checker : checkers) {
+    checker->finalize();
+  }
 }
 
 } // end namespace sequential

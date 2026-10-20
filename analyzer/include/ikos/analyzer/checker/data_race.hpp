@@ -126,7 +126,7 @@ struct AccessRecord {
   std::string thread_id;
   /// \brief Cached result of `ConcurrentGlobalEnv::is_thread_unique(
   /// thread_id)` at the time this record was created. Pre-computed so the
-  /// destructor never re-enters the global blackboard for every race pair
+  /// finalization never re-enters the global blackboard for every race pair
   /// (which used to dominate the O(N^2) race-check loop).
   bool is_unique_thread = true;
   /// \brief Set of thread INSTANCES (create-site ids) whose termination has
@@ -154,7 +154,7 @@ struct AccessRecord {
   bool live_children_is_top = true;
   /// \brief True when this access is an atomic load/store (C11 `_Atomic` /
   /// LLVM atomic). Two atomic accesses never race per the C11 definition, so
-  /// the destructor exempts a pair when BOTH sides are atomic.
+  /// finalization exempts a pair when BOTH sides are atomic.
   bool is_atomic = false;
   /// \brief Origin of a ⊤ points-to access (phase 2 light prototype). Only
   /// meaningful when `pts.is_top()`; Concrete otherwise. An UnknownObject side
@@ -193,9 +193,10 @@ public:
   /// \brief Constructor
   explicit DataRaceChecker(Context& ctx);
 
-  /// \brief Destructor: performs offline race detection by pairwise
-  /// comparison of all logged AccessRecords
+  /// \brief Release resources without running analysis.
   ~DataRaceChecker() override;
+
+  void finalize() override;
 
   /// \brief Get the checker name
   CheckerName name() const override;
@@ -209,6 +210,11 @@ public:
              CallContext* call_context) override;
 
 private:
+  enum class Phase { Collecting, Finalizing, Complete, Failed };
+  Phase _phase = Phase::Collecting;
+
+  void finalize_checks();
+
   /// \brief Log a Load statement into the access digest
   void check_load(ar::Load* load,
                   const value::AbstractDomain& inv,
@@ -357,7 +363,7 @@ private:
   };
 
   /// \brief All pthread_create call sites, ordered by source location. Filled
-  /// by build_thread_creators(); consumed by the destructor to emit
+  /// by build_thread_creators(); consumed by finalization to emit
   /// `thread_creations` in the race report JSON.
   std::vector< ThreadCreation > _thread_creations;
 

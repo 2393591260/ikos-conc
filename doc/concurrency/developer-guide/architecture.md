@@ -83,3 +83,23 @@ cross into the fresh ordinary analysis. They do not discharge that analysis's
 unknown-write warnings or prove pointer values, synchronization, or safety by
 themselves. Unsupported calls, thread coverage gaps or missing/failed observations
 still block certificates.
+
+
+## Final checker lifecycle
+
+The race checker collects accesses during the final checking replay. The driver
+then calls `Checker::finalize()` explicitly, once normal analysis has completed.
+For the thread-modular driver the order is:
+
+1. Complete the checking replay and analyze global destructors.
+2. Flush shared summaries; retain a warning if convergence has changed.
+3. Publish the three all-access range inventories only when stable.
+4. Store function records, then finalize the property checkers.
+
+`DataRaceChecker::finalize()` performs coverage checking, access preparation,
+pair exclusion, bounded search and reporting. Its destructor only releases
+resources. Collection after finalization and repeated finalization are rejected.
+An exception during finalization propagates to the analyzer's normal error path;
+unwinding does not attempt to prove or emit additional results. The other four
+checker-owning drivers also finalize at normal completion. Unsupported
+thread-modular engine combinations are rejected before analysis.

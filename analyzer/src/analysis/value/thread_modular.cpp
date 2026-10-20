@@ -737,6 +737,10 @@ void ThreadModularAnalysis::run() {
        ++it) {
     _ctx.output_db->functions.insert(*it);
   }
+
+  for (const auto& checker : checkers) {
+    checker->finalize();
+  }
 }
 
 } // end namespace value
