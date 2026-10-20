@@ -105,3 +105,23 @@ sorting, and 2027 registration rules. Verify uploaded bytes and archive behavior
 separately; a local pass is not an official CI or witness acceptance.
 
 </details>
+
+## Refactor permission and pipeline checks
+
+After installing the build, run:
+
+```bash
+ctest --test-dir build -L concurrency --output-on-failure
+```
+ `concurrency-race-rules` checks distinct permissions,
+identities and the disabled legacy rule. `concurrency-all-access-facts` checks
+MUST conjunction, missing observations and late-replay invalidation. The
+end-to-end groups retain positive and negative controls for coverage, ownership,
+publication, byte overlap, thread multiplicity and selected executions.
+
+For a compact pair-exclusion summary, set `IKOS_RACE_RULE_REPORT` to a writable
+file path. Each run appends a JSON line containing rule counts, access count and
+remaining pairs. It does not export a formal certificate and does not change
+which rules are enabled. Use ordinary reports and BMC diagnostics to inspect
+remaining candidate targets and execution outcomes. Disable diagnostic I/O for
+performance comparisons.

@@ -41,7 +41,10 @@ abstract warning alone cannot establish a real race.
 | Concurrent worklist and shared-summary iteration | [analyzer/src/analysis/value/thread_modular.cpp](../../../analyzer/src/analysis/value/thread_modular.cpp) |
 | Concurrent library transfers | [analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp](../../../analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp) |
 | Shared environment and lock/thread facts | [core/include/ikos/core/domain/concurrent_global_env.hpp](../../../core/include/ikos/core/domain/concurrent_global_env.hpp), `lockset/lockset_domain.hpp` |
-| Access records, conservative filters and dispatch | [analyzer/src/checker/data_race.cpp](../../../analyzer/src/checker/data_race.cpp) |
+| Access collection, finalization and proof consumers | [data_race.cpp](../../../analyzer/src/checker/data_race.cpp) |
+| Fixed-order pair adapters and candidate scan | [data_race_pairs.cpp](../../../analyzer/src/checker/data_race_pairs.cpp) |
+| Bounded candidate search | [data_race_search.cpp](../../../analyzer/src/checker/data_race_search.cpp) |
+| Mechanism identities and distinct permissions | [race_rules.hpp](../../../analyzer/include/ikos/analyzer/checker/race_rules.hpp) |
 | Bounded exploration, values, addresses, synchronization and evidence | `analyzer/include/ikos/analyzer/analysis/bmc/` |
 | Independent exported AR execution checks | [scripts/validate_bmc_execution.py](../../../scripts/validate_bmc_execution.py) |
 | Source witness export and BenchExec interface | `svcomp_witness.py`, [benchexec/tools/ikos-conc.py](../../../benchexec/tools/ikos-conc.py) |
@@ -127,3 +130,28 @@ Covering a synthetic-handle warning does not grant BMC permission to interpret
 that handle representation. The search budget starts only after the candidate
 scan and grouping. The stages preserve the existing short-circuit order and
 report anchors; moving a stage does not extend a module's supported semantics.
+
+## Fact ownership and composition
+
+`Context` owns each run's shared MAY summaries, MUST range observations and
+immutable source certificates. These are distinct kinds of evidence. Shared
+MAY effects grow or lose precision conservatively; all-access MUST observations
+combine by conjunction and can only be consumed after their publication contract
+holds.
+
+The three preflight outputs have const readers: `mutex_effect_certificates()`,
+`subarray_bounds_certificates()` and `native_handle_effect_certificates()`.
+Only the thread-modular driver publishes them after the independent preflight's
+complete coverage and range checks. The ordinary analysis remains a fresh run;
+it does not inherit preflight memory or synchronization state.
+
+Whole-source runtime stdio, pthread initialization and semaphore certificates
+also expose const readers. Their existing configuration functions are the only
+writers. Each is bound to this `Context` and AR bundle; consumers retain their
+actual-call, object, byte, context and coverage checks. A const handle prevents
+replacement by another consumer; it does not prove the original algorithm.
+
+Pair proofs are consumed immediately for final access indices while the checker
+is finalizing. Coverage proofs instead identify an actual raw effect obligation.
+BMC still receives unresolved candidates and checks its own execution support;
+no range, pair or coverage proof grants it general execution permission.

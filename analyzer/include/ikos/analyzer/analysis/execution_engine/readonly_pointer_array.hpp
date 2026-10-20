@@ -51,13 +51,13 @@ inline bool prove_readonly_pointer_array(ar::GlobalVariable* global,
   auto* array = object ? object->type : dyn_cast< ar::ArrayType >(global->type()->pointee());
   auto access = [&](ar::Statement* statement) {
     if (!object || !object->nested()) return whole_pointer_array_access(statement, global);
-    auto proof = ctx->subarray_bounds_certificates.find(statement);
-    return proof != ctx->subarray_bounds_certificates.end() && proof->second == *object &&
+    auto proof = ctx->subarray_bounds_certificates().find(statement);
+    return proof != ctx->subarray_bounds_certificates().end() && proof->second == *object &&
            pointer_array_access(statement, *object);
   };
   auto mutex_call = [&](ar::CallBase* call) {
     if (!ctx || !object || !object->nested() ||
-        !ctx->mutex_effect_certificates.count(call)) return false;
+        !ctx->mutex_effect_certificates().count(call)) return false;
     auto mutex = mutex_array_effect_object(call);
     return mutex && mutex.global == global &&
         (mutex.begin + mutex.size <= object->begin || object->begin + object->size <= mutex.begin);
@@ -70,10 +70,10 @@ inline bool prove_readonly_pointer_array(ar::GlobalVariable* global,
   if (object && object->nested()) {
     if (!ctx) return false;
     std::set< llvm::Value* > accesses, calls;
-    for (const auto& item : ctx->subarray_bounds_certificates)
+    for (const auto& item : ctx->subarray_bounds_certificates())
       if (item.second == *object && item.first->has_frontend())
         accesses.insert(item.first->frontend< llvm::Value >());
-    for (auto* call : ctx->mutex_effect_certificates)
+    for (auto* call : ctx->mutex_effect_certificates())
       if (mutex_call(call) && call->has_frontend()) calls.insert(call->frontend< llvm::Value >());
     if (!closed_global_array_uses(global, [&](llvm::User* use) {
           return accesses.count(use) || calls.count(use);
@@ -186,8 +186,8 @@ bool readonly_array_value(E& eng, ar::Load* load, const ScalarLit& pointer,
     }
     return certified && env.get_readonly_array_pointer(source, value);
   }
-  auto proof = ctx.subarray_bounds_certificates.find(load);
-  if (proof == ctx.subarray_bounds_certificates.end()) return false;
+  auto proof = ctx.subarray_bounds_certificates().find(load);
+  if (proof == ctx.subarray_bounds_certificates().end()) return false;
   const auto& object = proof->second;
   if (object.global != global || !object.nested() || !pointer_array_access(load, object) ||
       !subarray_address_within(eng, load->operand(), object,

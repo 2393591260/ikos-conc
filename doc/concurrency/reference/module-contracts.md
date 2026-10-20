@@ -71,3 +71,142 @@ Changes to permissions or dependencies require updating the implementation and
 its interaction regressions as well as this index. A new module should follow
 [extending-analysis.md](../developer-guide/extending-analysis.md); new external
 operations should follow [extending-library.md](../developer-guide/extending-library.md).
+
+## Production rule adapters
+
+The implementation registry is [race_rules.hpp](../../../analyzer/include/ikos/analyzer/checker/race_rules.hpp). Its identifiers name
+permissions, rather than machine-checkable proofs. An adapter must first check
+the existing mechanism's premises; merely possessing an identifier grants
+nothing.
+
+Pair adapters in [data_race_pairs.cpp](../../../analyzer/src/checker/data_race_pairs.cpp) return a pair-only decision for the two
+final access indices. The checker consumes that result in `consume_pair_proof`.
+The adapter does not write a final verdict or clear an uncovered effect.
+Readonly heap and bucket graph coverage return separate decisions bound to an
+actual `(statement, reason)` in the raw effect inventory; these pass through
+`consume_coverage_proof`. Early library models pass through
+`consume_library_effect` while the checker is collecting accesses.
+
+The rule scan preserves the existing short-circuit order. Basic read/read,
+thread, points-to, atomic, byte and lock filters are registered alongside the
+specialized publication and ownership proofs. The unsafe legacy private-init
+rule stays disabled. Numerical pair exclusion keeps its existing explicit
+opt-in and query budget.
+
+`IKOS_RACE_RULE_REPORT` optionally writes per-rule exclusion counts and the
+remaining candidate count. It does not enable a proof. Reporting failure is a
+warning and does not change the verdict. Like other diagnostic output, its
+extra I/O can change wall-clock timings.
+
+### Pair rule groups and proof premises
+
+| Rule group | Required premise | Failure behavior |
+| --- | --- | --- |
+| Read/read and atomic/atomic | Actual recorded access kinds | Otherwise retain the pair. |
+| Same unique thread | Proven single represented thread instance | Multiplicity retains self-instance candidates. |
+| Inactive/joined/create-before | Complete instances, actual creator and access-point lifetime facts | Missing instances or TOP history retains the pair. |
+| Points-to and byte separation | Conservative complete target sets or disjoint full byte intervals | Unknown target, offset or width retains the pair. |
+| Concrete or corresponding mutex | Both accesses protected; actual lock equality or overlap-implies-lock-equality proof | Shared read/read locks or unresolved identities retain the pair. |
+| Publication, token, ownership, graph and slice passes | The full mechanism-specific contract linked above | An unsupported effect, missing bound or invalidated premise retains the pair. |
+| Optional AI offset exclusion | Stable all-offset interval/congruence facts; unbounded overlap query is UNSAT | SAT, invalid facts, timeout or exhausted query budget retains the pair. |
+
+These rules rely on the recorded accesses conservatively covering program
+behavior. They do not prove frontend translation or every library transfer;
+those remain separate soundness obligations. Registry metadata prevents
+permission mixing in the new consumers, but does not prove each original
+algorithm correct.
+
+### Fact publication path
+
+The independent preflight's three all-access inventories are consumed through
+`Context::range_premise` by the driver. This checks the range role and the
+existing stable `AllAccessFacts::proves` predicate. Publication still requires
+the full preflight coverage checks; the fresh run's effect obligations are
+unchanged. Only the driver writes the private published stores, and every
+ordinary consumer uses a const accessor plus its original object/layout checks.
+
+### Early library effect consumers
+
+The ordinary interpreter queries immutable runtime stdio, pthread-initialization
+and semaphore certificates through the const `Context` accessors. The producer
+configuration functions retain their original complete source scans. Their
+numerical consumers retain exact destination/offset/width and memory-havoc
+checks; their access-collection consumers use the library-effect gateway.
+Pthread TLS slots, immutable arguments and exact constant output retain their
+existing limited effect omissions. The legacy free/stack lifetime boundary is
+named explicitly and remains a separately documented modeling limitation.
+
+These paths do not enter the pair proof gateway. The numerical transfer still
+publishes possible writes and invalidates affected memory/value summaries;
+proof metadata is not a replacement for interference. Unsupported models fall
+back to the original conservative external-effect handling.
+
+## Registry identities and verification locations
+
+The following identities are distinct from the long-standing documentation
+section identifiers above. Each locates an adapter permission in
+[race_rules.hpp](../../../analyzer/include/ikos/analyzer/checker/race_rules.hpp).
+They are conditional implementation contracts, not proof-assistant theorems.
+The original detailed contracts and the shared [soundness obligations](soundness.md)
+remain applicable. Disabled mechanisms grant no permission; optional offset
+rules still require their per-run configuration.
+
+| Registry identity | Implementation / evidence group |
+| --- | --- |
+| `same-unique-statement-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
+| `read-read-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
+| `same-unique-thread-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
+| `inactive-child-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
+| `joined-right-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
+| `joined-left-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
+| `create-before-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
+| `unreachable-points-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
+| `disjoint-points-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
+| `atomic-atomic-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
+| `init-publication-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `disabled-private-init-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); disabled; published-before-init regression remains. |
+| `disjoint-bytes-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
+| `common-mutex-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
+| `corresponding-mutex-exact-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
+| `corresponding-mutex-congruence-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
+| `offset-congruence-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
+| `offset-smt-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
+| `private-heap-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `binary-token-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `arena-reservation-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `once-initialization-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `mutex-handover-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `thread-lifecycle-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
+| `guarded-publication-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `sc-protocol-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `self-publication-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `first-publication-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `region-ownership-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `bucket-ownership-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `readonly-heap-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `array-slices-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `coverage-readonly-heap-v1` | [Coverage consumer](../../../analyzer/src/checker/data_race.cpp); readonly-heap and bucket graph positive/negative effect controls. |
+| `coverage-bucket-ownership-v1` | [Coverage consumer](../../../analyzer/src/checker/data_race.cpp); readonly-heap and bucket graph positive/negative effect controls. |
+| `effect-semaphore-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |
+| `effect-constant-output-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |
+| `effect-scalar-scan-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |
+| `effect-tls-slot-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |
+| `effect-tls-destructor-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |
+| `effect-pthread-initialization-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |
+| `effect-sync-arguments-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |
+| `effect-runtime-stdio-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |
+| `effect-immutable-arguments-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |
+| `effect-lifetime-boundary-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |
+| `effect-initialization-arguments-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |
+| `effect-tls-create-output-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |
+| `range-mutex-effects-v1` | [Preflight driver](../../../analyzer/src/analysis/value/thread_modular.cpp); all-access-facts and preflight-memory-ranges. |
+| `range-subarray-v1` | [Preflight driver](../../../analyzer/src/analysis/value/thread_modular.cpp); all-access-facts and preflight-memory-ranges. |
+| `range-native-handles-v1` | [Preflight driver](../../../analyzer/src/analysis/value/thread_modular.cpp); all-access-facts and preflight-memory-ranges. |
+| `bmc-local-integer-v1` | [Pure-local producer](../../../analyzer/src/checker/data_race.cpp) and [execution consumer](../../../analyzer/src/checker/data_race_search.cpp); values, correctness, auxiliary and independent execution checks. |
+| `bmc-local-control-v1` | [Shared-independent control producer](../../../analyzer/src/checker/data_race.cpp) and [execution consumer](../../../analyzer/src/checker/data_race_search.cpp); values, correctness, auxiliary and independent execution checks. |
+| `bmc-selected-execution-v1` | [Execution consumer](../../../analyzer/src/checker/data_race_search.cpp); values, correctness, auxiliary and independent execution checks. |
+
+The executable regression groups are registered in
+[regression/CMakeLists.txt](../../../analyzer/test/regression/CMakeLists.txt).
+A successful regression is finite evidence. The identity table does not assert
+that the original source coverage or each mechanism's full theorem is proved.

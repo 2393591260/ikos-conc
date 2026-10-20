@@ -45,3 +45,16 @@ after publication.
 Use the competition's current submission rules for deadlines and registration;
 the [benchmarking guide](../user-guide/benchmarking.md) describes the distinction
 between local checks and official resource evaluation.
+
+## Refactor acceptance profiles
+
+Use a fixed accepted runtime for paired comparison. The development profile and
+competition profile may have different wall, BMC, SMT and allocator-refinement
+settings; pair each against its own baseline. The final archive check must run
+the actual packaged entry through BenchExec in the declared Ubuntu container,
+with the official CPU, memory and core limits. Preserve commands, XML, tool
+revision, input hashes, result files and witness checks.
+
+A new accepted source commit does not replace an already uploaded archive.
+Prepare and verify a separate local candidate package, then publish it only as
+a separate authorized action. Keep the previous accepted artifact available.

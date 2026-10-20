@@ -94,7 +94,7 @@ class OnceInitialization::Impl {
   bool create(llvm::CallBase* c) const {
     auto* a = binding(c);
     return a && native_handle_api(c, true) &&
-        (ctx.native_handle_effect_certificates.count(a) || unread_private_thread_output(a));
+        (ctx.native_handle_effect_certificates().count(a) || unread_private_thread_output(a));
   }
   bool terminal(llvm::CallBase* c) const {
     auto* a = binding(c); auto* f = a ? native_handle_callee(a) : nullptr;
@@ -109,7 +109,7 @@ class OnceInitialization::Impl {
     auto* a = binding(c); auto* target = a ? native_handle_callee(a) : nullptr;
     auto* source = callee(c);
     if (!a || !target || !source->isDeclaration()) return false;
-    if (create(c) || ctx.native_handle_joins.count(a) || ctx.mutex_effect_certificates.count(a)) return true;
+    if (create(c) || ctx.native_handle_joins.count(a) || ctx.mutex_effect_certificates().count(a)) return true;
     if (mutex_call(c).source || terminal(c)) return true;
     const auto id = target->intrinsic_id();
     if ((source->getName() == "__VERIFIER_atomic_begin" || source->getName() == "__VERIFIER_atomic_end") &&

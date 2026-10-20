@@ -207,7 +207,7 @@ class ArenaReservation::Impl {
           if (!c) return false;
           if (c->getCalledOperand() == v && call_binding(c)) continue;
           auto* ar_call = call_binding(c);
-          if (!ar_call || (!ctx.native_handle_effect_certificates.count(ar_call) && !unread_private_thread_output(ar_call)) ||
+          if (!ar_call || (!ctx.native_handle_effect_certificates().count(ar_call) && !unread_private_thread_output(ar_call)) ||
               !native_handle_api(c, true) || c->getArgOperand(2) != v) return false;
         }
       }
@@ -220,9 +220,9 @@ class ArenaReservation::Impl {
         auto* source = callee(c);
         if (!ar_call || !target) return false;
         if (target->is_definition()) continue;
-        if (ctx.native_handle_effect_certificates.count(ar_call) ||
+        if (ctx.native_handle_effect_certificates().count(ar_call) ||
             ctx.native_handle_joins.count(ar_call) ||
-            ctx.mutex_effect_certificates.count(ar_call)) continue;
+            ctx.mutex_effect_certificates().count(ar_call)) continue;
         if (native_handle_api(c, true) && unread_private_thread_output(ar_call)) continue;
         const auto id = target->intrinsic_id();
         if ((source->getName() == "__VERIFIER_atomic_begin" || source->getName() == "__VERIFIER_atomic_end") &&

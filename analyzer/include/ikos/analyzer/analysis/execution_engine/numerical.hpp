@@ -2416,8 +2416,8 @@ public:
       }
     }
 
-    if (this->_ctx.opts.enable_thread_modular && this->_ctx.posix_semaphore) {
-      auto* global = this->_ctx.posix_semaphore->effect(call);
+    if (this->_ctx.opts.enable_thread_modular && this->_ctx.posix_semaphore()) {
+      auto* global = this->_ctx.posix_semaphore()->effect(call);
       if (global) {
         this->init_global_operands(call);
         const auto& dest = this->_lit_factory.get_scalar(call->argument(0));
@@ -2444,8 +2444,8 @@ public:
       }
     }
 
-    if (this->_ctx.opts.enable_thread_modular && this->_ctx.pthread_initialization_frame) {
-      auto* effect = this->_ctx.pthread_initialization_frame->effect(call);
+    if (this->_ctx.opts.enable_thread_modular && this->_ctx.pthread_initialization_frame()) {
+      auto* effect = this->_ctx.pthread_initialization_frame()->effect(call);
       if (effect) {
         this->init_global_operands(call);
         const auto& dest = this->_lit_factory.get_scalar(call->argument(0));
@@ -3272,7 +3272,7 @@ private:
     if (!this->prepare_mem_access(dest)) return true;
     check_synthetic_handle_effect(*this, call, dest);
     bool cannot_expose_pointers = false;
-    const auto& frame = this->_ctx.runtime_stdio_frame_certificate;
+    const auto& frame = this->_ctx.runtime_stdio_frame_certificate();
     if (frame && dest.is_pointer_var()) {
       auto* output = frame->non_exposing_scan_output(call);
       if (output && effect->call == call && effect->output == output &&

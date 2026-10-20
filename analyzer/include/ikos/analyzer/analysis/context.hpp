@@ -54,11 +54,14 @@
 
 #include <ikos/analyzer/analysis/option.hpp>
 #include <ikos/analyzer/analysis/all_access_facts.hpp>
+#include <ikos/analyzer/checker/race_rules.hpp>
 #include <ikos/analyzer/analysis/execution_engine/global_array_subobject.hpp>
 #include <ikos/core/domain/concurrent_global_env.hpp>
 
 namespace ikos {
 namespace analyzer {
+
+namespace value { class ThreadModularAnalysis; }
 
 // forward declarations
 class OutputDatabase;
@@ -140,31 +143,59 @@ public:
   /// the transfer engine, and the data-race checker.
   core::ConcurrentGlobalEnv concurrent_env;
 
-  // Range certificates may not depend on application memory or FI aliases.
+  // Range observations are MUST predicates owned by this Context/run.
   bool memory_independent_ranges = false;
-
-  // Populated only in the independent conservative preflight. A failed
-  // observation is permanent; only certificates cross into the fresh analysis.
   std::map< ar::CallBase*, GlobalArraySubobject > mutex_effect_queries;
   AllAccessFacts< ar::CallBase* > mutex_effect_ranges;
-  std::set< ar::CallBase* > mutex_effect_certificates;
   std::map< ar::Statement*, GlobalArraySubobject > subarray_bounds_queries;
   AllAccessFacts< ar::Statement* > subarray_ranges;
-  std::map< ar::Statement*, GlobalArraySubobject > subarray_bounds_certificates;
   std::map< std::tuple< ar::GlobalVariable*, ar::ArrayType*, core::ZNumber, core::ZNumber >, bool > readonly_subarray_certificates;
-
-  // Immutable source/AR certificate, configured before numerical publication.
-  // This is independent of concurrent_env and must not be copied across bundles.
-  std::shared_ptr< const RuntimeStdioFrame > runtime_stdio_frame_certificate;
-  std::shared_ptr< const PthreadInitializationFrame > pthread_initialization_frame;
-  std::shared_ptr< const PosixSemaphore > posix_semaphore;
-
   bool native_handle_inventory_checked = false;
   bool native_handles_only = false;
   std::map< ar::Statement*, NativeHandleArray > native_handle_accesses;
   std::set< ar::CallBase* > native_handle_joins;
   AllAccessFacts< ar::Statement* > native_handle_ranges;
-  std::set< ar::CallBase* > native_handle_effect_certificates;
+
+private:
+  // Only the driver publishes validated preflight outputs into the fresh run.
+  friend class value::ThreadModularAnalysis;
+  template < typename Key >
+  static bool range_premise(race_rules::Id id,
+                            const AllAccessFacts< Key >& facts, Key key) {
+    return race_rules::permits_range_premise(id) && facts.proves(key);
+  }
+  std::set< ar::CallBase* > _mutex_effect_certificates;
+  std::map< ar::Statement*, GlobalArraySubobject > _subarray_bounds_certificates;
+  std::set< ar::CallBase* > _native_handle_effect_certificates;
+
+  // Whole-source certificates are fixed before ordinary transfer begins.
+  // The existing configuration functions are their only writers.
+  friend void configure_runtime_stdio_frame(Context&);
+  friend void configure_pthread_initialization_frame(Context&);
+  friend void configure_posix_semaphore(Context&);
+  std::shared_ptr< const RuntimeStdioFrame > _runtime_stdio_frame_certificate;
+  std::shared_ptr< const PthreadInitializationFrame > _pthread_initialization_frame;
+  std::shared_ptr< const PosixSemaphore > _posix_semaphore;
+
+public:
+  const std::set< ar::CallBase* >& mutex_effect_certificates() const {
+    return _mutex_effect_certificates;
+  }
+  const std::map< ar::Statement*, GlobalArraySubobject >& subarray_bounds_certificates() const {
+    return _subarray_bounds_certificates;
+  }
+  const std::set< ar::CallBase* >& native_handle_effect_certificates() const {
+    return _native_handle_effect_certificates;
+  }
+  const std::shared_ptr< const RuntimeStdioFrame >& runtime_stdio_frame_certificate() const {
+    return _runtime_stdio_frame_certificate;
+  }
+  const std::shared_ptr< const PthreadInitializationFrame >& pthread_initialization_frame() const {
+    return _pthread_initialization_frame;
+  }
+  const std::shared_ptr< const PosixSemaphore >& posix_semaphore() const {
+    return _posix_semaphore;
+  }
 
 
 

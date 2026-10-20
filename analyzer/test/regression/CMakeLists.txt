@@ -36,6 +36,15 @@ function(add_concurrency_test test_name)
                       LABELS concurrency RUN_SERIAL TRUE TIMEOUT 600)
 endfunction()
 set(CONCURRENCY_IKOS "${CMAKE_INSTALL_PREFIX}/bin/ikos")
+add_concurrency_test(race-rule-trace "${CONCURRENCY_ROOT}/scripts/test_race_rule_trace.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+add_executable(test-analysis-race-rules race_rules.cpp)
+target_include_directories(test-analysis-race-rules PRIVATE
+                           "${CONCURRENCY_ROOT}/analyzer/include")
+add_dependencies(build-analyzer-tests test-analysis-race-rules)
+add_test(NAME concurrency-race-rules
+         COMMAND $<TARGET_FILE:test-analysis-race-rules>)
+set_tests_properties(concurrency-race-rules PROPERTIES LABELS concurrency)
 add_executable(test-analysis-all-access-facts all_access_facts.cpp)
 target_include_directories(test-analysis-all-access-facts PRIVATE
                            "${CONCURRENCY_ROOT}/analyzer/include")

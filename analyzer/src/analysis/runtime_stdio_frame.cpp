@@ -1505,10 +1505,10 @@ const std::string& RuntimeStdioFrame::refusal_reason() const {
   return _impl->why();
 }
 void configure_runtime_stdio_frame(Context& ctx) {
-  if (!ctx.runtime_stdio_frame_certificate) {
-    ctx.runtime_stdio_frame_certificate =
+  if (!ctx.runtime_stdio_frame_certificate()) {
+    ctx._runtime_stdio_frame_certificate =
         std::make_shared< const RuntimeStdioFrame >(ctx);
-    const auto& reason = ctx.runtime_stdio_frame_certificate->refusal_reason();
+    const auto& reason = ctx.runtime_stdio_frame_certificate()->refusal_reason();
     if (!reason.empty())
       log::debug("Runtime stdio frame refused: " + reason);
   }

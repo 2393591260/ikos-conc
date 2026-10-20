@@ -256,6 +256,8 @@ add_executable(ikos-analyzer
   src/checker/division_by_zero.cpp
   src/checker/double_free.cpp
   src/checker/data_race.cpp
+  src/checker/data_race_pairs.cpp
+  src/checker/data_race_search.cpp
   src/checker/first_publication.cpp
   src/checker/thread_private_heap.cpp
   src/checker/arena_reservation.cpp

@@ -66,3 +66,24 @@ affected old regressions, budget-sensitive cases and final paired results using
 the candidate's own binary and execution evidence. Follow the
 [testing guide](testing.md); document remaining proof obligations in
 [soundness.md](../reference/soundness.md).
+
+## Choosing a permission and consumer
+
+Register the mechanism in `checker/race_rules.hpp` with a distinct identity and
+role. Implement its predicate in the responsible stage, preserving full object,
+context, instance and byte premises. A pair adapter returns `PairDecision` and
+uses `consume_pair_proof`; a complete replacement for a recorded effect returns
+`CoverageDecision` and uses `consume_coverage_proof`. A library model describes
+and records effects during collection through `consume_library_effect`.
+
+The registry is a review aid and permission check, not an automatic plugin
+scheduler. Keep the scan's short-circuit order explicit. Document real producer
+dependencies, such as binary tokens consumed by arena reservation and once
+initialization. Reusing a numerical bound does not grant another role's
+permission; the consumer must retain its full semantic checks.
+
+Preflight publications and whole-source certificate handles in `Context` are
+const to consumers. Add a narrowly owned producer and explicit query accessor
+when a new fact is needed. Do not write another module's certificate, inherit a
+preflight's application memory, or share proof-generation decisions with the
+independent execution validator.

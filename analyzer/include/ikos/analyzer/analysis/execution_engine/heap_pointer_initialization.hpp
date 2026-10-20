@@ -109,7 +109,7 @@ inline bool prove_heap_constructor(ar::CallBase* allocation, const core::ZNumber
                                          target->function()->intrinsic_id() == ar::Intrinsic::LibcRealloc)) return false;
           if (!constructor && original && (original->getName() == "free" || original->getName() == "realloc")) return false;
           if (!heap_pointer_call_covered(call, &ctx) &&
-              !ctx.mutex_effect_certificates.count(call)) return false;
+              !ctx.mutex_effect_certificates().count(call)) return false;
         }
     }
     return true;

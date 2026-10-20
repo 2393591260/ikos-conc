@@ -63,3 +63,25 @@ the facts must cover all relevant events and the formula must encode that claim.
 
 These papers supply methods and conditional theorems. They do not certify
 IKOS-ConC's added C++ implementation or arbitrary C11 weak-memory behavior.
+
+## Composition argument for the refactored checker
+
+Assume access collection conservatively covers the program under the documented
+semantic model. Every enumerated pair is either retained or excluded by an
+applicable pair contract. A retained pair keeps the analysis inconclusive unless
+supported execution search confirms a concrete race. Independently, every raw
+coverage obligation remains unresolved unless its exact effect has a complete
+replacement proof. Thus neither a range premise nor bounded UNSAT can discharge
+an unrelated pair or coverage obligation.
+
+The refactor preserves the original predicate order, object/context bindings,
+construction dependencies and conservative failure paths. Its new private
+consumers distinguish pair, coverage and library permissions. Preflight outputs
+are read-only to consumers and are published only by the existing checked driver
+path. These establish the intended composition boundaries. They do not close
+all original transfer, source-translation, memory-model or module proof
+obligations listed above; each remains separately reviewable.
+
+Regression equivalence and independent selected-execution checks test this
+implementation argument. They are finite evidence, not a proof of the assumed
+coverage premise or all executions of arbitrary C programs.

@@ -43,6 +43,7 @@
 
 #pragma once
 
+#include <array>
 #include <map>
 #include <memory>
 #include <string>
@@ -50,6 +51,7 @@
 
 #include <ikos/analyzer/analysis/memory_location.hpp>
 #include <ikos/analyzer/checker/checker.hpp>
+#include <ikos/analyzer/checker/race_rules.hpp>
 #include <ikos/core/domain/concurrent_global_env.hpp>
 #include <ikos/core/value/machine_int/congruence.hpp>
 
@@ -217,6 +219,32 @@ private:
 
   void finalize_checks();
 
+  struct CoverageDecision {
+    race_rules::Id rule;
+    ar::Statement* effect;
+    std::string reason;
+    JsonDict report;
+  };
+  void consume_coverage_proof(const CoverageDecision& proof);
+  void consume_library_effect(race_rules::Id rule, ar::CallBase* call,
+                              CallContext* context,
+                              boost::optional< JsonDict > report = boost::none);
+
+  struct PairDecision {
+    race_rules::Id rule = race_rules::Id::None;
+    boost::optional< JsonDict > report;
+
+    static PairDecision exclude(race_rules::Id rule) {
+      return PairDecision{rule, boost::none};
+    }
+    static PairDecision exclude(race_rules::Id rule, JsonDict info) {
+      return PairDecision{rule, std::move(info)};
+    }
+    bool excluded() const { return rule != race_rules::Id::None; }
+  };
+  void consume_pair_proof(std::size_t i, std::size_t j,
+                          const PairDecision& decision);
+
   using JoinedNames = std::vector< std::unordered_set< std::string > >;
   struct PendingRacePair {
     std::size_t i;
@@ -342,6 +370,8 @@ private:
   std::vector< AccessRecord > _accesses;
 
   std::unique_ptr< RegionOwnership > _ownership;
+  std::array< std::uint64_t, static_cast< std::size_t >(race_rules::Id::Count) >
+      _pair_rule_counts{};
 
   // Opt-in research configuration; native mode is the solver-free ablation.
   bool _pair_exclusion_enabled = false;

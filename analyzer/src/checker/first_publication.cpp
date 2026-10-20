@@ -392,7 +392,7 @@ bool FirstPublication::Impl::closed_function_uses(ar::Function* f) {
         auto* create = dyn_cast< ar::CallBase >(item.first);
         if (!create || !create->has_frontend() ||
             create->frontend< llvm::Value >() != call ||
-            !ctx.native_handle_effect_certificates.count(create))
+            !ctx.native_handle_effect_certificates().count(create))
           continue;
         allowed =
             native_handle_api(call, true) && call->getArgOperand(2) == value;
@@ -561,7 +561,7 @@ bool FirstPublication::Impl::inventory() {
               !prove_heap_initialization_prefix(call, link, ctx, &description))
             return fail("incomplete birth prefix");
           births.emplace(call, std::move(description));
-        } else if (ctx.native_handle_effect_certificates.count(call)) {
+        } else if (ctx.native_handle_effect_certificates().count(call)) {
           if (call->num_arguments() != 4 || call->code() != main->body() ||
               !isa< ar::NullConstant >(call->argument(1)) ||
               !isa< ar::NullConstant >(call->argument(3)))
@@ -572,7 +572,7 @@ bool FirstPublication::Impl::inventory() {
               child->function() == main)
             return fail("callback identity");
           workers.insert(child->function());
-        } else if (ctx.mutex_effect_certificates.count(call)) {
+        } else if (ctx.mutex_effect_certificates().count(call)) {
           auto object = mutex_array_effect_object(call);
           if (!object || !array_effect_abi(call) ||
               roots.count(object.global) || mutexes.count(object.global))
@@ -807,7 +807,7 @@ bool FirstPublication::Impl::transfer(ar::Statement* stmt,
       auto* child = ctx.call_context_factory->get_context(cc, call);
       if (!function(target, child, state, result))
         return false;
-    } else if (ctx.mutex_effect_certificates.count(call)) {
+    } else if (ctx.mutex_effect_certificates().count(call)) {
       auto object = mutex_array_effect_object(call);
       if (!object || !array_effect_abi(call) || object.global == lock ||
           !effect_arrays.count(object.global))
@@ -824,7 +824,7 @@ bool FirstPublication::Impl::transfer(ar::Statement* stmt,
           return fail("recursive lock");
       } else if (!state.held.erase(object))
         return fail("unheld unlock");
-    } else if (ctx.native_handle_effect_certificates.count(call)) {
+    } else if (ctx.native_handle_effect_certificates().count(call)) {
       state.concurrent = true;
     } else if (!ctx.native_handle_joins.count(call) && !nondet_api(call)) {
       return fail("unsupported transfer effect");

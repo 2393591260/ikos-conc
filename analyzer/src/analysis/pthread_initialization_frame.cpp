@@ -444,10 +444,10 @@ PthreadInitializationFrame::~PthreadInitializationFrame() = default;
 const PthreadInitializationEffect* PthreadInitializationFrame::effect(ar::CallBase* c) const { return _impl->get(c); }
 const std::string& PthreadInitializationFrame::refusal_reason() const { return _impl->reason(); }
 void configure_pthread_initialization_frame(Context& ctx) {
-  if (ctx.pthread_initialization_frame) return;
-  ctx.pthread_initialization_frame = std::make_shared< const PthreadInitializationFrame >(ctx);
-  if (!ctx.pthread_initialization_frame->refusal_reason().empty())
-    log::debug("Heap pthread initialization frame refused: " + ctx.pthread_initialization_frame->refusal_reason());
+  if (ctx.pthread_initialization_frame()) return;
+  ctx._pthread_initialization_frame = std::make_shared< const PthreadInitializationFrame >(ctx);
+  if (!ctx.pthread_initialization_frame()->refusal_reason().empty())
+    log::debug("Heap pthread initialization frame refused: " + ctx.pthread_initialization_frame()->refusal_reason());
 }
 } // namespace analyzer
 } // namespace ikos

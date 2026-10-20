@@ -180,22 +180,22 @@ void ThreadModularAnalysis::run() {
       for (const auto& effect : preflight.concurrent_env.unmodeled_effects())
         complete &= effect.second == "synthetic pthread handle representation not modeled";
       for (const auto& query : queries) {
-        complete &= preflight.mutex_effect_ranges.proves(query.first);
+        complete &= Context::range_premise(race_rules::Id::RangeMutexEffects, preflight.mutex_effect_ranges, query.first);
       }
       for (const auto& query : bounds) {
-        complete &= preflight.subarray_ranges.proves(query.first);
+        complete &= Context::range_premise(race_rules::Id::RangeSubarray, preflight.subarray_ranges, query.first);
       }
       for (const auto& query : _ctx.native_handle_accesses) {
-        complete &= preflight.native_handle_ranges.proves(query.first);
+        complete &= Context::range_premise(race_rules::Id::RangeNativeHandles, preflight.native_handle_ranges, query.first);
       }
       if (complete) {
         for (const auto& query : _ctx.native_handle_accesses)
           if (auto* call = dyn_cast< ar::CallBase >(query.first))
-            _ctx.native_handle_effect_certificates.insert(call);
+            _ctx._native_handle_effect_certificates.insert(call);
         if (native_queries) log::debug("Native pthread handles: complete output-effect preflight");
-        _ctx.subarray_bounds_certificates = bounds;
+        _ctx._subarray_bounds_certificates = bounds;
         for (const auto& query : queries)
-          _ctx.mutex_effect_certificates.insert(query.first);
+          _ctx._mutex_effect_certificates.insert(query.first);
         log::debug("Heap pointer effects: mutex-array preflight certified " +
                    std::to_string(queries.size()) + " calls");
       } else {

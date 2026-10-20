@@ -27,7 +27,7 @@ inline bool direct_storage_address(ar::Value* value) {
 // Only this closed effects subset may treat the heap Store board as complete.
 // Other intrinsics can havoc bytes without publishing a typed pointer write.
 inline bool heap_pointer_call_covered(ar::CallBase* call, const Context* ctx = nullptr) {
-  if (ctx && (ctx->native_handle_effect_certificates.count(call) ||
+  if (ctx && (ctx->native_handle_effect_certificates().count(call) ||
               (ctx->native_handles_only && constant_assertion_effect(call)))) return true;
   auto* called = call->called();
   for (unsigned depth = 0; depth < 16; ++depth) {

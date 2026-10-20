@@ -234,7 +234,7 @@ bool PosixSemaphore::opaque_handle_call(llvm::CallBase* c) const { return _impl-
 bool PosixSemaphore::allocation_call(llvm::CallBase* c) const { return _impl->allocations.count(c); }
 const std::vector< PosixSemaphore::Token >& PosixSemaphore::tokens() const { return _impl->tokens; }
 void configure_posix_semaphore(Context& ctx) {
-  if (!ctx.posix_semaphore) ctx.posix_semaphore = std::make_shared< PosixSemaphore >(ctx);
+  if (!ctx.posix_semaphore()) ctx._posix_semaphore = std::make_shared< PosixSemaphore >(ctx);
 }
 } // namespace analyzer
 } // namespace ikos

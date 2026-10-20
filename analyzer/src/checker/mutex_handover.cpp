@@ -83,7 +83,7 @@ class MutexHandover::Impl {
   bool create(llvm::CallBase* c) const {
     auto* a = binding(c);
     if (!a || !native_handle_api(c, true) ||
-        (!ctx.native_handle_effect_certificates.count(a) && !unread_private_thread_output(a)) ||
+        (!ctx.native_handle_effect_certificates().count(a) && !unread_private_thread_output(a)) ||
         !isa< ar::NullConstant >(a->argument(1)) || !isa< ar::NullConstant >(a->argument(3))) return false;
     auto* entry = dyn_cast< ar::FunctionPointerConstant >(a->argument(2));
     auto* slot = address_base(a->argument(0));

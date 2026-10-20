@@ -68,8 +68,8 @@ class BinaryTokenOwnership::Impl {
   bool create(llvm::CallBase* c) const {
     auto* a = binding(c);
     return a && native_handle_api(c, true) &&
-        (ctx.native_handle_effect_certificates.count(a) || unread_private_thread_output(a) ||
-         (ctx.posix_semaphore && ctx.posix_semaphore->opaque_handle_call(c)));
+        (ctx.native_handle_effect_certificates().count(a) || unread_private_thread_output(a) ||
+         (ctx.posix_semaphore() && ctx.posix_semaphore()->opaque_handle_call(c)));
   }
   bool terminal(llvm::CallBase* c) const {
     auto* a = binding(c); auto* f = a ? native_handle_callee(a) : nullptr;
@@ -84,9 +84,9 @@ class BinaryTokenOwnership::Impl {
     auto* a = binding(c); auto* target = a ? native_handle_callee(a) : nullptr;
     auto* source = callee(c);
     if (!a || !target || !source->isDeclaration()) return false;
-    if (create(c) || ctx.native_handle_joins.count(a) || ctx.mutex_effect_certificates.count(a)) return true;
-    if (ctx.posix_semaphore && (ctx.posix_semaphore->effect(a) ||
-        ctx.posix_semaphore->opaque_handle_call(c) || ctx.posix_semaphore->allocation_call(c))) return true;
+    if (create(c) || ctx.native_handle_joins.count(a) || ctx.mutex_effect_certificates().count(a)) return true;
+    if (ctx.posix_semaphore() && (ctx.posix_semaphore()->effect(a) ||
+        ctx.posix_semaphore()->opaque_handle_call(c) || ctx.posix_semaphore()->allocation_call(c))) return true;
     if (mutex_call(c).source || terminal(c)) return true;
     const auto id = target->intrinsic_id();
     if ((source->getName() == "__VERIFIER_atomic_begin" || source->getName() == "__VERIFIER_atomic_end") &&
@@ -968,7 +968,7 @@ public:
         if (!inserted.second) inserted.first->second = nullptr;
       }
     }
-    bool potential = ctx.posix_semaphore && !ctx.posix_semaphore->tokens().empty();
+    bool potential = ctx.posix_semaphore() && !ctx.posix_semaphore()->tokens().empty();
     for (auto* f : order) if (atomic_signature(f)) potential = true;
     roots.push_back(main);
     if (!potential || !inventory(*main->getParent(), main)) return;
@@ -983,7 +983,7 @@ public:
       Token t;
       if (ticket_ownership(f, t)) tokens.push_back(std::move(t));
     }
-    if (ctx.posix_semaphore) for (const auto& sem : ctx.posix_semaphore->tokens()) {
+    if (ctx.posix_semaphore()) for (const auto& sem : ctx.posix_semaphore()->tokens()) {
       Token t; t.source = sem.source; t.semaphore = true; t.operations = sem.operations;
       if (ownership(t)) tokens.push_back(std::move(t));
     }
