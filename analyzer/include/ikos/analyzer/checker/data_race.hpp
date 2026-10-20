@@ -57,6 +57,8 @@ namespace ikos {
 namespace analyzer {
 
 class RegionOwnership;
+class ReadonlyHeapReads;
+class BucketListOwnership;
 
 /// \brief Kind of memory access recorded for race detection
 enum class AccessKind { Read, Write };
@@ -214,6 +216,37 @@ private:
   Phase _phase = Phase::Collecting;
 
   void finalize_checks();
+
+  using JoinedNames = std::vector< std::unordered_set< std::string > >;
+  struct PendingRacePair {
+    std::size_t i;
+    std::size_t j;
+    ar::Statement* report_stmt;
+    CallContext* report_cc;
+    std::string first_conflict_loc;
+    JsonList conflicting_pts; // dump() of every cell in a.pts ∧ b.pts
+    /// True when this pair rests on a TOP points-to (at least one side's
+    /// points-to is ⊤), so the checker cannot DISTINGUISH which memory
+    /// object conflicts. Such a pair is reported as `Result::Warning`
+    /// ("unknown"), NOT `Result::Error` ("race") — the access is a model
+    /// boundary, not a proven race. Soundness invariant: `Warning` here maps
+    /// to SV-COMP UNKNOWN, NEVER to SAFE — it does not weaken the FN=0
+    /// guarantee (see the demotion site below).
+    bool is_unknown = false;
+  };
+
+  bool check_effect_coverage(ReadonlyHeapReads& readonly_heap_reads,
+                             BucketListOwnership& bucket_list_ownership);
+  void prepare_access_regions();
+  std::vector< PendingRacePair > collect_race_pairs(
+      ReadonlyHeapReads& readonly_heap_reads,
+      BucketListOwnership& bucket_list_ownership,
+      JoinedNames& joined_names);
+  void search_race_candidates(const std::vector< PendingRacePair >& all_pairs,
+                              const JoinedNames& joined_names,
+                              bool synthetic_handle_unsupported);
+  void report_race_group(const PendingRacePair& selected, bool group_is_unknown,
+                         bool bmc_confirmed, const JsonDict& info);
 
   /// \brief Log a Load statement into the access digest
   void check_load(ar::Load* load,

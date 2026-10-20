@@ -103,3 +103,27 @@ An exception during finalization propagates to the analyzer's normal error path;
 unwinding does not attempt to prove or emit additional results. The other four
 checker-owning drivers also finalize at normal completion. Unsupported
 thread-modular engine combinations are rejected before analysis.
+
+## Final race-checking stages
+
+The explicit finalizer calls these stages in order:
+
+| Stage | Method | Responsibility |
+| --- | --- | --- |
+| Coverage | `check_effect_coverage` | Report uncovered entries/effects or apply a complete replacement proof to that specific effect. |
+| Access preparation | `prepare_access_regions` | Invalidate ambiguous region labels or backfill labels already established during collection. |
+| Candidate scan | `collect_race_pairs` | Represent nonunique worker writes, compute completion facts, apply exclusions and retain unresolved pairs. |
+| Search | `search_race_candidates` | Group unresolved pairs and run the existing seven bounded passes. |
+| Reporting | `report_race_group` | Insert the selected group's existing verdict and evidence into the results database. |
+
+`ReadonlyHeapReads` and `BucketListOwnership` are constructed before access
+preparation, as required by their existing contracts. The other pair-proof
+modules are constructed after nonunique write duplication and completion-fact
+preparation. `BinaryTokenOwnership` precedes its `ArenaReservation` and
+`OnceInitialization` consumers. Candidate indices refer to the final access
+order; search receives read-only candidates and completion-name tables.
+
+Covering a synthetic-handle warning does not grant BMC permission to interpret
+that handle representation. The search budget starts only after the candidate
+scan and grouping. The stages preserve the existing short-circuit order and
+report anchors; moving a stage does not extend a module's supported semantics.

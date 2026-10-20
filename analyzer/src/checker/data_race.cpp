@@ -765,6 +765,19 @@ void DataRaceChecker::finalize_checks() {
   this->_ownership->run();
   ReadonlyHeapReads readonly_heap_reads(this->_ctx);
   BucketListOwnership bucket_list_ownership(this->_ctx, this->_accesses);
+  const bool synthetic_handle_unsupported =
+      this->check_effect_coverage(readonly_heap_reads, bucket_list_ownership);
+  this->prepare_access_regions();
+  JoinedNames joined_names;
+  auto all_pairs = this->collect_race_pairs(readonly_heap_reads,
+                                          bucket_list_ownership, joined_names);
+  this->search_race_candidates(all_pairs, joined_names,
+                               synthetic_handle_unsupported);
+}
+
+bool DataRaceChecker::check_effect_coverage(
+    ReadonlyHeapReads& readonly_heap_reads,
+    BucketListOwnership& bucket_list_ownership) {
   bool synthetic_handle_unsupported = false;
   for (ar::CallBase* call : this->_ctx.concurrent_env.unmodeled_thread_creations()) {
     this->_checks.insert(
@@ -815,6 +828,10 @@ void DataRaceChecker::finalize_checks() {
         anchor, this->_ctx.call_context_factory->get_empty(), {}, info);
   }
 
+  return synthetic_handle_unsupported;
+}
+
+void DataRaceChecker::prepare_access_regions() {
   // Temporary probe (env IKOS_BMC_DUMP): dump the BMC events (memory + mutex
   // sync) for every function, verifying the event extraction on real code.
   // Remove once the BMC module is wired in.
@@ -888,6 +905,12 @@ void DataRaceChecker::finalize_checks() {
     }
   }
 
+}
+
+std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pairs(
+    ReadonlyHeapReads& readonly_heap_reads,
+    BucketListOwnership& bucket_list_ownership,
+    JoinedNames& joined_names) {
   // Offline pairwise race detection across all logged accesses.
   //
   // Two accesses A and B form a potential race when:
@@ -938,22 +961,7 @@ void DataRaceChecker::finalize_checks() {
   // Per-pair metadata captured during the scan. We avoid allocating
   // JsonDicts here so the inner loop stays cheap; the group emits are
   // done once at the end.
-  struct PendingRacePair {
-    std::size_t i;
-    std::size_t j;
-    ar::Statement* report_stmt;
-    CallContext* report_cc;
-    std::string first_conflict_loc;
-    JsonList conflicting_pts; // dump() of every cell in a.pts ∧ b.pts
-    /// True when this pair rests on a TOP points-to (at least one side's
-    /// points-to is ⊤), so the checker cannot DISTINGUISH which memory
-    /// object conflicts. Such a pair is reported as `Result::Warning`
-    /// ("unknown"), NOT `Result::Error` ("race") — the access is a model
-    /// boundary, not a proven race. Soundness invariant: `Warning` here maps
-    /// to SV-COMP UNKNOWN, NEVER to SAFE — it does not weaken the FN=0
-    /// guarantee (see the demotion site below).
-    bool is_unknown = false;
-  };
+
 
   std::vector< PendingRacePair > all_pairs;
   unsigned exclusion_queries = 0, exclusion_native = 0, exclusion_smt = 0;
@@ -1068,8 +1076,7 @@ void DataRaceChecker::finalize_checks() {
   // only when EVERY instance of that thread function is joined — otherwise an
   // unjoined instance may still race. Indexed by the FINAL `_accesses` order
   // (after the non-unique write duplication above).
-  std::vector< std::unordered_set< std::string > > joined_names(
-      this->_accesses.size());
+  joined_names.resize(this->_accesses.size());
   std::vector< std::unordered_set< std::string > > inactive_names(this->_accesses.size());
   ConstantThreadCompletion completion(this->_ctx);
   // Wrapper-resolved start routines are absent from this syntactic creator
@@ -1686,6 +1693,13 @@ void DataRaceChecker::finalize_checks() {
     exclusion_report << summary.str() << '\n';
   }
 
+  return all_pairs;
+}
+
+void DataRaceChecker::search_race_candidates(
+    const std::vector< PendingRacePair >& all_pairs,
+    const JoinedNames& joined_names,
+    bool synthetic_handle_unsupported) {
   if (all_pairs.empty()) {
     return;
   }
@@ -2501,21 +2515,27 @@ void DataRaceChecker::finalize_checks() {
       info.put("bmc", diagnostics);
     }
 
-    this->_checks.insert(CheckKind::DataRace,
+    this->report_race_group(*selected, group_is_unknown, bmc_confirmed, info);
+    // No terminal output: the aggregated info is the report. Downstream
+    // tools (ikos-report, ikos-view) render it from the database.
+  }
+  }}
+
+void DataRaceChecker::report_race_group(const PendingRacePair& selected,
+                                      bool group_is_unknown,
+                                      bool bmc_confirmed,
+                                      const JsonDict& info) {
+  this->_checks.insert(CheckKind::DataRace,
                          CheckerName::DataRace,
                          // Abstract candidates do not establish a real race,
                          // including when bounded confirmation is disabled.
                          (group_is_unknown || !bmc_confirmed)
                              ? Result::Warning
                              : Result::Error,
-                         selected->report_stmt,
-                         selected->report_cc,
+                         selected.report_stmt,
+                         selected.report_cc,
                          /* operands = */ {},
                          /* info = */ info);
-    // No terminal output: the aggregated info is the report. Downstream
-    // tools (ikos-report, ikos-view) render it from the database.
-  }
-  }
 }
 
 CheckerName DataRaceChecker::name() const {
