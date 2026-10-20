@@ -25,6 +25,7 @@ jobs:
            libc6-dev-i386 lib32gcc-13-dev
       - name: Check benchmark harness
         run: |
+          python3 scripts/check_concurrency_docs.py
           python3 scripts/test_ikos_runtime.py
           python3 scripts/test_svcomp_race_runner.py
           python3 scripts/test_svcomp_package.py
