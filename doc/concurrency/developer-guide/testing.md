@@ -118,6 +118,15 @@ separately; a local pass is not an official CI or witness acceptance.
 
 ## Refactor permission and pipeline checks
 
+`python3 scripts/test_native_abi.py` checks both native GNU/Linux data models
+through the competition entry. `--bits 32` or `--bits 64` selects one model;
+CTest registers `concurrency-native-abi-32` and `concurrency-native-abi-64`.
+It compiles real target headers and layout assertions, checks ordinary mutex
+SAFE and native-handle/64-bit-field FALSE, disables confirmation for an UNKNOWN
+control, and checks compilation and invalid-model errors. FALSE must pass the
+entry's independent execution check and retain the source hash and data model
+in its witness. This is a baseline, not dual-ABI acceptance of every mechanism.
+
 After installing the build, run:
 
 ```bash

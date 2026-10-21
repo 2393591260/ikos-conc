@@ -186,6 +186,10 @@ add_concurrency_test(nested-array-ownership "${CONCURRENCY_ROOT}/scripts/test_ne
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(native-thread-handles "${CONCURRENCY_ROOT}/scripts/test_native_thread_handles.py"
                      --ikos "${CONCURRENCY_IKOS}")
+foreach(bits 32 64)
+  add_concurrency_test(native-abi-${bits} "${CONCURRENCY_ROOT}/scripts/test_native_abi.py"
+                       --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
+endforeach()
 add_concurrency_test(ffs "${CONCURRENCY_ROOT}/scripts/test_bmc_ffs.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(private-array-zero "${CONCURRENCY_ROOT}/scripts/test_private_array_zero.py"

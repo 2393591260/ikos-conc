@@ -22,6 +22,16 @@ Many additional safety proofs target **GNU/Linux ILP32** and restricted program
 shapes. General ILP32/LP64 input support does not make every proof available on
 both ABIs. Each panel below states its own requirements and refusal conditions.
 
+The native GNU/Linux entry checks use the target's actual headers: `int` is
+32 bits and `long long` is 64 bits on both models; `long`, pointers, `size_t`
+and `pthread_t` are 32/64 bits respectively. The tested GNU mutex layouts are
+24/40 bytes. These sizes are target contracts, not portable POSIX constants.
+The entry propagates the selected model to compilation and witness metadata.
+The dual-ABI baseline covers ordinary global mutex protection, native
+create/join and a 64-bit data field after a pointer. More specialized numeric
+thread arguments, dynamic handles, local locks and safety certificates retain
+their individual support gates; unsupported behavior remains UNKNOWN.
+
 | Mechanism family | What it contributes | Details |
 | --- | --- | --- |
 | Library effects and initialized fields | Conservatively model supported calls and recover field values; these facts alone do not prove ownership or synchronization. | [Values and library effects](../reference/library-effects.md#values-and-library-effects) |
