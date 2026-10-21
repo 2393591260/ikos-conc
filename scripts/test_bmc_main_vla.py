@@ -44,7 +44,8 @@ def replay_mutations(certificate):
     replay.run()
     obj = next(k for k, meta in replay.objects.items() if meta.get('dynamic_stack'))
     pointer = (obj, 0)
-    inst = dict(inbounds=True, index_bits=32, factors=['4'], operands=[{}, dict(type=dict(bits=32))])
+    inst = dict(inbounds=True, index_bits=32, address_space=0, factors=['4'],
+                native_terms=[dict(kind='index', stride=4, bits=32)], operands=[{}, dict(type=dict(bits=32))])
     try:
         replay.pointer_shift(inst, [pointer, replay.objects[obj]['count'] + 1])
     except (Reject, Unsupported):

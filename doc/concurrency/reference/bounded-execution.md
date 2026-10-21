@@ -123,3 +123,27 @@ the selected AR prefix, not a C-source witness. Run
 controls, alias/output corruption and damaged execution evidence.
 
 </details>
+
+### Executed constant read addresses
+
+For supported shared main-stack and heap reads, an address index can become a
+constant at its actual use when encoding its executed value simplifies to an
+integer literal. No solver model is sampled to choose that constant. The original
+access remains in the execution evidence and retains its object, lifetime,
+alignment, initialization and SC read-from checks. Mutable or unresolved indices
+keep the execution unconfirmed under this route.
+
+All retained global, heap and stack GEPs, including fixed stack objects and intermediate
+unused definitions, must satisfy the supported native inbounds contract. BMC
+checks each intermediate offset and rejects signed index/offset truncation or
+overflow. Native LLVM strides and struct field offsets must match the imported AR
+terms exactly; the original sequential index widths must match as well. The AR
+snapshot exports these original terms, and the independent checker compares them
+before performing its own concrete pointer arithmetic. Missing native metadata is
+unsupported. One-past formation is allowed; dereference still requires in-range
+bytes. These conservative checks do not establish SAFE or source-level witness
+validity.
+
+Run `python3 scripts/test_bmc_executed_offset.py` (and `--bits 64`) for native
+ILP32/LP64 C int/long-long controls,
+raw LLVM intermediate/large-stride/field-offset cases and damaged native evidence.

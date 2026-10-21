@@ -1,5 +1,6 @@
 #pragma once
 
+#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <map>
 #include <sstream>
 #include <ikos/analyzer/json/json.hpp>
@@ -145,7 +146,25 @@ public:
           ? llvm::dyn_cast< llvm::GetElementPtrInst >(shift->frontend< llvm::Value >()) : nullptr;
       if (native != nullptr) {
         out.put("inbounds", native->isInBounds());
+        out.put("address_space", native->getPointerAddressSpace());
         out.put("index_bits", native->getModule()->getDataLayout().getIndexSizeInBits(native->getPointerAddressSpace()));
+        JsonList terms;
+        const auto& layout = native->getModule()->getDataLayout();
+        for (auto it = llvm::gep_type_begin(native), end = llvm::gep_type_end(native); it != end; ++it) {
+          JsonDict term;
+          if (auto* record = it.getStructTypeOrNull()) {
+            term.put("kind", "field");
+            term.put("offset", layout.getStructLayout(record)->getElementOffset(
+                llvm::cast< llvm::ConstantInt >(it.getOperand())->getZExtValue()));
+          } else {
+            const auto stride = layout.getTypeAllocSize(it.getIndexedType());
+            term.put("kind", stride.isScalable() ? "unsupported" : "index");
+            if (!stride.isScalable()) term.put("stride", stride.getFixedValue());
+            term.put("bits", it.getOperand()->getType()->getIntegerBitWidth());
+          }
+          terms.add(term);
+        }
+        out.put("native_terms", terms);
       }
     } else if (auto* alloc = core::dyn_cast< ar::Allocate >(stmt)) {
       out.put("kind", "allocate"); out.put("allocated_type", type(alloc->allocated_type()));

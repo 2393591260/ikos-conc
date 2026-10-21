@@ -128,6 +128,10 @@ add_concurrency_test(bmc-mutex-lifetime "${CONCURRENCY_ROOT}/scripts/test_bmc_mu
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(bmc-main-stack-mutex "${CONCURRENCY_ROOT}/scripts/test_bmc_main_stack_mutex.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(bmc-executed-offset "${CONCURRENCY_ROOT}/scripts/test_bmc_executed_offset.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(bmc-executed-offset-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_executed_offset.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(bmc-main-vla "${CONCURRENCY_ROOT}/scripts/test_bmc_main_vla.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(shared-node-graph "${CONCURRENCY_ROOT}/scripts/test_shared_node_graph.py"

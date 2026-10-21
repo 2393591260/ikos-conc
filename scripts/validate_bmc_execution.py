@@ -210,23 +210,32 @@ class Replay:
         require(isinstance(pointer, tuple) and pointer[0] not in ('null', 'function'), 'pointer shift base')
         require(len(inst['factors']) == len(values) - 1, 'pointer shift arity')
         require(all(isinstance(v, int) for v in values[1:]), 'pointer shift index')
-        meta = self.objects.get(pointer[0], {})
-        heap = 'allocation' in meta or meta.get('dynamic_stack', False)
         offset, delta = pointer[1], 0
-        if heap:
-            if inst.get('inbounds') is not True or inst.get('index_bits') != self.program['pointer_bits']:
-                raise Unsupported('unverified heap GEP contract')
-            self.region(pointer, 0)
-            bits = inst['index_bits']
-            low, high = -(1 << (bits - 1)), (1 << (bits - 1)) - 1
+        if inst.get('inbounds') is not True or inst.get('index_bits') != self.program['pointer_bits'] or inst.get('address_space') != 0:
+            raise Unsupported('unverified object GEP contract')
+        self.region(pointer, 0, opaque=True)
+        native_terms = inst.get('native_terms')
+        if not isinstance(native_terms, list) or len(native_terms) != len(inst['factors']):
+            raise Unsupported('missing native GEP terms')
+        bits = inst['index_bits']
+        low, high = -(1 << (bits - 1)), (1 << (bits - 1)) - 1
         for position, (factor, value) in enumerate(zip(inst['factors'], values[1:]), 1):
             product = int(factor) * value
             delta += product
-            if heap:
-                width = min(bits, inst['operands'][position]['type']['bits'])
-                require(-(1 << (width - 1)) <= value < (1 << (width - 1)), 'GEP index truncation/sign')
-                require(low <= product <= high and low <= delta <= high, 'GEP signed offset overflow')
-                self.region((pointer[0], offset + delta), 0)
+            term = native_terms[position - 1]
+            operand = inst['operands'][position]
+            if term.get('kind') == 'index':
+                require(int(term['stride']) == int(factor) and
+                        term['bits'] == operand['type']['bits'], 'native GEP stride/index width')
+            elif term.get('kind') == 'field':
+                require(int(factor) == 1 and operand.get('kind') == 'integer' and
+                        value == int(term['offset']), 'native GEP field offset')
+            else:
+                raise Unsupported('native GEP term kind')
+            width = min(bits, operand['type']['bits'])
+            require(-(1 << (width - 1)) <= value < (1 << (width - 1)), 'GEP index truncation/sign')
+            require(low <= product <= high and low <= delta <= high, 'GEP signed offset overflow')
+            self.region((pointer[0], offset + delta), 0, opaque=True)
         return (pointer[0], offset + delta)
 
     def store(self, pointer, value, t, alignment=0):

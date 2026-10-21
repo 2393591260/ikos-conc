@@ -21,12 +21,13 @@ def gep_contract():
     replay.program = dict(pointer_bits=32)
     replay.objects = {'heap': dict(size=8, live=True, thread_local=False, allocation='alloc')}
     replay.memory = {'heap': [None] * 8}
-    inst = dict(inbounds=True, index_bits=32, factors=['4'],
+    inst = dict(inbounds=True, index_bits=32, address_space=0, factors=['4'],
+                native_terms=[dict(kind='index', stride=4, bits=64)],
                 operands=[{}, dict(type=dict(bits=64))])
     assert replay.pointer_shift(inst, [('heap', 0), 2]) == ('heap', 8)
     assert replay.pointer_shift(inst, [('heap', 8), -2]) == ('heap', 0)
     bad = [(inst, [('heap', 0), 3]), (inst, [('heap', 0), 1 << 32]),
-           (dict(inst, factors=['4', '4'], operands=[{}, inst['operands'][1], inst['operands'][1]]),
+           (dict(inst, factors=['4', '4'], native_terms=inst['native_terms'] * 2, operands=[{}, inst['operands'][1], inst['operands'][1]]),
             [('heap', 0), 3, -3]),
            (dict(inst, factors=['2147483648']), [('heap', 0), 2]),
            (dict(inst, factors=[]), [('heap', 0), 0]),

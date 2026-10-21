@@ -7,6 +7,7 @@
 
 #include <z3++.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/GetElementPtrTypeIterator.h>
 
 #include <functional>
 #include <chrono>
@@ -821,7 +822,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                 ? llvm::dyn_cast< llvm::GetElementPtrInst >(shift->frontend< llvm::Value >()) : nullptr;
             if (!pointer_on_path(shift->result(), path, i + 1, path[i].stmt->code()->function_or_null(),
                                  nullptr, pointer) ||
-                native == nullptr || !native->isInBounds() || pointer.var_id != 0 ||
+                native == nullptr || !native->isInBounds() || native->getPointerAddressSpace() != 0 || pointer.var_id != 0 ||
                 pointer.const_off < 0 || pointer.const_off > pointer.heap_extent ||
                 freed.count(pointer.heap_allocation)) return false;
           }
@@ -1261,7 +1262,17 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       if (global == nullptr) guard_reusable = false;
       else guard_reads.insert(global);
       auto* type = core::dyn_cast< ar::IntegerType >(iv->type());
-      const auto& access = path[definition_index];
+      auto access = path[definition_index];
+      if ((access.heap_allocation != nullptr || access.shared_main_local) && access.var_id != 0) {
+        z3::expr index(ctx);
+        if (!encode_value(reinterpret_cast< ar::InternalVariable* >(access.var_id), index,
+                          cache, prefix, depth + 1, access.var_before)) return false;
+        auto offset = (ctx.int_val(access.const_off.str().c_str()) +
+                       ctx.int_val(access.coeff.str().c_str()) * index).simplify();
+        if (!offset.is_numeral()) return false;
+        access.const_off = core::ZNumber::from_string(Z3_get_numeral_string(ctx, offset));
+        access.var_id = 0;
+      }
       if (type == nullptr || abstract_initializer(def)) return false;
       if ((access.heap_allocation != nullptr || access.shared_main_local) &&
           (access.var_id != 0 || access.width == 0 || access.width > 8 ||
@@ -2016,17 +2027,9 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       }
       return true;
     };
-    // Prove every retained heap GEP's intermediate offsets, including unused
-    // results. Rejecting unproved poison is a supported-path boundary, not a
-    // claim that unused LLVM poison itself is immediate UB.
-    const bool has_heap = std::any_of(allocation_origin.begin(), allocation_origin.end(), [](const auto& event) {
-      auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
-      return event.local_extent > 0 || (call != nullptr && malloc_call(call));
-    });
-    const bool has_dynamic_stack = std::any_of(traces.begin(), traces.end(), [](const auto& trace) {
-      return std::any_of(trace.events.begin(), trace.events.end(), [](const auto& e) {return e.local_extent > 0;});
-    });
-    for (std::size_t id = 0; (has_heap || has_dynamic_stack) && id < traces.size(); ++id) {
+    // Check intermediate offsets even when a later GEP returns in bounds.
+    // Unproved poison is unsupported, including unused executed definitions.
+    for (std::size_t id = 0; id < traces.size(); ++id) {
       const auto& trace = traces[id];
       for (std::size_t i = 0; i < trace.events.size(); ++i) {
         auto* shift = core::dyn_cast< ar::PointerShift >(trace.events[i].stmt);
@@ -2034,20 +2037,40 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         BmcEvent base;
         if (!pointer_on_path(shift->pointer(), trace.events, i, trace.root, trace.argument,
                              base, &allocation_origin)) return Result(Status::Unsupported);
-        if (base.heap_allocation == nullptr && base.local_extent == 0) continue;
         auto* native = shift->has_frontend()
             ? llvm::dyn_cast< llvm::GetElementPtrInst >(shift->frontend< llvm::Value >()) : nullptr;
-        if (native == nullptr || !native->isInBounds()) return Result(Status::Unsupported);
+        if (native == nullptr || !native->isInBounds() || native->getPointerAddressSpace() != 0) return Result(Status::Unsupported);
         const auto bits = native->getModule()->getDataLayout().getIndexSizeInBits(native->getPointerAddressSpace());
-        if (bits == 0 || bits > 64) return Result(Status::Unsupported);
+        if (bits == 0 || bits > 64 || bits != shift->bundle()->data_layout().pointers.bit_width) return Result(Status::Unsupported);
         const auto low = ctx.int_val((-(core::ZNumber(1) << (bits - 1))).str().c_str());
         const auto high = ctx.int_val(((core::ZNumber(1) << (bits - 1)) - 1).str().c_str());
-        const auto size = ctx.int_val((base.heap_allocation ? base.heap_extent : base.local_extent).str().c_str());
+        core::ZNumber extent;
+        if (!memory_extent(base, extent)) return Result(Status::Unsupported);
+        const auto size = ctx.int_val(extent.str().c_str());
         z3::expr offset(ctx), delta = ctx.int_val(0);
         if (!encode_offset(base, offset, caches[id], trace.value_prefix(), i)) return Result(Status::Unsupported);
         replay_offsets.erase(&base);
         s.add(offset >= 0 && offset <= size);
-        for (std::size_t term = 0; term < shift->num_terms(); ++term) {
+        auto native_term = llvm::gep_type_begin(native);
+        const auto native_end = llvm::gep_type_end(native);
+        const auto& layout = native->getModule()->getDataLayout();
+        for (std::size_t term = 0; term < shift->num_terms(); ++term, ++native_term) {
+          if (native_term == native_end) return Result(Status::Unsupported);
+          const auto& ar_term = shift->term(term);
+          if (auto* record = native_term.getStructTypeOrNull()) {
+            auto* field = llvm::dyn_cast< llvm::ConstantInt >(native_term.getOperand());
+            auto* offset = core::dyn_cast< ar::IntegerConstant >(ar_term.second);
+            if (!field || !offset || ar_term.first.to_z_number() != 1 ||
+                offset->value().to_z_number() != core::ZNumber(layout.getStructLayout(record)->getElementOffset(field->getZExtValue())))
+              return Result(Status::Unsupported);
+          } else {
+            const auto stride = layout.getTypeAllocSize(native_term.getIndexedType());
+            auto* operand_type = core::dyn_cast< ar::IntegerType >(ar_term.second->type());
+            if (stride.isScalable() || !operand_type ||
+                ar_term.first.to_z_number() != core::ZNumber(stride.getFixedValue()) ||
+                !native_term.getOperand()->getType()->isIntegerTy(operand_type->bit_width()))
+              return Result(Status::Unsupported);
+          }
           z3::expr index(ctx);
           auto* type = core::dyn_cast< ar::IntegerType >(shift->term(term).second->type());
           if (type == nullptr) return Result(Status::Unsupported);
@@ -2061,6 +2084,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           delta = delta + product;
           s.add(delta >= low && delta <= high && offset + delta >= 0 && offset + delta <= size);
         }
+        if (native_term != native_end) return Result(Status::Unsupported);
       }
     }
     // Every deferred output, including dormant children's handles, must have
