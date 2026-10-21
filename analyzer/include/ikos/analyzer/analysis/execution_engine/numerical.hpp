@@ -3517,7 +3517,7 @@ private:
                                          : this->data().normal().int_to_interval(size.var());
       if (!length.is_bottom() && !length.ub().is_zero()) {
         effect_type = byte_effect_type(*this, dest, size);
-        if (effect_type == nullptr) {
+        if (effect_type == nullptr && !private_array_zero_effect(*this, call, dest, size)) {
           this->_ctx.concurrent_env.record_unmodeled_effect(
               call, "byte memory effects not fully modeled");
         }

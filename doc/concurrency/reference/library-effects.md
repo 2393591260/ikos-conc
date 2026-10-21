@@ -110,6 +110,43 @@ support this restricted library summary. Implementation: `try_exec_ffs` in
 Regression: `scripts/test_bmc_ffs.py --ikos install/bin/ikos`, including wide
 data, incorrect results, source definitions, ABI and effect controls.
 
+<a id="private-array-zero-effects"></a>
+### Private integer-array zeroing
+
+On ILP32, a nonvolatile LLVM `memset` intrinsic can have complete private
+application effects for a fixed, one-dimensional stack integer array. The
+LLVM allocation and AR allocation must agree on element width, count, extent
+and alignment; the exact call must zero the entire allocation. Each actual
+transfer additionally requires a nonnull pointer to that local allocation,
+offset zero, exact length and no escape. Unknown points-to never qualifies.
+
+Both representations must close all derived pointer uses: restricted
+bitcasts/array indexing and ordinary integer loads/stores only. Address
+transport, publication, helper arguments, returned addresses, mixed pointer
+sources and unsupported lifetime uses retain the ordinary byte-effect debt.
+The owner is an independent entry or a worker created directly by `main`;
+ordinary calls and reentry are outside this subset. Separate worker instances
+may have private stacks at the same static site; singleton abstract identity
+does not prove concrete object uniqueness.
+
+The real memory-domain `mem_set` and subsequent content/control dependencies
+remain active. This bypasses no other obligation and adds neither a scalar
+publication nor a pair-exclusion rule. New element cells can retain TOP values;
+this is not a general array-value precision improvement. LLVM/AR translation
+and the existing memory-domain transfer remain trusted dependencies.
+
+There is no new BMC or independent AR `memset` execution model. A selected
+prefix executing this operation remains unsupported; a prefix that leaves
+this worker unscheduled must independently pass the usual execution checks.
+AR acceptance does not validate the source privacy contract.
+
+Reference: [LLVM 14 memset semantics](https://releases.llvm.org/14.0.0/docs/LangRef.html#llvm-memset-intrinsics).
+Implementation: `private_array_zero_effect` in
+[`concurrent_semantics.hpp`](../../../analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp),
+consumed only by `exec_memset` in
+[`numerical.hpp`](../../../analyzer/include/ikos/analyzer/analysis/execution_engine/numerical.hpp).
+Regression: `python3 scripts/test_private_array_zero.py --ikos install/bin/ikos`.
+
 <a id="closed-thread-detach"></a>
 ### Closed private thread detachment
 

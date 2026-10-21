@@ -180,6 +180,8 @@ add_concurrency_test(native-thread-handles "${CONCURRENCY_ROOT}/scripts/test_nat
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(ffs "${CONCURRENCY_ROOT}/scripts/test_bmc_ffs.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(private-array-zero "${CONCURRENCY_ROOT}/scripts/test_private_array_zero.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(atomic-completion "${CONCURRENCY_ROOT}/scripts/test_bmc_atomic_completion.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(heap-completion "${CONCURRENCY_ROOT}/scripts/test_bmc_heap_completion.py"

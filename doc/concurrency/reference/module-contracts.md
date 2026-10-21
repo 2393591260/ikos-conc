@@ -32,6 +32,7 @@ exclusion remain distinct permissions even when supplied by the same component.
 | `native-thread-handle-arrays` | Native thread-handle arrays — model private handle storage without inferring completion | [Contract](library-effects.md#native-thread-handle-arrays) |
 | `closed-thread-detach` | Closed private thread detachment without a completion edge | [Contract](library-effects.md#closed-thread-detach) |
 | `pure-ffs-effects` | Pure GNU ffs effects with an unconstrained numerical return | [Contract](library-effects.md#pure-ffs-effects) |
+| `private-array-zero-effects` | Complete private integer-array zeroing with real memory transfer | [Contract](library-effects.md#private-array-zero-effects) |
 | `pthread-keys-and-destructor-effects` | Pthread keys and destructor effects — account for thread-local library effects | [Contract](library-effects.md#pthread-keys-and-destructor-effects) |
 | `calloc-size-overflow` | Calloc size overflow — retain allocation-failure continuations | [Contract](library-effects.md#calloc-size-overflow) |
 | `zero-element-artificial-initialization` | Zero-element artificial initialization — avoid inserting a seed into an empty array | [Contract](library-effects.md#zero-element-artificial-initialization) |
