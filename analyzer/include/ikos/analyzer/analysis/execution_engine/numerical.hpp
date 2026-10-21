@@ -2998,6 +2998,7 @@ public:
   /// \brief Execute a call to an unknown extern function
   void exec_unknown_extern_call(ar::CallBase* call) override {
     if (this->try_exec_scalar_scan(call)) return;
+    if (this->try_exec_ffs(call)) return;
 
     // Check if this is pthread_mutex_lock or pthread_mutex_unlock
     auto called_val = call->called();
@@ -3259,6 +3260,51 @@ private:
   /// @}
   /// \name Execution of intrinsic functions
   /// @{
+
+  // GNU ffs(int) reads only its argument. TOP covers every returned index;
+  // the separate BMC and AR models retain responsibility for exact values.
+  // ponytail: direct ILP32 declarations only; wider APIs need their own contract.
+  bool try_exec_ffs(ar::CallBase* call) {
+    if (!this->_ctx.opts.enable_thread_modular || !isa< ar::Call >(call)) return false;
+    auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
+    auto* function = target ? target->function() : nullptr;
+    if (!function || function->name() != "ffs" || !function->is_declaration() ||
+        function->type()->is_var_arg() || function->num_parameters() != 1 ||
+        call->num_arguments() != 1 || !function->has_frontend() || !call->has_frontend()) return false;
+    auto* source = llvm::dyn_cast< llvm::CallInst >(call->frontend< llvm::Value >());
+    auto* api = source ? source->getCalledFunction() : nullptr;
+    if (!api || !api->isDeclaration() || api->getName() != "ffs" || api->isVarArg() ||
+        api->arg_size() != 1 || source->arg_size() != 1 ||
+        function->frontend< llvm::Value >() != api || source->hasOperandBundles() ||
+        source->getCallingConv() != llvm::CallingConv::C || api->getCallingConv() != llvm::CallingConv::C ||
+        source->getFunctionType() != api->getFunctionType() ||
+        source->doesNotReturn() || source->hasFnAttr(llvm::Attribute::ReturnsTwice) ||
+        api->hasFnAttribute(llvm::Attribute::ReturnsTwice) ||
+        !source->getModule()->getModuleInlineAsm().empty() ||
+        !api->getReturnType()->isIntegerTy(32) ||
+        !api->getFunctionType()->getParamType(0)->isIntegerTy(32)) return false;
+    const llvm::Triple triple(source->getModule()->getTargetTriple());
+    const auto& layout = source->getModule()->getDataLayout();
+    if (this->data_layout().pointers.bit_width != 32 || layout.getPointerSizeInBits() != 32 ||
+        triple.getArch() != llvm::Triple::x86 || !triple.isOSLinux() ||
+        triple.getEnvironment() != llvm::Triple::GNU) return false;
+    auto integer = [](ar::Type* type) {
+      auto* value = dyn_cast< ar::IntegerType >(type);
+      return value && value->bit_width() == 32 && value->is_signed();
+    };
+    if (!integer(function->type()->return_type()) || !integer(function->type()->param_type(0)) ||
+        call->argument(0)->type() != function->type()->param_type(0) ||
+        (call->has_result() && call->result()->type() != function->type()->return_type()) ||
+        this->data_layout().store_size_in_bytes(function->type()->return_type()) != 4) return false;
+    for (auto attrs : {source->getAttributes().getParamAttrs(0), api->getAttributes().getParamAttrs(0)})
+      for (auto attr : attrs)
+        if (!attr.isEnumAttribute() || attr.getKindAsEnum() != llvm::Attribute::NoUndef) return false;
+    if (call->has_result()) {
+      const auto& result = this->_lit_factory.get_scalar(call->result());
+      this->data().normal().scalar_assign_nondet(result.var());
+    }
+    return true;
+  }
 
   // A shape match with unsupported implicit state must retain a coverage gate,
   // including mapped scanf calls whose private output would not add one.

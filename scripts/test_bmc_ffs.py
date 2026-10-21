@@ -59,6 +59,8 @@ def main():
     cases = [(value, (value & 0xffffffff & -(value & 0xffffffff)).bit_length(), [])
              for value in (0, 1, 2, 3, 4, 1 << 30, -(1 << 31), -1, -2, 0x7fffffff)]
     cases += [(2, 2, ['SHARED']), (-2, 2, ['INDIRECT']), (2, 0, ['DEFINED'])]
+    cases += [(2, 2, ['LOCKED'])]
+    cases += [(value, answer, options + ['WIDE']) for value, answer, options in cases[:]]
     with tempfile.TemporaryDirectory(prefix='ikos-ffs-') as temp:
         work = Path(temp)
         for value, answer, options in cases:
@@ -79,13 +81,15 @@ def main():
                 verdict = classify(result.stdout, result.returncode, False)
                 data = json.loads(report.read_text())
                 metadata = validate_race_result(data)
-                if 'DEFINED' not in options:
-                    assert metadata['verdict'] == 'UNKNOWN' and not metadata['search_performed'], metadata
-                    assert any(o['reason'] == 'external call effects not covered' and not o['contract']
-                               for o in metadata['obligations']), metadata
-                confirmed = valid and 'DEFINED' in options
+                # The frontend resolves INDIRECT's constant local pointer to a direct call.
+                assert metadata['coverage'] == 'Checked' and not metadata['obligations'], metadata
+                confirmed = valid and 'LOCKED' not in options
                 assert result.returncode == 0 and (verdict == VERDICT_RACE) == confirmed, (
                     value, options, valid, verdict, result.stdout, result.stderr)
+                if 'LOCKED' in options:
+                    assert metadata['verdict'] == 'SAFE', metadata
+                elif not valid:
+                    assert metadata['verdict'] == ('SAFE' if 'DEFINED' in options else 'UNKNOWN'), metadata
                 if confirmed:
                     executions = [r['info']['counterexample'] for r in json.loads(report.read_text())['reports']
                                   if 'counterexample' in r['info']]
@@ -110,6 +114,30 @@ def main():
                         if not {'INDIRECT', 'DEFINED'}.intersection(options):
                             assert changed, 'missing actual ffs result'
                 print(f'ffs({value})/options={options}/valid={valid}: {verdict}', flush=True)
+
+        for option, wide in ((option, wide) for option in
+                ('WIDE_API', 'VARARGS', 'STDCALL', 'NO_RETURN', 'RETURNS_TWICE', 'MODULE_ASM', 'UNRESOLVED')
+                for wide in (False, True)):
+            source = work / 'renamed.c'
+            source.write_text('#define ' + option + '\n' + ('#define WIDE\n' if wide else '') + fixture)
+            proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                '--concurrency=auto', '--demote-race-to-unknown', '-m32',
+                '--format=json', '--report-file=' + str(report),
+                '-o', str(work / 'output.db'), str(source)],
+                env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True,
+                text=True, timeout=30)
+            assert proc.returncode == 0, (option, proc.stdout, proc.stderr)
+            metadata = validate_race_result(json.loads(report.read_text()))
+            if option == 'NO_RETURN':
+                # LLVM makes the first writer unreachable after this declaration.
+                assert metadata['verdict'] == 'SAFE' and metadata['coverage'] == 'Checked', metadata
+                assert not metadata['search_performed'] and not metadata['obligations'], metadata
+            else:
+                assert metadata['verdict'] == 'UNKNOWN' and metadata['coverage'] == 'Blocked', (option, metadata)
+                assert not metadata['search_performed'] and any(
+                    o['reason'] == 'external call effects not covered' and not o['contract']
+                    for o in metadata['obligations']), (option, metadata)
+            print(f'ffs ABI/effect control {option}/wide={wide}: {metadata["verdict"]}', flush=True)
 
 
 if __name__ == '__main__':

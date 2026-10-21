@@ -86,6 +86,30 @@ It does not establish list ownership, initialization or first-publication safety
 
 </details>
 
+<a id="pure-ffs-effects"></a>
+### Pure ffs application effects
+
+The GNU/Linux x86 ILP32 `int ffs(int)` declaration has no application-memory,
+errno or synchronization effects. The ordinary numerical transfer returns TOP,
+so it retains every possible result and dependent path. This model introduces
+no value range or safety exclusion. The [BMC value model](bounded-execution.md#exact-ffs-values-in-bmc)
+and independent AR checker separately compute the actual lowest set bit.
+
+The transfer requires matching LLVM/AR declarations and signed 32-bit types,
+the C calling convention and a direct ordinary call. Varargs, incompatible
+attributes, operand bundles and module inline assembly retain the ordinary
+external-effect fallback. Source definitions execute their real bodies. A
+constant function pointer resolved to a direct call by the frontend qualifies;
+an unresolved indirect call does not. Existing compiler assumptions, including
+unreachable code after a noreturn declaration, retain their original meaning.
+
+The [POSIX value contract](https://pubs.opengroup.org/onlinepubs/9799919799/functions/ffs.html)
+and [glibc 2.39 x86 implementation](https://github.com/bminor/glibc/blob/glibc-2.39/sysdeps/i386/ffs.c)
+support this restricted library summary. Implementation: `try_exec_ffs` in
+[`numerical.hpp`](../../../analyzer/include/ikos/analyzer/analysis/execution_engine/numerical.hpp).
+Regression: `scripts/test_bmc_ffs.py --ikos install/bin/ikos`, including wide
+data, incorrect results, source definitions, ABI and effect controls.
+
 <a id="closed-thread-detach"></a>
 ### Closed private thread detachment
 
