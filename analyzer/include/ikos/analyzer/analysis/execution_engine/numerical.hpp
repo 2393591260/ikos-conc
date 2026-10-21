@@ -3010,7 +3010,14 @@ public:
         // race detection; in sequential mode an extern pthread call falls
         // through to the default unknown-call handling (native behavior).
         if (this->_ctx.opts.enable_thread_modular) {
-          if (func_name == "pthread_mutex_trylock" ||
+          if (func_name == "pthread_detach" && closed_pthread_detach(call, this->_ctx)) {
+            // No application write, wait, completion or happens-before edge.
+            if (call->has_result()) {
+              const auto& ret = this->_lit_factory.get_scalar(call->result());
+              this->data().normal().scalar_assign_nondet(ret.var());
+            }
+            return;
+          } else if (func_name == "pthread_mutex_trylock" ||
               func_name == "pthread_mutex_timedlock") {
             // Conditional lock (can fail): see exec_extern_call routing.
             exec_pthread_mutex_lock(*this, call, /*read_lock=*/false,

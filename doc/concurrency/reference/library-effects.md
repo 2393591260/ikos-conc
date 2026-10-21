@@ -86,6 +86,38 @@ It does not establish list ownership, initialization or first-publication safety
 
 </details>
 
+<a id="closed-thread-detach"></a>
+### Closed private thread detachment
+
+For GNU/Linux x86 ILP32, an ignored `pthread_detach` can have a complete
+application-memory effect summary when its native scalar handle stays private
+to direct `main`: one creation, its immediately following load and detach,
+and at most one ordinary entry initialization. LLVM and AR must independently
+agree on the declarations, C ABI, slot extent/alignment, order and every use.
+Initialization still executes its usual transfer and coverage checks. A loop
+may reuse this sequence; the summary does not expose native handle bits.
+
+The program must contain no join, self/identity comparison or detach-state
+observer, including unresolved calls that could hide one. Return-value uses,
+duplicate detaches, slot escape, extra accesses, incompatible parameter
+attributes, special calling conventions, module inline assembly and unsupported
+lifetimes retain the ordinary uncovered-effect obligation. These are conservative support boundaries,
+not claims that every rejected program contains a race.
+
+The [POSIX detach contract](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pthread_detach.html)
+does not terminate a running thread. This summary changes no lockset,
+live-child, completion or happens-before fact and assumes neither successful
+creation nor valid/successful detachment for a SAFE conclusion. It does not
+model arbitrary invalid GNU runtime handles. A FALSE still requires an actual
+successful creation and one unconsumed dynamic handle in BMC and independent
+AR validation. The latter also checks the detach signature and C calling
+convention; its ACCEPT is not source-witness validation. Other coverage
+obligations and the strict verdict gate remain in force.
+
+Implementation: [`closed_pthread_detach`](../../../analyzer/include/ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp)
+and the external-call transfer in [`numerical.hpp`](../../../analyzer/include/ikos/analyzer/analysis/execution_engine/numerical.hpp).
+Regression: `scripts/test_detach_coverage.py --ikos install/bin/ikos`.
+
 <a id="pthread-keys-and-destructor-effects"></a>
 <details>
 <summary>Pthread keys and destructor effects — account for thread-local library effects</summary>

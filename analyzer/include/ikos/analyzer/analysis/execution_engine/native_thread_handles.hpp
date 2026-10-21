@@ -81,6 +81,207 @@ inline llvm::Function* native_handle_api(llvm::CallBase* call, bool create) {
   return function;
 }
 
+// POSIX.1-2024 pthread_detach changes joinability, not application memory or
+// termination. ponytail: direct-main scalar slots only; wider uses need a
+// lifecycle/value model. No join or identity observer may consume that state.
+inline bool closed_pthread_detach(ar::CallBase* query, Context& ctx) {
+  auto* source = query->has_frontend()
+      ? llvm::dyn_cast< llvm::CallInst >(query->frontend< llvm::Value >()) : nullptr;
+  auto* api = source ? source->getCalledFunction() : nullptr;
+  auto* target = dyn_cast< ar::FunctionPointerConstant >(query->called());
+  auto* function = target ? target->function() : nullptr;
+  auto* main = query->code()->function_or_null();
+  if (!source || !api || !source->getModule()->getModuleInlineAsm().empty() ||
+      !function || !main || main->name() != "main" ||
+      !main->has_frontend() || source->getFunction() != main->frontend< llvm::Value >() ||
+      !source->getFunction()->use_empty() || ctx.opts.entry_points.size() != 1 ||
+      ctx.opts.entry_points.front() != main || !ctx.opts.no_init_globals.empty() ||
+      ctx.bundle->global_or_null("ar.global_ctors") || ctx.bundle->global_or_null("ar.global_dtors") ||
+      ctx.bundle->data_layout().pointers.bit_width != 32 ||
+      !api->isDeclaration() || api->getName() != "pthread_detach" || api->isVarArg() ||
+      api->arg_size() != 1 || source->arg_size() != 1 || !source->use_empty() ||
+      source->hasOperandBundles() || source->getCallingConv() != llvm::CallingConv::C ||
+      api->getCallingConv() != llvm::CallingConv::C ||
+      source->getFunctionType() != api->getFunctionType() ||
+      !source->getType()->isIntegerTy(32) || !api->getReturnType()->isIntegerTy(32) ||
+      !api->getFunctionType()->getParamType(0)->isIntegerTy(32) ||
+      !function->is_declaration() || function->name() != "pthread_detach" ||
+      !function->has_frontend() || function->frontend< llvm::Value >() != api ||
+      function->type()->is_var_arg() || function->num_parameters() != 1 ||
+      query->num_arguments() != 1 || !isa< ar::Call >(query)) return false;
+  auto integer = [](ar::Type* type) {
+    auto* value = dyn_cast< ar::IntegerType >(type);
+    return value && value->bit_width() == 32;
+  };
+  auto* returned = dyn_cast< ar::IntegerType >(function->type()->return_type());
+  if (!returned || returned->bit_width() != 32 || !returned->is_signed() ||
+      !integer(query->argument(0)->type()) ||
+      function->type()->param_type(0) != query->argument(0)->type() ||
+      (query->has_result() && query->result()->type() != returned)) return false;
+  const auto& layout = source->getModule()->getDataLayout();
+  const llvm::Triple triple(source->getModule()->getTargetTriple());
+  if (layout.getPointerSizeInBits() != 32 || triple.getArch() != llvm::Triple::x86 ||
+      !triple.isOSLinux() || triple.getEnvironment() != llvm::Triple::GNU) return false;
+
+  auto attributes = [](llvm::CallBase* call) {
+    auto* callee = call->getCalledFunction();
+    if (!callee || call->doesNotReturn() || call->hasFnAttr(llvm::Attribute::ReturnsTwice) ||
+        callee->hasFnAttribute(llvm::Attribute::ReturnsTwice)) return false;
+    for (unsigned i = 0; i < call->arg_size(); ++i) {
+      for (auto set : {call->getAttributes().getParamAttrs(i),
+                       callee->getAttributes().getParamAttrs(i)})
+        for (auto attr : set) {
+          if (attr.isEnumAttribute() && attr.getKindAsEnum() == llvm::Attribute::NoUndef) continue;
+          if (attr.isEnumAttribute() && attr.getKindAsEnum() == llvm::Attribute::NonNull &&
+              (llvm::isa< llvm::AllocaInst >(call->getArgOperand(i)) ||
+               llvm::isa< llvm::Function >(call->getArgOperand(i)))) continue;
+          return false;
+        }
+    }
+    return true;
+  };
+  auto previous = [](llvm::Instruction* instruction) {
+    auto* result = instruction->getPrevNode();
+    while (result && llvm::isa< llvm::DbgInfoIntrinsic >(result)) result = result->getPrevNode();
+    return result;
+  };
+  auto* load = llvm::dyn_cast< llvm::LoadInst >(source->getArgOperand(0));
+  auto* storage = load ? llvm::dyn_cast< llvm::AllocaInst >(load->getPointerOperand()) : nullptr;
+  auto* count = storage ? llvm::dyn_cast< llvm::ConstantInt >(storage->getArraySize()) : nullptr;
+  auto* create = load ? llvm::dyn_cast_or_null< llvm::CallInst >(previous(load)) : nullptr;
+  if (!attributes(source) || !load || !storage || !count || !count->isOne() ||
+      !storage->getAllocatedType()->isIntegerTy(32) || storage->getAddressSpace() != 0 ||
+      layout.getTypeAllocSize(storage->getAllocatedType()) != 4 ||
+      layout.getTypeStoreSize(storage->getAllocatedType()) != 4 ||
+      storage->getParent() != &source->getFunction()->getEntryBlock() || storage->getAlign().value() < 4 ||
+      load->isVolatile() || load->isAtomic() || load->getAlign().value() < 4 ||
+      !load->hasOneUse() || previous(source) != load || !create ||
+      create->hasOperandBundles() || !native_handle_api(create, true) || !attributes(create) ||
+      create->getArgOperand(0) != storage || !llvm::isa< llvm::Function >(create->getArgOperand(2))) return false;
+  auto* worker = llvm::cast< llvm::Function >(create->getArgOperand(2));
+  if (worker->hasFnAttribute(llvm::Attribute::NoReturn) ||
+      worker->hasFnAttribute(llvm::Attribute::ReturnsTwice)) return false;
+  for (auto attr : worker->getAttributes().getParamAttrs(0))
+    if (!attr.isEnumAttribute() || attr.getKindAsEnum() != llvm::Attribute::NoUndef) return false;
+  llvm::StoreInst* initialization = nullptr;
+  for (auto* user : storage->users()) {
+    if (user == create || user == load || llvm::isa< llvm::DbgInfoIntrinsic >(user)) continue;
+    auto* store = llvm::dyn_cast< llvm::StoreInst >(user);
+    if (!store || initialization || store->getPointerOperand() != storage ||
+        !store->getValueOperand()->getType()->isIntegerTy(32) || store->isVolatile() || store->isAtomic() ||
+        store->getParent() != storage->getParent() || !storage->comesBefore(store) ||
+        (create->getParent() == store->getParent() && !store->comesBefore(create))) return false;
+    initialization = store;
+  }
+
+  // Reject observers in both representations, including unresolved calls that
+  // might hide a join. This does not assume failed creates produce fresh ids.
+  auto observer = [](const std::string& name) {
+    return name == "pthread_join" || name == "pthread_self" || name == "pthread_equal" ||
+           name == "pthread_attr_getdetachstate";
+  };
+  unsigned budget = 32768;
+  for (auto& f : *source->getModule()) for (auto& block : f) for (auto& instruction : block) {
+    if (budget == 0) return false;
+    --budget;
+    auto* call = llvm::dyn_cast< llvm::CallBase >(&instruction);
+    if (!call || llvm::isa< llvm::DbgInfoIntrinsic >(call)) continue;
+    auto* callee = llvm::dyn_cast< llvm::Function >(call->getCalledOperand()->stripPointerCasts());
+    if (!callee || observer(callee->getName().str())) return false;
+  }
+  ar::Allocate* allocation = nullptr;
+  ar::CallBase* imported_create = nullptr;
+  ar::Load* imported_load = nullptr;
+  ar::Store* imported_initialization = nullptr;
+  for (auto it = ctx.bundle->function_begin(); it != ctx.bundle->function_end(); ++it) {
+    if (!(*it)->is_definition()) continue;
+    for (auto* block : *(*it)->body()) for (auto* statement : *block) {
+      if (budget == 0) return false;
+      --budget;
+      if (auto* call = dyn_cast< ar::CallBase >(statement)) {
+        auto* callee = native_handle_callee(call);
+        if (!callee || observer(callee->name()) ||
+            callee->intrinsic_id() == ar::Intrinsic::PthreadJoin) return false;
+      }
+      if (!statement->has_frontend() || statement->code() != query->code()) continue;
+      auto* original = statement->frontend< llvm::Value >();
+      if (original == storage && isa< ar::Allocate >(statement)) {
+        if (allocation) return false;
+        allocation = cast< ar::Allocate >(statement);
+      } else if (original == create && isa< ar::CallBase >(statement)) {
+        if (imported_create) return false;
+        imported_create = cast< ar::CallBase >(statement);
+      } else if (original == load && isa< ar::Load >(statement)) {
+        if (imported_load) return false;
+        imported_load = cast< ar::Load >(statement);
+      } else if (initialization && original == initialization && isa< ar::Store >(statement)) {
+        if (imported_initialization) return false;
+        imported_initialization = cast< ar::Store >(statement);
+      }
+    }
+  }
+  auto* repetitions = allocation ? dyn_cast< ar::IntegerConstant >(allocation->array_size()) : nullptr;
+  auto* imported_api = imported_create ? native_handle_callee(imported_create) : nullptr;
+  auto* imported_worker = imported_create && imported_create->num_arguments() == 4
+      ? dyn_cast< ar::FunctionPointerConstant >(imported_create->argument(2)) : nullptr;
+  auto* create_returned = imported_api
+      ? dyn_cast< ar::IntegerType >(imported_api->type()->return_type()) : nullptr;
+  if (!allocation || !repetitions || repetitions->value().to_z_number() != 1 ||
+      !integer(allocation->allocated_type()) || allocation->result()->alignment() < 4 ||
+      ctx.bundle->data_layout().alloc_size_in_bytes(allocation->allocated_type()) != 4 ||
+      ctx.bundle->data_layout().store_size_in_bytes(allocation->allocated_type()) != 4 ||
+      allocation->parent() != main->body()->entry_block() ||
+      !imported_load || !imported_create || !imported_api || !imported_api->is_declaration() ||
+      !isa< ar::Call >(imported_create) ||
+      (imported_api->name() != "pthread_create" &&
+       imported_api->intrinsic_id() != ar::Intrinsic::PthreadCreate) ||
+      imported_api->type()->is_var_arg() || imported_api->num_parameters() != 4 ||
+      !create_returned || create_returned->bit_width() != 32 || !create_returned->is_signed() ||
+      (imported_create->has_result() && imported_create->result()->type() != create_returned) ||
+      !imported_api->has_frontend() || imported_api->frontend< llvm::Value >() != create->getCalledFunction() ||
+      imported_create->num_arguments() != 4 || imported_create->argument(0) != allocation->result() ||
+      !isa< ar::NullConstant >(imported_create->argument(1)) ||
+      !isa< ar::NullConstant >(imported_create->argument(3)) ||
+      !imported_worker || !imported_worker->function()->is_definition() ||
+      imported_worker->function()->num_parameters() != 1 ||
+      !imported_worker->function()->param(0)->type()->is_pointer() ||
+      !imported_worker->function()->type()->return_type()->is_pointer() ||
+      !imported_worker->function()->has_frontend() ||
+      imported_worker->function()->frontend< llvm::Value >() != worker ||
+      imported_load->operand() != allocation->result() || imported_load->alignment() < 4 ||
+      imported_load->is_volatile() || imported_load->is_atomic() ||
+      !integer(imported_load->result()->type()) || query->argument(0) != imported_load->result() ||
+      imported_create->parent() != query->parent() || imported_load->parent() != query->parent() ||
+      bool(initialization) != bool(imported_initialization)) return false;
+  for (unsigned i = 0; i < 4; ++i)
+    if (imported_api->type()->param_type(i) != imported_create->argument(i)->type()) return false;
+  if (imported_initialization &&
+      (imported_initialization->parent() != allocation->parent() ||
+       imported_initialization->pointer() != allocation->result() ||
+       !integer(imported_initialization->value()->type()) || imported_initialization->is_volatile() ||
+       imported_initialization->is_atomic())) return false;
+  unsigned phase = 0;
+  bool allocated = false, initialized = !initialization;
+  for (auto* block : *main->body()) for (auto* statement : *block) {
+    if (budget == 0) return false;
+    --budget;
+    if ((phase == 1 && statement != imported_load) || (phase == 2 && statement != query)) return false;
+    if (statement == allocation) allocated = true;
+    if (statement == imported_initialization) { if (!allocated) return false; initialized = true; }
+    if (statement == imported_create) { if (!allocated || !initialized) return false; phase = 1; }
+    if (statement == imported_load) { if (phase != 1) return false; phase = 2; }
+    if (statement == query) { if (phase != 2) return false; phase = 3; }
+    for (auto operand = statement->op_begin(); operand != statement->op_end(); ++operand) {
+      if (*operand == allocation->result() && statement != imported_create &&
+          statement != imported_load && statement != imported_initialization) return false;
+      if (*operand == imported_load->result() && statement != query) return false;
+      if ((query->has_result() && *operand == query->result()) ||
+          (imported_create->has_result() && *operand == imported_create->result())) return false;
+    }
+  }
+  return phase == 3;
+}
+
 inline bool native_handle_element(llvm::Value* value, llvm::AllocaInst* storage) {
   value = value->stripPointerCasts();
   if (value == storage) return true;

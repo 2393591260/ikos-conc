@@ -30,6 +30,7 @@ exclusion remain distinct permissions even when supplied by the same component.
 | `numeric-thread-arguments` | Native numerical thread payloads with closed pointer uses | [Contract](library-effects.md#numeric-thread-arguments) |
 | `heap-pointer-field-initialization` | Heap pointer-field initialization — recover field values from all possible writes | [Contract](library-effects.md#heap-pointer-field-initialization) |
 | `native-thread-handle-arrays` | Native thread-handle arrays — model private handle storage without inferring completion | [Contract](library-effects.md#native-thread-handle-arrays) |
+| `closed-thread-detach` | Closed private thread detachment without a completion edge | [Contract](library-effects.md#closed-thread-detach) |
 | `pthread-keys-and-destructor-effects` | Pthread keys and destructor effects — account for thread-local library effects | [Contract](library-effects.md#pthread-keys-and-destructor-effects) |
 | `calloc-size-overflow` | Calloc size overflow — retain allocation-failure continuations | [Contract](library-effects.md#calloc-size-overflow) |
 | `zero-element-artificial-initialization` | Zero-element artificial initialization — avoid inserting a seed into an empty array | [Contract](library-effects.md#zero-element-artificial-initialization) |
@@ -140,6 +141,10 @@ checks; their access-collection consumers use the library-effect gateway.
 Pthread TLS slots, immutable arguments and exact constant output retain their
 existing limited effect omissions. The legacy free/stack lifetime boundary is
 named explicitly and remains a separately documented modeling limitation.
+
+Closed private detachment is checked at the numerical external-call transfer,
+using the LLVM/AR contract in `native_thread_handles.hpp`. It summarizes only
+application-memory effects and changes no lifecycle or synchronization fact.
 
 These paths do not enter the pair proof gateway. The numerical transfer still
 publishes possible writes and invalidates affected memory/value summaries;

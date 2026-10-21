@@ -113,7 +113,11 @@ def main():
             for variant, text in variants.items():
                 for case in range(12, 24):
                     _, verdict, report_data = analyze(f'#define CASE {case}\n' + text, bits)
-                    if case in (21, 22):
+                    if case == 21 and bits == 32:
+                        metadata = validate_race_result(report_data)
+                        assert verdict == suite.VERDICT_RACE, (bits, variant, case, verdict)
+                        assert metadata['coverage'] == 'Checked' and not metadata['obligations'], metadata
+                    elif case in (21, 22):
                         metadata = validate_race_result(report_data)
                         assert verdict == suite.VERDICT_UNKNOWN and not metadata['search_performed'], metadata
                         assert any(o['reason'] == 'external call effects not covered' and not o['contract']

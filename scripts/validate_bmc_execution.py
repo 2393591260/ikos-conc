@@ -557,6 +557,18 @@ class Replay:
             self.objects[pointer[0]]['live'] = False
             return UNDEFINED
         if name == 'pthread_detach':
+            types = fn['parameter_types']
+            returned = fn['return_type']
+            require(self.verified_pthread_abi() and fn['declaration'] and not fn['variadic'] and
+                    len(args) == len(types) == 1 and inst.get('calling_convention') == 0 and
+                    types[0].get('kind') == 'integer' and
+                    types[0].get('bits') == self.program['pointer_bits'] and
+                    int(types[0].get('size', 0)) == self.program['pointer_bits'] // 8 and
+                    returned.get('kind') == 'integer' and returned.get('bits') == 32 and
+                    returned.get('signed') and int(returned.get('size', 0)) == 4,
+                    'detach ABI')
+            require(len(inst.get('operands', [])) == 2 and inst['operands'][1]['type'] == types[0] and
+                    ('result' not in inst or inst['result']['type'] == returned), 'detach call types')
             require(len(args)==1 and args[0] in self.created, 'unknown detach handle')
             created = self.created[args[0]]
             require(not created['joined'] and not created['detached'], 'instance not joinable')

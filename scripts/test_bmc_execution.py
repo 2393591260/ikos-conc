@@ -144,19 +144,41 @@ def heap_handle_executions(ikos, bits):
     return checks
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--bits', choices=("32", "64"), default="32")
-    parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
-    args = parser.parse_args()
+def detach_history_contract():
     # Test invalid library histories even though BMC now refuses to export them.
     replay = Replay.__new__(Replay)
     replay.atomic_owner = None
-    replay.functions = {'pthread_join': {}, 'pthread_detach': {}}
+    replay.program = dict(pointer_bits=32, target_triple='i386-pc-linux-gnu')
+    handle = dict(kind='integer', bits=32, signed=False, size=4, extent=4)
+    returned = dict(kind='integer', bits=32, signed=True, size=4, extent=4)
+    detach = dict(declaration=True, variadic=False, parameter_types=[handle], return_type=returned)
+    instruction = dict(calling_convention=0, operands=[{}, dict(type=handle)])
+    replay.functions = {'pthread_join': {}, 'pthread_detach': detach}
     replay.created = {1: dict(joined=False, detached=False)}
-    invoke = lambda name, values: replay.api(name, values, {}, {}, 'startup', 0, None, None)
+    invoke = lambda name, values: replay.api(name, values,
+        instruction if name == 'pthread_detach' else {}, {}, 'startup', 0, None, None)
+    checks = 0
+    for field, value in (('declaration', False), ('variadic', True),
+                         ('parameter_types', [dict(handle, bits=64, size=8)]),
+                         ('return_type', dict(returned, signed=False))):
+        replay.functions['pthread_detach'] = dict(detach, **{field: value})
+        try:
+            invoke('pthread_detach', [1])
+        except Reject:
+            checks += 1
+        else:
+            raise AssertionError('accepted corrupt detach ABI: ' + field)
+    replay.functions['pthread_detach'] = detach
+    instruction['calling_convention'] = 8
+    try:
+        invoke('pthread_detach', [1])
+    except Reject:
+        checks += 1
+    else:
+        raise AssertionError('accepted non-C detach call')
+    instruction['calling_convention'] = 0
     assert invoke('pthread_detach', [1]) == 0
-    checks = 1 + heap_handle_contract()
+    checks += 1
     for name, values in (('pthread_detach', [1]), ('pthread_join', [1, ('null', 0)])):
         try:
             invoke(name, values)
@@ -172,6 +194,15 @@ def main():
             checks += 1
         else:
             raise AssertionError('accepted operation on a joined instance')
+    return checks
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--bits', choices=("32", "64"), default="32")
+    parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    args = parser.parse_args()
+    checks = detach_history_contract() + heap_handle_contract()
     with tempfile.TemporaryDirectory(prefix='ikos-replay-') as temp:
         work = Path(temp)
         for bits in (args.bits,):
