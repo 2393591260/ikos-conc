@@ -191,6 +191,10 @@ foreach(bits 32 64)
                        --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
 endforeach()
 foreach(bits 32 64)
+  add_concurrency_test(native-mechanisms-${bits} "${CONCURRENCY_ROOT}/scripts/test_native_mechanisms.py"
+                       --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
+endforeach()
+foreach(bits 32 64)
   add_concurrency_test(native-abi-${bits} "${CONCURRENCY_ROOT}/scripts/test_native_abi.py"
                        --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
 endforeach()

@@ -127,6 +127,15 @@ control, and checks compilation and invalid-model errors. FALSE must pass the
 entry's independent execution check and retain the source hash and data model
 in its witness. This is a baseline, not dual-ABI acceptance of every mechanism.
 
+`python3 scripts/test_native_mechanisms.py` runs the dual-ABI capability and
+refusal controls listed in [supported boundaries](../user-guide/assumptions.md#native-dual-abi-mechanism-controls).
+`--bits 32` or `--bits 64` selects one ABI; both are registered in CTest.
+The tests prohibit wrong SAFE/FALSE independently of their current expected
+verdicts and independently check every confirmed AR execution. They intentionally
+retain UNKNOWN controls for unsupported synchronization and numeric arguments.
+A newly supported verdict requires reviewing the corresponding semantic contract
+and updating the documented observation; it must not bypass the coverage gate.
+
 Malloc helper regressions run on both ABIs with
 `python3 scripts/test_malloc_helpers.py --bits 32` and `--bits 64`.
 They cover preserved failure branches, zero and native-width sizes, direct

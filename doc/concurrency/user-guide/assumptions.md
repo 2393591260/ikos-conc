@@ -32,6 +32,37 @@ create/join and a 64-bit data field after a pointer. More specialized numeric
 thread arguments, dynamic handles, local locks and safety certificates retain
 their individual support gates; unsupported behavior remains UNKNOWN.
 
+## Native dual-ABI mechanism controls
+
+The following are observations for the regression programs in
+[native-mechanisms.c](../../../analyzer/test/regression/concurrency/native-mechanisms.c),
+using real GNU/Linux headers and guarded partitioning. They describe tested
+capabilities, not general completeness of an API. UNKNOWN retains unresolved
+coverage or proof/search obligations; it does not establish source safety.
+
+| Control | ILP32 | LP64 |
+| --- | --- | --- |
+| Copy a native thread handle, then join before the next write | SAFE | SAFE |
+| Detach with overlapping ordinary accesses | FALSE | UNKNOWN |
+| Heap payload after a pointer, including 64-bit data | FALSE | FALSE |
+| Overlapping whole/upper-word union accesses | FALSE | FALSE |
+| Numeric argument `0x100000001`, worker writes only for value 1 | FALSE | UNKNOWN (source is safe) |
+| Numeric argument `-1`, tested against `UINTPTR_MAX` | FALSE | UNKNOWN |
+| Same ordinary mutex held across creation and both writes | SAFE | SAFE |
+| Same once control, initialized before creation | SAFE | SAFE |
+| Distinct once controls writing one shared object | UNKNOWN | UNKNOWN |
+| Barrier ordering; writes after a shared barrier | UNKNOWN for both | UNKNOWN for both |
+| Recursive mutex initialized via attributes | UNKNOWN | UNKNOWN |
+
+The numeric controls exercise GNU target integer/pointer conversions without
+using the numeric value as a memory address. Detach and numeric argument
+confirmation retain narrower ABI gates. Once, barrier and attributed-mutex
+examples also expose shared semantic limits; changing pointer width alone does
+not implement those operations. Do not reinterpret an ILP32-preprocessed input
+as LP64: use the original C and target headers when comparing models.
+Each confirmed execution is checked independently at AR level. This does not
+validate its source witness or all possible executions.
+
 | Mechanism family | What it contributes | Details |
 | --- | --- | --- |
 | Library effects and initialized fields | Conservatively model supported calls and recover field values; these facts alone do not prove ownership or synchronization. | [Values and library effects](../reference/library-effects.md#values-and-library-effects) |
