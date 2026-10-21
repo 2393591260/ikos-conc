@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT))
 import svcomp_race_test as suite
 import svcomp_witness
 from scripts.validate_bmc_execution import check, digest_json
+from analyzer.python.ikos.race_result import validate_race_result
 
 
 def main():
@@ -53,12 +54,18 @@ def main():
                 # writer (18); the supported selected execution is checked below.
                 # 20 creates a child inside atomic: the section's communication
                 # through that API is outside the current confirmation contract.
-                racy = case in (6, 7, 8, 11, 14, 15, 18, 19, 26, 27, 28, 32, 34, 35, 37, 39)
+                racy = case in (6, 7, 8, 11, 15, 18, 19, 26, 27, 28, 32, 34, 35, 37, 39)
                 unsupported = case in (10, 16, 17, 20, 21, 22, 23, 24, 25, 29, 31, 33, 36, 38)
                 # Narrow undef may be eliminated before BMC. It must not be
                 # confirmed; this UB input is not a labeled race-free control.
                 ok = actual == suite.VERDICT_RACE if racy else actual != suite.VERDICT_RACE
                 if unsupported:
+                    ok = actual == suite.VERDICT_UNKNOWN
+                if case == 14:
+                    metadata = validate_race_result(json.loads(report.read_text()))
+                    assert metadata['coverage'] == 'Blocked' and not metadata['search_performed'], metadata
+                    assert any(o['reason'] == 'external call effects not covered' and not o['contract']
+                               for o in metadata['obligations']), metadata
                     ok = actual == suite.VERDICT_UNKNOWN
                 rows.append(dict(bits=bits, case=case, verdict=actual, passed=ok))
                 assert proc.returncode == 0 and ok, (bits, case, actual, proc.stdout + proc.stderr)

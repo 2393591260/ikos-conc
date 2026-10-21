@@ -13,6 +13,7 @@ sys.path[:0] = [str(ROOT), str(ROOT / 'scripts')]
 from svcomp_race_test import classify
 from sweep_bmc_execution import validate_report
 from validate_bmc_execution import Replay, Thread, Reject, digest_json
+from analyzer.python.ikos.race_result import validate_race_result
 
 
 def api_contract(program, certificate):
@@ -57,7 +58,7 @@ def main():
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     args = parser.parse_args()
     body = (ROOT / 'analyzer/test/regression/bmc-values/mutex-lifetime.c').read_text()
-    positive = {0, 3, 4, 5, 8, 12, 13, 14, 16}
+    positive = {0, 3, 4, 5, 12, 13, 14, 16}
     with tempfile.TemporaryDirectory(prefix='ikos-mutex-lifetime-') as tmp:
         work = Path(tmp)
         for wide in (False, True):
@@ -75,10 +76,15 @@ def main():
                 output = proc.stdout + proc.stderr
                 assert proc.returncode == 0, (case, wide, output)
                 verdict = classify(output, proc.returncode, False)
+                data = json.loads(report.read_text())
+                metadata = validate_race_result(data)
+                if case in {8, 9}:
+                    assert metadata['coverage'] == 'Blocked' and not metadata['search_performed'], metadata
+                    assert any(o['reason'] == 'external call effects not covered' and not o['contract']
+                               for o in metadata['obligations']), metadata
                 assert (verdict == 'Race Found') == (case in positive), (case, wide, verdict, output)
                 assert verdict != 'Safe', (case, wide, verdict)
                 if case in positive:
-                    data = json.loads(report.read_text())
                     checks = validate_report(data)
                     assert checks and all(c['status'] == 'ACCEPT' for c in checks), checks
                     if case == 0:

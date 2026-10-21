@@ -22,6 +22,15 @@ These are proof obligations, not six completed certifications. Correctness fixes
 for creator/join identity, unknown-write premises and final-summary changes are
 tested. They do not establish every related operation's soundness.
 
+The strict coverage gate summarizes registered semantic obligations, including
+uncovered entries/effects, final instability, incomplete checking and surviving
+mixed atomic boundaries. Any unresolved obligation prevents SAFE and FALSE.
+Existing exact coverage replacements remain safety-only; their presence with
+remaining candidates prevents FALSE. Final reports are buffered until a last
+coverage recheck, and consumers validate the property-level protocol independently
+of display filters. This strengthens L6 without proving L1–L5 or detecting every
+possible unregistered semantic omission.
+
 ## Common proof structure
 
 Define the concrete state and allowed steps, then explain the concretization of

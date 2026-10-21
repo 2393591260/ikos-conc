@@ -497,20 +497,112 @@ void DataRaceChecker::finalize_checks() {
   this->_ownership->run();
   ReadonlyHeapReads readonly_heap_reads(this->_ctx);
   BucketListOwnership bucket_list_ownership(this->_ctx, this->_accesses);
-  const bool synthetic_handle_unsupported =
-      this->check_effect_coverage(readonly_heap_reads, bucket_list_ownership);
+  this->check_effect_coverage(readonly_heap_reads, bucket_list_ownership);
+  this->refresh_coverage();
+  if (this->_coverage.state != RaceCoverageSummary::State::Checked) {
+    this->publish_result("UNKNOWN");
+    return;
+  }
   this->prepare_access_regions();
   JoinedNames joined_names;
   auto all_pairs = this->collect_race_pairs(readonly_heap_reads,
                                           bucket_list_ownership, joined_names);
-  this->search_race_candidates(all_pairs, joined_names,
-                               synthetic_handle_unsupported);
+  this->_remaining_pairs = all_pairs.size();
+  for (const auto& pair : all_pairs) {
+    if (pair.is_unknown)
+      this->add_coverage_obligation("mixed_atomic", pair.report_stmt,
+                                    "mixed atomic/non-atomic accesses");
+  }
+  this->refresh_coverage();
+  if (this->_coverage.state == RaceCoverageSummary::State::Checked &&
+      (all_pairs.empty() || this->_coverage.safety_only == 0)) {
+    this->search_race_candidates(all_pairs, joined_names);
+  }
+  // Search and auxiliary consumers cannot publish against a stale checkpoint.
+  this->refresh_coverage();
+  const bool publish = this->_coverage.state == RaceCoverageSummary::State::Checked &&
+                       this->_coverage.safety_only == 0;
+  bool confirmed = false;
+  if (publish) {
+    for (const auto& report : this->_pending_reports) {
+      this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace,
+                           report.confirmed ? Result::Error : Result::Warning,
+                           report.statement, report.context, {}, report.info);
+      confirmed |= report.confirmed;
+    }
+  }
+  this->publish_result(confirmed ? "FALSE" :
+      this->_coverage.state == RaceCoverageSummary::State::Checked && all_pairs.empty()
+          ? "SAFE" : "UNKNOWN");
 }
 
-bool DataRaceChecker::check_effect_coverage(
+void DataRaceChecker::add_coverage_obligation(const std::string& source,
+                                             ar::Statement* statement,
+                                             const std::string& reason) {
+  for (const auto& obligation : this->_coverage.obligations)
+    if (obligation.source == source && obligation.statement == statement &&
+        obligation.reason == reason) return;
+  this->_coverage.obligations.push_back({source, statement, reason, ""});
+}
+
+void DataRaceChecker::refresh_coverage() {
+  for (auto* call : this->_ctx.concurrent_env.unmodeled_thread_creations())
+    this->add_coverage_obligation("thread_entry", call, "thread entry body not covered");
+  for (const auto& effect : this->_ctx.concurrent_env.unmodeled_effects())
+    this->add_coverage_obligation("effect", effect.first, effect.second);
+  for (const auto& reason : this->_ctx.race_entry_obligations)
+    this->add_coverage_obligation("required_entry", nullptr, reason);
+  if (this->_ctx.concurrent_env.is_dirty())
+    this->add_coverage_obligation("stability", nullptr,
+                                 "shared summaries changed after convergence");
+  if (!this->_ctx.race_analysis_complete)
+    this->add_coverage_obligation("completion", nullptr, "analysis not complete");
+  this->_coverage.unresolved = 0;
+  this->_coverage.safety_only = 0;
+  for (const auto& obligation : this->_coverage.obligations) {
+    if (obligation.contract.empty()) ++this->_coverage.unresolved;
+    else ++this->_coverage.safety_only;
+  }
+  this->_coverage.state = this->_coverage.unresolved != 0
+      ? RaceCoverageSummary::State::Blocked : RaceCoverageSummary::State::Checked;
+}
+
+void DataRaceChecker::publish_result(const char* verdict) {
+  JsonList obligations;
+  for (const auto& obligation : this->_coverage.obligations) {
+    JsonDict item{{"source", obligation.source}, {"reason", obligation.reason},
+                  {"contract", obligation.contract},
+                  {"safety_only", !obligation.contract.empty()}};
+    if (obligation.statement != nullptr) {
+      std::ostringstream statement;
+      obligation.statement->dump(statement);
+      item.put("statement", statement.str());
+      if (auto loc = source_location(obligation.statement)) {
+        item.put("file", loc.path().string());
+        item.put("line", loc.line());
+        item.put("column", loc.column());
+      }
+    }
+    obligations.add(item);
+  }
+  this->_ctx.output_db->settings.insert("race_result", JsonDict{
+      {"schema", 1}, {"policy", "strict-coverage-v1"},
+      {"analysis_complete", this->_ctx.race_analysis_complete},
+      {"checks_complete", true},
+      {"coverage", this->_coverage.state == RaceCoverageSummary::State::Checked
+                       ? "Checked" : "Blocked"},
+      {"obligation_count", this->_coverage.obligations.size()},
+      {"unresolved_count", this->_coverage.unresolved},
+      {"safety_only_count", this->_coverage.safety_only},
+      {"obligations", obligations}, {"verdict", verdict},
+      {"remaining_pairs", this->_remaining_pairs},
+      {"search_performed", this->_search_performed}});
+}
+
+void DataRaceChecker::check_effect_coverage(
     ReadonlyHeapReads& readonly_heap_reads,
     BucketListOwnership& bucket_list_ownership) {
-  bool synthetic_handle_unsupported = false;
+  this->refresh_coverage();
   for (ar::CallBase* call : this->_ctx.concurrent_env.unmodeled_thread_creations()) {
     this->_checks.insert(
         CheckKind::UnknownFunctionCallPointer, CheckerName::DataRace,
@@ -520,9 +612,6 @@ bool DataRaceChecker::check_effect_coverage(
   }
 
   for (const auto& effect : this->_ctx.concurrent_env.unmodeled_effects()) {
-    // The source-only SAFE proof does not relax BMC's representation gate.
-    synthetic_handle_unsupported |=
-        effect.second == "synthetic pthread handle representation not modeled";
     auto evaluate_effect = [&]() -> boost::optional< CoverageDecision > {
       if (effect.second == "synthetic pthread handle representation not modeled" &&
           readonly_heap_reads.certifies(effect.first)) {
@@ -560,12 +649,12 @@ bool DataRaceChecker::check_effect_coverage(
         if (anchor->code()->is_function_body()) break;
       }
     }
-    this->_checks.insert(
-        CheckKind::DataRace, CheckerName::DataRace, Result::Warning,
-        anchor, this->_ctx.call_context_factory->get_empty(), {}, info);
+    if (anchor->code()->is_function_body())
+      this->_checks.insert(
+          CheckKind::DataRace, CheckerName::DataRace, Result::Warning,
+          anchor, this->_ctx.call_context_factory->get_empty(), {}, info);
   }
 
-  return synthetic_handle_unsupported;
 }
 
 void DataRaceChecker::consume_coverage_proof(const CoverageDecision& proof) {
@@ -577,6 +666,11 @@ void DataRaceChecker::consume_coverage_proof(const CoverageDecision& proof) {
   for (const auto& effect : this->_ctx.concurrent_env.unmodeled_effects())
     registered |= effect.first == proof.effect && effect.second == proof.reason;
   if (!registered) throw std::logic_error("coverage proof has no matching obligation");
+  for (auto& obligation : this->_coverage.obligations)
+    if (obligation.source == "effect" && obligation.statement == proof.effect &&
+        obligation.reason == proof.reason)
+      obligation.contract = race_rules::contract(proof.rule).id;
+  if (!proof.effect->code()->is_function_body()) return;
   this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace, Result::Ok,
                        proof.effect, this->_ctx.call_context_factory->get_empty(),
                        {}, proof.report);
@@ -678,17 +772,8 @@ void DataRaceChecker::report_race_group(const PendingRacePair& selected,
                                       bool group_is_unknown,
                                       bool bmc_confirmed,
                                       const JsonDict& info) {
-  this->_checks.insert(CheckKind::DataRace,
-                         CheckerName::DataRace,
-                         // Abstract candidates do not establish a real race,
-                         // including when bounded confirmation is disabled.
-                         (group_is_unknown || !bmc_confirmed)
-                             ? Result::Warning
-                             : Result::Error,
-                         selected.report_stmt,
-                         selected.report_cc,
-                         /* operands = */ {},
-                         /* info = */ info);
+  this->_pending_reports.push_back({selected.report_stmt, selected.report_cc,
+                                     !group_is_unknown && bmc_confirmed, info});
 }
 
 CheckerName DataRaceChecker::name() const {

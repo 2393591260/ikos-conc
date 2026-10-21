@@ -6,10 +6,13 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 from validate_bmc_execution import Replay, Reject, Unsupported, check, digest_json
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from analyzer.python.ikos.race_result import validate_race_result
 
 
 def gep_contract():
@@ -85,6 +88,14 @@ def main():
                 env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True, text=True, timeout=40)
             assert result.returncode == 0, result.stdout + result.stderr
             data = json.loads(report.read_text())
+            metadata = validate_race_result(data)
+            # MODE4 with constant count=2 passes only numeric zero (NULL).
+            if mode == 3 or (mode == 4 and variant != 'constant'):
+                assert metadata['verdict'] == 'UNKNOWN' and metadata['coverage'] == 'Blocked', metadata
+                assert not metadata['search_performed'], metadata
+                assert any(o['reason'] == 'integer-derived pointer aliasing is not modeled'
+                           and not o['contract'] for o in metadata['obligations']), metadata
+                confirmed = False
             certificates = [row['info']['counterexample'] for row in data['reports'] if 'counterexample' in row['info']]
             assert bool(certificates) == confirmed, (mode, case, variant, result.stdout + result.stderr)
             assertions += 1

@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from svcomp_race_test import classify, VERDICT_RACE
 from validate_bmc_execution import check, digest_json
+from analyzer.python.ikos.race_result import validate_race_result
 
 
 def main():
@@ -26,11 +27,15 @@ def main():
     cases += [(case, False, True) for case in (0, 1, 2, 12, 20, 21)]
     with tempfile.TemporaryDirectory(prefix='ikos-heap-completion-') as temp:
         work = Path(temp)
-        for case, wide, literal in cases:
+        for case, wide, literal, covered in [(*c, covered) for covered in (False, True) for c in cases]:
             source = work / 'renamed.c'
+            body = fixture
+            if covered:
+                body = body.replace('extern void __VERIFIER_assume(int);',
+                    'static void __VERIFIER_assume(int c) { if (!c) __builtin_abort(); }')
             source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') +
                               ('#define LITERAL\n' if literal else '') +
-                              fixture.replace('writer', 'entry').replace('datum', 'payload'))
+                              body.replace('writer', 'entry').replace('datum', 'payload'))
             report = work / 'report.json'
             report.unlink(missing_ok=True)
             proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
@@ -39,9 +44,16 @@ def main():
                 env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True,
                 text=True, timeout=30)
             verdict = classify(proc.stdout, proc.returncode, False)
-            assert proc.returncode == 0 and (verdict == VERDICT_RACE) == (case in positive), (
+            data = json.loads(report.read_text())
+            metadata = validate_race_result(data)
+            if not covered and not literal:
+                assert metadata['verdict'] == 'UNKNOWN' and not metadata['search_performed'], metadata
+                assert any(o['reason'] == 'external call effects not covered' and not o['contract']
+                           for o in metadata['obligations']), metadata
+            confirmed = (covered or literal) and case in positive
+            assert proc.returncode == 0 and (verdict == VERDICT_RACE) == confirmed, (
                 case, wide, literal, verdict, proc.stdout, proc.stderr)
-            if case in positive:
+            if confirmed:
                 executions = [r['info']['counterexample'] for r in json.loads(report.read_text())['reports']
                               if 'counterexample' in r['info']]
                 assert executions
@@ -73,7 +85,7 @@ def main():
                     auxiliary = next(t for t in broken['traces'] if t['id'].startswith('aux_'))
                     auxiliary['steps'].pop()
                     assert check(program, broken)['status'] == 'REJECT'
-            print(f'heap-completion case={case}/wide={wide}/literal={literal}: {verdict}', flush=True)
+            print(f'heap-completion case={case}/wide={wide}/literal={literal}/covered={covered}: {verdict}', flush=True)
 
 
 if __name__ == '__main__':

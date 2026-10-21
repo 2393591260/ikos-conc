@@ -15,7 +15,7 @@ all C/POSIX programs.
 | Threads | Modeled pthread creation/join and finite dynamic instances; arbitrary creator trees and dynamic handle structures remain limited |
 | Synchronization | Supported mutex/atomic/other library contracts; pthread attributes, failures, and ownership must satisfy their modeled premises |
 | Objects | Global and supported stack/heap/pointer sources, byte ranges and access widths; general heap graphs, escape and lifetime remain limited |
-| Unknown effects | Conservative coverage boundaries or explicit import/execution errors; omitted effects do not prove SAFE |
+| Unknown effects | Registered unresolved coverage obligations block SAFE and FALSE; normal inconclusive analysis is UNKNOWN, while import/execution failures remain errors |
 | Other properties | Original IKOS analyses remain available; deadlock/reachability are not claimed as complete concurrency properties |
 
 Many additional safety proofs target **GNU/Linux ILP32** and restricted program

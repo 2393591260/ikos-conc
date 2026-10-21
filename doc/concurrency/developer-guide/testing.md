@@ -8,7 +8,8 @@
 
 To save analyzer details, add `--format=json --report-file=report.json` to an
 `ikos` command. The report contains per-check information and structured BMC
-outcomes. `IKOS_BMC_DIAGNOSTICS=1` enables more detailed candidate diagnostics;
+outcomes and the property-level `race_policy` / `race_result` protocol.
+`IKOS_BMC_DIAGNOSTICS=1` enables more detailed candidate diagnostics;
 these may be large. A group may have several unsuccessful search reasons.
 
 The competition entry `svcomp_witness.py` independently checks the selected
@@ -25,6 +26,15 @@ evidence fails acceptance. These checks interpret exported AR under explicit
 frontend and library assumptions. Witness format validity, AR acceptance, and
 acceptance by an independent source-level validator must be reported separately.
 An independent tool finding another race does not validate this tool's witness.
+
+The batch checker can replay historical AR evidence, but separately marks
+`strict_false_publishable`: an old AR ACCEPT does not grant current publication
+permission. New evidence must retain the global protocol even when only selected
+rows are compressed. SQLite export uses the candidate's own Python reporter.
+Missing or contradictory new metadata is an error; normal blocked coverage is
+UNKNOWN, and external time limits remain separate.
+The competition entry preserves the final attempt's `race_result` in stderr
+for task-level offline attribution after its temporary database is removed.
 
 The original soundness regression cases and their controls are in
 [review-repros](../../../docs/review-repros/). For an installed source checkout:
@@ -118,6 +128,11 @@ identities and the disabled legacy rule. `concurrency-all-access-facts` checks
 MUST conjunction, missing observations and late-replay invalidation. The
 end-to-end groups retain positive and negative controls for coverage, ownership,
 publication, byte overlap, thread multiplicity and selected executions.
+`concurrency-strict-coverage` checks common-lock safety, supported races,
+uncovered effects/entries, global initialization, mixed atomic boundaries,
+late destructor changes, no-checks, unanchored required entries, display filters,
+mixed properties and SQLite/JSON agreement on ILP32, including long-long data.
+`concurrency-race-result` checks protocol corruption and safety-only permissions.
 
 For a compact pair-exclusion summary, set `IKOS_RACE_RULE_REPORT` to a writable
 file path. Each run appends a JSON line containing rule counts, access count and

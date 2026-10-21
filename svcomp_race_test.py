@@ -91,6 +91,8 @@ def parse_task(yml: Path):
     return src, expected, data_model
 
 
+from analyzer.python.ikos.race_result import validate_race_result, VERDICT_LINES as RACE_RESULT_LINES
+
 def classify(output: str, returncode: int, timed_out: bool) -> str:
     if timed_out:
         return "Error (timeout)"
@@ -180,10 +182,16 @@ def run_one(src: Path, ikos: Path, timeout_sec: int, out_db: Path, concurrency: 
         try:
             if report_path is not None:
                 data = json.loads(Path(report_path).read_text())
+                metadata = validate_race_result(data)
                 infos = [row['info'] for row in data['reports']]
             else:
                 with closing(sqlite3.connect(Path(out_db).resolve().as_uri() + '?mode=ro', uri=True)) as database:
+                    metadata = {key: json.loads(value) for key, value in database.execute(
+                        "SELECT name, value FROM settings WHERE name IN ('race_result', 'race_policy')")}
+                    metadata = validate_race_result(metadata, check_rows=False)
                     infos = [json.loads(row[0]) for row in database.execute('SELECT info FROM checks')]
+            if metadata['verdict'] != 'UNKNOWN':
+                raise ValueError('initial text verdict and race_result disagree')
             if not all(isinstance(info, dict) for info in infos):
                 raise ValueError('malformed check information')
             if any('confirmed_pair_id' in info or 'counterexample' in info for info in infos):
@@ -264,12 +272,13 @@ def export_database_report(database, report_path, command):
 import json, sys
 from ikos import args
 from ikos.output_db import OutputDatabase
-from ikos.report import generate_report, JSONEncoder
+from ikos.report import generate_report, JSONEncoder, read_race_result
 db = OutputDatabase(sys.argv[1])
 try:
     report = generate_report(db, status_filter=args.default_status_filter)
     with open(sys.argv[2], 'w') as output:
-        json.dump({'reports': report.statement_reports}, output, cls=JSONEncoder)
+        json.dump({'reports': report.statement_reports, 'race_result': read_race_result(db),
+                   'race_policy': db.load_settings().get('race_policy')}, output, cls=JSONEncoder)
 finally:
     db.close()
 """
@@ -289,6 +298,15 @@ def collect_report(report_path, verdict, evidence_dir, key):
         report = json.loads(report_path.read_text())
         if not isinstance(report, dict) or not isinstance(report.get("reports"), list):
             raise ValueError("report must contain a reports array")
+        metadata = validate_race_result(report)
+        if verdict in (VERDICT_SAFE, VERDICT_RACE, VERDICT_UNKNOWN):
+            if VERDICT_LINES[RACE_RESULT_LINES[metadata['verdict']]] != verdict:
+                raise ValueError('text verdict and race_result disagree')
+        result['race_result'] = metadata
+        result['coverage_counts'] = {key: metadata[key] for key in
+                                    ('obligation_count', 'unresolved_count', 'safety_only_count')}
+        result['coverage_reason_counts'] = dict(Counter(
+            item['reason'] for item in metadata['obligations'] if not item['contract']))
         result["report_status"] = "parsed"
         reasons, bmc_counts, statuses = Counter(), Counter(), Counter()
         for row in report["reports"]:
@@ -318,7 +336,8 @@ def collect_report(report_path, verdict, evidence_dir, key):
             selected.append(dict(row, original_group=index, info=selected_info))
         artifact = evidence_dir / (key + ".selected.json.gz")
         with gzip.open(artifact, "wt", encoding="utf-8") as stream:
-            json.dump(dict(reports=selected), stream, separators=(",", ":"))
+            json.dump(dict(reports=selected, race_result=metadata,
+                           race_policy=report.get('race_policy')), stream, separators=(",", ":"))
         result.update(evidence=artifact.name, evidence_sha256=file_sha256(artifact))
     except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
         result.update(report_status="invalid", report_error=str(exc))

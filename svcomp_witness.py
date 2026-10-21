@@ -19,6 +19,14 @@ import tempfile
 import uuid
 from datetime import datetime, timezone
 
+def race_protocol():
+    # Load within the guarded request so missing modules still clean stale output.
+    try:
+        import race_result
+    except ImportError:
+        from analyzer.python.ikos import race_result
+    return race_result
+
 FORMAT_VERSION = "2.2"
 SPECIFICATION = "G ! data-race"
 CREATE_NAMES = {"pthread_create", "ar.pthread.create"}
@@ -35,6 +43,9 @@ def first_race(data):
         isinstance(data, dict) and isinstance(data.get("reports"), list),
         "invalid IKOS report",
     )
+    result = race_protocol().validate_race_result(data)
+    if result['verdict'] != 'FALSE':
+        return None
     for rep in data["reports"]:
         require(isinstance(rep, dict), "invalid IKOS check")
         info = rep.get("info")
@@ -42,6 +53,9 @@ def first_race(data):
             rep.get("status") == 2
             and isinstance(info, dict)
             and info.get("verdict") != "unknown"
+            and info.get("bmc_result", {}).get("status") == "CONFIRMED"
+            and "confirmed_pair_id" in info
+            and "counterexample" in info
             and "access_a" in info
             and "access_b" in info
         ):
@@ -656,6 +670,8 @@ def main():
                                                 "The program is UNKNOWN"}}
                 require(len(verdicts) == 1, "missing or conflicting analyzer verdict")
                 verdict = next(iter(verdicts))
+                require(verdict == race_protocol().race_verdict_line(data),
+                        "text and race_result disagree")
                 require((verdict == "The program is definitely UNSAFE") == (info is not None),
                         "verdict and confirmed race report disagree")
                 if not (args.try_inline_allocators and not inline and
@@ -671,6 +687,9 @@ def main():
                     break
                 sys.stderr.write(proc.stderr)
                 sys.stderr.write("[ikos-conc] Inconclusive analysis; trying allocation constructors.\n")
+            # Preserve the final attempt's gate in competition logs after temp cleanup.
+            sys.stderr.write('[ikos-conc] race_result: ' +
+                             json.dumps(data['race_result'], sort_keys=True) + '\n')
             if info is not None:
                 validation = validate_selected_execution(info, args.data_model)
                 if validation["status"] == "UNSUPPORTED":

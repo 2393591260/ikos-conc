@@ -86,6 +86,7 @@ class AdapterTest(unittest.TestCase):
 
     def test_relocated_entry_version_and_property_validation(self):
         shutil.copyfile(ROOT / "svcomp_witness.py", self.executable)
+        shutil.copyfile(ROOT / "analyzer/python/ikos/race_result.py", self.root / "bin/race_result.py")
         self.executable.chmod(0o755)
         ikos = self.root / "bin/ikos"
         ikos.write_text('#!/bin/sh\nprintf "ikos 3.5\\nNASA license\\n"\n')

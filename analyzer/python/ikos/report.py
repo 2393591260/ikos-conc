@@ -57,6 +57,7 @@ from xml.sax.saxutils import quoteattr
 
 from ikos import args
 from ikos import colors
+from ikos.race_result import validate_race_result, VERDICT_LINES
 from ikos import settings
 from ikos.abs_int import Signedness, MachineInt, Interval, Congruence
 from ikos.colors import bold, bold_blue, bold_green, bold_magenta, bold_red, \
@@ -198,6 +199,20 @@ def _is_unknown_check(check):
     return info.get('verdict') == 'unknown'
 
 
+def read_race_result(db):
+    """Read the property result even when no statement survives display filters."""
+    settings = db.load_settings()
+    if 'race' not in settings.get('analyses', []) and 'race_policy' not in settings:
+        return None
+    if 'race_policy' not in settings:
+        return validate_race_result(settings, required=False, check_rows=False)
+    rows = [{'checker': checker, 'status': status, 'info': json.loads(info)}
+            for checker, status, info in db.con.execute(
+                'SELECT checker, status, info FROM checks WHERE checker = ?',
+                (CheckerName.DATA_RACE,))]
+    return validate_race_result(dict(settings, reports=rows))
+
+
 def generate_summary(db):
     '''
     Return the analysis summary: number of errors, warnings, ok and
@@ -286,16 +301,36 @@ def print_summary(db, full=True):
                else '0')
         printf('\n')
 
-    if summary.error != 0:
-        printf(bold_red('The program is definitely UNSAFE') + '\n')
-    elif summary.unknown != 0:
-        # Model-boundary: the checker could not distinguish the memory object
-        # (points-to ⊤). Map to SV-COMP UNKNOWN, NEVER to SAFE.
-        printf(bold_yellow('The program is UNKNOWN') + '\n')
-    elif summary.warning != 0:
-        printf(bold_yellow('The program is potentially UNSAFE') + '\n')
+    race_result = read_race_result(db)
+    analyses = db.load_settings().get('analyses', [])
+    other_errors = db.con.execute(
+        'SELECT COUNT(*) FROM checks WHERE checker != ? AND status = ?',
+        (CheckerName.DATA_RACE, Result.ERROR)).fetchone()[0]
+    if race_result is not None:
+        if analyses == ['race']:
+            verdict = VERDICT_LINES[race_result['verdict']]
+        elif other_errors or race_result['verdict'] == 'FALSE':
+            verdict = 'The program is definitely UNSAFE'
+        elif race_result['verdict'] == 'UNKNOWN':
+            verdict = 'The program is UNKNOWN'
+        elif summary.warning:
+            verdict = 'The program is potentially UNSAFE'
+        else:
+            verdict = 'The program is SAFE'
+        printf('%s\n', verdict)
+        if analyses != ['race']:
+            printf('Race property: %s\n', race_result['verdict'])
     else:
-        printf(bold_green('The program is SAFE') + '\n')
+        if summary.error:
+            printf(bold_red('The program is definitely UNSAFE') + '\n')
+        elif summary.unknown:
+            printf(bold_yellow('The program is UNKNOWN') + '\n')
+        elif summary.warning:
+            printf(bold_yellow('The program is potentially UNSAFE') + '\n')
+        else:
+            printf(bold_green('The program is SAFE') + '\n')
+        if 'race' in analyses:
+            printf('Historical race report: no strict coverage result is available.\n')
 
 
 ######################
@@ -840,6 +875,9 @@ class JSONEncoder(json.JSONEncoder):
             'call_contexts': report.db.call_contexts,
             'memory_locations': report.db.memory_locations,
             'reports': report.statement_reports,
+            **({'race_result': read_race_result(report.db),
+                'race_policy': report.db.load_settings()['race_policy']}
+               if 'race_policy' in report.db.load_settings() else {}),
         }
 
     @staticmethod

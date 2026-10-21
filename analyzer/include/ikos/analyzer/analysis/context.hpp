@@ -143,6 +143,10 @@ public:
   /// the transfer engine, and the data-race checker.
   core::ConcurrentGlobalEnv concurrent_env;
 
+  // Written by the driver only after replay, destructors and shared flush.
+  bool race_analysis_complete = false;
+  std::vector< std::string > race_entry_obligations;
+
   // Range observations are MUST predicates owned by this Context/run.
   bool memory_independent_ranges = false;
   std::map< ar::CallBase*, GlobalArraySubobject > mutex_effect_queries;

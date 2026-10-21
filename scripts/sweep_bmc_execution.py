@@ -6,13 +6,17 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from analyzer.python.ikos.race_result import validate_race_result
 from validate_bmc_execution import check, digest_json
 
 
 def validate_report(report):
+    metadata = validate_race_result(report, required=False)
     results = []
     for index, row in enumerate(report.get('reports', [])):
-        info = row.get('info', {})
+        info = row.get('info') or {}
         if 'confirmed_pair_id' not in info:
             continue
         replay = info.get('counterexample')
@@ -27,7 +31,9 @@ def validate_report(report):
         certificate['program_sha256'] = digest_json(program)
         results.append(dict(group=index, pair=info['confirmed_pair_id'],
                             program_sha256=certificate['program_sha256'],
-                            certificate_sha256=digest_json(certificate), **check(program, certificate)))
+                            certificate_sha256=digest_json(certificate),
+                            strict_false_publishable=metadata is not None and metadata['verdict'] == 'FALSE',
+                            **check(program, certificate)))
     return results
 
 
@@ -54,6 +60,7 @@ def main():
                       'partially_accepted' if 'ACCEPT' in statuses else 'unsupported'] += 1
     summary = dict(task_status_counts=dict(task_statuses), tasks=len(rows), tasks_with_selected_evidence=sum(bool(r['executions']) for r in rows),
                    executions=len(selected), status_counts=dict(Counter(r['status'] for r in selected)),
+                   strict_false_publishable_executions=sum(r.get('strict_false_publishable', False) for r in selected),
                    reason_counts=dict(Counter(r.get('reason', 'accepted') for r in selected)),
                    scope='Concrete AR execution with explicit API contracts; not official C/witness validation',
                    validator_sha256=hashlib.sha256(Path(__file__).with_name('validate_bmc_execution.py').read_bytes()).hexdigest())

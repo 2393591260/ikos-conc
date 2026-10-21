@@ -18,6 +18,7 @@ import hashlib
 import json
 import os
 import subprocess
+from pathlib import Path
 import sys
 import tempfile
 from datetime import datetime, timezone
@@ -50,13 +51,10 @@ GRAPHML_TEMPLATE = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 
 
 def first_race(data):
-    for rep in data.get("reports", []):
-        info = rep.get("info", {})
-        if info.get("verdict") == "unknown":
-            continue
-        if "access_a" in info and "access_b" in info:
-            return info
-    return None
+    # Share only protocol validation/selection, not the independent AR semantics.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from svcomp_witness import first_race as select_confirmed_race
+    return select_confirmed_race(data)
 
 
 def build_graphml(source, info, data_model):

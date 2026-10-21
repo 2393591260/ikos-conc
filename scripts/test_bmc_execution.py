@@ -6,10 +6,13 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 from validate_bmc_execution import Frame, Replay, Reject, Thread, UNDEFINED, Unsupported, check, digest_json
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from analyzer.python.ikos.race_result import validate_race_result
 
 
 def heap_handle_contract():
@@ -183,7 +186,15 @@ def main():
                     str(ROOT / 'analyzer/test/regression/bmc-values/values.c')], cwd=work,
                     env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True, text=True, timeout=30)
                 assert proc.returncode == 0, proc.stdout + proc.stderr
-                executions = [r['info']['counterexample'] for r in json.loads(report.read_text())['reports']
+                data = json.loads(report.read_text())
+                if case >= 56:
+                    metadata = validate_race_result(data)
+                    assert metadata['verdict'] == 'UNKNOWN' and not metadata['search_performed'], metadata
+                    assert any(o['reason'] == 'integer-derived pointer aliasing is not modeled'
+                               and not o['contract'] for o in metadata['obligations']), metadata
+                    checks += 1
+                    continue
+                executions = [r['info']['counterexample'] for r in data['reports']
                               if 'counterexample' in r['info']]
                 assert executions, (bits, case, proc.stdout + proc.stderr)
                 for execution in executions:

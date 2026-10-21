@@ -18,6 +18,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import svcomp_race_test as suite
 import sweep_bmc_execution
+from test_race_result import report as protocol_report
 
 
 FAKE = '''import json, pathlib, subprocess, sys, time
@@ -36,6 +37,9 @@ if config.get('database', True):
     if config.get('sqlite'):
         import sqlite3
         with sqlite3.connect(database) as db:
+            db.execute('CREATE TABLE settings (name TEXT, value TEXT)')
+            db.executemany('INSERT INTO settings VALUES (?, ?)',
+                [(key, json.dumps(config['report'][key])) for key in ('race_policy', 'race_result')])
             db.execute('CREATE TABLE checks (info TEXT)')
             db.executemany('INSERT INTO checks VALUES (?)',
                 [(json.dumps(row['info']),) for row in config['report']['reports']])
@@ -76,6 +80,14 @@ class RunnerTests(unittest.TestCase):
         self.addCleanup(self.modules.stop)
 
     def task(self, name="one", expected="false", **config):
+        # Fake tools must implement the same property protocol as real runs.
+        for attempt in (config, config.get('refinement', {})):
+            data = attempt.get('report')
+            if isinstance(data, dict) and isinstance(data.get('reports'), list) and 'race_result' not in data:
+                verdict = {'The program is SAFE': 'SAFE', 'The program is UNKNOWN': 'UNKNOWN'}.get(
+                    attempt.get('output', config.get('output')), 'FALSE')
+                data.update({key: value for key, value in protocol_report(verdict, pairs=int(verdict != 'SAFE')).items()
+                             if key != 'reports'})
         source = self.bench / "c/pthread" / (name + ".c")
         source.write_text(json.dumps(config))
         source.with_suffix(".yml").write_text(
@@ -93,11 +105,12 @@ class RunnerTests(unittest.TestCase):
             (destination / "results.json").read_text())
 
     def selected_report(self):
-        return {"reports": [{"info": {}}, {"statements": [23], "info": {
+        return dict(protocol_report('FALSE', pairs=1), reports=[{"info": {}}, {"status": 2, "statements": [23], "info": {
+            "bmc_result": {"status": "CONFIRMED"},
             "confirmed_pair_id": 9, "access_a": {"file": "input.c", "line": 7},
             "access_b": {"file": "input.c", "line": 12},
             "thread_creations": [{"line": 5}],
-            "counterexample": {"program": {"marker": "same-run"}}}}]}
+            "counterexample": {"program": {"marker": "same-run"}, "traces": [{"steps": [{}]}]}}}])
 
     def test_one_invocation_and_offline_validation(self):
         report = self.selected_report()
@@ -183,7 +196,7 @@ class RunnerTests(unittest.TestCase):
 
     def test_unknown_refinement_records_both_attempts(self):
         source = self.task(expected="true", output="The program is UNKNOWN", report={"reports": []},
-                           refinement={"output": "The program is SAFE"})
+                           refinement={"output": "The program is SAFE", "report": {"reports": []}})
         code, summary, rows = self.run_evidence("--try-inline-allocators")
         self.assertEqual(code, 0)
         self.assertTrue(summary["options"]["try_inline_allocators"])
@@ -262,7 +275,7 @@ class RunnerTests(unittest.TestCase):
             with sqlite3.connect(database) as db:
                 rows = [{"info": json.loads(r[0])} for r in db.execute('SELECT info FROM checks')]
             self.assertEqual(rows, [])
-            destination.write_text(json.dumps({"reports": rows}))
+            destination.write_text(json.dumps(dict(protocol_report(), reports=rows)))
 
         with mock.patch.object(suite, 'export_database_report', side_effect=export):
             code, summary, rows = self.run_evidence('--evidence-source', 'database', '--try-inline-allocators')
@@ -380,14 +393,15 @@ class RunnerTests(unittest.TestCase):
         self.assertFalse(summary["execution_checks_passed"])
         self.assertEqual(results[0]["executions"], [])
 
-    def test_missing_selected_replay_is_unsupported(self):
+    def test_missing_selected_replay_is_protocol_error(self):
         self.task(report={"reports": [{"info": {"confirmed_pair_id": 7}}]})
         code, summary, results = self.run_evidence()
         self.assertEqual(code, 2)
         self.assertFalse(summary["execution_checks_passed"])
-        self.assertEqual(results[0]["executions"][0]["status"], "UNSUPPORTED")
+        self.assertEqual(results[0]['report_status'], 'invalid')
+        self.assertIn('confirmed evidence', results[0]['report_error'])
 
-    def test_candidate_replay_preserves_mapping_without_bulk_diagnostics(self):
+    def test_missing_top_level_execution_cannot_use_diagnostic_fallback(self):
         report = self.selected_report()
         info = report["reports"][1]["info"]
         replay = info.pop("counterexample")
@@ -395,14 +409,8 @@ class RunnerTests(unittest.TestCase):
         path = self.root / "report.json"
         path.write_text(json.dumps(report))
         result = suite.collect_report(path, suite.VERDICT_RACE, self.root, "candidate")
-        with gzip.open(self.root / result["evidence"], "rt") as stream:
-            selected = json.load(stream)["reports"][0]
-        self.assertEqual(selected["info"]["counterexample"], replay)
-        self.assertEqual(selected["info"]["access_a"], info["access_a"])
-        self.assertEqual(selected["info"]["access_b"], info["access_b"])
-        self.assertEqual(selected["info"]["thread_creations"], info["thread_creations"])
-        self.assertNotIn("bmc", selected["info"])
-        self.assertEqual(selected["original_group"], 1)
+        self.assertEqual(result['report_status'], 'invalid')
+        self.assertNotIn('evidence', result)
 
     def test_invalid_report(self):
         self.task(report={"not_reports": []})

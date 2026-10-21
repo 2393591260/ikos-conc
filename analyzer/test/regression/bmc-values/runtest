@@ -12,6 +12,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
 sys.path.insert(0, str(ROOT))
 import svcomp_race_test as suite
+from analyzer.python.ikos.race_result import validate_race_result
 
 CASES = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
          16, 18, 19, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 34, 35, 36, 37, 38, 39, 40, 43, 44, 45, 46,
@@ -56,6 +57,12 @@ def main():
                     passed = actual == suite.VERDICT_RACE if native_race else actual in (suite.VERDICT_SAFE, suite.VERDICT_UNKNOWN)
                 if case == 39:
                     passed = actual == suite.VERDICT_UNKNOWN and counts.get('call_summary', 0) > 0
+                if case >= 56:
+                    metadata = validate_race_result(json.loads(report.read_text()))
+                    assert metadata['coverage'] == 'Blocked' and not metadata['search_performed'], metadata
+                    assert any(o['reason'] == 'integer-derived pointer aliasing is not modeled'
+                               and not o['contract'] for o in metadata['obligations']), metadata
+                    passed = actual == suite.VERDICT_UNKNOWN
                 rows.append(dict(bits=bits, case=case, verdict=actual, passed=passed, counts=counts))
                 if case == 31:
                     data = json.loads(report.read_text())

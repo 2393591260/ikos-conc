@@ -13,6 +13,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 SPEC = importlib.util.spec_from_file_location(
     "svcomp_witness", ROOT / "svcomp_witness.py"
 )
@@ -81,6 +82,7 @@ class WitnessTests(unittest.TestCase):
             "main": self.instruction("shared = 3"),
         }
         return dict(
+            confirmed_pair_id=0, bmc_result=dict(status='CONFIRMED'),
             access_a=dict(thread_id="worker"),
             access_b=dict(thread_id="worker"),
             # Deliberately wrong legacy names/order: dynamic replay owns identity.
@@ -466,19 +468,19 @@ class WitnessTests(unittest.TestCase):
         target = self.source_map().target(dict(file=str(logical), line=100, column=8))
         self.assertEqual(target, dict(file_name=self.source.name, line=6, column=1))
 
-    def test_first_race_skips_may_and_unknown(self):
+    def test_first_race_rejects_missing_global_status(self):
         pair = self.pair()
         reports = [
             dict(status=1, info=pair),
             dict(status=2, info=dict(pair, verdict="unknown")),
             dict(status=2, info=pair),
         ]
-        self.assertIs(wrapper.first_race(dict(reports=reports)), pair)
-        self.assertIsNone(wrapper.first_race(dict(reports=reports[:2])))
+        with self.assertRaises(ValueError):
+            wrapper.first_race(dict(reports=reports))
         with self.assertRaises(ValueError):
             wrapper.first_race({})
 
-    def run_wrapper(self, mode, pair=None, out=None, extra_options=(), inventory=1):
+    def run_wrapper(self, mode, pair=None, out=None, extra_options=(), inventory=1, entry=None):
         fake = self.folder / "fake-ikos"
         fake.write_text(r"""#!/usr/bin/env python3
 import json, os, pathlib, sys
@@ -501,7 +503,14 @@ if mode == "changed":
  pathlib.Path(sys.argv[-1]).write_text(pathlib.Path(sys.argv[-1]).read_text()+"\n/*changed*/\n")
 if mode == "crash": print("The program is definitely UNSAFE", file=sys.stderr)
 if mode != "missing":
- pathlib.Path(report).write_text("{" if mode == "json" else pathlib.Path(os.environ["FAKE_REPORT"]).read_text())
+ data = json.loads(pathlib.Path(os.environ["FAKE_REPORT"]).read_text())
+ verdict = 'UNKNOWN' if mode == 'unknown' else 'SAFE' if mode in ('safe', 'json') else 'FALSE'
+ data['race_policy'] = {'schema': 1, 'policy': 'strict-coverage-v1'}
+ data['race_result'] = dict(schema=1, policy='strict-coverage-v1', analysis_complete=True,
+    checks_complete=True, coverage='Checked', obligation_count=0, unresolved_count=0,
+    safety_only_count=0, obligations=[], remaining_pairs=int(verdict != 'SAFE'),
+    search_performed=verdict=='FALSE', verdict=verdict)
+ pathlib.Path(report).write_text("{" if mode == "json" else json.dumps(data))
 if mode == "silent":
     pass
 elif mode == "conflict":
@@ -550,7 +559,7 @@ sys.exit(3 if mode == "crash" else 0)
         proc = subprocess.run(
             [
                 sys.executable,
-                str(ROOT / "svcomp_witness.py"),
+                str(entry or ROOT / "svcomp_witness.py"),
                 str(self.source),
                 "--ikos",
                 str(fake),
@@ -738,7 +747,18 @@ int main(void) {
         proc, out = self.run_wrapper("unknown")
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(proc.stdout, "The program is UNKNOWN\n")
-        self.assertEqual(proc.stderr, "")
+        self.assertIn('[ikos-conc] race_result: ', proc.stderr)
+        metadata = json.loads(proc.stderr.split('[ikos-conc] race_result: ', 1)[1])
+        self.assertEqual(metadata['verdict'], 'UNKNOWN')
+        self.assertFalse(out.exists())
+
+    def test_missing_protocol_module_cleans_stale_witness(self):
+        entry = self.folder / 'isolated-entry.py'
+        entry.write_bytes((ROOT / 'svcomp_witness.py').read_bytes())
+        proc, out = self.run_wrapper('unknown', entry=entry)
+        self.assertEqual(proc.returncode, 1, proc.stderr)
+        self.assertEqual(proc.stdout, '')
+        self.assertIn('No module named', proc.stderr)
         self.assertFalse(out.exists())
 
     def test_failures_emit_only_errors_and_clean_files(self):

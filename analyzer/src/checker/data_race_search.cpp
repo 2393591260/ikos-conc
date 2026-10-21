@@ -66,8 +66,7 @@ namespace analyzer {
 
 void DataRaceChecker::search_race_candidates(
     const std::vector< PendingRacePair >& all_pairs,
-    const JoinedNames& joined_names,
-    bool synthetic_handle_unsupported) {
+    const JoinedNames& joined_names) {
   if (all_pairs.empty()) {
     return;
   }
@@ -153,6 +152,7 @@ void DataRaceChecker::search_race_candidates(
 
   const bool bmc_enabled = this->_ctx.opts.demote_race_to_unknown &&
                            getenv("IKOS_BMC_RECOVER") != nullptr;
+  this->_search_performed = bmc_enabled && this->_ctx.opts.bmc_deadline_ms > 0;
   const bool diagnostics_enabled = getenv("IKOS_BMC_DIAGNOSTICS") != nullptr;
   bmc::SearchBudget search_budget(this->_ctx.opts.bmc_deadline_ms,
                                  this->_ctx.opts.bmc_solver_timeout_ms);
@@ -407,9 +407,7 @@ void DataRaceChecker::search_race_candidates(
     const PendingRacePair* selected = &first;
     int confirmed_pair_id = -1;
 
-    // A group is "unknown" only when EVERY pair in it is a model boundary
-    // (⊤ points-to). If any pair is a proven (concrete) race, the group stays
-    // a race — a proven race is never downgraded to unknown.
+    // Mixed model-boundary pairs have already blocked the task before search.
     bool group_is_unknown = true;
     for (std::size_t pk : pair_indices) {
       if (!all_pairs[pk].is_unknown) {
@@ -562,7 +560,6 @@ void DataRaceChecker::search_race_candidates(
       gate(pr.is_unknown, "mixed_atomic");
       // The numeric identity tokens must not justify branch/value witnesses.
       // A future provenance model can narrow this program-wide boundary.
-      gate(synthetic_handle_unsupported, "pthread_handle_representation");
       // Unsupported synchronization is checked on each executed prefix.
       // Unused functions and operations after the target cannot order a race
       // already present in that finite execution.

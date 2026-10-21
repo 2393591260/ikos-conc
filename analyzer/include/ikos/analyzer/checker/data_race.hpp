@@ -219,6 +219,33 @@ private:
 
   void finalize_checks();
 
+  struct CoverageObligation {
+    std::string source;
+    ar::Statement* statement;
+    std::string reason;
+    std::string contract;
+  };
+  struct RaceCoverageSummary {
+    enum class State { Pending, Blocked, Checked };
+    State state = State::Pending;
+    std::vector< CoverageObligation > obligations;
+    std::size_t unresolved = 0;
+    std::size_t safety_only = 0;
+  } _coverage;
+  void refresh_coverage();
+  void add_coverage_obligation(const std::string& source, ar::Statement* statement,
+                               const std::string& reason);
+  void publish_result(const char* verdict);
+  bool _search_performed = false;
+  std::size_t _remaining_pairs = 0;
+  struct RaceReport {
+    ar::Statement* statement;
+    CallContext* context;
+    bool confirmed;
+    JsonDict info;
+  };
+  std::vector< RaceReport > _pending_reports;
+
   struct CoverageDecision {
     race_rules::Id rule;
     ar::Statement* effect;
@@ -253,17 +280,11 @@ private:
     CallContext* report_cc;
     std::string first_conflict_loc;
     JsonList conflicting_pts; // dump() of every cell in a.pts ∧ b.pts
-    /// True when this pair rests on a TOP points-to (at least one side's
-    /// points-to is ⊤), so the checker cannot DISTINGUISH which memory
-    /// object conflicts. Such a pair is reported as `Result::Warning`
-    /// ("unknown"), NOT `Result::Error` ("race") — the access is a model
-    /// boundary, not a proven race. Soundness invariant: `Warning` here maps
-    /// to SV-COMP UNKNOWN, NEVER to SAFE — it does not weaken the FN=0
-    /// guarantee (see the demotion site below).
+    // Only a surviving mixed atomic/non-atomic pair is a model boundary.
     bool is_unknown = false;
   };
 
-  bool check_effect_coverage(ReadonlyHeapReads& readonly_heap_reads,
+  void check_effect_coverage(ReadonlyHeapReads& readonly_heap_reads,
                              BucketListOwnership& bucket_list_ownership);
   void prepare_access_regions();
   std::vector< PendingRacePair > collect_race_pairs(
@@ -271,8 +292,7 @@ private:
       BucketListOwnership& bucket_list_ownership,
       JoinedNames& joined_names);
   void search_race_candidates(const std::vector< PendingRacePair >& all_pairs,
-                              const JoinedNames& joined_names,
-                              bool synthetic_handle_unsupported);
+                              const JoinedNames& joined_names);
   void report_race_group(const PendingRacePair& selected, bool group_is_unknown,
                          bool bmc_confirmed, const JsonDict& info);
 

@@ -417,7 +417,8 @@ install(DIRECTORY python/ikos/view DESTINATION share/ikos)
 configure_file(script/ikos.py.in script/ikos @ONLY)
 install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/script/ikos" DESTINATION bin)
 install(PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/../svcomp_witness.py" DESTINATION bin)
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/validate_bmc_execution.py" DESTINATION bin)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/validate_bmc_execution.py"
+              "${CMAKE_CURRENT_SOURCE_DIR}/python/ikos/race_result.py" DESTINATION bin)
 
 configure_file(script/ikos-config.py.in script/ikos-config @ONLY)
 install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/script/ikos-config" DESTINATION bin)

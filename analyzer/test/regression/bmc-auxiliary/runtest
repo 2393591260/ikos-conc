@@ -15,6 +15,7 @@ sys.path[:0] = [str(ROOT), str(ROOT / 'scripts')]
 import svcomp_race_test as suite
 from validate_bmc_execution import check, digest_json
 import svcomp_witness
+from analyzer.python.ikos.race_result import validate_race_result
 
 
 def main():
@@ -112,7 +113,12 @@ def main():
             for variant, text in variants.items():
                 for case in range(12, 24):
                     _, verdict, report_data = analyze(f'#define CASE {case}\n' + text, bits)
-                    if case in (12, 17, 21, 22):
+                    if case in (21, 22):
+                        metadata = validate_race_result(report_data)
+                        assert verdict == suite.VERDICT_UNKNOWN and not metadata['search_performed'], metadata
+                        assert any(o['reason'] == 'external call effects not covered' and not o['contract']
+                                   for o in metadata['obligations']), metadata
+                    elif case in (12, 17):
                         assert verdict == suite.VERDICT_RACE, (bits, variant, case, verdict)
                     elif case == 18:
                         assert verdict in (suite.VERDICT_RACE, suite.VERDICT_UNKNOWN), (bits, variant, case, verdict)
@@ -146,7 +152,12 @@ def main():
                         assert verdict == suite.VERDICT_UNKNOWN, (bits, variant, main_atomic, tail, verdict)
                         assert not any('counterexample' in row['info'] for row in report['reports'])
                         counts = [row['info'].get('bmc', {}).get('counts', {}) for row in report['reports']]
-                        if variant != 'nested':
+                        metadata = validate_race_result(report)
+                        if metadata['coverage'] == 'Blocked':
+                            assert not metadata['search_performed'], metadata
+                            assert any(o['reason'] == 'external call effects not covered' and not o['contract']
+                                       for o in metadata['obligations']), metadata
+                        elif variant != 'nested':
                             assert any(c.get('atomic_auxiliary_completed_paths') for c in counts), counts
                             if tail:
                                 assert any(c.get('completion_target_unjoined') for c in counts), counts

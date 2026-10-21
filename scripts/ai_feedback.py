@@ -145,14 +145,10 @@ class SharedIR:
                 summary = self.report.generate_summary(db)
                 counts = dict(ok=summary.ok, error=summary.error, warning=summary.warning,
                               unknown=summary.unknown, unreachable=summary.unreachable)
-                if summary.error:
-                    verdict = 'The program is definitely UNSAFE'
-                elif summary.unknown:
-                    verdict = 'The program is UNKNOWN'
-                elif summary.warning:
-                    verdict = 'The program is potentially UNSAFE'
-                else:
-                    verdict = 'The program is SAFE'
+                metadata = self.report.read_race_result(db)
+                if metadata is None:
+                    raise ValueError('legacy race database cannot publish a strict result')
+                verdict = self.report.VERDICT_LINES[metadata['verdict']]
                 rep = self.report.generate_report(db, status_filter=opts.status_filter,
                                                   analyses_filter=None)
                 with open(folder/'report.json','w') as stream:

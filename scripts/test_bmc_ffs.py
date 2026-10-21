@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from svcomp_race_test import classify, VERDICT_RACE
 from validate_bmc_execution import Replay, Reject, check, digest_json
+from analyzer.python.ikos.race_result import validate_race_result
 
 
 def api_contract():
@@ -76,9 +77,16 @@ def main():
                     env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True,
                     text=True, timeout=30)
                 verdict = classify(result.stdout, result.returncode, False)
-                assert result.returncode == 0 and (verdict == VERDICT_RACE) == valid, (
+                data = json.loads(report.read_text())
+                metadata = validate_race_result(data)
+                if 'DEFINED' not in options:
+                    assert metadata['verdict'] == 'UNKNOWN' and not metadata['search_performed'], metadata
+                    assert any(o['reason'] == 'external call effects not covered' and not o['contract']
+                               for o in metadata['obligations']), metadata
+                confirmed = valid and 'DEFINED' in options
+                assert result.returncode == 0 and (verdict == VERDICT_RACE) == confirmed, (
                     value, options, valid, verdict, result.stdout, result.stderr)
-                if valid:
+                if confirmed:
                     executions = [r['info']['counterexample'] for r in json.loads(report.read_text())['reports']
                                   if 'counterexample' in r['info']]
                     assert executions

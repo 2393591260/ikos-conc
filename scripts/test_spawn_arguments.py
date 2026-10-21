@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from svcomp_race_test import classify, VERDICT_RACE, VERDICT_SAFE, VERDICT_UNKNOWN
 from sweep_bmc_execution import validate_report
+from analyzer.python.ikos.race_result import validate_race_result
 
 
 def main():
@@ -27,9 +28,10 @@ def main():
                 source.write_text(f'#define CASE {case}\n' +
                                   ('#define WIDE\n' if wide else '') +
                                   fixture.read_text().replace('worker', 'entry'))
+                report = work / 'report.json'
                 result = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
                     '--concurrency=auto', '--demote-race-to-unknown',
-                    '--bmc-deadline-ms=0', '-m32', '-o', str(work / 'output.db'),
+                    '--bmc-deadline-ms=0', '-m32', '--format=json', '--report-file=' + str(report), '-o', str(work / 'output.db'),
                     str(source)], capture_output=True, text=True, timeout=30,
                     env=dict(os.environ, IKOS_BMC_RECOVER='1'))
                 actual = classify(result.stdout, result.returncode, False)
@@ -41,8 +43,14 @@ def main():
                 else:
                     expected = (VERDICT_SAFE, VERDICT_UNKNOWN)
                 assert actual in expected, (case, wide, actual, result.stdout, result.stderr)
-                if case != 4:
-                    assert (": In function 'entry':" in result.stdout) == racy, result.stdout
+                metadata = validate_race_result(json.loads(report.read_text()))
+                if case in {1, 2, 5, 6}:
+                    assert actual == VERDICT_UNKNOWN and metadata['coverage'] == 'Blocked', metadata
+                    assert any(o['reason'] == 'integer-derived pointer aliasing is not modeled'
+                               and not o['contract'] for o in metadata['obligations']), metadata
+                    assert not metadata['search_performed'], metadata
+                elif racy:
+                    assert metadata['remaining_pairs'] > 0, metadata
                 print(f'{case}/wide={wide}: {actual}', flush=True)
         for helper in (False, True):
             source.write_text('#define CASE 7\n' + ('#define HELPER_GUARD\n' if helper else '') + fixture.read_text())
@@ -53,10 +61,13 @@ def main():
                 '-o', str(work / 'output.db'), str(source)], capture_output=True,
                 text=True, timeout=30, env=dict(os.environ, IKOS_BMC_RECOVER='1'))
             actual = classify(result.stdout, result.returncode, False)
-            assert actual == VERDICT_RACE, (helper, result.stdout, result.stderr)
-            checked = validate_report(json.loads(report.read_text()))
-            assert checked and all(c['status'] == 'ACCEPT' for c in checked), checked
-            print(f'creator alternatives/helper={helper}: FALSE + AR ACCEPT', flush=True)
+            data = json.loads(report.read_text())
+            metadata = validate_race_result(data)
+            assert actual == VERDICT_UNKNOWN and metadata['coverage'] == 'Blocked', metadata
+            assert any(o['reason'] == 'integer-derived pointer aliasing is not modeled'
+                       and not o['contract'] for o in metadata['obligations']), metadata
+            assert not metadata['search_performed'] and not validate_report(data), metadata
+            print(f'creator alternatives/helper={helper}: numeric coverage gate UNKNOWN', flush=True)
     print('14 spawn argument checks passed (BMC disabled)')
 
 

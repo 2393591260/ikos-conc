@@ -6,6 +6,9 @@
 
 AI and BMC have different coverage responsibilities. A fact sufficient to exclude
 all conflicts is not necessarily a concrete value source for a BMC execution.
+The strict coverage gate must pass before BMC may confirm a race. Registered
+unresolved obligations and safety-only replacements with remaining candidates
+return UNKNOWN even when an older execution model could confirm a trace.
 
 <a id="bmc-thread-instances-arguments-and-heap-handles"></a>
 <details>

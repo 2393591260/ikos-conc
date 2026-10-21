@@ -414,6 +414,7 @@ def package(install_dir, out, llvm_root, apron_dir, ppl_source):
     # next to `ikos`; BenchExec runs this entry directly using its shebang.
     shutil.copy("svcomp_witness.py", os.path.join(install, "bin", "svcomp_witness.py"))
     os.chmod(os.path.join(install, "bin", "svcomp_witness.py"), 0o755)
+    shutil.copy("analyzer/python/ikos/race_result.py", os.path.join(install, "bin", "race_result.py"))
     shutil.copy("scripts/validate_bmc_execution.py", os.path.join(install, "bin", "validate_bmc_execution.py"))
 
     # Record the concrete binaries; HEAD alone cannot identify a dirty build.
@@ -421,7 +422,7 @@ def package(install_dir, out, llvm_root, apron_dir, ppl_source):
         return subprocess.check_output(["git", *args], text=True).strip()
 
     runtime_files = [
-        "bin/ikos-analyzer", "bin/ikos-pp", "bin/svcomp_witness.py", "bin/validate_bmc_execution.py",
+        "bin/ikos-analyzer", "bin/ikos-pp", "bin/svcomp_witness.py", "bin/validate_bmc_execution.py", "bin/race_result.py",
         "llvm/bin/clang", "llvm/bin/opt",
         "llvm/lib/libLLVM-14.so.1", "llvm/lib/libclang-cpp.so.14",
     ]

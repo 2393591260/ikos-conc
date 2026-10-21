@@ -1175,6 +1175,11 @@ int main(int argc, char** argv) {
     // Save analysis options in the database
     analyzer::AnalysisOptions opts = make_analysis_options(bundle);
     opts.save(output_db.settings);
+    const bool race_requested = std::find(opts.analyses.begin(), opts.analyses.end(),
+                                         analyzer::CheckerName::DataRace) != opts.analyses.end();
+    if (race_requested)
+      output_db.settings.insert("race_policy", analyzer::JsonDict{
+          {"schema", 1}, {"policy", "strict-coverage-v1"}});
 
     // Initialize factories
     analyzer::MemoryFactory mem_factory;
@@ -1373,6 +1378,17 @@ int main(int argc, char** argv) {
       }
     } else {
       ikos_unreachable("unreachable");
+    }
+    if (race_requested && !ctx.opts.use_checks) {
+      output_db.settings.insert("race_result", analyzer::JsonDict{
+          {"schema", 1}, {"policy", "strict-coverage-v1"},
+          {"analysis_complete", ctx.race_analysis_complete}, {"checks_complete", false},
+          {"coverage", "Pending"}, {"obligation_count", 1},
+          {"unresolved_count", 1}, {"safety_only_count", 0},
+          {"obligations", analyzer::JsonList{analyzer::JsonDict{
+              {"source", "completion"}, {"reason", "property checks disabled"},
+              {"contract", ""}, {"safety_only", false}}}},
+          {"verdict", "UNKNOWN"}, {"remaining_pairs", 0}, {"search_performed", false}});
     }
     // Analysis finished without signal — disarm the recovery guard so any
     // stray SIGSEGV after this point (e.g. during db finalization) goes

@@ -16,7 +16,7 @@ to source files, and [soundness](soundness.md) lists the common open obligations
 | Library and implicit effects | PthreadInitializationFrame, RuntimeStdioFrame, PosixSemaphore, pthread-key models | Transfers and extern access collection; exact byte effects do not grant general synchronization or safety. |
 | Stable range premises | AllAccessFacts and the independent range preflight | Specific effect/array consumers; missing or unstable facts cannot certify bounds. |
 | Pair exclusions | RegionOwnership, ArraySlices, ThreadPrivateHeap, publication/protocol/lifecycle passes | DataRaceChecker applies each method's full premises to the specified access pair. |
-| Coverage replacement | ReadonlyHeapReads and BucketListOwnership | Only supported effect identities and complete replacement contracts; original unresolved effects still block safety. |
+| Coverage replacement | ReadonlyHeapReads and BucketListOwnership | Exact original effect identities and complete safety-only replacement contracts; unresolved obligations block SAFE/FALSE, and safety-only replacements cannot authorize execution confirmation. |
 | Counterexample search | BMC unroll/encoding/result modules | Remaining candidates; no bounded failure proves unbounded safety. |
 | Execution validation | validate_bmc_execution.py and the competition wrapper | Independent checking before official-entry FALSE; source-witness acceptance remains separate. |
 
@@ -84,7 +84,11 @@ final access indices. The checker consumes that result in `consume_pair_proof`.
 The adapter does not write a final verdict or clear an uncovered effect.
 Readonly heap and bucket graph coverage return separate decisions bound to an
 actual `(statement, reason)` in the raw effect inventory; these pass through
-`consume_coverage_proof`. Early library models pass through
+`consume_coverage_proof`. The inventory retains each obligation and its resolving
+contract (`coverage-readonly-heap-v1` or `coverage-bucket-ownership-v1`). If
+candidates remain with either safety-only replacement, the strict gate returns
+UNKNOWN without BMC. Pair exclusions cannot clear this inventory.
+Early library models pass through
 `consume_library_effect` while the checker is collecting accesses.
 
 The rule scan preserves the existing short-circuit order. Basic read/read,

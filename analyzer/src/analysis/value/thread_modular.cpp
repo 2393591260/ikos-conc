@@ -385,6 +385,7 @@ void ThreadModularAnalysis::run() {
 
       if (ctor->is_declaration()) {
         log::error("global constructor '" + ctor->name() + "' is extern");
+        _ctx.race_entry_obligations.push_back("extern global constructor: " + ctor->name());
         continue;
       }
 
@@ -467,10 +468,12 @@ void ThreadModularAnalysis::run() {
   std::vector< ar::Function* > analyzed_functions;
   std::vector< ar::Function* > worklist;
 
-  // Seed worklist with entry points.
+  // Seed worklist with entry points, retaining skipped required roots.
   for (ar::Function* ep : _ctx.opts.entry_points) {
     if (ep->is_definition()) {
       worklist.push_back(ep);
+    } else {
+      _ctx.race_entry_obligations.push_back("extern analysis entry: " + ep->name());
     }
   }
 
@@ -670,6 +673,7 @@ void ThreadModularAnalysis::run() {
 
       if (dtor->is_declaration()) {
         log::error("global destructor '" + dtor->name() + "' is extern");
+        _ctx.race_entry_obligations.push_back("extern global destructor: " + dtor->name());
         continue;
       }
 
@@ -738,6 +742,7 @@ void ThreadModularAnalysis::run() {
     _ctx.output_db->functions.insert(*it);
   }
 
+  _ctx.race_analysis_complete = true;
   for (const auto& checker : checkers) {
     checker->finalize();
   }

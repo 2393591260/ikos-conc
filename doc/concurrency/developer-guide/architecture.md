@@ -97,7 +97,7 @@ For the thread-modular driver the order is:
 1. Complete the checking replay and analyze global destructors.
 2. Flush shared summaries; retain a warning if convergence has changed.
 3. Publish the three all-access range inventories only when stable.
-4. Store function records, then finalize the property checkers.
+4. Store function records, mark normal race-analysis completion, then finalize the property checkers.
 
 `DataRaceChecker::finalize()` performs coverage checking, access preparation,
 pair exclusion, bounded search and reporting. Its destructor only releases
@@ -113,11 +113,11 @@ The explicit finalizer calls these stages in order:
 
 | Stage | Method | Responsibility |
 | --- | --- | --- |
-| Coverage | `check_effect_coverage` | Report uncovered entries/effects or apply a complete replacement proof to that specific effect. |
+| Coverage | `check_effect_coverage`, `refresh_coverage` | Retain registered entries/effects/completion/stability obligations and exact safety-only replacements. Block determinate verdicts before scanning when unresolved. |
 | Access preparation | `prepare_access_regions` | Invalidate ambiguous region labels or backfill labels already established during collection. |
-| Candidate scan | `collect_race_pairs` | Represent nonunique worker writes, compute completion facts, apply exclusions and retain unresolved pairs. |
-| Search | `search_race_candidates` | Group unresolved pairs and run the existing seven bounded passes. |
-| Reporting | `report_race_group` | Insert the selected group's existing verdict and evidence into the results database. |
+| Candidate scan | `collect_race_pairs` | Represent nonunique worker writes, compute completion facts, apply exclusions and retain unresolved pairs. Register surviving mixed atomic boundaries and recheck coverage. |
+| Search | `search_race_candidates` | Only with checked coverage and no safety-only replacement, group unresolved pairs and run the existing seven bounded passes. |
+| Reporting | `report_race_group`, `publish_result` | Buffer group reports; recheck coverage before inserting confirmation/evidence. Write the final property metadata once. |
 
 `ReadonlyHeapReads` and `BucketListOwnership` are constructed before access
 preparation, as required by their existing contracts. The other pair-proof
@@ -126,8 +126,15 @@ preparation. `BinaryTokenOwnership` precedes its `ArenaReservation` and
 `OnceInitialization` consumers. Candidate indices refer to the final access
 order; search receives read-only candidates and completion-name tables.
 
-Covering a synthetic-handle warning does not grant BMC permission to interpret
-that handle representation. The search budget starts only after the candidate
+The checker-owned `RaceCoverageSummary` starts Pending. Driver completion and
+the registered inventory determine Blocked or Checked; Checked is not a general
+semantic completeness proof. Required extern constructors/destructors and
+skipped entries can register obligations without statement anchors. Disabling
+checks records an explicit Pending UNKNOWN. Every allocator retry has a fresh
+Context and final result.
+
+Covering an effect with a safety-only certificate does not grant BMC permission
+to interpret that effect. The search budget starts only after the candidate
 scan and grouping. The stages preserve the existing short-circuit order and
 report anchors; moving a stage does not extend a module's supported semantics.
 
@@ -153,5 +160,5 @@ replacement by another consumer; it does not prove the original algorithm.
 
 Pair proofs are consumed immediately for final access indices while the checker
 is finalizing. Coverage proofs instead identify an actual raw effect obligation.
-BMC still receives unresolved candidates and checks its own execution support;
+BMC receives candidates only after the strict coverage gate and checks its own execution support;
 no range, pair or coverage proof grants it general execution permission.
