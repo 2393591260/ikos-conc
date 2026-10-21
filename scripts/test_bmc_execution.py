@@ -20,7 +20,16 @@ def heap_handle_contract():
     replay.semaphores = {}
     replay.atomic_owner = None
     replay.program = dict(pointer_bits=32, target_triple='i386-pc-linux-gnu', little_endian=True)
-    replay.functions = {'ar.libc.malloc': {}, 'ar.libc.free': {}, 'pthread_create': {}}
+    size_type = dict(kind='integer', bits=32, signed=False)
+    pointer_type = dict(kind='pointer', bits=32)
+    replay.functions = {'ar.libc.malloc': dict(declaration=True, variadic=False,
+        parameter_types=[size_type], return_type=pointer_type),
+        'ar.libc.free': {}, 'pthread_create': {}}
+    allocation = dict(calling_convention=0, operands=[{}, dict(type=size_type)],
+        result=dict(type=pointer_type), native_malloc=dict(name='malloc',
+        declaration=True, variadic=False, calling_convention=0, operand_bundles=False,
+        matching_signature=True, parameter_bits=[32], argument_bits=[32],
+        return_address_space=0, result_address_space=0))
     replay.objects = {'global:other': dict(size=4, live=True, variable='other', thread_local=False,
                                            alignment=4, type=dict(kind='integer', bits=32, size=4, extent=4))}
     replay.memory = {'global:other': [0] * 4}
@@ -35,8 +44,8 @@ def heap_handle_contract():
         except Reject: return 1
         raise AssertionError('accepted corrupt heap handle execution')
 
-    heap = invoke('ar.libc.malloc', [8], {}, {'statement': 'alloc'})
-    other = invoke('ar.libc.malloc', [4], {}, {'statement': 'other_alloc'})
+    heap = invoke('ar.libc.malloc', [8], allocation, {'statement': 'alloc'})
+    other = invoke('ar.libc.malloc', [4], allocation, {'statement': 'other_alloc'})
     handle = dict(kind='integer', bits=32, signed=False, size=4, extent=4)
     create = dict(calling_convention=0, argument_layouts=[dict(size=4, alignment=4)],
                   operands=[{}, dict(type=dict(pointee=handle))])

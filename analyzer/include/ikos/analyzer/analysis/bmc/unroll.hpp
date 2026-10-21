@@ -385,7 +385,14 @@ inline bool malloc_call(ar::CallBase* call) {
          !declaration->isVarArg() && declaration->arg_size() == 1 &&
          declaration->getReturnType()->isPointerTy() && source->getType()->isPointerTy() &&
          declaration->getFunctionType()->getParamType(0)->isIntegerTy(bits) &&
-         source->arg_size() == 1 && source->getArgOperand(0)->getType()->isIntegerTy(bits);
+          source->arg_size() == 1 && source->getArgOperand(0)->getType()->isIntegerTy(bits) &&
+          (bits == 32 || bits == 64) &&
+          declaration->getCallingConv() == llvm::CallingConv::C &&
+          source->getCallingConv() == llvm::CallingConv::C &&
+          source->getCalledFunction() == declaration && !source->hasOperandBundles() &&
+          source->getFunctionType() == declaration->getFunctionType() &&
+          llvm::cast< llvm::PointerType >(source->getType())->getAddressSpace() == 0 &&
+          llvm::cast< llvm::PointerType >(declaration->getReturnType())->getAddressSpace() == 0;
 }
 
 inline bool free_call(ar::CallBase* call) {

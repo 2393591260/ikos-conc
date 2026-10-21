@@ -584,6 +584,21 @@ class Replay:
                     self.threads[child_id] = Thread(instance, [self.frame(target, [args[3]])], dict(thread.vc))
             return 0
         if name in ('malloc', 'ar.libc.malloc'):
+            native = inst.get('native_malloc', {})
+            bits = self.program['pointer_bits']
+            types, returned = fn['parameter_types'], fn['return_type']
+            require(bits in (32, 64) and fn['declaration'] and not fn['variadic'] and
+                    inst.get('calling_convention') == 0 and len(types) == 1 and
+                    types[0].get('kind') == 'integer' and types[0].get('bits') == bits and
+                    returned.get('kind') == 'pointer' and returned.get('bits') == bits and
+                    len(inst['operands']) == 2 and inst['operands'][1]['type'] == types[0] and
+                    inst.get('result', {}).get('type') == returned, 'malloc call types')
+            require(native.get('name') == 'malloc' and native.get('declaration') is True and
+                    native.get('variadic') is False and native.get('calling_convention') == 0 and
+                    native.get('operand_bundles') is False and
+                    native.get('matching_signature') is True and native.get('parameter_bits') == [bits] and
+                    native.get('argument_bits') == [bits] and native.get('return_address_space') == 0 and
+                    native.get('result_address_space') == 0, 'native malloc ABI')
             require(len(args) == 1 and isinstance(args[0], int) and 0 < args[0] <= 1_048_576, 'malloc extent')
             if thread.instance != 0 or len(thread.frames) != 1 or frame.function != 'main' or self.created:
                 raise Unsupported('allocation outside pre-spawn main')
@@ -894,7 +909,18 @@ class Replay:
                         all(isinstance(v,tuple) and v[0] in ('absolute','null') and
                             type(v[1]) is int and 0 <= v[1] < (1 << 32) and
                             ((v[0] == 'null') == (v[1] == 0)) for v in values))
-                    if not numeric_null: raise Unsupported('pointer comparison')
+                    heap_null = any(v['kind'] == 'null' for v in operands)
+                    for operand, value in zip(operands, values):
+                        if operand['kind'] == 'null':
+                            heap_null &= value == ('null', 0)
+                        else:
+                            obj = (self.objects.get(value[0], {})
+                                   if isinstance(value, tuple) and len(value) == 2 else {})
+                            heap_null &= (isinstance(value, tuple) and len(value) == 2 and
+                                          value[1] == 0 and obj.get('live') is True and
+                                          'allocation' in obj and obj.get('owner') == 'main' and
+                                          obj.get('occurrence') == 1)
+                    if not (numeric_null or heap_null): raise Unsupported('pointer comparison')
                 require((a==b) if predicate==35 else (a!=b), 'false pointer CFG guard')
             else:
                 if op is None or not all(isinstance(v,int) for v in values): raise Unsupported('comparison')

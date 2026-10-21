@@ -3729,6 +3729,44 @@ private:
   }
 
   /// \brief Execute a dynamic allocation
+  bool allocation_site_executes_once(ar::CallBase* call) {
+    if (!call->code()->is_function_body() ||
+        dynalloc_in_loop(call) ||
+        this->_ctx.opts.entry_points.size() != 1 ||
+        this->_ctx.opts.entry_points.front()->name() != "main" ||
+        call->bundle()->global_or_null("ar.global_ctors") ||
+        !this->_ctx.concurrent_env.function_executes_at_most_once(
+            call->code()->function())) return false;
+    if (!call->has_frontend()) return false;
+    auto* native = llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >());
+    if (!native || !native->getModule()->getModuleInlineAsm().empty()) return false;
+    // Nonlocal returns can revisit a site without a cycle in its AR CFG.
+    for (const auto& function : *native->getModule()) {
+      const auto name = function.getName();
+      if (function.hasFnAttribute(llvm::Attribute::ReturnsTwice) ||
+          name == "setjmp" || name == "_setjmp" || name == "sigsetjmp" ||
+          name == "__sigsetjmp" || name == "longjmp" || name == "_longjmp" ||
+          name == "siglongjmp" || name == "__longjmp_chk" ||
+          name == "getcontext" || name == "setcontext" || name == "swapcontext" ||
+          name == "makecontext" || name.startswith("llvm.eh.sjlj.") ||
+          name.startswith("llvm.coro.")) return false;
+      for (const auto& block : function) for (const auto& instruction : block)
+        if (auto* invoked = llvm::dyn_cast< llvm::CallBase >(&instruction))
+          if (invoked->isInlineAsm() ||
+              invoked->hasFnAttr(llvm::Attribute::ReturnsTwice)) return false;
+    }
+    auto* function = call->code()->function();
+    for (auto* context = this->_call_context; context; context = context->parent()) {
+      if (context->empty()) return function == this->_ctx.opts.entry_points.front();
+      auto* caller = context->call();
+      auto* target = dyn_cast< ar::FunctionPointerConstant >(caller->called());
+      if (!target || target->function() != function ||
+          !caller->code()->is_function_body()) return false;
+      function = caller->code()->function();
+    }
+    return false;
+  }
+
   void exec_dynamic_alloc(ar::CallBase* call,
                           ar::Value* size,
                           bool may_return_null,
@@ -3747,7 +3785,15 @@ private:
     ikos_assert_msg(lhs.is_pointer_var(),
                     "left hand side is not a pointer variable");
 
-    auto nullity = may_return_null ? Nullity::top() : Nullity::non_null();
+    if (size_l.is_machine_int_var()) {
+      this->data().normal().uninit_assert_initialized(size_l.var());
+    }
+    std::unique_ptr< AbstractDomain > allocation_failure;
+    if (may_return_null && !this->allocation_site_executes_once(call)) {
+      allocation_failure = std::make_unique< AbstractDomain >(this->_inv);
+      data_of(*allocation_failure).normal().pointer_assign_null(lhs.var());
+    }
+    const auto nullity = Nullity::non_null();
 
     MemoryLocation* addr =
         this->_mem_factory.get_dyn_alloc(call, this->_call_context);
@@ -3776,6 +3822,14 @@ private:
     if (this->_ctx.opts.enable_thread_modular) {
       this->lockset().add_heap_node_fresh(
           core::IndexableTraits< MemoryLocation* >::index(addr));
+    }
+    // Failure keeps prior bytes, lifetimes and MUST facts at a reused site.
+    if (allocation_failure) {
+      this->_inv.join_with(*allocation_failure);
+    } else if (may_return_null) {
+      // No earlier object exists at this site: its ghost initialization is
+      // unobservable on failure, but the returned pointer must still allow NULL.
+      this->data().normal().nullity_set(lhs.var(), Nullity::top());
     }
   }
 
@@ -3813,6 +3867,11 @@ private:
     ikos_assert_msg(lhs.is_pointer_var(),
                     "left hand side is not a pointer variable");
 
+    for (const auto* value : {&count, &size}) {
+      if (value->is_machine_int_var()) {
+        this->data().normal().uninit_assert_initialized(value->var());
+      }
+    }
     auto interval = [&](const ScalarLit& value) {
       return value.is_machine_int() ? IntInterval(value.machine_int())
           : this->data().normal().int_to_interval(value.var());
@@ -3830,18 +3889,23 @@ private:
       this->data().normal().pointer_assign_null(lhs.var());
       return;
     }
-    std::unique_ptr< AbstractDomain > overflow_failure;
-    if (count_range.ub().to_z_number() * size_range.ub().to_z_number() > limit) {
-      overflow_failure = std::make_unique< AbstractDomain >(this->_inv);
-      data_of(*overflow_failure).normal().pointer_assign_null(lhs.var());
+    std::unique_ptr< AbstractDomain > allocation_failure;
+    if (count_range.ub().to_z_number() * size_range.ub().to_z_number() > limit ||
+        !this->allocation_site_executes_once(call)) {
+      allocation_failure = std::make_unique< AbstractDomain >(this->_inv);
+      data_of(*allocation_failure).normal().pointer_assign_null(lhs.var());
     }
+    auto merge_failure = [&] {
+      if (allocation_failure) this->_inv.join_with(*allocation_failure);
+      else this->data().normal().nullity_set(lhs.var(), Nullity::top());
+    };
 
     // Allocate the memory
     MemoryLocation* addr =
         this->_mem_factory.get_dyn_alloc(call, this->_call_context);
     this->allocate_memory(lhs.var(),
                           addr,
-                          Nullity::top(),
+                          Nullity::non_null(),
                           Lifetime::allocated(),
                           MemoryInitialValue::Zero);
 
@@ -3852,7 +3916,7 @@ private:
     }
 
     if (!this->_opts.test(ExecutionEngine::UpdateAllocSizeVar)) {
-      if (overflow_failure) this->_inv.join_with(*overflow_failure);
+      merge_failure();
       return;
     }
 
@@ -3890,9 +3954,9 @@ private:
     } else {
       ikos_unreachable("unexpected count parameter");
     }
-    // MulNoWrap describes the representable-size branch only. Restore inputs,
-    // old memory/lifetimes and MUST facts for possible overflow failures.
-    if (overflow_failure) this->_inv.join_with(*overflow_failure);
+    // MulNoWrap describes only success with representable size. Preserve old
+    // bytes, lifetimes and MUST facts on overflow or ordinary allocation failure.
+    merge_failure();
   }
 
   /// \brief Execute a call to libc valloc
@@ -3949,6 +4013,13 @@ private:
   /// extending a region allocated with calloc(3), realloc(3) does not guarantee
   /// that the additional memory is also zero-filled.
   void exec_realloc(ar::CallBase* call) {
+    if (this->_ctx.opts.enable_thread_modular) {
+      this->_ctx.concurrent_env.record_unmodeled_effect(
+          call, "realloc outcome/storage lifetime not modeled");
+      // Internal copy/free operations cannot prove the real call succeeded.
+      this->exec_unknown_call(call, true, false, false, false);
+      return;
+    }
     this->init_global_operands(call);
 
     const ScalarLit& ptr = this->_lit_factory.get_scalar(call->argument(0));

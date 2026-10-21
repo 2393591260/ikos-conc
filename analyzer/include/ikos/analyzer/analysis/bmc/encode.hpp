@@ -1762,6 +1762,23 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           const auto& path = traces[trace_index(cache)].events;
           std::size_t index = 0;
           auto* definition = reaching_definition(variable, path, at, index);
+          if (auto* allocation = core::dyn_cast_or_null< ar::CallBase >(definition)) {
+            core::ZNumber extent;
+            if (traces[trace_index(cache)].root != nullptr &&
+                traces[trace_index(cache)].root->name() == "main" &&
+                main_allocation(allocation, path, index, extent)) {
+              bool live = true;
+              for (std::size_t i = index + 1; i < before; ++i)
+                if (auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt))
+                  if (free_call(call)) live = false;
+              if (live) {
+                // This path chose a real successful allocation, not an AI fact.
+                guard_reusable = false;
+                return ctx.bool_val(cmp->predicate() == ar::Comparison::PNE);
+              }
+            }
+            break;
+          }
           if (auto* copy = core::dyn_cast_or_null< ar::Assignment >(definition)) {
             value = copy->operand(); at = index; continue;
           }

@@ -64,6 +64,9 @@ llvm::ModulePass* create_mark_internal_inline_pass();
 
 /// \brief Inline direct calls to bounded straight-line allocation constructors
 llvm::ModulePass* create_inline_allocator_wrappers_pass();
+
+/// \brief Normalize bounded malloc helpers without removing failure branches
+llvm::ModulePass* create_inline_malloc_helpers_pass();
 /// \brief Report eligible direct constructor calls without changing the module
 llvm::ModulePass* create_allocator_inventory_pass(llvm::raw_ostream& output);
 

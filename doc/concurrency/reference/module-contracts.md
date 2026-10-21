@@ -35,6 +35,9 @@ exclusion remain distinct permissions even when supplied by the same component.
 | `pure-ffs-effects` | Pure GNU ffs effects with an unconstrained numerical return | [Contract](library-effects.md#pure-ffs-effects) |
 | `private-array-zero-effects` | Complete private integer-array zeroing with real memory transfer | [Contract](library-effects.md#private-array-zero-effects) |
 | `pthread-keys-and-destructor-effects` | Pthread keys and destructor effects — account for thread-local library effects | [Contract](library-effects.md#pthread-keys-and-destructor-effects) |
+| `malloc-helper-normalization` | Bounded malloc helper normalization | [Contract](library-effects.md#malloc-helper-normalization) |
+| `allocation-failure-state` | Allocation failure preserves the caller state | [Contract](library-effects.md#allocation-failure-state) |
+| `reallocation-coverage-boundary` | Unmodeled concurrent reallocation retains an unresolved obligation | [Contract](library-effects.md#reallocation-coverage-boundary) |
 | `calloc-size-overflow` | Calloc size overflow — retain allocation-failure continuations | [Contract](library-effects.md#calloc-size-overflow) |
 | `zero-element-artificial-initialization` | Zero-element artificial initialization — avoid inserting a seed into an empty array | [Contract](library-effects.md#zero-element-artificial-initialization) |
 | `formatted-input-coverage` | Formatted-input coverage — keep warnings for unmodeled parser effects | [Contract](library-effects.md#formatted-input-coverage) |

@@ -214,6 +214,26 @@ public:
             out.put("native_memset", native);
           }
           out.put("calling_convention", call->getCallingConv());
+          if (callee && callee->getName() == "malloc") {
+            JsonDict native;
+            native.put("name", callee->getName().str());
+            native.put("declaration", callee->isDeclaration());
+            native.put("variadic", callee->isVarArg());
+            native.put("calling_convention", callee->getCallingConv());
+            native.put("matching_signature", call->getFunctionType() == callee->getFunctionType());
+            native.put("operand_bundles", call->hasOperandBundles());
+            JsonList parameters, arguments;
+            for (auto* type : callee->getFunctionType()->params())
+              parameters.add(type->isIntegerTy() ? type->getIntegerBitWidth() : 0);
+            for (const auto& arg : call->args())
+              arguments.add(arg->getType()->isIntegerTy() ? arg->getType()->getIntegerBitWidth() : 0);
+            native.put("parameter_bits", parameters); native.put("argument_bits", arguments);
+            if (auto* type = llvm::dyn_cast< llvm::PointerType >(callee->getReturnType()))
+              native.put("return_address_space", type->getAddressSpace());
+            if (auto* type = llvm::dyn_cast< llvm::PointerType >(call->getType()))
+              native.put("result_address_space", type->getAddressSpace());
+            out.put("native_malloc", native);
+          }
           JsonList layouts;
           const auto& layout = call->getModule()->getDataLayout();
           for (const auto& argument : call->args()) {

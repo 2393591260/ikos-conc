@@ -44,6 +44,8 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Analysis/CFG.h>
+#include <llvm/Analysis/InlineCost.h>
 #include <llvm/Pass.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 
@@ -57,6 +59,126 @@
 using namespace llvm;
 
 namespace {
+
+bool unused_frozen_seed(CallInst* call, Function* target) {
+  return call->getMetadata("ikos.freeze_uninit") && call->use_empty() &&
+         call->arg_empty() &&
+         ((target->getName() == "__ikos_nondet_int" && call->getType()->isIntegerTy(32)) ||
+          (target->getName() == "__ikos_nondet_int64" && call->getType()->isIntegerTy(64)));
+}
+
+bool malloc_helper(Function& f) {
+  if (f.isDeclaration() || f.isInterposable() || f.isVarArg() ||
+      f.hasAddressTaken() || f.size() > 8 || f.arg_size() != 1 ||
+      f.getCallingConv() != CallingConv::C || f.hasGC() || f.hasPersonalityFn() ||
+      f.hasFnAttribute(Attribute::OptimizeNone) ||
+      f.hasFnAttribute(Attribute::Naked) ||
+      f.hasFnAttribute(Attribute::Convergent) ||
+      f.hasFnAttribute(Attribute::NoDuplicate) ||
+      f.hasFnAttribute(Attribute::ReturnsTwice) ||
+      f.hasFnAttribute(Attribute::NullPointerIsValid) ||
+      f.getName().startswith("__VERIFIER_atomic_") ||
+      f.getName().startswith("__atomic_") || f.getName().startswith("__sync_") ||
+      f.getName().startswith("__ikos_"))
+    return false;
+  const auto bits = f.getParent()->getDataLayout().getPointerSizeInBits();
+  auto* returned = dyn_cast< PointerType >(f.getReturnType());
+  if ((bits != 32 && bits != 64) || !returned || returned->getAddressSpace() ||
+      !f.getArg(0)->getType()->isIntegerTy(bits))
+    return false;
+  SmallVector< std::pair< const BasicBlock*, const BasicBlock* >, 4 > backedges;
+  FindFunctionBackedges(f, backedges);
+  if (!backedges.empty() || !isInlineViable(f).isSuccess())
+    return false;
+  CallInst* allocation = nullptr;
+  unsigned budget = 64;
+  for (auto& block : f) {
+    for (auto& instruction : block) {
+      if (!budget--)
+        return false;
+      if (isa< DbgInfoIntrinsic >(instruction))
+        continue;
+      if (auto* call = dyn_cast< CallInst >(&instruction)) {
+        auto* target = call->getCalledFunction();
+        if (!target || !target->isDeclaration() || target->isVarArg() ||
+            target->getCallingConv() != CallingConv::C ||
+            call->getCallingConv() != CallingConv::C || call->hasOperandBundles() ||
+            call->isMustTailCall() || call->getFunctionType() != target->getFunctionType())
+          return false;
+        if (unused_frozen_seed(call, target))
+          continue;
+        if (target->getName() == "malloc") {
+          auto* type = dyn_cast< PointerType >(call->getType());
+          if (allocation || !type || type->getAddressSpace() ||
+              call->arg_size() != 1 || !call->getArgOperand(0)->getType()->isIntegerTy(bits))
+            return false;
+          allocation = call;
+        } else if (!(target->getName() == "abort" && call->arg_empty() &&
+                     call->getType()->isVoidTy() && call->doesNotReturn() &&
+                     isa< UnreachableInst >(block.getTerminator()))) {
+          return false;
+        }
+      } else if (auto* cast = dyn_cast< BitCastInst >(&instruction)) {
+        auto* from = dyn_cast< PointerType >(cast->getOperand(0)->getType());
+        auto* to = dyn_cast< PointerType >(cast->getType());
+        if (!from || !to || from->getAddressSpace() || to->getAddressSpace())
+          return false;
+      } else if (!isa< ICmpInst >(instruction) && !isa< PHINode >(instruction) &&
+                 !isa< BranchInst >(instruction) && !isa< ReturnInst >(instruction) &&
+                 !isa< UnreachableInst >(instruction)) {
+        return false;
+      }
+    }
+  }
+  if (!allocation)
+    return false;
+  std::vector< Value* > pending;
+  std::set< Value* > seen;
+  for (auto& block : f)
+    if (auto* ret = dyn_cast< ReturnInst >(block.getTerminator()))
+      pending.push_back(ret->getReturnValue());
+  if (pending.empty())
+    return false;
+  while (!pending.empty()) {
+    auto* value = pending.back(); pending.pop_back();
+    if (!seen.insert(value).second || value == allocation || isa< ConstantPointerNull >(value))
+      continue;
+    if (auto* cast = dyn_cast< BitCastInst >(value))
+      pending.push_back(cast->getOperand(0));
+    else if (auto* phi = dyn_cast< PHINode >(value)) {
+      for (auto& incoming : phi->incoming_values()) pending.push_back(incoming);
+    } else
+      return false;
+  }
+  return true;
+}
+
+struct InlineMallocHelpersPass final : public ModulePass {
+  static char ID;
+  InlineMallocHelpersPass() : ModulePass(ID) {}
+
+  bool runOnModule(Module& m) override {
+    std::vector< CallInst* > calls;
+    for (Function& f : m) {
+      if (!malloc_helper(f)) continue;
+      for (auto* use : f.users()) {
+        auto* call = dyn_cast< CallInst >(use);
+        if (call && call->getCalledFunction() == &f && !call->hasOperandBundles() &&
+            !call->isMustTailCall() && call->getCallingConv() == CallingConv::C &&
+            call->getFunctionType() == f.getFunctionType() &&
+            !call->getAttributes().hasFnAttr(Attribute::NoInline) && calls.size() < 256)
+          calls.push_back(call);
+      }
+    }
+    bool changed = false;
+    for (auto* call : calls) {
+      // -O0 emits function noinline; this bounded normalization retains its attrs.
+      InlineFunctionInfo info;
+      changed |= InlineFunction(*call, info).isSuccess();
+    }
+    return changed;
+  }
+};
 
 // Each actual remains observed by a non-overlapping store after inlining.
 bool allocator_wrapper(Function& f) {
@@ -91,12 +213,7 @@ bool allocator_wrapper(Function& f) {
           call->hasOperandBundles() ||
           call->getFunctionType() != target->getFunctionType())
         return false;
-      if (call->getMetadata("ikos.freeze_uninit") && call->use_empty() &&
-          call->arg_empty() &&
-          ((target->getName() == "__ikos_nondet_int" &&
-            call->getType()->isIntegerTy(32)) ||
-           (target->getName() == "__ikos_nondet_int64" &&
-            call->getType()->isIntegerTy(64))))
+      if (unused_frozen_seed(call, target))
         continue;
       auto* size = call->arg_size() == 1
                        ? dyn_cast< ConstantInt >(call->getArgOperand(0))
@@ -246,6 +363,7 @@ struct MarkInternalInlinePass final : public ModulePass {
 
 char MarkInternalInlinePass::ID = 0;
 char AllocatorInventoryPass::ID = 0;
+char InlineMallocHelpersPass::ID = 0;
 
 INITIALIZE_PASS(MarkInternalInlinePass,
                 "mark-internal-inline",
@@ -259,6 +377,10 @@ ModulePass* ikos::frontend::pass::create_mark_internal_inline_pass() {
 
 ModulePass* ikos::frontend::pass::create_inline_allocator_wrappers_pass() {
   return new MarkInternalInlinePass(true);
+}
+
+ModulePass* ikos::frontend::pass::create_inline_malloc_helpers_pass() {
+  return new InlineMallocHelpersPass();
 }
 
 ModulePass* ikos::frontend::pass::create_allocator_inventory_pass(

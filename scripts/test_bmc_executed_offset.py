@@ -148,8 +148,8 @@ def main():
                 assert result.returncode == 0, (case, wide, result.stdout, result.stderr)
                 verdict = classify(result.stdout + result.stderr, result.returncode, False)
                 data = json.loads(report.read_text())
-                expected = case in (0, 1, 4, 5, 7, 9, 10)
-                if case in (0, 1, 4, 5, 7, 9, 10):
+                expected = case in (0, 1, 4, 5, 7, 9, 10, 12)
+                if case in (0, 1, 4, 5, 7, 9, 10, 12):
                     assert verdict == ('Race Found' if expected else 'Unknown'), (case, wide, args.bits, verdict)
                 elif case == 8:
                     assert verdict == 'Safe', (case, wide, args.bits, verdict)

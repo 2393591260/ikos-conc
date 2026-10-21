@@ -127,6 +127,15 @@ control, and checks compilation and invalid-model errors. FALSE must pass the
 entry's independent execution check and retain the source hash and data model
 in its witness. This is a baseline, not dual-ABI acceptance of every mechanism.
 
+Malloc helper regressions run on both ABIs with
+`python3 scripts/test_malloc_helpers.py --bits 32` and `--bits 64`.
+They cover preserved failure branches, zero and native-width sizes, direct
+allocation failure, repeated-site failure preserving old bytes and lifetimes,
+unsupported effects, actual successful executions and corrupted native allocation
+evidence. Reallocation failure, NULL inputs, zero sizes and ignored results must
+retain an unresolved obligation and UNKNOWN before any counterexample search.
+CTest registers both models.
+
 After installing the build, run:
 
 ```bash

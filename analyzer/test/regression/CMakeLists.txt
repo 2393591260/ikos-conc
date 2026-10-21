@@ -187,6 +187,10 @@ add_concurrency_test(nested-array-ownership "${CONCURRENCY_ROOT}/scripts/test_ne
 add_concurrency_test(native-thread-handles "${CONCURRENCY_ROOT}/scripts/test_native_thread_handles.py"
                      --ikos "${CONCURRENCY_IKOS}")
 foreach(bits 32 64)
+  add_concurrency_test(malloc-helpers-${bits} "${CONCURRENCY_ROOT}/scripts/test_malloc_helpers.py"
+                       --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
+endforeach()
+foreach(bits 32 64)
   add_concurrency_test(native-abi-${bits} "${CONCURRENCY_ROOT}/scripts/test_native_abi.py"
                        --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
 endforeach()

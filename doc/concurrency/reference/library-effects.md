@@ -265,6 +265,73 @@ and [thread-specific values](https://pubs.opengroup.org/onlinepubs/9799919799/fu
 
 </details>
 
+<a id="malloc-helper-normalization"></a>
+### Bounded malloc helper normalization
+
+The default frontend may expand a directly called, non-interposable leaf helper
+with one native-width size argument and a pointer return. The actual body must
+be acyclic and bounded (at most 8 blocks and 64 instructions), with one correctly
+typed `malloc` declaration, optional terminating `abort`, pointer copies and
+comparisons, branches and returns. Returns must derive from that allocation or
+literal NULL. User memory effects, unknown calls, escaping function identities,
+special atomic boundaries, `optnone` and explicit call-site `noinline` prevent
+expansion. The pass performs at most 256 call-site expansions.
+
+Clang's `-O0` function-level `noinline` is also emitted for ordinary helpers.
+This narrowly checked normalization uses LLVM's direct inlining utility despite
+that function attribute; it retains the original attributes and does not enable
+general inlining. An explicitly written function-level `noinline` is subject to
+the same body checks. The transformation preserves the allocation-failure CFG;
+it supplies no non-nullness, freshness, coverage or SAFE certificate.
+
+A selected FALSE execution may choose a real, positive-size successful malloc in
+the initial main frame before thread creation. NULL comparisons must follow that
+executed allocation through current copies, without intervening free. The
+independent execution checker validates native calling convention, signature,
+address spaces, argument width, live object identity and the actual branch.
+General pointer comparisons, zero-size or worker allocations remain unsupported.
+
+Regression: `scripts/test_malloc_helpers.py --bits 32` and `--bits 64`.
+
+<a id="allocation-failure-state"></a>
+### Allocation failure preserves the caller state
+
+For malloc-like allocation and calloc, the abstract transfer joins a successful
+allocation with a failure state that only assigns the result NULL. The failure
+state retains the previous memory, lifetimes and MUST facts, including when a
+loop revisits the same abstract allocation site. Internal storage initialization
+must not act as a source dereference proving allocation success. Ordinary program
+dereferences retain their non-null checks.
+
+A restricted first-occurrence proof may keep the successful object's ghost
+initialization while restoring a possibly NULL result: no previous object at
+that site can be observed on failure. This requires the sole implicit main
+entry, no global constructors, a complete direct calling context rooted there,
+a static whole-program single-invocation proof, and an allocation block outside
+CFG cycles. Nonlocal-return/context APIs, LLVM SJLJ/coroutine intrinsics,
+returns-twice attributes, inline assembly and missing native identity refuse it. Unproved or repeated sites retain the full failure-state join.
+For calloc this precision rule additionally requires a provably representable
+size product, so its success arithmetic cannot narrow failure inputs.
+
+For calloc, the failure state also covers a possibly overflowing size product;
+a definitely overflowing product returns NULL without allocating. The join is
+performed even when allocation-size tracking is disabled. These rules preserve
+failure continuations; they do not prove that a particular runtime allocation
+succeeds.
+
+<a id="reallocation-coverage-boundary"></a>
+### Reallocation is outside the concurrent storage contract
+
+Thread-modular analysis records an unresolved coverage obligation for `realloc`
+and uses a conservative unknown call, preserving both NULL and non-NULL return
+possibilities. It does not execute the legacy internal copy/free transfer, whose
+success assumptions could remove failure continuations. The obligation blocks
+both SAFE and FALSE; it cannot be discharged by a safety-only certificate.
+This includes NULL inputs, zero sizes and ignored results. Supporting reallocation
+requires separate success/failure, in-place/moved object, copied extent and
+lifetime contracts. Other nonconcurrent property checkers retain their existing
+reallocation model; they are not certified by these concurrency tests.
+
 <a id="calloc-size-overflow"></a>
 <details>
 <summary>Calloc size overflow — retain allocation-failure continuations</summary>

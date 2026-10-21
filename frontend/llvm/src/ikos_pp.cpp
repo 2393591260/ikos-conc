@@ -485,6 +485,8 @@ int main(int argc, char** argv) {
     }
   }
 
+  pass_manager.add(ikos_pp::create_inline_malloc_helpers_pass());
+
   // Inline-all (independent of opt level): internalize external (non-entry)
   // functions, mark them always-inline, and inline — this gives a helper like
   // weaver's create_fresh_int_array a DISTINCT malloc site per caller
