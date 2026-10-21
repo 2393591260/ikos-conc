@@ -41,6 +41,8 @@ add_concurrency_test(strict-coverage "${CONCURRENCY_ROOT}/scripts/test_strict_co
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(numeric-thread-argument "${CONCURRENCY_ROOT}/scripts/test_numeric_thread_argument.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(numeric-pointer-null "${CONCURRENCY_ROOT}/scripts/test_numeric_pointer_null.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(detach-coverage "${CONCURRENCY_ROOT}/scripts/test_detach_coverage.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(race-rule-trace "${CONCURRENCY_ROOT}/scripts/test_race_rule_trace.py"

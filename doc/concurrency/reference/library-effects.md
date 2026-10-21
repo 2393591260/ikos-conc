@@ -27,6 +27,33 @@ pointer validity nor completion, uniqueness or a final verdict.
 
 Regression: `scripts/test_numeric_thread_argument.py --ikos install/bin/ikos`.
 
+<a id="numeric-pointer-null-tests"></a>
+### Native numerical pointers used only in null tests
+
+On GNU/Linux x86 ILP32, `numeric_pointer_null.hpp` checks the complete pointer-use
+closure in both LLVM and AR. A native-width integer-to-pointer conversion may
+only be copied or bitcast and compared for equality/inequality with literal NULL.
+Dereferences, publication, calls, returns, pointer arithmetic, other comparisons,
+mixed source PHIs and unsupported layouts retain the alias coverage obligation.
+Explicit integer truncation before the native conversion keeps its ordinary
+machine semantics, including a 64-bit value whose low 32 bits are zero.
+
+The existing abstract conversion still executes: it preserves the numeric offset
+and conservative nullity. This contract supplies no object, lifetime, nonnull,
+synchronization or pair-exclusion fact. Unrelated effect obligations remain.
+BMC null guards demand the integer's actual executed definition, using existing
+machine arithmetic and per-occurrence nondet/read-from bindings. Integer copies,
+sign casts, extensions and truncations reduce to a low-bit zero predicate;
+truncation tests divisibility by the corresponding power of two, including signed
+inputs. This preserves nullness without inventing a numeric object address. Failed encoding
+remains unsupported; no free pointer symbol replaces an unknown origin. Independent
+AR replay computes numeric bits itself and accepts numeric equality only against
+literal NULL. It still refuses numeric object access and general pointer equality.
+
+Regression: `scripts/test_numeric_pointer_null.py --ikos install/bin/ikos`.
+The source/import contract remains a trusted dependency; finite controls and
+AR ACCEPT are not a source-witness validation or a whole-tool proof.
+
 <a id="heap-pointer-field-initialization"></a>
 <details>
 <summary>Heap pointer-field initialization — recover field values from all possible writes</summary>

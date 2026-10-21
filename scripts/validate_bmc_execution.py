@@ -837,7 +837,12 @@ class Replay:
             a,b=values; predicate=inst['predicate']; op=CMP.get(predicate)
             if predicate in (35,36):
                 if not all(isinstance(v,tuple) and v[0] in ('function','null') for v in values):
-                    raise Unsupported('pointer comparison')
+                    numeric_null = (self.program['pointer_bits'] == 32 and
+                        any(v['kind'] == 'null' for v in operands) and
+                        all(isinstance(v,tuple) and v[0] in ('absolute','null') and
+                            type(v[1]) is int and 0 <= v[1] < (1 << 32) and
+                            ((v[0] == 'null') == (v[1] == 0)) for v in values))
+                    if not numeric_null: raise Unsupported('pointer comparison')
                 require((a==b) if predicate==35 else (a!=b), 'false pointer CFG guard')
             else:
                 if op is None or not all(isinstance(v,int) for v in values): raise Unsupported('comparison')

@@ -62,6 +62,7 @@
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_key_effects.hpp>
 #include <ikos/analyzer/analysis/execution_engine/numeric_thread_argument.hpp>
+#include <ikos/analyzer/analysis/execution_engine/numeric_pointer_null.hpp>
 #include <ikos/analyzer/analysis/execution_engine/stdio_effects.hpp>
 #include <ikos/analyzer/analysis/runtime_stdio_frame.hpp>
 #include <ikos/analyzer/analysis/pthread_initialization_frame.hpp>
@@ -1169,7 +1170,8 @@ public:
               : this->data().normal().int_to_interval(rhs.scalar().var());
           auto exact = value.singleton();
           if ((!exact || !exact->is_zero()) && !pthread_key_opaque_token(s, this->_ctx) &&
-              !numeric_thread_argument(s, this->_ctx)) {
+              !numeric_thread_argument(s, this->_ctx) &&
+              !numeric_pointer_null(s, this->_ctx)) {
             // The scalar domain uses AbsoluteZero+offset for integer addresses.
             // It cannot relate that cell back to a published stack/heap/global
             // object, so neither disjoint points-to nor private-cell filters

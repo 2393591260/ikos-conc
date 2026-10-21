@@ -1728,8 +1728,70 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                            const std::string& prefix, std::size_t before) -> z3::expr {
     ar::Value* l = cmp->left();
     ar::Value* r = cmp->right();
-    // Only equality of proven function/null identities is modeled for pointers.
+    // Numeric null tests use the actual integer definition, never an address token.
     if (cmp->predicate() == ar::Comparison::PEQ || cmp->predicate() == ar::Comparison::PNE) {
+      if (core::isa< ar::NullConstant >(l) || core::isa< ar::NullConstant >(r)) {
+        auto* value = core::isa< ar::NullConstant >(l) ? r : l;
+        std::size_t at = before;
+        for (unsigned depth = 0; depth < 64; ++depth) {
+          auto* variable = core::dyn_cast< ar::InternalVariable >(value);
+          if (!variable) break;
+          const auto& path = traces[trace_index(cache)].events;
+          std::size_t index = 0;
+          auto* definition = reaching_definition(variable, path, at, index);
+          if (auto* copy = core::dyn_cast_or_null< ar::Assignment >(definition)) {
+            value = copy->operand(); at = index; continue;
+          }
+          auto* cast = core::dyn_cast_or_null< ar::UnaryOperation >(definition);
+          if (!cast) break;
+          if (cast->op() == ar::UnaryOperation::Bitcast && cast->operand()->type()->is_pointer()) {
+            value = cast->operand(); at = index; continue;
+          }
+          auto* integer = core::dyn_cast< ar::IntegerType >(cast->operand()->type());
+          if ((cast->op() == ar::UnaryOperation::UIToPtr ||
+               cast->op() == ar::UnaryOperation::SIToPtr) && integer &&
+              integer->bit_width() == 32 &&
+              cast->bundle()->data_layout().pointers.bit_width == 32) {
+            // Low-bit zero is invariant under sign casts and follows truncation
+            // by modular arithmetic. Keep dynamic definitions, without forcing
+            // a mixed integer/bitvector representation of the pointer value.
+            auto* input = cast->operand();
+            auto low_bits = integer->bit_width();
+            auto input_at = index;
+            for (unsigned n = 0; n < 64; ++n) {
+              auto* variable = core::dyn_cast< ar::InternalVariable >(input);
+              if (!variable) break;
+              std::size_t origin = 0;
+              auto* def = reaching_definition(variable, path, input_at, origin);
+              if (auto* copy = core::dyn_cast_or_null< ar::Assignment >(def)) {
+                if (copy->operand()->type() != input->type()) break;
+                input = copy->operand(); input_at = origin; continue;
+              }
+              auto* conversion = core::dyn_cast_or_null< ar::UnaryOperation >(def);
+              auto* source = conversion
+                  ? core::dyn_cast< ar::IntegerType >(conversion->operand()->type()) : nullptr;
+              auto* destination = core::dyn_cast< ar::IntegerType >(input->type());
+              if (!source || !destination) break;
+              const auto op = conversion->op();
+              const auto from = source->bit_width(), to = destination->bit_width();
+              if (!((op == ar::UnaryOperation::Bitcast && from == to) ||
+                    ((op == ar::UnaryOperation::SExt || op == ar::UnaryOperation::ZExt) && from < to) ||
+                    ((op == ar::UnaryOperation::STrunc || op == ar::UnaryOperation::UTrunc) && from > to))) break;
+              low_bits = std::min(low_bits, from);
+              input = conversion->operand(); input_at = origin;
+            }
+            z3::expr bits(ctx);
+            if (encode_value(input, bits, cache, prefix, 0, input_at)) {
+              auto* type = core::cast< ar::IntegerType >(input->type());
+              auto zero = type->bit_width() <= low_bits ? bits == 0 :
+                  z3::mod(bits, ctx.int_val((ZNumber(1) << low_bits).str().c_str())) == 0;
+              guard_reusable = false;
+              return cmp->predicate() == ar::Comparison::PEQ ? zero : !zero;
+            }
+          }
+          break;
+        }
+      }
       z3::expr x(ctx), y(ctx);
       const auto id = trace_index(cache);
       if (functions.encode(l, id, before, x) && functions.encode(r, id, before, y)) {

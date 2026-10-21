@@ -28,6 +28,7 @@ exclusion remain distinct permissions even when supplied by the same component.
 | Stable section identifier | Mechanism | Reference |
 | --- | --- | --- |
 | `numeric-thread-arguments` | Native numerical thread payloads with closed pointer uses | [Contract](library-effects.md#numeric-thread-arguments) |
+| `numeric-pointer-null-tests` | Native numerical pointer null tests — retain value and control dependencies | [Contract](library-effects.md#numeric-pointer-null-tests) |
 | `heap-pointer-field-initialization` | Heap pointer-field initialization — recover field values from all possible writes | [Contract](library-effects.md#heap-pointer-field-initialization) |
 | `native-thread-handle-arrays` | Native thread-handle arrays — model private handle storage without inferring completion | [Contract](library-effects.md#native-thread-handle-arrays) |
 | `closed-thread-detach` | Closed private thread detachment without a completion edge | [Contract](library-effects.md#closed-thread-detach) |
