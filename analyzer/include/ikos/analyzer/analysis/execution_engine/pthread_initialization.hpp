@@ -239,79 +239,21 @@ inline bool pthread_initialized_mutex_consumer(ar::CallBase* call) {
          source->getCallingConv() == llvm::CallingConv::C;
 }
 
-// Glibc default flags + NORMAL/ERRORCHECK initialize successfully. Certify
-// activation and all storage consumers before reusing the successful
-// blocking-lock model. ponytail: whole globals only; locals/fields/helpers need
-// object/lifetime proofs.
-inline bool certified_pthread_initialization(ar::CallBase* query,
-                                             Context& ctx) {
-  if (!pthread_initialization_signature(query))
-    return false;
-  auto* main = query->bundle()->function_or_null("main");
-  if (!main || !main->is_definition() ||
-      query->bundle()->global_or_null("ar.global_ctors") ||
-      !ctx.opts.no_init_globals.empty() ||
-      !ctx.concurrent_env.function_executes_at_most_once(main))
-    return false;
-  for (auto* root : ctx.opts.entry_points)
-    if (root != main)
-      return false;
-  auto* entry = main->body()->entry_block();
-  if (entry->num_predecessors() != 0 || query->parent() != entry)
-    return false;
-  std::map< ar::GlobalVariable*, unsigned > attributes;
-  std::map< ar::Value*, unsigned >
-      objects; // attribute=1, initialized mutex=2, other runtime storage=4
-  std::unordered_set< ar::CallBase* > covered;
-  bool finished = false;
-  unsigned budget = 8192;
-  for (auto* statement : *entry) {
-    if (budget-- == 0)
-      return false;
-    auto* call = dyn_cast< ar::CallBase >(statement);
-    if (!call)
-      continue;
-    auto* function = pthread_initialization_callee(call);
-    if (!pthread_initialization_signature(call)) {
-      if (!function || function->intrinsic_id() != ar::Intrinsic::IkosNonDet ||
-          call->num_arguments() != 0)
-        finished = true;
-      continue;
-    }
-    if (finished)
-      return false;
-    const auto& name = function->name();
-    bool mutex = name == "pthread_mutex_init";
-    auto* object = pthread_initialization_object(call->argument(0), mutex);
-    if (!object)
-      return false;
-    if (mutex) {
-      auto* attr = pthread_initialization_object(call->argument(1), false);
-      if (!attr || attributes[attr] == 0 || !objects.emplace(object, 2).second)
-        return false;
-    } else if (name == "pthread_mutexattr_init") {
-      if (!objects.emplace(object, 1).second)
-        return false;
-      attributes[object] = 1;
-    } else if (name == "pthread_mutexattr_settype") {
-      auto* kind = dyn_cast< ar::IntegerConstant >(call->argument(1));
-      if (attributes[object] == 0 || !kind ||
-          (kind->value().to_z_number() != 0 &&
-           kind->value().to_z_number() != 2))
-        return false;
-      attributes[object] = kind->value().to_z_number() == 2 ? 2 : 1;
-    } else {
-      if (attributes[object] == 0)
-        return false;
-      attributes[object] = 0;
-    }
-    covered.insert(call);
-  }
-  if (!covered.count(query))
-    return false;
+// Check all AR aliases and runtime-storage consumers, including unvisited CFG arms.
+inline bool pthread_initialization_storage_closed(
+    ar::Bundle* bundle,
+    std::map< ar::Value*, unsigned > objects,
+    const std::unordered_set< ar::CallBase* >& covered,
+    unsigned budget,
+    const std::set< ar::GlobalVariable* >* mutex_arrays = nullptr,
+    std::set< ar::CallBase* >* array_consumers = nullptr) {
+  if (mutex_arrays)
+    for (const auto& object : objects)
+      if (object.second == 2 &&
+          !mutex_arrays->count(dyn_cast< ar::GlobalVariable >(object.first))) return false;
   std::vector< ar::Statement* > statements;
-  for (auto it = query->bundle()->function_begin();
-       it != query->bundle()->function_end();
+  for (auto it = bundle->function_begin();
+       it != bundle->function_end();
        ++it)
     if (auto* code = (*it)->body_or_null())
       for (auto* block : *code)
@@ -320,8 +262,8 @@ inline bool certified_pthread_initialization(ar::CallBase* query,
             return false;
           statements.push_back(statement);
         }
-  for (auto it = query->bundle()->global_begin();
-       it != query->bundle()->global_end();
+  for (auto it = bundle->global_begin();
+       it != bundle->global_end();
        ++it)
     if (auto* code = (*it)->initializer_or_null())
       for (auto* block : *code)
@@ -412,7 +354,8 @@ inline bool certified_pthread_initialization(ar::CallBase* query,
           source = cast->operand();
       } else if (auto* shift = dyn_cast< ar::PointerShift >(statement)) {
         source = shift->pointer();
-        if (objects.count(source) && (objects[source] & 3u))
+        if (objects.count(source) && ((objects[source] & 1u) ||
+            ((objects[source] & 2u) && !mutex_arrays)))
           for (auto it = shift->term_begin(); it != shift->term_end(); ++it) {
             auto* index = dyn_cast< ar::IntegerConstant >((*it).second);
             if (!index || !index->value().is_zero())
@@ -495,6 +438,7 @@ inline bool certified_pthread_initialization(ar::CallBase* query,
         if (role & 3u) {
           if (role != 2 || !sync || i != 0)
             return false;
+          if (mutex_arrays && array_consumers) array_consumers->insert(call);
         } else if (role != 4 || i >= 4 || !(runtime & (1u << i)))
           return false;
       }
@@ -527,6 +471,80 @@ inline bool certified_pthread_initialization(ar::CallBase* query,
     return false;
   }
   return true;
+}
+
+// Glibc default flags + NORMAL/ERRORCHECK initialize successfully. Certify
+// activation and all storage consumers before reusing the successful
+// blocking-lock model. ponytail: whole globals only; locals/fields/helpers need
+// object/lifetime proofs.
+inline bool certified_pthread_initialization(ar::CallBase* query,
+                                             Context& ctx) {
+  if (!pthread_initialization_signature(query))
+    return false;
+  auto* main = query->bundle()->function_or_null("main");
+  if (!main || !main->is_definition() ||
+      query->bundle()->global_or_null("ar.global_ctors") ||
+      !ctx.opts.no_init_globals.empty() ||
+      !ctx.concurrent_env.function_executes_at_most_once(main))
+    return false;
+  for (auto* root : ctx.opts.entry_points)
+    if (root != main)
+      return false;
+  auto* entry = main->body()->entry_block();
+  if (entry->num_predecessors() != 0 || query->parent() != entry)
+    return false;
+  std::map< ar::GlobalVariable*, unsigned > attributes;
+  std::map< ar::Value*, unsigned >
+      objects; // attribute=1, initialized mutex=2, other runtime storage=4
+  std::unordered_set< ar::CallBase* > covered;
+  bool finished = false;
+  unsigned budget = 8192;
+  for (auto* statement : *entry) {
+    if (budget-- == 0)
+      return false;
+    auto* call = dyn_cast< ar::CallBase >(statement);
+    if (!call)
+      continue;
+    auto* function = pthread_initialization_callee(call);
+    if (!pthread_initialization_signature(call)) {
+      if (!function || function->intrinsic_id() != ar::Intrinsic::IkosNonDet ||
+          call->num_arguments() != 0)
+        finished = true;
+      continue;
+    }
+    if (finished)
+      return false;
+    const auto& name = function->name();
+    bool mutex = name == "pthread_mutex_init";
+    auto* object = pthread_initialization_object(call->argument(0), mutex);
+    if (!object)
+      return false;
+    if (mutex) {
+      auto* attr = pthread_initialization_object(call->argument(1), false);
+      if (!attr || attributes[attr] == 0 || !objects.emplace(object, 2).second)
+        return false;
+    } else if (name == "pthread_mutexattr_init") {
+      if (!objects.emplace(object, 1).second)
+        return false;
+      attributes[object] = 1;
+    } else if (name == "pthread_mutexattr_settype") {
+      auto* kind = dyn_cast< ar::IntegerConstant >(call->argument(1));
+      if (attributes[object] == 0 || !kind ||
+          (kind->value().to_z_number() != 0 &&
+           kind->value().to_z_number() != 2))
+        return false;
+      attributes[object] = kind->value().to_z_number() == 2 ? 2 : 1;
+    } else {
+      if (attributes[object] == 0)
+        return false;
+      attributes[object] = 0;
+    }
+    covered.insert(call);
+  }
+  if (!covered.count(query))
+    return false;
+  return pthread_initialization_storage_closed(
+      query->bundle(), std::move(objects), covered, budget);
 }
 
 } // namespace analyzer

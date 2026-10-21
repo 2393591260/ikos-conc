@@ -40,7 +40,7 @@ exclusion remain distinct permissions even when supplied by the same component.
 | `formatted-input-coverage` | Formatted-input coverage — keep warnings for unmodeled parser effects | [Contract](library-effects.md#formatted-input-coverage) |
 | `exact-scalar-string-input` | Exact scalar string input — model a restricted sscanf call | [Contract](library-effects.md#exact-scalar-string-input) |
 | `closed-runtime-stdio-frame` | Closed runtime stdio frame — check when synthetic stdio effects can be omitted | [Contract](library-effects.md#closed-runtime-stdio-frame) |
-| `fixed-heap-pthread-initialization-effects` | Fixed heap pthread initialization effects — describe checked runtime-storage effects | [Contract](library-effects.md#fixed-heap-pthread-initialization-effects) |
+| `fixed-heap-pthread-initialization-effects` | Heap and finite global-array pthread initialization — checked byte effects and separate consumer range obligations | [Contract](library-effects.md#fixed-heap-pthread-initialization-effects) |
 | `private-worker-allocations` | Private worker allocations — distinguish objects belonging to separate workers | [Contract](memory-and-ownership.md#private-worker-allocations) |
 | `indexed-heap-ownership` | Indexed heap ownership — relate heap owners to their protecting mutexes | [Contract](memory-and-ownership.md#indexed-heap-ownership) |
 | `stable-flat-array-slices` | Stable flat-array slices — prove that workers access disjoint byte ranges | [Contract](memory-and-ownership.md#stable-flat-array-slices) |

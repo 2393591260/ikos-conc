@@ -840,6 +840,32 @@ void DataRaceChecker::check(ar::Statement* stmt,
   } else if (auto store = dyn_cast< ar::Store >(stmt)) {
     this->check_store(store, inv, call_context);
   } else if (auto call = dyn_cast< ar::CallBase >(stmt)) {
+    if (this->_ctx.pthread_initialization_frame()) {
+      auto* requirement = this->_ctx.pthread_initialization_frame()->array_access(call);
+      if (requirement) {
+        const auto& index = this->_lit_factory.get_scalar(requirement->index);
+        auto bounds = core::machine_int::Interval::top(32, Signed);
+        if (index.is_machine_int()) bounds = core::machine_int::Interval(index.machine_int());
+        else if (index.is_machine_int_var() &&
+                 !inv.first().normal().uninit_is_uninitialized(index.var()))
+          bounds = inv.first().normal().int_to_interval(index.var());
+        auto points = this->resolve_points_to(call->argument(0), inv);
+        const auto& pointer = this->_lit_factory.get_scalar(call->argument(0));
+        bool proven = pointer.is_pointer_var() &&
+            inv.first().normal().nullity_is_non_null(pointer.var()) &&
+            points.is_set() && points.size() == 1 &&
+            *points.begin() == this->_ctx.mem_factory->get_global(requirement->global) &&
+            !bounds.is_bottom() && !bounds.is_top() &&
+            bounds.lb().to_z_number() >= 0 && bounds.ub().to_z_number() < requirement->count;
+        if (!proven) {
+          const std::string reason = "mutex array consumer does not establish an initialized leaf";
+          this->add_coverage_obligation("mutex_array", call, reason);
+          this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace,
+                               Result::Warning, call, call_context, {},
+                               {{"unknown_reason", reason}});
+        }
+      }
+    }
     this->check_extern_call_effects(call, inv, call_context);
   }
 }
@@ -1553,8 +1579,10 @@ void DataRaceChecker::check_extern_call_effects(
   const bool initialization = byte_effect || certified_pthread_initialization(call, this->_ctx);
   if (byte_effect) {
     this->consume_library_effect(race_rules::Id::EffectPthreadInitialization, call, call_context,
-        JsonDict{{"safe_reason", "closed constant heap pthread initialization effects"},
-                                  {"pthread_initialization_contract", "constant-heap-runtime-byte-frame-v1"}});
+        JsonDict{{"safe_reason", "closed pthread initialization byte effects"},
+                 {"pthread_initialization_contract", byte_effect->complete_prefix
+                     ? "finite-global-array-runtime-byte-frame-v1"
+                     : "constant-heap-runtime-byte-frame-v1"}});
   }
   unsigned ignored_arguments = 0;
   if (exact != nullptr && exact->is_declaration()) {

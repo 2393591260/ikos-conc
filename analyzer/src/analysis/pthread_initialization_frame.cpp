@@ -1,9 +1,11 @@
 // Copyright and license: see context.hpp.
 #include <ikos/analyzer/analysis/pthread_initialization_frame.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
+#include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/util/log.hpp>
 #include <llvm/Analysis/ConstantFolding.h>
 #include <llvm/IR/Operator.h>
+#include <llvm/IR/CFG.h>
 #include <algorithm>
 #include <map>
 #include <set>
@@ -49,7 +51,10 @@ class PthreadInitializationFrame::Impl {
   std::vector< llvm::Function* > workers;
   std::map< ar::CallBase*, PthreadInitializationEffect > effects;
   unsigned budget = 8192;
-  bool spawned = false, valid = false, heap_mutex = false;
+  bool spawned = false, valid = false, heap_mutex = false, arrays = false;
+  llvm::Instruction* prefix_stop = nullptr;
+  std::map< llvm::Value*, llvm::ConstantInt* > integers;
+  std::map< ar::CallBase*, PthreadMutexArrayAccess > array_accesses;
   std::string refusal;
 
   void need(bool condition, const char* reason) {
@@ -114,6 +119,7 @@ class PthreadInitializationFrame::Impl {
   llvm::Constant* layout(llvm::Value* value, unsigned depth = 0) {
     step(); need(depth < 24, "layout expression depth");
     if (auto* c = llvm::dyn_cast< llvm::ConstantInt >(value)) return c;
+    if (arrays && integers.count(value)) return integers.at(value);
     if (auto* c = llvm::dyn_cast< llvm::ConstantPointerNull >(value)) return c;
     auto* i = llvm::dyn_cast< llvm::Instruction >(value);
     auto* e = llvm::dyn_cast< llvm::ConstantExpr >(value);
@@ -231,6 +237,33 @@ class PthreadInitializationFrame::Impl {
            target->has_frontend() && target->frontend< llvm::Value >() == f &&
            target->name() == name.str() && c->arg_size() == (attr_init ? 1u : 2u),
            "initialization declaration/prefix");
+      if (arrays) {
+        auto whole_attribute = [](llvm::Value* v) {
+          for (unsigned depth = 0; depth < 16; ++depth) {
+            if (llvm::isa< llvm::GlobalVariable >(v)) return true;
+            auto* cast = llvm::dyn_cast< llvm::BitCastOperator >(v);
+            if (!cast) return false;
+            v = cast->getOperand(0);
+          }
+          return false;
+        };
+        need(mutex_init ? (llvm::isa< llvm::ConstantPointerNull >(c->getArgOperand(1)) ||
+                           whole_attribute(c->getArgOperand(1)))
+                        : whole_attribute(c->getArgOperand(0)),
+             "whole global attribute without byte arithmetic");
+      }
+      if (arrays && mutex_init) {
+        auto* gep = llvm::dyn_cast< llvm::GEPOperator >(c->getArgOperand(0));
+        auto* g = gep ? llvm::dyn_cast< llvm::GlobalVariable >(gep->getPointerOperand()) : nullptr;
+        auto* type = g ? llvm::dyn_cast< llvm::ArrayType >(g->getValueType()) : nullptr;
+        auto* zero = gep && gep->getNumIndices() == 2
+            ? llvm::dyn_cast< llvm::ConstantInt >(gep->getOperand(1)) : nullptr;
+        auto* index = zero ? scalar(gep->getOperand(2)) : nullptr;
+        need(type && gep->getSourceElementType() == type && zero && zero->isZero() && index &&
+             integer(index->getValue(), true) >= 0 &&
+             integer(index->getValue(), true) < ZNumber(type->getNumElements()),
+             "actual initialization index without truncation/wrap");
+      }
       auto dest = pointer(c->getArgOperand(0), frame);
       range(dest, ZNumber(mutex_init ? 24 : 4)); aligned(dest);
       need(typed(c->getArgOperand(0), mutex_init ? "union.pthread_mutex_t" : "union.pthread_mutexattr_t",
@@ -238,6 +271,8 @@ class PthreadInitializationFrame::Impl {
       if (attr_init) {
         need(roots.at(dest.first).global && dest.second == 0 &&
              roots.at(dest.first).bytes == 4 && !attributes.count(dest), "attribute lifetime/one init");
+        need(!arrays || !llvm::cast< llvm::GlobalVariable >(roots.at(dest.first).source)->isConstant(),
+             "writable attribute storage");
         attributes.emplace(dest, 0);
       } else if (attr_set) {
         auto* kind = llvm::dyn_cast< llvm::ConstantInt >(c->getArgOperand(1));
@@ -253,8 +288,9 @@ class PthreadInitializationFrame::Impl {
                "initialized attribute input");
           kind = attributes.at(attr);
         }
-        need(roots.at(dest.first).allocation && born.count(dest.first) &&
-             mutexes.emplace(dest, kind).second, "live heap birth and distinct mutex initialization");
+        need(((roots.at(dest.first).allocation && born.count(dest.first)) ||
+              (arrays && roots.at(dest.first).global && dest.second % 24 == 0)) &&
+             mutexes.emplace(dest, kind).second, "live storage and distinct mutex initialization");
         heap_mutex = true;
       }
       effect(a, dest, mutex_init ? 24 : 4,
@@ -360,6 +396,220 @@ class PthreadInitializationFrame::Impl {
     }
     active.erase(f);
   }
+  llvm::ConstantInt* scalar(llvm::Value* v) const {
+    if (auto* c = llvm::dyn_cast< llvm::ConstantInt >(v)) return c;
+    auto i = integers.find(v);
+    return i == integers.end() ? nullptr : i->second;
+  }
+  // Enumerate only a deterministic main prefix. Unknown control stops it; all
+  // initialization instructions must subsequently be accounted for by closure.
+  void array_prefix() {
+    Frame frame;
+    llvm::BasicBlock* block = &main->getEntryBlock();
+    llvm::BasicBlock* previous = nullptr;
+    while (block) {
+      std::map< llvm::Value*, llvm::ConstantInt* > phis;
+      for (auto& phi : block->phis()) {
+        step(); need(previous != nullptr && !phi.getType()->isPointerTy(), "prefix PHI");
+        auto* c = scalar(phi.getIncomingValueForBlock(previous));
+        need(c, "nonconstant prefix PHI"); phis.emplace(&phi, c);
+      }
+      for (const auto& phi : phis) integers[phi.first] = phi.second;
+      llvm::BasicBlock* next = nullptr;
+      for (auto& i : *block) {
+        step(); prefix_stop = &i;
+        if (llvm::isa< llvm::PHINode >(i)) continue;
+        integers.erase(&i); frame.pointers.erase(&i);
+        if (auto* branch = llvm::dyn_cast< llvm::BranchInst >(&i)) {
+          if (branch->isUnconditional()) next = branch->getSuccessor(0);
+          else {
+            auto* c = scalar(branch->getCondition());
+            if (!c) return;
+            next = branch->getSuccessor(c->isZero() ? 1 : 0);
+          }
+        } else if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
+          auto* f = llvm::dyn_cast< llvm::Function >(c->getCalledOperand()->stripPointerCasts());
+          need(f, "prefix direct call");
+          if (f->getName() == "pthread_mutexattr_init" || f->getName() == "pthread_mutexattr_settype" ||
+              f->getName() == "pthread_mutex_init") {
+            auto* actual = dyn_cast_or_null< ar::CallBase >(original(c));
+            need(f->isDeclaration() && actual && pthread_initialization_signature(actual),
+                 "native initialization declaration");
+            call(c, frame, true);
+          }
+          else {
+            auto* a = source_call_binding(c, original(c));
+            if (!a || !native_handle_callee(a) ||
+                native_handle_callee(a)->intrinsic_id() != ar::Intrinsic::IkosNonDet ||
+                !c->arg_empty() || !c->getType()->isIntegerTy()) return;
+          }
+        } else if (llvm::isa< llvm::ReturnInst >(i)) return;
+        else if (llvm::isa< llvm::AllocaInst >(i) || llvm::isa< llvm::StoreInst >(i)) {
+          // No memory-derived value is used by this prefix interpreter; the
+          // complete storage closure below separately rejects runtime writes.
+        } else if (i.getType()->isPointerTy()) {
+          // Resolve pointer expressions afresh at each actual init occurrence.
+        } else if (llvm::isa< llvm::BinaryOperator >(i) || llvm::isa< llvm::ICmpInst >(i) ||
+                   llvm::isa< llvm::TruncInst >(i) || llvm::isa< llvm::SExtInst >(i) ||
+                   llvm::isa< llvm::ZExtInst >(i)) {
+          std::vector< llvm::Constant* > operands;
+          for (auto& operand : i.operands()) {
+            auto* c = scalar(operand.get());
+            if (!c) { operands.clear(); break; }
+            operands.push_back(c);
+          }
+          if (operands.empty()) continue;
+          if (auto* binary = llvm::dyn_cast< llvm::BinaryOperator >(&i)) {
+            need(binary->getOpcode() == llvm::Instruction::Add ||
+                 binary->getOpcode() == llvm::Instruction::Sub, "prefix integer operation");
+            const auto& a = llvm::cast< llvm::ConstantInt >(operands[0])->getValue();
+            const auto& b = llvm::cast< llvm::ConstantInt >(operands[1])->getValue();
+            bool sign = false, unsign = false;
+            if (binary->getOpcode() == llvm::Instruction::Add) {
+              (void)a.sadd_ov(b, sign); (void)a.uadd_ov(b, unsign);
+            } else { (void)a.ssub_ov(b, sign); (void)a.usub_ov(b, unsign); }
+            need(!(binary->hasNoSignedWrap() && sign) &&
+                 !(binary->hasNoUnsignedWrap() && unsign), "poison prefix arithmetic");
+          }
+          auto* compare = llvm::dyn_cast< llvm::ICmpInst >(&i);
+          auto* folded = compare
+              ? llvm::ConstantFoldCompareInstOperands(compare->getPredicate(),
+                    operands[0], operands[1], module->getDataLayout())
+              : llvm::ConstantFoldInstOperands(&i, operands, module->getDataLayout());
+          auto* c = llvm::dyn_cast_or_null< llvm::ConstantInt >(folded);
+          need(c, "constant prefix result");
+          if (llvm::isa< llvm::TruncInst >(i))
+            need(integer(llvm::cast< llvm::ConstantInt >(operands[0])->getValue(), true) ==
+                 integer(c->getValue(), true), "lossy prefix truncation");
+          integers[&i] = c;
+        } else if (!llvm::isa< llvm::LoadInst >(i)) need(false, "unsupported prefix instruction");
+      }
+      previous = block; block = next;
+    }
+  }
+  void array_run() {
+    array_prefix();
+    need(!mutexes.empty() && !effects.empty(), "no array initialization");
+    std::map< ar::Value*, unsigned > objects;
+    std::unordered_set< ar::CallBase* > covered;
+    for (const auto& effect : effects) {
+      covered.insert(effect.first);
+    }
+    need(prefix_stop, "finite prefix exit");
+    std::vector< llvm::BasicBlock* > suffix{prefix_stop->getParent()};
+    std::set< llvm::BasicBlock* > seen;
+    bool first = true;
+    while (!suffix.empty()) {
+      auto* block = suffix.back(); suffix.pop_back();
+      if (!seen.insert(block).second) continue;
+      bool after = !first;
+      first = false;
+      for (auto& instruction : *block) {
+        step();
+        if (&instruction == prefix_stop) after = true;
+        if (!after) continue;
+        auto* c = llvm::dyn_cast< llvm::CallBase >(&instruction);
+        if (!c) continue;
+        auto* f = llvm::dyn_cast< llvm::Function >(c->getCalledOperand()->stripPointerCasts());
+        need(!f || (f->getName() != "pthread_mutexattr_init" &&
+             f->getName() != "pthread_mutexattr_settype" && f->getName() != "pthread_mutex_init"),
+             "suffix can reenter initialization");
+      }
+      for (auto* next : llvm::successors(block)) {
+        // Reentering the suffix start requires checking its entire block.
+        if (next == prefix_stop->getParent()) need(false, "suffix cycle to prefix boundary");
+        suffix.push_back(next);
+      }
+    }
+    std::set< unsigned > mutex_roots;
+    std::set< ar::GlobalVariable* > mutex_arrays;
+    for (const auto& leaf : mutexes) mutex_roots.insert(leaf.first.first);
+    for (unsigned id : mutex_roots) {
+      const auto& root = roots.at(id);
+      auto* source = llvm::dyn_cast< llvm::GlobalVariable >(root.source);
+      auto* type = source ? llvm::dyn_cast< llvm::ArrayType >(source->getValueType()) : nullptr;
+      auto* element = type ? llvm::dyn_cast< llvm::StructType >(type->getElementType()) : nullptr;
+      need(root.global && type && type->getNumElements() > 0 && type->getNumElements() <= 128 &&
+           element && !element->isOpaque() && element->hasName() &&
+           element->getName() == "union.pthread_mutex_t" &&
+           module->getDataLayout().getTypeAllocSize(element) == 24 &&
+           root.bytes == ZNumber(type->getNumElements() * 24), "homogeneous native mutex array");
+      for (unsigned index = 0; index < type->getNumElements(); ++index)
+        need(mutexes.count({id, ZNumber(index * 24)}), "complete initialized array");
+      need(!source->isConstant(), "writable runtime array");
+      objects.emplace(root.global, 2); mutex_arrays.insert(root.global);
+    }
+    for (const auto& attr : attributes) objects.emplace(roots.at(attr.first.first).global, 1);
+    std::set< ar::CallBase* > consumers;
+    need(pthread_initialization_storage_closed(ctx.bundle, objects, covered, budget,
+                                              &mutex_arrays, &consumers),
+         "closed array runtime storage");
+    // Every non-init use of these arrays must be an actual typed mutex leaf.
+    // Dynamic indices become obligations consumed at the final checker invariant.
+    for (const auto& mapping : originals) {
+      step();
+      auto* a = dyn_cast< ar::CallBase >(mapping.second);
+      if (!a || covered.count(a) || !pthread_initialized_mutex_consumer(a)) continue;
+      auto* c = llvm::dyn_cast< llvm::CallBase >(mapping.first);
+      need(c && c->arg_size() == 1 && binding(c) == a, "runtime consumer source");
+      auto* gep = llvm::dyn_cast< llvm::GEPOperator >(c->getArgOperand(0));
+      if (!gep) continue;
+      auto* g = llvm::dyn_cast< llvm::GlobalVariable >(gep->getPointerOperand());
+      if (!g || !identities.count(g) || !mutex_roots.count(identities.at(g))) continue;
+      auto* zero = gep->getNumIndices() == 2 ? llvm::dyn_cast< llvm::ConstantInt >(gep->getOperand(1)) : nullptr;
+      need(zero && zero->isZero() && gep->getOperand(2)->getType()->isIntegerTy(32) &&
+           typed(c->getArgOperand(0), "union.pthread_mutex_t", 24), "typed array leaf expression");
+      ar::Value* index = nullptr;
+      for (auto* block : *a->code()) for (auto* statement : *block) {
+        step();
+        auto* shift = dyn_cast< ar::PointerShift >(statement);
+        if (!shift || shift->result() != a->argument(0) || shift->pointer() != globals.at(g)) continue;
+        auto* result = dyn_cast< ar::InternalVariable >(a->argument(0));
+        need(result && unique_def(result) == shift &&
+             (!shift->has_frontend() || shift->frontend< llvm::Value >() == gep),
+             "unique source/AR leaf definition");
+        unsigned nonzero = 0;
+        for (auto it = shift->term_begin(); it != shift->term_end(); ++it) {
+          auto* constant = dyn_cast< ar::IntegerConstant >((*it).second);
+          if (constant && constant->value().is_zero()) continue;
+          need((*it).first == 24 && value((*it).second, gep->getOperand(2)), "source/AR leaf stride/index");
+          index = (*it).second; ++nonzero;
+        }
+        need(nonzero <= 1, "array displacement shape");
+        if (!nonzero) {
+          for (auto it = shift->term_begin(); it != shift->term_end(); ++it)
+            if ((*it).first == 24 && value((*it).second, gep->getOperand(2))) index = (*it).second;
+        }
+      }
+      need(index, "complete source/AR leaf mapping");
+      array_accesses.emplace(a, PthreadMutexArrayAccess{
+          globals.at(g), index,
+          llvm::cast< llvm::ArrayType >(g->getValueType())->getNumElements()});
+    }
+    for (auto* consumer : consumers)
+      need(array_accesses.count(consumer), "unmapped mutex array consumer");
+    // Runtime storage cannot be changed by a hidden external effect. Preserve
+    // independent debts, and refuse this success contract on unknown calls.
+    for (const auto& mapping : originals) {
+      step();
+      auto* a = dyn_cast< ar::CallBase >(mapping.second);
+      if (!a || covered.count(a)) continue;
+      auto* c = llvm::dyn_cast< llvm::CallBase >(mapping.first);
+      auto* f = c ? llvm::dyn_cast< llvm::Function >(c->getCalledOperand()->stripPointerCasts()) : nullptr;
+      auto* target = native_handle_callee(a);
+      need(f && target, "closed array direct calls");
+      if (!f->isDeclaration()) continue; // Every body is scanned by AR closure.
+      if (pthread_initialized_mutex_consumer(a) ||
+          target->intrinsic_id() == ar::Intrinsic::IkosNonDet ||
+          target->intrinsic_id() == ar::Intrinsic::LibcAbort) continue;
+      if (f->getName() == "__VERIFIER_nondet_int" && c->arg_empty() &&
+          c->getType()->isIntegerTy(32)) continue;
+      need(f->getName() == "pthread_create" && native_handle_api(c, true) &&
+           unread_private_thread_output(a), "uncovered array library effect");
+    }
+    for (auto& effect : effects) effect.second.complete_prefix = true;
+    valid = true;
+  }
   void run() {
     need(ctx.opts.enable_thread_modular && ctx.opts.use_checks &&
          std::find(ctx.opts.analyses.begin(), ctx.opts.analyses.end(), CheckerName::DataRace) != ctx.opts.analyses.end() &&
@@ -390,6 +640,7 @@ class PthreadInitializationFrame::Impl {
       auto* g = *it;
       if (g->has_frontend()) globals.emplace(g->frontend< llvm::GlobalVariable >(), g);
     }
+    if (arrays) { array_run(); return; }
     Frame frame; walk(main, frame, true);
     need(heap_mutex && !workers.empty(), "no heap initialization use");
     for (auto* worker : workers) {
@@ -420,13 +671,18 @@ class PthreadInitializationFrame::Impl {
     valid = true;
   }
 public:
-  explicit Impl(Context& context) : ctx(context) {
+  explicit Impl(Context& context, bool array_mode = false) : ctx(context), arrays(array_mode) {
     try { run(); } catch (const Refuse&) { effects.clear(); }
   }
   const PthreadInitializationEffect* get(ar::CallBase* call) const {
     auto i = effects.find(call);
     return valid && i != effects.end() ? &i->second : nullptr;
   }
+  const PthreadMutexArrayAccess* access(ar::CallBase* call) const {
+    auto i = array_accesses.find(call);
+    return valid && i != array_accesses.end() ? &i->second : nullptr;
+  }
+  bool ok() const { return valid; }
   const std::string& reason() const { return refusal; }
 };
 bool PthreadInitializationEffect::matches(MemoryLocation* location, const ZNumber& offset) const {
@@ -439,9 +695,27 @@ bool PthreadInitializationEffect::matches(MemoryLocation* location, const ZNumbe
   }
   return false;
 }
-PthreadInitializationFrame::PthreadInitializationFrame(Context& ctx) : _impl(new Impl(ctx)) {}
+PthreadInitializationFrame::PthreadInitializationFrame(Context& ctx) : _impl(new Impl(ctx)) {
+  if (!_impl->ok()) _impl.reset(new Impl(ctx, true));
+}
 PthreadInitializationFrame::~PthreadInitializationFrame() = default;
 const PthreadInitializationEffect* PthreadInitializationFrame::effect(ar::CallBase* c) const { return _impl->get(c); }
+const PthreadMutexArrayAccess* PthreadInitializationFrame::array_access(ar::CallBase* c) const { return _impl->access(c); }
+bool PthreadInitializationEffect::matches_range(MemoryLocation* location, const ZNumber& lower, const ZNumber& upper) const {
+  if (lower == upper) return matches(location, lower);
+  if (!complete_prefix || lower > upper) return false;
+  // The source prefix proves all actual offsets. This hull is only an abstract
+  // state compatibility check; it does not certify leaf membership.
+  bool first = true;
+  ZNumber lo(0), hi(0);
+  for (const auto& target : destinations) {
+    auto* global = dyn_cast< GlobalMemoryLocation >(location);
+    if (!global || !target.global || global->global_var() != target.global) return false;
+    if (first) { lo = hi = target.offset; first = false; }
+    else { lo = std::min(lo, target.offset); hi = std::max(hi, target.offset); }
+  }
+  return !first && lower >= lo && upper <= hi;
+}
 const std::string& PthreadInitializationFrame::refusal_reason() const { return _impl->reason(); }
 void configure_pthread_initialization_frame(Context& ctx) {
   if (ctx.pthread_initialization_frame()) return;

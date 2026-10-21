@@ -386,7 +386,7 @@ negative counts, repeated consumption and ILP32 long-long payloads.
 
 <a id="fixed-heap-pthread-initialization-effects"></a>
 <details>
-<summary>Fixed heap pthread initialization effects — describe checked runtime-storage effects</summary>
+<summary>Heap and finite global-array pthread initialization — checked runtime-storage effects</summary>
 
 A source-only `PthreadInitializationFrame` can seal constant byte effects for
 `pthread_mutexattr_init`, recognized NORMAL/ERRORCHECK setters, and heap mutex
@@ -413,9 +413,37 @@ warnings even when initialization effects are fully covered.
 
 The first subset admits single-block functions, bounded direct helper expansion,
 constant main allocations, initialized runtime leaves before all creates and
-private unread native create outputs. Unproved cases retain the old fallback.
+private unread native create outputs. A separate global-array route
+admits a deterministic main initialization prefix with bounded direct CFG
+enumeration. PHIs commit simultaneously on the actual predecessor; integer
+arithmetic checks no-wrap flags, and truncations must preserve the interpreted
+signed value. Unknown control ends the prefix. Every mutex in a homogeneous
+GNU i386 array must be initialized once with an exact legal index before any
+create. Suffix reachability must exclude another initialization activation,
+including reentry into a previously covered instruction. Attribute pointers
+remain whole globals without byte arithmetic. Calls and ordinary representation
+uses undergo the complete storage closure; unknown external effects refuse it.
+
+The global-array route seals initialization effects independently from consumer
+ranges. Its non-singleton numerical destination offset is only an abstract-state
+compatibility check: the source enumeration establishes the complete actual
+occurrences, and memory forgetting conservatively covers the whole offset
+interval plus the written bytes. No byte inside that interval is thereby
+certified as a mutex leaf. Each mutex consumer must have a unique source/AR
+definition for an actual typed array GEP and a matching native 32-bit index.
+At every final checker context the index must be initialized and in range, with
+a non-NULL singleton root. Failure adds an unresolved coverage obligation and
+keeps UNKNOWN; it neither changes convergence state nor fills a premise back
+into the earlier frame. A range proof does not grant lock success, HB,
+completion, pair exclusion or a FALSE result. Existing BMC and independent
+AR execution checks still establish the selected mutex behavior.
+
+Unproved cases retain the old fallback.
 Implementation: `analysis/pthread_initialization_frame.hpp` and its source;
 regressions: `python3 scripts/test_heap_pthread_initialization.py` (ILP32,
-including long-long payloads and invalidation controls). LP64 is deferred.
+including long-long payloads and invalidation controls), and
+`python3 scripts/test_pthread_array_initialization.py` (constant/dynamic
+consumers, whole-array initialization, wide counters, truncation and wrapping
+refusals, prefix reentry and representation aliases). LP64 is deferred.
 
 </details>

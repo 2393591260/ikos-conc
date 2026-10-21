@@ -2456,9 +2456,11 @@ public:
         bool matches = false;
         if (dest.is_pointer_var()) {
           auto pointer = this->data().normal().pointer_to_pointer(dest.var());
-          auto offset = pointer.offset().singleton();
-          if (pointer.points_to().is_set() && pointer.points_to().size() == 1 && offset)
-            matches = effect->matches(*pointer.points_to().begin(), offset->to_z_number());
+          const auto& offset = pointer.offset();
+          if (pointer.points_to().is_set() && pointer.points_to().size() == 1 &&
+              !offset.is_bottom() && !offset.is_top())
+            matches = effect->matches_range(*pointer.points_to().begin(),
+                offset.lb().to_z_number(), offset.ub().to_z_number());
         }
         if (matches && this->prepare_mem_access(dest)) {
           auto pointer = this->data().normal().pointer_to_pointer(dest.var());
