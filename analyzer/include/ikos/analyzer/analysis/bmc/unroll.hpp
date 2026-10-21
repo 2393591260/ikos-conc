@@ -22,6 +22,7 @@
 
 #include "diagnostics.hpp"
 #include "global_initial.hpp"
+#include <ikos/analyzer/analysis/private_array_zero.hpp>
 
 #include <ikos/ar/semantic/code.hpp>
 #include <ikos/ar/semantic/statement.hpp>
@@ -54,6 +55,7 @@ struct BmcEvent {
   ar::ReturnValue* join_completion = nullptr; // Actual selected child return.
   std::size_t join_creation = 0; // Creation occurrence in this same prefix.
   bool candidate = false; // Selected dynamic access; atomic closure may follow.
+  bool zero_fill = false; // Real, complete private-array memset; remains a call.
   bool finite_source = false; // A chosen value of this executed source occurrence.
   bool joined_handle_read = false; // Opaque library value consumed by a proven completion join.
   unsigned finite_value = 0;
@@ -515,10 +517,26 @@ inline bool stack_save_call(ar::CallBase* call) {
   return true;
 }
 
+// The closure is shared with coverage; executed identity and zero-valued
+// read sources are separately checked below and in the encoder.
+inline bool private_zero_call(ar::CallBase* call, BmcEvent& event) {
+  if (!core::isa< ar::MemorySet >(call) || call->num_arguments() != 5 ||
+      !symbolic_byte_offset(call->argument(0), event) ||
+      event.base != 0 || !event.local_base || event.var_id != 0 ||
+      event.const_off != 0 || !private_array_zero_structure(call, event.local_base,
+          event.local_base->function()->name() == "main")) return false;
+  core::ZNumber extent;
+  if (!memory_extent(event, extent)) return false;
+  event.width = extent.to< std::uint64_t >();
+  event.zero_fill = true;
+  return true;
+}
+
 inline bool supported_leaf_call(ar::CallBase* call) {
   auto* f = exact_callee(call);
   if (f == nullptr || !f->is_declaration()) return false;
-  if (stack_save_call(call)) return true;
+  BmcEvent zero;
+  if (private_zero_call(call, zero) || stack_save_call(call)) return true;
   if (constant_output_call(call) || ffs_call(call)) return true;
   if (f->intrinsic_id() == ar::Intrinsic::IkosNonDet) return true;
   if (f->intrinsic_id() == ar::Intrinsic::LibcMalloc)
@@ -1635,7 +1653,13 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
       const auto& access = path[index];
       // The encoder requires SC sources for shared reads, even unused ones.
       if (access.base != 0 || access.heap_allocation != nullptr || access.shared_main_local) return true;
-      if (access.local_base == nullptr || access.var_id != 0) return false;
+      if (access.local_base == nullptr) return false;
+      // Complete zeroing initializes every element in this allocation generation.
+      for (std::size_t j = index; j-- > 0;) {
+        if (path[j].stmt->result_or_null() == access.local_base) break;
+        if (path[j].zero_fill && path[j].local_base == access.local_base) return true;
+      }
+      if (access.var_id != 0) return false;
       for (std::size_t j = index; j-- > 0;) {
         const auto& previous = path[j];
         // A prior invocation's store cannot initialize a new stack object.
@@ -2174,6 +2198,8 @@ inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
         // Encode the actual nonzero argument, including casts. Failure to
         // extract a comparison must not turn an assume into a no-op.
         current.emplace_back(s, is_assume_call(call) ? EvKind::Assume : EvKind::Local);
+        BmcEvent zero(s, EvKind::Local);
+        if (private_zero_call(call, zero)) current.back() = zero;
         if (call == budget.finite_source && source_nondet(call)) {
           current.back().finite_source = true;
           current.back().finite_value = budget.finite_value;

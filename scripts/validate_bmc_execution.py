@@ -425,6 +425,49 @@ class Replay:
                     fn['return_type']['kind'] == 'pointer', 'stack save intrinsic')
             # Opaque token: no modeled object, dereference or restore capability.
             return ('stack-save-token', frame.uid)
+        if name == 'ar.memset':
+            native = inst.get('native_memset', {})
+            types = fn.get('parameter_types', [])
+            require(inst.get('native_intrinsic') == 'llvm.memset' and fn['declaration'] and
+                    not fn['variadic'] and fn['return_type']['kind'] == 'unsupported' and
+                    'result' not in inst and len(args) == len(types) == 5 and
+                    self.program['pointer_bits'] == 32, 'private zero intrinsic')
+            require(all(op['type'] == t for op, t in zip(inst['operands'][1:], types)) and
+                    types[0]['kind'] == 'pointer' and
+                    all(t['kind'] == 'integer' for t in types[1:]),
+                    'private zero call types')
+            pointer, byte, length, alignment, volatile = args
+            require(byte == 0 and volatile == 0 and type(length) is int and length > 0 and
+                    native.get('byte') == byte and native.get('length') == length and
+                    native.get('volatile') is False and native.get('address_space') == 0 and
+                    native.get('alignment') == alignment and type(alignment) is int and
+                    alignment > 0 and alignment & (alignment - 1) == 0,
+                    'private zero operands')
+            obj, offset = self.region(pointer, length, alignment)
+            meta = self.objects[obj]
+            require(offset == 0 and length == meta['size'] and meta.get('count') == 1 and
+                    meta.get('owner_frame') == frame.uid and meta.get('owner_thread') == thread.instance and
+                    native.get('destination', {}).get('id') == meta.get('variable') and
+                    self.value(native['destination'], frame) == pointer,
+                    'private zero allocation identity')
+            array = meta.get('type', {}); source = meta.get('native_layout', {})
+            element = array.get('element', {}); source_element = source.get('element', {})
+            require(array.get('kind') == source.get('kind') == 'array' and
+                    int(array['count']) == int(source['count']) > 0 and
+                    element.get('kind') == 'integer' and element['bits'] % 8 == 0 and
+                    source_element.get('bits') == element['bits'] and
+                    int(element['size']) == int(element['extent']) == element['bits'] // 8 and
+                    int(array['extent']) == int(source['extent']) == length ==
+                    int(array['count']) * int(element['size']) and
+                    meta.get('native_address_space') == 0 and
+                    meta.get('native_owner') == frame.function and
+                    meta.get('native_alignment') == meta.get('alignment'),
+                    'private zero array layout')
+            self.encoded_address(step, pointer, length)
+            self.memory[obj][:] = [0] * length
+            for i in range(length):
+                self.writers[(obj, i)] = self.current_occurrence
+            return UNDEFINED
         if self.atomic_owner is not None and not (
                 fn.get('intrinsic_nondet') or name in NONDET or fn.get('intrinsic_assume') or
                 name in ('__VERIFIER_assume', 'ffs', '__VERIFIER_atomic_begin', '__VERIFIER_atomic_end')):

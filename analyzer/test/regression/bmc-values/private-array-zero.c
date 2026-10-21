@@ -70,8 +70,15 @@ void *array_user(void *unused) {
 #else
   int index = 0;
 #endif
-  // A no-op memset leaves 7 and could incorrectly remove this racing access.
+#ifdef OVERWRITE
+  array[index] = 7;
+#endif
+  // A real zero fill replaces 7; the opposite guard must stay infeasible.
+#ifdef ZERO_GUARD
+  if (array[index] != 0) {
+#else
   if (array[index] != 7) {
+#endif
 #ifdef LOCKED
     pthread_mutex_lock(&mutex);
 #endif

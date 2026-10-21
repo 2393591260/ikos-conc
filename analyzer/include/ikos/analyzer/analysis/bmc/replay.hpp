@@ -109,7 +109,10 @@ public:
     } else if (auto* array = llvm::dyn_cast< llvm::ArrayType >(type)) {
       out.put("kind", "array"); out.put("count", array->getNumElements());
       out.put("element", native_type(array->getElementType(), layout, remaining, depth + 1));
-    } else out.put("kind", "scalar");
+    } else {
+      out.put("kind", "scalar");
+      if (type->isIntegerTy()) out.put("bits", type->getIntegerBitWidth());
+    }
     return out;
   }
 
@@ -172,6 +175,25 @@ public:
           auto* callee = call->getCalledFunction();
           if (callee && callee->getIntrinsicID() == llvm::Intrinsic::stacksave)
             out.put("native_intrinsic", "llvm.stacksave");
+          if (auto* fill = llvm::dyn_cast< llvm::MemSetInst >(call)) {
+            out.put("native_intrinsic", "llvm.memset");
+            JsonDict native;
+            native.put("volatile", fill->isVolatile());
+            native.put("alignment", fill->getDestAlign().valueOrOne().value());
+            native.put("address_space", fill->getDestAddressSpace());
+            if (auto* byte = llvm::dyn_cast< llvm::ConstantInt >(fill->getValue()))
+              native.put("byte", byte->getZExtValue());
+            if (auto* length = llvm::dyn_cast< llvm::ConstantInt >(fill->getLength()))
+              if (length->getValue().getActiveBits() <= 32)
+                native.put("length", length->getZExtValue());
+            auto* dest = fill->getDest()->stripPointerCasts();
+            for (const auto& entry : _statements)
+              if (auto* allocation = core::dyn_cast< ar::Allocate >(entry.first))
+                if (allocation->has_frontend() &&
+                    allocation->frontend< llvm::Value >() == dest)
+                  native.put("destination", value(allocation->result()));
+            out.put("native_memset", native);
+          }
           out.put("calling_convention", call->getCallingConv());
           JsonList layouts;
           const auto& layout = call->getModule()->getDataLayout();

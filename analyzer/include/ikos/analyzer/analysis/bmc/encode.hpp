@@ -455,11 +455,14 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       ar::Value* pointer = nullptr;
       if (auto* load = core::dyn_cast< ar::Load >(event.stmt)) pointer = load->operand();
       if (auto* store = core::dyn_cast< ar::Store >(event.stmt)) pointer = store->pointer();
+      if (event.zero_fill) pointer = core::cast< ar::CallBase >(event.stmt)->argument(0);
       if (pointer != nullptr) {
         event.base = 0; event.local_base = nullptr; event.shared_main_local = false; event.const_off = 0; event.var_id = 0; event.coeff = 0;
         event.heap_allocation = nullptr; event.heap_extent = 0; event.local_extent = 0;
         if (!pointer_on_path(pointer, path, i, root, argument, event, &allocation_origin)) {record(diagnostics, "prefix_address", event.stmt); return false;}
       }
+      if (event.zero_fill && (event.base != 0 || !event.local_base ||
+          event.heap_allocation || event.var_id != 0 || event.const_off != 0)) return false;
       if ((event.kind == EvKind::Lock || event.kind == EvKind::Unlock) &&
           !event.synthetic_atomic &&
           !is_verifier_atomic(core::cast< ar::CallBase >(event.stmt))) {
@@ -1422,7 +1425,9 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           const auto end = prefix == "value_init_" ? definition_index : startup.size();
           for (std::size_t j = 0; j < end; ++j) {
             const auto& e = startup[j];
-            if (e.kind != EvKind::Write || !same_object(e)) continue;
+            if (!same_object(e)) continue;
+            if (e.zero_fill) { initial = ctx.int_val(0); known = true; continue; }
+            if (e.kind != EvKind::Write) continue;
             if (e.var_id == 0 && access.var_id == 0 &&
                 (e.const_off >= access.const_off + access.width || access.const_off >= e.const_off + e.width)) continue;
             if (e.width != access.width) return false;
@@ -1471,8 +1476,15 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         }
         for (std::size_t j = begin; j < events.size(); ++j) {
           const auto& e = events[j];
-          if (e.kind != EvKind::Write || abstract_initializer(e.stmt) || (&events == &path && j >= definition_index)) continue;
+          if ((e.kind != EvKind::Write && !e.zero_fill) || abstract_initializer(e.stmt) ||
+              (&events == &path && j >= definition_index)) continue;
           if (!same_object(e)) continue;
+          if (e.zero_fill) {
+            if (&events != &path || access.local_base == nullptr) return false;
+            writes.push_back({clock[clock_start + j], ctx.int_val(0), ctx.bool_val(true)});
+            last_local = ctx.int_val(0);
+            continue;
+          }
           if (e.var_id == 0 && access.var_id == 0 &&
               (e.const_off >= access.const_off + access.width || access.const_off >= e.const_off + e.width)) continue;
           if (e.width != access.width) return false;
@@ -1985,14 +1997,14 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     auto valid_memory = [&](const std::vector< BmcEvent >& path, ValueCache& cache, const std::string& prefix) {
       for (std::size_t i = 0; i < path.size(); ++i) {
         const auto& e = path[i];
-        if (e.kind != EvKind::Read && e.kind != EvKind::Write &&
+        if (e.kind != EvKind::Read && e.kind != EvKind::Write && !e.zero_fill &&
             !((e.kind == EvKind::Lock || e.kind == EvKind::Unlock) && e.mutex != PSEUDO_ATOMIC_LOCK)) continue;
         core::ZNumber size;
         if (e.width == 0 || !memory_extent(e, size)) {record(diagnostics, "prefix_address", e.stmt); return false;}
         z3::expr offset(ctx);
         if (!encode_offset(e, offset, cache, prefix, i)) return false;
         s.add(offset >= 0 && offset + ctx.int_val(std::to_string(e.width).c_str()) <= ctx.int_val(size.str().c_str()));
-        if (e.heap_allocation != nullptr || e.shared_main_local) {
+        if (!e.zero_fill && (e.heap_allocation != nullptr || e.shared_main_local)) {
           core::ZNumber alignment(4);
           if (e.kind == EvKind::Read || e.kind == EvKind::Write) {
             auto* type = e.kind == EvKind::Read ? core::cast< ar::Load >(e.stmt)->result()->type()

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Check private array effects without authorizing memset execution in BMC/AR."""
+"""Check private array coverage and real zero-fill BMC/AR memory effects."""
 import argparse
+import copy
 import json
 import os
 import re
@@ -15,25 +16,20 @@ from analyzer.python.ikos.race_result import validate_race_result
 sys.path.insert(0, str(ROOT / 'scripts'))
 from sweep_bmc_execution import validate_report
 from ikos_runtime import runtime_command
-from validate_bmc_execution import Replay, Unsupported
+from validate_bmc_execution import check
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     args = parser.parse_args()
-    replay = Replay.__new__(Replay)
-    replay.functions = {'ar.memset': dict(declaration=True)}
-    replay.atomic_owner = None
-    try:
-        replay.api('ar.memset', [('local:array', 0), 0, 32, 4, 0], {}, {}, 'a', 0, None, None)
-    except Unsupported:
-        pass
-    else:
-        raise AssertionError('memset must not acquire an independent AR no-op model')
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/private-array-zero.c').read_text()
     supported = [[], ['INDEX'], ['LOOP'], ['TWO_INSTANCES'], ['LOCKED'],
-                 ['CONTENT'], ['CONTENT', 'INDEX']]
+                 ['CONTENT'], ['CONTENT', 'INDEX'], ['CONTENT', 'LOOP'],
+                 ['CONTENT', 'TWO_INSTANCES']]
+    negative = [['CONTENT', 'ZERO_GUARD'], ['CONTENT', 'OVERWRITE'],
+                ['CONTENT', 'OVERWRITE', 'INDEX']]
+    corruptions = 0
     blocked = ['PARTIAL', 'SHIFTED', 'NONZERO', 'ESCAPE', 'THREAD_ARG',
                'RETURN_POINTER', 'ADDRESS', 'HELPER', 'MIXED', 'RECURSIVE',
                'VOLATILE_USE', 'POINTERS', 'STRUCTS', 'DYNAMIC', 'SEQUENTIAL_CALL',
@@ -41,7 +37,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='ikos-private-zero-') as temp:
         work = Path(temp)
         for wide in (False, True):
-            for options, covered in [(o, True) for o in supported] + [([o], False) for o in blocked]:
+            for options, covered in [(o, True) for o in supported + negative] + [([o], False) for o in blocked]:
                 options = options + (['WIDE'] if wide else [])
                 source = work / 'renamed.c'
                 source.write_text(''.join('#define ' + o + '\n' for o in options) + fixture)
@@ -61,8 +57,8 @@ def main():
                     assert metadata['coverage'] == 'Checked', (options, metadata, result.stdout, result.stderr)
                     if 'LOCKED' in options:
                         assert metadata['verdict'] == 'SAFE', (options, metadata)
-                    elif 'CONTENT' in options:
-                        assert metadata['verdict'] == 'UNKNOWN', (options, metadata)
+                    elif 'ZERO_GUARD' in options or 'OVERWRITE' in options:
+                        assert metadata['verdict'] in ('SAFE', 'UNKNOWN'), (options, metadata)
                     else:
                         assert metadata['verdict'] == 'FALSE', (options, metadata)
                 else:
@@ -82,11 +78,38 @@ def main():
                         execution = row['info'].get('counterexample')
                         if not execution:
                             continue
-                        for trace in execution['traces']:
-                            for step in trace['steps']:
-                                inst = execution['program']['instructions'][step['statement']]
-                                assert not (inst['kind'] == 'call' and
-                                    'memset' in inst['operands'][0].get('id', '')), inst
+                        fills = [sid for sid, inst in execution['program']['instructions'].items()
+                                 if inst.get('native_intrinsic') == 'llvm.memset']
+                        selected = [step['statement'] for trace in execution['traces']
+                                    for step in trace['steps']]
+                        if 'CONTENT' in options:
+                            assert any(sid in selected for sid in fills), options
+                            for field, value in [('byte', 1), ('length', 1), ('volatile', True),
+                                                 ('address_space', 1), ('alignment', 128)]:
+                                changed = copy.deepcopy(execution)
+                                changed['program']['instructions'][fills[0]]['native_memset'][field] = value
+                                program = changed.pop('program')
+                                result = check(program, changed)
+                                assert result['status'] == 'REJECT', (field, result)
+                                corruptions += 1
+                            changed = copy.deepcopy(execution)
+                            changed['program']['instructions'][fills[0]]['native_intrinsic'] = 'other'
+                            program = changed.pop('program')
+                            assert check(program, changed)['status'] == 'REJECT'
+                            corruptions += 1
+                            changed = copy.deepcopy(execution)
+                            changed['program']['instructions'][fills[0]]['native_memset']['destination']['id'] = 'other'
+                            program = changed.pop('program')
+                            assert check(program, changed)['status'] == 'REJECT'
+                            corruptions += 1
+                            # Missing execution must violate the real CFG prefix.
+                            changed = copy.deepcopy(execution)
+                            for trace in changed['traces']:
+                                trace['steps'] = [step for step in trace['steps']
+                                                  if step['statement'] not in fills]
+                            program = changed.pop('program')
+                            assert check(program, changed)['status'] == 'REJECT'
+                            corruptions += 1
                 print(options, metadata['verdict'], metadata['coverage'], flush=True)
 
         source = work / 'plain.c'
@@ -114,6 +137,8 @@ def main():
             assert any(o['reason'] == 'byte memory effects not fully modeled'
                        for o in metadata['obligations']), (label, metadata)
             print(label, metadata['verdict'], metadata['coverage'], flush=True)
+    assert corruptions >= 24, corruptions
+    print('zero-fill evidence corruptions rejected:', corruptions)
 
 
 if __name__ == '__main__':

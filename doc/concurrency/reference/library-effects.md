@@ -162,16 +162,32 @@ publication nor a pair-exclusion rule. New element cells can retain TOP values;
 this is not a general array-value precision improvement. LLVM/AR translation
 and the existing memory-domain transfer remain trusted dependencies.
 
-There is no new BMC or independent AR `memset` execution model. A selected
-prefix executing this operation remains unsupported; a prefix that leaves
-this worker unscheduled must independently pass the usual execution checks.
-AR acceptance does not validate the source privacy contract.
+BMC retains the actual intrinsic call. For the same closed array structure,
+its executed destination must resolve to the current stack allocation at offset
+zero. Complete zeroing contributes a zero-valued write source to every element;
+later stores and repeated zeroing retain their actual order. A prior invocation
+or another worker instance cannot initialize this stack object. No new
+synchronization, completion or safety-exclusion permission is introduced.
+
+The independent AR checker checks the exported intrinsic operands and native
+layout against a live allocation owned by the current frame/thread. It writes
+the actual zero bytes and updates their writer occurrences; subsequent loads
+read those bytes and must match encoded values. It does not reuse the producer's
+privacy verdict. Missing/mismatched intrinsic, length, byte, volatile, allocation
+or layout evidence cannot be accepted. AR acceptance remains narrower than
+source-program or source-witness validation.
 
 Reference: [LLVM 14 memset semantics](https://releases.llvm.org/14.0.0/docs/LangRef.html#llvm-memset-intrinsics).
 Implementation: `private_array_zero_effect` in
 [`concurrent_semantics.hpp`](../../../analyzer/include/ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp),
-consumed only by `exec_memset` in
+consumed by `exec_memset` in
 [`numerical.hpp`](../../../analyzer/include/ikos/analyzer/analysis/execution_engine/numerical.hpp).
+Structural checks are shared through
+[`private_array_zero.hpp`](../../../analyzer/include/ikos/analyzer/analysis/private_array_zero.hpp);
+[`unroll.hpp`](../../../analyzer/include/ikos/analyzer/analysis/bmc/unroll.hpp),
+[`encode.hpp`](../../../analyzer/include/ikos/analyzer/analysis/bmc/encode.hpp)
+and the independent [AR checker](../../../scripts/validate_bmc_execution.py)
+implement their distinct execution obligations.
 Regression: `python3 scripts/test_private_array_zero.py --ikos install/bin/ikos`.
 
 <a id="closed-thread-detach"></a>

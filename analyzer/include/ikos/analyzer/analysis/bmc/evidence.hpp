@@ -51,7 +51,7 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
       auto collect_startup = [&](std::size_t end) {
         for (std::size_t j = 0; j < end; ++j) {
           const auto& write = startup[j];
-          if (write.kind == EvKind::Write && !abstract_initializer(write.stmt) &&
+          if ((write.kind == EvKind::Write || write.zero_fill) && !abstract_initializer(write.stmt) &&
               same_object(write, 0) && write.var_id == 0 &&
               write.const_off <= position && position < write.const_off + write.width) {
             latest = JsonDict{{"trace", "startup"}, {"step", j}}; written = true;
@@ -67,7 +67,7 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
             const auto& write = path[j];
             const bool handle_source = read.joined_handle_read && writer_trace == trace_index &&
                                        write.kind == EvKind::Create;
-            if ((write.kind != EvKind::Write && !handle_source) || abstract_initializer(write.stmt) ||
+            if ((write.kind != EvKind::Write && !write.zero_fill && !handle_source) || abstract_initializer(write.stmt) ||
                 !same_object(write, writer_trace)) continue;
             auto write_offset = offset_of(write), time = number(clock[start + j]);
             if (write_offset <= position && position < write_offset + write.width && time < read_time &&
