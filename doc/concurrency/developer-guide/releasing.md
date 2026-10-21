@@ -8,6 +8,11 @@ identities. Verifying one does not automatically verify the others.
 ## Build the candidate
 
 Follow the [installation instructions](../../../README.md#install-and-run).
+The top-level project fixes all configurations to Release with assertions off,
+including when reusing a cache previously configured for Debug. Both CI build
+entries use this profile. Reconfiguring an existing build may require rebuilding
+all objects; retain the accepted installation until that build succeeds.
+
 For evaluation, check the actual CMake cache and compiler flags: a `BUILD_MODE`
 label alone does not establish a Release build. Changes to shared headers must
 rebuild every dependent object. Restoring patches with old timestamps can leave

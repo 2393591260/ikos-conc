@@ -52,9 +52,10 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
     "In-source builds are not allowed. Please clean your source tree and try again.")
 endif()
 
-if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build" FORCE)
-endif()
+# Keep reconfiguration and reused caches on the validated production profile.
+set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type (Release)" FORCE)
+set(CMAKE_CONFIGURATION_TYPES "Release" CACHE STRING "Build configurations" FORCE)
+set(ENABLE_ASSERTIONS OFF CACHE BOOL "Enable assertions" FORCE)
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/install" CACHE PATH "Install directory" FORCE)

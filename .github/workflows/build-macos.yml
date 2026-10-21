@@ -29,7 +29,7 @@ jobs:
           cd build
           cmake \
             -DCMAKE_INSTALL_PREFIX="$HOME/ikos" \
-            -DCMAKE_BUILD_TYPE="Debug" \
+            -DCMAKE_BUILD_TYPE="Release" \
             -DLLVM_CONFIG_EXECUTABLE="$(which llvm-config)" \
             -DPYTHON_EXECUTABLE:FILEPATH="$(which python3)" \
             ..
