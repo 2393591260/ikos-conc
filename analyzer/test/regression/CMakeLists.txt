@@ -39,6 +39,8 @@ set(CONCURRENCY_IKOS "${CMAKE_INSTALL_PREFIX}/bin/ikos")
 add_concurrency_test(race-result "${CONCURRENCY_ROOT}/scripts/test_race_result.py")
 add_concurrency_test(strict-coverage "${CONCURRENCY_ROOT}/scripts/test_strict_coverage.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(numeric-thread-argument "${CONCURRENCY_ROOT}/scripts/test_numeric_thread_argument.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(race-rule-trace "${CONCURRENCY_ROOT}/scripts/test_race_rule_trace.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_executable(test-analysis-race-rules race_rules.cpp)

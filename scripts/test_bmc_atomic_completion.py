@@ -53,8 +53,7 @@ def main():
             metadata = validate_race_result(data)
             if not covered:
                 assert metadata['verdict'] == 'UNKNOWN' and not metadata['search_performed'], metadata
-                expected_reason = ('external call effects not covered' if case == 6
-                                   else 'integer-derived pointer aliasing is not modeled')
+                expected_reason = 'external call effects not covered'
                 assert any(o['reason'] == expected_reason and not o['contract']
                            for o in metadata['obligations']), metadata
             confirmed = covered and case in positive

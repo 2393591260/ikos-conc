@@ -89,13 +89,8 @@ def main():
             assert result.returncode == 0, result.stdout + result.stderr
             data = json.loads(report.read_text())
             metadata = validate_race_result(data)
-            # MODE4 with constant count=2 passes only numeric zero (NULL).
-            if mode == 3 or (mode == 4 and variant != 'constant'):
-                assert metadata['verdict'] == 'UNKNOWN' and metadata['coverage'] == 'Blocked', metadata
-                assert not metadata['search_performed'], metadata
-                assert any(o['reason'] == 'integer-derived pointer aliasing is not modeled'
-                           and not o['contract'] for o in metadata['obligations']), metadata
-                confirmed = False
+            if mode >= 3 and case == 0:
+                assert metadata['coverage'] == 'Checked' and not metadata['obligations'], metadata
             certificates = [row['info']['counterexample'] for row in data['reports'] if 'counterexample' in row['info']]
             assert bool(certificates) == confirmed, (mode, case, variant, result.stdout + result.stderr)
             assertions += 1

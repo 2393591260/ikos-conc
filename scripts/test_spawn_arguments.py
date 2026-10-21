@@ -41,14 +41,19 @@ def main():
                 elif case == 4:
                     expected = (VERDICT_SAFE,)
                 else:
-                    expected = (VERDICT_SAFE, VERDICT_UNKNOWN)
+                    expected = (VERDICT_SAFE,)
                 assert actual in expected, (case, wide, actual, result.stdout, result.stderr)
                 metadata = validate_race_result(json.loads(report.read_text()))
-                if case in {1, 2, 5, 6}:
+                if case in {2, 6}:
                     assert actual == VERDICT_UNKNOWN and metadata['coverage'] == 'Blocked', metadata
                     assert any(o['reason'] == 'integer-derived pointer aliasing is not modeled'
                                and not o['contract'] for o in metadata['obligations']), metadata
                     assert not metadata['search_performed'], metadata
+                elif case in {1, 5}:
+                    assert metadata['coverage'] == 'Checked' and not metadata['obligations'], metadata
+                    assert not metadata['search_performed'], metadata
+                    if case == 1:
+                        assert metadata['remaining_pairs'] > 0, metadata
                 elif racy:
                     assert metadata['remaining_pairs'] > 0, metadata
                 print(f'{case}/wide={wide}: {actual}', flush=True)
@@ -63,12 +68,11 @@ def main():
             actual = classify(result.stdout, result.returncode, False)
             data = json.loads(report.read_text())
             metadata = validate_race_result(data)
-            assert actual == VERDICT_UNKNOWN and metadata['coverage'] == 'Blocked', metadata
-            assert any(o['reason'] == 'integer-derived pointer aliasing is not modeled'
-                       and not o['contract'] for o in metadata['obligations']), metadata
-            assert not metadata['search_performed'] and not validate_report(data), metadata
-            print(f'creator alternatives/helper={helper}: numeric coverage gate UNKNOWN', flush=True)
-    print('14 spawn argument checks passed (BMC disabled)')
+            assert actual == VERDICT_RACE and metadata['coverage'] == 'Checked', metadata
+            executions = validate_report(data)
+            assert executions and all(e['status'] == 'ACCEPT' for e in executions), executions
+            print(f'creator alternatives/helper={helper}: actual numeric argument FALSE+AR ACCEPT', flush=True)
+    print('14 BMC-disabled spawn controls and 2 selected-execution checks passed')
 
 
 if __name__ == '__main__':

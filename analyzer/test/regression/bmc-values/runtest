@@ -57,12 +57,15 @@ def main():
                     passed = actual == suite.VERDICT_RACE if native_race else actual in (suite.VERDICT_SAFE, suite.VERDICT_UNKNOWN)
                 if case == 39:
                     passed = actual == suite.VERDICT_UNKNOWN and counts.get('call_summary', 0) > 0
-                if case >= 56:
+                if case >= 56 and (bits == '64' or case in (62, 64)):
                     metadata = validate_race_result(json.loads(report.read_text()))
                     assert metadata['coverage'] == 'Blocked' and not metadata['search_performed'], metadata
                     assert any(o['reason'] == 'integer-derived pointer aliasing is not modeled'
                                and not o['contract'] for o in metadata['obligations']), metadata
                     passed = actual == suite.VERDICT_UNKNOWN
+                elif case >= 56:
+                    metadata = validate_race_result(json.loads(report.read_text()))
+                    assert metadata['coverage'] == 'Checked' and not metadata['obligations'], metadata
                 rows.append(dict(bits=bits, case=case, verdict=actual, passed=passed, counts=counts))
                 if case == 31:
                     data = json.loads(report.read_text())

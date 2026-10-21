@@ -4,6 +4,29 @@
 
 ### Values and library effects
 
+<a id="numeric-thread-arguments"></a>
+### Native numerical thread arguments
+
+On GNU/Linux x86 ILP32, a native-width integer may travel as a `void*` payload
+without acquiring the ability to address application memory. The producer uses
+the existing AbsoluteZero plus offset representation. A bounded static check in
+`numeric_thread_argument.hpp` requires closed uses in both LLVM and AR: pointer
+copies/bitcasts, actual declared `pthread_create` argument transport, and a
+defined worker whose parameter is discarded or converted to a native integer.
+Every source creation must match an AR creation with the same worker. Unknown
+uses, pointer stores/returns/comparisons/arithmetic, helper or indirect transport,
+non-native conversions and unsupported ABIs retain the ordinary alias obligation.
+
+This checks the entire pointer-use graph, including branches and loops. It does
+not select a thread instance or constant argument. The abstract interpreter joins
+actual spawn values conservatively; BMC separately binds each value to its
+executed definition before that creation, and independent AR validation retains
+its own bit-pattern checks. Existing byte/unknown-effect obligations and the
+strict result gate still apply. This representation contract grants neither
+pointer validity nor completion, uniqueness or a final verdict.
+
+Regression: `scripts/test_numeric_thread_argument.py --ikos install/bin/ikos`.
+
 <a id="heap-pointer-field-initialization"></a>
 <details>
 <summary>Heap pointer-field initialization — recover field values from all possible writes</summary>
