@@ -5,6 +5,7 @@
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/Analysis/Loads.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include <functional>
 #include <set>
 
@@ -95,21 +96,70 @@ class PosixBarrier::Impl {
         slot->getAlign().value() < bits / 8) return false;
     roots.insert(entry); creates.insert(c); ++participants; return true;
   }
-  bool acyclic(llvm::Function* f) {
-    std::set< llvm::BasicBlock* > active, done;
-    std::function< bool(llvm::BasicBlock*) > visit = [&](llvm::BasicBlock* b) {
-      if (!step()) return false;
-      if (done.count(b)) return true;
-      if (!active.insert(b).second) return false;
-      for (auto* next : llvm::successors(b)) if (!visit(next)) return false;
-      active.erase(b); done.insert(b); return true;
-    };
-    for (auto& b : *f) if (!visit(&b)) return false;
+  bool single_events(llvm::Function* f) {
+    for (auto& block : *f) for (auto& i : block) {
+      auto* call = llvm::dyn_cast< llvm::CallBase >(&i);
+      if (!call) continue;
+      auto it = originals.find(call);
+      auto* a = it == originals.end() ? nullptr : dyn_cast< ar::CallBase >(it->second);
+      if (!creates.count(call) && (!a || !effects.count(a))) continue;
+      std::vector< llvm::BasicBlock* > todo;
+      for (auto* next : llvm::successors(&block)) todo.push_back(next);
+      std::set< llvm::BasicBlock* > seen;
+      while (!todo.empty()) {
+        if (!step()) return false;
+        auto* next = todo.back(); todo.pop_back();
+        if (next == &block) return false;
+        if (!seen.insert(next).second) continue;
+        for (auto* after : llvm::successors(next)) todo.push_back(after);
+      }
+    }
     return true;
   }
   using Integers = std::set< llvm::ConstantInt* >;
   std::map< llvm::Value*, Integers > integer_cache;
   std::set< llvm::Value* > integer_active;
+  Integers descending_integers(llvm::PHINode* phi) {
+    if (!phi->getType()->isIntegerTy(32) || phi->getNumIncomingValues() != 2) return {};
+    llvm::DominatorTree dt(*main); llvm::LoopInfo loops(dt);
+    auto* loop = loops.getLoopFor(phi->getParent());
+    if (!loop || loop->getHeader() != phi->getParent() || loop->getNumBlocks() != 2) return {};
+    auto* latch = loop->getLoopLatch(); auto* preheader = loop->getLoopPreheader();
+    auto* branch = llvm::dyn_cast< llvm::BranchInst >(phi->getParent()->getTerminator());
+    auto* back = latch ? llvm::dyn_cast< llvm::BranchInst >(latch->getTerminator()) : nullptr;
+    auto* compare = branch && branch->isConditional()
+        ? llvm::dyn_cast< llvm::ICmpInst >(branch->getCondition()) : nullptr;
+    if (!latch || !preheader || !compare || compare->getParent() != phi->getParent() ||
+        compare->getPredicate() != llvm::ICmpInst::ICMP_UGT || compare->getOperand(0) != phi ||
+        branch->getSuccessor(0) != latch || loop->contains(branch->getSuccessor(1)) ||
+        !back || !back->isUnconditional() || back->getSuccessor(0) != phi->getParent()) return {};
+    auto* start = llvm::dyn_cast_or_null< llvm::ConstantInt >(phi->getIncomingValueForBlock(preheader));
+    auto* bound = llvm::dyn_cast< llvm::ConstantInt >(compare->getOperand(1));
+    auto* update = llvm::dyn_cast_or_null< llvm::BinaryOperator >(phi->getIncomingValueForBlock(latch));
+    auto* stride = update ? llvm::dyn_cast< llvm::ConstantInt >(update->getOperand(1)) : nullptr;
+    if (!start || !bound || !update || update->getParent() != latch ||
+        update->getOperand(0) != phi || !stride ||
+        !((update->getOpcode() == llvm::Instruction::Add && stride->isMinusOne()) ||
+          (update->getOpcode() == llvm::Instruction::Sub && stride->isOne()))) return {};
+    for (auto* block : {phi->getParent(), latch}) for (auto& i : *block) {
+      if (!step()) return {};
+      if (&i != phi && &i != compare && &i != branch && &i != update && &i != back &&
+          !llvm::isa< llvm::DbgInfoIntrinsic >(&i)) return {};
+    }
+    const auto first = start->getZExtValue(), last = bound->getZExtValue();
+    if (!last || first <= last || first - last >= 32 || first >= 2147483647) return {};
+    // On every update x > bound >= 1; literal start and x-1 preserve this interval.
+    // No termination or mustprogress assumption supplies a smaller set.
+    for (auto n : {last + 1, first}) {
+      auto* input = llvm::ConstantInt::get(phi->getType(), n);
+      auto* result = closed_integer_fold(update, {input, stride}, main->getParent()->getDataLayout());
+      if (!result || result->getZExtValue() != n - 1) return {};
+    }
+    Integers values;
+    for (auto n = last; n <= first; ++n)
+      values.insert(llvm::cast< llvm::ConstantInt >(llvm::ConstantInt::get(phi->getType(), n)));
+    return values;
+  }
   // Typed struct paths, not inbounds or wrapped pointer arithmetic, identify bytes.
   llvm::AllocaInst* private_address(llvm::Value* value, core::ZNumber& offset,
                                     unsigned depth = 0) {
@@ -281,6 +331,8 @@ class PosixBarrier::Impl {
       auto* source = private_loaded_integer(load);
       return finish(source ? integers(source, depth + 1) : Integers{});
     } else if (auto* phi = llvm::dyn_cast< llvm::PHINode >(i)) {
+      auto values = descending_integers(phi);
+      if (!values.empty()) return finish(std::move(values));
       for (auto& input : phi->incoming_values()) {
         auto values = integers(input.get(), depth + 1);
         if (values.empty()) return finish({});
@@ -377,8 +429,8 @@ class PosixBarrier::Impl {
       if (wait.first == main && !dt.dominates(init, wait.second)) return false;
     effects.insert(pending.begin(), pending.end()); barriers.push_back(std::move(barrier)); return true;
   }
-  // ponytail: closed SSA and private same-block integer snapshots; loops,
-  // escaping storage and helper phases still require additional checked facts.
+  // ponytail: closed SSA, unit descending intervals and private same-block
+  // snapshots; other loop values, escaping storage and helpers need new facts.
   bool build() {
     if (!ctx.opts.enable_thread_modular || ctx.opts.entry_points.size() != 1 ||
         ctx.opts.entry_points.front()->name() != "main" ||
@@ -434,7 +486,7 @@ class PosixBarrier::Impl {
     if (effects.empty()) return false;
     for (auto& f : module) {
       if (f.isDeclaration() || (&f != main && f.use_empty())) continue;
-      if (!roots.count(&f) || !acyclic(&f)) return false;
+      if (!roots.count(&f) || !single_events(&f)) return false;
       for (auto* u : f.users()) {
         auto* c = llvm::dyn_cast< llvm::CallBase >(u);
         if (!c || !creates.count(c) || c->getArgOperand(2) != &f) return false;

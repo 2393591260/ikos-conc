@@ -171,10 +171,36 @@ int main(int argc, char **argv) {
   struct { unsigned capacity; } config[2];
   config[1].capacity = 2;
   unsigned count = config[1].capacity;
+#elif CASE == 68 || CASE == 69 || CASE == 70 || CASE == 71 || CASE == 72 || CASE == 73 || CASE == 80 || CASE == 81
+  unsigned count = CASE == 72 ? 4294967295U : (CASE == 80 ? 5 : 4);
+# if CASE == 71
+  count = (unsigned)__VERIFIER_nondet_int();
+# endif
+  while (count > (CASE == 70 ? 1U : (CASE == 80 ? 3U : 2U))) {
+# if CASE == 73
+    if (argc > 1) break;
+# endif
+# if CASE == 69
+    count -= 2;
+# elif CASE == 81
+    count -= (unsigned)argc;
+# else
+    --count;
+# endif
+  }
+#elif CASE == 74
+  unsigned count = 0;
+  while (count < 2) ++count;
+#elif CASE == 84
+  unsigned long long large = 4;
+  while (large > 2) --large;
+  unsigned count = (unsigned)large;
 #else
   unsigned count = 2;
 #endif
-#if CASE == 29
+#if CASE == 79
+  for (unsigned n = 0; n < 2; ++n) pthread_barrier_init(&gate, 0, count);
+#elif CASE == 29
   pthread_barrierattr_t attr;
   pthread_barrier_init(&gate, &attr, count);
 #else
@@ -212,6 +238,9 @@ int main(int argc, char **argv) {
 #else
   pthread_create(&first, 0, worker, 0);
 #endif
+#if CASE == 77
+  for (int n = 0; n < argc; ++n) payload = 7;
+#endif
 #if CASE == 6 || CASE == 7 || CASE == 27 || CASE == 34
   pthread_create(&second, 0, worker, 0);
 #endif
@@ -230,6 +259,9 @@ int main(int argc, char **argv) {
 #endif
 #if CASE == 41 || CASE == 42 || CASE == 54 || CASE == 55
   pthread_barrier_wait(&other);
+#endif
+#if CASE == 78
+  for (int n = 0; n < argc; ++n) payload = 8;
 #endif
 #if CASE != 1 && CASE != 3 && CASE != 32
   payload = 3;

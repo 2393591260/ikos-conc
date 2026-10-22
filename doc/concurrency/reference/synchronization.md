@@ -505,8 +505,12 @@ and LP64 32-byte/8-byte layouts. The source and AR must agree on the actual
 init/wait declaration, object, NULL attributes and the actual unsigned i32 capacity.
 Capacity is a finite conservative set from closed acyclic SSA: all PHI/select
 alternatives and all supported integer-operation combinations are retained.
-Unknown inputs, cycles, poison, unsupported operations or finite-work limits
-refuse the complete certificate. Each object keeps its own init-time snapshot.
+Unknown inputs, unproved cycles, poison, unsupported operations or finite-work
+limits refuse the complete certificate. A two-block unsigned i32 unit-decrement
+loop with literal start and positive bound may supply its complete small
+`[bound, start]` interval. The actual PHI, strict unsigned comparison, backedge
+and checked arithmetic must match; no termination, `mustprogress` or exit-value
+assumption narrows the set. Each object keeps its own init-time snapshot.
 A count may also load a whole i32/i64 struct field from a static main stack
 object with closed native/AR uses and matching allocation, typed field offsets,
 values, widths and alignments. The load precedes all creates. A bounded LLVM
@@ -522,8 +526,10 @@ initialization may fail for additional reasons. A unique init must
 dominate every main wait and every create. Copies, byte aliases, escapes,
 reinitialization and destruction refuse this subset.
 
-All root CFGs must be acyclic, without helpers, hidden callbacks or additional
-creators. Every main create site executes at most once; multiple creates of the
+Roots have no helpers, hidden callbacks or additional creators. Every create,
+init and wait site must be outside every CFG cycle, including irreducible cycles;
+ordinary memory loops remain in the analysis. Every main create site executes
+at most once; multiple creates of the
 same worker count as separate instances. Each root has at most one static wait
 per barrier. Let M be one plus the number of create sites and C the capacity.
 Only a minimum possible C >= M can order opposite phases. A post-wait access can occur only if at
@@ -544,8 +550,8 @@ FALSE, nonnull, pointer validity, join or numerical publication facts.
 
 Run `python3 scripts/test_barrier_phases.py` for dual-ABI, wide-payload and
 broken-premise controls. The shared narrow integer fold and actual source/AR
-value binding also have a direct unit check. Other memory-loaded capacities, repeated
-rounds, loops and helper phases need additional checked facts before extending
+value binding also have a direct unit check. Other memory-loaded capacities,
+unproved loop capacities, repeated rounds and helper phases need additional checked facts before extending
 this subset.
 
 </details>
