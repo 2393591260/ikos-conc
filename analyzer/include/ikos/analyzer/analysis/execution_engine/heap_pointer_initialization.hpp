@@ -15,8 +15,6 @@ inline bool prove_heap_constructor_body(ar::CallBase* allocation, const core::ZN
   auto* code = allocation->code();
   if (!code->is_function_body() || field < 0) return false;
   auto* block = code->entry_block();
-  for (auto* other : *code) if (other != block) return false;
-  if (block->successor_begin() != block->successor_end()) return false;
   auto* target = dyn_cast< ar::FunctionPointerConstant >(allocation->called());
   if (!target || target->function()->intrinsic_id() != ar::Intrinsic::LibcMalloc ||
       allocation->num_arguments() != 1) return false;
@@ -31,61 +29,68 @@ inline bool prove_heap_constructor_body(ar::CallBase* allocation, const core::ZN
   for (auto it = function->param_begin(); it != function->param_end(); ++it)
     definitions.insert(*it);
   bool initialized = false, allocated = false, returned = false;
-  for (auto* statement : *block) {
-    if (returned) return false;
-    if (auto* result = statement->result_or_null())
-      if (!definitions.insert(result).second) return false;
-    if (statement == allocation) {
-      allocated = true;
-      addresses.emplace(allocation->result(), core::ZNumber(0));
-    } else if (auto* call = dyn_cast< ar::CallBase >(statement)) {
-      auto* callee = dyn_cast< ar::FunctionPointerConstant >(call->called());
-      if (!callee || callee->function()->intrinsic_id() != ar::Intrinsic::IkosNonDet ||
-          call->num_arguments() != 0 || !call->has_result() ||
-          !call->result()->type()->is_integer()) return false;
-    } else if (auto* copy = dyn_cast< ar::Assignment >(statement)) {
-      auto it = addresses.find(copy->operand());
-      if (it == addresses.end()) return false;
-      addresses.emplace(copy->result(), it->second);
-    } else if (auto* cast = dyn_cast< ar::UnaryOperation >(statement)) {
-      // Integer payload conversions cannot expose or dereference the fresh base.
-      if (cast->operand()->type()->is_integer() && cast->result()->type()->is_integer())
-        continue;
-      auto it = addresses.find(cast->operand());
-      if (cast->op() != ar::UnaryOperation::Bitcast || it == addresses.end() ||
-          !cast->result()->type()->is_pointer()) return false;
-      addresses.emplace(cast->result(), it->second);
-    } else if (auto* shift = dyn_cast< ar::PointerShift >(statement)) {
-      auto it = addresses.find(shift->pointer());
-      if (it == addresses.end()) return false;
-      auto offset = it->second;
-      for (auto term = shift->term_begin(); term != shift->term_end(); ++term) {
-        auto* index = dyn_cast< ar::IntegerConstant >((*term).second);
-        if (!index) return false;
-        offset += (*term).first.to_z_number() * index->value().to_z_number();
-      }
-      if (offset < 0 || offset > extent) return false;
-      addresses.emplace(shift->result(), offset);
-    } else if (auto* store = dyn_cast< ar::Store >(statement)) {
-      auto it = addresses.find(store->pointer());
-      if (it == addresses.end() || store->is_volatile() || store->is_atomic()) return false;
-      const auto size = layout.store_size_in_bytes(store->value()->type());
-      if (it->second < 0 || it->second + size > extent) return false;
-      // No pointer escape, self-link, or foreign store is admitted in this subset.
-      if (store->value()->type()->is_pointer()) {
-        if (!isa< ar::NullConstant >(store->value()) || size != width) return false;
-        if (it->second == field) initialized = true;
-      } else if (!store->value()->type()->is_integer() &&
-                 !store->value()->type()->is_float()) return false;
-    } else if (auto* ret = dyn_cast< ar::ReturnValue >(statement)) {
-      if (!ret->has_operand()) return false;
-      auto it = addresses.find(ret->operand());
-      if (it == addresses.end() || it->second != 0) return false;
-      returned = true;
-    } else return false;
+  ar::Comparison* guard = nullptr;
+  std::set< ar::BasicBlock* > visited;
+  unsigned budget = 4096;
+  while (block && visited.insert(block).second) {
+    for (auto* statement : *block) {
+      if (!budget-- || returned) return false;
+      if (statement == guard) continue;
+      if (auto* result = statement->result_or_null())
+        if (!definitions.insert(result).second) return false;
+      if (statement == allocation) {
+        allocated = true;
+        addresses.emplace(allocation->result(), core::ZNumber(0));
+      } else if (auto* call = dyn_cast< ar::CallBase >(statement)) {
+        auto* callee = dyn_cast< ar::FunctionPointerConstant >(call->called());
+        if (!callee || callee->function()->intrinsic_id() != ar::Intrinsic::IkosNonDet ||
+            call->num_arguments() != 0 || !call->has_result() ||
+            !call->result()->type()->is_integer()) return false;
+      } else if (auto* copy = dyn_cast< ar::Assignment >(statement)) {
+        auto it = addresses.find(copy->operand());
+        if (it == addresses.end()) return false;
+        addresses.emplace(copy->result(), it->second);
+      } else if (auto* cast = dyn_cast< ar::UnaryOperation >(statement)) {
+        // Integer payload conversions cannot expose or dereference the fresh base.
+        if (cast->operand()->type()->is_integer() && cast->result()->type()->is_integer())
+          continue;
+        auto it = addresses.find(cast->operand());
+        if (cast->op() != ar::UnaryOperation::Bitcast || it == addresses.end() ||
+            !cast->result()->type()->is_pointer()) return false;
+        addresses.emplace(cast->result(), it->second);
+      } else if (auto* shift = dyn_cast< ar::PointerShift >(statement)) {
+        auto it = addresses.find(shift->pointer());
+        if (it == addresses.end()) return false;
+        auto offset = it->second;
+        for (auto term = shift->term_begin(); term != shift->term_end(); ++term) {
+          auto* index = dyn_cast< ar::IntegerConstant >((*term).second);
+          if (!index) return false;
+          offset += (*term).first.to_z_number() * index->value().to_z_number();
+        }
+        if (offset < 0 || offset > extent) return false;
+        addresses.emplace(shift->result(), offset);
+      } else if (auto* store = dyn_cast< ar::Store >(statement)) {
+        auto it = addresses.find(store->pointer());
+        if (it == addresses.end() || store->is_volatile() || store->is_atomic()) return false;
+        const auto size = layout.store_size_in_bytes(store->value()->type());
+        if (it->second < 0 || it->second + size > extent) return false;
+        // No pointer escape, self-link, or foreign store is admitted in this subset.
+        if (store->value()->type()->is_pointer()) {
+          if (!isa< ar::NullConstant >(store->value()) || size != width) return false;
+          if (it->second == field) initialized = true;
+        } else if (!store->value()->type()->is_integer() &&
+                   !store->value()->type()->is_float()) return false;
+      } else if (auto* ret = dyn_cast< ar::ReturnValue >(statement)) {
+        if (!ret->has_operand()) return false;
+        auto it = addresses.find(ret->operand());
+        if (it == addresses.end() || it->second != 0) return false;
+        returned = true;
+      } else return false;
+    }
+  if (returned) return allocated && initialized;
+  block = heap_initialization_successor(block, guard);
   }
-  if (!allocated || !initialized || !returned) return false;
-  return true;
+  return false;
 }
 
 inline bool prove_heap_constructor(ar::CallBase* allocation, const core::ZNumber& field,

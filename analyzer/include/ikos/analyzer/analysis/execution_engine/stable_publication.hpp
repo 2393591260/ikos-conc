@@ -143,13 +143,13 @@ inline bool worker_created_after(ar::Store* writer, ar::Function* worker,
     pending.insert(pending.end(), next->successor_begin(), next->successor_end());
   }
   for (auto* create : creates)
-    if (create->parent() != block || !handle_statement_dominates(writer, create))
+    if (!handle_statement_dominates(writer, create))
       return false;
   return true;
 }
 
 // A whole pointer slot is written once, before every invocation of this worker.
-// The first subset accepts same-block creates; helpers/escapes fall back to may-values.
+// All creates must be dominated by the write; helpers/escapes fall back to may-values.
 inline ar::Store* prove_stable_publication_writer(ar::GlobalVariable* slot,
                                              ar::Function* worker,
                                              core::ConcurrentGlobalEnv& env) {

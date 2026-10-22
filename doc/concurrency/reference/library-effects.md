@@ -61,7 +61,7 @@ AR ACCEPT are not a source-witness validation or a whole-tool proof.
 The abstract interpreter can restore an initialized heap pointer field in a
 worker when a full pointer store precedes every invocation of that worker.
 This requires one concrete allocation, an exact byte offset, a direct main
-initializer and closed, same-block create ordering. The restored value joins
+initializer that dominates every closed worker creation site and cannot repeat. The restored value joins
 all pointer writes, including later writes; it is not the initializer's value
 alone. Ambiguous destinations, overlapping byte writes and uncovered effects
 revoke the refinement and trigger reanalysis. This subset checks a closed set
@@ -70,19 +70,19 @@ back to the ordinary conservative analysis. It does not prove general list
 ownership or require pointer fields to remain immutable.
 
 A second initialization certificate covers repeated calls to a constructor:
-a single straight-line body allocates one constant-size object, initializes an
-exact pointer field to NULL, and returns the base without exposing it earlier.
+a body allocates one constant-size object, initializes an exact pointer field to
+NULL on every continuing path, and returns the base without exposing it earlier.
 The interpreter can then constrain field loads using the union of all typed
 writes to every possible source, including the initial NULL. Every source must
 have the certificate and an available summary. This also works for allocation
 sites that summarize multiple objects; it grants no unique object or lock
-identity. Integer payload conversions are supported. Branching constructors,
+identity. Integer payload conversions are supported. General branching,
 interior returns, pointer export, unknown calls, byte overlap and missing source
 coverage fall back conservatively. Lifetime checks remain separate.
 
 Field coverage can also follow a closed initialization prefix in a larger
-function: each malloc result reaches full-field initialization in the same
-basic block before any read or escape. A direct, checked helper may initialize
+function: each malloc result reaches full-field initialization before any read or
+escape on a certified continuing CFG path. A direct, checked helper may initialize
 the object through one pointer parameter and scalar payload parameters.
 A main-global store/reload relay additionally requires an exact local source,
 no return to the allocation block, and initialization before every possible
@@ -90,6 +90,21 @@ create. The complete field value still includes all sources and later writes;
 byte overlap, uncovered effects and unsupported lifetime operations disable the
 refinement. This certificate only refines field values: it grants neither
 ownership nor exclusion of initializer-versus-published-access race pairs.
+
+Both certificates can cross a complementary NULL/non-NULL check of a genuine
+malloc result when the NULL edge contains only a genuine libc abort followed by
+unreachable. Unconditional edges are also followed; loops and other branches are
+refused. The failure edge is retained in the program and cannot contain writes,
+reads, calls with other effects, or a continuing return. This proof grants no
+pointer validity or non-NULL fact and cannot authorize counterexample confirmation.
+Consumers that summarize an entire prefix atomically, such as the first-publication
+pass, retain their same-block boundary.
+
+Regression: `scripts/test_allocation_continuations.py --ikos install/bin/ikos`
+uses native headers in both ABIs and includes long-long payloads, partial
+initialization, early escape/publication, overlapping writes, failure-side effects
+and shared fallback objects. The dynamic-list helper control remains UNKNOWN in
+LP64 because its separate handle/object coverage is unsupported.
 
 </details>
 

@@ -86,6 +86,8 @@ add_concurrency_test(heap-constructors "${CONCURRENCY_ROOT}/scripts/test_heap_co
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(heap-initialization-prefix "${CONCURRENCY_ROOT}/scripts/test_heap_initialization_prefix.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(allocation-continuations "${CONCURRENCY_ROOT}/scripts/test_allocation_continuations.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(first-publication "${CONCURRENCY_ROOT}/scripts/test_first_publication.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(pthread-key-effects "${CONCURRENCY_ROOT}/scripts/test_pthread_key_effects.py"

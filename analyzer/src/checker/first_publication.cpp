@@ -558,7 +558,8 @@ bool FirstPublication::Impl::inventory() {
                             : nullptr;
           HeapInitializationDescription description;
           if (!count || count->value().to_z_number() != extent ||
-              !prove_heap_initialization_prefix(call, link, ctx, &description))
+              !prove_heap_initialization_prefix(call, link, ctx, &description) ||
+              description.completion->parent() != call->parent())
             return fail("incomplete birth prefix");
           births.emplace(call, std::move(description));
         } else if (ctx.native_handle_effect_certificates().count(call)) {

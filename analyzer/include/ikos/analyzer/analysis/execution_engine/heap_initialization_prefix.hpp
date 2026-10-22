@@ -2,6 +2,7 @@
 #pragma once
 
 #include <ikos/analyzer/analysis/execution_engine/stable_publication.hpp>
+#include <ikos/analyzer/analysis/execution_engine/allocation_continuation.hpp>
 
 namespace ikos {
 namespace analyzer {
@@ -206,50 +207,56 @@ public:
     Addresses addresses{{allocation->result(), core::ZNumber(0)}};
     std::map< ar::GlobalVariable*, core::ZNumber > relays;
     bool started = false;
-    for (auto* statement : *allocation->parent()) {
-      if (!spend()) return false;
-      if (statement == allocation) { started = true; continue; }
-      if (!started) continue;
-      if (!definition(statement)) return false;
-      if (auto* call = dyn_cast< ar::CallBase >(statement)) {
-        if (nondet(call)) continue;
-        if (!helper(call, addresses)) return false;
-        if (!relays.empty() && !startup(allocation, call)) return false;
-        _description.completion = call;
-        _description.helper = call;
-        _description.aliases = addresses;
-        for (const auto& relay : relays) _description.relays.insert(relay.first);
-        if (description) *description = std::move(_description);
-        return true;
-      }
-      if (auto* write = dyn_cast< ar::Store >(statement)) {
-        bool initialized = false;
-        if (addresses.count(write->pointer())) {
-          if (!store(write, addresses, initialized)) return false;
-          if (initialized) {
-            if (!relays.empty() && !startup(allocation, write)) return false;
-            _description.completion = write;
-            _description.aliases = addresses;
-            for (const auto& relay : relays) _description.relays.insert(relay.first);
-            if (description) *description = std::move(_description);
-            return true;
-          }
-          continue;
+    auto* block = allocation->parent();
+    ar::Comparison* guard = nullptr;
+    std::set< ar::BasicBlock* > visited;
+    while (block && visited.insert(block).second) {
+      for (auto* statement : *block) {
+        if (!spend()) return false;
+        if (statement == allocation) { started = true; continue; }
+        if (!started || statement == guard) continue;
+        if (!definition(statement)) return false;
+        if (auto* call = dyn_cast< ar::CallBase >(statement)) {
+          if (nondet(call)) continue;
+          if (!helper(call, addresses)) return false;
+          if (!relays.empty() && !startup(allocation, call)) return false;
+          _description.completion = call;
+          _description.helper = call;
+          _description.aliases = addresses;
+          for (const auto& relay : relays) _description.relays.insert(relay.first);
+          if (description) *description = std::move(_description);
+          return true;
         }
-        auto* global = dyn_cast< ar::GlobalVariable >(write->pointer());
-        auto value = addresses.find(write->value());
-        if (!global || !global->is_definition() || global->is_thread_local() || write->is_atomic() || write->is_volatile() ||
-            !global->type()->pointee()->is_pointer() || !write->value()->type()->is_pointer() ||
-            value == addresses.end() || value->second != 0 ||
-            _ctx.bundle->data_layout().store_size_in_bytes(write->value()->type()) != _width) return false;
-        relays[global] = value->second;
-      } else if (auto* load = dyn_cast< ar::Load >(statement)) {
-        auto* global = dyn_cast< ar::GlobalVariable >(load->operand());
-        auto relay = relays.find(global);
-        if (!global || relay == relays.end() || !load->result()->type()->is_pointer() || load->is_atomic() || load->is_volatile() ||
-            _ctx.bundle->data_layout().store_size_in_bytes(load->result()->type()) != _width) return false;
-        addresses.emplace(load->result(), relay->second);
-      } else if (!address(statement, addresses) && !scalar(statement)) return false;
+        if (auto* write = dyn_cast< ar::Store >(statement)) {
+          bool initialized = false;
+          if (addresses.count(write->pointer())) {
+            if (!store(write, addresses, initialized)) return false;
+            if (initialized) {
+              if (!relays.empty() && !startup(allocation, write)) return false;
+              _description.completion = write;
+              _description.aliases = addresses;
+              for (const auto& relay : relays) _description.relays.insert(relay.first);
+              if (description) *description = std::move(_description);
+              return true;
+            }
+            continue;
+          }
+          auto* global = dyn_cast< ar::GlobalVariable >(write->pointer());
+          auto value = addresses.find(write->value());
+          if (!global || !global->is_definition() || global->is_thread_local() || write->is_atomic() || write->is_volatile() ||
+              !global->type()->pointee()->is_pointer() || !write->value()->type()->is_pointer() ||
+              value == addresses.end() || value->second != 0 ||
+              _ctx.bundle->data_layout().store_size_in_bytes(write->value()->type()) != _width) return false;
+          relays[global] = value->second;
+        } else if (auto* load = dyn_cast< ar::Load >(statement)) {
+          auto* global = dyn_cast< ar::GlobalVariable >(load->operand());
+          auto relay = relays.find(global);
+          if (!global || relay == relays.end() || !load->result()->type()->is_pointer() || load->is_atomic() || load->is_volatile() ||
+              _ctx.bundle->data_layout().store_size_in_bytes(load->result()->type()) != _width) return false;
+          addresses.emplace(load->result(), relay->second);
+        } else if (!address(statement, addresses) && !scalar(statement)) return false;
+      }
+    block = heap_initialization_successor(block, guard);
     }
     return false;
   }
