@@ -39,6 +39,7 @@ enum class Id {
   ArenaReservation,
   OnceInitialization,
   MutexHandover,
+  LockedCreation,
   ThreadLifecycle,
   GuardedPublication,
   ScProtocol,
@@ -107,6 +108,7 @@ inline Contract contract(Id id) {
     case Id::BinaryToken: return {"binary-token-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::ArenaReservation: return {"arena-reservation-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::OnceInitialization: return {"once-initialization-v1", Role::PairExclusion, Stage::FinalPairs, true};
+    case Id::LockedCreation: return {"locked-creation-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::MutexHandover: return {"mutex-handover-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::ThreadLifecycle: return {"thread-lifecycle-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::GuardedPublication: return {"guarded-publication-v1", Role::PairExclusion, Stage::FinalPairs, true};

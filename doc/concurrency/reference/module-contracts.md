@@ -194,6 +194,7 @@ rules still require their per-run configuration.
 | `arena-reservation-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
 | `once-initialization-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
 | `mutex-handover-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `locked-creation-v1` | [Creation/lock certificate](../../../analyzer/src/checker/locked_creation.cpp) and final pair adapter; locked-creation dual-ABI controls. |
 | `thread-lifecycle-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
 | `guarded-publication-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
 | `sc-protocol-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |

@@ -231,3 +231,6 @@ add_concurrency_test(adapter "${CONCURRENCY_ROOT}/scripts/test_svcomp_adapter.py
 
 add_concurrency_test(barrier-phases "${CONCURRENCY_ROOT}/scripts/test_barrier_phases.py"
                      --ikos "${CONCURRENCY_IKOS}")
+
+add_concurrency_test(locked-creation "${CONCURRENCY_ROOT}/scripts/test_locked_creation.py"
+                     --ikos "${CONCURRENCY_IKOS}")

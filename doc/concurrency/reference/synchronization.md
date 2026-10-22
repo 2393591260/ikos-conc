@@ -31,6 +31,39 @@ creates; no thread-count bound, successful completion or join fact is inferred.
 
 </details>
 
+<a id="locked-thread-creation"></a>
+<details>
+<summary>Creation inside a normal mutex interval — actual ordering without inherited locks</summary>
+
+`locked-creation-v1` is an independent final access-pair proof for closed direct
+main-created roots. Every root CFG is acyclic, and each root has at most one
+lock and one unlock per object; any unlock must be dominated by its own lock.
+GNU Linux i386 24-byte/4-byte and LP64 40-byte/8-byte mutex objects must have
+matching whole-zero source/AR initialization and closed actual lock/unlock uses.
+This is the ordinary non-robust NORMAL contract of
+[glibc 2.39](https://github.com/bminor/glibc/blob/glibc-2.39/nptl/pthread_mutex_lock.c),
+not an assumption about arbitrary POSIX DEFAULT or recursive mutexes.
+
+Two separate relations may exclude a pair. First, an access by main in the
+same held interval as **all** creates of a child entry precedes a child access
+dominated by that child's own acquisition of the same mutex. The child access
+may follow its unlock. Second, if main holds that mutex at all those creates
+and has no reachable later unlock, a different root's access while actually
+holding the mutex precedes the created child's accesses. That other root must
+not be main: main's own accesses can still race with its child. A previously
+released lock cannot supply the second relation.
+
+Instruction order and every creation source are checked. Parents transfer no
+lock ownership to children, and two unprotected children remain concurrent.
+Whole scalar memory effects, source/AR call and endpoint bindings, native ABI,
+and the absence of helpers, callbacks, unknown effects, joins and extra creators
+close this initial subset. Missing premises retain the candidate. This rule
+grants no library effects, coverage, completion or FALSE confirmation rights.
+
+Run `python3 scripts/test_locked_creation.py` for dual-ABI wide-payload controls.
+
+</details>
+
 <a id="finite-sequentially-consistent-protocols"></a>
 <details>
 <summary>Finite sequentially consistent protocols — exhaust the supported protocol state space</summary>

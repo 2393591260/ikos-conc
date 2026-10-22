@@ -48,6 +48,7 @@
 #include <ikos/analyzer/checker/init_publication.hpp>
 #include <ikos/analyzer/checker/first_publication.hpp>
 #include <ikos/analyzer/checker/mutex_handover.hpp>
+#include <ikos/analyzer/checker/locked_creation.hpp>
 #include <ikos/analyzer/checker/guarded_publication.hpp>
 #include <ikos/analyzer/checker/sc_protocol.hpp>
 #include <ikos/analyzer/checker/self_publication.hpp>
@@ -605,6 +606,7 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
   ThreadLifecycle thread_lifecycle(this->_ctx);
   OnceInitialization once_initialization(this->_ctx, this->_accesses, binary_token);
   MutexHandover mutex_handover(this->_ctx);
+  LockedCreation locked_creation(this->_ctx);
   GuardedPublication guarded_publication(this->_ctx);
   ScProtocol sc_protocol(this->_ctx);
   SelfPublication self_publication(this->_ctx);
@@ -779,6 +781,9 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
         if (auto location = source_location(a.stmt)) proof.put("access_a_line", location.line());
         if (auto location = source_location(b.stmt)) proof.put("access_b_line", location.line());
         return PairDecision::exclude(race_rules::Id::OnceInitialization, proof);
+      }
+      if (locked_creation.ordered(a, b)) {
+        return PairDecision::exclude(race_rules::Id::LockedCreation, locked_creation.info(a, b));
       }
       if (mutex_handover.ordered(a, b)) {
         auto proof = mutex_handover.info(a, b);
