@@ -295,6 +295,15 @@ class ArraySlices::Impl {
       throw Refuse{};
     }
     if (auto* c = llvm::dyn_cast< llvm::ICmpInst >(i)) {
+      if (c->getOperand(0)->getType()->isPointerTy()) {
+        auto a = pointer(s, c->getOperand(0)), b = pointer(s, c->getOperand(1));
+        if (!c->isEquality() ||
+            !((a.place == Place::Heap && b.place == Place::Null) ||
+              (a.place == Place::Null && b.place == Place::Heap)))
+          throw Refuse{};
+        // Both outcomes remain possible; neither branch refines the pointer.
+        return fresh(1);
+      }
       auto a = number(s, c->getOperand(0)), b = number(s, c->getOperand(1));
       z3::expr p = z.bool_val(false);
       switch (c->getPredicate()) {

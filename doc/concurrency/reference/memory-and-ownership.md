@@ -159,6 +159,12 @@ the actual guard, stride, allocation extent and full access width must be
 proved. The increment must preserve the invariant without wrapping. This is
 an unbounded range proof, not bounded-search UNSAT.
 
+Heap/NULL equality and inequality are overapproximated by a fresh i1 result
+for the executed comparison. Both outcomes are explored with unchanged pointer
+facts; neither branch establishes allocation success, nonnullness or validity.
+The failure arm and every resulting startup state still need the complete
+effect and range proof. Other pointer comparisons retain the candidate.
+
 Every supported main, constructor, helper and worker effect is checked. Global
 updates after the first create, partial cell writes, unknown calls, pointer
 fields, frees, extra cycles and module assembly refuse the certificate.

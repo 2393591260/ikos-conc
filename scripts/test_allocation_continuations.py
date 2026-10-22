@@ -15,6 +15,7 @@ from svcomp_race_test import classify, VERDICT_SAFE, VERDICT_UNKNOWN
 from ikos_runtime import runtime_command
 
 FIXTURES = {
+    'array-slices.c': (0, 1, 2, 3, 4, 5, 6, 8, 12, 18, 23, 34),
     'symbolic-arena.c': (0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 14, 19, 20, 21, 22, 24, 25, 26, 33, 36),
     'first-publication.c': tuple(range(22)),
     'thread-private-heap.c': (0, 1, 2, 3, 4, 5, 6, 9, 11, 12, 13, 16, 18, 22, 24, 25, 26, 27),
@@ -38,6 +39,9 @@ def wrapped(body, variant='abort'):
         lines = [line.replace('pthread_create(&thread, 0, worker, 0);',
                               'pthread_create(&thread, 0, worker, 0); allocation_fault++;')
                  for line in lines]
+    elif variant == 'failure-call':
+        declarations = 'extern void opaque(void);'
+        failure = 'opaque(); abort();'
     elif variant == 'return-null':
         failure = 'return NULL;'
     elif variant == 'shared-fallback':
@@ -142,6 +146,9 @@ def main():
                 if args.fixture is None or 'symbolic-arena.c' in args.fixture:
                     cases += [('symbolic-arena.c', 0, variant) for variant in
                               ('failure-write', 'return-null', 'escaped-definition', 'unused-effect')]
+                if args.fixture is None or 'array-slices.c' in args.fixture:
+                    cases += [('array-slices.c', 0, variant) for variant in
+                              ('failure-write', 'return-null', 'failure-call')]
                 for name, case, variant in cases:
                     body = (ROOT / 'analyzer/test/regression/bmc-values' / name).read_text()
                     source = work / 'renamed.c'
@@ -156,7 +163,7 @@ def main():
                                          text=True, timeout=30)
                     assert run.returncode == 0, (name, case, bits, run.stdout, run.stderr)
                     verdict = classify(run.stdout, run.returncode, False)
-                    if (name in ('bucket-list-ownership.c', 'heap-handoff.c', 'first-publication.c', 'thread-private-heap.c', 'symbolic-arena.c') or
+                    if (name in ('bucket-list-ownership.c', 'heap-handoff.c', 'first-publication.c', 'thread-private-heap.c', 'symbolic-arena.c', 'array-slices.c') or
                             (name == 'helper-prefix-fields.c' and case == 0)) and bits == 64:
                         # These ownership/handle certificates are still ILP32-only;
                         # the unwrapped baseline has the same unresolved effects.
@@ -164,6 +171,7 @@ def main():
                     elif variant in ('abort', 'unused-effect') and (case == 0 or
                             (name == 'first-publication.c' and case in (16, 20)) or
                             (name == 'symbolic-arena.c' and case in (19, 24, 25, 26)) or
+                            (name == 'array-slices.c' and case in (18, 23)) or
                             (name == 'thread-private-heap.c' and
                              (case in (1, 12, 22) or (case == 11 and wide)))):
                         assert verdict == VERDICT_SAFE, (name, bits, wide, verdict,
