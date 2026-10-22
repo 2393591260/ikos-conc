@@ -6,6 +6,21 @@
 namespace ikos {
 namespace analyzer {
 
+// Local storage can be allocated again without using its address as an operand.
+inline bool unique_allocation_definition(ar::Allocate* allocation) {
+  if (!allocation || !allocation->code() ||
+      allocation->result()->function()->body() != allocation->code()) return false;
+  unsigned budget = 8192, definitions = 0;
+  for (auto* block : *allocation->code()) for (auto* s : *block) {
+    if (!budget--) return false;
+    if (s->result_or_null() == allocation->result()) {
+      if (s != allocation) return false;
+      ++definitions;
+    }
+  }
+  return definitions == 1;
+}
+
 // Dynamic source identity, not equality of two independently computed ranges.
 inline bool source_integer_binding(ar::Value* a, llvm::Value* n) {
   if (!a || !n) return false;

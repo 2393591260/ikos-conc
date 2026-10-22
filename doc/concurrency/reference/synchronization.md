@@ -507,6 +507,14 @@ Capacity is a finite conservative set from closed acyclic SSA: all PHI/select
 alternatives and all supported integer-operation combinations are retained.
 Unknown inputs, cycles, poison, unsupported operations or finite-work limits
 refuse the complete certificate. Each object keeps its own init-time snapshot.
+A count may also load a whole i32/i64 struct field from a static main stack
+object with closed native/AR uses and matching allocation, typed field offsets,
+values, widths and alignments. The load precedes all creates. A bounded LLVM
+query only locates the same-block ordinary Store of the exact same type and
+field; no intervening memory operation or call, old-load reuse, byte extraction,
+cast alias, escape, volatile/atomic access or lifetime restart is admitted.
+The original accesses remain in the checker, and later stores do not change
+the loaded SSA snapshot.
 The accepted capacity range is 1 through 2147483646, following
 [glibc 2.39 initialization](https://github.com/bminor/glibc/blob/glibc-2.39/nptl/pthread_barrier_init.c).
 This implementation contract supplies successful initialization; portable POSIX
@@ -536,7 +544,7 @@ FALSE, nonnull, pointer validity, join or numerical publication facts.
 
 Run `python3 scripts/test_barrier_phases.py` for dual-ABI, wide-payload and
 broken-premise controls. The shared narrow integer fold and actual source/AR
-value binding also have a direct unit check. Memory-loaded capacities, repeated
+value binding also have a direct unit check. Other memory-loaded capacities, repeated
 rounds, loops and helper phases need additional checked facts before extending
 this subset.
 

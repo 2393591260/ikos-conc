@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include <pthread.h>
 #include <stdlib.h>
+#include <stdatomic.h>
 #ifndef CASE
 #define CASE 0
 #endif
@@ -26,7 +27,7 @@ static void helper(void) { pthread_barrier_wait(&gate); }
 #endif
 static void *worker(void *arg) {
   (void)arg;
-#if CASE == 41 || CASE == 42
+#if CASE == 41 || CASE == 42 || CASE == 54 || CASE == 55
   pthread_barrier_wait(&gate);
 #endif
 #if CASE == 1 || CASE == 2 || CASE == 8 || CASE == 28 || CASE == 31 || CASE == 32
@@ -50,7 +51,7 @@ static void *worker(void *arg) {
 #if CASE == 6 || CASE == 7
   pthread_mutex_unlock(&lock);
 #endif
-#if CASE != 1 && CASE != 2 && CASE != 3 && CASE != 8 && CASE != 16 && CASE != 28 && CASE != 31 && CASE != 32 && CASE != 41 && CASE != 42
+#if CASE != 1 && CASE != 2 && CASE != 3 && CASE != 8 && CASE != 16 && CASE != 28 && CASE != 31 && CASE != 32 && CASE != 41 && CASE != 42 && CASE != 54 && CASE != 55
 # if CASE == 9
   if (__VERIFIER_nondet_int())
 # endif
@@ -66,7 +67,7 @@ static void *worker(void *arg) {
 #elif CASE == 27 || CASE == 34
   payload = 4;
 #endif
-#if CASE == 41 || CASE == 42
+#if CASE == 41 || CASE == 42 || CASE == 54 || CASE == 55
   pthread_barrier_wait(&other);
 #endif
   return 0;
@@ -112,6 +113,64 @@ int main(int argc, char **argv) {
   unsigned count = __VERIFIER_nondet_int() ? 2 : 3;
 #elif CASE == 44
   unsigned count = 4294967295U; count += 3;
+#elif CASE == 45 || CASE == 47 || CASE == 48 || CASE == 51 || CASE == 52 || CASE == 53 || CASE == 54 || CASE == 55 || CASE == 60 || CASE == 61 || CASE == 62
+  struct { unsigned capacity; } config;
+# if CASE != 51
+  config.capacity = CASE == 54 ? 1 : 2;
+# endif
+# if CASE == 47
+  ((unsigned char *)&config.capacity)[0] = 1;
+# elif CASE == 48
+  extern void escape(void *);
+  escape(&config);
+# elif CASE == 52
+  if (argc > 1) config.capacity = 1;
+# elif CASE == 60
+  unsigned old = config.capacity;
+  payload = old;
+# elif CASE == 61
+  if (argc > 1) config.capacity = 2;
+  else config.capacity = 2;
+# elif CASE == 62
+  extern volatile unsigned unrelated;
+  payload = unrelated;
+# endif
+  unsigned count = config.capacity;
+# if CASE == 53
+  config.capacity = 1;
+# endif
+#elif CASE == 46 || CASE == 67
+  struct { unsigned padding; struct { unsigned capacity; } inner; } config;
+  config.padding = 0;
+  config.inner.capacity = CASE == 67 ? 3 : 2;
+  unsigned count = config.inner.capacity;
+#elif CASE == 49
+  struct { volatile unsigned capacity; } config;
+  config.capacity = 2;
+  unsigned count = config.capacity;
+#elif CASE == 50
+  struct { _Atomic unsigned capacity; } config;
+  atomic_store(&config.capacity, 2);
+  unsigned count = atomic_load(&config.capacity);
+#elif CASE == 56 || CASE == 57
+  struct { unsigned long long capacity; } config;
+  config.capacity = CASE == 56 ? 2ULL : 4294967297ULL;
+  unsigned count = (unsigned)config.capacity;
+#elif CASE == 58
+  union { unsigned long long wide; unsigned capacity; } config;
+  config.wide = 2;
+  unsigned count = config.capacity;
+#elif CASE == 59
+  struct { float capacity; } config;
+  config.capacity = 2.0f;
+  unsigned count = *(unsigned *)&config.capacity;
+#elif CASE == 63
+  struct { unsigned capacity; unsigned other; } config = {2, 0};
+  unsigned count = config.capacity;
+#elif CASE == 64
+  struct { unsigned capacity; } config[2];
+  config[1].capacity = 2;
+  unsigned count = config[1].capacity;
 #else
   unsigned count = 2;
 #endif
@@ -125,7 +184,11 @@ int main(int argc, char **argv) {
   pthread_barrier_init(&gate, 0, count);
 # endif
 #endif
-#if CASE == 41 || CASE == 42
+#if CASE == 54 || CASE == 55
+  config.capacity = CASE == 54 ? 2 : 1;
+  pthread_barrier_init(&other, 0, config.capacity);
+  config.capacity = 3;
+#elif CASE == 41 || CASE == 42
   count = CASE == 41 ? 2 : 1;
   pthread_barrier_init(&other, 0, count);
   count = CASE == 41 ? 1 : 2;
@@ -165,7 +228,7 @@ int main(int argc, char **argv) {
   pthread_barrier_wait(&gate);
 # endif
 #endif
-#if CASE == 41 || CASE == 42
+#if CASE == 41 || CASE == 42 || CASE == 54 || CASE == 55
   pthread_barrier_wait(&other);
 #endif
 #if CASE != 1 && CASE != 3 && CASE != 32

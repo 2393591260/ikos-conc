@@ -54,5 +54,24 @@ int main() {
   auto* wrong_width = ar::InternalVariable::create(function->body(), ar::IntegerType::ui64(context));
   wrong_width->set_frontend(add);
   require(!source_integer_binding(wrong_width, add), "source width mismatch rejects");
+  auto* block = ar::BasicBlock::create(function->body());
+  auto* slot = ar::LocalVariable::create(function,
+      ar::PointerType::get(context, ar::IntegerType::ui32(context)), 4);
+  auto* count = ar::IntegerConstant::get(context, ar::IntegerType::ui32(context), 1);
+  auto allocation = ar::Allocate::create(slot, ar::IntegerType::ui32(context), count);
+  auto* actual_allocation = allocation.get();
+  block->push_back(std::move(allocation));
+  require(unique_allocation_definition(actual_allocation), "one actual local allocation");
+  block->push_back(ar::Allocate::create(slot, ar::IntegerType::ui32(context), count));
+  require(!unique_allocation_definition(actual_allocation),
+          "synthetic reallocation with the same result invalidates its lifetime");
+  auto* loaded = ar::InternalVariable::create(function->body(), ar::IntegerType::ui32(context));
+  auto read = ar::Load::create(loaded, slot, 4, false);
+  auto* actual_load = read.get();
+  block->push_back(std::move(read));
+  require(unique_def(loaded) == actual_load, "actual load has one result definition");
+  block->push_back(ar::Assignment::create(loaded, count));
+  require(unique_def(loaded) != actual_load,
+          "synthetic overwrite invalidates the actual load result");
   delete add; delete other_add; delete trunc; delete mul;
 }

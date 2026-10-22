@@ -4,6 +4,7 @@
 #include <ikos/analyzer/analysis/closed_integer_fold.hpp>
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Dominators.h>
+#include <llvm/Analysis/Loads.h>
 #include <functional>
 #include <set>
 
@@ -109,6 +110,159 @@ class PosixBarrier::Impl {
   using Integers = std::set< llvm::ConstantInt* >;
   std::map< llvm::Value*, Integers > integer_cache;
   std::set< llvm::Value* > integer_active;
+  // Typed struct paths, not inbounds or wrapped pointer arithmetic, identify bytes.
+  llvm::AllocaInst* private_address(llvm::Value* value, core::ZNumber& offset,
+                                    unsigned depth = 0) {
+    if (!step() || depth == 32) return nullptr;
+    if (auto* a = llvm::dyn_cast< llvm::AllocaInst >(value)) {
+      auto* count = llvm::dyn_cast< llvm::ConstantInt >(a->getArraySize());
+      if (a->getFunction() != main || !a->isStaticAlloca() ||
+          a->getAddressSpace() || !count || !count->isOne()) return nullptr;
+      offset = core::ZNumber(0); return a;
+    }
+    auto* gep = llvm::dyn_cast< llvm::GetElementPtrInst >(value);
+    if (!gep || gep->getFunction() != main || gep->getAddressSpace() ||
+        gep->getNumIndices() == 0) return nullptr;
+    auto* root = private_address(gep->getPointerOperand(), offset, depth + 1);
+    if (!root || gep->getSourceElementType() !=
+        gep->getPointerOperandType()->getPointerElementType()) return nullptr;
+    auto it = gep->idx_begin();
+    auto* zero = llvm::dyn_cast< llvm::ConstantInt >(it->get());
+    if (!zero || !zero->isZero()) return nullptr;
+    llvm::Type* type = gep->getSourceElementType();
+    const auto& layout = main->getParent()->getDataLayout();
+    for (++it; it != gep->idx_end(); ++it) {
+      auto* field = llvm::dyn_cast< llvm::ConstantInt >(it->get());
+      auto* structure = llvm::dyn_cast< llvm::StructType >(type);
+      if (!structure || structure->isOpaque() || structure->isPacked() ||
+          (structure->hasName() && structure->getName().startswith("union.")) ||
+          !field || field->getValue().getLimitedValue() >= structure->getNumElements()) return nullptr;
+      unsigned index = field->getValue().getLimitedValue();
+      offset += core::ZNumber(layout.getStructLayout(structure)->getElementOffset(index));
+      type = structure->getElementType(index);
+    }
+    return root;
+  }
+  bool private_address_binding(ar::Value* value, llvm::Value* native,
+                               ar::Allocate* allocation, unsigned depth = 0) {
+    if (!step() || depth == 32) return false;
+    if (native == allocation->frontend< llvm::Value >()) return value == allocation->result();
+    auto* gep = llvm::dyn_cast< llvm::GetElementPtrInst >(native);
+    auto* variable = dyn_cast< ar::InternalVariable >(value);
+    auto* shift = variable ? dyn_cast_or_null< ar::PointerShift >(unique_def(variable)) : nullptr;
+    if (!gep || !shift || !shift->has_frontend() ||
+        shift->frontend< llvm::Value >() != gep || shift->code() != allocation->code() ||
+        !private_address_binding(shift->pointer(), gep->getPointerOperand(), allocation, depth + 1)) return false;
+    core::ZNumber begin(0), end(0), actual(0);
+    auto* root = private_address(gep, end);
+    if (!root || root != private_address(gep->getPointerOperand(), begin)) return false;
+    for (auto it = shift->term_begin(); it != shift->term_end(); ++it) {
+      auto* c = dyn_cast< ar::IntegerConstant >((*it).second);
+      if (!c) return false;
+      actual += (*it).first.to_z_number() * c->value().to_z_number();
+    }
+    return actual == end - begin;
+  }
+  llvm::Value* private_loaded_integer(llvm::LoadInst* load) {
+    if (!load->isSimple() || load->getFunction() != main ||
+        !load->getType()->isIntegerTy()) return nullptr;
+    core::ZNumber offset(0);
+    auto* root = private_address(load->getPointerOperand(), offset);
+    auto found = root ? originals.find(root) : originals.end();
+    auto* allocation = found == originals.end() ? nullptr : dyn_cast< ar::Allocate >(found->second);
+    auto* count = allocation ? dyn_cast< ar::IntegerConstant >(allocation->array_size()) : nullptr;
+    const auto& layout = main->getParent()->getDataLayout();
+    if (!allocation || allocation->code() != functions.at(main)->body() ||
+        !unique_allocation_definition(allocation) ||
+        !count || count->value().to_z_number() != 1 ||
+        allocation->result()->alignment() != root->getAlign().value() ||
+        !root->getAllocatedType()->isSized() ||
+        ctx.bundle->data_layout().alloc_size_in_bytes(allocation->allocated_type()) !=
+          core::ZNumber(layout.getTypeAllocSize(root->getAllocatedType()).getFixedValue())) return nullptr;
+    llvm::DominatorTree dt(*main);
+    for (auto* c : creates) if (!dt.dominates(load, c)) return nullptr;
+    std::set< llvm::Value* > pointers;
+    std::set< ar::Statement* > accesses;
+    std::vector< llvm::Value* > todo{root};
+    while (!todo.empty()) {
+      auto* pointer = todo.back(); todo.pop_back();
+      if (!step()) return nullptr;
+      if (!pointers.insert(pointer).second) continue;
+      for (auto* user : pointer->users()) {
+        if (llvm::isa< llvm::DbgInfoIntrinsic >(user)) continue;
+        if (auto* gep = llvm::dyn_cast< llvm::GetElementPtrInst >(user)) {
+          core::ZNumber at(0);
+          if (private_address(gep, at) != root) return nullptr;
+          todo.push_back(gep); continue;
+        }
+        auto* native = llvm::dyn_cast< llvm::Instruction >(user);
+        auto it = native ? originals.find(native) : originals.end();
+        if (!native || native->getFunction() != main || it == originals.end() ||
+            it->second->code() != allocation->code()) return nullptr;
+        ar::Value* address = nullptr; llvm::Type* type = nullptr;
+        unsigned alignment = 0;
+        if (auto* read = llvm::dyn_cast< llvm::LoadInst >(native)) {
+          auto* a = dyn_cast< ar::Load >(it->second);
+          if (!read->isSimple() || read->getPointerOperand() != pointer ||
+              !a || a->is_atomic() || a->is_volatile() || a->alignment() != read->getAlign().value() ||
+              unique_def(a->result()) != a ||
+              !source_integer_binding(a->result(), read)) return nullptr;
+          address = a->operand(); type = read->getType(); alignment = read->getAlign().value();
+        } else if (auto* write = llvm::dyn_cast< llvm::StoreInst >(native)) {
+          auto* a = dyn_cast< ar::Store >(it->second);
+          if (!write->isSimple() || write->getPointerOperand() != pointer ||
+              !a || a->is_atomic() || a->is_volatile() || a->alignment() != write->getAlign().value() ||
+              !source_integer_binding(a->value(), write->getValueOperand())) return nullptr;
+          address = a->pointer(); type = write->getValueOperand()->getType(); alignment = write->getAlign().value();
+        } else return nullptr;
+        core::ZNumber at(0);
+        if ((!type->isIntegerTy(32) && !type->isIntegerTy(64)) ||
+            pointer->getType()->getPointerElementType() != type ||
+            private_address(pointer, at) != root || at < 0 ||
+            root->getAlign().value() < alignment || at % core::ZNumber(alignment) != 0 ||
+            at + core::ZNumber(layout.getTypeStoreSize(type).getFixedValue()) >
+              core::ZNumber(layout.getTypeAllocSize(root->getAllocatedType()).getFixedValue()) ||
+            !private_address_binding(address, pointer, allocation)) return nullptr;
+        accesses.insert(it->second);
+      }
+    }
+    // Close AR uses independently, including synthetic writes and address escapes.
+    std::vector< ar::Value* > ar_todo{allocation->result()};
+    std::set< ar::Value* > ar_seen;
+    while (!ar_todo.empty()) {
+      auto* pointer = ar_todo.back(); ar_todo.pop_back();
+      if (!ar_seen.insert(pointer).second) continue;
+      for (auto* block : *allocation->code()) for (auto* s : *block) {
+        if (!step()) return nullptr;
+        for (auto it = s->op_begin(); it != s->op_end(); ++it) if (*it == pointer) {
+          if (auto* shift = dyn_cast< ar::PointerShift >(s)) {
+            auto* n = shift->has_frontend() ? shift->frontend< llvm::Value >() : nullptr;
+            if (shift->pointer() != pointer || !pointers.count(n) ||
+                !private_address_binding(shift->result(), n, allocation)) return nullptr;
+            ar_todo.push_back(shift->result());
+          } else if (auto* read = dyn_cast< ar::Load >(s)) {
+            if (!accesses.count(s) || read->operand() != pointer) return nullptr;
+          } else if (auto* write = dyn_cast< ar::Store >(s)) {
+            if (!accesses.count(s) || write->pointer() != pointer || write->value() == pointer) return nullptr;
+          } else return nullptr;
+        }
+      }
+    }
+    auto from = load->getIterator(); bool cse = false;
+    auto* value = llvm::FindAvailableLoadedValue(load, load->getParent(), from, 64, nullptr, &cse);
+    auto* store = from == load->getParent()->end() ? nullptr : llvm::dyn_cast< llvm::StoreInst >(&*from);
+    if (!value || cse || !store || !store->isSimple() ||
+        store->getValueOperand() != value || value->getType() != load->getType()) return nullptr;
+    core::ZNumber written(0);
+    if (private_address(store->getPointerOperand(), written) != root || written != offset) return nullptr;
+    for (auto it = std::next(store->getIterator()); &*it != load; ++it) {
+      if (!step()) return nullptr;
+      if (llvm::isa< llvm::DbgInfoIntrinsic >(&*it)) continue;
+      if (it->mayReadOrWriteMemory() || it->mayHaveSideEffects() ||
+          llvm::isa< llvm::CallBase >(&*it) || llvm::isa< llvm::FenceInst >(&*it)) return nullptr;
+    }
+    return value;
+  }
   Integers integers(llvm::Value* value, unsigned depth = 0) {
     if (!step() || depth == 32) return {};
     if (auto* c = llvm::dyn_cast< llvm::ConstantInt >(value)) return {c};
@@ -123,7 +277,10 @@ class PosixBarrier::Impl {
       integer_cache.emplace(value, values);
       return values;
     };
-    if (auto* phi = llvm::dyn_cast< llvm::PHINode >(i)) {
+    if (auto* load = llvm::dyn_cast< llvm::LoadInst >(i)) {
+      auto* source = private_loaded_integer(load);
+      return finish(source ? integers(source, depth + 1) : Integers{});
+    } else if (auto* phi = llvm::dyn_cast< llvm::PHINode >(i)) {
       for (auto& input : phi->incoming_values()) {
         auto values = integers(input.get(), depth + 1);
         if (values.empty()) return finish({});
@@ -220,8 +377,8 @@ class PosixBarrier::Impl {
       if (wait.first == main && !dt.dominates(init, wait.second)) return false;
     effects.insert(pending.begin(), pending.end()); barriers.push_back(std::move(barrier)); return true;
   }
-  // ponytail: closed SSA capacity sets and direct DAG roots; memory loads,
-  // loops and helper phases still require additional checked facts.
+  // ponytail: closed SSA and private same-block integer snapshots; loops,
+  // escaping storage and helper phases still require additional checked facts.
   bool build() {
     if (!ctx.opts.enable_thread_modular || ctx.opts.entry_points.size() != 1 ||
         ctx.opts.entry_points.front()->name() != "main" ||
