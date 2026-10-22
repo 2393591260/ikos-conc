@@ -167,3 +167,23 @@ remaining pairs. It does not export a formal certificate and does not change
 which rules are enabled. Use ordinary reports and BMC diagnostics to inspect
 remaining candidate targets and execution outcomes. Disable diagnostic I/O for
 performance comparisons.
+
+
+## Local acceptance and remote CI
+
+A development stage passes its relevant local controls, regression suites,
+budget sentinels, frozen task comparison and selected-execution checks before
+commit and push. Record the remote commit and CI status separately. A pending
+remote run does not block the next locally accepted stage.
+
+Every push runs the lightweight Quick checks workflow: documentation links,
+runtime identity, benchmark runner and packaging contract tests. It does not
+build the analyzer or repeat the benchmark sweep. Superseded quick runs are
+cancelled automatically on the same branch.
+
+The Build tool on Linux workflow remains available through GitHub Actions'
+manual Run workflow entry. Run this clean build and complete concurrency
+regression for build/dependency changes or a release candidate, and record the
+tested commit. Ordinary mechanism stages do not require a full remote rerun.
+Investigate concrete CI failures before treating the affected checks as passed;
+neither local acceptance nor a successful push implies remote CI success.

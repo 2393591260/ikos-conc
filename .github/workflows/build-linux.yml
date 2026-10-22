@@ -1,7 +1,14 @@
 name: Build tool on Linux
+# Full clean build and regression: run for milestones or build-environment changes.
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+
+concurrency:
+  group: full-linux-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-linux:
     runs-on: ubuntu-24.04
