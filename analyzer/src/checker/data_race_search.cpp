@@ -648,7 +648,8 @@ void DataRaceChecker::search_race_candidates(
           facts.main_argc_one = !this->_ctx.opts.argc || *this->_ctx.opts.argc == 1;
           // Keep the historical master switch; independent factors isolate
           // numerical costs from helper-publication support.
-          if (this->_ctx.posix_semaphore()) {
+          if (this->_ctx.posix_semaphore() &&
+              getenv("IKOS_BMC_DISABLE_SEMAPHORE_FACTS") == nullptr) {
             facts.semaphore_effect = [&](ar::CallBase* call) {
               return this->_ctx.posix_semaphore()->effect(call);
             };

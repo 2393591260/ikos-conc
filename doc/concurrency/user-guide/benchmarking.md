@@ -57,3 +57,34 @@ abstract interpretation, indivisible internal steps and frontend work are not
 a hard wall-time guarantee. The outer runner timeout remains separate.
 
 </details>
+
+## Focused cooperation diagnostics
+
+The following environment variables are opt-in diagnostics and ablations. Their
+presence enables them, including a value of `0`; clear inherited variables when
+measuring the default configuration.
+
+| Variable | Effect |
+| --- | --- |
+| `IKOS_RACE_PAIR_OBSERVATIONS=<path>` | Append frozen access-pair records, the first exclusion rule, owner attempt status, and three independent read-only predicates. |
+| `IKOS_RACE_DISABLE_OWNER_CONSUMER=1` | Suppress only the final region-ownership exclusion, then try later rules and confirmation normally. Range, ownership, library-effect and coverage producers remain enabled. |
+| `IKOS_BMC_DISABLE_SEMAPHORE_FACTS=1` | Withhold the semaphore-effect callback from BMC. Abstract transfer and effect coverage remain enabled; unsupported concrete operations cannot confirm a race. |
+
+Pair records use AR function/block/statement coordinates and the complete calling
+context. They must be bound externally to the input, ABI, frozen AR configuration,
+binary and resource identity. Two access roles preserve repeated-thread self-pairs.
+Cross-run alignment is supported only when producers and their access sequence are
+unchanged. Points-to and numerical snapshots describe abstract accesses; numeric
+lock and create/join identities are run-local and are not cross-run keys.
+
+The independent overlap fields cover read/read, unique-thread and atomic/atomic
+predicates only. Other modules retain their original first-hit evaluation order;
+`not_attempted` is distinct from `not_proved`. Coverage can stop pair processing
+before any observation is emitted, so an absent file does not establish zero
+candidates. Use the result protocol and coverage records to interpret it.
+
+Keep diagnostic runs separate from cost measurements. The output may be quadratic
+in the number of accesses and deliberately fails on write errors. First-hit counts
+are order-dependent, and a faster UNKNOWN after disconnecting a required fact is
+a capability change, not an equivalent verification speedup. Run
+`scripts/test_race_cooperation.py --ikos <install>/bin/ikos` for focused contracts.

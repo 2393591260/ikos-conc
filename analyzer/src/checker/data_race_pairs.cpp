@@ -640,6 +640,62 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
     }
   }
 
+  // Consumer-only ablation: producers and coverage keep their original roles.
+  const bool suppress_owner = std::getenv("IKOS_RACE_DISABLE_OWNER_CONSUMER") != nullptr;
+  std::ofstream observations;
+  if (const char* path = std::getenv("IKOS_RACE_PAIR_OBSERVATIONS")) {
+    observations.open(path, std::ios::app);
+    if (!observations) throw std::runtime_error("Cannot open race pair observations");
+  }
+  std::map< ar::Statement*, std::string > statement_keys;
+  if (observations.is_open()) {
+    for (auto it = this->_ctx.bundle->function_begin();
+         it != this->_ctx.bundle->function_end(); ++it) {
+      if ((*it)->is_declaration()) continue;
+      std::size_t block_id = 0;
+      for (auto* block : *(*it)->body_or_null()) {
+        std::size_t statement_id = 0;
+        for (auto* statement : *block)
+          statement_keys.emplace(statement, (*it)->name() + "/b" +
+              std::to_string(block_id) + "/s" + std::to_string(statement_id++));
+        ++block_id;
+      }
+    }
+  }
+  auto access_observation = [&](const AccessRecord& access) {
+    JsonList context;
+    for (auto* cc = access.call_context; cc && !cc->empty(); cc = cc->parent())
+      context.add(statement_keys.at(cc->call()));
+    std::ostringstream points, offset;
+    access.pts.dump(points);
+    access.offset.dump(offset);
+    auto numeric_snapshot = [](const auto& values) {
+      std::vector< std::uint64_t > sorted(values.begin(), values.end());
+      std::sort(sorted.begin(), sorted.end());
+      JsonList list;
+      for (auto value : sorted) list.add(value);
+      return list;
+    };
+    std::vector< std::string > spawned(access.spawned_threads.begin(), access.spawned_threads.end());
+    std::sort(spawned.begin(), spawned.end());
+    JsonList spawned_names;
+    for (const auto& name : spawned) spawned_names.add(name);
+    return JsonDict{{"statement", statement_keys.at(access.stmt)},
+                    {"context_leaf_to_root", context}, {"thread", access.thread_id},
+                    {"unique_thread", access.is_unique_thread},
+                    {"write", access.kind == AccessKind::Write},
+                    {"atomic", access.is_atomic}, {"width", access.width},
+                    {"points_to_snapshot", points.str()}, {"offset", offset.str()},
+                    {"exclusive_locks_run_local", numeric_snapshot(access.locks)},
+                    {"shared_locks_run_local", numeric_snapshot(access.read_locks)},
+                    {"joined_instances_run_local", numeric_snapshot(access.joined_threads)},
+                    {"spawned_instances_run_local", numeric_snapshot(access.spawned_instances)},
+                    {"live_children_run_local", numeric_snapshot(access.live_children)},
+                    {"spawned_threads", spawned_names},
+                    {"spawned_top", access.spawned_is_top},
+                    {"live_children_top", access.live_children_is_top}};
+  };
+  bool owner_attempted = false, owner_suppressed = false;
   auto evaluate_pair = [&](std::size_t i, std::size_t j) -> PairDecision {
     const AccessRecord& a = this->_accesses[i];
     const AccessRecord& b = this->_accesses[j];
@@ -937,7 +993,9 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
             return false;
         return true;
       };
-      if (owned_conflicts()) {
+      owner_attempted = true;
+      const bool owner_proved = owned_conflicts();
+      if (owner_proved && !suppress_owner) {
         auto proof = this->_ownership->info();
         proof.put("safe_reason", "indexed ownership with corresponding mutexes");
         if (auto location = source_location(a.stmt)) {
@@ -948,6 +1006,7 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
         }
         return PairDecision::exclude(race_rules::Id::RegionOwnership, proof);
       }
+      if (suppress_owner) owner_suppressed = owner_proved;
 
       if (bucket_list_ownership.excludes(a, b)) {
         auto proof = bucket_list_ownership.info();
@@ -1046,7 +1105,23 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
     const AccessRecord& a = this->_accesses[i];
     for (std::size_t j = i + 1; j < this->_accesses.size(); ++j) {
       const AccessRecord& b = this->_accesses[j];
+      owner_attempted = owner_suppressed = false;
       const auto decision = evaluate_pair(i, j);
+      if (observations.is_open()) {
+        // These independent predicates only read frozen access records.
+        observations << JsonDict{{"kind", "pair-observation-v1"},
+            {"a", access_observation(a)}, {"b", access_observation(b)},
+            {"role_a", i}, {"role_b", j},
+            {"first_rule", race_rules::contract(decision.rule).id},
+            {"owner_suppressed", owner_suppressed},
+            {"owner_attempt", !owner_attempted ? "not_attempted" : owner_suppressed
+                ? "proved_suppressed" : decision.rule == race_rules::Id::RegionOwnership
+                ? "proved" : "not_proved"},
+            {"overlap_read_read", a.kind != AccessKind::Write && b.kind != AccessKind::Write},
+            {"overlap_unique_thread", !a.thread_id.empty() && a.thread_id == b.thread_id && a.is_unique_thread},
+            {"overlap_atomic_atomic", a.is_atomic && b.is_atomic}}.str() << '\n';
+        if (!observations) throw std::runtime_error("Cannot write race pair observations");
+      }
       if (decision.excluded()) {
         this->consume_pair_proof(i, j, decision);
         continue;
