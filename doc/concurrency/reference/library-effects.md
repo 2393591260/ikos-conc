@@ -108,6 +108,11 @@ the guard does not grant memory access, graph ownership or FALSE confirmation.
 Other nullable comparisons and failure-side effects still refuse the certificate.
 This bucket/list subset retains its ILP32 layout boundary.
 
+The private main-to-worker heap handoff certificate accepts this same exact
+pure-abort NULL comparison as a nonescaping use. Fresh allocation before each
+create attempt, a single transfer, closed uses, access bounds and worker lifetime
+remain required. Other pointer comparisons still refuse this ILP32 certificate.
+
 Regression: `scripts/test_allocation_continuations.py --ikos install/bin/ikos`
 uses native headers in both ABIs and includes long-long payloads, partial
 initialization, early escape/publication, overlapping writes, failure-side effects

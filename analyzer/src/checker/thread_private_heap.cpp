@@ -5,6 +5,7 @@
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Operator.h>
+#include <ikos/analyzer/analysis/execution_engine/allocation_continuation.hpp>
 #include <ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <map>
@@ -461,6 +462,12 @@ class ThreadPrivateHeap::Impl {
           auto* type = llvm::dyn_cast< llvm::PointerType >(cast->getType());
           if (!type || type->getAddressSpace() != 0) return {};
           pending.push_back(cast);
+        } else if (auto* comparison = llvm::dyn_cast< llvm::ICmpInst >(instruction)) {
+          // This guard observes the fresh base without transferring ownership.
+          ar::Comparison* guard = nullptr;
+          if (!heap_initialization_successor(ar_allocation->parent(), guard) ||
+              !guard || !guard->has_frontend() ||
+              guard->frontend< llvm::Value >() != comparison) return {};
         } else if (auto* call = llvm::dyn_cast< llvm::CallBase >(instruction)) {
           if ((create && create != call) || call->arg_size() != 4 || call->getArgOperand(3) != pointer) return {};
           create = call;

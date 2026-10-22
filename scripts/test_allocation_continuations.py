@@ -15,6 +15,7 @@ from ikos_runtime import runtime_command
 
 FIXTURES = {
     'heap-fields.c': (0, 1, 4, 5, 15, 16),
+    'heap-handoff.c': (0, 1, 2, 4, 6, 7, 8, 9, 13, 14, 16, 22, 28),
     'bucket-list-ownership.c': (0, 1, 5, 9, 15, 20, 21, 25, 28, 49, 53),
     'constructor-fields.c': (0, 1, 3, 6, 9, 10, 11),
     'helper-prefix-fields.c': (0, 2, 3, 6, 7, 14, 16, 19, 20),
@@ -69,6 +70,9 @@ def main():
                 if args.fixture is None or 'heap-fields.c' in args.fixture:
                     cases += [('heap-fields.c', 0, variant)
                               for variant in ('failure-write', 'shared-fallback')]
+                if args.fixture is None or 'heap-handoff.c' in args.fixture:
+                    cases += [('heap-handoff.c', 0, variant)
+                              for variant in ('failure-write', 'return-null')]
                 if args.fixture is None or 'bucket-list-ownership.c' in args.fixture:
                     cases += [('bucket-list-ownership.c', 0, variant)
                               for variant in ('failure-write', 'return-null')]
@@ -85,7 +89,7 @@ def main():
                                          text=True, timeout=30)
                     assert run.returncode == 0, (name, case, bits, run.stdout, run.stderr)
                     verdict = classify(run.stdout, run.returncode, False)
-                    if (name == 'bucket-list-ownership.c' or
+                    if (name in ('bucket-list-ownership.c', 'heap-handoff.c') or
                             (name == 'helper-prefix-fields.c' and case == 0)) and bits == 64:
                         # Dynamic list/handle coverage is still unsupported in LP64;
                         # the unwrapped baseline has the same unresolved effects.
