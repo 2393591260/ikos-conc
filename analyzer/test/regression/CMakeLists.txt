@@ -148,6 +148,8 @@ add_concurrency_test(zero-guard-arena "${CONCURRENCY_ROOT}/scripts/test_zero_gua
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(native-arena "${CONCURRENCY_ROOT}/scripts/test_native_arena.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(once-callbacks "${CONCURRENCY_ROOT}/scripts/test_once_callbacks.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(once-initialization "${CONCURRENCY_ROOT}/scripts/test_once_initialization.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(thread-private-heap "${CONCURRENCY_ROOT}/scripts/test_thread_private_heap.py"

@@ -85,5 +85,26 @@ int main() {
   env.set_join_summary(first, {});
   env.set_join_summary(later, {});
   require(!env.is_dirty(), "Repeated empty summaries are stable");
+  ConcurrentGlobalEnv once;
+  require(!once.same_closed_once("first", "later"), "Absent once identities cannot exclude");
+  auto sid = once.register_once_thread(first, 7, true, ikos::core::ZNumber(0), true);
+  require(sid && once.is_dirty(), "A sealed once identity invalidates discovery");
+  require(once.register_once_thread(later, 7, true, ikos::core::ZNumber(0), true) == sid &&
+          once.same_closed_once("first", "later"), "Alternatives share one sealed instance");
+  require(once.site_func(sid) == nullptr, "Alternative callbacks have no representative function");
+  once.clear_dirty();
+  once.register_once_thread(first, 7, true, ikos::core::ZNumber(0), true);
+  once.register_once_thread(later, 7, true, ikos::core::ZNumber(0), true);
+  require(!once.is_dirty() && once.site_func(sid) == nullptr,
+          "Callback replay is idempotent and cannot restore a representative");
+  once.register_once_thread(later, 8, true, ikos::core::ZNumber(0), true);
+  require(once.is_dirty() && !once.same_closed_once("first", "later"),
+          "A later extra control revokes the singleton exclusion");
+  ConcurrentGlobalEnv unsealed;
+  unsealed.register_once_thread(first, 7, true, ikos::core::ZNumber(0));
+  unsealed.register_once_thread(later, 7, true, ikos::core::ZNumber(0));
+  require(!unsealed.same_closed_once("first", "later"), "Address equality alone grants no seal");
+  unsealed.register_once_thread(first, 7, false, ikos::core::ZNumber(0), true);
+  require(!unsealed.same_closed_once("first", "later"), "An ambiguous control never seals");
   std::cout << "Concurrent blackboard invalidation passed\n";
 }

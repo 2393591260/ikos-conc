@@ -40,6 +40,7 @@
 #include <ikos/analyzer/analysis/execution_engine/readonly_pointer_array.hpp>
 #include <ikos/analyzer/analysis/execution_engine/heap_pointer_initialization.hpp>
 #include <ikos/analyzer/analysis/execution_engine/protected_values.hpp>
+#include <ikos/analyzer/analysis/execution_engine/closed_once.hpp>
 #include <ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
 #include <ikos/analyzer/analysis/memory_location.hpp>
@@ -1211,8 +1212,10 @@ void exec_pthread_join(E& eng, ar::CallBase* call) {
 template < typename E >
 void exec_pthread_once(E& eng, ar::CallBase* call) {
   // arg0 = pthread_once_t* (ignored: runtime sync machinery), arg1 = callback.
+  auto once_funcs = closed_once_callbacks(eng.ctx(), call);
+  const bool sealed = !once_funcs.empty();
   ar::Function* once_func = nullptr;
-  if (call->arg_begin() + 1 != call->arg_end()) {
+  if (once_funcs.empty() && call->num_arguments() == 2) {
     ar::Value* fn_val = *(call->arg_begin() + 1);
     // Peel value-preserving casts (a signature mismatch, mirrors the
     // pthread_create thread-function resolution).
@@ -1237,7 +1240,8 @@ void exec_pthread_once(E& eng, ar::CallBase* call) {
       once_func = fpc->function();
     }
   }
-  if (once_func != nullptr && once_func->is_definition()) {
+  if (once_func && once_func->is_definition()) once_funcs.push_back(once_func);
+  if (!once_funcs.empty()) {
     // Key the once-instance by the ONCE-CONTROL object (arg0), not the
     // callback name: distinct fields of one global are distinct controls.
     // Prove an exact static base+offset; summarized or TLS objects may have
@@ -1291,10 +1295,10 @@ void exec_pthread_once(E& eng, ar::CallBase* call) {
       eng.ctx().concurrent_env.record_unmodeled_effect(
           call, "pthread_once control object not proven unique");
     }
-    std::uint64_t sid =
-        eng.ctx().concurrent_env.register_once_thread(once_func, key, joinable, offset);
-    if (sid != 0) {
-      eng.lockset().add_joined_thread(sid);
+    for (auto* callback : once_funcs) {
+      std::uint64_t sid = eng.ctx().concurrent_env.register_once_thread(
+          callback, key, joinable, offset, sealed);
+      if (sid != 0) eng.lockset().add_joined_thread(sid);
     }
   } else {
     eng.ctx().concurrent_env.record_unmodeled_effect(

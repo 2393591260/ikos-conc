@@ -17,6 +17,7 @@ enum class Id {
   SameUniqueStatement,
   ReadRead,
   SameUniqueThread,
+  SameClosedOnce,
   InactiveChild,
   JoinedRight,
   JoinedLeft,
@@ -83,6 +84,7 @@ inline Contract contract(Id id) {
     case Id::SameUniqueStatement: return {"same-unique-statement-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::ReadRead: return {"read-read-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::SameUniqueThread: return {"same-unique-thread-v1", Role::PairExclusion, Stage::FinalPairs, true};
+    case Id::SameClosedOnce: return {"same-closed-once-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::InactiveChild: return {"inactive-child-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::JoinedRight: return {"joined-right-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::JoinedLeft: return {"joined-left-v1", Role::PairExclusion, Stage::FinalPairs, true};

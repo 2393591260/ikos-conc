@@ -658,6 +658,9 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
           a.is_unique_thread) {
         return PairDecision::exclude(race_rules::Id::SameUniqueThread);
       }
+      if (this->_ctx.concurrent_env.same_closed_once(a.thread_id, b.thread_id)) {
+        return PairDecision::exclude(race_rules::Id::SameClosedOnce);
+      }
       // No direct child can be live: this is before create OR after join,
       // never a directional/transitive HB edge or a claim about grandchildren.
       if (inactive_names[i].count(b.thread_id) ||

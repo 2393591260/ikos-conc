@@ -435,3 +435,30 @@ failure, stale-handle, helper-context and wide-payload controls.
 Implementation: `checker/thread_lifecycle.hpp` and `src/checker/thread_lifecycle.cpp`.
 
 </details>
+
+
+<a id="closed-pthread-once-callbacks"></a>
+<details>
+<summary>Closed pthread_once alternatives — retain all callbacks under one control</summary>
+
+On GNU Linux ILP32 and LP64, a finite closure can resolve a whole global callback
+pointer slot whose initializer and all stores name defined ABI-compatible
+void(void) functions. LLVM/AR bindings, full loads/stores, all address uses and
+the actual pthread_once declaration are checked. Slot reads and writes remain
+ordinary accesses; concurrent replacement is still checked for races.
+
+The whole global once control must start at PTHREAD_ONCE_INIT, have no byte
+aliases, writes or escapes, and be used only by checked once calls. Every possible
+callback and direct helper must have a closed call-effect tree: cancellation,
+exit, longjmp, recursion, indirect/foreign calls and nested synchronization refuse
+this first closure. All alternatives remain discovered MAY writers. The pass
+does not select a callback or transfer one alternative's MUST value summary.
+
+Only two callback roots whose final complete instance sets contain the same
+single sealed control instance can use the new pair exclusion. Ordinary calls
+keep their actual thread root; another control, ordinary spawn or ambiguous
+instance refuses the exclusion. Discovery and sealing invalidate the shared
+fixpoint. Existing completion and strict coverage checks remain required.
+This SAFE certificate adds no permission to confirm a FALSE execution.
+
+</details>

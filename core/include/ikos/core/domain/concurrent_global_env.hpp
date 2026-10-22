@@ -301,6 +301,7 @@ private:
   // Known controls use (base, exact byte offset); ambiguous sites are a
   // separate key space and cannot establish uniqueness or inherited joins.
   std::map< std::tuple< bool, std::uint64_t, ZNumber >, std::uint64_t > _once_sids;
+  std::unordered_set< std::uint64_t > _sealed_once_sids;
   std::vector< std::pair< ar::Statement*, std::string > > _unmodeled_effects;
   std::unordered_map< analyzer::MemoryLocation*, std::unordered_set< std::uint64_t > >
       _synthetic_handle_slots;
@@ -1214,7 +1215,7 @@ public:
   /// caller must NOT join — the callback may run under a different control and
   /// so is not proven to happen-before this call's return.
   std::uint64_t register_once_thread(ar::Function* func, std::uint64_t base,
-                                     bool joinable, const ZNumber& offset) {
+                                     bool joinable, const ZNumber& offset, bool sealed = false) {
     const auto key = std::make_tuple(joinable, base, offset);
     std::lock_guard< std::mutex > lock(_mutex);
     bool is_new = true;
@@ -1247,7 +1248,21 @@ public:
       entry = nullptr;
       _is_dirty = true;
     }
+    if (joinable && sealed && _sealed_once_sids.insert(sid).second) _is_dirty = true;
     return joinable ? sid : 0;
+  }
+
+
+  // Query final complete MAY instance sets; never cache a partial singleton.
+  bool same_closed_once(const std::string& left, const std::string& right) const {
+    if (left.empty() || right.empty() || left == "main" || right == "main") return false;
+    std::lock_guard< std::mutex > lock(_mutex);
+    if (_spawn_sites_by_name.count(left) || _spawn_sites_by_name.count(right)) return false;
+    auto a = _func_instances.find(left), b = _func_instances.find(right);
+    return a != _func_instances.end() && b != _func_instances.end() &&
+        a->second.size() == 1 && b->second.size() == 1 &&
+        *a->second.begin() == *b->second.begin() &&
+        _sealed_once_sids.count(*a->second.begin()) != 0;
   }
 
   /// \brief Record a pending conditional-lock fact for the FALSE branch of an
@@ -2171,6 +2186,7 @@ public:
     _site_func.clear();
     _unmodeled_thread_creations.clear();
     _once_sids.clear();
+    _sealed_once_sids.clear();
     _unmodeled_effects.clear();
     _synthetic_handle_slots.clear();
     _synthetic_handle_ranges.clear();
