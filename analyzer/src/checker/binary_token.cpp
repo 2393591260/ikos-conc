@@ -116,6 +116,7 @@ class BinaryTokenOwnership::Impl {
           if (!create(c) || c->getArgOperand(2) != v || c->getFunction() != main) return false;
         }
       }
+      if (&f != main && f.use_empty()) continue;
       for (auto& b : f) for (auto& i : b) {
         if (!spend()) return false;
         if (llvm::isa< llvm::InvokeInst >(i) || llvm::isa< llvm::CallBrInst >(i) ||

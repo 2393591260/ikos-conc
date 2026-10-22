@@ -300,10 +300,18 @@ handles grant no HB, and normal checker accesses remain. This does not establish
 allocation bounds, nonwrap, nonnull, handle validity or join completion, and does
 not certify concrete libc behavior for arbitrary invalid handles. Native handle
 range certificates and their checks are unchanged.
+A main allocation may follow size guards in earlier blocks only if its block
+cannot execute again. Its NULL comparison must match the shared native/AR
+pure-abort continuation; the failure path remains present and grants no success
+fact. The complete cast/GEP/load/create/join/free use closure remains required.
+All function address uses are checked before an unused non-main definition is
+omitted from the executable effect inventory.
+
 
 Implementation: `analysis/posix_semaphore.hpp` and its source, numerical transfer,
 and `src/checker/binary_token.cpp`. Run `python3 scripts/test_posix_semaphore.py`
-for ILP32 int/long-long, branching, capacity, lifecycle, alias, TLS and API controls.
+for dual-ABI int/long-long, checked allocation, branching, capacity, lifecycle,
+alias, TLS and API controls; this semaphore profile remains ILP32-only.
 
 </details>
 

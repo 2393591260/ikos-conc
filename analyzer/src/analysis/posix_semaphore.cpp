@@ -1,6 +1,8 @@
 // Copyright and license: see context.hpp.
 #include <ikos/analyzer/analysis/posix_semaphore.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
+#include <ikos/analyzer/analysis/execution_engine/allocation_continuation.hpp>
+#include <llvm/IR/CFG.h>
 #include <algorithm>
 #include <set>
 
@@ -46,10 +48,20 @@ class PosixSemaphore::Impl {
   }
   bool heap(llvm::CallBase* allocation, llvm::Function* main) {
     auto* a = binding(allocation);
-    if (!a || allocation->getFunction() != main || allocation->getParent() != &main->getEntryBlock() ||
+    if (!a || allocation->getFunction() != main ||
         allocation->arg_size() != 1 || !allocation->getArgOperand(0)->getType()->isIntegerTy(32) ||
         !allocation->getType()->isPointerTy() ||
         native_handle_callee(a)->intrinsic_id() != ar::Intrinsic::LibcMalloc) return false;
+    // Preserve single execution even when size/failure guards split main.
+    std::vector< llvm::BasicBlock* > blocks;
+    std::set< llvm::BasicBlock* > visited;
+    for (auto* b : llvm::successors(allocation->getParent())) blocks.push_back(b);
+    while (!blocks.empty()) {
+      auto* b = blocks.back(); blocks.pop_back();
+      if (!step() || b == allocation->getParent()) return false;
+      if (!visited.insert(b).second) continue;
+      for (auto* next : llvm::successors(b)) blocks.push_back(next);
+    }
     std::vector< llvm::Value* > todo{allocation}; std::set< llvm::Value* > seen;
     std::set< llvm::CallBase* > closed_handles, closed_allocations{allocation};
     while (!todo.empty()) {
@@ -61,6 +73,20 @@ class PosixSemaphore::Impl {
         if (auto* gep = llvm::dyn_cast< llvm::GEPOperator >(u)) {
           if (gep->getPointerOperand() != v || !gep->getSourceElementType()->isIntegerTy(32)) return false;
           todo.push_back(gep); continue;
+        }
+        if (auto* compare = llvm::dyn_cast< llvm::ICmpInst >(u)) {
+          auto* other = compare->getOperand(compare->getOperand(0) == v ? 1 : 0);
+          auto* branch = llvm::dyn_cast< llvm::BranchInst >(allocation->getParent()->getTerminator());
+          ar::Comparison* guard = nullptr;
+          if (!compare->isEquality() || !llvm::isa< llvm::ConstantPointerNull >(other) ||
+              v->stripPointerCasts() != allocation || compare->getParent() != allocation->getParent() ||
+              !compare->hasOneUse() || !branch || !branch->isConditional() ||
+              branch->getCondition() != compare ||
+              !heap_initialization_successor(a->parent(), guard) || !guard) return false;
+          auto* value = dyn_cast< ar::InternalVariable >(
+              isa< ar::NullConstant >(guard->left()) ? guard->right() : guard->left());
+          if (!value || unique_def(value) != a) return false;
+          continue;
         }
         if (auto* load = llvm::dyn_cast< llvm::LoadInst >(u)) {
           if (load->getPointerOperand() != v || !load->getType()->isIntegerTy(32) ||
@@ -176,7 +202,8 @@ class PosixSemaphore::Impl {
       if (t && t->hasName() && t->getName() == "union.sem_t" && !semaphore(item.first, main)) return false;
     }
     if (effects.empty()) return false;
-    for (auto& f : *main->getParent()) for (auto& b : f) for (auto& i : b) {
+    for (auto& f : *main->getParent()) if (&f == main || !f.use_empty())
+      for (auto& b : f) for (auto& i : b) {
       if (!step()) return false;
       auto* c = llvm::dyn_cast< llvm::CallBase >(&i);
       if (c && callee(c) && callee(c)->getName() == "malloc" && !heap(c, main)) return false;
@@ -200,6 +227,7 @@ class PosixSemaphore::Impl {
           }
         }
       }
+      if (&f != main && f.use_empty()) continue;
       for (auto& b : f) for (auto& i : b) {
         if (!step() || llvm::isa< llvm::InvokeInst >(i) || llvm::isa< llvm::CallBrInst >(i) ||
             llvm::isa< llvm::IndirectBrInst >(i) || llvm::isa< llvm::ResumeInst >(i)) return false;
