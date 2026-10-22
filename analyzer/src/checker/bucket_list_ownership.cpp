@@ -7,6 +7,7 @@
 #include <deque>
 #include <functional>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
+#include <ikos/analyzer/analysis/execution_engine/allocation_continuation.hpp>
 #include <ikos/analyzer/checker/bucket_list_ownership.hpp>
 #include <ikos/analyzer/checker/normal_mutex.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
@@ -386,18 +387,37 @@ class BucketListOwnership::Impl {
     opaque(s, i);
     return true;
   }
+  bool pending_allocation_guard(const State& s, const Pointer& p,
+                                llvm::ICmpInst* comparison) const {
+    if (root != main || s.spawned || p.place != Place::Heap)
+      return false;
+    auto object = s.objects.find(p.object);
+    if (object == s.objects.end() || object->second.born)
+      return false;
+    auto* call = llvm::dyn_cast< llvm::CallBase >(object->second.source);
+    auto* allocation = call ? binding(call) : nullptr;
+    if (!allocation)
+      return false;
+    ar::Comparison* guard = nullptr;
+    return heap_initialization_successor(allocation->parent(), guard) &&
+           guard && guard->has_frontend() &&
+           guard->frontend< llvm::Value >() == comparison;
+  }
   boost::optional< z3::expr > pointer_compare(const State& s, llvm::ICmpInst* c) {
     need(c->getPredicate() == llvm::CmpInst::ICMP_EQ ||
          c->getPredicate() == llvm::CmpInst::ICMP_NE);
     auto a = pointer(s, c->getOperand(0)), b = pointer(s, c->getOperand(1));
-    // Pending nullable allocations cannot participate in comparisons: their
-    // failed alternative has not reached the real existing Store contract.
+    // Before any spawn, a pure-abort failure edge can be omitted. The pending
+    // object still needs the real Store contract before memory/graph use.
     for (const auto& p : {a, b}) {
       if (p.place == Place::Null) {
         // A nonzero AbsoluteZero address is not a disjoint NULL object.
         require(s, p.offset == z.bv_val(0, 64));
       } else {
-        need(normal_pointer(s, p));
+        if (!normal_pointer(s, p)) {
+          require(s, p.offset == z.bv_val(0, 64));
+          need(pending_allocation_guard(s, p, c));
+        }
         require(s,
                 p.offset >= z.bv_val(0, 64) &&
                     z3::ult(p.offset,

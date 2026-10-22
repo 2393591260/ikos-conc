@@ -15,6 +15,7 @@ from ikos_runtime import runtime_command
 
 FIXTURES = {
     'heap-fields.c': (0, 1, 4, 5, 15, 16),
+    'bucket-list-ownership.c': (0, 1, 5, 9, 15, 20, 21, 25, 28, 49, 53),
     'constructor-fields.c': (0, 1, 3, 6, 9, 10, 11),
     'helper-prefix-fields.c': (0, 2, 3, 6, 7, 14, 16, 19, 20),
 }
@@ -32,6 +33,8 @@ def wrapped(body, variant='abort'):
         lines = [line.replace('pthread_create(&thread, 0, worker, 0);',
                               'pthread_create(&thread, 0, worker, 0); allocation_fault++;')
                  for line in lines]
+    elif variant == 'return-null':
+        failure = 'return NULL;'
     elif variant == 'shared-fallback':
         insertion = next(i for i, line in enumerate(lines) if line.startswith('struct node {')) + 1
         declarations = 'static struct node fallback;'
@@ -52,6 +55,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     parser.add_argument('--bits', type=int, choices=(32, 64), nargs='+', default=[32, 64])
+    parser.add_argument('--fixture', choices=tuple(FIXTURES), action='append')
     args = parser.parse_args()
     env = {k: v for k, v in os.environ.items()
            if k not in ('IKOS_BMC_RECOVER', 'PYTHONPATH', 'PYTHONHOME')}
@@ -60,9 +64,14 @@ def main():
         for bits in args.bits:
             for wide in (False, True):
                 cases = [(name, case, 'abort') for name, cases in FIXTURES.items()
+                         if args.fixture is None or name in args.fixture
                          for case in cases]
-                cases += [('heap-fields.c', 0, variant)
-                          for variant in ('failure-write', 'shared-fallback')]
+                if args.fixture is None or 'heap-fields.c' in args.fixture:
+                    cases += [('heap-fields.c', 0, variant)
+                              for variant in ('failure-write', 'shared-fallback')]
+                if args.fixture is None or 'bucket-list-ownership.c' in args.fixture:
+                    cases += [('bucket-list-ownership.c', 0, variant)
+                              for variant in ('failure-write', 'return-null')]
                 for name, case, variant in cases:
                     body = (ROOT / 'analyzer/test/regression/bmc-values' / name).read_text()
                     source = work / 'renamed.c'
@@ -76,7 +85,8 @@ def main():
                                          text=True, timeout=30)
                     assert run.returncode == 0, (name, case, bits, run.stdout, run.stderr)
                     verdict = classify(run.stdout, run.returncode, False)
-                    if name == 'helper-prefix-fields.c' and bits == 64 and case == 0:
+                    if (name == 'bucket-list-ownership.c' or
+                            (name == 'helper-prefix-fields.c' and case == 0)) and bits == 64:
                         # Dynamic list/handle coverage is still unsupported in LP64;
                         # the unwrapped baseline has the same unresolved effects.
                         assert verdict == VERDICT_UNKNOWN, (name, bits, wide, verdict)

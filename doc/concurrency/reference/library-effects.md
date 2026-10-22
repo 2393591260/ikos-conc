@@ -100,6 +100,14 @@ pointer validity or non-NULL fact and cannot authorize counterexample confirmati
 Consumers that summarize an entire prefix atomically, such as the first-publication
 pass, retain their same-block boundary.
 
+The closed bucket/list certificate reuses this guard proof before any worker
+creation. It can evaluate the exact pending allocation base against NULL only
+when the native comparison matches that proof. The object remains pending until
+the existing real zero-base payload Store establishes its normal continuation;
+the guard does not grant memory access, graph ownership or FALSE confirmation.
+Other nullable comparisons and failure-side effects still refuse the certificate.
+This bucket/list subset retains its ILP32 layout boundary.
+
 Regression: `scripts/test_allocation_continuations.py --ikos install/bin/ikos`
 uses native headers in both ABIs and includes long-long payloads, partial
 initialization, early escape/publication, overlapping writes, failure-side effects
