@@ -31,7 +31,93 @@ static void *unlocked(void *arg) {
 #endif
   return 0;
 }
-#if CASE >= 30
+#if CASE >= 48
+static pthread_t third;
+static void *leaf(void *arg) {
+  (void)arg;
+  ++payload;
+  return 0;
+}
+static void *noop(void *arg) { (void)arg; return 0; }
+static void *joined_child(void *arg) {
+  (void)arg;
+#if CASE == 49 || CASE == 62
+  pthread_create(&third, 0, leaf, 0);
+# if CASE == 49
+  pthread_join(third, 0);
+# endif
+#else
+  ++payload;
+#endif
+  return 0;
+}
+static void *holder(void *arg) {
+  (void)arg;
+  pthread_mutex_lock(&gate);
+  ++payload;
+  pthread_mutex_unlock(&gate);
+  return 0;
+}
+#if CASE == 60
+int pthread_join(pthread_t id, void **out) { (void)id; (void)out; return 0; }
+#endif
+int main(void) {
+#if CASE == 57
+  pthread_t local;
+#endif
+  pthread_create(&first, 0, holder, 0);
+  pthread_mutex_lock(&gate);
+#if CASE == 61
+  if (__VERIFIER_nondet_int())
+#endif
+#if CASE == 57
+  pthread_create(&local, 0, joined_child, 0);
+#else
+  pthread_create(&second, 0, joined_child, 0);
+#endif
+#if CASE == 51 || CASE == 52
+  pthread_create(&third, 0, noop, 0);
+#endif
+#if CASE == 52
+  second = third;
+#elif CASE == 54
+  pthread_detach(second);
+#elif CASE == 58
+  ++payload;
+#elif CASE == 63
+  third = second;
+#elif CASE == 64
+  volatile pthread_t copy = second;
+  (void)copy;
+#endif
+#if CASE == 50
+  pthread_mutex_unlock(&gate);
+#endif
+#if CASE == 56
+  if (__VERIFIER_nondet_int())
+#endif
+#if CASE == 51 || CASE == 63
+  pthread_join(third, 0);
+#elif CASE == 55
+  void *result;
+  pthread_join(second, &result);
+#elif CASE == 57
+  pthread_join(local, 0);
+#else
+  pthread_join(second, 0);
+#endif
+#if CASE == 53
+  pthread_join(second, 0);
+#endif
+#if CASE != 50 && CASE != 59
+  pthread_mutex_unlock(&gate);
+#endif
+#if CASE == 52
+  ++payload;
+#endif
+  return 0;
+}
+#elif CASE >= 30
 static pthread_t third, fourth;
 static void *middle(void *arg) {
   (void)arg;

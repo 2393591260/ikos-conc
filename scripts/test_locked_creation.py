@@ -10,7 +10,7 @@ import tempfile
 from ikos_runtime import runtime_command, runtime_identity, verify_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
-CASES = tuple(i for i in range(30) if i != 4) + tuple(range(30, 42)) + (44, 45, 46, 47)
+CASES = tuple(i for i in range(30) if i != 4) + tuple(range(30, 42)) + (44, 45, 46, 47) + tuple(range(48, 65))
 
 
 def main():
@@ -42,14 +42,14 @@ def main():
                     output = proc.stdout + proc.stderr
                     assert proc.returncode == 0, (case, bits, wide, output)
                     safe = 'The program is SAFE' in output
-                    if case in (0, 1, 2, 3, 24, 27, 30, 32, 37, 46, 47):
+                    if case in (0, 1, 2, 3, 24, 27, 30, 32, 37, 46, 47, 48, 59):
                         assert safe, (case, bits, wide, output)
-                    elif case not in (16, 17, 18, 20, 21, 22):
+                    elif case not in (16, 17, 18, 20, 21, 22, 49, 53, 55, 57, 61, 63, 64):
                         assert not safe, (case, bits, wide, output)
                     rows = [json.loads(line) for line in report.read_text().splitlines()] if report.exists() else []
-                    if case in (0, 1, 2, 3, 24, 27, 30, 32, 37, 46, 47):
+                    if case in (0, 1, 2, 3, 24, 27, 30, 32, 37, 46, 47, 48, 59):
                         assert any(row.get('counts', {}).get('locked-creation-v1', 0) for row in rows), (case, rows)
-                    if case in (16, 17, 18, 20, 21, 22, 29, 39):
+                    if case in (16, 17, 18, 20, 21, 22, 29, 39, 49, 52, 53, 54, 55, 57, 60, 61, 63, 64):
                         assert not any(row.get('counts', {}).get('locked-creation-v1', 0) for row in rows), (case, rows)
                     print(f'locked creation={case}/bits={bits}/wide={wide}: safe={safe}, rules={rows}',
                           flush=True)

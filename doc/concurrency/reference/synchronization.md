@@ -61,8 +61,28 @@ released lock cannot supply the second relation.
 Instruction order and every creation source are checked. Parents transfer no
 lock ownership to children, and two unprotected children remain concurrent.
 Whole scalar memory effects, source/AR call and endpoint bindings, native ABI,
-and the absence of helpers, callbacks, unknown effects, joins and unclosed creators
-close this initial subset. Missing premises retain the candidate. This rule
+and the absence of helpers, callbacks, unknown effects and unclosed creators
+close this subset. Without joins the relations above apply. A separate narrow
+mode accepts exactly one join in the entire closed program, issued by main
+for its uniquely created direct child. Every root then has one static creation
+and at most one activation. The native-width global handle has only its actual
+create and one plain load; source/AR identity, unique load definition and all
+address uses are checked. Create dominates that load, and the join dominates
+main's unlock while both remain inside its actual held interval. The return
+output is NULL and the join result is unused.
+
+This mode excludes only pairs between that child and another root actually
+holding the containing mutex. Such a holder may precede or follow the child
+scope; no fixed direction is reported. A real child access implies its create
+succeeded, so its unconsumed joinable handle is valid. Under the checked
+[glibc 2.39 untimed join](https://github.com/bminor/glibc/blob/glibc-2.39/nptl/pthread_join_common.c)
+contract, returning then requires completion. Failed creates are not assumed to
+leave a harmless handle: their outputs can contain stale TCB addresses. Exactly
+one join, and consumption only for the actual target child, avoid granting
+completion from another failed creation. Multiple or nested joins, detach,
+handle copies/overwrites/extra reads and unjoined descendants receive no scope
+certificate. Main's own accesses receive no child-lock privilege. In this mode
+the earlier creation relations are not additionally consumed. Missing premises retain the candidate. This rule
 grants no library effects, coverage, completion or FALSE confirmation rights.
 
 Run `python3 scripts/test_locked_creation.py` for dual-ABI wide-payload controls.

@@ -21,6 +21,8 @@ class LockedCreation::Impl {
   std::map< llvm::GlobalVariable*, ar::GlobalVariable* > globals;
   std::set< llvm::Function* > roots;
   std::map< llvm::Function*, std::vector< llvm::CallBase* > > creates;
+  std::map< llvm::Function*, llvm::CallBase* > joined_by;
+  std::set< llvm::CallBase* > joins;
   struct Interval { llvm::CallBase* lock = nullptr; llvm::CallBase* unlock = nullptr; };
   struct Mutex {
     llvm::GlobalVariable* source;
@@ -29,7 +31,7 @@ class LockedCreation::Impl {
   std::vector< Mutex > mutexes;
   struct Phase {
     std::string root;
-    std::set< unsigned > held, post_lock, parent_held, parent_forever, after_release;
+    std::set< unsigned > held, post_lock, parent_held, parent_forever, after_release, bounded_main;
   };
   std::map< ar::Statement*, Phase > phases;
   bool refuse(unsigned line) const {
@@ -114,7 +116,10 @@ class LockedCreation::Impl {
     auto* base = al ? address_base(al->operand()) : as ? address_base(as->pointer()) : nullptr;
     if (!at || (l && !al) || (s && !as) ||
         !base || !base->has_frontend() || base->frontend< llvm::Value >() != address ||
-        cast< ar::PointerType >(base->type())->pointee() != at ||
+        (cast< ar::PointerType >(base->type())->pointee() != at &&
+         (!at->is_integer() || !cast< ar::PointerType >(base->type())->pointee()->is_integer() ||
+          cast< ar::IntegerType >(cast< ar::PointerType >(base->type())->pointee())->bit_width() !=
+              cast< ar::IntegerType >(at)->bit_width())) ||
         (type->isIntegerTy() != at->is_integer()) ||
         (type->isFloatingPointTy() && !at->is_float()) ||
         ctx.bundle->data_layout().store_size_in_bytes(at) !=
@@ -188,6 +193,70 @@ class LockedCreation::Impl {
           local->getAllocatedType() != out->getPointerElementType() || local->getAlign().value() < bits / 8) return refuse(__LINE__);
     }
     roots.insert(entry); creates[entry].push_back(c); return true;
+  }
+  bool join(llvm::CallBase* c) {
+    auto* a = binding(c); auto* f = callee(c);
+    auto* target = a ? native_handle_callee(a) : nullptr;
+    auto* load = c->arg_size() == 2 ? llvm::dyn_cast< llvm::LoadInst >(c->getArgOperand(0)) : nullptr;
+    auto* slot = load ? llvm::dyn_cast< llvm::GlobalVariable >(load->getPointerOperand()) : nullptr;
+    auto* al = load ? dyn_cast_or_null< ar::Load >(original(load)) : nullptr;
+    auto* output = c->arg_size() == 2 ? llvm::dyn_cast< llvm::PointerType >(c->getArgOperand(1)->getType()) : nullptr;
+    auto* pointer = output ? llvm::dyn_cast< llvm::PointerType >(output->getPointerElementType()) : nullptr;
+    if (!a || !target || c->getFunction() != main || !f->isDeclaration() || f->getName() != "pthread_join" ||
+        (target->name() != "pthread_join" && target->intrinsic_id() != ar::Intrinsic::PthreadJoin) ||
+        !c->use_empty() || !c->getType()->isIntegerTy(32) ||
+        !target->type()->return_type()->is_integer() ||
+        cast< ar::IntegerType >(target->type()->return_type())->bit_width() != 32 ||
+        !load || !load->isSimple() || !load->getType()->isIntegerTy(bits) ||
+        !output || output->getAddressSpace() || !pointer || pointer->getAddressSpace() ||
+        !pointer->getPointerElementType()->isIntegerTy(8) ||
+        !llvm::isa< llvm::ConstantPointerNull >(c->getArgOperand(1)) ||
+        !isa< ar::NullConstant >(a->argument(1)) || !slot || !globals.count(slot) ||
+        !al || al->is_atomic() || al->is_volatile() || unique_def(al->result()) != al ||
+        address_base(al->operand()) != globals.at(slot) ||
+        a->argument(0) != al->result() || !source_integer_binding(al->result(), load)) return refuse(__LINE__);
+    llvm::CallBase* creation = nullptr; llvm::Function* child = nullptr;
+    for (auto& item : creates) for (auto* candidate : item.second) {
+      if (!step()) return refuse(__LINE__);
+      if (candidate->getArgOperand(0) != slot) continue;
+      if (creation || item.second.size() != 1) return refuse(__LINE__);
+      creation = candidate; child = item.first;
+    }
+    if (!creation || creation->getFunction() != c->getFunction() ||
+        load->getFunction() != c->getFunction() || joined_by.count(child)) return refuse(__LINE__);
+    llvm::DominatorTree dt(*c->getFunction());
+    if (!dt.dominates(creation, load) || !dt.dominates(load, c)) return refuse(__LINE__);
+    for (auto* u : slot->users())
+      if (u != creation && u != load && !llvm::isa< llvm::DbgInfoIntrinsic >(u)) return refuse(__LINE__);
+    for (auto* u : load->users()) if (u != c) return refuse(__LINE__);
+    // Close imported address uses too; lowering may insert only exact pointer copies.
+    auto* storage = globals.at(slot);
+    auto* ac = dyn_cast< ar::CallBase >(original(creation));
+    std::vector< ar::Value* > pending{storage}; std::set< ar::Value* > seen;
+    while (!pending.empty()) {
+      auto* value = pending.back(); pending.pop_back();
+      if (!seen.insert(value).second) continue;
+      for (auto& fn : functions) if (fn.second->is_definition())
+        for (auto* b : *fn.second->body()) for (auto* statement : *b) {
+          if (!step()) return refuse(__LINE__);
+          bool uses = false;
+          for (auto it = statement->op_begin(); it != statement->op_end(); ++it) {
+            uses |= *it == value;
+            if (a->has_result() && *it == a->result()) return refuse(__LINE__);
+          }
+          if (!uses || (statement == ac && ac->argument(0) == value) ||
+              (statement == al && al->operand() == value)) continue;
+          auto* copy = dyn_cast< ar::Assignment >(statement);
+          auto* cast = dyn_cast< ar::UnaryOperation >(statement);
+          auto* shift = dyn_cast< ar::PointerShift >(statement);
+          ar::InternalVariable* next = copy ? copy->result() : cast ? cast->result() : shift ? shift->result() : nullptr;
+          if (!next || !next->type()->is_pointer() || unique_def(next) != statement ||
+              (cast && cast->op() != ar::UnaryOperation::Bitcast) ||
+              address_base(next) != storage) return refuse(__LINE__);
+          pending.push_back(next);
+        }
+    }
+    joined_by.emplace(child, c); joins.insert(c); return true;
   }
   bool object(llvm::GlobalVariable* g) {
     auto& layout = main->getParent()->getDataLayout();
@@ -265,7 +334,7 @@ class LockedCreation::Impl {
            (!interval.unlock || !reaches(interval.unlock, p));
   }
   // ponytail: acyclic spawn/CFG graphs, whole scalars and one normal interval
-  // per root/object; helpers, loops and joins need lifecycle certificates.
+  // per root/object; only one closed main/child global-handle join bounds a scope.
   bool build() {
     if (!ctx.opts.enable_thread_modular || ctx.opts.entry_points.size() != 1 ||
         ctx.opts.entry_points.front()->name() != "main" || !ctx.opts.entry_points.front()->has_frontend() ||
@@ -358,6 +427,7 @@ class LockedCreation::Impl {
             if (it != m.intervals.end() && (it->second.lock == c || it->second.unlock == c)) known = true;
           }
           for (auto& item : creates) for (auto* creation : item.second) known |= creation == c;
+          if (!known && target->getName() == "pthread_join") known = join(c);
           if (!known && !terminal(c) && !pure_external(c)) return refuse(__LINE__);
         } else if (auto* local = llvm::dyn_cast< llvm::AllocaInst >(&i)) {
           auto* count = llvm::dyn_cast< llvm::ConstantInt >(local->getArraySize());
@@ -377,6 +447,9 @@ class LockedCreation::Impl {
       }
     }
     for (auto& item : originals) if (!consumed.count(item.first)) return refuse(__LINE__);
+    if (joins.size() > 1) return refuse(__LINE__);
+    if (!joins.empty())
+      for (auto& item : creates) if (item.second.size() != 1) return refuse(__LINE__);
     llvm::DominatorTree parent_dt(*main);
     std::map< llvm::Function*, std::set< unsigned > > birth_held, birth_forever, after_release;
     for (auto* root : roots) {
@@ -417,12 +490,26 @@ class LockedCreation::Impl {
         if (all_after) after_release[root].insert(n);
       }
     }
+    std::map< llvm::Function*, std::set< unsigned > > bounded_main;
+    for (auto* root : spawn_order) {
+      auto joined = joined_by.find(root);
+      if (joined == joined_by.end()) continue;
+      auto* c = creates.at(root).front(); auto* j = joined->second;
+      auto* parent = c->getFunction();
+      llvm::DominatorTree dt(*parent);
+      if (parent != main) return refuse(__LINE__);
+      for (unsigned n : birth_held[root]) {
+        auto interval = mutexes[n].intervals.at(main);
+        if (held(interval, j, dt) &&
+            (!interval.unlock || dt.dominates(j, interval.unlock))) bounded_main[root].insert(n);
+      }
+    }
     for (auto* root : roots) {
       llvm::DominatorTree dt(*root);
       for (auto& b : *root) for (auto& i : b) {
         if (!llvm::isa< llvm::LoadInst >(i) && !llvm::isa< llvm::StoreInst >(i)) continue;
         Phase phase{functions.at(root)->name(), {}, {}, birth_held[root],
-                    birth_forever[root], after_release[root]};
+                    birth_forever[root], after_release[root], bounded_main[root]};
         for (unsigned n = 0; n < mutexes.size(); ++n) {
           auto own = mutexes[n].intervals.find(root);
           if (own != mutexes[n].intervals.end()) {
@@ -446,6 +533,12 @@ class LockedCreation::Impl {
 public:
   explicit Impl(Context& c) : ctx(c) { if (!build()) phases.clear(); }
   unsigned direction(const Phase& a, const Phase& b) const {
+    // In join mode only a real target access makes its successful birth conditional.
+    if (!joins.empty()) {
+      if (a.root == "main" || b.root != functions.at(joined_by.begin()->first)->name()) return 0;
+      for (unsigned n : a.held) if (b.bounded_main.count(n)) return 2 * n + 2;
+      return 0;
+    }
     // A: the parent's access precedes the child's own acquisition.
     if (a.root == "main")
       for (unsigned n : a.held)
@@ -467,6 +560,13 @@ public:
     unsigned proof = direction(*x, *y);
     if (!proof) { std::swap(x, y); proof = direction(*x, *y); }
     if (!proof) return {};
+    unsigned n = (proof - 1) / 2;
+    if (proof % 2 == 0 && !joins.empty() && y->bounded_main.count(n))
+      return {{"safe_reason", "one closed joined child stays inside main's mutex interval"},
+              {"locked_creation_contract", "closed-normal-mutex-creation-v1"},
+              {"mutex", mutexes[n].source->getName().str()},
+              {"relation", "other-holder-outside-parent-joined-child"},
+              {"holder_root", x->root}, {"bounded_root", y->root}};
     return {{"safe_reason", "actual normal-lock intervals and creation chains order accesses"},
             {"locked_creation_contract", "closed-normal-mutex-creation-v1"},
             {"mutex", mutexes[(proof - 1) / 2].source->getName().str()},
