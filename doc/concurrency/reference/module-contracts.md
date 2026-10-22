@@ -173,6 +173,7 @@ rules still require their per-run configuration.
 | `read-read-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
 | `same-unique-thread-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
 | `same-closed-once-v1` | [Closed callbacks](../../../analyzer/include/ikos/analyzer/analysis/execution_engine/closed_once.hpp); once-callbacks and once initialization controls. |
+| `one-shot-barrier-phases-v1` | [Barrier certificate](../../../analyzer/src/analysis/posix_barrier.cpp) and final pair adapter; barrier-phases dual-ABI controls. |
 | `inactive-child-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
 | `joined-right-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
 | `joined-left-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
@@ -204,6 +205,7 @@ rules still require their per-run configuration.
 | `array-slices-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
 | `coverage-readonly-heap-v1` | [Coverage consumer](../../../analyzer/src/checker/data_race.cpp); readonly-heap and bucket graph positive/negative effect controls. |
 | `coverage-bucket-ownership-v1` | [Coverage consumer](../../../analyzer/src/checker/data_race.cpp); readonly-heap and bucket graph positive/negative effect controls. |
+| `effect-barrier-v1` | [Barrier certificate](../../../analyzer/src/analysis/posix_barrier.cpp), numerical opaque effects and final coverage consumer; barrier-phases controls. |
 | `effect-semaphore-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |
 | `effect-constant-output-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |
 | `effect-scalar-scan-v1` | [Effect consumer](../../../analyzer/src/checker/data_race.cpp); pthread-key, runtime-stdio, initialization, semaphore and correctness controls. |

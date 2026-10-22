@@ -41,6 +41,8 @@
  *
  ******************************************************************************/
 
+#include <ikos/analyzer/analysis/posix_barrier.hpp>
+#include <ikos/analyzer/analysis/call_context.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/checker/race_rules.hpp>
 #include <ikos/analyzer/checker/init_publication.hpp>
@@ -660,6 +662,11 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
       }
       if (this->_ctx.concurrent_env.same_closed_once(a.thread_id, b.thread_id)) {
         return PairDecision::exclude(race_rules::Id::SameClosedOnce);
+      }
+      if (a.call_context && a.call_context->empty() &&
+          b.call_context && b.call_context->empty() && this->_ctx.posix_barrier() &&
+          this->_ctx.posix_barrier()->orders(a.stmt, a.thread_id, b.stmt, b.thread_id)) {
+        return PairDecision::exclude(race_rules::Id::BarrierPhases, this->_ctx.posix_barrier()->info());
       }
       // No direct child can be live: this is before create OR after join,
       // never a directional/transitive HB edge or a claim about grandchildren.

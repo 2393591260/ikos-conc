@@ -64,6 +64,7 @@
 #include <ikos/analyzer/analysis/runtime_stdio_frame.hpp>
 #include <ikos/analyzer/analysis/pthread_initialization_frame.hpp>
 #include <ikos/analyzer/analysis/posix_semaphore.hpp>
+#include <ikos/analyzer/analysis/posix_barrier.hpp>
 #include <ikos/analyzer/analysis/bmc/bmc.hpp>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
 #include <ikos/analyzer/analysis/pair_exclusion.hpp>
@@ -1534,6 +1535,12 @@ void DataRaceChecker::check_extern_call_effects(
     return; // undefined / null / asm / data: no side-effect synthesis
   }
   if (!extern_call) {
+    return;
+  }
+  if (this->_ctx.posix_barrier() && this->_ctx.posix_barrier()->effect(call)) {
+    this->consume_library_effect(race_rules::Id::EffectBarrier, call, call_context,
+        JsonDict{{"safe_reason", "sealed opaque GNU barrier control storage"},
+                 {"barrier_effect_contract", "closed-gnu-barrier-effects-v1"}});
     return;
   }
   if (this->_ctx.posix_semaphore() && this->_ctx.posix_semaphore()->effect(call)) {

@@ -228,3 +228,6 @@ add_concurrency_test(execution "${CONCURRENCY_ROOT}/scripts/test_bmc_execution.p
 add_concurrency_test(witness "${CONCURRENCY_ROOT}/scripts/test_svcomp_witness.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(adapter "${CONCURRENCY_ROOT}/scripts/test_svcomp_adapter.py")
+
+add_concurrency_test(barrier-phases "${CONCURRENCY_ROOT}/scripts/test_barrier_phases.py"
+                     --ikos "${CONCURRENCY_IKOS}")

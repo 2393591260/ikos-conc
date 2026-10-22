@@ -76,6 +76,7 @@ class FixpointParameters;
 class RuntimeStdioFrame;
 class PthreadInitializationFrame;
 class PosixSemaphore;
+class PosixBarrier;
 
 // Native storage has no numerical encoding of a thread-instance identity.
 struct NativeHandleArray {
@@ -177,9 +178,11 @@ private:
   friend void configure_runtime_stdio_frame(Context&);
   friend void configure_pthread_initialization_frame(Context&);
   friend void configure_posix_semaphore(Context&);
+  friend void configure_posix_barrier(Context&);
   std::shared_ptr< const RuntimeStdioFrame > _runtime_stdio_frame_certificate;
   std::shared_ptr< const PthreadInitializationFrame > _pthread_initialization_frame;
   std::shared_ptr< const PosixSemaphore > _posix_semaphore;
+  std::shared_ptr< const PosixBarrier > _posix_barrier;
 
 public:
   const std::set< ar::CallBase* >& mutex_effect_certificates() const {
@@ -196,6 +199,9 @@ public:
   }
   const std::shared_ptr< const PthreadInitializationFrame >& pthread_initialization_frame() const {
     return _pthread_initialization_frame;
+  }
+  const std::shared_ptr< const PosixBarrier >& posix_barrier() const {
+    return _posix_barrier;
   }
   const std::shared_ptr< const PosixSemaphore >& posix_semaphore() const {
     return _posix_semaphore;

@@ -18,6 +18,7 @@ enum class Id {
   ReadRead,
   SameUniqueThread,
   SameClosedOnce,
+  BarrierPhases,
   InactiveChild,
   JoinedRight,
   JoinedLeft,
@@ -50,6 +51,7 @@ enum class Id {
   CoverageReadonlyHeap,
   CoverageBucketOwnership,
   EffectSemaphore,
+  EffectBarrier,
   EffectConstantOutput,
   EffectScalarScan,
   EffectTlsSlot,
@@ -84,6 +86,7 @@ inline Contract contract(Id id) {
     case Id::SameUniqueStatement: return {"same-unique-statement-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::ReadRead: return {"read-read-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::SameUniqueThread: return {"same-unique-thread-v1", Role::PairExclusion, Stage::FinalPairs, true};
+    case Id::BarrierPhases: return {"one-shot-barrier-phases-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::SameClosedOnce: return {"same-closed-once-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::InactiveChild: return {"inactive-child-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::JoinedRight: return {"joined-right-v1", Role::PairExclusion, Stage::FinalPairs, true};
@@ -116,6 +119,7 @@ inline Contract contract(Id id) {
     case Id::ArraySlices: return {"array-slices-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::CoverageReadonlyHeap: return {"coverage-readonly-heap-v1", Role::EffectCoverage, Stage::FinalCoverage, true};
     case Id::CoverageBucketOwnership: return {"coverage-bucket-ownership-v1", Role::EffectCoverage, Stage::FinalCoverage, true};
+    case Id::EffectBarrier: return {"effect-barrier-v1", Role::LibraryEffect, Stage::Transfer, true};
     case Id::EffectSemaphore: return {"effect-semaphore-v1", Role::LibraryEffect, Stage::Transfer, true};
     case Id::EffectConstantOutput: return {"effect-constant-output-v1", Role::LibraryEffect, Stage::Transfer, true};
     case Id::EffectScalarScan: return {"effect-scalar-scan-v1", Role::LibraryEffect, Stage::Transfer, true};

@@ -67,6 +67,7 @@
 #include <ikos/analyzer/analysis/runtime_stdio_frame.hpp>
 #include <ikos/analyzer/analysis/pthread_initialization_frame.hpp>
 #include <ikos/analyzer/analysis/posix_semaphore.hpp>
+#include <ikos/analyzer/analysis/posix_barrier.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
 #include <ikos/analyzer/analysis/liveness.hpp>
 #include <ikos/analyzer/analysis/option.hpp>
@@ -2436,6 +2437,34 @@ public:
             this->data().normal().mem_forget_reachable(dest.var(), width);
             auto address = core::IndexableTraits< MemoryLocation* >::index(location);
             this->_ctx.concurrent_env.record_pointer_write(address, pointer.offset(), core::ZNumber(16), false);
+            this->_ctx.concurrent_env.record_privatized_write(
+                core::ConcurrentGlobalEnv::kNoLockPartitionAddr, address,
+                core::machine_int::Interval::top(64, Signed));
+            if (this->_ctx.concurrent_env.has_mutex_value_cell(address))
+              this->_ctx.concurrent_env.invalidate_mutex_values();
+            this->exec_unknown_call(call, false, false, false, false);
+            return;
+          }
+        }
+      }
+    }
+
+    if (this->_ctx.opts.enable_thread_modular && this->_ctx.posix_barrier()) {
+      auto* global = this->_ctx.posix_barrier()->effect(call);
+      if (global) {
+        this->init_global_operands(call);
+        const auto& dest = this->_lit_factory.get_scalar(call->argument(0));
+        if (dest.is_pointer_var()) {
+          auto pointer = this->data().normal().pointer_to_pointer(dest.var());
+          auto offset = pointer.offset().singleton();
+          auto* location = this->_mem_factory.get_global(global);
+          if (offset && offset->is_zero() && pointer.points_to().is_set() &&
+              pointer.points_to().size() == 1 && pointer.points_to().contains(location) &&
+              this->prepare_mem_access(dest)) {
+            auto width = MachineInt(this->_data_layout.pointers.bit_width == 32 ? 20 : 32, this->_data_layout.pointers.bit_width, Unsigned);
+            this->data().normal().mem_forget_reachable(dest.var(), width);
+            auto address = core::IndexableTraits< MemoryLocation* >::index(location);
+            this->_ctx.concurrent_env.record_pointer_write(address, pointer.offset(), core::ZNumber(this->_data_layout.pointers.bit_width == 32 ? 20 : 32), false);
             this->_ctx.concurrent_env.record_privatized_write(
                 core::ConcurrentGlobalEnv::kNoLockPartitionAddr, address,
                 core::machine_int::Interval::top(64, Signed));

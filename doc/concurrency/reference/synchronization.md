@@ -462,3 +462,43 @@ fixpoint. Existing completion and strict coverage checks remain required.
 This SAFE certificate adds no permission to confirm a FALSE execution.
 
 </details>
+
+<a id="one-shot-barrier-phases"></a>
+<details>
+<summary>One-shot GNU barriers — opposite phases with complete participant bounds</summary>
+
+The first subset uses whole global GNU barrier objects, with the i386 20-byte/4-byte
+and LP64 32-byte/8-byte layouts. The source and AR must agree on the actual
+init/wait declaration, object, NULL attributes and literal unsigned capacity.
+The accepted capacity range is 1 through 2147483646, following
+[glibc 2.39 initialization](https://github.com/bminor/glibc/blob/glibc-2.39/nptl/pthread_barrier_init.c).
+This implementation contract supplies successful initialization; portable POSIX
+initialization may fail for additional reasons. A unique entry-block init must
+dominate every main wait and every create. Copies, byte aliases, escapes,
+reinitialization and destruction refuse this subset.
+
+All root CFGs must be acyclic, without helpers, hidden callbacks or additional
+creators. Every main create site executes at most once; multiple creates of the
+same worker count as separate instances. Each root has at most one static wait
+per barrier. Let M be one plus the number of create sites and C the capacity.
+Only C >= M can order opposite phases. A post-wait access can occur only if at
+least C arrivals have occurred; the closed program supplies at most M arrivals.
+Thus every possible instance has arrived before such an access. An access that
+dominates its own wait precedes an access dominated by the other wait's return,
+including instruction order within one block. Both endpoints must bind actual
+source/AR memory instructions and their direct thread roots.
+
+The library-effect certificate covers only opaque barrier storage, retaining
+ordinary shared interference and unknown integer return values (including the
+serial-thread return). It is separate from `one-shot-barrier-phases-v1` pair
+exclusion: capacity below M can have modeled effects without any phase proof.
+Capacity above M only licenses the conditional pair proof, never deletion of
+threads or a completion claim. Pre/pre and post/post accesses remain candidates.
+BMC barrier execution remains unsupported, and neither certificate authorizes
+FALSE, nonnull, pointer validity, join or numerical publication facts.
+
+Run `python3 scripts/test_barrier_phases.py` for dual-ABI, wide-payload and
+broken-premise controls. Dynamic capacities, repeated rounds, loops and helper
+phases need additional checked facts before extending this subset.
+
+</details>

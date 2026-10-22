@@ -49,6 +49,7 @@
 #include <ikos/analyzer/analysis/runtime_stdio_frame.hpp>
 #include <ikos/analyzer/analysis/pthread_initialization_frame.hpp>
 #include <ikos/analyzer/analysis/posix_semaphore.hpp>
+#include <ikos/analyzer/analysis/posix_barrier.hpp>
 #include <ikos/analyzer/analysis/execution_engine/protected_values.hpp>
 #include <ikos/analyzer/analysis/execution_engine/heap_pointer_initialization.hpp>
 #include <ikos/analyzer/analysis/value/abstract_domain.hpp>
@@ -92,6 +93,7 @@ void ThreadModularAnalysis::run() {
   configure_pthread_initialization_frame(_ctx);
   configure_native_thread_handles(_ctx);
   configure_posix_semaphore(_ctx);
+  configure_posix_barrier(_ctx);
 
   // Certify only opaque mutex effects in an independent, conservative run.
   // Its memory, coverage flags, threads and caches never enter the real run.
