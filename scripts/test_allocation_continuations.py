@@ -14,6 +14,7 @@ from svcomp_race_test import classify, VERDICT_SAFE, VERDICT_UNKNOWN
 from ikos_runtime import runtime_command
 
 FIXTURES = {
+    'first-publication.c': tuple(range(22)),
     'heap-fields.c': (0, 1, 4, 5, 15, 16),
     'heap-handoff.c': (0, 1, 2, 4, 6, 7, 8, 9, 13, 14, 16, 22, 28),
     'bucket-list-ownership.c': (0, 1, 5, 9, 15, 20, 21, 25, 28, 49, 53),
@@ -40,6 +41,13 @@ def wrapped(body, variant='abort'):
         insertion = next(i for i, line in enumerate(lines) if line.startswith('struct node {')) + 1
         declarations = 'static struct node fallback;'
         failure = 'return &fallback;'
+    if variant in ('alternate-ingress', 'prefix-loop'):
+        replacement = ('struct cell *p; if (__VERIFIER_nondet_int()) p = head; '
+                       'else p = malloc(sizeof *p);') if variant == 'alternate-ingress' else (
+                       'struct cell *p = malloc(sizeof *p); '
+                       'while (__VERIFIER_nondet_int()) p->datum = 7;')
+        lines = [line.replace('struct cell *p = malloc(sizeof *p);', replacement)
+                 for line in lines]
     lines.insert(insertion, f"""
 {declarations}
 static void *checked_allocate(size_t size) {{
@@ -76,6 +84,10 @@ def main():
                 if args.fixture is None or 'bucket-list-ownership.c' in args.fixture:
                     cases += [('bucket-list-ownership.c', 0, variant)
                               for variant in ('failure-write', 'return-null')]
+                if args.fixture is None or 'first-publication.c' in args.fixture:
+                    cases += [('first-publication.c', 0, variant)
+                              for variant in ('failure-write', 'return-null',
+                                              'alternate-ingress', 'prefix-loop')]
                 for name, case, variant in cases:
                     body = (ROOT / 'analyzer/test/regression/bmc-values' / name).read_text()
                     source = work / 'renamed.c'
@@ -89,12 +101,13 @@ def main():
                                          text=True, timeout=30)
                     assert run.returncode == 0, (name, case, bits, run.stdout, run.stderr)
                     verdict = classify(run.stdout, run.returncode, False)
-                    if (name in ('bucket-list-ownership.c', 'heap-handoff.c') or
+                    if (name in ('bucket-list-ownership.c', 'heap-handoff.c', 'first-publication.c') or
                             (name == 'helper-prefix-fields.c' and case == 0)) and bits == 64:
                         # Dynamic list/handle coverage is still unsupported in LP64;
                         # the unwrapped baseline has the same unresolved effects.
                         assert verdict == VERDICT_UNKNOWN, (name, bits, wide, verdict)
-                    elif case == 0 and variant == 'abort':
+                    elif variant == 'abort' and (case == 0 or
+                            (name == 'first-publication.c' and case in (16, 20))):
                         assert verdict == VERDICT_SAFE, (name, bits, wide, verdict,
                                                         run.stdout, run.stderr)
                     else:

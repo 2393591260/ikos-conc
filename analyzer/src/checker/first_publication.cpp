@@ -231,7 +231,11 @@ class FirstPublication::Impl {
   ar::GlobalVariable* lock = nullptr;
   std::set< ar::Function* > workers, active;
   std::set< ar::GlobalVariable* > concurrent_writes, unlocked_reads;
-  std::map< ar::CallBase*, HeapInitializationDescription > births;
+  struct Birth {
+    HeapInitializationDescription description;
+    std::vector< ar::Statement* > prefix;
+  };
+  std::map< ar::CallBase*, Birth > births;
   std::set< std::pair< ar::CallBase*, CallContext* > > sources;
   std::map< Key, Certificate > certificates;
   std::set< Key > refused;
@@ -320,7 +324,7 @@ class FirstPublication::Impl {
   bool summary(ar::CallBase*,
                CallContext*,
                State&,
-               const HeapInitializationDescription&);
+               const Birth&);
   bool inventory();
   bool closed_function_uses(ar::Function* f);
   void run();
@@ -537,6 +541,9 @@ bool FirstPublication::Impl::inventory() {
       continue;
     if (!closed_function_uses(f))
       return false;
+    // The sole main entry and closed callback uses exclude unused definitions.
+    if (f != main && f->frontend< llvm::Function >()->use_empty())
+      continue;
     for (auto* block : *f->body())
       for (auto* statement : *block) {
         if (!spend())
@@ -556,12 +563,42 @@ bool FirstPublication::Impl::inventory() {
           auto* count = call->num_arguments() == 1
                             ? dyn_cast< ar::IntegerConstant >(call->argument(0))
                             : nullptr;
-          HeapInitializationDescription description;
+          Birth birth;
           if (!count || count->value().to_z_number() != extent ||
-              !prove_heap_initialization_prefix(call, link, ctx, &description) ||
-              description.completion->parent() != call->parent())
+              !prove_heap_initialization_prefix(
+                  call, link, ctx, &birth.description))
             return fail("incomplete birth prefix");
-          births.emplace(call, std::move(description));
+          auto* cursor = call->parent();
+          std::set< ar::BasicBlock* > seen;
+          bool started = false, completed = false;
+          while (cursor && seen.insert(cursor).second && !completed) {
+            for (auto* part : *cursor) {
+              if (!spend())
+                return false;
+              started |= part == call;
+              if (!started)
+                continue;
+              birth.prefix.push_back(part);
+              if (part == birth.description.completion) {
+                completed = true;
+                break;
+              }
+            }
+            if (completed)
+              break;
+            ar::Comparison* guard = nullptr;
+            auto* next = heap_initialization_successor(cursor, guard);
+            if (!next)
+              break;
+            auto pred = next->predecessor_begin();
+            if (pred == next->predecessor_end() || *pred++ != cursor ||
+                pred != next->predecessor_end())
+              return fail("birth prefix alternate ingress");
+            cursor = next;
+          }
+          if (!completed)
+            return fail("birth prefix is not a finite continuation");
+          births.emplace(call, std::move(birth));
         } else if (ctx.native_handle_effect_certificates().count(call)) {
           if (call->num_arguments() != 4 || call->code() != main->body() ||
               !isa< ar::NullConstant >(call->argument(1)) ||
@@ -601,21 +638,15 @@ bool FirstPublication::Impl::summary(
     ar::CallBase* allocation,
     CallContext* cc,
     State& state,
-    const HeapInitializationDescription& description) {
+    const Birth& birth) {
+  const auto& description = birth.description;
   if (state.concurrent && !description.relays.empty())
     return fail("concurrent startup relay");
   sources.insert({allocation, cc});
-  bool started = false;
-  for (auto* statement : *allocation->parent()) {
-    if (statement == allocation)
-      started = true;
-    if (!started)
-      continue;
+  // Kill the whole proven prefix before importing its completed aliases.
+  for (auto* statement : birth.prefix)
     if (auto* result = statement->result_or_null())
       state.pointers.erase(result);
-    if (statement == description.completion)
-      break;
-  }
   for (const auto& alias : description.aliases)
     state.pointers[alias.first] = {Kind::Good, nullptr, alias.second};
   for (const auto& write : description.writes) {
@@ -859,21 +890,22 @@ bool FirstPublication::Impl::function(ar::Function* f,
     pending.pop_front();
     State current = entries.at(block);
     bool terminal = false;
-    ar::Statement* skip_until = nullptr;
-    for (auto* statement : *block) {
+    auto cursor = block->begin();
+    while (cursor != block->end()) {
+      auto* statement = *cursor++;
       if (!spend())
         return false;
-      if (skip_until) {
-        if (statement == skip_until)
-          skip_until = nullptr;
-        continue;
-      }
       if (auto* call = dyn_cast< ar::CallBase >(statement)) {
         auto birth = births.find(call);
         if (birth != births.end()) {
           if (!summary(call, cc, current, birth->second))
             return false;
-          skip_until = birth->second.completion;
+          // Single-entry continuations are consumed atomically, never exposing
+          // aliases from future blocks to an intermediate fixed-point state.
+          auto* completion = birth->second.description.completion;
+          block = completion->parent();
+          cursor = std::find(block->begin(), block->end(), completion);
+          ++cursor;
           continue;
         }
         if (abort_api(call) || constant_assertion_effect(call)) {
@@ -913,8 +945,6 @@ bool FirstPublication::Impl::function(ar::Function* f,
         break;
       }
     }
-    if (skip_until)
-      return fail("birth completion missing");
     if (terminal)
       continue;
     for (auto it = block->successor_begin(); it != block->successor_end();

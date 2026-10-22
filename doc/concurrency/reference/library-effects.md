@@ -97,8 +97,11 @@ unreachable. Unconditional edges are also followed; loops and other branches are
 refused. The failure edge is retained in the program and cannot contain writes,
 reads, calls with other effects, or a continuing return. This proof grants no
 pointer validity or non-NULL fact and cannot authorize counterexample confirmation.
-Consumers that summarize an entire prefix atomically, such as the first-publication
-pass, retain their same-block boundary.
+The first-publication pass consumes a complete prefix atomically across these
+continuations only when it is finite and every continuing block has exactly its
+preceding block as predecessor. It clears all skipped result bindings before
+installing completed aliases and resumes after the real initialization statement.
+Alternate entries and prefix cycles refuse this summary.
 
 The closed bucket/list certificate reuses this guard proof before any worker
 creation. It can evaluate the exact pending allocation base against NULL only

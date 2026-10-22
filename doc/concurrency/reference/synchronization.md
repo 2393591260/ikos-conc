@@ -85,7 +85,12 @@ completion fact nor a BMC synchronization shortcut.
 The race checker can independently certify a finite publication protocol for
 heap records with one pointer link and scalar payload. A closed allocation
 prefix binds initialization stores to the actual helper call frame and installs
-an initialized-pointer fact only at completion. Every subsequent root/link
+an initialized-pointer fact only at completion. An unused native definition is
+excluded from birth inventory only under the sole main entry and closed
+function/callback-use contract. A prefix may cross the certified pure-abort
+allocation check on a finite, single-entry continuation; all intermediate
+definitions are cleared before importing its completed aliases. Other branches,
+alternate ingress and loops refuse that summary. Every subsequent root/link
 publication must store NULL or an initialized pointer under the same concrete
 normal mutex; every link acquisition requires that mutex. Immutable startup
 roots may be acquired without it only after all possible root writers have been
