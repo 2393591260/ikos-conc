@@ -146,6 +146,15 @@ class WitnessTests(unittest.TestCase):
             create["column"], self.source.read_text().splitlines()[7].rindex(")") + 1
         )
 
+    def test_witness_version_matches_entry(self):
+        witness = wrapper.build_witness(
+            str(self.source), self.pair(), "ILP32", str(self.ikos)
+        )
+        version = subprocess.check_output(
+            [str(self.ikos), "--version"], text=True
+        ).splitlines()[0].split()[-1]
+        self.assertEqual(witness[0]["metadata"]["producer"]["version"], version)
+
     def test_main_child(self):
         pair = self.pair()
         c = pair["counterexample"]
