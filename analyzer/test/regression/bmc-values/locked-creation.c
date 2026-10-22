@@ -22,7 +22,101 @@ static pthread_t first, second;
 #if CASE == 18
 __attribute__((noinline)) static void helper(void) { ++payload; }
 #endif
-static void *unlocked(void *arg) { (void)arg; ++payload; return 0; }
+static void *unlocked(void *arg) {
+  (void)arg;
+#if CASE == 47
+  if (payload) abort();
+#else
+  ++payload;
+#endif
+  return 0;
+}
+#if CASE >= 30
+static pthread_t third, fourth;
+static void *middle(void *arg) {
+  (void)arg;
+  pthread_create(&third, 0, unlocked, 0);
+  return 0;
+}
+static void *bypass(void *arg) {
+  (void)arg;
+#if CASE == 47
+  pthread_mutex_lock(&gate);
+#endif
+  pthread_create(&fourth, 0, unlocked, 0);
+#if CASE == 47
+  pthread_mutex_unlock(&gate);
+#endif
+  return 0;
+}
+static void *starter(void *arg) {
+  (void)arg;
+#if CASE == 31
+  pthread_create(&second, 0, unlocked, 0);
+#endif
+#if CASE == 35
+  int take = __VERIFIER_nondet_int();
+  if (take)
+#endif
+#if CASE == 41
+  pthread_mutex_lock(&other);
+#else
+  pthread_mutex_lock(&gate);
+#endif
+#if CASE != 31 && CASE != 32
+# if CASE == 37
+  pthread_create(&second, 0, middle, 0);
+# elif CASE == 39
+  pthread_create(&second, 0, starter, 0);
+# else
+  pthread_create(&second, 0, unlocked, 0);
+# endif
+#endif
+#if CASE == 33
+  pthread_create(&fourth, 0, unlocked, 0);
+#endif
+#if CASE == 35
+  if (take)
+#endif
+#if CASE == 41
+  pthread_mutex_unlock(&other);
+#else
+  pthread_mutex_unlock(&gate);
+#endif
+#if CASE == 32
+  pthread_create(&second, 0, unlocked, 0);
+#elif CASE == 39 || CASE == 45
+  ++payload;
+#endif
+  return 0;
+}
+int main(void) {
+#if CASE == 38
+  pthread_create(&third, 0, unlocked, 0);
+#elif CASE == 44
+  pthread_create(&third, 0, starter, 0);
+#endif
+  pthread_mutex_lock(&gate);
+  pthread_create(&first, 0, starter, 0);
+#if CASE == 47
+  pthread_create(&third, 0, bypass, 0);
+#endif
+#if CASE == 40
+  pthread_create(&third, 0, unlocked, 0);
+#endif
+#if CASE == 34
+  pthread_mutex_unlock(&gate);
+#endif
+  ++payload;
+#if CASE != 34 && CASE != 46
+  pthread_mutex_unlock(&gate);
+#endif
+#if CASE == 36
+  pthread_create(&third, 0, bypass, 0);
+#endif
+  return 0;
+}
+#else
 static void *worker(void *arg) {
   (void)arg;
 #if CASE == 19
@@ -123,3 +217,5 @@ int main(void) {
 #endif
   return 0;
 }
+
+#endif

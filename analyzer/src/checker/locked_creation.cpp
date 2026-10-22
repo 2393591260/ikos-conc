@@ -6,6 +6,7 @@
 #include <ikos/analyzer/util/log.hpp>
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Dominators.h>
+#include <algorithm>
 #include <functional>
 #include <set>
 
@@ -28,7 +29,7 @@ class LockedCreation::Impl {
   std::vector< Mutex > mutexes;
   struct Phase {
     std::string root;
-    std::set< unsigned > held, post_lock, parent_held, parent_forever;
+    std::set< unsigned > held, post_lock, parent_held, parent_forever, after_release;
   };
   std::map< ar::Statement*, Phase > phases;
   bool refuse(unsigned line) const {
@@ -149,7 +150,7 @@ class LockedCreation::Impl {
         t->name() != "pthread_create" || !c->getType()->isIntegerTy(32) ||
         !t->type()->return_type()->is_integer() ||
         cast< ar::IntegerType >(t->type()->return_type())->bit_width() != 32 ||
-        c->arg_size() != 4 || !c->use_empty() || c->getFunction() != main ||
+        c->arg_size() != 4 || !c->use_empty() ||
         !isa< ar::NullConstant >(a->argument(1)) || !isa< ar::NullConstant >(a->argument(3)) ||
         !llvm::isa< llvm::ConstantPointerNull >(c->getArgOperand(1)) ||
         !llvm::isa< llvm::ConstantPointerNull >(c->getArgOperand(3))) return refuse(__LINE__);
@@ -263,8 +264,8 @@ class LockedCreation::Impl {
     return interval.lock && dt.dominates(interval.lock, p) &&
            (!interval.unlock || !reaches(interval.unlock, p));
   }
-  // ponytail: direct DAG roots, whole scalars and one normal-lock interval per
-  // root/object; helpers, loops and joins need contextual lifecycle certificates.
+  // ponytail: acyclic spawn/CFG graphs, whole scalars and one normal interval
+  // per root/object; helpers, loops and joins need lifecycle certificates.
   bool build() {
     if (!ctx.opts.enable_thread_modular || ctx.opts.entry_points.size() != 1 ||
         ctx.opts.entry_points.front()->name() != "main" || !ctx.opts.entry_points.front()->has_frontend() ||
@@ -300,11 +301,25 @@ class LockedCreation::Impl {
       }
     }
     roots.insert(main);
-    for (auto& b : *main) for (auto& i : b) {
+    for (auto& source : module) for (auto& b : source) for (auto& i : b) {
       auto* c = llvm::dyn_cast< llvm::CallBase >(&i); auto* f = c ? callee(c) : nullptr;
       if (f && f->getName() == "pthread_create" && !create(c)) return refuse(__LINE__);
     }
     if (creates.empty()) return refuse(__LINE__);
+    std::vector< llvm::Function* > spawn_order;
+    std::set< llvm::Function* > active, done;
+    std::function< bool(llvm::Function*) > visit = [&](llvm::Function* parent) {
+      if (!step() || active.count(parent)) return false;
+      if (done.count(parent)) return true;
+      active.insert(parent);
+      for (auto& child : creates) for (auto* c : child.second) {
+        if (!step()) return false;
+        if (c->getFunction() == parent && !visit(child.first)) return false;
+      }
+      active.erase(parent); done.insert(parent); spawn_order.push_back(parent); return true;
+    };
+    if (!visit(main) || done.size() != roots.size()) return refuse(__LINE__);
+    std::reverse(spawn_order.begin(), spawn_order.end());
     std::set< llvm::GlobalVariable* > mutex_objects;
     for (auto& f : module) for (auto& b : f) for (auto& i : b) {
       auto* c = llvm::dyn_cast< llvm::CallBase >(&i); auto* t = c ? callee(c) : nullptr;
@@ -323,8 +338,9 @@ class LockedCreation::Impl {
       if (!roots.count(&f) || !functions.count(&f) || !acyclic(&f)) return refuse(__LINE__);
       for (auto* u : f.users()) {
         auto* c = llvm::dyn_cast< llvm::CallBase >(u);
-        if (!c || c->getFunction() != main || c->arg_size() != 4 ||
-            c->getArgOperand(2) != &f || !creates.count(&f)) return refuse(__LINE__);
+        if (!c || c->arg_size() != 4 || c->getArgOperand(2) != &f ||
+            !creates.count(&f) ||
+            std::find(creates.at(&f).begin(), creates.at(&f).end(), c) == creates.at(&f).end()) return refuse(__LINE__);
       }
       for (auto& b : f) for (auto& i : b) {
         if (!step()) return refuse(__LINE__);
@@ -362,27 +378,56 @@ class LockedCreation::Impl {
     }
     for (auto& item : originals) if (!consumed.count(item.first)) return refuse(__LINE__);
     llvm::DominatorTree parent_dt(*main);
+    std::map< llvm::Function*, std::set< unsigned > > birth_held, birth_forever, after_release;
+    for (auto* root : roots) {
+      if (root == main) continue;
+      for (unsigned n = 0; n < mutexes.size(); ++n) {
+        auto parent = mutexes[n].intervals.find(main);
+        if (parent == mutexes[n].intervals.end()) continue;
+        bool all_held = true, forever = true;
+        for (auto* c : creates.at(root)) {
+          if (!step()) return refuse(__LINE__);
+          if (c->getFunction() != main) { all_held = false; break; }
+          all_held &= held(parent->second, c, parent_dt);
+          if (parent->second.unlock && reaches(c, parent->second.unlock)) forever = false;
+        }
+        if (all_held) {
+          birth_held[root].insert(n);
+          if (forever) birth_forever[root].insert(n);
+        }
+      }
+    }
+    // A child starts after its actual create; every possible creator must agree.
+    for (auto* root : spawn_order) {
+      if (root == main) continue;
+      for (unsigned n = 0; n < mutexes.size(); ++n) {
+        bool all_after = true;
+        for (auto* c : creates.at(root)) {
+          if (!step()) return refuse(__LINE__);
+          auto* parent = c->getFunction();
+          bool after = after_release[parent].count(n);
+          if (!after && parent != main && birth_held[parent].count(n)) {
+            auto own = mutexes[n].intervals.find(parent);
+            llvm::DominatorTree dt(*parent);
+            after = own != mutexes[n].intervals.end() && own->second.lock &&
+                    dt.dominates(own->second.lock, c);
+          }
+          all_after &= after;
+        }
+        if (all_after) after_release[root].insert(n);
+      }
+    }
     for (auto* root : roots) {
       llvm::DominatorTree dt(*root);
       for (auto& b : *root) for (auto& i : b) {
         if (!llvm::isa< llvm::LoadInst >(i) && !llvm::isa< llvm::StoreInst >(i)) continue;
-        Phase phase{functions.at(root)->name(), {}, {}, {}, {}};
+        Phase phase{functions.at(root)->name(), {}, {}, birth_held[root],
+                    birth_forever[root], after_release[root]};
         for (unsigned n = 0; n < mutexes.size(); ++n) {
-          auto& m = mutexes[n];
-          auto own = m.intervals.find(root), parent = m.intervals.find(main);
-          if (own != m.intervals.end()) {
+          auto own = mutexes[n].intervals.find(root);
+          if (own != mutexes[n].intervals.end()) {
             if (held(own->second, &i, dt)) phase.held.insert(n);
             if (own->second.lock && dt.dominates(own->second.lock, &i)) phase.post_lock.insert(n);
-          }
-          if (root == main || parent == m.intervals.end()) continue;
-          bool all_held = true, forever = true;
-          for (auto* c : creates.at(root)) {
-            all_held &= held(parent->second, c, parent_dt);
-            if (parent->second.unlock && reaches(c, parent->second.unlock)) forever = false;
-          }
-          if (all_held) {
-            phase.parent_held.insert(n);
-            if (forever) phase.parent_forever.insert(n);
           }
         }
         phases.emplace(original(&i), std::move(phase));
@@ -404,7 +449,8 @@ public:
     // A: the parent's access precedes the child's own acquisition.
     if (a.root == "main")
       for (unsigned n : a.held)
-        if (b.parent_held.count(n) && b.post_lock.count(n)) return 2 * n + 1;
+        if ((b.parent_held.count(n) && b.post_lock.count(n)) ||
+            b.after_release.count(n)) return 2 * n + 1;
     // B: main never releases after create; another actual holder precedes child.
     if (a.root != "main")
       for (unsigned n : a.held)
@@ -421,10 +467,10 @@ public:
     unsigned proof = direction(*x, *y);
     if (!proof) { std::swap(x, y); proof = direction(*x, *y); }
     if (!proof) return {};
-    return {{"safe_reason", "actual normal-lock intervals order direct creation accesses"},
+    return {{"safe_reason", "actual normal-lock intervals and creation chains order accesses"},
             {"locked_creation_contract", "closed-normal-mutex-creation-v1"},
             {"mutex", mutexes[(proof - 1) / 2].source->getName().str()},
-            {"relation", proof % 2 ? "parent-held-before-child-acquisition" : "other-holder-before-child-created-under-retained-lock"},
+            {"relation", proof % 2 ? "parent-held-before-descendant-acquisition-chain" : "other-holder-before-child-created-under-retained-lock"},
             {"before_root", x->root}, {"after_root", y->root}};
   }
 };

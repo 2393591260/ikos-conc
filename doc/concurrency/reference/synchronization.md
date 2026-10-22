@@ -35,8 +35,8 @@ creates; no thread-count bound, successful completion or join fact is inferred.
 <details>
 <summary>Creation inside a normal mutex interval — actual ordering without inherited locks</summary>
 
-`locked-creation-v1` is an independent final access-pair proof for closed direct
-main-created roots. Every root CFG is acyclic, and each root has at most one
+`locked-creation-v1` is an independent final access-pair proof for closed roots
+in an acyclic creation graph from main. Every root CFG is acyclic, and each root has at most one
 lock and one unlock per object; any unlock must be dominated by its own lock.
 GNU Linux i386 24-byte/4-byte and LP64 40-byte/8-byte mutex objects must have
 matching whole-zero source/AR initialization and closed actual lock/unlock uses.
@@ -47,7 +47,12 @@ not an assumption about arbitrary POSIX DEFAULT or recursive mutexes.
 Two separate relations may exclude a pair. First, an access by main in the
 same held interval as **all** creates of a child entry precedes a child access
 dominated by that child's own acquisition of the same mutex. The child access
-may follow its unlock. Second, if main holds that mutex at all those creates
+may follow its unlock. This proved order may continue through further actual
+creates: a descendant starts after main's release only when every possible
+creation source is already ordered after that release. Facts are intersected
+over all creators in creation-graph order. Creating before the acquisition,
+another unproved creator or a creation cycle refuses this extension. No lock
+ownership transfers to a child. Second, if main holds that mutex at all those creates
 and has no reachable later unlock, a different root's access while actually
 holding the mutex precedes the created child's accesses. That other root must
 not be main: main's own accesses can still race with its child. A previously
@@ -56,7 +61,7 @@ released lock cannot supply the second relation.
 Instruction order and every creation source are checked. Parents transfer no
 lock ownership to children, and two unprotected children remain concurrent.
 Whole scalar memory effects, source/AR call and endpoint bindings, native ABI,
-and the absence of helpers, callbacks, unknown effects, joins and extra creators
+and the absence of helpers, callbacks, unknown effects, joins and unclosed creators
 close this initial subset. Missing premises retain the candidate. This rule
 grants no library effects, coverage, completion or FALSE confirmation rights.
 
