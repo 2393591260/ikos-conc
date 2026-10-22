@@ -16,6 +16,16 @@ slot. Pointer publication, an escaped slot address, unknown call effects, pointe
 graphs, ordinary calls to the entry, and a reachable use after `free` prevent the
 certificate. It never treats the static allocation site as a unique object.
 
+A checked wrapper may forward the count and element size unchanged to genuine
+calloc, abort on NULL without other effects, and return the original allocation
+on the continuing edge. The proof checks that complete native body and matching
+AR formals, with one direct caller of the wrapper. Privacy is then checked at
+that actual worker call using its count, size, uses and lifetime. Consumption
+still binds the inner allocation and the exact wrapper child call context.
+Changed arguments, foreign returns, memory effects, extra callers or an
+unclosed body retain the conservative fallback. This is a pair certificate,
+not an allocation transfer model or a new non-NULL/validity fact.
+
 Every certified access needs its full byte range within the successful
 allocation. Constant offsets are checked mathematically. The supported dynamic
 case uses the same defined count as [the calloc allocation](https://pubs.opengroup.org/onlinepubs/9799919799/functions/calloc.html), a zero-based loop counter, a sole

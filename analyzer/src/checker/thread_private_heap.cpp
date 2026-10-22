@@ -63,6 +63,7 @@ struct Offset {
 struct Certificate {
   ar::CallBase* allocation = nullptr;
   ar::Function* worker = nullptr;
+  ar::CallBase* wrapper = nullptr;
   std::set< llvm::Instruction* > accesses;
 };
 } // namespace
@@ -206,6 +207,69 @@ class ThreadPrivateHeap::Impl {
     return offset.stride == stride && width <= stride &&
            counted_index(offset.index, allocation->getArgOperand(0), access, loops, dom);
   }
+  // Project only a closed forwarding body; its name grants no allocation rights.
+  ar::CallBase* calloc_caller(ar::CallBase* allocation) {
+    auto* function = allocation->code()->function();
+    auto* native = allocation->has_frontend()
+        ? llvm::dyn_cast< llvm::CallInst >(allocation->frontend< llvm::Value >()) : nullptr;
+    auto* body = native ? native->getFunction() : nullptr;
+    if (!body || !function->has_frontend() ||
+        function->frontend< llvm::Value >() != body ||
+        body->size() != 3 || body->arg_size() != 2 ||
+        function->num_parameters() != 2 || !allocation->has_result() ||
+        body->getReturnType() != native->getType()) return nullptr;
+    for (unsigned i = 0; i < 2; ++i)
+      if (native->getArgOperand(i) != body->getArg(i) ||
+          allocation->argument(i) != function->param(i)) return nullptr;
+    auto& entry = body->getEntryBlock();
+    auto* branch = llvm::dyn_cast< llvm::BranchInst >(entry.getTerminator());
+    auto* compare = branch && branch->isConditional()
+        ? llvm::dyn_cast< llvm::ICmpInst >(branch->getCondition()) : nullptr;
+    if (native->getParent() != &entry || !compare || !compare->isEquality() ||
+        !((compare->getOperand(0) == native &&
+           llvm::isa< llvm::ConstantPointerNull >(compare->getOperand(1))) ||
+          (compare->getOperand(1) == native &&
+           llvm::isa< llvm::ConstantPointerNull >(compare->getOperand(0)))))
+      return nullptr;
+    for (auto& instruction : entry) {
+      if (!spend()) return nullptr;
+      if (&instruction == native || &instruction == compare ||
+          &instruction == branch || llvm::isa< llvm::DbgInfoIntrinsic >(instruction))
+        continue;
+      auto* call = llvm::dyn_cast< llvm::CallBase >(&instruction);
+      if (!call || !call->use_empty() || !call->getMetadata("ikos.freeze_uninit") ||
+          !nondet(call, callee(call))) return nullptr;
+    }
+    auto* failure = branch->getSuccessor(compare->getPredicate() == llvm::CmpInst::ICMP_EQ ? 0 : 1);
+    auto* success = branch->getSuccessor(compare->getPredicate() == llvm::CmpInst::ICMP_EQ ? 1 : 0);
+    if (failure == success || failure == &entry || success == &entry ||
+        failure->size() != 2 || success->size() != 1) return nullptr;
+    auto* stop = llvm::dyn_cast< llvm::CallBase >(&failure->front());
+    auto* stop_api = stop ? callee(stop) : nullptr;
+    auto* ar_stop = stop && calls.count(stop) ? calls.at(stop) : nullptr;
+    auto* ar_stop_api = ar_stop ? native_handle_callee(ar_stop) : nullptr;
+    if (!stop || !plain_call(stop, stop_api) || !stop_api->isDeclaration() ||
+        stop_api->getName() != "abort" || !stop->getType()->isVoidTy() ||
+        stop->arg_size() != 0 || !ar_stop_api ||
+        ar_stop_api->intrinsic_id() != ar::Intrinsic::LibcAbort ||
+        !llvm::isa< llvm::UnreachableInst >(failure->getTerminator()))
+      return nullptr;
+    auto* ret = llvm::dyn_cast< llvm::ReturnInst >(success->getTerminator());
+    if (!ret || ret->getReturnValue() != native) return nullptr;
+    llvm::CallBase* caller = nullptr;
+    for (auto* use : body->users()) {
+      auto* call = llvm::dyn_cast< llvm::CallBase >(use);
+      if (!spend() || caller || !call || callee(call) != body ||
+          !plain_call(call, body)) return nullptr;
+      caller = call;
+    }
+    auto* outer = caller && calls.count(caller) ? calls.at(caller) : nullptr;
+    auto* target = outer ? native_handle_callee(outer) : nullptr;
+    if (!target || target != function || !outer->has_result() ||
+        outer->num_arguments() != 2 || outer->result()->type() != allocation->result()->type())
+      return nullptr;
+    return outer;
+  }
   Certificate certify(ar::CallBase* ar_allocation) {
     Certificate result;
     auto* allocation = ar_allocation->has_frontend()
@@ -216,12 +280,20 @@ class ThreadPrivateHeap::Impl {
         !plain_call(allocation, api) || !api->isDeclaration() || api->getName() != "calloc" ||
         allocation->arg_size() != 2 || ar_allocation->num_arguments() != 2 ||
         !calls.count(allocation) || calls.at(allocation) != ar_allocation ||
-        !same_bits(ar_allocation->argument(0), allocation->getArgOperand(0)) ||
-        !same_bits(ar_allocation->argument(1), allocation->getArgOperand(1)) ||
         !api->getReturnType()->isPointerTy() ||
         !api->getFunctionType()->getParamType(0)->isIntegerTy(32) ||
         !api->getFunctionType()->getParamType(1)->isIntegerTy(32) ||
         may_follow(allocation, allocation)) return result;
+    auto* actual_allocation = allocation;
+    auto* site = ar_allocation;
+    if (auto* outer = calloc_caller(ar_allocation)) {
+      result.wrapper = outer;
+      site = outer;
+      allocation = llvm::cast< llvm::CallBase >(outer->frontend< llvm::Value >());
+    }
+    if (!same_bits(site->argument(0), allocation->getArgOperand(0)) ||
+        !same_bits(site->argument(1), allocation->getArgOperand(1)) ||
+        may_follow(allocation, allocation)) return {};
     auto* f = allocation->getFunction();
     auto* count = allocation->getArgOperand(0);
     auto* source = llvm::dyn_cast< llvm::CallBase >(count);
@@ -236,7 +308,7 @@ class ThreadPrivateHeap::Impl {
         target.getEnvironment() != llvm::Triple::GNU ||
         !mutex_effect_pointer_representations_closed(*f->getParent()) || !entry_uses(f)) return result;
     std::set< llvm::Function* > active, done;
-    if (!effects_closed(f, allocation, active, done)) return result;
+    if (!effects_closed(f, actual_allocation, active, done)) return {};
     llvm::DominatorTree dom(*f); llvm::LoopInfo loops(dom);
     const auto& layout = f->getParent()->getDataLayout();
     std::map< llvm::Value*, Offset > offsets{{allocation, {}}};
@@ -544,7 +616,12 @@ class ThreadPrivateHeap::Impl {
       if (!heap || it == certificates.end() || !it->second.allocation ||
           !it->second.accesses.count(source) ||
           record.thread_id != record.stmt->code()->function()->name()) return false;
-      if (auto* worker = it->second.worker) {
+      if (auto* wrapper = it->second.wrapper) {
+        if (record.stmt->code() != wrapper->code() || !record.call_context ||
+            !record.call_context->empty() ||
+            heap->context() != ctx.call_context_factory->get_context(record.call_context, wrapper))
+          return false;
+      } else if (auto* worker = it->second.worker) {
         if (record.stmt->code() != worker->body() || !record.call_context || !record.call_context->empty() ||
             !heap->context() || !heap->context()->empty()) return false;
       } else if (heap->context() != record.call_context || heap->call()->code() != record.stmt->code()) return false;
