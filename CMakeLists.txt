@@ -41,7 +41,8 @@
 cmake_minimum_required(VERSION 3.4.3 FATAL_ERROR)
 
 project(ikos)
-set(PACKAGE_VERSION "3.7")
+# IKOS-ConC release number, independent of the upstream IKOS version.
+set(PACKAGE_VERSION "1.0")
 
 #
 # Build settings

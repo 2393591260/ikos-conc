@@ -4,6 +4,10 @@ IKOS-ConC analyzes data races in concurrent C programs. It extends NASA IKOS
 with thread-modular abstract interpretation and bounded SMT confirmation of
 remaining race candidates. Its competition entry targets `no-data-race`.
 
+IKOS-ConC uses independent release numbering, starting at **1.0**. Earlier
+archives reported inherited IKOS 3.x version numbers; use the entry point's
+`--version` and `BUILD-INFO.json` to identify the actual archive.
+
 - [Install and run](#install-and-run): start here.
 - [Concurrent analysis](doc/CONCURRENCY.md): modes, verdicts, supported boundaries,
   witnesses, and architecture.
