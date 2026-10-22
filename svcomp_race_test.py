@@ -52,6 +52,7 @@ CONCURRENCY_DIRS = [
     "pthread-C-DAC", "pthread-divine", "pthread-nondet", "goblint-regression",
     "pthread-deagle", "pthread-race-challenges", "pthread-memsafety",
     "libvsync", "pthread-theta", "pthread-wmm", "weaver",
+    "pthread-once", "pthread-barrier", "pthread-locked-creation",
 ]
 
 

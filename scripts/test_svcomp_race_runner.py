@@ -104,6 +104,28 @@ class RunnerTests(unittest.TestCase):
         return code, json.loads((destination / "summary.json").read_text()), json.loads(
             (destination / "results.json").read_text())
 
+    def test_current_concurrency_families_are_collected(self):
+        expected_tasks = {"c/pthread/original.yml"}
+        self.task("original", expected="true", output="The program is SAFE",
+                  report=protocol_report("SAFE", pairs=0))
+        for directory in ("pthread-once", "pthread-barrier", "pthread-locked-creation"):
+            source = self.task("new", expected="true", output="The program is SAFE",
+                               report=protocol_report("SAFE", pairs=0))
+            destination = self.bench / "c" / directory
+            destination.mkdir()
+            source.rename(destination / source.name)
+            task = source.with_suffix(".yml")
+            task.write_text(task.read_text().replace("ILP32", "LP64"))
+            task.rename(destination / task.name)
+            expected_tasks.add(f"c/{directory}/new.yml")
+        code, summary, rows = self.run_evidence()
+        self.assertEqual(code, 0)
+        self.assertEqual({r["task"] for r in rows}, expected_tasks)
+        self.assertEqual(summary["tasks_planned"], 4)
+        self.assertEqual(summary["tasks_collected"], 4)
+        self.assertTrue(summary["complete"])
+        self.assertEqual(sum(r["data_model"] == "LP64" for r in rows), 3)
+
     def selected_report(self):
         return dict(protocol_report('FALSE', pairs=1), reports=[{"info": {}}, {"status": 2, "statements": [23], "info": {
             "bmc_result": {"status": "CONFIRMED"},
