@@ -189,6 +189,12 @@ A success at zero is a nonempty reservation; a transaction without a Store must
 have a provably empty processing loop. Later workers see an arbitrary counter
 in the inductive range, rather than the first worker's startup value.
 
+Function/callback address uses and external effects remain closed. A non-entry
+native definition with no uses is omitted consistently from allocation selection,
+effect bindings and instruction consumption; an escaped or actually called
+definition still participates. Thus a retained, unused allocator wrapper cannot
+invalidate the executable startup proof.
+
 For a supported natural loop, the checker proves the iterator invariant at
 entry, checks an arbitrary iteration and its backedge, and checks every full
 element access against the owning half-open slice. It does not enumerate array

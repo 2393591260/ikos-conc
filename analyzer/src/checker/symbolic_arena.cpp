@@ -238,6 +238,7 @@ class SymbolicArenaReservation::Impl {
   }
   bool choose() {
     for (auto& f : *main->getParent())
+      if (&f == main || !f.use_empty())
       for (auto& b : f)
         for (auto& i : b) {
           auto* c = llvm::dyn_cast< llvm::CallBase >(&i);
@@ -259,6 +260,7 @@ class SymbolicArenaReservation::Impl {
     if (!allocation)
       return false;
     for (auto& f : *main->getParent())
+      if (&f == main || !f.use_empty())
       for (auto& b : f)
         for (auto& i : b)
           if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
@@ -433,6 +435,9 @@ class SymbolicArenaReservation::Impl {
             return false;
         }
       }
+      // Entry and all callback/function uses are closed before omitting a body.
+      if (&f != main && f.use_empty())
+        continue;
       for (auto& b : f)
         for (auto& i : b) {
           spend();
@@ -1022,6 +1027,8 @@ public:
         continue;
       auto* native = f->frontend< llvm::Function >();
       functions.emplace(native, f);
+      if (native != main && native->use_empty())
+        continue;
       for (auto* b : *f->body())
         for (auto* s : *b) {
           if (isa< ar::CallBase >(s) || isa< ar::Load >(s) ||

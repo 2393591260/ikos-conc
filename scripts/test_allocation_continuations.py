@@ -15,6 +15,7 @@ from svcomp_race_test import classify, VERDICT_SAFE, VERDICT_UNKNOWN
 from ikos_runtime import runtime_command
 
 FIXTURES = {
+    'symbolic-arena.c': (0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 14, 19, 20, 21, 22, 24, 25, 26, 33, 36),
     'first-publication.c': tuple(range(22)),
     'thread-private-heap.c': (0, 1, 2, 3, 4, 5, 6, 9, 11, 12, 13, 16, 18, 22, 24, 25, 26, 27),
     'heap-fields.c': (0, 1, 4, 5, 15, 16),
@@ -50,6 +51,11 @@ def wrapped(body, variant='abort'):
                        'while (__VERIFIER_nondet_int()) p->datum = 7;')
         lines = [line.replace('struct cell *p = malloc(sizeof *p);', replacement)
                  for line in lines]
+    extra = ''
+    if variant == 'escaped-definition':
+        extra = 'void *(*escaped_allocator)(size_t) = checked_allocate;'
+    elif variant == 'unused-effect':
+        declarations = 'extern void opaque(void *); void unused_effect(void) { opaque(0); }'
     lines.insert(insertion, f"""
 {declarations}
 static void *checked_allocate(size_t size) {{
@@ -57,6 +63,7 @@ static void *checked_allocate(size_t size) {{
     if (result == NULL) {{ {failure} }}
     return result;
 }}
+{extra}
 #define malloc checked_allocate
 """)
     return ''.join(lines)
@@ -132,12 +139,15 @@ def main():
                     cases += [('thread-private-heap.c', 0, variant) for variant in
                               ('failure-write', 'return-null', 'wrong-size', 'swapped-parameters',
                                'shared-fallback', 'export', 'second-call')]
+                if args.fixture is None or 'symbolic-arena.c' in args.fixture:
+                    cases += [('symbolic-arena.c', 0, variant) for variant in
+                              ('failure-write', 'return-null', 'escaped-definition', 'unused-effect')]
                 for name, case, variant in cases:
                     body = (ROOT / 'analyzer/test/regression/bmc-values' / name).read_text()
                     source = work / 'renamed.c'
                     body = wrapped_calloc(body, variant) if name == 'thread-private-heap.c' else wrapped(body, variant)
                     source.write_text(f'#define CASE {case}\n' +
-                                      ('#define WIDE\n' if wide else '') + body)
+                                      ('#define WIDE 1\n' if wide else '') + body)
                     command = runtime_command(args.ikos.resolve()) + [
                         '--analyses=race', '--concurrency=auto', '--partitioning=guards',
                         '--demote-race-to-unknown', '--bmc-deadline-ms=0',
@@ -146,13 +156,14 @@ def main():
                                          text=True, timeout=30)
                     assert run.returncode == 0, (name, case, bits, run.stdout, run.stderr)
                     verdict = classify(run.stdout, run.returncode, False)
-                    if (name in ('bucket-list-ownership.c', 'heap-handoff.c', 'first-publication.c', 'thread-private-heap.c') or
+                    if (name in ('bucket-list-ownership.c', 'heap-handoff.c', 'first-publication.c', 'thread-private-heap.c', 'symbolic-arena.c') or
                             (name == 'helper-prefix-fields.c' and case == 0)) and bits == 64:
                         # These ownership/handle certificates are still ILP32-only;
                         # the unwrapped baseline has the same unresolved effects.
                         assert verdict == VERDICT_UNKNOWN, (name, bits, wide, verdict)
-                    elif variant == 'abort' and (case == 0 or
+                    elif variant in ('abort', 'unused-effect') and (case == 0 or
                             (name == 'first-publication.c' and case in (16, 20)) or
+                            (name == 'symbolic-arena.c' and case in (19, 24, 25, 26)) or
                             (name == 'thread-private-heap.c' and
                              (case in (1, 12, 22) or (case == 11 and wide)))):
                         assert verdict == VERDICT_SAFE, (name, bits, wide, verdict,
