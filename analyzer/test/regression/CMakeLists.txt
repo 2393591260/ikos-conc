@@ -245,3 +245,13 @@ add_dependencies(build-analyzer-tests test-analysis-closed-integer-fold)
 add_test(NAME concurrency-closed-integer-fold
          COMMAND $<TARGET_FILE:test-analysis-closed-integer-fold>)
 set_tests_properties(concurrency-closed-integer-fold PROPERTIES LABELS concurrency)
+
+add_executable(test-analysis-source-program-facts source_program_facts.cpp
+               "${CONCURRENCY_ROOT}/analyzer/src/analysis/source_program_facts.cpp")
+target_link_libraries(test-analysis-source-program-facts
+                      ${AR_LIB} ${IKOS_ANALYZER_LLVM_LIBS}
+                      ${Boost_LIBRARIES} Threads::Threads)
+add_dependencies(build-analyzer-tests test-analysis-source-program-facts)
+add_test(NAME concurrency-source-program-facts
+         COMMAND $<TARGET_FILE:test-analysis-source-program-facts>)
+set_tests_properties(concurrency-source-program-facts PROPERTIES LABELS concurrency)

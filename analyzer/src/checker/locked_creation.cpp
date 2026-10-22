@@ -1,6 +1,7 @@
 // Copyright and license: see data_race.hpp.
 #include <ikos/analyzer/checker/locked_creation.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
+#include <ikos/analyzer/analysis/source_program_facts.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/analysis/call_context.hpp>
 #include <ikos/analyzer/util/log.hpp>
@@ -14,11 +15,12 @@ namespace ikos {
 namespace analyzer {
 class LockedCreation::Impl {
   Context& ctx;
+  SourceProgramFacts& source_facts;
   unsigned budget = 65536, bits = 0;
   llvm::Function* main = nullptr;
-  std::map< llvm::Value*, ar::Statement* > originals;
-  std::map< llvm::Function*, ar::Function* > functions;
-  std::map< llvm::GlobalVariable*, ar::GlobalVariable* > globals;
+  const std::map< llvm::Value*, ar::Statement* >& originals;
+  const std::map< llvm::Function*, ar::Function* >& functions;
+  const std::map< llvm::GlobalVariable*, ar::GlobalVariable* >& globals;
   std::set< llvm::Function* > roots;
   std::map< llvm::Function*, std::vector< llvm::CallBase* > > creates;
   std::map< llvm::Function*, llvm::CallBase* > joined_by;
@@ -44,28 +46,14 @@ class LockedCreation::Impl {
   llvm::Function* callee(llvm::CallBase* c) const {
     return llvm::dyn_cast< llvm::Function >(c->getCalledOperand()->stripPointerCasts());
   }
-  bool ordinary(llvm::AttributeSet attributes) const {
-      for (auto attribute : attributes) {
-        if (attribute.isStringAttribute()) return false;
-        switch (attribute.getKindAsEnum()) {
-          case llvm::Attribute::NoUndef: case llvm::Attribute::NonNull:
-          case llvm::Attribute::NoCapture: case llvm::Attribute::ReadOnly:
-          case llvm::Attribute::WriteOnly: case llvm::Attribute::ReadNone:
-          case llvm::Attribute::Dereferenceable: case llvm::Attribute::DereferenceableOrNull:
-          case llvm::Attribute::Alignment: case llvm::Attribute::NoAlias: break;
-          default: return false;
-        }
-      }
-      return true;
-  }
   ar::CallBase* binding(llvm::CallBase* c) const {
     auto it = originals.find(c);
     auto* a = it == originals.end() ? nullptr : source_call_binding(c, it->second);
     auto* f = callee(c);
     if (!a || !f) return nullptr;
-    if (!ordinary(c->getAttributes().getRetAttrs()) || !ordinary(f->getAttributes().getRetAttrs())) return nullptr;
+    if (!ordinary_source_attributes(c->getAttributes().getRetAttrs()) || !ordinary_source_attributes(f->getAttributes().getRetAttrs())) return nullptr;
     for (unsigned n = 0; n < c->arg_size(); ++n)
-      if (!ordinary(c->getAttributes().getParamAttrs(n)) || !ordinary(f->getAttributes().getParamAttrs(n))) return nullptr;
+      if (!ordinary_source_attributes(c->getAttributes().getParamAttrs(n)) || !ordinary_source_attributes(f->getAttributes().getParamAttrs(n))) return nullptr;
     return a;
   }
   ar::Variable* address_base(ar::Value* value) const {
@@ -170,8 +158,8 @@ class LockedCreation::Impl {
         llvm::cast< llvm::PointerType >(entry->getReturnType())->getAddressSpace() ||
         llvm::cast< llvm::PointerType >(entry->getArg(0)->getType())->getAddressSpace() ||
         !out || out->getAddressSpace() || !out->getPointerElementType()->isIntegerTy(bits)) return refuse(__LINE__);
-    if (!ordinary(entry->getAttributes().getRetAttrs()) ||
-        !ordinary(entry->getAttributes().getParamAttrs(0))) return refuse(__LINE__);
+    if (!ordinary_source_attributes(entry->getAttributes().getRetAttrs()) ||
+        !ordinary_source_attributes(entry->getAttributes().getParamAttrs(0))) return refuse(__LINE__);
     auto* slot = llvm::dyn_cast< llvm::GlobalVariable >(c->getArgOperand(0));
     auto* local = llvm::dyn_cast< llvm::AllocaInst >(c->getArgOperand(0));
     if (slot) {
@@ -224,7 +212,7 @@ class LockedCreation::Impl {
     }
     if (!creation || creation->getFunction() != c->getFunction() ||
         load->getFunction() != c->getFunction() || joined_by.count(child)) return refuse(__LINE__);
-    llvm::DominatorTree dt(*c->getFunction());
+    auto& dt = source_facts.dominators(c->getFunction());
     if (!dt.dominates(creation, load) || !dt.dominates(load, c)) return refuse(__LINE__);
     for (auto* u : slot->users())
       if (u != creation && u != load && !llvm::isa< llvm::DbgInfoIntrinsic >(u)) return refuse(__LINE__);
@@ -310,7 +298,7 @@ class LockedCreation::Impl {
     for (auto& item : mutex.intervals) {
       auto& interval = item.second;
       if (!interval.lock) return refuse(__LINE__);
-      llvm::DominatorTree dt(*item.first);
+      auto& dt = source_facts.dominators(item.first);
       if (interval.unlock && !dt.dominates(interval.lock, interval.unlock)) return refuse(__LINE__);
     }
     mutexes.push_back(std::move(mutex)); return true;
@@ -329,7 +317,7 @@ class LockedCreation::Impl {
     }
     return false;
   }
-  bool held(Interval interval, llvm::Instruction* p, llvm::DominatorTree& dt) {
+  bool held(Interval interval, llvm::Instruction* p, const llvm::DominatorTree& dt) {
     return interval.lock && dt.dominates(interval.lock, p) &&
            (!interval.unlock || !reaches(interval.unlock, p));
   }
@@ -348,22 +336,21 @@ class LockedCreation::Impl {
     llvm::Triple triple(module.getTargetTriple());
     if (!main->use_empty() || main->isDeclaration() || main->isVarArg() ||
         main->arg_size() != 0 || !main->getReturnType()->isIntegerTy(32) ||
-        main->getCallingConv() != llvm::CallingConv::C || !ordinary(main->getAttributes().getRetAttrs()) || (bits != 32 && bits != 64) ||
+        main->getCallingConv() != llvm::CallingConv::C || !ordinary_source_attributes(main->getAttributes().getRetAttrs()) || (bits != 32 && bits != 64) ||
         module.getDataLayout().getPointerSizeInBits() != bits ||
         (bits == 32 ? triple.getArch() != llvm::Triple::x86 : triple.getArch() != llvm::Triple::x86_64) ||
         !triple.isOSLinux() || triple.getEnvironment() != llvm::Triple::GNU ||
         !module.alias_empty() || !module.getModuleInlineAsm().empty() ||
         !mutex_effect_pointer_representations_closed(module)) return refuse(__LINE__);
-    for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end(); ++it)
-      if ((*it)->has_frontend()) globals.emplace((*it)->frontend< llvm::GlobalVariable >(), *it);
+    if (!source_facts.index() || !source_facts.memory_calls_allocations().unique) return refuse(__LINE__);
     for (auto it = ctx.bundle->function_begin(); it != ctx.bundle->function_end(); ++it) {
-      auto* f = *it; if (f->has_frontend()) functions.emplace(f->frontend< llvm::Function >(), f);
+      auto* f = *it;
       if (!f->is_definition()) continue;
       for (auto* b : *f->body()) for (auto* s : *b) {
         if (isa< ar::CallBase >(s) || isa< ar::Load >(s) || isa< ar::Store >(s) || isa< ar::Allocate >(s)) {
           auto* n = s->has_frontend() ? llvm::dyn_cast< llvm::Instruction >(s->frontend< llvm::Value >()) : nullptr;
           if (!n || !f->has_frontend() || n->getFunction() != f->frontend< llvm::Function >() ||
-              !originals.emplace(n, s).second) return refuse(__LINE__);
+              original(n) != s) return refuse(__LINE__);
         } else if (!isa< ar::Assignment >(s) && !isa< ar::UnaryOperation >(s) &&
                    !isa< ar::BinaryOperation >(s) && !isa< ar::Comparison >(s) &&
                    !isa< ar::PointerShift >(s) && !isa< ar::ReturnValue >(s) && !isa< ar::Unreachable >(s)) return refuse(__LINE__);
@@ -450,7 +437,7 @@ class LockedCreation::Impl {
     if (joins.size() > 1) return refuse(__LINE__);
     if (!joins.empty())
       for (auto& item : creates) if (item.second.size() != 1) return refuse(__LINE__);
-    llvm::DominatorTree parent_dt(*main);
+    auto& parent_dt = source_facts.dominators(main);
     std::map< llvm::Function*, std::set< unsigned > > birth_held, birth_forever, after_release;
     for (auto* root : roots) {
       if (root == main) continue;
@@ -481,7 +468,7 @@ class LockedCreation::Impl {
           bool after = after_release[parent].count(n);
           if (!after && parent != main && birth_held[parent].count(n)) {
             auto own = mutexes[n].intervals.find(parent);
-            llvm::DominatorTree dt(*parent);
+            auto& dt = source_facts.dominators(parent);
             after = own != mutexes[n].intervals.end() && own->second.lock &&
                     dt.dominates(own->second.lock, c);
           }
@@ -496,7 +483,7 @@ class LockedCreation::Impl {
       if (joined == joined_by.end()) continue;
       auto* c = creates.at(root).front(); auto* j = joined->second;
       auto* parent = c->getFunction();
-      llvm::DominatorTree dt(*parent);
+      auto& dt = source_facts.dominators(parent);
       if (parent != main) return refuse(__LINE__);
       for (unsigned n : birth_held[root]) {
         auto interval = mutexes[n].intervals.at(main);
@@ -505,7 +492,7 @@ class LockedCreation::Impl {
       }
     }
     for (auto* root : roots) {
-      llvm::DominatorTree dt(*root);
+      auto& dt = source_facts.dominators(root);
       for (auto& b : *root) for (auto& i : b) {
         if (!llvm::isa< llvm::LoadInst >(i) && !llvm::isa< llvm::StoreInst >(i)) continue;
         Phase phase{functions.at(root)->name(), {}, {}, birth_held[root],
@@ -531,7 +518,12 @@ class LockedCreation::Impl {
     return &it->second;
   }
 public:
-  explicit Impl(Context& c) : ctx(c) { if (!build()) phases.clear(); }
+  explicit Impl(Context& c)
+      : ctx(c), source_facts(source_program_facts(c)),
+        originals(source_facts.memory_calls_allocations().statements),
+        functions(source_facts.functions()), globals(source_facts.globals()) {
+    if (!build()) phases.clear();
+  }
   unsigned direction(const Phase& a, const Phase& b) const {
     // In join mode only a real target access makes its successful birth conditional.
     if (!joins.empty()) {

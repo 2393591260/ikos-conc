@@ -10,7 +10,7 @@ import tempfile
 from ikos_runtime import runtime_command, runtime_identity, verify_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
-CASES = (0, 1, 2, 3, 4, 10, 11, 12, 13, 14, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31)
+CASES = (0, 1, 2, 3, 4, 10, 11, 12, 13, 14, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32)
 
 
 def main():
@@ -43,10 +43,12 @@ def main():
                     assert proc.returncode == 0, (case, bits, wide, output)
                     safe = 'The program is SAFE' in output
                     assert safe == (case in (0, 1, 2, 3, 4)), (case, bits, wide, output)
+                    if case == 32:
+                        assert 'The program is UNKNOWN' in output, (case, bits, wide, output)
                     rows = [json.loads(line) for line in report.read_text().splitlines()] if report.exists() else []
                     if safe:
                         assert any(row.get('counts', {}).get('same-closed-once-v1', 0) for row in rows), (case, rows)
-                    if case in (12, 13, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31):
+                    if case in (12, 13, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32):
                         assert not any(row.get('counts', {}).get('same-closed-once-v1', 0) for row in rows), (case, rows)
                     print(f'once callback={case}/bits={bits}/wide={wide}: safe={safe}, rules={rows}',
                           flush=True)

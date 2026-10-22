@@ -12,6 +12,9 @@ typedef int datum;
 #endif
 extern int __VERIFIER_nondet_int(void);
 static datum shared;
+#if CASE == 32
+static pthread_barrier_t barrier;
+#endif
 static pthread_once_t once = PTHREAD_ONCE_INIT;
 static pthread_once_t other = PTHREAD_ONCE_INIT;
 static void touch(void) { ++shared; }
@@ -43,6 +46,9 @@ static void (*initp)(void) = first;
 #endif
 static void *worker(void *arg) {
   (void)arg;
+#if CASE == 32
+  pthread_barrier_wait(&barrier);
+#endif
 #if CASE == 10
   first();
 #elif CASE == 11
@@ -78,7 +84,13 @@ int main(void) {
 #elif CASE == 31
   once = 1;
 #endif
+#if CASE == 32
+  pthread_barrier_init(&barrier, 0, 2);
+#endif
   pthread_create(&id, 0, worker, 0);
+#if CASE == 32
+  pthread_barrier_wait(&barrier);
+#endif
 #if CASE == 1
   pthread_join(id, 0);
   if (choice) initp = second;

@@ -7,6 +7,7 @@
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <ikos/analyzer/analysis/context.hpp>
+#include <ikos/analyzer/analysis/source_program_facts.hpp>
 #include <ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp>
 
 namespace ikos {
@@ -31,24 +32,17 @@ inline std::vector< ar::Function* > closed_once_callbacks(Context& ctx,
       !module->getModuleInlineAsm().empty() || !module->alias_empty() ||
       module->getGlobalVariable("llvm.global_ctors") ||
       module->getGlobalVariable("llvm.global_dtors")) return result;
+  auto& facts = source_program_facts(ctx);
+  if (auto* cached = facts.once_callbacks(query)) return *cached;
+  // Only this source closure is cached; the caller still performs every transfer.
+  auto compute = [&]() {
   unsigned budget = 16384;
   auto spend = [&]() { return budget && --budget; };
-  std::map< llvm::Value*, ar::Statement* > originals;
-  std::map< llvm::Function*, ar::Function* > functions;
-  std::map< llvm::GlobalVariable*, ar::GlobalVariable* > globals;
-  for (auto it = ctx.bundle->function_begin(); it != ctx.bundle->function_end(); ++it) {
-    auto* f = *it;
-    if (f->has_frontend()) functions.emplace(f->frontend< llvm::Function >(), f);
-    if (!f->is_definition()) continue;
-    for (auto* b : *f->body()) for (auto* s : *b) {
-      if (!spend()) return result;
-      if ((isa< ar::CallBase >(s) || isa< ar::Load >(s) || isa< ar::Store >(s)) &&
-          s->has_frontend() && !originals.emplace(s->frontend< llvm::Value >(), s).second)
-        return result;
-    }
-  }
-  for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end(); ++it)
-    if ((*it)->has_frontend()) globals.emplace((*it)->frontend< llvm::GlobalVariable >(), *it);
+  if (!facts.index(budget) || !facts.memory_calls().unique) return result;
+  budget -= facts.statement_count();
+  const auto& originals = facts.memory_calls().statements;
+  const auto& functions = facts.functions();
+  const auto& globals = facts.globals();
   auto original = [&](llvm::Value* v) -> ar::Statement* {
     auto it = originals.find(v); return it == originals.end() ? nullptr : it->second;
   };
@@ -273,6 +267,10 @@ inline std::vector< ar::Function* > closed_once_callbacks(Context& ctx,
   for (auto* f : all)
     if (!effects(f->frontend< llvm::Function >())) return result;
   result.assign(selected.begin(), selected.end()); return result;
+  };
+  auto targets = compute();
+  facts.remember_once_callbacks(query, targets);
+  return targets;
 }
 
 } // namespace analyzer

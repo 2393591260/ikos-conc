@@ -48,6 +48,22 @@ inline bool source_integer_binding(ar::Value* a, llvm::Value* n) {
   return false;
 }
 
+// These library summaries accept ordinary value attributes, not semantic promises.
+inline bool ordinary_source_attributes(llvm::AttributeSet attributes) {
+  for (auto attribute : attributes) {
+    if (attribute.isStringAttribute()) return false;
+    switch (attribute.getKindAsEnum()) {
+      case llvm::Attribute::NoUndef: case llvm::Attribute::NonNull:
+      case llvm::Attribute::NoCapture: case llvm::Attribute::ReadOnly:
+      case llvm::Attribute::WriteOnly: case llvm::Attribute::ReadNone:
+      case llvm::Attribute::Dereferenceable: case llvm::Attribute::DereferenceableOrNull:
+      case llvm::Attribute::Alignment: case llvm::Attribute::NoAlias: break;
+      default: return false;
+    }
+  }
+  return true;
+}
+
 // Bind a source call to its inventoried AR statement; this grants no library effect.
 inline ar::CallBase* source_call_binding(llvm::CallBase* c,
                                        ar::Statement* original) {

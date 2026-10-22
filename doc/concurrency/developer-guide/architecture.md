@@ -162,3 +162,37 @@ Pair proofs are consumed immediately for final access indices while the checker
 is finalizing. Coverage proofs instead identify an actual raw effect obligation.
 BMC receives candidates only after the strict coverage gate and checks its own execution support;
 no range, pair or coverage proof grants it general execution permission.
+
+
+## Shared source identities and static queries
+
+The frontend finishes its LLVM/AR transformations before constructing Context.
+The per-Context [source inventory](../../../analyzer/include/ikos/analyzer/analysis/source_program_facts.hpp)
+then lazily indexes actual source-to-AR identities and caches read-only LLVM
+dominance trees. Ordinary analysis, independent preflight and allocator retries
+have separate caches even when they share an input bundle. These identities
+grant no safety, library-effect or execution permission.
+
+The inventory retains separate duplicate policies for calls/loads/stores and
+for those statements plus allocations. Missing frontend identities stay missing.
+Consumers still enforce their own complete-effect inventory, function ownership,
+ABI and library contracts. Dominance queries preserve instruction order within
+a block; each consumer retains its own conservative reachability checks.
+
+The once transfer caches only a closed source/effect query's selected callbacks,
+keyed by the actual AR call. The original 16384-step logical bound still counts
+every AR body statement, including statements absent from the index; a limited
+first scan stops at that bound. A cached empty result remains unsealed, and a
+caller's direct-callback fallback cannot alter it. Every dynamic transfer still
+registers callbacks, MAY writers, dirty changes and joined locksets.
+
+Barrier capacity facts remain owned by the barrier producer, reading the same
+transformed LLVM module bound to AR, without another frontend pass. Its bounded
+integer sets, checked descending-loop interval and closed private-field loads
+are not general LLVM optimization or a replacement for ordinary interpretation.
+The existing all-access facts publish mutex-byte, subarray and handle bounds;
+they do not publish arbitrary barrier capacities. Barrier effects are configured
+before ordinary transfer, so importing the result of that same transfer to
+justify its own barrier effect would be circular. Source identities, dominance
+and the identical ordinary-attribute predicate are shared; value facts and
+library proof conditions retain their separate owners.

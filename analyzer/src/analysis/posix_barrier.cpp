@@ -1,6 +1,7 @@
 // Copyright and license: see context.hpp.
 #include <ikos/analyzer/analysis/posix_barrier.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
+#include <ikos/analyzer/analysis/source_program_facts.hpp>
 #include <ikos/analyzer/analysis/closed_integer_fold.hpp>
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Dominators.h>
@@ -13,11 +14,12 @@ namespace ikos {
 namespace analyzer {
 class PosixBarrier::Impl {
   Context& ctx;
+  SourceProgramFacts& source_facts;
   unsigned budget = 32768, participants = 1, bits = 0;
   llvm::Function* main = nullptr;
-  std::map< llvm::Value*, ar::Statement* > originals;
-  std::map< llvm::Function*, ar::Function* > functions;
-  std::map< llvm::GlobalVariable*, ar::GlobalVariable* > globals;
+  const std::map< llvm::Value*, ar::Statement* >& originals;
+  const std::map< llvm::Function*, ar::Function* >& functions;
+  const std::map< llvm::GlobalVariable*, ar::GlobalVariable* >& globals;
   std::set< llvm::Function* > roots;
   std::set< llvm::CallBase* > creates;
   struct Barrier {
@@ -41,23 +43,9 @@ class PosixBarrier::Impl {
     auto* a = it == originals.end() ? nullptr : source_call_binding(c, it->second);
     auto* f = callee(c);
     if (!a || !f) return nullptr;
-    auto ordinary = [](llvm::AttributeSet attributes) {
-      for (auto attribute : attributes) {
-        if (attribute.isStringAttribute()) return false;
-        switch (attribute.getKindAsEnum()) {
-          case llvm::Attribute::NoUndef: case llvm::Attribute::NonNull:
-          case llvm::Attribute::NoCapture: case llvm::Attribute::ReadOnly:
-          case llvm::Attribute::WriteOnly: case llvm::Attribute::ReadNone:
-          case llvm::Attribute::Dereferenceable: case llvm::Attribute::DereferenceableOrNull:
-          case llvm::Attribute::Alignment: case llvm::Attribute::NoAlias: break;
-          default: return false;
-        }
-      }
-      return true;
-    };
-    if (!ordinary(c->getAttributes().getRetAttrs()) || !ordinary(f->getAttributes().getRetAttrs())) return nullptr;
+    if (!ordinary_source_attributes(c->getAttributes().getRetAttrs()) || !ordinary_source_attributes(f->getAttributes().getRetAttrs())) return nullptr;
     for (unsigned n = 0; n < c->arg_size(); ++n)
-      if (!ordinary(c->getAttributes().getParamAttrs(n)) || !ordinary(f->getAttributes().getParamAttrs(n))) return nullptr;
+      if (!ordinary_source_attributes(c->getAttributes().getParamAttrs(n)) || !ordinary_source_attributes(f->getAttributes().getParamAttrs(n))) return nullptr;
     return a;
   }
   bool create(llvm::CallBase* c) {
@@ -121,7 +109,7 @@ class PosixBarrier::Impl {
   std::set< llvm::Value* > integer_active;
   Integers descending_integers(llvm::PHINode* phi) {
     if (!phi->getType()->isIntegerTy(32) || phi->getNumIncomingValues() != 2) return {};
-    llvm::DominatorTree dt(*main); llvm::LoopInfo loops(dt);
+    auto& dt = source_facts.dominators(main); llvm::LoopInfo loops(dt);
     auto* loop = loops.getLoopFor(phi->getParent());
     if (!loop || loop->getHeader() != phi->getParent() || loop->getNumBlocks() != 2) return {};
     auto* latch = loop->getLoopLatch(); auto* preheader = loop->getLoopPreheader();
@@ -229,7 +217,7 @@ class PosixBarrier::Impl {
         !root->getAllocatedType()->isSized() ||
         ctx.bundle->data_layout().alloc_size_in_bytes(allocation->allocated_type()) !=
           core::ZNumber(layout.getTypeAllocSize(root->getAllocatedType()).getFixedValue())) return nullptr;
-    llvm::DominatorTree dt(*main);
+    auto& dt = source_facts.dominators(main);
     for (auto* c : creates) if (!dt.dominates(load, c)) return nullptr;
     std::set< llvm::Value* > pointers;
     std::set< ar::Statement* > accesses;
@@ -423,7 +411,7 @@ class PosixBarrier::Impl {
       }
     }
     if (!init || barrier.waits.empty()) return false;
-    llvm::DominatorTree dt(*main);
+    auto& dt = source_facts.dominators(main);
     for (auto* c : creates) if (!dt.dominates(init, c)) return false;
     for (const auto& wait : barrier.waits)
       if (wait.first == main && !dt.dominates(init, wait.second)) return false;
@@ -461,16 +449,7 @@ class PosixBarrier::Impl {
         !triple.isOSLinux() || triple.getEnvironment() != llvm::Triple::GNU ||
         !module.alias_empty() || !module.getModuleInlineAsm().empty() ||
         !mutex_effect_pointer_representations_closed(module)) return false;
-    for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end(); ++it)
-      if ((*it)->has_frontend()) globals.emplace((*it)->frontend< llvm::GlobalVariable >(), *it);
-    for (auto it = ctx.bundle->function_begin(); it != ctx.bundle->function_end(); ++it) {
-      auto* f = *it;
-      if (f->has_frontend()) functions.emplace(f->frontend< llvm::Function >(), f);
-      if (!f->is_definition()) continue;
-      for (auto* b : *f->body()) for (auto* s : *b)
-        if ((isa< ar::CallBase >(s) || isa< ar::Load >(s) || isa< ar::Store >(s) || isa< ar::Allocate >(s)) &&
-            s->has_frontend() && !originals.emplace(s->frontend< llvm::Value >(), s).second) return false;
-    }
+    if (!source_facts.index() || !source_facts.memory_calls_allocations().unique) return false;
     roots.insert(main);
     for (auto& b : *main) for (auto& i : b) {
       if (!step()) return false;
@@ -523,7 +502,7 @@ class PosixBarrier::Impl {
         }
     }
     for (auto* root : roots) {
-      llvm::DominatorTree dt(*root);
+      auto& dt = source_facts.dominators(root);
       for (auto& b : *root) for (auto& i : b) {
         if (!llvm::isa< llvm::LoadInst >(i) && !llvm::isa< llvm::StoreInst >(i)) continue;
         auto it = originals.find(&i);
@@ -543,7 +522,10 @@ class PosixBarrier::Impl {
   }
 public:
   std::map< ar::CallBase*, ar::GlobalVariable* > effects;
-  explicit Impl(Context& c) : ctx(c) {
+  explicit Impl(Context& c)
+      : ctx(c), source_facts(source_program_facts(c)),
+        originals(source_facts.memory_calls_allocations().statements),
+        functions(source_facts.functions()), globals(source_facts.globals()) {
     if (!build()) { effects.clear(); phases.clear(); barriers.clear(); }
   }
   bool orders(ar::Statement* a, const std::string& root_a, ar::Statement* b, const std::string& root_b) const {
