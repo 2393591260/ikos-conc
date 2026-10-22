@@ -2,6 +2,7 @@
 #include <ikos/analyzer/analysis/pthread_initialization_frame.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
+#include <ikos/analyzer/analysis/execution_engine/allocation_continuation.hpp>
 #include <ikos/analyzer/util/log.hpp>
 #include <llvm/Analysis/ConstantFolding.h>
 #include <llvm/IR/Operator.h>
@@ -326,11 +327,84 @@ class PthreadInitializationFrame::Impl {
     }
     need(false, "uncovered library effect");
   }
+  std::vector< llvm::Instruction* > linear_body(llvm::Function* f) {
+    std::vector< llvm::Instruction* > result;
+    std::set< llvm::BasicBlock* > seen;
+    auto* block = &f->getEntryBlock();
+    llvm::BasicBlock* previous = nullptr;
+    while (block) {
+      step();
+      need(seen.insert(block).second &&
+           (!previous || (llvm::pred_size(block) == 1 &&
+                          *llvm::pred_begin(block) == previous)),
+           "unique finite initialization continuation");
+      auto* branch = llvm::dyn_cast< llvm::BranchInst >(block->getTerminator());
+      llvm::BasicBlock* next = nullptr;
+      llvm::ICmpInst* comparison = nullptr;
+      if (branch) {
+        need(f == main, "single-block direct helper");
+        next = branch->getSuccessor(0);
+        if (branch->isConditional()) {
+          comparison = llvm::dyn_cast< llvm::ICmpInst >(branch->getCondition());
+          need(comparison && comparison->isEquality() && comparison->hasOneUse() &&
+               comparison->getParent() == block, "allocation-only branch");
+          auto* left = comparison->getOperand(0);
+          auto* right = comparison->getOperand(1);
+          auto* source = llvm::isa< llvm::ConstantPointerNull >(left) ? right :
+                         llvm::isa< llvm::ConstantPointerNull >(right) ? left : nullptr;
+          auto* allocation = source ? llvm::dyn_cast< llvm::CallBase >(
+              source->stripPointerCasts()) : nullptr;
+          auto* actual = allocation ? dyn_cast_or_null< ar::CallBase >(
+              original(allocation)) : nullptr;
+          ar::Comparison* guard = nullptr;
+          need(allocation && allocation->getParent() == block && actual &&
+               heap_initialization_successor(actual->parent(), guard) && guard &&
+               guard->has_frontend() && guard->frontend< llvm::Value >() == comparison,
+               "complete pure-abort allocation check");
+          auto* value = dyn_cast< ar::InternalVariable >(
+              isa< ar::NullConstant >(guard->left()) ? guard->right() : guard->left());
+          need(value && unique_def(value) == actual, "actual checked allocation");
+          ar::BasicBlock* ar_failure = nullptr;
+          for (auto it = actual->parent()->successor_begin();
+               it != actual->parent()->successor_end(); ++it)
+            if (*it != guard->parent()) {
+              need(!ar_failure, "unique imported failure successor");
+              ar_failure = *it;
+            }
+          need(ar_failure && !ar_failure->empty(), "matched imported failure block");
+          auto* equal = dyn_cast< ar::Comparison >(*ar_failure->begin());
+          need(equal && equal->has_frontend() &&
+               equal->frontend< llvm::Value >() == comparison,
+               "source/AR complementary comparison");
+          const unsigned failed = comparison->getPredicate() == llvm::CmpInst::ICMP_EQ ? 0 : 1;
+          auto* failure = branch->getSuccessor(failed);
+          next = branch->getSuccessor(failed ^ 1);
+          need(failure != next && seen.insert(failure).second && failure->size() == 2,
+               "terminal failure block");
+          auto* terminal = llvm::dyn_cast< llvm::CallInst >(&failure->front());
+          auto* imported = terminal ? binding(terminal) : nullptr;
+          auto* target = imported ? native_handle_callee(imported) : nullptr;
+          need(target && std::distance(ar_failure->begin(), ar_failure->end()) == 3 &&
+               *std::next(ar_failure->begin()) == imported &&
+               target->intrinsic_id() == ar::Intrinsic::LibcAbort &&
+               llvm::isa< llvm::UnreachableInst >(failure->back()),
+               "source/AR terminal failure");
+        }
+      } else need(llvm::isa< llvm::ReturnInst >(block->getTerminator()),
+                  "complete returning initialization body");
+      for (auto& i : *block)
+        if (&i != branch && &i != comparison) result.push_back(&i);
+      previous = block; block = next;
+    }
+    need(seen.size() == f->size(), "unaccounted initialization blocks");
+    return result;
+  }
   void walk(llvm::Function* f, Frame& frame, bool startup) {
-    need(functions.count(f) && f->size() == 1 && active.size() < 16 && active.insert(f).second &&
+    need(functions.count(f) && (f == main || f->size() == 1) && active.size() < 16 && active.insert(f).second &&
          f->getCallingConv() == llvm::CallingConv::C && !f->isVarArg(), "finite direct helper tree");
     visited.insert(f);
-    for (auto& i : f->getEntryBlock()) {
+    for (auto* source : linear_body(f)) {
+      auto& i = *source;
       step();
       if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) call(c, frame, startup);
       else if (auto* alloca = llvm::dyn_cast< llvm::AllocaInst >(&i)) {

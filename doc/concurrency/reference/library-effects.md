@@ -525,7 +525,17 @@ NULL handling, MAY escape, thread completion and BMC remain separate. A wrong
 ERRORCHECK unlock does not release another mutex. Ordinary data races remain
 warnings even when initialization effects are fully covered.
 
-The first subset admits single-block functions, bounded direct helper expansion,
+Main may span a finite chain with no alternate ingress. Each crossed NULL
+check must be the sole branch use of the actual malloc comparison, with both
+imported comparisons bound to that same native instruction. The existing
+allocation-continuation proof requires a genuine abort/unreachable failure;
+its imported abort must be exactly the bound native terminal. All native blocks
+and imported memory/call effects are accounted for. No allocation-success or
+nonnull fact is exported; the complete normal prefix, prior worker creation and
+every worker body remain subject to the old checks. Other branches and cycles
+refuse the effect certificate.
+
+The heap subset admits single-block helpers, bounded direct helper expansion,
 constant main allocations, initialized runtime leaves before all creates and
 private unread native create outputs. A separate global-array route
 admits a deterministic main initialization prefix with bounded direct CFG
