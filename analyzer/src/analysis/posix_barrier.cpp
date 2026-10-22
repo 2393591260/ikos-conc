@@ -1,6 +1,7 @@
 // Copyright and license: see context.hpp.
 #include <ikos/analyzer/analysis/posix_barrier.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
+#include <ikos/analyzer/analysis/closed_integer_fold.hpp>
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Dominators.h>
 #include <functional>
@@ -20,6 +21,7 @@ class PosixBarrier::Impl {
   struct Barrier {
     llvm::GlobalVariable* source;
     unsigned capacity;
+    std::set< unsigned > capacities;
     std::map< llvm::Function*, llvm::CallBase* > waits;
   };
   std::vector< Barrier > barriers;
@@ -104,6 +106,61 @@ class PosixBarrier::Impl {
     for (auto& b : *f) if (!visit(&b)) return false;
     return true;
   }
+  using Integers = std::set< llvm::ConstantInt* >;
+  std::map< llvm::Value*, Integers > integer_cache;
+  std::set< llvm::Value* > integer_active;
+  Integers integers(llvm::Value* value, unsigned depth = 0) {
+    if (!step() || depth == 32) return {};
+    if (auto* c = llvm::dyn_cast< llvm::ConstantInt >(value)) return {c};
+    auto found = integer_cache.find(value);
+    if (found != integer_cache.end()) return found->second;
+    auto* i = llvm::dyn_cast< llvm::Instruction >(value);
+    if (!i || i->getFunction() != main || !i->getType()->isIntegerTy() ||
+        !integer_active.insert(value).second) return {};
+    Integers result;
+    auto finish = [&](Integers values) {
+      integer_active.erase(value);
+      integer_cache.emplace(value, values);
+      return values;
+    };
+    if (auto* phi = llvm::dyn_cast< llvm::PHINode >(i)) {
+      for (auto& input : phi->incoming_values()) {
+        auto values = integers(input.get(), depth + 1);
+        if (values.empty()) return finish({});
+        result.insert(values.begin(), values.end());
+        if (result.size() > 32) return finish({});
+      }
+    } else if (auto* select = llvm::dyn_cast< llvm::SelectInst >(i)) {
+      for (auto* arm : {select->getTrueValue(), select->getFalseValue()}) {
+        auto values = integers(arm, depth + 1);
+        if (values.empty()) return finish({});
+        result.insert(values.begin(), values.end());
+        if (result.size() > 32) return finish({});
+      }
+    } else {
+      if ((!llvm::isa< llvm::BinaryOperator >(i) && !llvm::isa< llvm::ICmpInst >(i) &&
+           !llvm::isa< llvm::TruncInst >(i) && !llvm::isa< llvm::SExtInst >(i) &&
+           !llvm::isa< llvm::ZExtInst >(i)) || i->getNumOperands() > 2) return finish({});
+      std::vector< std::vector< llvm::Constant* > > combinations(1);
+      for (auto& operand : i->operands()) {
+        auto values = integers(operand.get(), depth + 1);
+        if (values.empty()) return finish({});
+        std::vector< std::vector< llvm::Constant* > > next;
+        for (auto& before : combinations) for (auto* v : values) {
+          if (!step() || next.size() == 1024) return finish({});
+          auto after = before; after.push_back(v); next.push_back(std::move(after));
+        }
+        combinations = std::move(next);
+      }
+      for (auto& operands : combinations) {
+        auto* c = closed_integer_fold(i, operands, main->getParent()->getDataLayout());
+        if (!c) return finish({});
+        result.insert(c);
+        if (result.size() > 32) return finish({});
+      }
+    }
+    return finish(std::move(result));
+  }
   bool object(llvm::GlobalVariable* g) {
     auto* type = llvm::dyn_cast< llvm::StructType >(g->getValueType());
     const unsigned width = bits == 32 ? 20 : 32, align = bits / 8;
@@ -116,7 +173,7 @@ class PosixBarrier::Impl {
         (g->getAlign() ? g->getAlign()->value() : layout.getABITypeAlign(type).value()) < align ||
         ctx.bundle->data_layout().alloc_size_in_bytes(globals.at(g)->type()->pointee()) != width) return false;
     llvm::CallBase* init = nullptr;
-    Barrier barrier{g, 0, {}};
+    Barrier barrier{g, 0, {}, {}};
     std::map< ar::CallBase*, ar::GlobalVariable* > pending;
     std::vector< llvm::Value* > todo{g}; std::set< llvm::Value* > seen;
     while (!todo.empty()) {
@@ -137,15 +194,19 @@ class PosixBarrier::Impl {
             f->getFunctionType()->getParamType(0) != g->getType()) return false;
         if (f->getName() == "pthread_barrier_init") {
           if (init || c->arg_size() != 3 || c->getFunction() != main ||
-              c->getParent() != &main->getEntryBlock() ||
               !llvm::isa< llvm::ConstantPointerNull >(c->getArgOperand(1)) ||
               !isa< ar::NullConstant >(a->argument(1))) return false;
-          auto* n = llvm::dyn_cast< llvm::ConstantInt >(c->getArgOperand(2));
-          auto* k = dyn_cast< ar::IntegerConstant >(a->argument(2));
-          if (!n || !n->getType()->isIntegerTy(32) || !k || k->value().bit_width() != 32 ||
-              n->getZExtValue() == 0 || n->getZExtValue() >= 2147483647 ||
-              k->value().to_z_number() != core::ZNumber(n->getZExtValue())) return false;
-          init = c; barrier.capacity = n->getZExtValue();
+          auto* source = c->getArgOperand(2);
+          if (!source->getType()->isIntegerTy(32) ||
+              !source_integer_binding(a->argument(2), source)) return false;
+          auto values = integers(source);
+          if (values.empty()) return false;
+          for (auto* n : values) {
+            if (!n->getType()->isIntegerTy(32) || n->getZExtValue() == 0 ||
+                n->getZExtValue() >= 2147483647) return false;
+            barrier.capacities.insert(n->getZExtValue());
+          }
+          init = c; barrier.capacity = *barrier.capacities.begin();
         } else if (f->getName() == "pthread_barrier_wait" && c->arg_size() == 1) {
           if (!barrier.waits.emplace(c->getFunction(), c).second) return false;
         } else return false;
@@ -159,8 +220,8 @@ class PosixBarrier::Impl {
       if (wait.first == main && !dt.dominates(init, wait.second)) return false;
     effects.insert(pending.begin(), pending.end()); barriers.push_back(std::move(barrier)); return true;
   }
-  // ponytail: literal capacities and direct DAG roots; add checked snapshots
-  // and contextual phases before admitting loops or helpers.
+  // ponytail: closed SSA capacity sets and direct DAG roots; memory loads,
+  // loops and helper phases still require additional checked facts.
   bool build() {
     if (!ctx.opts.enable_thread_modular || ctx.opts.entry_points.size() != 1 ||
         ctx.opts.entry_points.front()->name() != "main" ||
@@ -295,7 +356,9 @@ public:
         }
       }
       objects.add(JsonDict{{"object", barrier.source->getName().str()},
-                           {"capacity", static_cast< int >(barrier.capacity)}, {"waits", waits}});
+                           {"capacity_minimum", static_cast< int >(barrier.capacity)},
+                           {"capacity_maximum", static_cast< int >(*barrier.capacities.rbegin())},
+                           {"waits", waits}});
     }
     return {{"safe_reason", "all possible participants arrive before any one-shot barrier return"},
             {"barrier_contract", "closed-gnu-one-shot-barrier-v1"},

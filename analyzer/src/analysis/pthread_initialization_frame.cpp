@@ -1,4 +1,5 @@
 // Copyright and license: see context.hpp.
+#include <ikos/analyzer/analysis/closed_integer_fold.hpp>
 #include <ikos/analyzer/analysis/pthread_initialization_frame.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
@@ -533,28 +534,8 @@ class PthreadInitializationFrame::Impl {
             operands.push_back(c);
           }
           if (operands.empty()) continue;
-          if (auto* binary = llvm::dyn_cast< llvm::BinaryOperator >(&i)) {
-            need(binary->getOpcode() == llvm::Instruction::Add ||
-                 binary->getOpcode() == llvm::Instruction::Sub, "prefix integer operation");
-            const auto& a = llvm::cast< llvm::ConstantInt >(operands[0])->getValue();
-            const auto& b = llvm::cast< llvm::ConstantInt >(operands[1])->getValue();
-            bool sign = false, unsign = false;
-            if (binary->getOpcode() == llvm::Instruction::Add) {
-              (void)a.sadd_ov(b, sign); (void)a.uadd_ov(b, unsign);
-            } else { (void)a.ssub_ov(b, sign); (void)a.usub_ov(b, unsign); }
-            need(!(binary->hasNoSignedWrap() && sign) &&
-                 !(binary->hasNoUnsignedWrap() && unsign), "poison prefix arithmetic");
-          }
-          auto* compare = llvm::dyn_cast< llvm::ICmpInst >(&i);
-          auto* folded = compare
-              ? llvm::ConstantFoldCompareInstOperands(compare->getPredicate(),
-                    operands[0], operands[1], module->getDataLayout())
-              : llvm::ConstantFoldInstOperands(&i, operands, module->getDataLayout());
-          auto* c = llvm::dyn_cast_or_null< llvm::ConstantInt >(folded);
-          need(c, "constant prefix result");
-          if (llvm::isa< llvm::TruncInst >(i))
-            need(integer(llvm::cast< llvm::ConstantInt >(operands[0])->getValue(), true) ==
-                 integer(c->getValue(), true), "lossy prefix truncation");
+          auto* c = closed_integer_fold(&i, operands, module->getDataLayout());
+          need(c, "closed constant prefix result");
           integers[&i] = c;
         } else if (!llvm::isa< llvm::LoadInst >(i)) need(false, "unsupported prefix instruction");
       }

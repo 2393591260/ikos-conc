@@ -389,35 +389,9 @@ class BinaryTokenOwnership::Impl {
     return nullptr;
   }
   bool same_ticket_value(ar::Value* a, llvm::Value* n) const {
-    for (unsigned depth = 0; depth < 32; ++depth) {
-      auto* t = dyn_cast< ar::IntegerType >(a->type());
-      if (!t || !n->getType()->isIntegerTy() ||
-          t->bit_width() != n->getType()->getIntegerBitWidth())
-        return false;
-      if (auto* c = dyn_cast< ar::IntegerConstant >(a)) {
-        auto* nc = llvm::dyn_cast< llvm::ConstantInt >(n);
-        auto bits = c->value().to_z_number();
-        if (bits < 0)
-          bits += core::ZNumber(1) << t->bit_width();
-        return nc && bits == core::ZNumber(nc->getZExtValue());
-      }
-      auto* v = dyn_cast< ar::InternalVariable >(a);
-      if (!v)
-        return false;
-      if (v->has_frontend() && v->frontend< llvm::Value >() == n)
-        return true;
-      auto* d = unique_def(v);
-      if (auto* copy = dyn_cast_or_null< ar::Assignment >(d))
-        a = copy->operand();
-      else if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(d)) {
-        if (cast->op() != ar::UnaryOperation::Bitcast)
-          return false;
-        a = cast->operand();
-      } else
-        return false;
-    }
-    return false;
+    return source_integer_binding(a, n);
   }
+
   bool ticket_counter(llvm::GlobalVariable* g) const {
     if (!g || !g->getValueType()->isIntegerTy(32) || !token_object(g))
       return false;

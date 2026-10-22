@@ -502,11 +502,15 @@ This SAFE certificate adds no permission to confirm a FALSE execution.
 
 The first subset uses whole global GNU barrier objects, with the i386 20-byte/4-byte
 and LP64 32-byte/8-byte layouts. The source and AR must agree on the actual
-init/wait declaration, object, NULL attributes and literal unsigned capacity.
+init/wait declaration, object, NULL attributes and the actual unsigned i32 capacity.
+Capacity is a finite conservative set from closed acyclic SSA: all PHI/select
+alternatives and all supported integer-operation combinations are retained.
+Unknown inputs, cycles, poison, unsupported operations or finite-work limits
+refuse the complete certificate. Each object keeps its own init-time snapshot.
 The accepted capacity range is 1 through 2147483646, following
 [glibc 2.39 initialization](https://github.com/bminor/glibc/blob/glibc-2.39/nptl/pthread_barrier_init.c).
 This implementation contract supplies successful initialization; portable POSIX
-initialization may fail for additional reasons. A unique entry-block init must
+initialization may fail for additional reasons. A unique init must
 dominate every main wait and every create. Copies, byte aliases, escapes,
 reinitialization and destruction refuse this subset.
 
@@ -514,7 +518,7 @@ All root CFGs must be acyclic, without helpers, hidden callbacks or additional
 creators. Every main create site executes at most once; multiple creates of the
 same worker count as separate instances. Each root has at most one static wait
 per barrier. Let M be one plus the number of create sites and C the capacity.
-Only C >= M can order opposite phases. A post-wait access can occur only if at
+Only a minimum possible C >= M can order opposite phases. A post-wait access can occur only if at
 least C arrivals have occurred; the closed program supplies at most M arrivals.
 Thus every possible instance has arrived before such an access. An access that
 dominates its own wait precedes an access dominated by the other wait's return,
@@ -531,7 +535,9 @@ BMC barrier execution remains unsupported, and neither certificate authorizes
 FALSE, nonnull, pointer validity, join or numerical publication facts.
 
 Run `python3 scripts/test_barrier_phases.py` for dual-ABI, wide-payload and
-broken-premise controls. Dynamic capacities, repeated rounds, loops and helper
-phases need additional checked facts before extending this subset.
+broken-premise controls. The shared narrow integer fold and actual source/AR
+value binding also have a direct unit check. Memory-loaded capacities, repeated
+rounds, loops and helper phases need additional checked facts before extending
+this subset.
 
 </details>

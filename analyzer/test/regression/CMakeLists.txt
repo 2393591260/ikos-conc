@@ -234,3 +234,14 @@ add_concurrency_test(barrier-phases "${CONCURRENCY_ROOT}/scripts/test_barrier_ph
 
 add_concurrency_test(locked-creation "${CONCURRENCY_ROOT}/scripts/test_locked_creation.py"
                      --ikos "${CONCURRENCY_IKOS}")
+
+add_executable(test-analysis-closed-integer-fold closed_integer_fold.cpp
+               "${CONCURRENCY_ROOT}/analyzer/src/analysis/variable.cpp"
+               "${CONCURRENCY_ROOT}/analyzer/src/exception.cpp")
+target_link_libraries(test-analysis-closed-integer-fold
+                      ${AR_LIB} ${IKOS_ANALYZER_LLVM_LIBS}
+                      ${Boost_LIBRARIES} Threads::Threads)
+add_dependencies(build-analyzer-tests test-analysis-closed-integer-fold)
+add_test(NAME concurrency-closed-integer-fold
+         COMMAND $<TARGET_FILE:test-analysis-closed-integer-fold>)
+set_tests_properties(concurrency-closed-integer-fold PROPERTIES LABELS concurrency)
