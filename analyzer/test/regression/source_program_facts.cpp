@@ -10,7 +10,60 @@ namespace ar = ikos::ar;
 static void require(bool ok, const char* message) {
   if (!ok) { std::cerr << message << '\n'; std::exit(EXIT_FAILURE); }
 }
+
+static void test_integer_layouts() {
+  ar::Context context;
+  for (unsigned bits : {32u, 64u}) {
+    auto* bundle = ar::Bundle::create(context,
+        ar::DataLayout::create(ar::LittleEndian, {bits, bits / 8, bits / 8}), "");
+    SourceProgramFacts facts(bundle);
+    auto global = [&](ar::Type* type, const char* name, bool definition = true,
+                      bool local = false) {
+      return ar::GlobalVariable::create(bundle, ar::PointerType::get(context, type),
+                                        name, definition, 0, local);
+    };
+    auto* word = ar::IntegerType::ui32(context);
+    auto* wide = ar::IntegerType::ui64(context);
+    auto* pair = ar::ArrayType::get(context, word, ar::ZNumber(2));
+    auto* padded = ar::StructType::create(context,
+        {{ar::ZNumber(0), ar::IntegerType::ui8(context)},
+         {ar::ZNumber(8), wide}, {ar::ZNumber(16), pair}}, false);
+    auto* object = global(padded, "padded");
+    const auto& cells = facts.integer_cells(object);
+    require(cells.size() == 4 && cells[0].offset == 0 && cells[1].offset == 8 &&
+            cells[2].offset == 16 && cells[3].offset == 20 &&
+            cells[0].type->bit_width() == 8 && cells[1].type == wide &&
+            cells[2].type == word && cells[3].type == word,
+            "Nested integer leaves retain byte offsets, widths and padding");
+    require(&cells == &facts.integer_cells(object), "Repeated transfers share one layout");
+
+    auto* boundary = global(ar::ArrayType::get(context, word, ar::ZNumber(64)), "boundary");
+    const auto& full = facts.integer_cells(boundary);
+    require(full.size() == 64 && full.back().offset == 252,
+            "The original 64-leaf boundary is inclusive");
+    auto* oversized = global(ar::StructType::create(context,
+        {{ar::ZNumber(0), word},
+         {ar::ZNumber(4), ar::ArrayType::get(context, word, ar::ZNumber(65))}}, false), "oversized");
+    const auto& refused = facts.integer_cells(oversized);
+    require(refused.empty() && &refused == &facts.integer_cells(oversized),
+            "A rejected layout caches no supported prefix");
+    auto* mixed = global(ar::StructType::create(context,
+        {{ar::ZNumber(0), word}, {ar::ZNumber(8), ar::PointerType::get(context, word)}}, false), "mixed");
+    require(facts.integer_cells(mixed).empty() && facts.integer_cells(mixed).empty(),
+            "An unsupported pointer leaf cannot leak its preceding integer cell");
+    require(facts.integer_cells(global(word, "declaration", false)).empty() &&
+            facts.integer_cells(global(word, "tls", true, true)).empty(),
+            "Definitions and thread-local storage retain the old admission checks");
+    SourceProgramFacts other(bundle);
+    const auto& independent = other.integer_cells(object);
+    require(&independent != &cells && independent.size() == cells.size() &&
+            cells.data() == facts.integer_cells(object).data(),
+            "Context snapshots own their cache and unrelated inserts preserve references");
+  }
+}
+
 int main() {
+  test_integer_layouts();
   llvm::LLVMContext native_context;
   llvm::Module module("facts", native_context);
   auto* native_type = llvm::FunctionType::get(llvm::Type::getVoidTy(native_context), false);

@@ -1868,8 +1868,6 @@ void DataRaceChecker::check_load(ar::Load* load,
                    inv.second().live_children_is_top(),
                    load->is_atomic(),
                    provenance,
-                   /*private_init=*/false,
-                   /*promote_locks=*/{},
                    this->resolve_offset_congruence(load->operand(), inv)});
 }
 
@@ -1955,8 +1953,6 @@ void DataRaceChecker::check_store(ar::Store* store,
                    inv.second().live_children_is_top(),
                    store->is_atomic(),
                    provenance,
-                   /*private_init=*/false,
-                   /*promote_locks=*/{},
                    this->resolve_offset_congruence(store->pointer(), inv)});
 }
 

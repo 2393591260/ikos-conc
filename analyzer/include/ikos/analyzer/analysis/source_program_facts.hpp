@@ -2,6 +2,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <map>
 #include <memory>
@@ -21,6 +22,11 @@ public:
     std::map< llvm::Value*, ar::Statement* > statements;
     bool unique = true;
   };
+  // Typed byte layout only; no access-closure or mutex-protection certificate.
+  struct IntegerCell {
+    std::uint64_t offset;
+    ar::IntegerType* type;
+  };
 
 private:
   ar::Bundle* _bundle;
@@ -31,6 +37,7 @@ private:
   std::size_t _statement_count = 0;
   std::map< llvm::Function*, std::unique_ptr< llvm::DominatorTree > > _dominators;
   std::map< ar::CallBase*, std::vector< ar::Function* > > _once_callbacks;
+  std::map< ar::GlobalVariable*, std::vector< IntegerCell > > _integer_cells;
 
 public:
   explicit SourceProgramFacts(ar::Bundle*);
@@ -45,6 +52,7 @@ public:
   const llvm::DominatorTree& dominators(llvm::Function*);
   const std::vector< ar::Function* >* once_callbacks(ar::CallBase*) const;
   void remember_once_callbacks(ar::CallBase*, std::vector< ar::Function* >);
+  const std::vector< IntegerCell >& integer_cells(ar::GlobalVariable*);
 };
 
 // One cache per Context, used only after frontend passes and option reconciliation.

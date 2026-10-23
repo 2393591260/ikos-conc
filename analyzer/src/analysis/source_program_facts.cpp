@@ -1,6 +1,10 @@
 // Copyright and license: see context.hpp.
 #include <ikos/analyzer/analysis/source_program_facts.hpp>
 #include <ikos/analyzer/analysis/context.hpp>
+#include <ikos/analyzer/support/cast.hpp>
+
+#include <algorithm>
+#include <functional>
 
 namespace ikos {
 namespace analyzer {
@@ -50,6 +54,59 @@ const std::vector< ar::Function* >* SourceProgramFacts::once_callbacks(ar::CallB
 
 void SourceProgramFacts::remember_once_callbacks(ar::CallBase* c, std::vector< ar::Function* > targets) {
   _once_callbacks.emplace(c, std::move(targets));
+}
+
+// Preserve the original finite, nonoverlapping integer-leaf subset.
+const std::vector< SourceProgramFacts::IntegerCell >&
+SourceProgramFacts::integer_cells(ar::GlobalVariable* global) {
+  auto found = _integer_cells.find(global);
+  if (found != _integer_cells.end()) return found->second;
+  auto& cells = _integer_cells[global];
+  if (!global->is_definition() || global->is_thread_local()) return cells;
+  const auto& dl = global->bundle()->data_layout();
+  auto extent = dl.alloc_size_in_bytes(global->type()->pointee());
+  if (extent <= 0 || !extent.fits< std::uint64_t >() ||
+      extent >= (core::ZNumber(1) << dl.pointers.bit_width)) return cells;
+  std::function< bool(ar::Type*, core::ZNumber, unsigned) > visit =
+      [&](ar::Type* type, core::ZNumber offset, unsigned depth) {
+    if (depth > 8 || cells.size() >= 64) return false;
+    if (auto* integer = dyn_cast< ar::IntegerType >(type)) {
+      auto bytes = dl.store_size_in_bytes(type);
+      if (offset < 0 || offset + bytes > extent ||
+          !offset.fits< std::uint64_t >()) return false;
+      cells.push_back({offset.to< std::uint64_t >(), integer});
+      return true;
+    }
+    if (auto* structure = dyn_cast< ar::StructType >(type)) {
+      for (const auto& field : structure->layout())
+        if (!visit(field.type, offset + field.offset, depth + 1)) return false;
+      return true;
+    }
+    if (auto* array = dyn_cast< ar::ArrayType >(type)) {
+      if (array->num_elements() > 64) return false;
+      auto stride = dl.alloc_size_in_bytes(array->element_type());
+      for (core::ZNumber i(0); i < array->num_elements(); ++i)
+        if (!visit(array->element_type(), offset + i * stride, depth + 1)) return false;
+      return true;
+    }
+    return false;
+  };
+  if (!visit(global->type()->pointee(), core::ZNumber(0), 0)) {
+    cells.clear();
+    return cells;
+  }
+  std::sort(cells.begin(), cells.end(), [](const auto& a, const auto& b) {
+    return a.offset < b.offset;
+  });
+  core::ZNumber end(0);
+  for (const auto& cell : cells) {
+    if (core::ZNumber(cell.offset) < end) {
+      cells.clear();
+      return cells;
+    }
+    end = core::ZNumber(cell.offset) + dl.store_size_in_bytes(cell.type);
+  }
+  return cells;
 }
 
 SourceProgramFacts& source_program_facts(Context& ctx) {

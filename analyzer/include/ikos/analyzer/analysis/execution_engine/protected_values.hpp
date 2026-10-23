@@ -2,12 +2,12 @@
 #pragma once
 
 #include <algorithm>
-#include <functional>
 #include <map>
 #include <vector>
 
 #include <ikos/analyzer/analysis/execution_engine/handle_origin.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
+#include <ikos/analyzer/analysis/source_program_facts.hpp>
 #include <ikos/analyzer/analysis/memory_location.hpp>
 
 namespace ikos {
@@ -108,55 +108,6 @@ inline bool protected_scalar_accesses(ar::GlobalVariable* slot) {
   return true;
 }
 
-struct ProtectedIntegerCell {
-  std::uint64_t offset;
-  ar::IntegerType* type;
-};
-
-// Only finite, nonoverlapping integer leaves; padding never becomes a cell.
-inline std::vector< ProtectedIntegerCell > protected_integer_cells(ar::GlobalVariable* global) {
-  std::vector< ProtectedIntegerCell > cells;
-  if (!global->is_definition() || global->is_thread_local()) return cells;
-  const auto& dl = global->bundle()->data_layout();
-  auto extent = dl.alloc_size_in_bytes(global->type()->pointee());
-  if (extent <= 0 || !extent.fits< std::uint64_t >() ||
-      extent >= (core::ZNumber(1) << dl.pointers.bit_width)) return cells;
-  std::function< bool(ar::Type*, core::ZNumber, unsigned) > visit =
-      [&](ar::Type* type, core::ZNumber offset, unsigned depth) {
-    if (depth > 8 || cells.size() >= 64) return false;
-    if (auto* integer = dyn_cast< ar::IntegerType >(type)) {
-      auto bytes = dl.store_size_in_bytes(type);
-      if (offset < 0 || offset + bytes > extent ||
-          !offset.fits< std::uint64_t >()) return false;
-      cells.push_back({offset.to< std::uint64_t >(), integer});
-      return true;
-    }
-    if (auto* structure = dyn_cast< ar::StructType >(type)) {
-      for (const auto& field : structure->layout())
-        if (!visit(field.type, offset + field.offset, depth + 1)) return false;
-      return true;
-    }
-    if (auto* array = dyn_cast< ar::ArrayType >(type)) {
-      if (array->num_elements() > 64) return false;
-      auto stride = dl.alloc_size_in_bytes(array->element_type());
-      for (core::ZNumber i(0); i < array->num_elements(); ++i)
-        if (!visit(array->element_type(), offset + i * stride, depth + 1)) return false;
-      return true;
-    }
-    return false;
-  };
-  if (!visit(global->type()->pointee(), core::ZNumber(0), 0)) return {};
-  std::sort(cells.begin(), cells.end(), [](const auto& a, const auto& b) {
-    return a.offset < b.offset;
-  });
-  core::ZNumber end(0);
-  for (const auto& cell : cells) {
-    if (core::ZNumber(cell.offset) < end) return {};
-    end = core::ZNumber(cell.offset) + dl.store_size_in_bytes(cell.type);
-  }
-  return cells;
-}
-
 // Match AR pointer arithmetic, including its machine-width offset arithmetic.
 inline bool protected_cell_offset(ar::Value* value, ar::GlobalVariable* base,
                                    core::ZNumber& offset, unsigned depth = 0) {
@@ -186,7 +137,7 @@ inline bool protected_cell_offset(ar::Value* value, ar::GlobalVariable* base,
 }
 
 inline bool protected_integer_accesses(ar::GlobalVariable* global,
-                                        const std::vector< ProtectedIntegerCell >& cells) {
+                                        const std::vector< SourceProgramFacts::IntegerCell >& cells) {
   if (global->type()->pointee()->is_integer()) return protected_scalar_accesses(global);
   if (cells.empty()) return false;
   auto complete = [&](ar::Value* pointer, ar::Type* type) {
@@ -245,8 +196,8 @@ inline bool protected_integer_accesses(ar::GlobalVariable* global,
 // establish equality, and an invalid/bottom memory read is not a proof.
 template < typename D, typename C >
 bool protected_cells_equal(D observation, C& ctx, ar::GlobalVariable* global,
-                           const ProtectedIntegerCell& left,
-                           const ProtectedIntegerCell& right) {
+                           const SourceProgramFacts::IntegerCell& left,
+                           const SourceProgramFacts::IntegerCell& right) {
   if (observation.normal().is_bottom() ||
       left.type->bit_width() != right.type->bit_width() ||
       left.type->sign() != right.type->sign()) return false;
@@ -296,7 +247,7 @@ void refresh_protected_equalities(E& eng, std::uint64_t acquired) {
       values.emplace(std::get<0>(pair), nullptr);
       values.emplace(std::get<1>(pair), nullptr);
     }
-    auto cells = protected_integer_cells(global);
+    const auto& cells = source_program_facts(eng.ctx()).integer_cells(global);
     for (const auto& cell : cells) {
       auto found = values.find(cell.offset);
       if (found == values.end()) continue;
@@ -357,7 +308,7 @@ void record_protected_scalar_write(E& eng, ar::Store* store,
     std::uint64_t byte_offset = 0;
     if (offset && offset->to_z_number().template fits< std::uint64_t >()) {
       byte_offset = offset->to_z_number().template to< std::uint64_t >();
-      for (const auto& cell : protected_integer_cells(global->global_var()))
+      for (const auto& cell : source_program_facts(eng.ctx()).integer_cells(global->global_var()))
         if (cell.offset == byte_offset) type = cell.type;
     }
     if (!type || !written || written->bit_width() != type->bit_width() ||
@@ -392,7 +343,7 @@ void refresh_protected_values(E& eng,
     auto* location = eng.ctx().mem_factory->get_global(global);
     auto addr = core::IndexableTraits< MemoryLocation* >::index(location);
     if (!env.has_mutex_value_cell(addr)) continue;
-    for (const auto& cell : protected_integer_cells(global)) {
+    for (const auto& cell : source_program_facts(eng.ctx()).integer_cells(global)) {
       auto* type = cell.type;
       if (!env.has_mutex_value_cell(addr, cell.offset, type->bit_width())) continue;
       auto external = (first || held.empty())
@@ -437,10 +388,11 @@ void publish_protected_release(E& eng,
     auto* location = eng.ctx().mem_factory->get_global(global);
     auto addr = core::IndexableTraits< MemoryLocation* >::index(location);
     if (!env.has_mutex_value_cell(addr)) continue;
+    const auto& cells = source_program_facts(eng.ctx()).integer_cells(global);
     for (const auto& pair : env.mutex_equalities(addr)) {
-      ProtectedIntegerCell left{std::get<0>(pair), nullptr};
-      ProtectedIntegerCell right{std::get<1>(pair), nullptr};
-      for (const auto& cell : protected_integer_cells(global)) {
+      SourceProgramFacts::IntegerCell left{std::get<0>(pair), nullptr};
+      SourceProgramFacts::IntegerCell right{std::get<1>(pair), nullptr};
+      for (const auto& cell : cells) {
         if (cell.offset == left.offset) left.type = cell.type;
         if (cell.offset == right.offset) right.type = cell.type;
       }
@@ -452,7 +404,7 @@ void publish_protected_release(E& eng,
         env.join_mutex_equality_release(addr, left.offset, right.offset,
                                         std::get<2>(pair), released, equal);
     }
-    for (const auto& cell : protected_integer_cells(global)) {
+    for (const auto& cell : cells) {
       auto* type = cell.type;
       if (!env.has_mutex_value_cell(addr, cell.offset, type->bit_width())) continue;
       auto* pointer = eng.var_factory().create_unnamed_shadow(global->type());

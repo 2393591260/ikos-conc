@@ -157,9 +157,56 @@ static void test_mutex_field_equalities() {
           "Unknown effects also disable the joint channel");
 }
 
+static void test_interference_selection() {
+  using ikos::core::MachineInt;
+  using ikos::core::Signed;
+  using Interval = ikos::core::machine_int::Interval;
+  // Exhaust the small lockset space against the direct semantic definition.
+  const auto locks = [](unsigned mask) {
+    Joined result;
+    for (unsigned bit = 0; bit < 3; ++bit)
+      if (mask & (1u << bit)) result.insert(201 + bit);
+    return result;
+  };
+  for (unsigned writers = 0; writers < 256; ++writers) {
+    ConcurrentGlobalEnv env;
+    const auto initial = Interval(MachineInt(-1, 32, Signed));
+    env.initialize_mutex_value(101, initial);
+    env.enable_mutex_values();
+    for (unsigned mask = 0; mask < 8; ++mask) {
+      if (!(writers & (1u << mask))) continue;
+      // TOP first also exercises absorbing joins followed by finite values.
+      auto value = mask == 0 ? Interval::top(32, Signed)
+                             : Interval(MachineInt(mask, 32, Signed));
+      env.join_mutex_ongoing(101, locks(mask), value);
+      env.join_mutex_release(101, locks(mask), value);
+    }
+    for (unsigned reader = 0; reader < 8; ++reader) {
+      auto ongoing = Interval::bottom(32, Signed);
+      unsigned common = reader;
+      for (unsigned mask = 0; mask < 8; ++mask) {
+        if (!(writers & (1u << mask))) continue;
+        common &= mask;
+        if (!(reader & mask)) {
+          auto value = mask == 0 ? Interval::top(32, Signed)
+                                 : Interval(MachineInt(mask, 32, Signed));
+          ongoing.join_with(value);
+        }
+      }
+      auto handoff = initial;
+      handoff.join_with(ongoing);
+      require(env.mutex_field_protected(101, 0, 32, locks(reader)) == (common != 0) &&
+              env.read_mutex_ongoing(101, locks(reader), 32, Signed).equals(ongoing) &&
+              env.read_mutex_handoff(101, locks(reader), 32, Signed).equals(handoff),
+              "Short-circuits preserve every writer partition and completed handoff");
+    }
+  }
+}
+
 int main() {
   test_mutex_field_values();
   test_mutex_field_equalities();
+  test_interference_selection();
   ar::Context context;
   auto* bundle =
       ar::Bundle::create(context,

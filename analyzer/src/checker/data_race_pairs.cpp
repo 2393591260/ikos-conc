@@ -595,8 +595,7 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
     }
   }
 
-  // Legacy private_init annotations do not prove freshness or publication;
-  // their exclusion rule remains disabled. InitPublication proves its own HB.
+  // Publication requires its own freshness and happens-before proof.
   InitPublication init_publication(this->_ctx, this->_accesses);
   FirstPublication first_publication(this->_ctx, this->_accesses);
   ThreadPrivateHeap private_heap(this->_ctx, this->_accesses);
@@ -610,36 +609,6 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
   GuardedPublication guarded_publication(this->_ctx);
   ScProtocol sc_protocol(this->_ctx);
   SelfPublication self_publication(this->_ctx);
-  for (std::size_t i = 0; i < this->_accesses.size(); ++i) {
-    AccessRecord& w = this->_accesses[i];
-    if (w.kind != AccessKind::Write || !w.locks.empty() ||
-        w.thread_id.empty() || !w.pts.is_set() || w.pts.size() != 1 ||
-        !isa< DynAllocMemoryLocation >(*w.pts.begin())) {
-      continue;
-    }
-    MemoryLocation* o = *w.pts.begin();
-    for (std::size_t j = i + 1; j < this->_accesses.size(); ++j) {
-      const AccessRecord& l = this->_accesses[j];
-      if (l.thread_id != w.thread_id || l.locks.size() != 1 ||
-          !l.pts.is_set()) {
-        continue;
-      }
-      bool touches = false;
-      for (MemoryLocation* ml : l.pts) {
-        if (ml == o) {
-          touches = true;
-          break;
-        }
-      }
-      if (!touches) {
-        continue;
-      }
-      w.private_init = true;
-      w.promote_locks = l.locks;
-      break;
-    }
-  }
-
   // Consumer-only ablation: producers and coverage keep their original roles.
   const bool suppress_owner = std::getenv("IKOS_RACE_DISABLE_OWNER_CONSUMER") != nullptr;
   std::ofstream observations;
@@ -874,43 +843,6 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
         if (auto location = source_location(a.stmt)) proof.put("access_a_line", location.line());
         if (auto location = source_location(b.stmt)) proof.put("access_b_line", location.line());
         return PairDecision::exclude(race_rules::Id::FirstPublication, proof);
-      }
-      // Happens-before (private-init publication, 09-regions_02-list_nr.c):
-      // DISABLED (kEnablePrivateInit = false). The rule only proves "the same
-      // thread later accesses this DynAlloc while holding exactly one lock" —
-      // it does NOT prove the object was still un-published at the unlocked
-      // write. published-before-init.c (main publishes `p` through a global
-      // BEFORE spawning threads, so thread A's unlocked `p->v=1` races thread
-      // B's locked write) is a real race this rule wrongly suppressed → FN,
-      // violating FN=0. Re-enable only with (a) an escape/freshness proof that
-      // the object is not yet reachable by other threads at the write, and
-      // (b) an explicit publication edge (init write → promoting unlock →
-      // reader lock → reader access). See is_heap_node_fresh /
-      // touches_shared_memory as candidate sources for (a).
-      constexpr bool kEnablePrivateInit = false;
-      if (kEnablePrivateInit) {
-        auto hb_private_init = [](const AccessRecord& writer,
-                                  const AccessRecord& reader) {
-          if (!writer.private_init || writer.promote_locks.size() != 1 ||
-              reader.locks.size() != 1 ||
-              writer.promote_locks[0] != reader.locks[0]) {
-            return false;
-          }
-          if (!reader.pts.is_set()) {
-            return false; // TOP reader: the same-cell fact is not provable
-          }
-          std::uint64_t o = core::IndexableTraits< MemoryLocation* >::index(
-              *writer.pts.begin());
-          for (MemoryLocation* ml : reader.pts) {
-            if (core::IndexableTraits< MemoryLocation* >::index(ml) == o) {
-              return true;
-            }
-          }
-          return false;
-        };
-        if (hb_private_init(a, b) || hb_private_init(b, a)) {
-          return PairDecision::exclude(race_rules::Id::DisabledPrivateInit);
-        }
       }
       // Field/element sensitivity on the DATA side, width-aware: `data.x` and
       // `data.y` (or `data[3]` and `data[4]`) collapse to the same base

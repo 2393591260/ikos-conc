@@ -165,18 +165,6 @@ struct AccessRecord {
   /// marks the pair UNKNOWN (identity lost); a KnownObject side keeps the
   /// pair RACE (identity known, ⊤ is a compression artefact).
   TopProvenance provenance = TopProvenance::Concrete;
-  /// \brief True when this is an UNLOCKED write to a DynAlloc that the SAME
-  /// thread later accesses while HOLDING a lock — i.e. an initialization
-  /// write that precedes the object's "promotion" to a locked/shared state.
-  /// Such a write is happens-before any locked read of the object by another
-  /// thread (09-regions_02-list_nr.c: `init(p,7)` runs before `lock(A_mutex)`
-  /// which publishes `p`, so the unlocked datum write does not race the
-  /// locked datum read in main).
-  bool private_init = false;
-  /// \brief The locks held at the FIRST locked access to this object by the
-  /// same thread (the "promoting" lock). A locked read holding one of these
-  /// locks is ordered after this private init write.
-  std::vector< std::uint64_t > promote_locks;
   // Stable local may fact used only by the separate SAFE pair-exclusion query.
   // Extern/synthetic accesses deliberately retain no numerical certificate.
   boost::optional< core::machine_int::Congruence > offset_congruence = boost::none;

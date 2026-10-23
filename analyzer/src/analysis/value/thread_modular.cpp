@@ -449,7 +449,7 @@ void ThreadModularAnalysis::run() {
       auto* global = *it;
       if (!global->type()->pointee()->is_integer() &&
           std::getenv("IKOS_DISABLE_MUTEX_FIELD_VALUES")) continue;
-      auto cells = protected_integer_cells(global);
+      const auto& cells = source_program_facts(_ctx).integer_cells(global);
       if (!protected_integer_accesses(global, cells)) continue;
       for (const auto& cell : cells) {
         auto* type = cell.type;

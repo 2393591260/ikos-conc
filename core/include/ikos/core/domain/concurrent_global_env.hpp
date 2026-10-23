@@ -1896,14 +1896,16 @@ public:
     std::lock_guard< std::mutex > lock(_mutex);
     MutexCell cell{addr, offset, width};
     auto common = held;
+    if (common.empty()) return false;
     for (auto it = _mutex_ongoing_values.lower_bound({cell, {}});
          it != _mutex_ongoing_values.end() && it->first.first == cell; ++it) {
       for (auto h = common.begin(); h != common.end();) {
         if (it->first.second.count(*h) == 0) h = common.erase(h);
         else ++h;
       }
+      if (common.empty()) return false;
     }
-    return !common.empty();
+    return true;
   }
 
   void initialize_mutex_equality(std::uint64_t addr, std::uint64_t left,
@@ -2023,9 +2025,11 @@ private:
       const MutexCell& cell, const std::unordered_set< std::uint64_t >& held,
       machine_int::Interval& result) const {
     for (auto it = board.lower_bound({cell, {}});
-         it != board.end() && it->first.first == cell; ++it) {
+         it != board.end() && it->first.first == cell && !result.is_top(); ++it) {
       bool excluded = false;
-      for (auto lock : it->first.second) excluded |= held.count(lock) != 0;
+      for (auto lock : it->first.second) {
+        if (held.count(lock)) { excluded = true; break; }
+      }
       if (!excluded) result.join_with(it->second.cast(result.bit_width(), result.sign()));
     }
   }
