@@ -13,6 +13,19 @@ Contact
 Installation issues
 -------------------
 
+### Missing shared libraries in a release archive
+
+Install the [declared runtime dependencies](doc/concurrency/user-guide/running.md#install-the-release-archive)
+on Ubuntu 26.04, then run the archive's `./smoketest.sh`. The current release
+includes Boost Filesystem/Thread, PPL, oneTBB, LLVM, APRON, Z3, ICU 74 and libxml2;
+keep the entire extracted tree together so its wrappers can locate them.
+
+If one of these bundled libraries is missing, extract a fresh copy of the complete
+release ZIP and check `BUNDLED-LIBRARIES.json` and `BUILD-INFO.json`. An earlier
+archive may have different requirements; use the release linked from the
+[README](README.md#install-and-run). Include the missing library name and build
+identity in an issue if the current complete archive still fails.
+
 ### "Could NOT find LLVM" while running cmake
 
 CMake could not find LLVM.
@@ -41,15 +54,15 @@ You can either add the clang binary directory in your PATH, or give cmake the fu
 
 ### "Could not find ikos python module" while running ikos
 
-The ikos command could not import the ikos python module.
+Use the installed entry from one complete installation. A source installation
+uses its `libexec` Python environment; a release archive bundles its frontend
+modules and uses system Python. Mixing a binary with modules from another build
+can produce import errors or inconsistent analysis.
 
-The module should be under `/path/to/ikos-install/lib/python*/site-packages`
-
-If the ikos python module is in another directory, make sure it is in your PYTHONPATH:
-
-```
-export PYTHONPATH=/path/to/ikos-python-module
-```
+For a source build, rerun `cmake --install build` and check the selected executable.
+For an archive, extract the complete ZIP and keep its directory layout intact.
+Clear inherited `PYTHONPATH` / `PYTHONHOME` overrides and retry with the installed
+entry. See the [installation guide](doc/concurrency/user-guide/running.md#install-the-release-archive).
 
 ### "Two passes with the same argument (-domtree) attempted to be registered!" while running ikos
 
@@ -76,7 +89,7 @@ Analysis issues
 
 IKOS probably ran out of memory.
 
-See [Running ouf of memory](#running-out-of-memory)
+See [Running out of memory](#running-out-of-memory)
 
 ### Running out of memory
 
@@ -120,10 +133,13 @@ apply to one task.
 ### Raising an external timeout did not help
 
 The benchmark script's wall timeout is separate from BMC's cooperative deadline,
-per-query SMT timeout, and structural limits. Internal limits currently have no
-runtime CLI options. Increasing external time does not add missing semantics or
-remove those limits. Official performance evaluation needs the actual BenchExec
-resource configuration, not an assumed wall-time equivalent.
+per-query SMT timeout, and structural limits. `--bmc-deadline-ms` (default 20000)
+and `--bmc-solver-timeout-ms` (default 1000) control the two internal time budgets
+in `ikos` and the competition wrapper. A zero BMC deadline disables confirmation;
+the solver timeout must be positive. These options do not change structural
+bounds or add missing semantics. See [budgets and benchmarking](doc/concurrency/user-guide/benchmarking.md#resource-limits).
+Official performance evaluation uses the actual BenchExec CPU, memory and core
+configuration, rather than an assumed wall-time equivalent.
 
 ### No witness was written
 

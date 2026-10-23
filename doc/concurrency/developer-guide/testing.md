@@ -2,6 +2,33 @@
 
 [Concurrent analysis documentation](../../CONCURRENCY.md)
 
+## Check a source installation
+
+After installation, developers can run the focused concurrency regressions:
+
+```bash
+./install/libexec/bin/python -m pip install benchexec
+ctest --test-dir build -L concurrency --output-on-failure
+```
+
+These checks cover verdict modes, supported value/address semantics, exported
+execution checks and witness/adapter failure controls. CTest includes explicit
+native ILP32 and LP64 groups. Individual Python suites with an ABI selector
+accept `--bits 32` or `--bits 64`, as documented below. These regressions are
+separate from the full external benchmark sweep and official validation.
+
+The standalone harness checks need no analyzer build:
+
+```bash
+python3 scripts/test_ikos_runtime.py
+python3 scripts/test_svcomp_race_runner.py
+python3 scripts/test_svcomp_package.py
+python3 scripts/check_concurrency_docs.py
+```
+
+For same-invocation SQLite evidence and offline execution checks, see the
+[local benchmark sweep](../user-guide/benchmarking.md#local-benchmark-sweep).
+
 <a id="validation-and-reproducibility"></a>
 <details>
 <summary>Validation and reproducibility</summary>
@@ -44,17 +71,12 @@ python3 docs/review-repros/bmc-2026-10-08/run.py --bits 32
 python3 docs/review-repros/bmc-2026-10-08/run.py --bits 64
 ```
 
-For a fixed external benchmark checkout:
-
-```bash
-IKOS_BMC_RECOVER=1 python3 svcomp_race_test.py /path/to/sv-benchmarks \
-  --ikos "$PWD/install/bin/ikos" --demote --partitioning guards --jobs 4 --timeout 30
-```
-
-This measures the analyzer under a local wall limit, not the entire competition
-wrapper or official CPU budget. Record source revision, binary/frontend hashes,
-input revision, ABI, flags, environment, resource limits, and validator version.
-Finite zero FP/FN observations do not prove soundness for all programs.
+The [benchmarking guide](../user-guide/benchmarking.md#local-benchmark-sweep)
+provides the local sweep command and evidence options. It measures the analyzer
+under a local wall limit, rather than the entire competition wrapper or official
+CPU budget. Record source revision, binary/frontend hashes, input revision, ABI,
+flags, environment, resource limits, and validator version. Finite zero FP/FN
+observations do not prove soundness for all programs.
 
 The optional `--inline-allocators` setting is available in `ikos`, the benchmark
 runner, and the competition wrapper. It expands direct calls to bounded,

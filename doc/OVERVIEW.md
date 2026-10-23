@@ -38,7 +38,7 @@ The following illustrates the content of the root directory:
 
 * [core](../core) contains the implementation of the theory of Abstract Interpretation, which includes the abstract domains, the fixpoint iterator, and various algorithms that support the implementation. More information can be found at [core/README.md](../core/README.md).
 
-* [README.md](../README.md#build-from-source) contains the maintained Linux/WSL2 installation instructions. [CONCURRENCY.md](CONCURRENCY.md) explains the concurrent-analysis architecture, verdicts and supported boundaries.
+* [Building and releasing](concurrency/developer-guide/releasing.md#build-from-source) contains the maintained Linux/WSL2 source-build instructions. [CONCURRENCY.md](CONCURRENCY.md) explains the concurrent-analysis architecture, verdicts and supported boundaries.
 
 * [frontend/llvm](../frontend/llvm) contains the implementation of the translation from LLVM to AR. More information can be found at [frontend/llvm/README.md](../frontend/llvm/README.md).
 
@@ -49,3 +49,14 @@ The following illustrates the content of the root directory:
 * [svcomp](../svcomp) and [benchexec](../benchexec) contain packaging, registration and benchmark-tool integration.
 
 * [test](../test), [boundary-tests](../boundary-tests), and [docs/review-repros](../docs/review-repros) contain concurrent regression inputs. Analyzer, frontend and core regression tests also live alongside their respective modules. Run the maintained installed concurrency checks with `ctest --test-dir build -L concurrency --output-on-failure` after installation.
+
+## Upstream publications
+
+The following publications describe the underlying NASA IKOS framework and
+abstract interpretation techniques; they are not IKOS-ConC competition reports.
+
+* Sung Kook Kim, Arnaud J. Venet, Aditya V. Thakur. **Deterministic Parallel Fixpoint Computation.** In _Principles of Programming Languages (POPL 2020)_, New Orleans, Louisiana ([PDF](https://arxiv.org/pdf/1909.05951.pdf)).
+
+* Guillaume Brat, Jorge Navas, Nija Shi and Arnaud Venet. **IKOS: a Framework for Static Analysis based on Abstract Interpretation.** In _Proceedings of the International Conference on Software Engineering and Formal Methods (SEFM 2014)_, Grenoble, France ([DOI](https://doi.org/10.1007/978-3-319-10431-7_20)).
+
+* Arnaud Venet. **The Gauge Domain: Scalable Analysis of Linear Inequality Invariants.** In _Proceedings of Computer Aided Verification (CAV 2012)_, Berkeley, California, USA 2012. Lecture Notes in Computer Science, pages 139-154, volume 7358, Springer 2012 ([PDF](http://ti.arc.nasa.gov/publications/4767/download/)).

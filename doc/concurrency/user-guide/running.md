@@ -2,6 +2,39 @@
 
 [Concurrent analysis documentation](../../CONCURRENCY.md)
 
+## Install the release archive
+
+The [current release](../../../README.md#install-and-run) targets Linux x86-64
+with Ubuntu 26.04 system packages. Windows users can use Ubuntu 26.04 under WSL2.
+Install the runtime dependencies before extracting and running the archive:
+
+```bash
+sudo apt-get update
+sudo apt-get install --yes \
+  unzip python3 libc6-dev libc6-dev-i386 lib32gcc-15-dev \
+  libgmp10 libgmpxx4ldbl libmpfr6 \
+  libsqlite3-0 libtinfo6 zlib1g libffi8 \
+  libedit2 libbsd0 liblzma5 libmd0
+```
+
+Download `ikos-conc.zip` from the linked Zenodo record, extract it, and keep the
+whole directory together. Run `./smoketest.sh` inside it before analyzing inputs.
+The smoke test uses the actual competition entry on race and mutex-protected
+examples in ILP32 and LP64. It checks witness output, not independent
+source-witness validity.
+
+The archive includes LLVM/Clang 14, APRON, Z3, Boost Filesystem/Thread, PPL,
+oneTBB and its allocator, and the ICU 74/libxml2 ABIs needed by its LLVM build.
+`BUNDLED-LIBRARIES.json` records the added runtime libraries' versions and hashes;
+third-party notices and PPL's corresponding source are in `licenses/`.
+System Python and the declared system libraries are still required. Check
+`BUILD-INFO.json` for the source revision and binary hashes; a repository update
+does not change a published archive.
+
+Native macOS is not a validated release target. Its manual exploratory build
+workflow has an unresolved compilation failure; Linux is the supported build
+and acceptance target.
+
 ## Supported analysis engine
 
 Concurrent analysis requires `--proc=inter` and `--jobs=1` in the

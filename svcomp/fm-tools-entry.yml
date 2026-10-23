@@ -27,7 +27,7 @@ maintainers:
 
 versions:
   - version: "svcomp27"
-    doi: 10.5281/zenodo.23122650
+    doi: 10.5281/zenodo.23560094
     benchexec_toolinfo_options: []
     required_ubuntu_packages:
       - libc6-dev
