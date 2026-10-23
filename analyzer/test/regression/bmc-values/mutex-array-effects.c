@@ -9,7 +9,7 @@ typedef long long datum_type;
 #else
 typedef int datum_type;
 #endif
-#if CASE >= 17
+#if CASE >= 17 && CASE <= 21
 extern int __VERIFIER_nondet_int(void);
 struct box { datum_type *target; };
 struct box *shared_box;
@@ -53,7 +53,19 @@ int main(void) {
   return 0;
 }
 #else
+#if CASE == 22
+#define COUNT 257
+#endif
+#ifndef COUNT
 #define COUNT 3
+#endif
+#if CASE == 24
+typedef unsigned int key_type;
+#elif CASE == 25
+typedef unsigned char key_type;
+#else
+typedef int key_type;
+#endif
 extern int __VERIFIER_nondet_int();
 struct element { datum_type value; struct element *next; };
 struct element *heads[COUNT];
@@ -94,7 +106,7 @@ void append(struct element *p, struct element *head) {
 }
 void *entry(void *unused) {
   (void)unused;
-  int key = __VERIFIER_nondet_int();
+  key_type key = __VERIFIER_nondet_int();
 #if CASE != 4
   require_condition(key >= 0 && key < COUNT);
 #endif
@@ -117,12 +129,19 @@ void *entry(void *unused) {
 #endif
 #if CASE == 6
   pthread_mutex_t *lock = (pthread_mutex_t *)((char *)guards + 1);
+#elif CASE == 22
+  // At key=256 this protects lock 0 while the data still belongs to owner 256.
+  pthread_mutex_t *lock = &guards[(unsigned char)key];
 #else
   pthread_mutex_t *lock = &guards[key];
 #endif
   pthread_mutex_lock(lock);
 #if CASE == 2
   heads[key]->next = heads[(key + 1) % COUNT];
+#endif
+#if CASE == 23
+  // A scalar write to the high byte of next is outside the typed graph schema.
+  ((unsigned char *)&heads[key]->next)[sizeof(void *) - 1] = 0;
 #endif
   append(make_element(3), heads[key]);
   pthread_mutex_unlock(lock);
@@ -135,7 +154,7 @@ int main(void) {
 #if CASE == 1
   int first = index_value();
 #else
-  int first = __VERIFIER_nondet_int();
+  key_type first = __VERIFIER_nondet_int();
   require_condition(first >= 0 && first < COUNT);
 #endif
   for (int i = 0; i < COUNT; ++i)

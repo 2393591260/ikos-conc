@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/mutex-array-effects.c').read_text()
     original = 'struct element *heads[COUNT];\npthread_mutex_t guards[COUNT];'
@@ -94,7 +95,7 @@ def main():
                 database = work / 'output.db'
                 proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
                     '--concurrency=auto', '--demote-race-to-unknown', '--partitioning=guards',
-                    '--bmc-deadline-ms=0', '--log=debug', '-m32', '-o', str(database), str(source)],
+                    '--bmc-deadline-ms=0', '--log=debug', f'-m{args.bits}', '-o', str(database), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
                 output = proc.stdout + proc.stderr
                 safe = 'The program is SAFE' in output

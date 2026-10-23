@@ -76,9 +76,18 @@ value analysis. Both complete points-to sets must contain only known heap
 locations; numeric addresses, TOP and mixed storage classes retain their original
 candidates. Missing ownership on either endpoint also retains the candidate.
 
-The initial subset supports ILP32 GNU/Linux fixed root/mutex arrays, one
+The indexed-owner subset supports GNU/Linux x86 ILP32 and x86-64 LP64 fixed
+root/mutex arrays, one
 self-referential pointer field per object, exact object extents and verified
 pthread/malloc APIs. Root slots become immutable before worker creation.
+The LLVM and AR layouts must agree on every node field offset and width.
+Native pointer/handle widths are respectively 4/8 bytes and mutex leaves 24/40
+bytes; target, address space, alignment, complete leaf extent and closed uses
+are checked. This does not extend other heap or synchronization certificates
+to LP64. Index relations survive only mathematically value-preserving signed
+or unsigned extensions; truncation and integer/pointer conversions grant no
+new relation. Scalar accesses overlapping any byte of the pointer field refuse
+the certificate.
 Cross-owner links, unknown effects, unsupported escaping, free/realloc, partial
 pointer writes or unproved address bounds disable the family certificate.
 Coverage warnings remain independent. Unsupported programs use the existing
@@ -133,8 +142,10 @@ to the selected subarray; held mutex keys keep their absolute allocation offsets
 The shared pointer board remains a MAY union, and ordinary write invalidation is
 unchanged. Escaping addresses, overlapping writes, unsupported siblings, packed
 or union containers, and ambiguous families retain conservative behavior.
-Run `python3 scripts/test_nested_array_ownership.py` for these ILP32 controls,
-including 64-bit payloads and wrapping index conversions.
+Run `python3 scripts/test_nested_array_ownership.py` for these controls,
+including 64-bit payloads and wrapping index conversions. This runner,
+`test_region_ownership.py` and `test_mutex_array_effects.py` accept `--bits=64`
+for LP64; their default remains ILP32.
 
 Implementation: `analysis/region_ownership.hpp` and
 `src/analysis/region_ownership.cpp`. The checker consumes certificates only after

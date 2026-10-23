@@ -15,6 +15,57 @@
 namespace ikos {
 namespace analyzer {
 
+struct PthreadObjectLayout {
+  unsigned word = 0;
+  unsigned mutex = 0;
+  explicit operator bool() const { return word != 0; }
+};
+
+// Sizes describe this verified target ABI, not initialization or closed uses.
+inline PthreadObjectLayout pthread_object_layout(const ar::Bundle* bundle,
+                                                 const llvm::Module* source) {
+  if (!source)
+    return {};
+  const llvm::Triple target(source->getTargetTriple());
+  const auto bits = bundle->data_layout().pointers.bit_width;
+  const auto& layout = source->getDataLayout();
+  if (!target.isOSLinux() || target.getEnvironment() != llvm::Triple::GNU ||
+      !layout.isLittleEndian() || layout.getPointerSizeInBits(0) != bits ||
+      !((target.getArch() == llvm::Triple::x86 && bits == 32) ||
+        (target.getArch() == llvm::Triple::x86_64 && bits == 64)))
+    return {};
+  return {static_cast< unsigned >(bits / 8), bits == 32 ? 24u : 40u};
+}
+
+inline unsigned mutex_array_leaf_width(const GlobalArraySubobject& object) {
+  if (!object || !object.type || !object.source_type ||
+      !object.global->has_frontend())
+    return 0;
+  auto* global = object.global;
+  auto* source = global->frontend< llvm::GlobalVariable >();
+  const auto abi = pthread_object_layout(global->bundle(), source->getParent());
+  auto* leaf = llvm::dyn_cast< llvm::StructType >(
+      object.source_type->getElementType());
+  if (!abi || !leaf || leaf->isOpaque() || !leaf->hasName() ||
+      leaf->getName() != "union.pthread_mutex_t")
+    return 0;
+  const auto& layout = source->getParent()->getDataLayout();
+  const auto& ar_layout = global->bundle()->data_layout();
+  const auto alignment = source->getAlign()
+                             ? source->getAlign()->value()
+                             : layout.getABITypeAlign(source->getValueType()).value();
+  if (source->getAddressSpace() != 0 || source->isExternallyInitialized() ||
+      layout.getABITypeAlign(leaf).value() != abi.word ||
+      alignment < abi.word || object.begin % abi.word != 0 ||
+      layout.getTypeAllocSize(leaf) != abi.mutex ||
+      layout.getTypeStoreSize(leaf) != abi.mutex ||
+      ar_layout.alloc_size_in_bytes(object.type->element_type()) != abi.mutex ||
+      ar_layout.store_size_in_bytes(object.type->element_type()) != abi.mutex ||
+      object.size != abi.mutex * object.type->num_elements())
+    return 0;
+  return abi.mutex;
+}
+
 inline bool mutex_array_storage_scope(ar::GlobalVariable* global,
                                      const core::ZNumber& count) {
   if (!global->has_frontend() || !global->is_definition() ||
@@ -26,11 +77,8 @@ inline bool mutex_array_storage_scope(ar::GlobalVariable* global,
   auto* leaf =
       array ? llvm::dyn_cast< llvm::StructType >(array->getElementType())
             : nullptr;
-  llvm::Triple target(source->getParent()->getTargetTriple());
   if (!array || !ar_array || !leaf || leaf->isOpaque() || !leaf->hasName() ||
-      leaf->getName() != "union.pthread_mutex_t" || !target.isOSLinux() ||
-      target.getEnvironment() != llvm::Triple::GNU ||
-      target.getArch() != llvm::Triple::x86 ||
+      leaf->getName() != "union.pthread_mutex_t" ||
       source->getAddressSpace() != 0 || source->isExternallyInitialized() ||
       source->isConstant() || !source->hasInitializer() ||
       !source->getInitializer()->isNullValue() ||
@@ -38,11 +86,12 @@ inline bool mutex_array_storage_scope(ar::GlobalVariable* global,
       ar_array->num_elements() != count)
     return false;
   const auto& layout = source->getParent()->getDataLayout();
-  auto alignment = source->getAlign() ? source->getAlign()->value()
-                                      : layout.getABITypeAlign(array).value();
-  if (alignment < 4 || layout.getTypeAllocSize(leaf) != 24 ||
-      layout.getTypeAllocSize(array) != 24 * array->getNumElements() ||
-      global->bundle()->data_layout().alloc_size_in_bytes(ar_array) != 24 * count)
+  const GlobalArraySubobject object{
+      global, ar_array, array, {}, core::ZNumber(0),
+      global->bundle()->data_layout().alloc_size_in_bytes(ar_array)};
+  const auto width = mutex_array_leaf_width(object);
+  if (!width || layout.getTypeAllocSize(array) != width * array->getNumElements() ||
+      object.size != width * count)
     return false;
   std::set< llvm::Value* > visited;
   std::vector< llvm::Value* > pending{source};
@@ -92,17 +141,11 @@ inline bool mutex_array_storage_scope(const GlobalArraySubobject& object,
   if (!object.nested()) return mutex_array_storage_scope(object.global, count);
   auto* source = object.global->frontend< llvm::GlobalVariable >();
   auto* leaf = llvm::dyn_cast< llvm::StructType >(object.source_type->getElementType());
-  const llvm::Triple target(source->getParent()->getTargetTriple());
-  const auto& layout = source->getParent()->getDataLayout();
-  const auto alignment = source->getAlign() ? source->getAlign()->value()
-      : layout.getABITypeAlign(source->getValueType()).value();
+  const auto width = mutex_array_leaf_width(object);
   if (!leaf || leaf->isOpaque() || !leaf->hasName() ||
-      leaf->getName() != "union.pthread_mutex_t" || !target.isOSLinux() ||
-      target.getEnvironment() != llvm::Triple::GNU || target.getArch() != llvm::Triple::x86 ||
-      object.global->bundle()->data_layout().pointers.bit_width != 32 ||
+      leaf->getName() != "union.pthread_mutex_t" || !width ||
       source->isConstant() || !source->hasInitializer() || !source->getInitializer()->isNullValue() ||
-      object.type->num_elements() != count || alignment < 4 || object.begin % 4 != 0 ||
-      layout.getTypeAllocSize(leaf).getFixedValue() != 24 || object.size != 24 * count)
+      object.type->num_elements() != count || object.size != width * count)
     return false;
   const auto arrays = global_array_subobjects(object.global);
   return closed_global_array_uses(object.global, [&](llvm::User* user) {
@@ -241,8 +284,21 @@ inline bool unread_private_thread_output(ar::CallBase* call) {
   auto* storage = llvm::dyn_cast< llvm::AllocaInst >(
       source->getArgOperand(0)->stripPointerCasts());
   auto* count = storage ? llvm::dyn_cast< llvm::ConstantInt >(storage->getArraySize()) : nullptr;
+  const auto abi = pthread_object_layout(call->bundle(), source->getModule());
+  auto* native_output = llvm::cast< llvm::PointerType >(
+      function->getFunctionType()->getParamType(0));
+  auto* actual_output = llvm::cast< llvm::PointerType >(
+      source->getArgOperand(0)->getType());
+  auto* ar_output = dyn_cast< ar::PointerType >(call->argument(0)->type());
+  auto* ar_handle = ar_output ? dyn_cast< ar::IntegerType >(ar_output->pointee()) : nullptr;
   if (!storage || storage->getFunction() != source->getFunction() ||
-      !storage->getAllocatedType()->isIntegerTy(32) || !count || !count->isOne()) return false;
+      !abi || !storage->getAllocatedType()->isIntegerTy(abi.word * 8) ||
+      native_output->getAddressSpace() != 0 || actual_output->getAddressSpace() != 0 ||
+      native_output->isOpaque() || actual_output->isOpaque() ||
+      !native_output->getPointerElementType()->isIntegerTy(abi.word * 8) ||
+      !actual_output->getPointerElementType()->isIntegerTy(abi.word * 8) ||
+      !ar_handle || ar_handle->bit_width() != abi.word * 8 ||
+      !count || !count->isOne()) return false;
   std::vector< llvm::Value* > pending{storage};
   std::set< llvm::Value* > seen;
   while (!pending.empty()) {
@@ -256,7 +312,7 @@ inline bool unread_private_thread_output(ar::CallBase* call) {
         pending.push_back(user);
       } else if (auto* store = llvm::dyn_cast< llvm::StoreInst >(user)) {
         if (store->getPointerOperand() != value || store->isAtomic() ||
-            store->isVolatile() || !store->getValueOperand()->getType()->isIntegerTy(32)) return false;
+            store->isVolatile() || !store->getValueOperand()->getType()->isIntegerTy(abi.word * 8)) return false;
       } else if (llvm::isa< llvm::DbgInfoIntrinsic >(user)) continue;
       else if (auto* invocation = llvm::dyn_cast< llvm::CallBase >(user)) {
         if (invocation != source || invocation->getArgOperand(0) != value) return false;
@@ -436,8 +492,9 @@ void observe_mutex_array_effect(E& eng, ar::CallBase* call) {
   if (query == ctx.mutex_effect_queries.end() ||
       eng.data().is_normal_flow_bottom()) return;
   const auto& literal = ctx.lit_factory->get_scalar(call->argument(0));
+  const auto width = mutex_array_leaf_width(query->second);
   bool valid = false;
-  if (literal.is_pointer_var()) {
+  if (width && literal.is_pointer_var()) {
     auto address = eng.data().normal().pointer_to_pointer(literal.var());
     auto& points = address.points_to();
     const auto& offset = address.offset();
@@ -445,7 +502,7 @@ void observe_mutex_array_effect(E& eng, ar::CallBase* call) {
         points.is_set() && points.size() == 1 &&
         *points.begin() == ctx.mem_factory->get_global(query->second.global) &&
         !offset.is_bottom() && !offset.is_top() && offset.lb().to_z_number() >= query->second.begin &&
-        offset.ub().to_z_number() + 24 <=
+        offset.ub().to_z_number() + width <=
             query->second.begin + query->second.size;
   }
   ctx.mutex_effect_ranges.observe(call, valid);

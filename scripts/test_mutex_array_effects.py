@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/mutex-array-effects.c').read_text()
     env = dict(os.environ)
@@ -20,21 +21,21 @@ def main():
     with tempfile.TemporaryDirectory(prefix='ikos-mutex-effects-') as temp:
         work = Path(temp)
         for wide in (False, True):
-            for case in range(22):
+            for case in range(26):
                 source = work / 'renamed.c'
                 text = fixture.replace('make_element', 'allocate_node').replace('require_condition', 'guard_value')
                 source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') + text)
                 database = work / 'output.db'
                 proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
                     '--concurrency=auto', '--demote-race-to-unknown', '--partitioning=guards',
-                    '--bmc-deadline-ms=0', '--log=debug', '-m32', '-o', str(database), str(source)],
+                    '--bmc-deadline-ms=0', '--log=debug', f'-m{args.bits}', '-o', str(database), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
                 assert proc.returncode == 0, (case, wide, proc.stdout, proc.stderr)
                 safe = 'The program is SAFE' in proc.stdout
                 certified = 'mutex-array preflight certified' in proc.stderr + proc.stdout
                 # CASE1 intentionally puts the index behind a helper: it is a
                 # valid program, but scalar source closure may still reject it.
-                if case in {0, 15, 21}:
+                if case in {0, 15, 21, 24, 25}:
                     assert safe and certified, (case, wide, proc.stdout, proc.stderr)
                 elif case not in {1, 14}:
                     assert not safe, (case, wide, proc.stdout, proc.stderr)
@@ -50,9 +51,12 @@ def main():
                     assert certified, (case, wide, proc.stdout, proc.stderr)
                 with sqlite3.connect(database) as db:
                     proofs = db.execute("SELECT info FROM checks WHERE info LIKE '%indexed-live-heap-owner-v1%'").fetchall()
-                if case in {0, 15}:
+                if case in {0, 15, 24, 25}:
                     assert proofs, (case, wide, proc.stdout)
-                print(f'mutex effects case={case}/wide={wide}: safe={safe}, certified={certified}', flush=True)
+                if case in {22, 23}:
+                    assert not proofs, (case, wide, proc.stdout)
+                print(f'mutex effects bits={args.bits}/case={case}/wide={wide}: '
+                      f'safe={safe}, certified={certified}', flush=True)
 
 
 if __name__ == '__main__':

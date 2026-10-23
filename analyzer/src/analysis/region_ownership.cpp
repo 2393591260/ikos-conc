@@ -273,7 +273,68 @@ bool create_api(ar::CallBase* call) {
   auto* output = dyn_cast< ar::PointerType >(call->argument(0)->type());
   auto* type =
       output ? dyn_cast< ar::IntegerType >(output->pointee()) : nullptr;
-  return type && type->bit_width() == 32;
+  const auto abi = pthread_object_layout(call->bundle(), source->getModule());
+  auto* native_output = llvm::cast< llvm::PointerType >(
+      target->getFunctionType()->getParamType(0));
+  auto* actual_output = llvm::cast< llvm::PointerType >(
+      source->getArgOperand(0)->getType());
+  return abi && type && type->bit_width() == abi.word * 8 &&
+         native_output->getAddressSpace() == 0 &&
+         actual_output->getAddressSpace() == 0 &&
+         !native_output->isOpaque() && !actual_output->isOpaque() &&
+         native_output->getPointerElementType()->isIntegerTy(abi.word * 8) &&
+         actual_output->getPointerElementType()->isIntegerTy(abi.word * 8);
+}
+
+bool matching_owner_node(const GlobalArraySubobject& roots,
+                         ar::StructType* object,
+                         const PthreadObjectLayout& abi) {
+  auto* pointer = llvm::dyn_cast< llvm::PointerType >(
+      roots.source_type->getElementType());
+  auto* native = pointer && !pointer->isOpaque()
+                     ? llvm::dyn_cast< llvm::StructType >(
+                           pointer->getPointerElementType())
+                     : nullptr;
+  if (!abi || !pointer || pointer->getAddressSpace() != 0 || !native ||
+      native->isOpaque() || native->isPacked() ||
+      native->getNumElements() != object->num_fields())
+    return false;
+  auto* source = roots.global->frontend< llvm::GlobalVariable >();
+  const auto& layout = source->getParent()->getDataLayout();
+  const auto& ar_layout = roots.global->bundle()->data_layout();
+  if (ar_layout.alloc_size_in_bytes(roots.type->element_type()) != abi.word ||
+      ar_layout.store_size_in_bytes(roots.type->element_type()) != abi.word ||
+      ZNumber(layout.getTypeAllocSize(native).getFixedValue()) !=
+          ar_layout.alloc_size_in_bytes(object))
+    return false;
+  const auto* fields = layout.getStructLayout(native);
+  unsigned i = 0;
+  for (const auto& field : object->layout()) {
+    auto* type = native->getElementType(i);
+    if (!type->isSized() ||
+        field.offset != ZNumber(fields->getElementOffset(i++)) ||
+        ar_layout.store_size_in_bytes(field.type) !=
+            ZNumber(layout.getTypeStoreSize(type).getFixedValue()))
+      return false;
+    if (auto* link = dyn_cast< ar::PointerType >(field.type)) {
+      auto* native_link = llvm::dyn_cast< llvm::PointerType >(type);
+      if (!native_link || native_link->isOpaque() ||
+          native_link->getAddressSpace() != 0 ||
+          native_link->getPointerElementType() != native ||
+          link->pointee() != object ||
+          ar_layout.store_size_in_bytes(link) != abi.word)
+        return false;
+    } else if (auto* integer = dyn_cast< ar::IntegerType >(field.type)) {
+      if (!type->isIntegerTy(integer->bit_width()))
+        return false;
+    } else if (auto* floating = dyn_cast< ar::FloatType >(field.type)) {
+      if (!type->isFloatingPointTy() ||
+          type->getPrimitiveSizeInBits().getFixedValue() != floating->bit_width())
+        return false;
+    } else
+      return false;
+  }
+  return true;
 }
 
 bool cyclic_edge(ar::BasicBlock* from, ar::BasicBlock* to) {
@@ -299,6 +360,7 @@ bool cyclic_edge(ar::BasicBlock* from, ar::BasicBlock* to) {
 class RegionOwnership::Impl {
   Context& ctx;
   GlobalArraySubobject roots, mutexes;
+  PthreadObjectLayout abi;
   ZNumber count{0}, extent{0}, next{0};
   std::map< Key, Snapshot > snapshots;
   std::map< Key, bool > certificates;
@@ -421,7 +483,7 @@ class RegionOwnership::Impl {
   Pointer leaf_pointer(ar::Value* value, const State& state,
                        const GlobalArraySubobject& object, Kind kind) const {
     auto p = pointer(value, state);
-    const ZNumber stride(kind == Kind::Root ? 4 : 24);
+    const ZNumber stride(kind == Kind::Root ? abi.word : abi.mutex);
     if (p.kind == Kind::Global && p.identity == object.global &&
         p.offset >= object.begin && p.offset < object.begin + object.size &&
         (p.offset - object.begin) % stride == 0) {
@@ -463,11 +525,12 @@ class RegionOwnership::Impl {
         constant = 0;
         return true;
       };
-      if (!select(roots, Kind::Root, 4) && !select(mutexes, Kind::Mutex, 24))
+      if (!select(roots, Kind::Root, abi.word) &&
+          !select(mutexes, Kind::Mutex, abi.mutex))
         return fail("unsupported subarray selection");
     }
     if (p.kind == Kind::Root || p.kind == Kind::Mutex) {
-      ZNumber stride(p.kind == Kind::Root ? 4 : 24);
+      ZNumber stride(p.kind == Kind::Root ? abi.word : abi.mutex);
       if (p.index.variable || (variable && coefficient != stride) ||
           constant % stride != 0)
         return fail("non-leaf array address");
@@ -497,8 +560,6 @@ class RegionOwnership::Impl {
 
 public:
   explicit Impl(Context& context) : ctx(context) {
-    if (ctx.bundle->data_layout().pointers.bit_width != 32)
-      return;
     for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end();
          ++it) {
       for (const auto& descriptor : global_array_subobjects(*it)) {
@@ -508,6 +569,11 @@ public:
       auto* object =
           element ? dyn_cast< ar::StructType >(element->pointee()) : nullptr;
       if (!array || array->num_elements() <= 0 || !object)
+        continue;
+      auto* source = descriptor.global->frontend< llvm::GlobalVariable >();
+      const auto candidate_abi =
+          pthread_object_layout(ctx.bundle, source->getParent());
+      if (!matching_owner_node(descriptor, object, candidate_abi))
         continue;
       ZNumber field{0};
       unsigned links = 0;
@@ -529,6 +595,7 @@ public:
         return;
       }
       roots = descriptor;
+      abi = candidate_abi;
       count = array->num_elements();
       next = field;
       extent = ctx.bundle->data_layout().alloc_size_in_bytes(object);
@@ -731,6 +798,8 @@ public:
             {"root_byte_begin", roots.begin.str()},
             {"mutex_byte_begin", mutexes.begin.str()},
             {"array_count", count.str()},
+             {"pointer_bytes", abi.word},
+             {"mutex_bytes", abi.mutex},
             {"object_extent", extent.str()},
             {"pointer_field_offset", next.str()}};
   }
@@ -759,6 +828,13 @@ bool RegionOwnership::Impl::transfer(ar::Statement* stmt,
   }
   if (auto* cast = dyn_cast< ar::UnaryOperation >(stmt)) {
     auto p = pointer(cast->operand(), state);
+    auto i = index(cast->operand(), state);
+    auto* from = dyn_cast< ar::IntegerType >(cast->operand()->type());
+    auto* to = dyn_cast< ar::IntegerType >(cast->result()->type());
+    const bool same_integer = from && to && to->bit_width() > from->bit_width() &&
+        ((cast->op() == ar::UnaryOperation::SExt && from->is_signed() &&
+          to->is_signed()) ||
+         (cast->op() == ar::UnaryOperation::ZExt && !from->is_signed()));
     bool pointer_cast = cast->op() == ar::UnaryOperation::Bitcast &&
                         cast->operand()->type()->is_pointer() &&
                         cast->result()->type()->is_pointer();
@@ -768,6 +844,8 @@ bool RegionOwnership::Impl::transfer(ar::Statement* stmt,
     state.forget(cast->result());
     if (pointer_cast)
       state.pointers[cast->result()] = p;
+    else if (same_integer && i.variable != cast->result())
+      state.indices[cast->result()] = i;
     return true;
   }
   if (auto* shift_stmt = dyn_cast< ar::PointerShift >(stmt))
@@ -802,7 +880,7 @@ bool RegionOwnership::Impl::transfer(ar::Statement* stmt,
     Pointer value;
     if (p.kind == Kind::Root) {
       if (!pointer_array_access(stmt, roots) ||
-          !within(stmt, cc, operand, roots, 4))
+          !within(stmt, cc, operand, roots, abi.word))
         return fail("root leaf range");
       if (load) {
         value.kind = direct_heads ? Kind::Head : Kind::Owned;
@@ -822,7 +900,7 @@ bool RegionOwnership::Impl::transfer(ar::Statement* stmt,
       if (p.offset < 0 || p.offset + width > extent || width <= 0)
         return fail("incomplete object access extent");
       if (type->is_pointer()) {
-        if (p.offset != next || width != 4)
+        if (p.offset != next || width != abi.word)
           return fail("uncovered pointer field layout");
         if (direct_heads) {
           if (load) {
@@ -867,7 +945,7 @@ bool RegionOwnership::Impl::transfer(ar::Statement* stmt,
       } else {
         if (!type->is_integer() && !type->is_float())
           return fail("aggregate object access");
-        if (p.offset < next + 4 && next < p.offset + width)
+        if (p.offset < next + abi.word && next < p.offset + width)
           return fail("scalar write/read overlaps pointer representation");
       }
       certify(stmt, cc, p, state);
@@ -937,13 +1015,13 @@ bool RegionOwnership::Impl::transfer(ar::Statement* stmt,
       auto p = leaf_pointer(call->argument(0), state, mutexes, Kind::Mutex);
       if (state.concurrent || state.lock.held || p.kind != Kind::Mutex ||
           !isa< ar::NullConstant >(call->argument(1)) ||
-          !within(call, cc, call->argument(0), mutexes, 24))
+          !within(call, cc, call->argument(0), mutexes, abi.mutex))
         return fail("mutex initialization scope");
     } else if (mutex_api(call, "pthread_mutex_lock", 1)) {
       auto p = leaf_pointer(call->argument(0), state, mutexes, Kind::Mutex);
       auto* fact = address(call, cc, call->argument(0));
       if (p.kind != Kind::Mutex || state.lock.held ||
-          !within(call, cc, call->argument(0), mutexes, 24))
+          !within(call, cc, call->argument(0), mutexes, abi.mutex))
         return fail("mutex acquisition scope/range");
       state.lock.held = true;
       state.lock.index = p.index;
@@ -960,17 +1038,20 @@ bool RegionOwnership::Impl::transfer(ar::Statement* stmt,
       auto p = leaf_pointer(call->argument(0), state, mutexes, Kind::Mutex);
       if (p.kind != Kind::Mutex || !state.lock.held ||
           !(p.index == state.lock.index) ||
-          !within(call, cc, call->argument(0), mutexes, 24))
+          !within(call, cc, call->argument(0), mutexes, abi.mutex))
         return fail("mutex release scope/range");
       state.lock = Lock{};
     } else if (create_api(call)) {
       auto output = pointer(call->argument(0), state);
       auto* local = dyn_cast_or_null< ar::LocalVariable >(output.identity);
+      auto* handle = local
+                         ? dyn_cast< ar::IntegerType >(local->type()->pointee())
+                         : nullptr;
       auto* fact = address(call, cc, call->argument(0));
       if (state.lock.held || output.kind != Kind::Local || output.offset != 0 ||
-          !local ||
+          !local || !handle || handle->bit_width() != abi.word * 8 ||
           ctx.bundle->data_layout().alloc_size_in_bytes(
-              local->type()->pointee()) != 4 ||
+              local->type()->pointee()) != abi.word ||
           !fact || !fact->nonnull || !fact->bounded || fact->lower != 0 ||
           fact->upper != 0 || fact->base != ctx.mem_factory->get_local(local))
         return fail("create output scope");

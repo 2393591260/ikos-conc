@@ -16,6 +16,7 @@ from svcomp_race_test import classify, VERDICT_SAFE, VERDICT_UNKNOWN
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/region-ownership.c').read_text()
     positives = {0, 20, 21, 27}
@@ -35,7 +36,7 @@ def main():
                 result = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
                     '--concurrency=auto', '--demote-race-to-unknown', '--bmc-deadline-ms=0',
                     '--format=json', '--status-filter=*', '--report-file=' + str(report),
-                    '--log=debug', '-m32', '-o', str(work / 'output.db'), str(source)],
+                    '--log=debug', f'-m{args.bits}', '-o', str(work / 'output.db'), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
                 verdict = classify(result.stdout, result.returncode, False)
                 expected = VERDICT_SAFE if case in positives else VERDICT_UNKNOWN
