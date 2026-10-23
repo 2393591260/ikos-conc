@@ -182,6 +182,8 @@ add_concurrency_test(thread-lifecycle "${CONCURRENCY_ROOT}/scripts/test_thread_l
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(boolean-partitioning "${CONCURRENCY_ROOT}/scripts/test_boolean_partitioning.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(protected-field-values "${CONCURRENCY_ROOT}/scripts/test_protected_field_values.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(mutex-array-effects "${CONCURRENCY_ROOT}/scripts/test_mutex_array_effects.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(race-cooperation "${CONCURRENCY_ROOT}/scripts/test_race_cooperation.py"

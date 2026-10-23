@@ -16,7 +16,94 @@ static void require(bool condition, const char* reason) {
   }
 }
 
+static void test_mutex_field_values() {
+  using ikos::core::MachineInt;
+  using ikos::core::Signed;
+  using Interval = ikos::core::machine_int::Interval;
+  const auto value = [](std::int64_t number, std::uint64_t width = 32) {
+    return Interval(MachineInt(number, width, Signed));
+  };
+  constexpr std::uint64_t base = 101, mu = 201, nu = 202;
+  ConcurrentGlobalEnv fields;
+  fields.initialize_mutex_value(base, value(3), 4);
+  fields.initialize_mutex_value(base, value(9), 8);
+  // Width is part of the board key. Actual program byte-overlap rejection is
+  // the caller's closure obligation, not an alias claim made by this board.
+  fields.initialize_mutex_value(base, value(4294967297LL, 64), 4);
+  fields.enable_mutex_values();
+  require(fields.mutex_values_available() &&
+              fields.has_mutex_value_cell(base, 4, 32) &&
+              fields.has_mutex_value_cell(base, 8, 32) &&
+              fields.has_mutex_value_cell(base, 4, 64) &&
+              !fields.has_mutex_value_cell(base, 4, 16),
+          "Aggregate cells keep exact offset and width identities");
+  require(fields.read_mutex_handoff(base, {mu}, 32, Signed, 4).equals(value(3)),
+          "A first acquire retains a nonzero initial field value");
+  fields.join_mutex_ongoing(base, {mu}, value(1), 4);
+  fields.join_mutex_release(base, {mu}, value(2), 4);
+  require(fields.is_dirty() &&
+              fields.read_mutex_ongoing(base, {nu}, 32, Signed, 4).equals(value(1)) &&
+              fields.read_mutex_handoff(base, {}, 32, Signed, 4).equals(
+                  Interval(MachineInt(1, 32, Signed), MachineInt(3, 32, Signed))),
+          "Handoff joins initial, ongoing, and released alternatives");
+  require(fields.read_mutex_ongoing(base, {mu}, 32, Signed, 4).is_bottom(),
+          "An actually held mutex excludes concurrent protected writes");
+  require(fields.read_mutex_handoff(base, {}, 32, Signed, 8).equals(value(9)) &&
+              fields.read_mutex_handoff(base, {}, 64, Signed, 4).equals(
+                  value(4294967297LL, 64)) &&
+              fields.read_mutex_ongoing(base, {}, 32, Signed, 8).is_bottom(),
+          "A write cannot pollute another offset or another width");
+  fields.clear_dirty();
+  fields.join_mutex_ongoing(base, {mu}, value(1), 4);
+  fields.join_mutex_release(base, {mu}, value(2), 4);
+  require(!fields.is_dirty(), "Unchanged ongoing and release replays are stable");
+
+  ConcurrentGlobalEnv locks;
+  locks.initialize_mutex_value(base, value(0), 4);
+  locks.enable_mutex_values();
+  locks.join_mutex_ongoing(base, {mu}, value(1), 4);
+  locks.join_mutex_ongoing(base, {mu, nu}, value(1), 4);
+  require(locks.mutex_field_protected(base, 4, 32, {mu}) &&
+              !locks.mutex_field_protected(base, 4, 32, {nu}),
+          "All writers and the reader must share the same actual mutex");
+  locks.clear_dirty();
+  locks.join_mutex_ongoing(base, {nu}, value(1), 4);
+  require(locks.is_dirty() &&
+              !locks.mutex_field_protected(base, 4, 32, {mu, nu}),
+          "A same-value late lock partition invalidates a pairwise-only gate");
+  locks.clear_dirty();
+  locks.join_mutex_ongoing(base, {nu}, value(1), 4);
+  locks.join_mutex_ongoing(base, {mu}, value(1), 4);
+  require(!locks.is_dirty() &&
+              !locks.mutex_field_protected(base, 4, 32, {mu, nu}),
+          "Replay neither dirties nor restores a revoked common-lock gate");
+
+  ConcurrentGlobalEnv unlocked;
+  unlocked.initialize_mutex_value(base, value(0), 4);
+  unlocked.enable_mutex_values();
+  unlocked.join_mutex_ongoing(base, {mu}, value(1), 4);
+  require(unlocked.mutex_field_protected(base, 4, 32, {mu}),
+          "A protected writer initially grants the field gate");
+  unlocked.clear_dirty();
+  unlocked.join_mutex_ongoing(base, {}, value(1), 4);
+  require(unlocked.is_dirty() &&
+              !unlocked.mutex_field_protected(base, 4, 32, {mu}) &&
+              unlocked.read_mutex_ongoing(base, {mu}, 32, Signed, 4).equals(value(1)),
+          "An unlocked same-value writer revokes the gate and stays observable");
+  unlocked.clear_dirty();
+  unlocked.invalidate_mutex_values();
+  require(unlocked.is_dirty() && !unlocked.mutex_values_available() &&
+              unlocked.read_mutex_ongoing(base, {mu}, 32, Signed, 4).is_top() &&
+              unlocked.read_mutex_handoff(base, {mu}, 32, Signed, 4).is_top(),
+          "Invalidation removes usable field feedback and forces TOP");
+  unlocked.clear_dirty();
+  unlocked.invalidate_mutex_values();
+  require(!unlocked.is_dirty() && !unlocked.mutex_values_available(),
+          "Repeated invalidation is stable and cannot restore availability");
+}
+
 int main() {
+  test_mutex_field_values();
   ar::Context context;
   auto* bundle =
       ar::Bundle::create(context,

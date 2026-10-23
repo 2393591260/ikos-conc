@@ -42,6 +42,7 @@
  ******************************************************************************/
 
 #include <algorithm>
+#include <cstdlib>
 #include <memory>
 #include <vector>
 
@@ -431,21 +432,28 @@ void ThreadModularAnalysis::run() {
   if (ordinary_initialization && !init_inv.first().normal().is_bottom()) {
     for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it) {
       auto* global = *it;
-      if (!protected_scalar_accesses(global)) continue;
-      auto* type = cast< ar::IntegerType >(global->type()->pointee());
-      auto* location = _ctx.mem_factory->get_global(global);
-      auto* pointer = _ctx.var_factory->get_global(global);
-      auto* temporary = _ctx.var_factory->create_unnamed_shadow(type);
-      auto literal = core::Literal< Variable*, MemoryLocation* >::machine_int_var(temporary);
-      auto observation = init_inv.first();
-      core::MachineInt size(bundle->data_layout().store_size_in_bytes(type),
-                            bundle->data_layout().pointers.bit_width, core::Unsigned);
-      observation.normal().pointer_assign(pointer, location, core::Nullity::non_null());
-      observation.normal().mem_read(literal, pointer, size);
-      auto initial = observation.normal().int_to_interval(temporary);
-      if (initial.is_bottom()) initial.set_to_top();
-      _ctx.concurrent_env.initialize_mutex_value(
-          core::IndexableTraits< MemoryLocation* >::index(location), initial);
+      if (!global->type()->pointee()->is_integer() &&
+          std::getenv("IKOS_DISABLE_MUTEX_FIELD_VALUES")) continue;
+      auto cells = protected_integer_cells(global);
+      if (!protected_integer_accesses(global, cells)) continue;
+      for (const auto& cell : cells) {
+        auto* type = cell.type;
+        auto* location = _ctx.mem_factory->get_global(global);
+        auto* pointer = _ctx.var_factory->create_unnamed_shadow(global->type());
+        auto* temporary = _ctx.var_factory->create_unnamed_shadow(type);
+        auto literal = core::Literal< Variable*, MemoryLocation* >::machine_int_var(temporary);
+        auto observation = init_inv.first();
+        core::MachineInt size(bundle->data_layout().store_size_in_bytes(type),
+                              bundle->data_layout().pointers.bit_width, core::Unsigned);
+        observation.normal().pointer_assign(pointer, location, core::Nullity::non_null());
+        observation.normal().pointer_assign(pointer, pointer,
+            core::MachineInt(cell.offset, size.bit_width(), core::Unsigned));
+        observation.normal().mem_read(literal, pointer, size);
+        auto initial = observation.normal().int_to_interval(temporary);
+        if (initial.is_bottom()) initial.set_to_top();
+        _ctx.concurrent_env.initialize_mutex_value(
+            core::IndexableTraits< MemoryLocation* >::index(location), initial, cell.offset);
+      }
     }
   }
 

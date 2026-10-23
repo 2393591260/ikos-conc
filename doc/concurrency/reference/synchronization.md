@@ -580,3 +580,29 @@ unproved loop capacities, repeated rounds and helper phases need additional chec
 this subset.
 
 </details>
+
+<a id="protected-integer-values"></a>
+### Protected integer values in abstract interpretation
+
+The existing mutex-value channel also tracks finite integer leaves in static
+structs and arrays, keyed by global object, byte offset and integer width.
+Registration requires a complete access closure: ordinary full-width loads and
+stores at exact constant offsets. Pointer escape, dynamic offsets, overlapping
+byte accesses, volatile/atomic accesses and unsupported effects retain the
+conservative memory behavior. Padding is never a value cell.
+
+Initial values, all intermediate writes and release endpoints remain separate.
+An aggregate read uses field values only when one actual mutex is common to the
+reader and every discovered writer. A new writer lock partition invalidates the
+shared fixpoint even when its value is unchanged. Unsupported writes invalidate
+feedback; first acquisition and later acquisition distinguish handoff values
+from interference while waiting. This channel carries per-cell intervals, not
+cross-field relational summaries, and does not authorize BMC confirmation.
+`IKOS_DISABLE_MUTEX_FIELD_VALUES=1` disables aggregate registration for diagnostic
+ablation while retaining scalar feedback and the normal conservative fallback.
+
+Run `python3 scripts/test_protected_field_values.py` (also `--bits 64`) for value,
+initializer, intermediate-write, lock, alias and byte-effect controls, plus
+relational positive/negative controls using the existing Polka polyhedra domain.
+These distinguish local reconstruction and same-critical-section relations from
+cross-thread field relations, which remain outside this per-cell channel.

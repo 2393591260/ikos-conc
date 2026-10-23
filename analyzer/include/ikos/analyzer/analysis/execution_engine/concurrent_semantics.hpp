@@ -816,13 +816,14 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
     }
   }
 
-  if (ordinary_mutex && precise_acquisition && !read_lock && !trylock &&
-      acquired_addrs.size() == 1 && first_acquisition) {
-    auto new_held = old_held;
-    new_held.insert(acquired_addrs.front());
-    refresh_protected_values(eng, new_held, true);
+  auto new_held = old_held;
+  const bool exact_mutex = ordinary_mutex && precise_acquisition &&
+                           !read_lock && !trylock && acquired_addrs.size() == 1;
+  if (exact_mutex) new_held.insert(acquired_addrs.front());
+  if (exact_mutex && first_acquisition) {
+    refresh_protected_values(eng, new_held, true, new_held);
   } else {
-    refresh_protected_values(eng, old_held, false);
+    refresh_protected_values(eng, old_held, false, new_held);
   }
   for (std::uint64_t la : acquired_addrs) {
     if (!read_lock && !trylock && eng.lockset().held_mutexes().count(la) != 0) {
@@ -1494,7 +1495,7 @@ void on_comparison_cond_lock(E& eng, ar::Comparison* s) {
 }
 
 /// Join integer interference through memory, retaining the local alternative.
-/// Flat summaries only describe full scalar globals; other shared layouts havoc.
+/// Exact protected cells use their own byte keys; unsupported layouts havoc.
 template < typename E >
 void on_load_integer_interference(E& eng,
                                   ar::Load* s,
@@ -1543,6 +1544,21 @@ void on_load_integer_interference(E& eng,
           if (external.is_bottom()) return; // no new interference; retain own memory.
         } else {
           external = env.read_global_interference(addr, type->bit_width(), type->sign());
+        }
+      } else if (!declared && offset &&
+                 offset->to_z_number().template fits< std::uint64_t >()) {
+        auto byte_offset = offset->to_z_number().template to< std::uint64_t >();
+        auto held = value_mutexes(eng);
+        if (env.mutex_values_available() &&
+            env.has_mutex_value_cell(core::IndexableTraits< MemoryLocation* >::index(global),
+                                     byte_offset, type->bit_width()) &&
+            env.mutex_field_protected(core::IndexableTraits< MemoryLocation* >::index(global),
+                                      byte_offset, type->bit_width(), held)) {
+          full_scalar = true;
+          external = env.read_mutex_ongoing(
+              core::IndexableTraits< MemoryLocation* >::index(global), held,
+              type->bit_width(), type->sign(), byte_offset);
+          if (external.is_bottom()) return;
         }
       }
     }

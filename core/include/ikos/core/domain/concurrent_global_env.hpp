@@ -408,8 +408,9 @@ private:
       _publication_certificates;
   std::map< ar::GlobalVariable*, bool > _readonly_array_certificates;
 
-  using MutexValueKey = std::pair< std::uint64_t, std::set< std::uint64_t > >;
-  std::map< std::uint64_t, machine_int::Interval > _mutex_initial_values;
+  using MutexCell = std::tuple< std::uint64_t, std::uint64_t, std::uint64_t >;
+  using MutexValueKey = std::pair< MutexCell, std::set< std::uint64_t > >;
+  std::map< MutexCell, machine_int::Interval > _mutex_initial_values;
   std::map< MutexValueKey, machine_int::Interval > _mutex_ongoing_values;
   std::map< MutexValueKey, machine_int::Interval > _mutex_release_values;
   bool _mutex_values_enabled = false;
@@ -1845,9 +1846,10 @@ public:
     return true;
   }
 
-  void initialize_mutex_value(std::uint64_t addr, const machine_int::Interval& value) {
+  void initialize_mutex_value(std::uint64_t addr, const machine_int::Interval& value,
+                              std::uint64_t offset = 0) {
     std::lock_guard< std::mutex > lock(_mutex);
-    _mutex_initial_values.emplace(addr, value);
+    _mutex_initial_values.emplace(MutexCell{addr, offset, value.bit_width()}, value);
   }
 
   void enable_mutex_values() {
@@ -1868,47 +1870,77 @@ public:
     return mutex_values_available_nolock();
   }
 
+  // Base-wide queries also cover library/byte effects on aggregate cells.
   bool has_mutex_value_cell(std::uint64_t addr) const {
     std::lock_guard< std::mutex > lock(_mutex);
-    return _mutex_initial_values.count(addr) != 0;
+    auto it = _mutex_initial_values.lower_bound({addr, 0, 0});
+    return it != _mutex_initial_values.end() && std::get<0>(it->first) == addr;
+  }
+
+  bool has_mutex_value_cell(std::uint64_t addr, std::uint64_t offset,
+                            std::uint64_t width) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    return _mutex_initial_values.count({addr, offset, width}) != 0;
+  }
+
+  // One actual mutex must protect every writer and this reader. Pairwise
+  // reader/writer overlap alone does not exclude writer/writer byte tearing.
+  bool mutex_field_protected(std::uint64_t addr, std::uint64_t offset,
+                              std::uint64_t width,
+                              const std::unordered_set< std::uint64_t >& held) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    MutexCell cell{addr, offset, width};
+    auto common = held;
+    for (auto it = _mutex_ongoing_values.lower_bound({cell, {}});
+         it != _mutex_ongoing_values.end() && it->first.first == cell; ++it) {
+      for (auto h = common.begin(); h != common.end();) {
+        if (it->first.second.count(*h) == 0) h = common.erase(h);
+        else ++h;
+      }
+    }
+    return !common.empty();
   }
 
   void join_mutex_ongoing(std::uint64_t addr,
                          const std::unordered_set< std::uint64_t >& held,
-                         const machine_int::Interval& value) {
+                         const machine_int::Interval& value,
+                              std::uint64_t offset = 0) {
     std::lock_guard< std::mutex > lock(_mutex);
-    if (!_mutex_values_enabled || _mutex_initial_values.count(addr) == 0 || value.is_bottom()) return;
-    join_mutex_value_nolock(_mutex_ongoing_values, addr, held, value);
+    MutexCell cell{addr, offset, value.bit_width()};
+    if (!_mutex_values_enabled || _mutex_initial_values.count(cell) == 0 || value.is_bottom()) return;
+    join_mutex_value_nolock(_mutex_ongoing_values, cell, held, value);
   }
 
   void join_mutex_release(std::uint64_t addr,
                          const std::unordered_set< std::uint64_t >& held,
-                         const machine_int::Interval& value) {
+                         const machine_int::Interval& value,
+                              std::uint64_t offset = 0) {
     std::lock_guard< std::mutex > lock(_mutex);
-    if (!_mutex_values_enabled || _mutex_initial_values.count(addr) == 0 || value.is_bottom()) return;
-    join_mutex_value_nolock(_mutex_release_values, addr, held, value);
+    MutexCell cell{addr, offset, value.bit_width()};
+    if (!_mutex_values_enabled || _mutex_initial_values.count(cell) == 0 || value.is_bottom()) return;
+    join_mutex_value_nolock(_mutex_release_values, cell, held, value);
   }
 
   machine_int::Interval read_mutex_ongoing(
       std::uint64_t addr, const std::unordered_set< std::uint64_t >& held,
-      std::uint64_t width, Signedness sign) const {
+      std::uint64_t width, Signedness sign, std::uint64_t offset = 0) const {
     std::lock_guard< std::mutex > lock(_mutex);
     if (!mutex_values_available_nolock()) return machine_int::Interval::top(width, sign);
     auto result = machine_int::Interval::bottom(width, sign);
-    collect_mutex_values_nolock(_mutex_ongoing_values, addr, held, result);
+    collect_mutex_values_nolock(_mutex_ongoing_values, {addr, offset, width}, held, result);
     return result;
   }
 
   machine_int::Interval read_mutex_handoff(
       std::uint64_t addr, const std::unordered_set< std::uint64_t >& held,
-      std::uint64_t width, Signedness sign) const {
+      std::uint64_t width, Signedness sign, std::uint64_t offset = 0) const {
     std::lock_guard< std::mutex > lock(_mutex);
-    auto initial = _mutex_initial_values.find(addr);
+    auto initial = _mutex_initial_values.find({addr, offset, width});
     if (!mutex_values_available_nolock() || initial == _mutex_initial_values.end())
       return machine_int::Interval::top(width, sign);
     auto result = initial->second.cast(width, sign);
-    collect_mutex_values_nolock(_mutex_ongoing_values, addr, held, result);
-    collect_mutex_values_nolock(_mutex_release_values, addr, held, result);
+    collect_mutex_values_nolock(_mutex_ongoing_values, {addr, offset, width}, held, result);
+    collect_mutex_values_nolock(_mutex_release_values, {addr, offset, width}, held, result);
     return result;
   }
 
@@ -1920,10 +1952,10 @@ private:
   }
 
   void join_mutex_value_nolock(std::map< MutexValueKey, machine_int::Interval >& board,
-                               std::uint64_t addr,
+                               const MutexCell& cell,
                                const std::unordered_set< std::uint64_t >& held,
                                const machine_int::Interval& value) {
-    MutexValueKey key{addr, {held.begin(), held.end()}};
+    MutexValueKey key{cell, {held.begin(), held.end()}};
     auto inserted = board.emplace(key, value);
     auto& current = inserted.first->second;
     auto old = current;
@@ -1937,10 +1969,10 @@ private:
 
   void collect_mutex_values_nolock(
       const std::map< MutexValueKey, machine_int::Interval >& board,
-      std::uint64_t addr, const std::unordered_set< std::uint64_t >& held,
+      const MutexCell& cell, const std::unordered_set< std::uint64_t >& held,
       machine_int::Interval& result) const {
-    for (auto it = board.lower_bound({addr, {}});
-         it != board.end() && it->first.first == addr; ++it) {
+    for (auto it = board.lower_bound({cell, {}});
+         it != board.end() && it->first.first == cell; ++it) {
       bool excluded = false;
       for (auto lock : it->first.second) excluded |= held.count(lock) != 0;
       if (!excluded) result.join_with(it->second.cast(result.bit_width(), result.sign()));
