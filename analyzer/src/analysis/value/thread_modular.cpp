@@ -429,6 +429,21 @@ void ThreadModularAnalysis::run() {
   // coverage proof before they can use this first-acquisition subset.
   bool ordinary_initialization = gv_ctors == nullptr && _ctx.opts.no_init_globals.empty();
   for (auto* root : _ctx.opts.entry_points) ordinary_initialization &= root->name() == "main";
+  // A syntactic zero proof must describe the final initialized state. Refuse
+  // this shortcut if another executed initializer could overwrite its owner.
+  bool owned_initializers = true;
+  for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it) {
+    auto* owner = *it;
+    if (!owner->is_definition() || !is_initialized(owner, _ctx.opts.globals_init_policy)) continue;
+    auto* initializer = owner->initializer_or_null();
+    if (!initializer) { owned_initializers = false; continue; }
+    for (auto* block : *initializer) for (auto* statement : *block) {
+      auto* store = dyn_cast< ar::Store >(statement);
+      owned_initializers &= store && store->pointer() == owner &&
+          store->value()->type() == owner->type()->pointee() &&
+          !store->is_atomic() && !store->is_volatile();
+    }
+  }
   if (ordinary_initialization && !init_inv.first().normal().is_bottom()) {
     for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it) {
       auto* global = *it;
@@ -453,6 +468,39 @@ void ThreadModularAnalysis::run() {
         if (initial.is_bottom()) initial.set_to_top();
         _ctx.concurrent_env.initialize_mutex_value(
             core::IndexableTraits< MemoryLocation* >::index(location), initial, cell.offset);
+      }
+      if (std::getenv("IKOS_DISABLE_MUTEX_FIELD_EQUALITIES")) continue;
+      // Native memory does not extract subcell values from aggregate_zero.
+      // One complete typed zero initializer is also a direct equality proof.
+      unsigned blocks = 0, statements = 0;
+      ar::Store* zero_store = nullptr;
+      if (auto* initializer = global->initializer_or_null())
+        for (auto* block : *initializer) {
+          ++blocks;
+          for (auto* statement : *block) {
+            ++statements;
+            zero_store = dyn_cast< ar::Store >(statement);
+          }
+        }
+      const bool zero_initialized = owned_initializers &&
+          is_initialized(global, _ctx.opts.globals_init_policy) &&
+          blocks == 1 && statements == 1 && zero_store &&
+          zero_store->pointer() == global && !zero_store->is_atomic() &&
+          !zero_store->is_volatile() && isa< ar::AggregateZeroConstant >(zero_store->value()) &&
+          zero_store->value()->type() == global->type()->pointee();
+      // Finite initial templates; release checks monotonically discard them.
+      unsigned pairs = 0;
+      for (std::size_t a = 0; a < cells.size(); ++a) {
+        for (std::size_t b = a + 1; b < cells.size() && pairs < 64; ++b, ++pairs) {
+          if (cells[a].type->bit_width() != cells[b].type->bit_width() ||
+              cells[a].type->sign() != cells[b].type->sign()) continue;
+          if (!zero_initialized &&
+              !protected_cells_equal(init_inv.first(), _ctx, global, cells[a], cells[b])) continue;
+          auto* location = _ctx.mem_factory->get_global(global);
+          _ctx.concurrent_env.initialize_mutex_equality(
+              core::IndexableTraits< MemoryLocation* >::index(location),
+              cells[a].offset, cells[b].offset, cells[a].type->bit_width());
+        }
       }
     }
   }

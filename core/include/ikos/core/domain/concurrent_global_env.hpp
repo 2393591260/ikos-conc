@@ -413,6 +413,11 @@ private:
   std::map< MutexCell, machine_int::Interval > _mutex_initial_values;
   std::map< MutexValueKey, machine_int::Interval > _mutex_ongoing_values;
   std::map< MutexValueKey, machine_int::Interval > _mutex_release_values;
+  using MutexEquality = std::tuple< std::uint64_t, std::uint64_t,
+                                    std::uint64_t, std::uint64_t >;
+  // Initial equality candidates only lose facts. Each failed release revokes
+  // its actual mutex, independently of unchanged marginal value summaries.
+  std::map< MutexEquality, std::set< std::uint64_t > > _mutex_unequal_releases;
   bool _mutex_values_enabled = false;
   bool _mutex_values_invalidated = false;
   bool _unknown_pointer_write = false;
@@ -1901,6 +1906,52 @@ public:
     return !common.empty();
   }
 
+  void initialize_mutex_equality(std::uint64_t addr, std::uint64_t left,
+                                 std::uint64_t right, std::uint64_t width) {
+    std::lock_guard< std::mutex > lock(_mutex);
+    if (left < right && _mutex_initial_values.count({addr, left, width}) &&
+        _mutex_initial_values.count({addr, right, width}))
+      _mutex_unequal_releases.emplace(MutexEquality{addr, left, right, width},
+                                     std::set< std::uint64_t >{});
+  }
+
+  std::vector< std::tuple< std::uint64_t, std::uint64_t, std::uint64_t > >
+  mutex_equalities(std::uint64_t addr) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    std::vector< std::tuple< std::uint64_t, std::uint64_t, std::uint64_t > > result;
+    for (auto it = _mutex_unequal_releases.lower_bound({addr, 0, 0, 0});
+         it != _mutex_unequal_releases.end() && std::get<0>(it->first) == addr; ++it)
+      result.emplace_back(std::get<1>(it->first), std::get<2>(it->first),
+                          std::get<3>(it->first));
+    return result;
+  }
+
+  void join_mutex_equality_release(std::uint64_t addr, std::uint64_t left,
+                                   std::uint64_t right, std::uint64_t width,
+                                   std::uint64_t released, bool equal) {
+    if (equal) return;
+    std::lock_guard< std::mutex > lock(_mutex);
+    auto it = _mutex_unequal_releases.find({addr, left, right, width});
+    if (it != _mutex_unequal_releases.end() && it->second.insert(released).second)
+      _is_dirty = true;
+  }
+
+  bool mutex_equality_available(std::uint64_t addr, std::uint64_t left,
+                                std::uint64_t right, std::uint64_t width,
+                                std::uint64_t acquired) const {
+    std::lock_guard< std::mutex > lock(_mutex);
+    auto relation = _mutex_unequal_releases.find({addr, left, right, width});
+    if (!mutex_values_available_nolock() || relation == _mutex_unequal_releases.end() ||
+        relation->second.count(acquired)) return false;
+    for (auto offset : {left, right}) {
+      MutexCell cell{addr, offset, width};
+      for (auto it = _mutex_ongoing_values.lower_bound({cell, {}});
+           it != _mutex_ongoing_values.end() && it->first.first == cell; ++it)
+        if (it->first.second.count(acquired) == 0) return false;
+    }
+    return true;
+  }
+
   void join_mutex_ongoing(std::uint64_t addr,
                          const std::unordered_set< std::uint64_t >& held,
                          const machine_int::Interval& value,
@@ -2234,6 +2285,7 @@ public:
     _publication_certificates.clear();
     _readonly_array_certificates.clear();
     _mutex_initial_values.clear();
+    _mutex_unequal_releases.clear();
     _mutex_ongoing_values.clear();
     _mutex_release_values.clear();
     _mutex_values_enabled = false;

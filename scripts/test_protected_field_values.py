@@ -48,9 +48,41 @@ CASES = {
     28: ('broken Polka local relation reconstruction', VERDICT_UNKNOWN),
     29: ('Polka same-critical-section field relation', VERDICT_SAFE),
     30: ('broken Polka same-critical-section field relation', VERDICT_UNKNOWN),
-    31: ('cross-thread field relation boundary', VERDICT_UNKNOWN),
+    31: ('cross-thread joint field handoff', VERDICT_SAFE),
     32: ('broken cross-thread field relation', VERDICT_UNKNOWN),
 }
+JOINT_CASES = {
+    33: (0, 'joint release/acquire equality', VERDICT_SAFE),
+    34: (1, 'unequal release with equal marginal ranges', VERDICT_UNKNOWN),
+    35: (2, 'unequal initializer', VERDICT_UNKNOWN),
+    36: (3, 'joint writer uses a different mutex', VERDICT_UNKNOWN),
+    37: (4, 'joint writer is unlocked', VERDICT_UNKNOWN),
+    38: (5, 'joint byte overlap', VERDICT_UNKNOWN),
+    39: (6, 'joint pointer helper escape', VERDICT_UNKNOWN),
+    40: (7, 'captured private value is reassigned', VERDICT_UNKNOWN),
+    41: (8, 'reads split over two critical sections', VERDICT_UNKNOWN),
+    42: (9, 'local read observes intermediate inequality', VERDICT_UNKNOWN),
+    43: (10, 'nested unrelated acquire cannot restore equality', VERDICT_UNKNOWN),
+    44: (11, 'unrelated nested unlock is not a joint handoff', VERDICT_SAFE),
+    45: (12, 'reacquire declines a fresh joint certificate', VERDICT_UNKNOWN),
+    46: (13, 'prior unrelated acquire declines a fresh joint certificate', VERDICT_UNKNOWN),
+    47: (14, 'late unequal writer with unchanged marginals', VERDICT_UNKNOWN),
+    48: (15, 'writer updates only one field', VERDICT_UNKNOWN),
+    49: (16, 'release join takes the intersection of equalities', VERDICT_UNKNOWN),
+    50: (18, 'volatile joint fields', VERDICT_UNKNOWN),
+    51: (19, '64-bit joint data on either ABI', VERDICT_SAFE),
+    52: (20, 'unequal 64-bit release', VERDICT_UNKNOWN),
+    53: (21, 'repeated acquire has no success proof', VERDICT_UNKNOWN),
+    54: (22, 'trylock has no definite acquisition', VERDICT_UNKNOWN),
+    55: (23, 'unknown call invalidates joint facts', VERDICT_UNKNOWN),
+    56: (24, 'different-width cells refuse a template', VERDICT_UNKNOWN),
+    57: (25, 'different-signedness cells refuse a template', VERDICT_UNKNOWN),
+    58: (26, 'three-field equalities are imported together', VERDICT_SAFE),
+    59: (27, 'merged ERRORCHECK ownership is not a fresh handoff', VERDICT_UNKNOWN),
+    60: (0, 'skipped initialization cannot supply zero equality', VERDICT_UNKNOWN),
+    61: (28, 'nonzero equality from initialized native memory', VERDICT_SAFE),
+}
+CASES.update({case: (label, verdict) for case, (_, label, verdict) in JOINT_CASES.items()})
 BMC_CASES = {1, 8, 17}
 
 
@@ -79,6 +111,7 @@ def main():
     cases = list(dict.fromkeys(args.case)) if args.case else list(CASES)
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/protected-field-values.c').read_text()
     relation_fixture = (ROOT / 'analyzer/test/regression/bmc-values/protected-field-relations.c').read_text()
+    joint_fixture = (ROOT / 'analyzer/test/regression/bmc-values/mutex-field-equalities.c').read_text()
     env = {key: value for key, value in os.environ.items()
            if not key.startswith('IKOS_') and key not in {'PYTHONHOME', 'PYTHONPATH'}}
     env['IKOS_BMC_RECOVER'] = '1'
@@ -89,17 +122,22 @@ def main():
         for case in cases:
             relational = case >= 27
             preamble = f'#define CASE {case}\n'
-            if relational:
+            if case in JOINT_CASES:
+                preamble += f'#define VARIANT {JOINT_CASES[case][0]}\n'
+            elif relational:
                 mode, broken = divmod(case - 27, 2)
                 preamble += f'#define MODE {mode}\n#define BROKEN {broken}\n'
             # Rename source symbols to keep the oracle independent of names.
-            text = (relation_fixture if relational else fixture)
+            text = (joint_fixture if case in JOINT_CASES else
+                    relation_fixture if relational else fixture)
             text = text.replace('state', 'shared_record').replace('payload', 'shared_data')
             text = text.replace('worker', 'consume').replace('save_through_pointer', 'store_indirect')
             source = work / 'renamed.c'
             source.write_text(preamble + text)
             analysis_options = (['--partitioning=no', '--domain=apron-polka-polyhedra']
                                 if relational else ['--partitioning=guards'])
+            if case == 60:
+                analysis_options.append('--globals-init=none')
             for bmc in ((False, True) if case in BMC_CASES and not args.skip_bmc else (False,)):
                 report = work / 'report.json'
                 report.unlink(missing_ok=True)

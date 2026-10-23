@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <map>
 #include <vector>
 
 #include <ikos/analyzer/analysis/execution_engine/handle_origin.hpp>
@@ -240,6 +241,90 @@ inline bool protected_integer_accesses(ar::GlobalVariable* global,
   return true;
 }
 
+// Both loads belong to one abstract snapshot. Equal intervals alone do not
+// establish equality, and an invalid/bottom memory read is not a proof.
+template < typename D, typename C >
+bool protected_cells_equal(D observation, C& ctx, ar::GlobalVariable* global,
+                           const ProtectedIntegerCell& left,
+                           const ProtectedIntegerCell& right) {
+  if (observation.normal().is_bottom() ||
+      left.type->bit_width() != right.type->bit_width() ||
+      left.type->sign() != right.type->sign()) return false;
+  auto* location = ctx.mem_factory->get_global(global);
+  Variable* values[2];
+  unsigned index = 0;
+  for (const auto& cell : {left, right}) {
+    auto* pointer = ctx.var_factory->create_unnamed_shadow(global->type());
+    auto* value = ctx.var_factory->create_unnamed_shadow(cell.type);
+    core::MachineInt size(ctx.bundle->data_layout().store_size_in_bytes(cell.type),
+                          ctx.bundle->data_layout().pointers.bit_width, core::Unsigned);
+    observation.normal().pointer_assign(pointer, location, core::Nullity::non_null());
+    observation.normal().pointer_assign(pointer, pointer,
+        core::MachineInt(cell.offset, size.bit_width(), core::Unsigned));
+    observation.normal().mem_read(
+        core::Literal< Variable*, MemoryLocation* >::machine_int_var(value), pointer, size);
+    observation.normal().scalar_forget(pointer);
+    values[index++] = value;
+  }
+  if (observation.normal().is_bottom()) return false;
+  for (auto* value : values)
+    if (!observation.normal().uninit_is_initialized(value)) return false;
+  observation.normal().int_add(core::machine_int::Predicate::NE, values[0], values[1]);
+  return observation.normal().is_bottom();
+}
+
+// A newly acquired protecting mutex exposes a completed joint snapshot. Fresh
+// cell values break stale links to private values captured before acquisition.
+template < typename E >
+void refresh_protected_equalities(E& eng, std::uint64_t acquired) {
+  auto& env = eng.ctx().concurrent_env;
+  if (!env.mutex_values_available() || eng.data().normal().is_bottom()) return;
+  auto* bundle = eng.ctx().bundle;
+  for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it) {
+    auto* global = *it;
+    if (!global->is_definition() || global->is_thread_local()) continue;
+    auto* location = eng.ctx().mem_factory->get_global(global);
+    auto addr = core::IndexableTraits< MemoryLocation* >::index(location);
+    auto pairs = env.mutex_equalities(addr);
+    pairs.erase(std::remove_if(pairs.begin(), pairs.end(), [&](const auto& pair) {
+      return !env.mutex_equality_available(addr, std::get<0>(pair), std::get<1>(pair),
+                                           std::get<2>(pair), acquired);
+    }), pairs.end());
+    if (pairs.empty()) continue;
+    std::map< std::uint64_t, Variable* > values;
+    for (const auto& pair : pairs) {
+      values.emplace(std::get<0>(pair), nullptr);
+      values.emplace(std::get<1>(pair), nullptr);
+    }
+    auto cells = protected_integer_cells(global);
+    for (const auto& cell : cells) {
+      auto found = values.find(cell.offset);
+      if (found == values.end()) continue;
+      auto* value = eng.var_factory().create_unnamed_shadow(cell.type);
+      found->second = value;
+      eng.data().normal().int_set(value,
+          env.read_mutex_handoff(addr, {}, cell.type->bit_width(), cell.type->sign(), cell.offset));
+    }
+    for (const auto& pair : pairs)
+      eng.data().normal().int_add(core::machine_int::Predicate::EQ,
+          values.at(std::get<0>(pair)), values.at(std::get<1>(pair)));
+    for (const auto& cell : cells) {
+      auto found = values.find(cell.offset);
+      if (found == values.end()) continue;
+      auto* pointer = eng.var_factory().create_unnamed_shadow(global->type());
+      core::MachineInt size(eng.data_layout().store_size_in_bytes(cell.type),
+                            eng.data_layout().pointers.bit_width, core::Unsigned);
+      eng.data().normal().pointer_assign(pointer, location, core::Nullity::non_null());
+      eng.data().normal().pointer_assign(pointer, pointer,
+          core::MachineInt(cell.offset, size.bit_width(), core::Unsigned));
+      eng.data().normal().mem_write(pointer,
+          core::Literal< Variable*, MemoryLocation* >::machine_int_var(found->second), size);
+      eng.data().normal().scalar_forget(pointer);
+    }
+    for (const auto& value : values) eng.data().normal().scalar_forget(value.second);
+  }
+}
+
 template < typename E >
 std::unordered_set< std::uint64_t > value_mutexes(E& eng) {
   auto held = eng.lockset().held_mutexes();
@@ -352,6 +437,21 @@ void publish_protected_release(E& eng,
     auto* location = eng.ctx().mem_factory->get_global(global);
     auto addr = core::IndexableTraits< MemoryLocation* >::index(location);
     if (!env.has_mutex_value_cell(addr)) continue;
+    for (const auto& pair : env.mutex_equalities(addr)) {
+      ProtectedIntegerCell left{std::get<0>(pair), nullptr};
+      ProtectedIntegerCell right{std::get<1>(pair), nullptr};
+      for (const auto& cell : protected_integer_cells(global)) {
+        if (cell.offset == left.offset) left.type = cell.type;
+        if (cell.offset == right.offset) right.type = cell.type;
+      }
+      const bool equal = left.type && right.type &&
+          protected_cells_equal(eng.data(), eng.ctx(), global, left, right);
+      // Only the released protecting mutex observes this endpoint. An inner
+      // unrelated unlock may legitimately occur between the two field stores.
+      for (auto released : before) if (after.count(released) == 0)
+        env.join_mutex_equality_release(addr, left.offset, right.offset,
+                                        std::get<2>(pair), released, equal);
+    }
     for (const auto& cell : protected_integer_cells(global)) {
       auto* type = cell.type;
       if (!env.has_mutex_value_cell(addr, cell.offset, type->bit_width())) continue;

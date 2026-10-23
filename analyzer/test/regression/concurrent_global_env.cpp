@@ -102,8 +102,64 @@ static void test_mutex_field_values() {
           "Repeated invalidation is stable and cannot restore availability");
 }
 
+static void test_mutex_field_equalities() {
+  using ikos::core::MachineInt;
+  using ikos::core::Signed;
+  using Interval = ikos::core::machine_int::Interval;
+  constexpr std::uint64_t base = 101, mu = 201, nu = 202;
+  ConcurrentGlobalEnv env;
+  const auto zero = Interval(MachineInt(0, 32, Signed));
+  const auto range = Interval(MachineInt(0, 32, Signed), MachineInt(2, 32, Signed));
+  env.initialize_mutex_value(base, zero, 0);
+  env.initialize_mutex_value(base, zero, 4);
+  env.initialize_mutex_equality(base, 0, 4, 32);
+  env.initialize_mutex_equality(base, 0, 4, 64);
+  env.enable_mutex_values();
+  require(env.mutex_equalities(base).size() == 1 &&
+              env.mutex_equality_available(base, 0, 4, 32, mu),
+          "Only registered complete cells form an initial equality candidate");
+  env.join_mutex_ongoing(base, {mu}, range, 0);
+  env.join_mutex_ongoing(base, {mu}, range, 4);
+  env.clear_dirty();
+  env.join_mutex_equality_release(base, 0, 4, 32, mu, true);
+  require(!env.is_dirty() && env.mutex_equality_available(base, 0, 4, 32, mu) &&
+              !env.mutex_equality_available(base, 0, 4, 32, nu),
+          "Both fields require the same actual mutex across all writer partitions");
+  env.join_mutex_equality_release(base, 0, 4, 32, nu, false);
+  require(env.is_dirty() && env.mutex_equality_available(base, 0, 4, 32, mu),
+          "An unrelated nested release cannot revoke the protecting mutex");
+  env.clear_dirty();
+  env.join_mutex_equality_release(base, 0, 4, 32, mu, false);
+  require(env.is_dirty() && !env.mutex_equality_available(base, 0, 4, 32, mu) &&
+              env.read_mutex_handoff(base, {}, 32, Signed, 0).equals(range) &&
+              env.read_mutex_handoff(base, {}, 32, Signed, 4).equals(range),
+          "Loss of joint equality dirties even when both marginals are unchanged");
+  env.clear_dirty();
+  env.join_mutex_equality_release(base, 0, 4, 32, mu, true);
+  env.join_mutex_equality_release(base, 0, 4, 32, mu, false);
+  require(!env.is_dirty() && !env.mutex_equality_available(base, 0, 4, 32, mu),
+          "MUST intersection is stable and cannot resurrect a revoked equality");
+  env.clear();
+  require(env.mutex_equalities(base).empty(), "Reset discards joint templates");
+
+  env.initialize_mutex_value(base, zero, 0);
+  env.initialize_mutex_value(base, zero, 4);
+  env.initialize_mutex_equality(base, 0, 4, 32);
+  env.enable_mutex_values();
+  env.join_mutex_ongoing(base, {mu}, range, 0);
+  env.join_mutex_ongoing(base, {mu}, range, 4);
+  env.clear_dirty();
+  env.join_mutex_ongoing(base, {}, range, 4);
+  require(env.is_dirty() && !env.mutex_equality_available(base, 0, 4, 32, mu),
+          "A late same-marginal unlocked writer revokes joint protection");
+  env.invalidate_mutex_values();
+  require(!env.mutex_equality_available(base, 0, 4, 32, mu),
+          "Unknown effects also disable the joint channel");
+}
+
 int main() {
   test_mutex_field_values();
+  test_mutex_field_equalities();
   ar::Context context;
   auto* bundle =
       ar::Bundle::create(context,

@@ -825,6 +825,10 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
   } else {
     refresh_protected_values(eng, old_held, false, new_held);
   }
+  // Missing MUST membership does not prove absence after a branch merge:
+  // ERRORCHECK may report EDEADLK instead of acquiring a fresh snapshot.
+  if (exact_mutex && first_acquisition)
+    refresh_protected_equalities(eng, acquired_addrs.front());
   for (std::uint64_t la : acquired_addrs) {
     if (!read_lock && !trylock && eng.lockset().held_mutexes().count(la) != 0) {
       // ERRORCHECK may fail without increasing depth; NORMAL may block.

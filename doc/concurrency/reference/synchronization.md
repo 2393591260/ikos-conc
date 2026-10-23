@@ -596,13 +596,51 @@ An aggregate read uses field values only when one actual mutex is common to the
 reader and every discovered writer. A new writer lock partition invalidates the
 shared fixpoint even when its value is unchanged. Unsupported writes invalidate
 feedback; first acquisition and later acquisition distinguish handoff values
-from interference while waiting. This channel carries per-cell intervals, not
-cross-field relational summaries, and does not authorize BMC confirmation.
+from interference while waiting. The value board carries per-cell intervals;
+the finite equality extension below supplies joint handoff facts. Neither
+channel authorizes BMC confirmation.
 `IKOS_DISABLE_MUTEX_FIELD_VALUES=1` disables aggregate registration for diagnostic
 ablation while retaining scalar feedback and the normal conservative fallback.
 
 Run `python3 scripts/test_protected_field_values.py` (also `--bits 64`) for value,
 initializer, intermediate-write, lock, alias and byte-effect controls, plus
 relational positive/negative controls using the existing Polka polyhedra domain.
-These distinguish local reconstruction and same-critical-section relations from
-cross-thread field relations, which remain outside this per-cell channel.
+These distinguish local reconstruction, same-critical-section relations and
+cross-thread joint equality, including broken-premise controls.
+
+The joint extension tries at most 64 exact leaf pairs per global, requiring the
+same integer width and signedness. A candidate starts only when the initialized
+memory proves equality, or a single complete typed zero initializer directly
+establishes it under the selected initialization policy and an executed-global
+initializer closure that permits only complete stores to each initializer's own
+global. Native memory otherwise loses subcell values of aggregate-zero
+storage; no equality is inferred just from matching marginal intervals.
+At each actual mutex release, both fields are read from
+one copy of the native numerical state; inability to prove equality permanently
+revokes that candidate for the released mutex. Loss dirties the shared fixpoint
+even if both interval marginals are unchanged. Facts join by intersection, not
+by the last observed release. A release of an unrelated nested mutex does not
+revoke the protecting mutex's candidate.
+
+Only a proven first-ever acquisition of a precise ordinary mutex can import a candidate.
+That same actual mutex must protect every ongoing writer of both fields. Fresh
+cell values cover initialization, all writes and releases; eligible equalities
+are imposed jointly before writing them back to native memory. This breaks
+stale links to values captured before acquisition. Local stores then transfer
+the relation normally: equality is never reasserted at each load. Subsequent
+acquisitions, including genuine reacquisition and a new mutex nested under an
+earlier acquisition, retain conservative behavior: absence from a MUST lockset
+does not prove that ERRORCHECK cannot fail on an already-held branch.
+Values captured together may keep their
+relation after unlock; separate acquisitions cannot equate two private snapshots.
+
+These are finite inductive candidates, not assumptions justified by observed
+successes: initialization establishes the base, every covered critical-section
+release checks preservation, and all writes must obey the common mutex. Unknown
+effects, an unprotected writer, failed preservation or incomplete analysis
+remove the permission. Every invalidating change replays all discovered roots;
+verdict publication still requires the existing stable, complete analysis gate.
+The native numerical domain determines which relations survive local joins.
+This is bounded relational mutex privatization, not a new numerical domain or a
+projection of relations into BMC. `IKOS_DISABLE_MUTEX_FIELD_EQUALITIES=1` disables
+only equality registration for causal comparison, retaining field intervals.
