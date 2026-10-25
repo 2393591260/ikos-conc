@@ -125,6 +125,35 @@ def main():
             assertions += 2
             print('short startup / deep worker', bool(control), verdict, flush=True)
 
+        # Branch pressure is in main, before creation, rather than in a worker.
+        # Internal cancellation must survive with diagnostic reporting disabled.
+        pressure = STARTUP_SOURCE.replace(
+            'while (__VERIFIER_nondet_int()) ++startup_count;',
+            'volatile int local = 0;' + chr(10).join(
+                'if (__VERIFIER_nondet_int()) local = 1; else local = 2;'
+                for _ in range(12))).replace('CONTROL', '')
+        for diagnostic in (False, True):
+            if diagnostic:
+                env['IKOS_BMC_DIAGNOSTICS'] = '1'
+            else:
+                env.pop('IKOS_BMC_DIAGNOSTICS', None)
+            for deadline in (1, 100):
+                verdict, data, _ = analyze(args.bits, False,
+                    ['--bmc-deadline-ms=' + str(deadline)], pressure)
+                assert verdict != VERDICT_SAFE, (diagnostic, deadline, verdict)
+                infos = [r['info'] for r in data['reports'] if 'bmc_result' in r['info']]
+                assert infos, (diagnostic, deadline, data)
+                if verdict == VERDICT_RACE:
+                    checks = validate_report(data)
+                    assert checks and all(c['status'] == 'ACCEPT' for c in checks), checks
+                else:
+                    assert verdict == VERDICT_UNKNOWN
+                    assert any('BUDGET_EXCEEDED' in i['bmc_result']['observed']
+                               for i in infos), infos
+                    assert not any('counterexample' in i for i in infos), infos
+                assertions += 3
+                print('startup pressure', diagnostic, deadline, verdict, flush=True)
+
         for flag, values in (('--bmc-deadline-ms', ('-1', '4294967296', 'x')),
                 ('--bmc-solver-timeout-ms', ('0', '-1', '4294967296', 'x'))):
             for value in values:

@@ -73,6 +73,7 @@
 #include <ikos/analyzer/analysis/pointer/function.hpp>
 #include <ikos/analyzer/support/cast.hpp>
 #include <ikos/analyzer/util/log.hpp>
+#include <ikos/analyzer/util/timer.hpp>
 #include <ikos/analyzer/util/source_location.hpp>
 
 #include <ikos/core/domain/concurrent_global_env.hpp>
@@ -495,6 +496,8 @@ void DataRaceChecker::finalize() {
 }
 
 void DataRaceChecker::finalize_checks() {
+  ScopeTimerDatabase timer(this->_ctx.output_db->times,
+                           "ikos-analyzer.race.finalize");
   this->_ownership->run();
   ReadonlyHeapReads readonly_heap_reads(this->_ctx);
   BucketListOwnership bucket_list_ownership(this->_ctx, this->_accesses);

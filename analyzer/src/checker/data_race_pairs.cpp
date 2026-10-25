@@ -67,6 +67,7 @@
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 #include <ikos/analyzer/support/cast.hpp>
 #include <ikos/analyzer/util/log.hpp>
+#include <ikos/analyzer/util/timer.hpp>
 #include <ikos/analyzer/util/source_location.hpp>
 
 #include <ikos/core/domain/concurrent_global_env.hpp>
@@ -358,6 +359,8 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
     ReadonlyHeapReads& readonly_heap_reads,
     BucketListOwnership& bucket_list_ownership,
     JoinedNames& joined_names) {
+  ScopeTimerDatabase timer(this->_ctx.output_db->times,
+                           "ikos-analyzer.race.pairs");
   // Offline pairwise race detection across all logged accesses.
   //
   // Two accesses A and B form a potential race when:

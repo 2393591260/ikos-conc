@@ -48,6 +48,7 @@
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
 #include <ikos/analyzer/support/cast.hpp>
 #include <ikos/analyzer/util/log.hpp>
+#include <ikos/analyzer/util/timer.hpp>
 #include <ikos/analyzer/util/source_location.hpp>
 
 #include <ikos/core/domain/concurrent_global_env.hpp>
@@ -70,6 +71,9 @@ void DataRaceChecker::search_race_candidates(
   if (all_pairs.empty()) {
     return;
   }
+
+  ScopeTimerDatabase timer(this->_ctx.output_db->times,
+                           "ikos-analyzer.race.bmc-search");
 
   // Helper: encode a single side of a race pair as a JSON dict.
   // Captured by reference into the lambda; must outlive the lambda's
@@ -161,6 +165,7 @@ void DataRaceChecker::search_race_candidates(
   // intervening waits or unknown calls. Loop/conditional creation needs modeling.
   std::map< std::pair< std::string, std::string >, std::vector< std::vector< bmc::BmcEvent > > > activation_prefixes;
   decltype(activation_prefixes) short_activation_prefixes;
+  std::set< std::pair< std::string, std::string > > incomplete_activations;
   std::map< std::pair< std::string, std::string >, bmc::Diagnostics > activation_diagnostics;
   auto two_live_threads = [&](const std::string& thread_a, const std::string& thread_b) {
     ar::Function* main = this->_ctx.bundle->function_or_null("main");
@@ -278,12 +283,15 @@ void DataRaceChecker::search_race_candidates(
         if (extra_occurrences && search_budget.expired()) break;
         // Activation below rejects every join. Stop unsupported join suffixes
         // during construction instead of enumerating paths we cannot retain.
-        auto result = finite_source == nullptr
-            ? bmc::unroll_to(main, endpoint.first, occurrence, loop_bound, true,
-                             extra_occurrences ? nullptr : &create_limits)
-            : bmc::unroll_to(main, endpoint.first, occurrence, loop_bound, true,
-                             extra_occurrences ? nullptr : &create_limits,
-                             &search_budget.deadline, finite_source, finite_value);
+        auto result = bmc::unroll_to(
+            main, endpoint.first, occurrence, loop_bound, true,
+            extra_occurrences ? nullptr : &create_limits,
+            &search_budget.deadline, finite_source, finite_value);
+        if (result.incomplete) {
+          incomplete_activations.insert(std::minmax(thread_a, thread_b));
+          bmc::record(startup_diagnostics,
+                      result.reason ? result.reason : "unroll_incomplete", endpoint.first);
+        }
         if (result.rejected_reason)
           bmc::record(startup_diagnostics, result.rejected_reason, result.rejected_statement);
         // Exhaustion omits alternatives, not the complete prefixes already
@@ -380,6 +388,7 @@ void DataRaceChecker::search_race_candidates(
       // combinations when the larger startup enumeration saturates.
       if (pass == 2) short_activation_prefixes = std::move(activation_prefixes);
       activation_prefixes.clear();
+      incomplete_activations.clear();
       if (pass >= 3) small_activation.clear();
     }
     if (pass != 0) {
@@ -544,7 +553,9 @@ void DataRaceChecker::search_race_candidates(
           }
           proof = instance_proofs.emplace(key, live).first;
         }
-        if (!proof->second && trace)
+        if (incomplete_activations.count(key))
+          candidate_result.merge(bmc::Result(bmc::Status::BudgetExceeded));
+        if ((!proof->second || incomplete_activations.count(key)) && trace)
           for (const auto& example : activation_diagnostics[key].examples)
             bmc::record(trace, "activation_" + example.reason, example.stmt);
         gate(!proof->second, "thread_activation_unproven");

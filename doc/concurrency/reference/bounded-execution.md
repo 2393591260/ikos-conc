@@ -147,3 +147,28 @@ validity.
 Run `python3 scripts/test_bmc_executed_offset.py` (and `--bits 64`) for native
 ILP32/LP64 C int/long-long controls,
 raw LLVM intermediate/large-stride/field-offset cases and damaged native evidence.
+
+
+## Startup cancellation and phase cost
+
+Ordinary and finite-sample startup enumeration use the same file-level BMC
+deadline. Reaching a construction deadline, path, event or work limit records
+BUDGET_EXCEEDED even when detailed diagnostics are disabled. Fully constructed
+prefixes remain eligible for their ordinary guard, value, instance and execution
+checks; an interrupted branch never becomes a witness. This status grants no
+SAFE permission. Process failures and external resource termination retain their
+separate ERROR/resource classifications.
+
+SQLite times include ikos-analyzer.race.finalize, ikos-analyzer.race.pairs and
+ikos-analyzer.race.bmc-search. The first includes the latter two and effect
+preparation; these nested durations must not be added. Existing per-function
+value/check timers measure main AI work; BMC solver_us/evidence_us remain
+substage measurements. No per-statement instrumentation or extra proof query is
+performed for these timers. Rule counts are first successful consumers, not
+exclusive solved-task contributions; field-import logs count attempts rather
+than measured abstract-state strengthening.
+
+SymbolicArena uses its own fixed query/state limits, separate from BMC options.
+Debug logs distinguish query-budget exhaustion from a solver unknown and include
+the solver's supplied reason. They do not raise the existing 100ms query limit
+or turn an inconclusive query into a certificate.

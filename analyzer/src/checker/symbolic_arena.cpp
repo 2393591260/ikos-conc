@@ -605,16 +605,20 @@ class SymbolicArenaReservation::Impl {
     return x;
   }
   z3::check_result query(const z3::expr& claim) {
-    if (!queries--)
+    if (!queries--) {
+      log::debug("Symbolic arena: query budget exhausted");
       throw Refuse{};
+    }
     z3::solver solver(z);
     z3::params p(z);
     p.set("timeout", 100u);
     solver.set(p);
     solver.add(claim);
     auto result = solver.check();
-    if (result == z3::unknown)
+    if (result == z3::unknown) {
+      log::debug("Symbolic arena: solver returned unknown: " + solver.reason_unknown());
       throw Refuse{};
+    }
     return result;
   }
   void require(const State& s, const z3::expr& claim) {

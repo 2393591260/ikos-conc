@@ -230,3 +230,36 @@ The executable regression groups are registered in
 [regression/CMakeLists.txt](../../../analyzer/test/regression/CMakeLists.txt).
 A successful regression is finite evidence. The identity table does not assert
 that the original source coverage or each mechanism's full theorem is proved.
+
+
+## Per-mechanism ABI boundaries
+
+The tool entry accepting ILP32 and LP64 does not mean every optional certificate
+supports both. Data widths and API int/key/protocol values do not automatically
+change with pointer width.
+
+| Mechanism | Current ABI scope | Essential distinction |
+| --- | --- | --- |
+| Native pthread handles, default-normal mutex identity | Checked GNU/Linux x86 ILP32 and x86-64 LP64 | Handle/size_t words are 4/8 bytes; mutex objects are 24/40 bytes. |
+| RegionOwnership, InitPublication, ConstantThreadCompletion | Checked GNU32/64 subcontracts | Object/context, all-alternative coverage and actual endpoint checks remain necessary. |
+| BinaryToken atomic/ticket modes | Checked GNU32/64 | Token/ticket protocol integers remain i32; ticket wrap is still refused. Semaphore mode has a separate restriction. |
+| OnceInitialization, MutexHandover, GuardedPublication | Checked GNU32/64 | Once state remains i32; cond storage stays 48 bytes with native alignment; malloc uses native size_t. |
+| Finite ArenaReservation | Checked GNU32/64 | Signed i32 reservation arithmetic; only checked sext to the native LP64 index. |
+| LockedCreation, closed pthread_once, one-shot PosixBarrier | Checked GNU32/64 subcontracts | No general descendant completion, callback effect or reusable-barrier claim. |
+| ThreadPrivateHeap, ArraySlices, ReadonlyHeapReads | ILP32 only | Native allocation/count/index/handle correspondence needs a coordinated migration. Internal BV64 arithmetic is not LP64 support. |
+| FirstPublication, BucketListOwnership, SymbolicArena | ILP32 only | Link slots, native mutex layout, address arithmetic and source/AR mapping remain restricted. |
+| ThreadLifecycle, ScProtocol/protected protocol, SelfPublication | ILP32 only | Their independent state interpreters still depend on the native 32-bit frame. |
+| PthreadInitializationFrame, RuntimeStdioFrame, PosixSemaphore, pthread-key effects | ILP32 only for these certificates | Narrower native initialization/scan models are independent. A key stays i32 on LP64; a pthread_t slot does not. |
+
+Unsupported certificate ABIs refuse the certificate and preserve the ordinary
+analysis/coverage obligations. They are not silently treated as verified SAFE,
+nor counted as positive LP64 support. The protocol ABI boundary test exercises
+32-bit hits and 64-bit refusal; each migrated protocol has both positive and
+premise-breaking tests.
+
+Further migrations must update producers and every consumer together. For
+example, a GNU LP64 semaphore uses a different object extent; changing only its
+entry gate would leave the numerical opaque-memory effect at the old 16-byte
+width. Likewise, pointer-table offsets and pthread_t VLA strides cannot be
+ported by merely changing a compiler flag. Independent interpreters retain
+their own contracts until an equivalence argument justifies replacement.
