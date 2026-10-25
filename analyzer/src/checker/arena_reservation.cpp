@@ -545,6 +545,13 @@ class ArenaReservation::Impl {
   bool index(llvm::Value* v, llvm::Instruction*& origin, ZNumber& delta,
              const Counter& counter, unsigned depth = 0) {
     if (depth == 16 || !spend()) return false;
+    // Native LP64 GEP indices preserve the signed i32 reservation value.
+    if (auto* extension = llvm::dyn_cast< llvm::SExtInst >(v)) {
+      if (ctx.bundle->data_layout().pointers.bit_width != 64 ||
+          !extension->getType()->isIntegerTy(64) ||
+          !extension->getOperand(0)->getType()->isIntegerTy(32)) return false;
+      return index(extension->getOperand(0), origin, delta, counter, depth + 1);
+    }
     if (auto* l = llvm::dyn_cast< llvm::LoadInst >(v)) {
       if (counter.serializer) return false;
       auto* slot = llvm::dyn_cast< llvm::AllocaInst >(l->getPointerOperand()); delta = ZNumber(0);
@@ -648,14 +655,14 @@ public:
     if (!ctx.opts.enable_thread_modular || ctx.opts.procedural == Procedural::Intraprocedural ||
         ctx.opts.entry_points.size() != 1 || ctx.opts.entry_points.front()->name() != "main" ||
         ctx.opts.entry_points.front()->num_parameters() != 0 || !ctx.opts.entry_points.front()->has_frontend() ||
-        ctx.bundle->data_layout().pointers.bit_width != 32 || !ctx.opts.no_init_globals.empty() ||
+        !ctx.opts.no_init_globals.empty() ||
         ctx.concurrent_env.is_dirty() || !ctx.concurrent_env.unmodeled_effects().empty() ||
         !ctx.concurrent_env.unmodeled_thread_creations().empty() ||
         ctx.bundle->global_or_null("ar.global_ctors") || ctx.bundle->global_or_null("ar.global_dtors")) return;
     auto* main = ctx.opts.entry_points.front()->frontend< llvm::Function >();
     if (!main->use_empty()) return;
-    llvm::Triple target(main->getParent()->getTargetTriple());
-    if (target.getArch() != llvm::Triple::x86 || !target.isOSLinux() || target.getEnvironment() != llvm::Triple::GNU) return;
+    const auto abi = pthread_object_layout(ctx.bundle, main->getParent());
+    if (!abi || main->getParent()->getDataLayout().getIndexSizeInBits(0) != abi.word * 8) return;
     for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end(); ++it)
       if ((*it)->has_frontend())
         if (auto* g = llvm::dyn_cast< llvm::GlobalVariable >((*it)->frontend< llvm::Value >())) globals.emplace(g, *it);

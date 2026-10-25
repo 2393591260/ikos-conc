@@ -1,7 +1,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #if CASE == 30
-extern void *malloc(unsigned);
+extern void *malloc(__SIZE_TYPE__);
 extern void free(void *);
 void returning_stop(void) __asm__("abort");
 void returning_stop(void) {}

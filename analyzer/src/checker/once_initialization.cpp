@@ -564,14 +564,14 @@ public:
     if (!ctx.opts.enable_thread_modular || ctx.opts.procedural == Procedural::Intraprocedural ||
         ctx.opts.entry_points.size() != 1 || ctx.opts.entry_points.front()->name() != "main" ||
         ctx.opts.entry_points.front()->num_parameters() != 0 || !ctx.opts.entry_points.front()->has_frontend() ||
-        ctx.bundle->data_layout().pointers.bit_width != 32 || !ctx.opts.no_init_globals.empty() ||
+        !ctx.opts.no_init_globals.empty() ||
         ctx.concurrent_env.is_dirty() || !ctx.concurrent_env.unmodeled_effects().empty() ||
         !ctx.concurrent_env.unmodeled_thread_creations().empty() ||
         ctx.bundle->global_or_null("ar.global_ctors") || ctx.bundle->global_or_null("ar.global_dtors")) return;
     auto* main = ctx.opts.entry_points.front()->frontend< llvm::Function >();
     if (!main->use_empty()) return;
-    llvm::Triple target(main->getParent()->getTargetTriple());
-    if (target.getArch() != llvm::Triple::x86 || !target.isOSLinux() || target.getEnvironment() != llvm::Triple::GNU) return;
+    const auto abi = pthread_object_layout(ctx.bundle, main->getParent());
+    if (!abi || main->getParent()->getDataLayout().getIndexSizeInBits(0) != abi.word * 8) return;
     for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end(); ++it)
       if ((*it)->has_frontend())
         if (auto* g = llvm::dyn_cast< llvm::GlobalVariable >((*it)->frontend< llvm::Value >())) globals.emplace(g, *it);

@@ -104,18 +104,28 @@ add_concurrency_test(self-publication "${CONCURRENCY_ROOT}/scripts/test_self_pub
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(sc-protocol "${CONCURRENCY_ROOT}/scripts/test_sc_protocol.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(protocol-abi-boundaries "${CONCURRENCY_ROOT}/scripts/test_protocol_abi_boundaries.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(mutex-handover "${CONCURRENCY_ROOT}/scripts/test_mutex_handover.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(mutex-handover-lp64 "${CONCURRENCY_ROOT}/scripts/test_mutex_handover.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(heap-handoff "${CONCURRENCY_ROOT}/scripts/test_heap_handoff.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(arena-reservation "${CONCURRENCY_ROOT}/scripts/test_arena_reservation.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(arena-reservation-lp64 "${CONCURRENCY_ROOT}/scripts/test_arena_reservation.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(symbolic-arena "${CONCURRENCY_ROOT}/scripts/test_symbolic_arena.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(token-once "${CONCURRENCY_ROOT}/scripts/test_token_once.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(token-once-lp64 "${CONCURRENCY_ROOT}/scripts/test_token_once.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(token-arena "${CONCURRENCY_ROOT}/scripts/test_token_arena.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(token-arena-lp64 "${CONCURRENCY_ROOT}/scripts/test_token_arena.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(scanf-errno "${CONCURRENCY_ROOT}/scripts/test_scanf_errno.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(runtime-stdio "${CONCURRENCY_ROOT}/scripts/test_runtime_stdio.py"
@@ -130,6 +140,8 @@ add_concurrency_test(ticket-ownership-lp64 "${CONCURRENCY_ROOT}/scripts/test_tic
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(guarded-publication "${CONCURRENCY_ROOT}/scripts/test_guarded_publication.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(guarded-publication-lp64 "${CONCURRENCY_ROOT}/scripts/test_guarded_publication.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(posix-semaphore "${CONCURRENCY_ROOT}/scripts/test_posix_semaphore.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(bmc-semaphore "${CONCURRENCY_ROOT}/scripts/test_bmc_semaphore.py"
@@ -154,14 +166,22 @@ add_concurrency_test(direct-token "${CONCURRENCY_ROOT}/scripts/test_direct_token
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(direct-once "${CONCURRENCY_ROOT}/scripts/test_direct_once.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(direct-once-lp64 "${CONCURRENCY_ROOT}/scripts/test_direct_once.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(zero-guard-arena "${CONCURRENCY_ROOT}/scripts/test_zero_guard_arena.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(zero-guard-arena-lp64 "${CONCURRENCY_ROOT}/scripts/test_zero_guard_arena.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(native-arena "${CONCURRENCY_ROOT}/scripts/test_native_arena.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(native-arena-lp64 "${CONCURRENCY_ROOT}/scripts/test_native_arena.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(once-callbacks "${CONCURRENCY_ROOT}/scripts/test_once_callbacks.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(once-initialization "${CONCURRENCY_ROOT}/scripts/test_once_initialization.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(once-initialization-lp64 "${CONCURRENCY_ROOT}/scripts/test_once_initialization.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(thread-private-heap "${CONCURRENCY_ROOT}/scripts/test_thread_private_heap.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(calloc-overflow "${CONCURRENCY_ROOT}/scripts/test_calloc_overflow.py"

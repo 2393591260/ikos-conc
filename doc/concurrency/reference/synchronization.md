@@ -130,8 +130,8 @@ reaching state and helper context. Releasing/reacquiring a mutex resets the
 corresponding history; returns do not release mutexes. Unmatched unlocks,
 recursive acquisitions, unknown calls or proof exhaustion refuse the certificate.
 The initial scope requires exactly two closed default-normal global mutexes on
-Linux ILP32, direct scalar memory effects, direct helpers and native thread
-creation with a private scalar output and NULL argument. It adds neither a join
+GNU/Linux x86 ILP32 or x86-64 LP64, direct scalar memory effects, direct helpers
+and native thread creation with a private native-width output and NULL argument. It adds neither a join
 completion fact nor a BMC synchronization shortcut.
 
 </details>
@@ -198,8 +198,9 @@ Only initialization/post-gate pairs for the exact global and full byte interval
 are excluded. Later/later races, including equal-value writes, remain subject to
 ordinary checks. Resets, address escapes, partial writes, unsupported effects,
 incomplete prefixes or proof exhaustion refuse certification. The implementation
-uses the same checked GNU x86 ILP32 normal-mutex representation as native arena
-reservations; 64-bit scalar payloads are supported on this ABI. It changes no
+uses the checked GNU/Linux x86 ILP32 or x86-64 LP64 normal-mutex representation;
+the gate state remains i32 and 64-bit scalar payloads are supported on both ABIs.
+It changes no
 points-to, interference, coverage or BMC semantics.
 
 Arena success guards also recognize a narrowly proved terminating zero branch
@@ -221,7 +222,7 @@ changes no LLVM CFG, numerical invariant, coverage or BMC result directly.
 `GuardedPublication` proves a pair-specific ordering from main's scalar writes
 to reads by any number of workers. A closed, non-TLS global flag starts at zero
 and has one noncyclic constant-one Store in nonreentrant main. All its accesses
-use the same actual default-normal GNU i386 mutex. Watched payload globals have
+use the same actual default-normal GNU/Linux x86 ILP32 or x86-64 LP64 mutex. Watched payload globals have
 only full-width direct accesses; every writer is main, and no CFG path from the
 publication Store reaches another payload write. Helpers cannot hide watched
 accesses or mutex/condition operations. Calls, function addresses, foreign runtime
@@ -231,8 +232,9 @@ A finite CFG worklist tracks possible held states (union), observed publication
 (AND), and continuously protected flag-Load identities (intersection). Only an
 exact Boolean guard edge implying one from a real protected Load establishes
 observation. Other branches are both explored. Unlock and condition wait clear
-cached Loads. Under the sealed zero-initialized 48-byte condition variable and
-24-byte default-normal mutex contract, a normal cond-wait return retains mutex
+cached Loads. Under the sealed zero-initialized 48-byte condition variable
+(aligned to 4/8 bytes) and 24/40-byte default-normal mutex contract for ILP32/LP64,
+a normal cond-wait return retains mutex
 ownership; spurious wakeups and failure statuses grant no observation. Robust,
 priority-protect, custom initialization, cancellation, destruction and unknown
 object uses are outside this contract. Source evidence is the [glibc 2.39
@@ -250,8 +252,9 @@ returning user-defined `abort` or bare `unreachable` cannot remove a predecessor
 
 The analysis leaves numerical/MAY state, public lock/HB/join facts and BMC
 unchanged. It inherits the existing object-based pthread API effect envelope,
-without proving arbitrary invalid-handle libc behavior. Run
-`python3 scripts/test_guarded_publication.py` for ILP32 int/long-long payloads,
+without proving arbitrary invalid-handle libc behavior. Allocation calls must use
+the actual native size_t prototype. Run
+`python3 scripts/test_guarded_publication.py --bits=32` and `--bits=64` for int/long-long payloads,
 8/32-bit flags, loops, guard polarity, spurious-wakeup, late-write, alias and
 termination controls. Implementation: `checker/guarded_publication.hpp` and
 `src/checker/guarded_publication.cpp`.

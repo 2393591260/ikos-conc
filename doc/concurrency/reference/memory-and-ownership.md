@@ -197,7 +197,7 @@ Implementation: `checker/array_slices.hpp` and `src/checker/array_slices.cpp`.
 <details>
 <summary>Serialized arena reservations — prove that successful reservations do not overlap</summary>
 
-An independent symbolic mode handles a closed, immutable heap array initialized
+An independent ILP32-only symbolic mode handles a closed, immutable heap array initialized
 before all worker creation. It interprets every normal startup prefix and proves
 the allocation size equals the positive element count times its stride without
 32-bit wrap. Under one real default-normal mutex, the shared counter starts at
@@ -266,9 +266,14 @@ selects each return phi from its actual predecessor. Only a direct SSA result
 with a dominating successful-result guard supplies a fresh ticket; shared
 reloads, stale merges and unsupported spills retain candidates.
 
-These subsets target ILP32 Linux/GNU. They do not order an unrelated runtime
-initialization against later accesses; general initialization phases still
-need separate proofs.
+The finite global-array modes support checked GNU/Linux x86 ILP32 and x86-64
+LP64 layouts. Their counter, reservation outputs and checked intermediate arithmetic
+remain signed i32. LP64 accepts only a sign extension of that checked i32 index to
+i64; zero extension, truncation, independent i64 indices and arithmetic after the
+extension refuse certification. The symbolic heap mode remains ILP32-only.
+Unfolded NULL-root layout projections retain their separate ILP32 restriction.
+These certificates do not order unrelated runtime initialization against later
+accesses; general initialization phases still need separate proofs.
 
 </details>
 

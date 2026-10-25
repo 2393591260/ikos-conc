@@ -93,7 +93,7 @@ class MutexHandover::Impl {
     auto* local = llvm::dyn_cast< llvm::AllocaInst >(native_slot);
     auto* count = local ? llvm::dyn_cast< llvm::ConstantInt >(local->getArraySize()) : nullptr;
     return slot && isa< ar::LocalVariable >(slot) && count && count->isOne() &&
-        local->getAllocatedType()->isIntegerTy(32) &&
+        local->getAllocatedType()->isIntegerTy(ctx.bundle->data_layout().pointers.bit_width) &&
         slot->has_frontend() && slot->frontend< llvm::Value >() == native_slot &&
         child && child->is_definition() && child->has_frontend() &&
         child->frontend< llvm::Value >() == native_child;
@@ -321,12 +321,12 @@ public:
     if (!ctx.opts.enable_thread_modular || ctx.opts.procedural == Procedural::Intraprocedural ||
         ctx.opts.entry_points.size() != 1 || ctx.opts.entry_points.front()->name() != "main" ||
         ctx.opts.entry_points.front()->num_parameters() != 0 || !ctx.opts.entry_points.front()->has_frontend() ||
-        ctx.bundle->data_layout().pointers.bit_width != 32 || !ctx.opts.no_init_globals.empty() ||
+        !ctx.opts.no_init_globals.empty() ||
         ctx.concurrent_env.is_dirty() || !ctx.concurrent_env.unmodeled_effects().empty() ||
         !ctx.concurrent_env.unmodeled_thread_creations().empty() ||
         ctx.bundle->global_or_null("ar.global_ctors") || ctx.bundle->global_or_null("ar.global_dtors")) return;
     auto* main = ctx.opts.entry_points.front()->frontend< llvm::Function >();
-    if (!main->use_empty()) return;
+    if (!main->use_empty() || !pthread_object_layout(ctx.bundle, main->getParent())) return;
     for (auto it = ctx.bundle->function_begin(); it != ctx.bundle->function_end(); ++it) {
       auto* f = *it; if (!f->is_definition() || !f->has_frontend()) continue;
       auto* source = f->frontend< llvm::Function >(); functions.emplace(source, f);

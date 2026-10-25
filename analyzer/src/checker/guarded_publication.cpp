@@ -113,7 +113,7 @@ class GuardedPublication::Impl {
         main->getParent()->getDataLayout().getTypeAllocSize(t) != 48 ||
         !exact_handle_slot(a->argument(0), globals.at(g))) return false;
     auto align = g->getAlign() ? g->getAlign()->value() : main->getParent()->getDataLayout().getABITypeAlign(g->getValueType()).value();
-    if (align < 4) return false;
+    if (align < ctx.bundle->data_layout().pointers.bit_width / 8) return false;
     if (wait) {
       if (c->getArgOperand(1)->stripPointerCasts() != mutex ||
           !exact_handle_slot(a->argument(1), globals.at(mutex))) return false;
@@ -213,7 +213,7 @@ class GuardedPublication::Impl {
         }
         if (native_handle_api(c, true) || native_handle_api(c, false)) continue;
         if (name == "malloc" && id == ar::Intrinsic::LibcMalloc && c->arg_size() == 1 &&
-            c->getArgOperand(0)->getType()->isIntegerTy(32) && c->getType()->isPointerTy()) continue;
+            c->getArgOperand(0)->getType()->isIntegerTy(ctx.bundle->data_layout().pointers.bit_width) && c->getType()->isPointerTy()) continue;
         if (name == "free" && id == ar::Intrinsic::LibcFree && c->arg_size() == 1 && c->getType()->isVoidTy()) continue;
         if (terminal(c)) continue;
         if (c->arg_empty() && ((name == "__VERIFIER_nondet_int" && c->getType()->isIntegerTy(32)) ||
@@ -340,14 +340,14 @@ public:
     if (!ctx.opts.enable_thread_modular || ctx.opts.procedural == Procedural::Intraprocedural ||
         ctx.opts.entry_points.size() != 1 || ctx.opts.entry_points.front()->name() != "main" ||
         ctx.opts.entry_points.front()->num_parameters() != 0 || !ctx.opts.entry_points.front()->has_frontend() ||
-        ctx.bundle->data_layout().pointers.bit_width != 32 || !ctx.opts.no_init_globals.empty() ||
+        !ctx.opts.no_init_globals.empty() ||
         ctx.concurrent_env.is_dirty() || !ctx.concurrent_env.unmodeled_effects().empty() ||
         !ctx.concurrent_env.unmodeled_thread_creations().empty() ||
         ctx.bundle->global_or_null("ar.global_ctors") || ctx.bundle->global_or_null("ar.global_dtors")) return;
     main = ctx.opts.entry_points.front()->frontend< llvm::Function >();
-    auto* module = main->getParent(); llvm::Triple target(module->getTargetTriple());
-    if (!main->use_empty() || !module->getModuleInlineAsm().empty() || target.getArch() != llvm::Triple::x86 ||
-        !target.isOSLinux() || target.getEnvironment() != llvm::Triple::GNU) return;
+    auto* module = main->getParent();
+    if (!main->use_empty() || !module->getModuleInlineAsm().empty() ||
+        !pthread_object_layout(ctx.bundle, module)) return;
     bool potential = false;
     for (auto& g : module->globals()) for (auto* u : g.users())
       if (auto* s = llvm::dyn_cast< llvm::StoreInst >(u))
