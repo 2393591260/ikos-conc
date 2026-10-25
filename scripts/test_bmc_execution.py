@@ -162,10 +162,15 @@ def detach_history_contract():
     returned = dict(kind='integer', bits=32, signed=True, size=4, extent=4)
     detach = dict(declaration=True, variadic=False, parameter_types=[handle], return_type=returned)
     instruction = dict(calling_convention=0, operands=[{}, dict(type=handle)])
-    replay.functions = {'pthread_join': {}, 'pthread_detach': detach}
+    join_pointer = dict(kind='pointer', bits=32, size=4)
+    join = dict(declaration=True, variadic=False, parameter_types=[handle, join_pointer],
+                return_type=returned)
+    join_instruction = dict(calling_convention=0,
+                            operands=[{}, dict(type=handle), dict(type=join_pointer)])
+    replay.functions = {'pthread_join': join, 'pthread_detach': detach}
     replay.created = {1: dict(joined=False, detached=False)}
     invoke = lambda name, values: replay.api(name, values,
-        instruction if name == 'pthread_detach' else {}, {}, 'startup', 0, None, None)
+        instruction if name == 'pthread_detach' else join_instruction, {}, 'startup', 0, None, None)
     checks = 0
     for field, value in (('declaration', False), ('variadic', True),
                          ('parameter_types', [dict(handle, bits=64, size=8)]),
@@ -206,12 +211,61 @@ def detach_history_contract():
     return checks
 
 
+
+def join_abi_contract():
+    checks = 0
+    for bits in (32, 64):
+        handle = dict(kind='integer', bits=bits, signed=True, size=bits // 8)
+        pointer = dict(kind='pointer', bits=bits, size=bits // 8)
+        returned = dict(kind='integer', bits=32, signed=True, size=4)
+        function = dict(declaration=True, variadic=False,
+                        parameter_types=[handle, pointer], return_type=returned)
+        instruction = dict(calling_convention=0, result=dict(type=returned),
+                           operands=[{}, dict(type=handle), dict(type=pointer)])
+        damages = [
+            ('variadic', lambda f, i: f.update(variadic=True)),
+            ('arity', lambda f, i: f.update(parameter_types=[])),
+            ('handle-width', lambda f, i: f['parameter_types'][0].update(bits=16, size=2)),
+            ('pointer-width', lambda f, i: f['parameter_types'][1].update(bits=16, size=2)),
+            ('return-width', lambda f, i: f['return_type'].update(bits=16, size=2)),
+            ('return-sign', lambda f, i: f['return_type'].update(signed=False)),
+            ('calling-convention', lambda f, i: i.update(calling_convention=8)),
+            ('call-handle-type', lambda f, i: i['operands'][1]['type'].update(bits=16, size=2)),
+            ('call-pointer-type', lambda f, i: i['operands'][2]['type'].update(bits=16, size=2)),
+            ('call-result-type', lambda f, i: i['result']['type'].update(bits=16, size=2)),
+            ('call-arity', lambda f, i: i['operands'].pop()),
+        ]
+        for label, damage in [('valid', None), *damages]:
+            replay = Replay.__new__(Replay)
+            replay.atomic_owner = None
+            replay.program = dict(pointer_bits=bits, target_triple=(
+                'i386-pc-linux-gnu' if bits == 32 else 'x86_64-pc-linux-gnu'))
+            fn, inst = copy.deepcopy(function), copy.deepcopy(instruction)
+            if damage:
+                damage(fn, inst)
+            replay.functions = {'pthread_join': fn}
+            replay.created = {1: dict(joined=False, detached=False)}
+            replay.threads = {'child': Thread(1, [], {0: 1, 1: 2}, finished=True)}
+            parent = Thread(0, [], {0: 2})
+            try:
+                result = replay.api('pthread_join', [1, ('null', 0)], inst, {},
+                                    'startup', 0, parent, None)
+            except Reject:
+                assert damage, (bits, label)
+                assert not replay.created[1]['joined'], (bits, label)
+            else:
+                assert damage is None and result == 0, (bits, label)
+                assert parent.vc[1] == 2 and replay.created[1]['joined']
+            checks += 1
+    return checks
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bits', choices=("32", "64"), default="32")
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     args = parser.parse_args()
-    checks = detach_history_contract() + heap_handle_contract()
+    checks = detach_history_contract() + heap_handle_contract() + join_abi_contract()
     with tempfile.TemporaryDirectory(prefix='ikos-replay-') as temp:
         work = Path(temp)
         for bits in (args.bits,):

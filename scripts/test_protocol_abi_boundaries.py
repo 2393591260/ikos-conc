@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check that ILP32-only protocol/effect certificates refuse LP64 inputs."""
+"""Check that ILP32-only certificates refuse LP64 inputs."""
 import argparse
 import json
 import os
@@ -26,6 +26,15 @@ def main():
         ('sc-protocol', 'sc_protocol_contract'),
         ('self-publication', 'self_publication_contract'),
         ('pthread-key-effects', None),
+        ('thread-private-heap', 'private_heap_contract'),
+        ('array-slices', 'array_slices_contract'),
+        ('readonly-heap-reads', 'readonly_heap_reads_contract'),
+        ('bucket-list-ownership', 'bucket_list_contract'),
+        ('first-publication', 'publication_contract'),
+        ('symbolic-arena', 'arena_reservation_contract'),
+        ('runtime-stdio', 'runtime_stdio_contract'),
+        ('posix-semaphore', 'semaphore_ownership_contract'),
+        ('heap-pthread-initialization', None),
     )
     with tempfile.TemporaryDirectory(prefix='ikos-abi-boundary-') as temporary:
         work = Path(temporary)

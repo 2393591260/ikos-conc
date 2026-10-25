@@ -253,7 +253,7 @@ change with pointer width.
 
 Unsupported certificate ABIs refuse the certificate and preserve the ordinary
 analysis/coverage obligations. They are not silently treated as verified SAFE,
-nor counted as positive LP64 support. The protocol ABI boundary test exercises
+nor counted as positive LP64 support. The certificate ABI boundary test exercises all 13 listed ILP32-only boundaries with
 32-bit hits and 64-bit refusal; each migrated protocol has both positive and
 premise-breaking tests.
 

@@ -172,3 +172,14 @@ SymbolicArena uses its own fixed query/state limits, separate from BMC options.
 Debug logs distinguish query-budget exhaustion from a solver unknown and include
 the solver's supplied reason. They do not raise the existing 100ms query limit
 or turn an inconclusive query into a certificate.
+
+
+### Independent join API checks
+
+Selected AR replay checks the GNU ILP32/LP64 join declaration and call types
+before consuming a handle or merging clocks: native integer handle, native
+pointer for the NULL output, signed i32 return, nonvariadic C call, matching
+argument/result types. Actual generation, joinability and completed child
+execution remain separate requirements. Rehashing an inconsistent program
+snapshot cannot bypass these API checks. This is selected AR validation, not a
+proof of source-to-AR translation or a source witness.

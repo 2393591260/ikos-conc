@@ -642,6 +642,20 @@ class Replay:
             created['detached'] = True
             return 0
         if name in ('pthread_join', 'ar.pthread.join'):
+            types, returned = fn['parameter_types'], fn['return_type']
+            bits = self.program['pointer_bits']
+            require(self.verified_pthread_abi() and fn['declaration'] and not fn['variadic'] and
+                    len(args) == len(types) == 2 and inst.get('calling_convention') == 0 and
+                    types[0].get('kind') == 'integer' and types[0].get('bits') == bits and
+                    int(types[0].get('size', 0)) == bits // 8 and
+                    types[1].get('kind') == 'pointer' and types[1].get('bits') == bits and
+                    int(types[1].get('size', 0)) == bits // 8 and
+                    returned.get('kind') == 'integer' and returned.get('bits') == 32 and
+                    returned.get('signed') and int(returned.get('size', 0)) == 4,
+                    'join ABI')
+            require(len(inst.get('operands', [])) == 3 and
+                    all(inst['operands'][i + 1]['type'] == t for i, t in enumerate(types)) and
+                    ('result' not in inst or inst['result']['type'] == returned), 'join call types')
             require(len(args)==2 and args[0] in self.created, 'unknown join handle')
             require(args[1] == ('null',0), 'join result storage unsupported')
             created = self.created[args[0]]
