@@ -163,8 +163,7 @@ def main():
                                          text=True, timeout=30)
                     assert run.returncode == 0, (name, case, bits, run.stdout, run.stderr)
                     verdict = classify(run.stdout, run.returncode, False)
-                    if (name in ('bucket-list-ownership.c', 'heap-handoff.c', 'first-publication.c', 'thread-private-heap.c', 'symbolic-arena.c', 'array-slices.c') or
-                            (name == 'helper-prefix-fields.c' and case == 0)) and bits == 64:
+                    if (name in ('bucket-list-ownership.c', 'heap-handoff.c', 'first-publication.c', 'thread-private-heap.c', 'symbolic-arena.c', 'array-slices.c')) and bits == 64:
                         # These ownership/handle certificates are still ILP32-only;
                         # the unwrapped baseline has the same unresolved effects.
                         assert verdict == VERDICT_UNKNOWN, (name, bits, wide, verdict)
