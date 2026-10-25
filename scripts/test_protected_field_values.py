@@ -84,6 +84,7 @@ JOINT_CASES = {
 }
 CASES.update({case: (label, verdict) for case, (_, label, verdict) in JOINT_CASES.items()})
 BMC_CASES = {1, 8, 17}
+IMPORT_ABLATION_CASES = {25, 26, 33, 34, 47, 58, 61}
 
 
 def check_executions(report):
@@ -149,6 +150,8 @@ def main():
                            '--bmc-solver-timeout-ms=1000', f'-m{args.bits}',
                            '--format=json', '--status-filter=*',
                            '--report-file=' + str(report), '-o', str(database), str(source)]
+                if case in IMPORT_ABLATION_CASES:
+                    command.append('--log=debug')
                 result = subprocess.run(command, env=env, capture_output=True,
                                         text=True, timeout=40 if bmc else 30)
                 verdict = classify(result.stdout, result.returncode, False)
@@ -162,6 +165,25 @@ def main():
                 count += 1
                 print(f'protected field bits={args.bits}/case={case}/bmc={bmc}: '
                       f'{verdict} ({CASES[case][0]})', flush=True)
+                if case in IMPORT_ABLATION_CASES:
+                    ablated_env = dict(env, IKOS_DISABLE_MUTEX_FIELD_EQUALITY_IMPORT='1')
+                    database.unlink(missing_ok=True)
+                    report.unlink(missing_ok=True)
+                    ablated = subprocess.run(command, env=ablated_env, capture_output=True,
+                                             text=True, timeout=30)
+                    ablated_verdict = classify(ablated.stdout, ablated.returncode, False)
+                    ablated_expected = VERDICT_SAFE if case == 26 else VERDICT_UNKNOWN
+                    assert ablated.returncode == 0 and ablated_verdict == ablated_expected, (
+                        case, 'import-only ablation', ablated_verdict,
+                        ablated.stdout[-10000:], ablated.stderr[-10000:])
+                    if case in {33, 58, 61}:
+                        diagnostics = ablated.stdout + ablated.stderr
+                        for event in ('initialized', 'release-check', 'import-suppressed'):
+                            assert 'Mutex field equality: ' + event in diagnostics, (
+                                case, 'missing relation event', event, diagnostics[-10000:])
+                    count += 1
+                    print(f'protected field bits={args.bits}/case={case}/import-disabled: '
+                          f'{ablated_verdict}', flush=True)
     print(f'PASS {count} protected field controls; {executions} AR executions ACCEPT', flush=True)
 
 

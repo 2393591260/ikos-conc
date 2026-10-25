@@ -190,6 +190,20 @@ which rules are enabled. Use ordinary reports and BMC diagnostics to inspect
 remaining candidate targets and execution outcomes. Disable diagnostic I/O for
 performance comparisons.
 
+Protected field relations have two distinct diagnostic controls.
+`IKOS_DISABLE_MUTEX_FIELD_EQUALITIES=1` suppresses initial equality templates;
+`IKOS_DISABLE_MUTEX_FIELD_EQUALITY_IMPORT=1` suppresses only their import at
+mutex acquisition. The latter retains template generation, release checks,
+invalidation, and scalar value handoffs. Subsequent analysis can still produce
+weaker release facts when the imported relation is unavailable. Neither control
+disables coverage checks or grants a safety proof. With `--log=debug`, relation
+messages distinguish initialization, release checks, import attempts, and
+suppressed joint imports. The import control skips the whole joint snapshot
+import block, including its fresh field variables, rather than only the equality
+constraint. A successful release check alone does not establish that every writer
+is covered. `scripts/test_protected_field_values.py --bits 32` and `--bits 64`
+exercise both normal analysis and import-only positive and negative controls.
+
 
 ## Local acceptance and remote CI
 

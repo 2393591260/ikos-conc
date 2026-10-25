@@ -2,6 +2,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdlib>
 #include <map>
 #include <vector>
 
@@ -9,6 +10,7 @@
 #include <ikos/analyzer/analysis/literal.hpp>
 #include <ikos/analyzer/analysis/source_program_facts.hpp>
 #include <ikos/analyzer/analysis/memory_location.hpp>
+#include <ikos/analyzer/util/log.hpp>
 
 namespace ikos {
 namespace analyzer {
@@ -242,6 +244,14 @@ void refresh_protected_equalities(E& eng, std::uint64_t acquired) {
                                            std::get<2>(pair), acquired);
     }), pairs.end());
     if (pairs.empty()) continue;
+    // Consumer-only ablation keeps release proofs and scalar handoffs intact.
+    const bool suppress_import =
+        std::getenv("IKOS_DISABLE_MUTEX_FIELD_EQUALITY_IMPORT") != nullptr;
+    if (log::is_enabled_for(LogLevel::Debug))
+      log::debug(std::string("Mutex field equality: ") +
+          (suppress_import ? "import-suppressed" : "import") +
+          " global=" + global->name() + " pairs=" + std::to_string(pairs.size()));
+    if (suppress_import) continue;
     std::map< std::uint64_t, Variable* > values;
     for (const auto& pair : pairs) {
       values.emplace(std::get<0>(pair), nullptr);
@@ -400,9 +410,14 @@ void publish_protected_release(E& eng,
           protected_cells_equal(eng.data(), eng.ctx(), global, left, right);
       // Only the released protecting mutex observes this endpoint. An inner
       // unrelated unlock may legitimately occur between the two field stores.
-      for (auto released : before) if (after.count(released) == 0)
+      for (auto released : before) if (after.count(released) == 0) {
+        if (log::is_enabled_for(LogLevel::Debug))
+          log::debug("Mutex field equality: release-check global=" + global->name() +
+              " fields=" + std::to_string(left.offset) + "," + std::to_string(right.offset) +
+              " mutex=" + std::to_string(released) + " equal=" + (equal ? "true" : "false"));
         env.join_mutex_equality_release(addr, left.offset, right.offset,
                                         std::get<2>(pair), released, equal);
+      }
     }
     for (const auto& cell : cells) {
       auto* type = cell.type;

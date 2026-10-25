@@ -500,6 +500,10 @@ void ThreadModularAnalysis::run() {
           _ctx.concurrent_env.initialize_mutex_equality(
               core::IndexableTraits< MemoryLocation* >::index(location),
               cells[a].offset, cells[b].offset, cells[a].type->bit_width());
+          if (log::is_enabled_for(LogLevel::Debug))
+            log::debug("Mutex field equality: initialized global=" + global->name() +
+                " fields=" + std::to_string(cells[a].offset) + "," +
+                std::to_string(cells[b].offset));
         }
       }
     }
