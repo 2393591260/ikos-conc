@@ -52,9 +52,9 @@ def main():
             ('nonzero', 'pthread_mutex_t gate = { .__data = { .__kind = 2 } };', False),
         ):
             text = fixture.replace('#include <stdlib.h>',
-                '#include <stdlib.h>\\n' + declaration).replace(
+                '#include <stdlib.h>\n' + declaration).replace(
                 'static void* worker(void* ignored) {',
-                'static void* worker(void* ignored) {\\n'
+                'static void* worker(void* ignored) {\n'
                 'pthread_mutex_lock(&gate); pthread_mutex_unlock(&gate);')
             source = work / 'mutex-layout.c'
             source.write_text(text)

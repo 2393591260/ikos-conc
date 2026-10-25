@@ -17,7 +17,7 @@ from sweep_bmc_execution import validate_report
 # Property expectations are independent of the implementation's observed verdict.
 CASES = [
     ('join-copy', 'safe', ('Safe', 'Safe')),
-    ('detach-overlap', 'race', ('Race Found', 'Unknown')),
+    ('detach-overlap', 'race', ('Race Found', 'Race Found')),
     ('heap-native-layout', 'race', ('Race Found', 'Race Found')),
     ('heap-overlap', 'race', ('Race Found', 'Race Found')),
     ('numeric-truncation', 'mixed', ('Race Found', 'Unknown')),
