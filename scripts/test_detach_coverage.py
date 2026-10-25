@@ -32,7 +32,9 @@ def reject_export_corruptions(data):
         for change in ('width', 'return', 'calling-convention'):
             changed = copy.deepcopy(program)
             if change == 'width':
-                changed['functions']['pthread_detach']['parameter_types'][0].update(bits=64, size=8, extent=8)
+                changed['functions']['pthread_detach']['parameter_types'][0].update(bits=(64 if program['pointer_bits'] == 32 else 32),
+                    size=(8 if program['pointer_bits'] == 32 else 4),
+                    extent=(8 if program['pointer_bits'] == 32 else 4))
             elif change == 'return':
                 changed['functions']['pthread_detach']['return_type'].update(bits=64, size=8, extent=8)
             else:
@@ -48,6 +50,7 @@ def reject_export_corruptions(data):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/detach-coverage.c').read_text()
     command = runtime_command(args.ikos.resolve())
@@ -65,7 +68,7 @@ def main():
                 if case == 18:
                     # Clang -O0 omits declaration nonnull; test the actual IR premise.
                     analyzed = work / 'nonnull.ll'
-                    subprocess.run([compiler[0], *compiler[1], '-S', '-emit-llvm', '-m32',
+                    subprocess.run([compiler[0], *compiler[1], '-S', '-emit-llvm', '-m' + str(args.bits),
                         str(source), '-o', str(analyzed)], capture_output=True, check=True)
                     lines = analyzed.read_text().splitlines()
                     declarations = [i for i, line in enumerate(lines)
@@ -77,7 +80,7 @@ def main():
                     lines[index] = ', '.join(parts)
                     analyzed.write_text('\n'.join(lines) + '\n')
                 proc = subprocess.run(command + ['--analyses=race', '--concurrency=auto',
-                    '--demote-race-to-unknown', '--partitioning=guards', '-m32',
+                    '--demote-race-to-unknown', '--partitioning=guards', '-m' + str(args.bits),
                     '--format=json', '--report-file=' + str(report),
                     '-o', str(work / 'output.db'), str(analyzed)],
                     capture_output=True, text=True, timeout=30,
@@ -111,7 +114,7 @@ def main():
                         if case == 0:
                             corruptions += reject_export_corruptions(data)
                 print(f'CASE={case}/wide={wide}: {expected}', flush=True)
-    print(f'48 ILP32 detach controls and {corruptions} exported ABI corruptions passed')
+    print(f'48 {args.bits}-bit detach controls and {corruptions} exported ABI corruptions passed')
 
 
 if __name__ == '__main__':

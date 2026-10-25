@@ -44,6 +44,12 @@ inline bool native_repeated_create(ar::CallBase* call) {
 }
 
 inline llvm::Function* native_handle_api(llvm::CallBase* call, bool create) {
+  if (!llvm::isa< llvm::CallInst >(call) || call->isInlineAsm() ||
+      call->hasOperandBundles()) return nullptr;
+  const auto abi = pthread_object_layout(
+      call->getModule()->getDataLayout().getPointerSizeInBits(0), call->getModule());
+  if (!abi) return nullptr;
+  const auto bits = abi.word * 8;
   auto* function = llvm::dyn_cast< llvm::Function >(call->getCalledOperand()->stripPointerCasts());
   const unsigned n = create ? 4 : 2;
   if (!function || !function->isDeclaration() || function->isVarArg() ||
@@ -55,7 +61,11 @@ inline llvm::Function* native_handle_api(llvm::CallBase* call, bool create) {
   for (unsigned i = 0; i < n; ++i) {
     auto* type = function->getFunctionType()->getParamType(i);
     if (type != call->getArgOperand(i)->getType()) return nullptr;
-    if (i == 0 && !create) { if (!type->isIntegerTy(32)) return nullptr; }
+    for (auto attr : {llvm::Attribute::ByVal, llvm::Attribute::StructRet,
+                      llvm::Attribute::InAlloca, llvm::Attribute::Preallocated})
+      if (call->paramHasAttr(i, attr) || function->hasParamAttribute(i, attr))
+        return nullptr;
+    if (i == 0 && !create) { if (!type->isIntegerTy(bits)) return nullptr; }
     else {
       auto* pointer = llvm::dyn_cast< llvm::PointerType >(type);
       if (!pointer || pointer->getAddressSpace() != 0) return nullptr;
@@ -66,7 +76,7 @@ inline llvm::Function* native_handle_api(llvm::CallBase* call, bool create) {
     auto* output = llvm::cast< llvm::PointerType >(call->getArgOperand(0)->getType());
     auto* entry = llvm::dyn_cast< llvm::Function >(call->getArgOperand(2)->stripPointerCasts());
     auto* signature = llvm::cast< llvm::PointerType >(call->getArgOperand(2)->getType());
-    if (!output->getPointerElementType()->isIntegerTy(32) ||
+    if (!output->getPointerElementType()->isIntegerTy(bits) ||
         !llvm::isa< llvm::ConstantPointerNull >(call->getArgOperand(3)) || !entry || entry->isDeclaration() ||
         entry->isVarArg() || entry->arg_size() != 1 || !entry->getReturnType()->isPointerTy() ||
         !entry->getFunctionType()->getParamType(0)->isPointerTy() || entry->getName() == "main" ||
@@ -87,6 +97,9 @@ inline llvm::Function* native_handle_api(llvm::CallBase* call, bool create) {
 inline bool closed_pthread_detach(ar::CallBase* query, Context& ctx) {
   auto* source = query->has_frontend()
       ? llvm::dyn_cast< llvm::CallInst >(query->frontend< llvm::Value >()) : nullptr;
+  const auto abi = pthread_object_layout(ctx.bundle, source ? source->getModule() : nullptr);
+  if (!abi) return false;
+  const auto bits = abi.word * 8;
   auto* api = source ? source->getCalledFunction() : nullptr;
   auto* target = dyn_cast< ar::FunctionPointerConstant >(query->called());
   auto* function = target ? target->function() : nullptr;
@@ -97,21 +110,20 @@ inline bool closed_pthread_detach(ar::CallBase* query, Context& ctx) {
       !source->getFunction()->use_empty() || ctx.opts.entry_points.size() != 1 ||
       ctx.opts.entry_points.front() != main || !ctx.opts.no_init_globals.empty() ||
       ctx.bundle->global_or_null("ar.global_ctors") || ctx.bundle->global_or_null("ar.global_dtors") ||
-      ctx.bundle->data_layout().pointers.bit_width != 32 ||
       !api->isDeclaration() || api->getName() != "pthread_detach" || api->isVarArg() ||
       api->arg_size() != 1 || source->arg_size() != 1 || !source->use_empty() ||
       source->hasOperandBundles() || source->getCallingConv() != llvm::CallingConv::C ||
       api->getCallingConv() != llvm::CallingConv::C ||
       source->getFunctionType() != api->getFunctionType() ||
       !source->getType()->isIntegerTy(32) || !api->getReturnType()->isIntegerTy(32) ||
-      !api->getFunctionType()->getParamType(0)->isIntegerTy(32) ||
+      !api->getFunctionType()->getParamType(0)->isIntegerTy(bits) ||
       !function->is_declaration() || function->name() != "pthread_detach" ||
       !function->has_frontend() || function->frontend< llvm::Value >() != api ||
       function->type()->is_var_arg() || function->num_parameters() != 1 ||
       query->num_arguments() != 1 || !isa< ar::Call >(query)) return false;
-  auto integer = [](ar::Type* type) {
+  auto integer = [bits](ar::Type* type) {
     auto* value = dyn_cast< ar::IntegerType >(type);
-    return value && value->bit_width() == 32;
+    return value && value->bit_width() == bits;
   };
   auto* returned = dyn_cast< ar::IntegerType >(function->type()->return_type());
   if (!returned || returned->bit_width() != 32 || !returned->is_signed() ||
@@ -119,9 +131,6 @@ inline bool closed_pthread_detach(ar::CallBase* query, Context& ctx) {
       function->type()->param_type(0) != query->argument(0)->type() ||
       (query->has_result() && query->result()->type() != returned)) return false;
   const auto& layout = source->getModule()->getDataLayout();
-  const llvm::Triple triple(source->getModule()->getTargetTriple());
-  if (layout.getPointerSizeInBits() != 32 || triple.getArch() != llvm::Triple::x86 ||
-      !triple.isOSLinux() || triple.getEnvironment() != llvm::Triple::GNU) return false;
 
   auto attributes = [](llvm::CallBase* call) {
     auto* callee = call->getCalledFunction();
@@ -150,11 +159,11 @@ inline bool closed_pthread_detach(ar::CallBase* query, Context& ctx) {
   auto* count = storage ? llvm::dyn_cast< llvm::ConstantInt >(storage->getArraySize()) : nullptr;
   auto* create = load ? llvm::dyn_cast_or_null< llvm::CallInst >(previous(load)) : nullptr;
   if (!attributes(source) || !load || !storage || !count || !count->isOne() ||
-      !storage->getAllocatedType()->isIntegerTy(32) || storage->getAddressSpace() != 0 ||
-      layout.getTypeAllocSize(storage->getAllocatedType()) != 4 ||
-      layout.getTypeStoreSize(storage->getAllocatedType()) != 4 ||
-      storage->getParent() != &source->getFunction()->getEntryBlock() || storage->getAlign().value() < 4 ||
-      load->isVolatile() || load->isAtomic() || load->getAlign().value() < 4 ||
+      !storage->getAllocatedType()->isIntegerTy(bits) || storage->getAddressSpace() != 0 ||
+      layout.getTypeAllocSize(storage->getAllocatedType()) != abi.word ||
+      layout.getTypeStoreSize(storage->getAllocatedType()) != abi.word ||
+      storage->getParent() != &source->getFunction()->getEntryBlock() || storage->getAlign().value() < abi.word ||
+      load->isVolatile() || load->isAtomic() || load->getAlign().value() < abi.word ||
       !load->hasOneUse() || previous(source) != load || !create ||
       create->hasOperandBundles() || !native_handle_api(create, true) || !attributes(create) ||
       create->getArgOperand(0) != storage || !llvm::isa< llvm::Function >(create->getArgOperand(2))) return false;
@@ -168,7 +177,7 @@ inline bool closed_pthread_detach(ar::CallBase* query, Context& ctx) {
     if (user == create || user == load || llvm::isa< llvm::DbgInfoIntrinsic >(user)) continue;
     auto* store = llvm::dyn_cast< llvm::StoreInst >(user);
     if (!store || initialization || store->getPointerOperand() != storage ||
-        !store->getValueOperand()->getType()->isIntegerTy(32) || store->isVolatile() || store->isAtomic() ||
+        !store->getValueOperand()->getType()->isIntegerTy(bits) || store->isVolatile() || store->isAtomic() ||
         store->getParent() != storage->getParent() || !storage->comesBefore(store) ||
         (create->getParent() == store->getParent() && !store->comesBefore(create))) return false;
     initialization = store;
@@ -227,9 +236,9 @@ inline bool closed_pthread_detach(ar::CallBase* query, Context& ctx) {
   auto* create_returned = imported_api
       ? dyn_cast< ar::IntegerType >(imported_api->type()->return_type()) : nullptr;
   if (!allocation || !repetitions || repetitions->value().to_z_number() != 1 ||
-      !integer(allocation->allocated_type()) || allocation->result()->alignment() < 4 ||
-      ctx.bundle->data_layout().alloc_size_in_bytes(allocation->allocated_type()) != 4 ||
-      ctx.bundle->data_layout().store_size_in_bytes(allocation->allocated_type()) != 4 ||
+      !integer(allocation->allocated_type()) || allocation->result()->alignment() < abi.word ||
+      ctx.bundle->data_layout().alloc_size_in_bytes(allocation->allocated_type()) != abi.word ||
+      ctx.bundle->data_layout().store_size_in_bytes(allocation->allocated_type()) != abi.word ||
       allocation->parent() != main->body()->entry_block() ||
       !imported_load || !imported_create || !imported_api || !imported_api->is_declaration() ||
       !isa< ar::Call >(imported_create) ||
@@ -248,7 +257,7 @@ inline bool closed_pthread_detach(ar::CallBase* query, Context& ctx) {
       !imported_worker->function()->type()->return_type()->is_pointer() ||
       !imported_worker->function()->has_frontend() ||
       imported_worker->function()->frontend< llvm::Value >() != worker ||
-      imported_load->operand() != allocation->result() || imported_load->alignment() < 4 ||
+      imported_load->operand() != allocation->result() || imported_load->alignment() < abi.word ||
       imported_load->is_volatile() || imported_load->is_atomic() ||
       !integer(imported_load->result()->type()) || query->argument(0) != imported_load->result() ||
       imported_create->parent() != query->parent() || imported_load->parent() != query->parent() ||
@@ -298,7 +307,7 @@ inline void configure_native_thread_handles(Context& ctx) {
   if (ctx.native_handle_inventory_checked) return;
   ctx.native_handle_inventory_checked = true;
   auto* bundle = ctx.bundle;
-  if (!ctx.opts.enable_thread_modular || bundle->data_layout().pointers.bit_width != 32 ||
+  if (!ctx.opts.enable_thread_modular ||
       ctx.opts.entry_points.size() != 1 || ctx.opts.entry_points.front()->name() != "main" ||
       ctx.opts.entry_points.front()->num_parameters() != 0 || !ctx.opts.no_init_globals.empty() ||
       bundle->global_or_null("ar.global_ctors") || bundle->global_or_null("ar.global_dtors") ||
@@ -308,9 +317,10 @@ inline void configure_native_thread_handles(Context& ctx) {
   auto* source_main = main->frontend< llvm::Function >();
   if (!source_main->use_empty()) return;
   if (!mutex_effect_pointer_representations_closed(*source_main->getParent())) return;
-  llvm::Triple target(source_main->getParent()->getTargetTriple());
-  if (target.getArch() != llvm::Triple::x86 || !target.isOSLinux() ||
-      target.getEnvironment() != llvm::Triple::GNU) return;
+  const auto abi = pthread_object_layout(bundle, source_main->getParent());
+  if (!abi) return;
+  const auto bits = abi.word * 8;
+  if (source_main->getParent()->getDataLayout().getIndexSizeInBits(0) != bits) return;
   std::map< llvm::Value*, ar::Statement* > originals;
   std::map< llvm::AllocaInst*, NativeHandleArray > arrays;
   std::map< ar::Statement*, NativeHandleArray > accesses;
@@ -334,16 +344,16 @@ inline void configure_native_thread_handles(Context& ctx) {
         auto* original = source ? llvm::dyn_cast< llvm::ArrayType >(source->getAllocatedType()) : nullptr;
         auto* repetitions = source ? llvm::dyn_cast< llvm::ConstantInt >(source->getArraySize()) : nullptr;
         if (allocation->code() != main->body() || allocation->parent() != main->body()->entry_block() ||
-            !count || count->value().to_z_number() != 1 || !element || element->bit_width() != 32 ||
+            !count || count->value().to_z_number() != 1 || !element || element->bit_width() != bits ||
             array->num_elements() <= 0 || !source || source->getAddressSpace() != 0 ||
             source->getParent() != &source_main->getEntryBlock() || !repetitions || !repetitions->isOne() ||
-            !original || !original->getElementType()->isIntegerTy(32) ||
+            !original || !original->getElementType()->isIntegerTy(bits) ||
             array->num_elements() != core::ZNumber(original->getNumElements())) continue;
         const auto bytes = bundle->data_layout().alloc_size_in_bytes(array);
         const auto& layout = source_main->getParent()->getDataLayout();
-        if (bytes != 4 * array->num_elements() || bytes >= (core::ZNumber(1) << 32) ||
+        if (bytes != abi.word * array->num_elements() || bytes >= (core::ZNumber(1) << bits) ||
             bytes != core::ZNumber(layout.getTypeAllocSize(original).getFixedValue()) ||
-            source->getAlign().value() < 4) continue;
+            source->getAlign().value() < abi.word) continue;
         arrays.emplace(source, NativeHandleArray{allocation->result(), element, bytes});
       }
       auto* call = dyn_cast< ar::CallBase >(statement);
@@ -373,14 +383,14 @@ inline void configure_native_thread_handles(Context& ctx) {
             !child->has_frontend() || child->frontend< llvm::Value >() != original_child) return;
         auto* pointer = dyn_cast< ar::PointerType >(call->argument(0)->type());
         auto* type = pointer ? dyn_cast< ar::IntegerType >(pointer->pointee()) : nullptr;
-        if (!type || type->bit_width() != 32) return;
+        if (!type || type->bit_width() != bits) return;
         creates.insert(original);
       } else if (callee->getName() == "pthread_join" || called->intrinsic_id() == ar::Intrinsic::PthreadJoin) {
         if (!native_handle_api(original, false) || !called->is_declaration() ||
             call->code() != main->body() || call->num_arguments() != 2 ||
             !isa< ar::NullConstant >(call->argument(1))) return;
         auto* type = dyn_cast< ar::IntegerType >(call->argument(0)->type());
-        if (!type || type->bit_width() != 32 ||
+        if (!type || type->bit_width() != bits ||
             (called->name() != "pthread_join" &&
              called->intrinsic_id() != ar::Intrinsic::PthreadJoin)) return;
         source_joins.insert(original);
@@ -426,13 +436,13 @@ inline void configure_native_thread_handles(Context& ctx) {
           if (!imported || local_output_base(imported->argument(0)) != object.storage) { closed = false; break; }
           accesses.emplace(imported, object); accounted_creates.insert(call); used = true;
         } else if (auto* load = llvm::dyn_cast< llvm::LoadInst >(user)) {
-          if (load->getPointerOperand() != value || !load->getType()->isIntegerTy(32) ||
+          if (load->getPointerOperand() != value || !load->getType()->isIntegerTy(bits) ||
               load->isVolatile() || load->isAtomic() || !native_handle_element(value, storage)) { closed = false; break; }
           auto* imported = dyn_cast_or_null< ar::Load >(originals[load]);
           auto* type = imported ? dyn_cast< ar::IntegerType >(imported->result()->type()) : nullptr;
           auto* pointer = imported ? dyn_cast< ar::PointerType >(imported->operand()->type()) : nullptr;
           auto* leaf = pointer ? dyn_cast< ar::IntegerType >(pointer->pointee()) : nullptr;
-          if (!imported || !type || type->bit_width() != 32 || !leaf || leaf->bit_width() != 32 ||
+          if (!imported || !type || type->bit_width() != bits || !leaf || leaf->bit_width() != bits ||
               imported->is_volatile() || imported->is_atomic() ||
               local_output_base(imported->operand()) != object.storage) { closed = false; break; }
           for (auto* use : load->users()) {
@@ -471,7 +481,8 @@ bool native_handle_range(E& eng, ar::Statement* statement, ar::Value* operand) {
       address.points_to().is_set() && address.points_to().size() == 1 &&
       *address.points_to().begin() == ctx.mem_factory->get_local(found->second.storage) &&
       !offset.is_bottom() && !offset.is_top() && offset.lb().to_z_number() >= 0 &&
-      offset.ub().to_z_number() + 4 <= found->second.size;
+      offset.ub().to_z_number() +
+           ctx.bundle->data_layout().store_size_in_bytes(found->second.type) <= found->second.size;
 }
 
 template < typename E >

@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/native-handles.c').read_text()
     env = dict(os.environ)
@@ -28,7 +29,7 @@ def main():
                 dbpath = work / 'output.db'
                 result = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
                     '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
-                    '--bmc-deadline-ms=0', '--log=debug', '-m32', '-o', str(dbpath), str(source)],
+                    '--bmc-deadline-ms=0', '--log=debug', '-m' + str(args.bits), '-o', str(dbpath), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
                 output = result.stdout + result.stderr
                 assert result.returncode == 0, (case, wide, output)
@@ -49,7 +50,7 @@ def main():
             source.write_text(f'#define COUNT {count}\n' + fixture)
             proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race', '--concurrency=auto',
                 '--partitioning=guards', '--demote-race-to-unknown', '--bmc-deadline-ms=0', '--log=debug',
-                '-m32', '-o', str(work / 'output.db'), str(source)], env=env, capture_output=True, text=True, timeout=30)
+                '-m' + str(args.bits), '-o', str(work / 'output.db'), str(source)], env=env, capture_output=True, text=True, timeout=30)
             output = proc.stdout + proc.stderr
             assert proc.returncode == 0 and 'The program is SAFE' in output and 'Native pthread handles: complete output-effect preflight' in output, (count, output)
             print(f'native count={count}: SAFE with effects certificate', flush=True)
@@ -59,7 +60,7 @@ def main():
             source.write_text(f'#define {define}\n' + fixture)
             proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race', '--concurrency=auto',
                 '--partitioning=guards', '--demote-race-to-unknown', '--bmc-deadline-ms=0', '--log=debug',
-                '-m32', '-o', str(work / 'output.db'), str(source)], env=env, capture_output=True, text=True, timeout=30)
+                '-m' + str(args.bits), '-o', str(work / 'output.db'), str(source)], env=env, capture_output=True, text=True, timeout=30)
             output = proc.stdout + proc.stderr
             preflight = 'Native pthread handles: complete output-effect preflight' in output
             # A same-name definition is analyzed normally; this empty body has
@@ -69,6 +70,36 @@ def main():
             if admitted:
                 assert 'The program is SAFE' in output, output
             print(f'native API control={define}: certified={preflight}', flush=True)
+
+
+        # Corrupt the actual storage/uses while retaining the real pthread ABI.
+        native = "pthread_t handles[COUNT];"
+        variants = {
+            "wrong-width": fixture.replace(native,
+                ("unsigned long long" if args.bits == 32 else "unsigned int") +
+                " handles[COUNT];").replace("&handles[", "(pthread_t *)&handles["),
+            "partial-write": fixture.replace(
+                "#if CASE == 3\n  pthread_t old",
+                "((unsigned char *)handles)[sizeof(pthread_t)-1] = 1;\n"
+                "#if CASE == 3\n  pthread_t old"),
+            "high-bits-observer": fixture.replace(
+                "#if CASE == 4\n",
+                "if (((unsigned long long)handles[0] >> 32) != 0) data = 2;\n"
+                "#if CASE == 4\n"),
+        }
+        for name, program in variants.items():
+            source = work / 'renamed.c'
+            source.write_text(program)
+            proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
+                '--bmc-deadline-ms=0', '--log=debug', '-m' + str(args.bits),
+                '-o', str(work / 'output.db'), str(source)],
+                env=env, capture_output=True, text=True, timeout=30)
+            output = proc.stdout + proc.stderr
+            assert proc.returncode == 0, (name, args.bits, output)
+            assert 'Native pthread handles: complete output-effect preflight' not in output, (
+                name, args.bits, output)
+            print(f'native storage control={name}/bits={args.bits}: rejected', flush=True)
 
 
 if __name__ == '__main__':

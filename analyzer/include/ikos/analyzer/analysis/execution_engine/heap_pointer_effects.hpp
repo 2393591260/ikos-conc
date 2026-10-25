@@ -22,12 +22,11 @@ struct PthreadObjectLayout {
 };
 
 // Sizes describe this verified target ABI, not initialization or closed uses.
-inline PthreadObjectLayout pthread_object_layout(const ar::Bundle* bundle,
+inline PthreadObjectLayout pthread_object_layout(unsigned bits,
                                                  const llvm::Module* source) {
   if (!source)
     return {};
   const llvm::Triple target(source->getTargetTriple());
-  const auto bits = bundle->data_layout().pointers.bit_width;
   const auto& layout = source->getDataLayout();
   if (!target.isOSLinux() || target.getEnvironment() != llvm::Triple::GNU ||
       !layout.isLittleEndian() || layout.getPointerSizeInBits(0) != bits ||
@@ -35,6 +34,11 @@ inline PthreadObjectLayout pthread_object_layout(const ar::Bundle* bundle,
         (target.getArch() == llvm::Triple::x86_64 && bits == 64)))
     return {};
   return {static_cast< unsigned >(bits / 8), bits == 32 ? 24u : 40u};
+}
+
+inline PthreadObjectLayout pthread_object_layout(const ar::Bundle* bundle,
+                                                 const llvm::Module* source) {
+  return pthread_object_layout(bundle->data_layout().pointers.bit_width, source);
 }
 
 inline unsigned mutex_array_leaf_width(const GlobalArraySubobject& object) {

@@ -2300,7 +2300,8 @@ void exec_pthread_create(E& eng, ar::CallBase* call) {
             auto* tmp = eng.ctx().var_factory->get_named_shadow(native->second.type, "concurrency.native.handle");
             eng.data().normal().scalar_assign_nondet(tmp);
             eng.data().normal().mem_write(scalar_lit.var(), ScalarLit::machine_int_var(tmp),
-                core::MachineInt(4, eng.data_layout().pointers.bit_width, core::Unsigned));
+                core::MachineInt(eng.data_layout().store_size_in_bytes(native->second.type),
+                                 eng.data_layout().pointers.bit_width, core::Unsigned));
             eng.data().normal().scalar_forget(tmp);
           } else {
             eng.data().normal().mem_forget(eng.ctx().mem_factory->get_local(native->second.storage));

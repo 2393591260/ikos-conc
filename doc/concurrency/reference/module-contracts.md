@@ -174,14 +174,14 @@ rules still require their per-run configuration.
 | `same-unique-thread-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
 | `same-closed-once-v1` | [Closed callbacks](../../../analyzer/include/ikos/analyzer/analysis/execution_engine/closed_once.hpp); once-callbacks and once initialization controls. |
 | `one-shot-barrier-phases-v1` | [Barrier certificate](../../../analyzer/src/analysis/posix_barrier.cpp) and final pair adapter; barrier-phases dual-ABI controls. |
-| `inactive-child-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
+| `inactive-child-v1` | [Constant main completion](synchronization.md#constant-main-thread-completion); test_constant_thread_completion.py dual-ABI generation controls. |
 | `joined-right-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
 | `joined-left-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
 | `create-before-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); thread lifecycle, modes and P0 controls. |
 | `unreachable-points-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
 | `disjoint-points-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
 | `atomic-atomic-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
-| `init-publication-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); the corresponding ownership/publication/token regression group. |
+| `init-publication-v1` | [Initialization/publication contract](synchronization.md#initialization-publication-pair); direct test_init_publication.py dual-ABI rule-hit and premise controls. |
 | `disabled-private-init-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); disabled; published-before-init regression remains. |
 | `disjoint-bytes-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |
 | `common-mutex-v1` | [Pair adapters](../../../analyzer/src/checker/data_race_pairs.cpp); correctness, addresses, arrays and protocol controls. |

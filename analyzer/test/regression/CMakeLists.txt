@@ -45,6 +45,8 @@ add_concurrency_test(numeric-pointer-null "${CONCURRENCY_ROOT}/scripts/test_nume
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(detach-coverage "${CONCURRENCY_ROOT}/scripts/test_detach_coverage.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(detach-coverage-lp64 "${CONCURRENCY_ROOT}/scripts/test_detach_coverage.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(race-rule-trace "${CONCURRENCY_ROOT}/scripts/test_race_rule_trace.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_executable(test-analysis-race-rules race_rules.cpp)
@@ -88,6 +90,10 @@ add_concurrency_test(heap-initialization-prefix "${CONCURRENCY_ROOT}/scripts/tes
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(allocation-continuations "${CONCURRENCY_ROOT}/scripts/test_allocation_continuations.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(init-publication "${CONCURRENCY_ROOT}/scripts/test_init_publication.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(constant-thread-completion "${CONCURRENCY_ROOT}/scripts/test_constant_thread_completion.py"
+                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(first-publication "${CONCURRENCY_ROOT}/scripts/test_first_publication.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(pthread-key-effects "${CONCURRENCY_ROOT}/scripts/test_pthread_key_effects.py"
@@ -120,6 +126,8 @@ add_concurrency_test(freeze-array "${CONCURRENCY_ROOT}/scripts/test_freeze_array
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(ticket-ownership "${CONCURRENCY_ROOT}/scripts/test_ticket_ownership.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(ticket-ownership-lp64 "${CONCURRENCY_ROOT}/scripts/test_ticket_ownership.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(guarded-publication "${CONCURRENCY_ROOT}/scripts/test_guarded_publication.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(posix-semaphore "${CONCURRENCY_ROOT}/scripts/test_posix_semaphore.py"
@@ -140,6 +148,8 @@ add_concurrency_test(shared-node-graph "${CONCURRENCY_ROOT}/scripts/test_shared_
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(binary-token "${CONCURRENCY_ROOT}/scripts/test_binary_token.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(binary-token-lp64 "${CONCURRENCY_ROOT}/scripts/test_binary_token.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(direct-token "${CONCURRENCY_ROOT}/scripts/test_direct_token.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(direct-once "${CONCURRENCY_ROOT}/scripts/test_direct_once.py"
@@ -194,6 +204,8 @@ add_concurrency_test(nested-array-ownership "${CONCURRENCY_ROOT}/scripts/test_ne
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(native-thread-handles "${CONCURRENCY_ROOT}/scripts/test_native_thread_handles.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(native-thread-handles-lp64 "${CONCURRENCY_ROOT}/scripts/test_native_thread_handles.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 foreach(bits 32 64)
   add_concurrency_test(malloc-helpers-${bits} "${CONCURRENCY_ROOT}/scripts/test_malloc_helpers.py"
                        --ikos "${CONCURRENCY_IKOS}" --bits ${bits})

@@ -10,11 +10,19 @@
 #undef pthread_detach
 
 #if CASE == 10
+#if __SIZEOF_POINTER__ == 8
+extern int pthread_detach(unsigned int);
+#else
 extern int pthread_detach(unsigned long long);
+#endif
 #elif CASE == 11
 extern int pthread_detach(pthread_t, ...);
 #elif CASE == 12
+#if __SIZEOF_POINTER__ == 8
+extern int __attribute__((ms_abi)) pthread_detach(pthread_t);
+#else
 extern int __attribute__((stdcall)) pthread_detach(pthread_t);
+#endif
 #endif
 
 #if CASE == 18

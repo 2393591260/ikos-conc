@@ -262,8 +262,12 @@ termination controls. Implementation: `checker/guarded_publication.hpp` and
 <details>
 <summary>Closed binary atomic tokens — prove exclusive access through checked atomic transitions</summary>
 
-`BinaryTokenOwnership` can independently certify a global token initialized
-at zero. Supported operations take an i32 pointer or use an exact direct global
+BinaryTokenOwnership supports GNU/Linux x86 ILP32 and x86-64 LP64 layouts
+and can independently certify a global token initialized at zero. This does not
+change the token's own integer width: a supported uint32 ticket retains its
+32-bit nonwrapping contract on LP64. GNU semaphore effects have their own ABI
+contract and do not become supported merely by this token layout check.
+ Supported operations take an i32 pointer or use an exact direct global
 with 8-, 32- or 64-bit integer storage and no arguments. Actual defined
 `__VERIFIER_atomic_*` bodies must implement checked
 zero-to-one acquisition and one-to-zero release. Exact execution at both entry
@@ -644,3 +648,42 @@ The native numerical domain determines which relations survive local joins.
 This is bounded relational mutex privatization, not a new numerical domain or a
 projection of relations into BMC. `IKOS_DISABLE_MUTEX_FIELD_EQUALITIES=1` disables
 only equality registration for causal comparison, retaining field intervals.
+
+<a id="initialization-publication-pair"></a>
+### Initialization before a concrete mutex publication
+
+InitPublication is a separate pair certificate from FirstPublication.
+It binds one live, nonrepeated malloc generation and the exact dynamic helper
+context. An unlocked initialization must occur after allocation and before the
+first escape in the same closed creator prefix. A full pointer publication and
+the reader's pointer load must address the same single heap slot while holding
+the same concrete mutex; the prefix must release it after publication.
+Every possible slot writer is checked, and the initial NULL or earlier seed
+must precede all direct creates. Unknown effects, partial slot accesses, pointer
+representation changes, free/realloc, repeated allocation, an escaped prefix,
+or missing helper provenance retain the candidate. The finite work budget can
+only refuse a proof.
+
+Offsets and full pointer widths come from the target layout, supporting the
+checked ILP32 and LP64 paths. This rule grants neither pointer validity nor
+arbitrary graph ownership and cannot authorize FALSE. Its direct rule-hit
+controls, including early-publication and missing-lock variants, are in
+scripts/test_init_publication.py; FirstPublication tests are not substitutes.
+
+<a id="constant-main-thread-completion"></a>
+### Completion of constant-control main children
+
+ConstantThreadCompletion is independent of the dynamic ThreadLifecycle
+protocol. It interprets a closed, finite constant-control main over private
+native handles, assigning a separate identity to every actual create occurrence.
+A function is inactive before an access only when all its covered occurrences
+have joined, or none has yet been created there. Overwritten handles leave the
+old occurrences live; joining one member does not complete a whole family.
+Unknown branches, handle observers, unsupported effects, cancellation/detach,
+nested joins, or exhausted work discard the completion result.
+
+Native handle slots and integer conversions are checked for the chosen
+GNU/Linux ILP32/LP64 ABI. This is a sufficient completion certificate, not
+bounded-UNSAT safety and not a guarantee that grandchildren completed.
+scripts/test_constant_thread_completion.py exercises actual inactive-child hits
+on both ABIs and keeps partial, stale, truncated and newly live generations.

@@ -128,9 +128,9 @@ LP64 because its separate handle/object coverage is unsupported.
 <details>
 <summary>Native thread-handle arrays — model private handle storage without inferring completion</summary>
 
-For closed Linux GNU ILP32 programs, the abstract interpreter also supports
-repeated creates into private, fixed-size main-stack arrays of native 32-bit
-`pthread_t` values. It checks the original LLVM and imported AR declarations,
+For closed GNU/Linux x86 ILP32 and x86-64 LP64 programs, the abstract interpreter
+supports repeated creates into private, fixed-size main-stack arrays of native
+`pthread_t` values (32 and 64 bits respectively). It checks the original LLVM and imported AR declarations,
 every producer and array use, and independently proves the full output/load
 ranges before exporting create-effect certificates into a fresh analysis.
 Handle outputs and reads are unknown initialized native values, rather than
@@ -224,7 +224,7 @@ Regression: `python3 scripts/test_private_array_zero.py --ikos install/bin/ikos`
 <a id="closed-thread-detach"></a>
 ### Closed private thread detachment
 
-For GNU/Linux x86 ILP32, an ignored `pthread_detach` can have a complete
+For GNU/Linux x86 ILP32 and x86-64 LP64, an ignored `pthread_detach` can have a complete
 application-memory effect summary when its native scalar handle stays private
 to direct `main`: one creation, its immediately following load and detach,
 and at most one ordinary entry initialization. LLVM and AR must independently
@@ -251,7 +251,10 @@ obligations and the strict verdict gate remain in force.
 
 Implementation: [`closed_pthread_detach`](../../../analyzer/include/ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp)
 and the external-call transfer in [`numerical.hpp`](../../../analyzer/include/ikos/analyzer/analysis/execution_engine/numerical.hpp).
-Regression: `scripts/test_detach_coverage.py --ikos install/bin/ikos`.
+Regression: run scripts/test_detach_coverage.py with --ikos install/bin/ikos
+and --bits 32 or --bits 64. The handle uses the target word width; the API return
+stays i32. Original source and AR must agree with the complete native slot,
+including alignment. Accepting one ABI grants no partial-slot certificate.
 
 <a id="pthread-keys-and-destructor-effects"></a>
 <details>

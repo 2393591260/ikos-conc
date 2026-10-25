@@ -38,17 +38,16 @@ inline NormalMutex normal_mutex(Context& ctx, ar::CallBase* call) {
                  llvm::Attribute::InAlloca, llvm::Attribute::Preallocated})
     if (c->paramHasAttr(0, a) || f->hasParamAttribute(0, a)) return {};
   const auto& layout = g->getParent()->getDataLayout();
-  llvm::Triple triple(g->getParent()->getTargetTriple());
+  const auto abi = pthread_object_layout(ctx.bundle, g->getParent());
   const auto align = g->getAlign() ? g->getAlign()->value() : layout.getABITypeAlign(g->getValueType()).value();
-  if (ctx.bundle->data_layout().pointers.bit_width != 32 || triple.getArch() != llvm::Triple::x86 ||
-      !triple.isOSLinux() || triple.getEnvironment() != llvm::Triple::GNU ||
-      layout.getTypeAllocSize(type) != 24 || layout.getTypeAllocSize(g->getValueType()) != 24 || align < 4) return {};
+  if (!abi || layout.getTypeAllocSize(type) != abi.mutex ||
+      layout.getTypeAllocSize(g->getValueType()) != abi.mutex || align < abi.word) return {};
   for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end(); ++it) {
     auto* object = *it;
     if (!object->has_frontend() || object->frontend< llvm::Value >() != g ||
         !object->is_definition() || object->is_thread_local() ||
         !exact_handle_slot(call->argument(0), object) ||
-        ctx.bundle->data_layout().alloc_size_in_bytes(object->type()->pointee()) != 24) continue;
+        ctx.bundle->data_layout().alloc_size_in_bytes(object->type()->pointee()) != abi.mutex) continue;
     unsigned count = 0;
     for (auto* b : *object->initializer()) for (auto* s : *b) {
       auto* store = dyn_cast< ar::Store >(s);
