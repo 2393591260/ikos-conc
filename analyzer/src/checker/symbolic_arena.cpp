@@ -10,6 +10,7 @@
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/checker/normal_mutex.hpp>
 #include <ikos/analyzer/util/log.hpp>
+#include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <map>
 #include <set>
 
@@ -23,26 +24,6 @@ llvm::Function* callee(llvm::CallBase* c) {
 }
 bool scalar(llvm::Type* t) {
   return t->isIntegerTy() && t->getIntegerBitWidth() <= 64;
-}
-bool plain(llvm::CallBase* c, llvm::Function* f) {
-  if (!f || !llvm::isa< llvm::CallInst >(c) || c->isInlineAsm() ||
-      c->hasOperandBundles() || c->getCallingConv() != llvm::CallingConv::C ||
-      f->getCallingConv() != llvm::CallingConv::C ||
-      c->arg_size() != f->arg_size())
-    return false;
-  for (unsigned n = 0; n < c->arg_size(); ++n)
-    for (auto a : {llvm::Attribute::ByVal,
-                   llvm::Attribute::StructRet,
-                   llvm::Attribute::InAlloca,
-                   llvm::Attribute::Preallocated})
-      if (c->paramHasAttr(n, a) || f->hasParamAttribute(n, a))
-        return false;
-  if (f->isDeclaration() && f->getName() == "__VERIFIER_nondet_int" &&
-      c->arg_empty() && f->getReturnType()->isIntegerTy(32) &&
-      c->getType()->isIntegerTy(32) && !c->getFunctionType()->isVarArg() &&
-      !c->getFunctionType()->getNumParams())
-    return true;
-  return !f->isVarArg() && c->getFunctionType() == f->getFunctionType();
 }
 struct Frame {
   llvm::Instruction* pc;
@@ -93,8 +74,13 @@ class SymbolicArenaReservation::Impl {
   llvm::PHINode* iterator = nullptr;
   llvm::Value* loop_bound = nullptr;
   uint64_t stride = 0;
+  unsigned address_bits = 0;
   unsigned budget = 32768, queries = 512, symbols = 0;
   bool valid = false;
+  bool refuse(unsigned line) const {
+    log::debug("Symbolic arena premise refused at " + std::to_string(line));
+    return false;
+  }
   void spend() {
     if (!budget--)
       throw Refuse{};
@@ -104,21 +90,9 @@ class SymbolicArenaReservation::Impl {
     return it == originals.end() ? nullptr : it->second;
   }
   ar::CallBase* binding(llvm::CallBase* c) const {
-    auto* a = dyn_cast_or_null< ar::CallBase >(original(c));
-    auto* f = callee(c);
-    auto* t = a ? native_handle_callee(a) : nullptr;
-    if (!a || !isa< ar::Call >(a) || !f || !t || !plain(c, f) ||
-        a->num_arguments() != c->arg_size() ||
-        t->num_parameters() != a->num_arguments() ||
-        (t->has_frontend() && t->frontend< llvm::Value >() != f) ||
-        (f->isDeclaration() ? !t->is_declaration()
-                            : !t->is_definition() || !t->has_frontend()))
-      return nullptr;
-    for (unsigned n = 0; n < a->num_arguments(); ++n)
-      if (a->argument(n)->type() != t->type()->param_type(n))
-        return nullptr;
-    return a;
+    return source_call_binding(c, original(c));
   }
+
   bool nondet(llvm::CallBase* c) const {
     auto* a = binding(c);
     auto* t = a ? native_handle_callee(a) : nullptr;
@@ -181,35 +155,7 @@ class SymbolicArenaReservation::Impl {
     return nullptr;
   }
   bool same_index(ar::Value* value, llvm::Value* native) const {
-    for (unsigned depth = 0; depth < 32; ++depth) {
-      auto* type = dyn_cast< ar::IntegerType >(value->type());
-      if (!type || type->bit_width() != 32 ||
-          !native->getType()->isIntegerTy(32))
-        return false;
-      if (auto* n = dyn_cast< ar::IntegerConstant >(value)) {
-        auto* c = llvm::dyn_cast< llvm::ConstantInt >(native);
-        auto bits = n->value().to_z_number();
-        if (bits < 0)
-          bits += core::ZNumber(1) << 32;
-        return c && bits == core::ZNumber(c->getZExtValue());
-      }
-      auto* variable = dyn_cast< ar::InternalVariable >(value);
-      if (!variable)
-        return false;
-      if (variable->has_frontend() &&
-          variable->frontend< llvm::Value >() == native)
-        return true;
-      auto* d = unique_def(variable);
-      if (auto* copy = dyn_cast_or_null< ar::Assignment >(d))
-        value = copy->operand();
-      else if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(d)) {
-        if (cast->op() != ar::UnaryOperation::Bitcast)
-          return false;
-        value = cast->operand();
-      } else
-        return false;
-    }
-    return false;
+    return source_integer_binding(value, native);
   }
   bool zero_initializer(llvm::GlobalVariable* g, bool pointer = false) const {
     if (!g || !globals.count(g) || g->isConstant() || g->isThreadLocal() ||
@@ -249,16 +195,17 @@ class SymbolicArenaReservation::Impl {
             auto* native = callee(c);
             if (allocation || &f != main || native->getName() != "malloc" ||
                 c->arg_size() != 1 ||
-                !c->getArgOperand(0)->getType()->isIntegerTy(32) ||
-                !c->getType()->isPointerTy() ||
+                !c->getArgOperand(0)->getType()->isIntegerTy(address_bits) ||
+                !source_integer_binding(binding(c)->argument(0), c->getArgOperand(0)) ||
+                c->getType() != llvm::Type::getInt8PtrTy(c->getContext()) ||
                 c->getType()->getPointerAddressSpace() || cyclic(c))
-              return false;
+              return refuse(__LINE__);
             allocation = c;
             ar_allocation = binding(c);
           }
         }
     if (!allocation)
-      return false;
+      return refuse(__LINE__);
     for (auto& f : *main->getParent())
       if (&f == main || !f.use_empty())
       for (auto& b : f)
@@ -278,12 +225,12 @@ class SymbolicArenaReservation::Impl {
                 !ar_child->function()->has_frontend() ||
                 ar_child->function()->frontend< llvm::Value >() != child ||
                 !functions.count(child) || (root && root != child))
-              return false;
+              return refuse(__LINE__);
             root = child;
             creates.insert(c);
           }
     if (!root || creates.empty())
-      return false;
+      return refuse(__LINE__);
     for (auto& b : *main)
       for (auto& i : b)
         if (auto* s = llvm::dyn_cast< llvm::StoreInst >(&i)) {
@@ -298,13 +245,13 @@ class SymbolicArenaReservation::Impl {
           if (!g || data || !element || !element->isIntegerTy() ||
               (element->getIntegerBitWidth() != 32 &&
                element->getIntegerBitWidth() != 64))
-            return false;
+            return refuse(__LINE__);
           data = g;
           installation = s;
           stride = element->getIntegerBitWidth() / 8;
         }
     if (!zero_initializer(data, true))
-      return false;
+      return refuse(__LINE__);
     for (auto& b : *root)
       for (auto& i : b) {
         if (auto* s = llvm::dyn_cast< llvm::StoreInst >(&i))
@@ -312,12 +259,12 @@ class SymbolicArenaReservation::Impl {
                   s->getPointerOperand()->stripPointerCasts())) {
             if ((counter && counter != g) ||
                 !g->getValueType()->isIntegerTy(32))
-              return false;
+              return refuse(__LINE__);
             counter = g;
           }
       }
     if (!zero_initializer(counter))
-      return false;
+      return refuse(__LINE__);
     for (auto& b : *root)
       for (auto& i : b)
         if (auto* l = llvm::dyn_cast< llvm::LoadInst >(&i)) {
@@ -326,7 +273,7 @@ class SymbolicArenaReservation::Impl {
           if (!g || g == counter || g == data)
             continue;
           if ((limit && limit != g) || !g->getValueType()->isIntegerTy(32))
-            return false;
+            return refuse(__LINE__);
           limit = g;
         }
     return zero_initializer(limit);
@@ -335,7 +282,7 @@ class SymbolicArenaReservation::Impl {
     auto* l = llvm::dyn_cast< llvm::LoadInst >(i);
     auto* s = llvm::dyn_cast< llvm::StoreInst >(i);
     if ((l && l->isAtomic()) || (s && s->isAtomic()))
-      return false;
+      return refuse(__LINE__);
     auto* p = (l ? l->getPointerOperand() : s->getPointerOperand())
                   ->stripPointerCasts();
     auto* t = l ? l->getType() : s->getValueOperand()->getType();
@@ -345,22 +292,22 @@ class SymbolicArenaReservation::Impl {
     if ((!al && !as) || (l && !al) || (s && !as) || !at ||
         ctx.bundle->data_layout().store_size_in_bytes(at) !=
             i->getModule()->getDataLayout().getTypeStoreSize(t).getFixedValue())
-      return false;
+      return refuse(__LINE__);
     auto* ar_base = base(al ? al->operand() : as->pointer());
     if (p == counter || p == limit || p == data) {
       auto* g = llvm::cast< llvm::GlobalVariable >(p);
       if ((i->getFunction() != root && i->getFunction() != main) ||
           ar_base != globals.at(g) || t != g->getValueType())
-        return false;
+        return refuse(__LINE__);
       if (g == data)
         return l ? i->getFunction() == root : s == installation;
       if (!at->is_integer() || cast< ar::IntegerType >(at)->bit_width() != 32)
-        return false;
+        return refuse(__LINE__);
       return g != limit || !s || i->getFunction() == main;
     }
     if (auto* local = llvm::dyn_cast< llvm::AllocaInst >(p)) {
       auto* a = dyn_cast_or_null< ar::Allocate >(original(local));
-      return i->getFunction() == main && s && t->isIntegerTy(32) && a &&
+      return i->getFunction() == main && s && t->isIntegerTy(address_bits) && a &&
              ar_base == a->result();
     }
     auto* gep = llvm::dyn_cast< llvm::GetElementPtrInst >(p);
@@ -378,17 +325,17 @@ class SymbolicArenaReservation::Impl {
         gep->getSourceElementType() != t || !t->isIntegerTy(stride * 8) ||
         !at->is_integer() ||
         cast< ar::IntegerType >(at)->bit_width() != stride * 8 ||
-        !gep->getOperand(1)->getType()->isIntegerTy(32) || !ar_origin ||
+        !gep->getOperand(1)->getType()->isIntegerTy(address_bits) || !ar_origin ||
         !shift || !shift->has_frontend() ||
         shift->frontend< llvm::Value >() != gep ||
         shift->pointer() != ar_origin->result())
-      return false;
+      return refuse(__LINE__);
     auto term = shift->term_begin();
     if (term == shift->term_end() ||
         (*term).first.to_z_number() != core::ZNumber(stride) ||
         !same_index((*term).second, gep->getOperand(1)) ||
         ++term != shift->term_end())
-      return false;
+      return refuse(__LINE__);
     heap_accesses.insert(i);
     return true;
   }
@@ -396,7 +343,7 @@ class SymbolicArenaReservation::Impl {
     auto& module = *main->getParent();
     if (!module.getModuleInlineAsm().empty() ||
         !mutex_effect_pointer_representations_closed(module) || !choose())
-      return false;
+      return refuse(__LINE__);
     llvm::DominatorTree parent_dom(*main);
     std::set< llvm::Value* > consumed;
     for (auto& f : module) {
@@ -404,14 +351,14 @@ class SymbolicArenaReservation::Impl {
         continue;
       if (!functions.count(&f) || f.isVarArg() ||
           f.getCallingConv() != llvm::CallingConv::C)
-        return false;
+        return refuse(__LINE__);
       for (unsigned k = 0; k < f.arg_size(); ++k)
         for (auto a : {llvm::Attribute::ByVal,
                        llvm::Attribute::StructRet,
                        llvm::Attribute::InAlloca,
                        llvm::Attribute::Preallocated})
           if (f.hasParamAttribute(k, a))
-            return false;
+            return refuse(__LINE__);
       std::vector< llvm::Value* > uses{&f};
       std::set< llvm::Value* > seen;
       while (!uses.empty()) {
@@ -427,12 +374,12 @@ class SymbolicArenaReservation::Impl {
           }
           auto* c = llvm::dyn_cast< llvm::CallBase >(u);
           if (!c || !binding(c))
-            return false;
+            return refuse(__LINE__);
           if (&f == root) {
             if (!creates.count(c) || c->getArgOperand(2) != v)
-              return false;
+              return refuse(__LINE__);
           } else if (&f == main || c->getCalledOperand() != v)
-            return false;
+            return refuse(__LINE__);
         }
       }
       // Entry and all callback/function uses are closed before omitting a body.
@@ -446,17 +393,17 @@ class SymbolicArenaReservation::Impl {
           if (llvm::isa< llvm::LoadInst >(i) ||
               llvm::isa< llvm::StoreInst >(i)) {
             if (!memory(&i))
-              return false;
+              return refuse(__LINE__);
             consumed.insert(&i);
             if (auto* s = llvm::dyn_cast< llvm::StoreInst >(&i))
               if (&f == main &&
                   !llvm::isa< llvm::AllocaInst >(
                       s->getPointerOperand()->stripPointerCasts())) {
                 if (cyclic(s))
-                  return false;
+                  return refuse(__LINE__);
                 for (auto* create : creates)
                   if (!parent_dom.dominates(s, create))
-                    return false;
+                    return refuse(__LINE__);
               }
           } else if (auto* a = llvm::dyn_cast< llvm::AllocaInst >(&i)) {
             auto* n = llvm::dyn_cast< llvm::ConstantInt >(a->getArraySize());
@@ -464,14 +411,14 @@ class SymbolicArenaReservation::Impl {
             auto* count = ar ? dyn_cast< ar::IntegerConstant >(ar->array_size())
                              : nullptr;
             if (&f != main || !n || !n->isOne() || a->getAddressSpace() ||
-                !a->getAllocatedType()->isIntegerTy(32) || !ar || !count ||
+                !a->getAllocatedType()->isIntegerTy(address_bits) || !ar || !count ||
                 count->value().to_z_number() != 1 ||
                 !ar->allocated_type()->is_integer() ||
                 cast< ar::IntegerType >(ar->allocated_type())->bit_width() !=
-                    32 ||
+                    address_bits ||
                 !ar->result()->has_frontend() ||
                 ar->result()->frontend< llvm::Value >() != a)
-              return false;
+              return refuse(__LINE__);
             // Every local use is accounted for by the independent private
             // output preflight.
             bool used = false;
@@ -479,24 +426,26 @@ class SymbolicArenaReservation::Impl {
               if (c->getArgOperand(0)->stripPointerCasts() == a)
                 used = true;
             if (!used)
-              return false;
+              return refuse(__LINE__);
             consumed.insert(a);
           } else if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) {
             auto* a = binding(c);
             auto* f = callee(c);
-            if (!a || !f)
-              return false;
+            if (!a || !f) {
+              if (f) log::debug("Symbolic arena missing call binding: " + f->getName().str());
+              return refuse(__LINE__);
+            }
             auto m = normal_mutex(ctx, a);
             if (m.source) {
               if (c->getFunction() != root || (mutex && mutex != m.source) ||
                   cyclic(c))
-                return false;
+                return refuse(__LINE__);
               mutex = m.source;
               locks.emplace(c, m);
             } else if (creates.count(c) || c == allocation || nondet(c) ||
                        terminal(c)) {
             } else if (f->isDeclaration() || f == main || f == root)
-              return false;
+              return refuse(__LINE__);
             consumed.insert(c);
           } else if (!llvm::isa< llvm::BinaryOperator >(i) &&
                      !llvm::isa< llvm::CastInst >(i) &&
@@ -507,11 +456,11 @@ class SymbolicArenaReservation::Impl {
                      !llvm::isa< llvm::BranchInst >(i) &&
                      !llvm::isa< llvm::ReturnInst >(i) &&
                      !llvm::isa< llvm::UnreachableInst >(i))
-            return false;
+            return refuse(__LINE__);
         }
     }
     if (!mutex || heap_accesses.empty())
-      return false;
+      return refuse(__LINE__);
     for (auto* g : {data, limit, counter, mutex}) {
       std::vector< llvm::Value* > work{g};
       std::set< llvm::Value* > seen;
@@ -528,33 +477,33 @@ class SymbolicArenaReservation::Impl {
           }
           if (auto* l = llvm::dyn_cast< llvm::LoadInst >(u)) {
             if (g == mutex || l->getPointerOperand() != v)
-              return false;
+              return refuse(__LINE__);
           } else if (auto* s = llvm::dyn_cast< llvm::StoreInst >(u)) {
             if (g == mutex || s->getPointerOperand() != v)
-              return false;
+              return refuse(__LINE__);
           } else if (auto* c = llvm::dyn_cast< llvm::CallBase >(u)) {
             if (g != mutex || !locks.count(c) || c->getArgOperand(0) != v)
-              return false;
+              return refuse(__LINE__);
           } else
-            return false;
+            return refuse(__LINE__);
         }
       }
     }
     // The one pointer installation is a noncyclic pre-create snapshot of this
     // allocation.
     if (!parent_dom.dominates(allocation, installation) || cyclic(installation))
-      return false;
+      return refuse(__LINE__);
     for (const auto& e : originals)
       if (!consumed.count(e.first))
-        return false;
+        return refuse(__LINE__);
     dom = std::make_unique< llvm::DominatorTree >(*root);
     loops = std::make_unique< llvm::LoopInfo >(*dom);
     if (std::distance(loops->begin(), loops->end()) != 1)
-      return false;
+      return refuse(__LINE__);
     loop = *loops->begin();
     if (!loop->getSubLoops().empty() || !loop->getLoopPreheader() ||
         !loop->getLoopLatch() || !loop->getExitBlock())
-      return false;
+      return refuse(__LINE__);
     auto* branch =
         llvm::dyn_cast< llvm::BranchInst >(loop->getHeader()->getTerminator());
     auto* cmp = branch && branch->isConditional()
@@ -563,7 +512,7 @@ class SymbolicArenaReservation::Impl {
     if (!cmp || cmp->getPredicate() != llvm::CmpInst::ICMP_SLT ||
         !loop->contains(branch->getSuccessor(0)) ||
         loop->contains(branch->getSuccessor(1)))
-      return false;
+      return refuse(__LINE__);
     iterator = llvm::dyn_cast< llvm::PHINode >(cmp->getOperand(0));
     loop_bound = cmp->getOperand(1);
     if (!iterator || iterator->getParent() != loop->getHeader() ||
@@ -571,13 +520,13 @@ class SymbolicArenaReservation::Impl {
         iterator->getNumIncomingValues() != 2 ||
         (llvm::isa< llvm::Instruction >(loop_bound) &&
          loop->contains(llvm::cast< llvm::Instruction >(loop_bound))))
-      return false;
+      return refuse(__LINE__);
     for (auto& i : *loop->getHeader())
       if (llvm::isa< llvm::PHINode >(i) && &i != iterator)
-        return false;
+        return refuse(__LINE__);
     for (auto* access : heap_accesses)
       if (!loop->contains(access))
-        return false;
+        return refuse(__LINE__);
     return true;
   }
   z3::expr fresh(unsigned bits) {
@@ -840,11 +789,13 @@ class SymbolicArenaReservation::Impl {
           auto n = s.globals.at(limit);
           auto extent = value(f, allocation->getArgOperand(0));
           require(s, s.globals.at(counter) == z.bv_val(0, 32));
-          auto length = z3::sext(n, 32), size = z3::zext(extent, 32);
-          require(s,
-                  n > z.bv_val(0, 32) &&
-                      size == length * z.bv_val(stride, 64) &&
-                      z3::ult(size, z.bv_val(UINT64_C(4294967296), 64)));
+          auto length = z3::sext(n, 32);
+          auto size = address_bits == 32 ? z3::zext(extent, 32) : extent;
+          require(s, n > z.bv_val(0, 32) &&
+                         size == length * z.bv_val(stride, 64));
+          // Positive signed-int length and 4/8-byte stride cannot wrap BV64.
+          if (address_bits == 32)
+            require(s, z3::ult(size, z.bv_val(UINT64_C(4294967296), 64)));
           lengths.push_back({s.path, n, extent});
           // Noncyclic global writes dominate every create. The suffix cannot
           // change this length/allocation; later workers do not inherit next=0.
@@ -943,10 +894,11 @@ class SymbolicArenaReservation::Impl {
             (l ? l->getPointerOperand() : st->getPointerOperand())
                 ->stripPointerCasts());
         auto index = value(f, gep->getOperand(1));
-        require(s,
-                index >= s.lower && index < s.upper &&
-                    index >= z.bv_val(0, 32));
-        // Whole-element stride and upper<=L combine with size=L*stride<2^32
+        auto lower = address_bits == 32 ? s.lower : z3::sext(s.lower, 32);
+        auto upper = address_bits == 32 ? s.upper : z3::sext(s.upper, 32);
+        require(s, index >= lower && index < upper &&
+                       index >= z.bv_val(0, address_bits));
+        // Whole-element stride and upper<=L combine with size=L*stride
         // to establish complete nonwrapping byte intervals.
         if (l)
           set(f, i, fresh(l->getType()->getIntegerBitWidth()));
@@ -981,7 +933,6 @@ public:
         ctx.opts.entry_points.size() != 1 ||
         ctx.opts.entry_points.front()->name() != "main" ||
         !ctx.opts.entry_points.front()->has_frontend() ||
-        ctx.bundle->data_layout().pointers.bit_width != 32 ||
         !ctx.opts.no_init_globals.empty() || ctx.concurrent_env.is_dirty() ||
         !ctx.concurrent_env.unmodeled_effects().empty() ||
         !ctx.concurrent_env.unmodeled_thread_creations().empty() ||
@@ -989,6 +940,10 @@ public:
         ctx.bundle->global_or_null("ar.global_dtors"))
       return;
     main = ctx.opts.entry_points.front()->frontend< llvm::Function >();
+    const auto abi = pthread_object_layout(ctx.bundle, main->getParent());
+    if (!abi || main->getParent()->getDataLayout().getIndexSizeInBits(0) != abi.word * 8)
+      return;
+    address_bits = abi.word * 8;
     if (!main->use_empty())
       return;
     if (main->arg_size() != 0 && main->arg_size() != 2)

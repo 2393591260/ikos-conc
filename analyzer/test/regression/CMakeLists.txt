@@ -126,6 +126,8 @@ add_concurrency_test(arena-reservation-lp64 "${CONCURRENCY_ROOT}/scripts/test_ar
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(symbolic-arena "${CONCURRENCY_ROOT}/scripts/test_symbolic_arena.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(symbolic-arena-lp64 "${CONCURRENCY_ROOT}/scripts/test_symbolic_arena.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(token-once "${CONCURRENCY_ROOT}/scripts/test_token_once.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(token-once-lp64 "${CONCURRENCY_ROOT}/scripts/test_token_once.py"
