@@ -8,13 +8,18 @@ import sqlite3
 import subprocess
 import tempfile
 
+from ikos_runtime import runtime_command, runtime_identity, verify_runtime
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', choices=('32', '64'), default='32')
     args = parser.parse_args()
+    command = runtime_command(args.ikos.resolve())
+    identity = runtime_identity(args.ikos.resolve())
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/heap-handoff.c').read_text()
     env = dict(os.environ)
     env.pop('IKOS_BMC_RECOVER', None)
@@ -24,9 +29,9 @@ def main():
             for case in range(31):
                 source = work / 'renamed.c'
                 source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') + fixture)
-                proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                proc = subprocess.run([*command, '--analyses=race',
                     '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
-                    '--bmc-deadline-ms=0', '-m32', '-o', str(work / 'output.db'), str(source)],
+                    '--bmc-deadline-ms=0', '-m' + args.bits, '-o', str(work / 'output.db'), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
                 output = proc.stdout + proc.stderr
                 assert proc.returncode == 0, (case, wide, output)
@@ -40,6 +45,8 @@ def main():
                 if case in {1, 28}:
                     assert 'The program is SAFE' not in output, (case, wide, output)
                 print(f'heap handoff={case}/wide={wide}: proofs={len(proofs)}', flush=True)
+
+    verify_runtime(identity)
 
 
 if __name__ == '__main__':

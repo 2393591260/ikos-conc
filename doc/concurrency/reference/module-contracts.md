@@ -246,7 +246,8 @@ change with pointer width.
 | OnceInitialization, MutexHandover, GuardedPublication | Checked GNU32/64 | Once state remains i32; cond storage stays 48 bytes with native alignment; malloc uses native size_t. |
 | Finite ArenaReservation | Checked GNU32/64 | Signed i32 reservation arithmetic; only checked sext to the native LP64 index. |
 | LockedCreation, closed pthread_once, one-shot PosixBarrier | Checked GNU32/64 subcontracts | No general descendant completion, callback effect or reusable-barrier claim. |
-| ThreadPrivateHeap, ArraySlices, ReadonlyHeapReads | ILP32 only | Native allocation/count/index/handle correspondence needs a coordinated migration. Internal BV64 arithmetic is not LP64 support. |
+| ThreadPrivateHeap | Checked GNU32/64 | Native calloc/malloc sizes, handle and index widths are bound to the AR operations; closed signed-int loops and live-allocation privacy remain conditional. |
+| ArraySlices, ReadonlyHeapReads | ILP32 only | Native allocation/count/index/handle correspondence needs a coordinated migration. Internal BV64 arithmetic is not LP64 support. |
 | FirstPublication | Checked GNU32/64 | Root slots, padded self-link layout, exact birth extents and literal 24/40-byte graph mutex storage match native/AR bytes. |
 | BucketListOwnership, SymbolicArena | ILP32 only | Link slots, native mutex layout, address arithmetic and source/AR mapping remain restricted. |
 | ThreadLifecycle, ScProtocol/protected protocol, SelfPublication | ILP32 only | Their independent state interpreters still depend on the native 32-bit frame. |
@@ -256,9 +257,17 @@ change with pointer width.
 
 Unsupported certificate ABIs refuse the certificate and preserve the ordinary
 analysis/coverage obligations. They are not silently treated as verified SAFE,
-nor counted as positive LP64 support. The certificate ABI boundary test exercises all 10 remaining ILP32-only boundaries with
+nor counted as positive LP64 support. The certificate ABI boundary test exercises all 9 remaining ILP32-only boundaries with
 32-bit hits and 64-bit refusal; each migrated protocol has both positive and
 premise-breaking tests.
+
+ThreadPrivateHeap keeps allocation privacy conditional on a live allocation:
+overflow or allocation failure does not create a private live object. Worker
+calloc counts and malloc handoff sizes use native size_t; the checked worker loop
+remains signed i32. A single native extension preserves the nonnegative loop
+indices. Closed pointer uses, exact create handoff, fresh-before-each-attempt,
+all-alternative heap binding, TLS closure and no-use-after-free remain required.
+This proof grants pair exclusion, without assuming allocation or create success.
 
 FirstPublication uses native-size root cells and checked whole-array extents. Its
 single self-link graph layout is checked field by field against native padding,

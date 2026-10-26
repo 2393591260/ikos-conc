@@ -118,6 +118,8 @@ add_concurrency_test(mutex-handover-lp64 "${CONCURRENCY_ROOT}/scripts/test_mutex
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(heap-handoff "${CONCURRENCY_ROOT}/scripts/test_heap_handoff.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(heap-handoff-lp64 "${CONCURRENCY_ROOT}/scripts/test_heap_handoff.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(arena-reservation "${CONCURRENCY_ROOT}/scripts/test_arena_reservation.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(arena-reservation-lp64 "${CONCURRENCY_ROOT}/scripts/test_arena_reservation.py"
@@ -192,6 +194,8 @@ add_concurrency_test(once-initialization-lp64 "${CONCURRENCY_ROOT}/scripts/test_
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(thread-private-heap "${CONCURRENCY_ROOT}/scripts/test_thread_private_heap.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(thread-private-heap-lp64 "${CONCURRENCY_ROOT}/scripts/test_thread_private_heap.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(calloc-overflow "${CONCURRENCY_ROOT}/scripts/test_calloc_overflow.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(region-ownership "${CONCURRENCY_ROOT}/scripts/test_region_ownership.py"

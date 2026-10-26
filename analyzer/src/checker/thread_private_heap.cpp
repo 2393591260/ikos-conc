@@ -8,6 +8,7 @@
 #include <ikos/analyzer/analysis/execution_engine/allocation_continuation.hpp>
 #include <ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
+#include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <map>
 #include <set>
 
@@ -74,31 +75,29 @@ class ThreadPrivateHeap::Impl {
   std::map< llvm::Value*, ar::Statement* > effects;
   std::map< ar::CallBase*, Certificate > certificates;
   unsigned budget = 131072;
+  PthreadObjectLayout abi;
+  llvm::Module* module = nullptr;
 
   bool spend() { if (budget == 0) return false; --budget; return true; }
   bool same_bits(ar::Value* value, llvm::Value* source) {
-    for (unsigned depth = 0; depth < 32; ++depth) {
-      auto* type = dyn_cast< ar::IntegerType >(value->type());
-      if (!type || type->bit_width() != 32) return false;
-      if (auto* integer = dyn_cast< ar::IntegerConstant >(value)) {
-        auto* original = llvm::dyn_cast< llvm::ConstantInt >(source);
-        auto bits = integer->value().to_z_number();
-        if (bits < 0) bits += core::ZNumber(1) << 32;
-        return original && original->getType()->isIntegerTy(32) &&
-               bits == core::ZNumber(original->getZExtValue());
-      }
-      auto* variable = dyn_cast< ar::InternalVariable >(value);
-      auto* definition = variable ? unique_def(variable) : nullptr;
-      if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
-        if (cast->op() != ar::UnaryOperation::Bitcast) return false;
-        value = cast->operand();
-      } else {
-        auto found = calls.find(source);
-        return found != calls.end() && found->second && found->second == definition &&
-               found->second->has_result() && found->second->result() == value;
-      }
-    }
-    return false;
+    return source_integer_binding(value, source);
+  }
+  // Loop counters remain signed int; native GEP/calloc uses preserve nonnegative
+  // iterations through one explicit extension, never a truncation.
+  llvm::Value* int_counter(llvm::Value* value) {
+    if (value->getType()->isIntegerTy(32)) return value;
+    if (auto* constant = llvm::dyn_cast< llvm::ConstantInt >(value))
+      if (value->getType()->isIntegerTy(abi.word * 8) &&
+          !constant->isNegative() && constant->getValue().getActiveBits() <= 31)
+        return llvm::ConstantInt::get(llvm::Type::getInt32Ty(value->getContext()),
+                                     constant->getZExtValue());
+    auto* extend = llvm::dyn_cast< llvm::CastInst >(value);
+    if (abi.word == 8 && extend && value->getType()->isIntegerTy(64) &&
+        (extend->getOpcode() == llvm::Instruction::SExt ||
+         extend->getOpcode() == llvm::Instruction::ZExt) &&
+        extend->getOperand(0)->getType()->isIntegerTy(32))
+      return extend->getOperand(0);
+    return nullptr;
   }
   bool entry_uses(llvm::Function* f) {
     std::vector< llvm::Value* > pending{f};
@@ -139,14 +138,15 @@ class ThreadPrivateHeap::Impl {
       if (!target || call->isInlineAsm() || call->hasOperandBundles() ||
           !llvm::isa< llvm::CallInst >(call)) return false;
       if (nondet(call, target)) continue;
-      if (!plain_call(call, target)) return false;
+      if (!plain_call(call, target) || !calls.count(call) || !calls.at(call) ||
+          !source_call_binding(call, calls.at(call))) return false;
       if (!target->isDeclaration()) {
         if (!effects_closed(target, allocation, active, done, transfer)) return false;
       } else if (call == allocation || call == transfer) {
         continue;
       } else if (transfer && ((target->getName() == "malloc" && target->arg_size() == 1 &&
                   target->getReturnType()->isPointerTy() &&
-                  target->getFunctionType()->getParamType(0)->isIntegerTy(32)) ||
+                  target->getFunctionType()->getParamType(0)->isIntegerTy(abi.word * 8)) ||
                   native_handle_api(call, false) || native_handle_api(call, true))) {
         continue;
       } else if (target->getName() == "free" && target->arg_size() == 1 &&
@@ -169,6 +169,9 @@ class ThreadPrivateHeap::Impl {
   bool counted_index(llvm::Value* index, llvm::Value* count,
                      llvm::Instruction* access, llvm::LoopInfo& loops,
                      llvm::DominatorTree& dom) {
+    index = int_counter(index);
+    count = int_counter(count);
+    if (!index || !count) return false;
     auto* phi = llvm::dyn_cast< llvm::PHINode >(index);
     auto* loop = phi ? loops.getLoopFor(phi->getParent()) : nullptr;
     if (!phi || !loop || loop->getHeader() != phi->getParent() ||
@@ -281,8 +284,8 @@ class ThreadPrivateHeap::Impl {
         allocation->arg_size() != 2 || ar_allocation->num_arguments() != 2 ||
         !calls.count(allocation) || calls.at(allocation) != ar_allocation ||
         !api->getReturnType()->isPointerTy() ||
-        !api->getFunctionType()->getParamType(0)->isIntegerTy(32) ||
-        !api->getFunctionType()->getParamType(1)->isIntegerTy(32) ||
+        !api->getFunctionType()->getParamType(0)->isIntegerTy(abi.word * 8) ||
+        !api->getFunctionType()->getParamType(1)->isIntegerTy(abi.word * 8) ||
         may_follow(allocation, allocation)) return result;
     auto* actual_allocation = allocation;
     auto* site = ar_allocation;
@@ -296,16 +299,17 @@ class ThreadPrivateHeap::Impl {
         may_follow(allocation, allocation)) return {};
     auto* f = allocation->getFunction();
     auto* count = allocation->getArgOperand(0);
-    auto* source = llvm::dyn_cast< llvm::CallBase >(count);
+    auto* raw_count = int_counter(count);
+    auto* source = llvm::dyn_cast_or_null< llvm::CallBase >(raw_count);
     // In particular, repeated LLVM uses of undef are not a stable size.
-    if (!llvm::isa< llvm::ConstantInt >(count) && (!source || !nondet(source, callee(source)))) return result;
+    if (!llvm::isa< llvm::ConstantInt >(count) &&
+        !llvm::isa_and_nonnull< llvm::ConstantInt >(raw_count) &&
+        (!source || !nondet(source, callee(source)))) return result;
     auto* pointer_type = llvm::cast< llvm::PointerType >(allocation->getType());
     const auto& dl = f->getParent()->getDataLayout();
-    llvm::Triple target(f->getParent()->getTargetTriple());
     if (pointer_type->getAddressSpace() != 0 || !pointer_type->getPointerElementType()->isIntegerTy(8) ||
-        dl.getPointerSizeInBits() != 32 || dl.getIndexSizeInBits(0) != 32 ||
-        target.getArch() != llvm::Triple::x86 || !target.isOSLinux() ||
-        target.getEnvironment() != llvm::Triple::GNU ||
+        f->getParent() != module || !pthread_object_layout(ctx.bundle, module) ||
+        dl.getIndexSizeInBits(0) != abi.word * 8 ||
         !mutex_effect_pointer_representations_closed(*f->getParent()) || !entry_uses(f)) return result;
     std::set< llvm::Function* > active, done;
     if (!effects_closed(f, actual_allocation, active, done)) return {};
@@ -335,7 +339,7 @@ class ThreadPrivateHeap::Impl {
           auto* element = gep->getSourceElementType();
           if (offset.index || gep->getPointerOperand() != pointer || gep->getNumIndices() != 1 ||
               !element->isIntegerTy() || llvm::cast< llvm::PointerType >(gep->getType())->getAddressSpace() != 0 ||
-              !gep->getOperand(1)->getType()->isIntegerTy(32)) return {};
+              !gep->getOperand(1)->getType()->isIntegerTy(abi.word * 8)) return {};
           offsets.emplace(gep, Offset{gep->getOperand(1), layout.getTypeAllocSize(element).getFixedValue()});
           pending.push_back(gep);
         } else if (auto* load = llvm::dyn_cast< llvm::LoadInst >(instruction)) {
@@ -433,7 +437,7 @@ class ThreadPrivateHeap::Impl {
     auto* worker = llvm::dyn_cast< llvm::Function >(create->getArgOperand(2)->stripPointerCasts());
     auto* signature = llvm::cast< llvm::PointerType >(create->getArgOperand(2)->getType());
     auto* byte_pointer = llvm::Type::getInt8PtrTy(create->getContext());
-    if (!output->getPointerElementType()->isIntegerTy(32) || !worker || worker->isDeclaration() ||
+    if (!output->getPointerElementType()->isIntegerTy(abi.word * 8) || !worker || worker->isDeclaration() ||
         worker->isVarArg() || worker->arg_size() != 1 || worker->getReturnType() != byte_pointer ||
         worker->getFunctionType()->getParamType(0) != byte_pointer ||
         create->getArgOperand(3)->getType() != byte_pointer ||
@@ -475,7 +479,10 @@ class ThreadPrivateHeap::Impl {
     bool first = true;
     for (auto it = gep->idx_begin(); it != gep->idx_end(); ++it) {
       auto* index = llvm::dyn_cast< llvm::ConstantInt >(it->get());
-      if (!index || !index->getType()->isIntegerTy(32) || !type->isSized()) return false;
+      if (!index || !type->isSized() ||
+          (!first && llvm::isa< llvm::StructType >(type)
+               ? !index->getType()->isIntegerTy(32)
+               : index->getBitWidth() > abi.word * 8)) return false;
       auto value = core::ZNumber(index->getSExtValue());
       if (first) {
         if (layout.getTypeAllocSize(type).isScalable()) return false;
@@ -509,15 +516,13 @@ class ThreadPrivateHeap::Impl {
         !allocation->getFunction()->use_empty() || !calls.count(allocation) || calls.at(allocation) != ar_allocation ||
         !same_bits(ar_allocation->argument(0), allocation->getArgOperand(0)) ||
         allocation->getType() != llvm::Type::getInt8PtrTy(allocation->getContext()) ||
-        !api->getFunctionType()->getParamType(0)->isIntegerTy(32)) return result;
+        !api->getFunctionType()->getParamType(0)->isIntegerTy(abi.word * 8)) return result;
     auto* size = llvm::dyn_cast< llvm::ConstantInt >(allocation->getArgOperand(0));
     if (!size || size->isZero()) return result;
     auto* source_main = allocation->getFunction();
     const auto& layout = source_main->getParent()->getDataLayout();
-    llvm::Triple target(source_main->getParent()->getTargetTriple());
-    if (layout.getPointerSizeInBits() != 32 || layout.getIndexSizeInBits(0) != 32 ||
-        target.getArch() != llvm::Triple::x86 || !target.isOSLinux() ||
-        target.getEnvironment() != llvm::Triple::GNU ||
+    if (source_main->getParent() != module || !pthread_object_layout(ctx.bundle, module) ||
+        layout.getIndexSizeInBits(0) != abi.word * 8 ||
         !mutex_effect_pointer_representations_closed(*source_main->getParent())) return result;
     llvm::CallBase* create = nullptr;
     std::vector< llvm::Value* > pending{allocation};
@@ -639,11 +644,16 @@ public:
     if (!ctx.opts.enable_thread_modular || ctx.opts.procedural == Procedural::Intraprocedural ||
         ctx.opts.entry_points.size() != 1 || ctx.opts.entry_points.front()->name() != "main" ||
         ctx.opts.entry_points.front()->num_parameters() != 0 ||
-        ctx.bundle->data_layout().pointers.bit_width != 32 ||
         !ctx.opts.no_init_globals.empty() || ctx.concurrent_env.is_dirty() ||
         !ctx.concurrent_env.unmodeled_effects().empty() ||
         !ctx.concurrent_env.unmodeled_thread_creations().empty() ||
         ctx.bundle->global_or_null("ar.global_ctors") || ctx.bundle->global_or_null("ar.global_dtors")) return;
+    auto* main = ctx.opts.entry_points.front();
+    if (!main->has_frontend()) return;
+    module = main->frontend< llvm::Function >()->getParent();
+    abi = pthread_object_layout(ctx.bundle, module);
+    if (!abi || module->getDataLayout().getIndexSizeInBits(0) != abi.word * 8)
+      return;
     for (auto fi = ctx.bundle->function_begin(); fi != ctx.bundle->function_end(); ++fi)
       if ((*fi)->is_definition()) for (auto* block : *(*fi)->body()) for (auto* stmt : *block) {
         if (!stmt->has_frontend()) continue;
