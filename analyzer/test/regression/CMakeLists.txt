@@ -313,3 +313,6 @@ add_dependencies(build-analyzer-tests test-analysis-source-program-facts)
 add_test(NAME concurrency-source-program-facts
          COMMAND $<TARGET_FILE:test-analysis-source-program-facts>)
 set_tests_properties(concurrency-source-program-facts PROPERTIES LABELS concurrency)
+
+add_concurrency_test(array-slice-occurrences "${CONCURRENCY_ROOT}/scripts/test_array_slice_occurrences.py"
+                     --ikos "${CONCURRENCY_IKOS}")

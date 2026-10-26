@@ -84,6 +84,7 @@ class ArraySlices::Impl {
   std::set< llvm::Function* > active, workers;
   std::vector< State > worlds;
   std::map< llvm::Instruction*, std::vector< Range > > ranges;
+  std::set< llvm::Instruction* > incomplete_ranges;
   unsigned budget = 32768, queries = 512, symbols = 0, world = 0;
   bool attempted = false, valid = false;
   llvm::Instruction* last = nullptr;
@@ -635,6 +636,7 @@ class ArraySlices::Impl {
           set(s, i, operation(s, i));
       } else if (llvm::isa< llvm::LoadInst >(i) ||
                  llvm::isa< llvm::StoreInst >(i)) {
+        bool recorded_range = false;
         auto* load = llvm::dyn_cast< llvm::LoadInst >(i);
         auto* store = llvm::dyn_cast< llvm::StoreInst >(i);
         auto* a = original(i);
@@ -724,9 +726,13 @@ class ArraySlices::Impl {
                             z.bv_val(UINT64_C(0xffffffff), 64));
             ranges[i].push_back(
                 {p.root, world, p.stride, *j.low, number(s, upper)});
+            recorded_range = true;
           }
         } else
           throw Refuse{};
+        // A range on another path cannot certify this occurrence.
+        if (mode == Mode::Worker && !recorded_range)
+          incomplete_ranges.insert(i);
       } else if (auto* call = llvm::dyn_cast< llvm::CallBase >(i)) {
         auto* a = binding(call);
         auto* called = target(call);
@@ -945,7 +951,8 @@ public:
       }
     }
     if (!valid || original(x) != a.stmt || original(y) != b.stmt ||
-        !ranges.count(x) || !ranges.count(y))
+        !ranges.count(x) || !ranges.count(y) ||
+        incomplete_ranges.count(x) || incomplete_ranges.count(y))
       return false;
     try {
       for (unsigned w = 0; w < worlds.size(); ++w) {
