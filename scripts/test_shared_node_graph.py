@@ -19,14 +19,15 @@ CLOSED_PAYLOAD_CASES = {0, 11, 13, 16, 21, 26}
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', choices=('32', '64'), default='32')
     parser.add_argument('--case', type=int, choices=range(31), action='append')
     args = parser.parse_args()
     entry = args.ikos.resolve()
     identity = runtime_identity(entry)
     command = runtime_command(entry)
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/shared-node-graph.c').read_text()
-    env = dict(os.environ)
-    env.pop('IKOS_BMC_RECOVER', None)
+    env = {k: v for k, v in os.environ.items()
+           if not k.startswith('IKOS_') and k not in {'PYTHONPATH', 'PYTHONHOME'}}
     with tempfile.TemporaryDirectory(prefix='ikos-shared-graph-') as temp:
         work = Path(temp)
         for wide in (False, True):
@@ -37,7 +38,7 @@ def main():
                 dbpath = work / 'output.db'
                 result = subprocess.run(command + ['--analyses=race',
                     '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
-                    '--bmc-deadline-ms=0', '--log=debug', '-m32', '-o', str(dbpath), str(source)],
+                    '--bmc-deadline-ms=0', '--log=debug', '-m' + args.bits, '-o', str(dbpath), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
                 output = result.stdout + result.stderr
                 assert result.returncode == 0, (case, wide, output)
@@ -64,7 +65,7 @@ def main():
                     assert proofs, (case, wide, checks, output)
                 if case == 28:
                     assert not proofs, (case, wide, checks, output)
-                print(f'CASE={case}/WIDE={int(wide)} safe={safe} proofs={len(proofs)} '
+                print(f'CASE={case}/WIDE={int(wide)}/bits={args.bits} safe={safe} proofs={len(proofs)} '
                       f'closed={len(closed)} PASS', flush=True)
     verify_runtime(identity)
 

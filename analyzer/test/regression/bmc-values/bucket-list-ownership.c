@@ -17,7 +17,12 @@ typedef long long datum;
 typedef int datum;
 #endif
 #if CASE == 47
-extern int __attribute__((fastcall)) __VERIFIER_nondet_int(void);
+#if __SIZEOF_POINTER__ == 4
+#define BUCKET_NON_C __attribute__((fastcall))
+#else
+#define BUCKET_NON_C __attribute__((ms_abi))
+#endif
+extern int BUCKET_NON_C __VERIFIER_nondet_int(void);
 #else
 extern int __VERIFIER_nondet_int(void);
 #endif

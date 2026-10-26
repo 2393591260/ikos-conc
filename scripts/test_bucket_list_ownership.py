@@ -21,14 +21,15 @@ POSITIVE = {0, 23, 26, 33, 37, 48, 64, 65, 69, 70, 71, 80, 81}
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', choices=('32', '64'), default='32')
     parser.add_argument('--case', type=int, choices=CASES, action='append')
     args = parser.parse_args()
     entry = args.ikos.resolve()
     identity = runtime_identity(entry)
     command = runtime_command(entry)
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/bucket-list-ownership.c').read_text()
-    env = dict(os.environ)
-    env.pop('IKOS_BMC_RECOVER', None)
+    env = {k: v for k, v in os.environ.items()
+           if not k.startswith('IKOS_') and k not in {'PYTHONPATH', 'PYTHONHOME'}}
     with tempfile.TemporaryDirectory(prefix='ikos-bucket-list-') as temp:
         work = Path(temp)
         for wide in (False, True):
@@ -40,7 +41,7 @@ def main():
                 result = subprocess.run(command + ['--analyses=race',
                     '--concurrency=auto', '--partitioning=guards',
                     '--demote-race-to-unknown', '--bmc-deadline-ms=0',
-                    '--log=debug', '-m32', '-o', str(dbpath), str(source)],
+                    '--log=debug', '-m' + args.bits, '-o', str(dbpath), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
                 output = result.stdout + result.stderr
                 assert result.returncode == 0, (case, wide, output)
@@ -56,7 +57,7 @@ def main():
                     # CASE2 is a safe lock permutation outside this subset.
                     if case in {1, 5, 12, 15, 49, 53, 72}:
                         assert not safe, (case, wide, checks, output)
-                print(f'CASE={case}/WIDE={int(wide)}: safe={safe}, '
+                print(f'CASE={case}/WIDE={int(wide)}/bits={args.bits}: safe={safe}, '
                       f'proofs={len(proofs)}', flush=True)
     verify_runtime(identity)
 

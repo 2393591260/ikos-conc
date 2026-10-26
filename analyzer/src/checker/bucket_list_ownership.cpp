@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <deque>
 #include <functional>
+#include <ikos/analyzer/analysis/source_c_abi.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/analysis/execution_engine/allocation_continuation.hpp>
 #include <ikos/analyzer/checker/bucket_list_ownership.hpp>
@@ -102,7 +103,7 @@ struct Endpoint {
   Place place;
   std::uint64_t object, offset, width;
   bool write, startup, payload, held;
-  // For a private array, offset/width enclose every possible four-byte access.
+  // For a private array, offset/width enclose every possible native-word access.
   bool private_range;
   boost::optional< std::uint64_t > owner;
   std::set< llvm::GlobalVariable* > auxiliary_held;
@@ -113,6 +114,7 @@ class BucketListOwnership::Impl {
   const std::vector< AccessRecord >& accesses;
   z3::context z;
   llvm::Function* main = nullptr;
+  unsigned address_bits = 0, word = 0, mutex_bytes = 0;
   llvm::GlobalVariable* global = nullptr;
   llvm::StructType* head_type = nullptr;
   llvm::StructType* node_type = nullptr;
@@ -170,7 +172,30 @@ class BucketListOwnership::Impl {
     return i == originals.end() ? nullptr : i->second;
   }
   ar::CallBase* binding(llvm::CallBase* c) const {
-    return source_call_binding(c, original(c));
+    auto* imported = source_call_binding(c, original(c));
+    auto* called = target(c);
+    if (!imported || !called ||
+        !ordinary_source_call_abi_attributes(c, called))
+      return nullptr;
+    return imported;
+  }
+  ar::Value* pointer_copy_origin(ar::Value* value) const {
+    // Importing an unsigned pthread_t cell or a callback can introduce a
+    // representation-preserving pointer bitcast for an extern prototype.
+    // Follow only unique pointer copies/bitcasts, never GEP/range equality.
+    for (unsigned depth = 0; depth < 32; ++depth) {
+      if (!value || !value->type()->is_pointer()) return nullptr;
+      auto* variable = dyn_cast<ar::InternalVariable>(value);
+      if (!variable) return value;
+      auto* definition = unique_def(variable);
+      if (auto* copy = dyn_cast_or_null<ar::Assignment>(definition))
+        value = copy->operand();
+      else if (auto* cast = dyn_cast_or_null<ar::UnaryOperation>(definition)) {
+        if (cast->op() != ar::UnaryOperation::Bitcast) return nullptr;
+        value = cast->operand();
+      } else return value;
+    }
+    return nullptr;
   }
   bool nondet(llvm::CallBase* c) const {
     auto* a = binding(c);
@@ -180,6 +205,12 @@ class BucketListOwnership::Impl {
       return false;
     const auto name = f->getName();
     const unsigned bits = c->getType()->getIntegerBitWidth();
+    auto* result = a->result_or_null();
+    auto* rt = result ? dyn_cast<ar::IntegerType>(result->type()) : nullptr;
+    auto* ft = dyn_cast<ar::IntegerType>(t->type()->return_type());
+    if (!f->getReturnType()->isIntegerTy(bits) || !rt || !ft ||
+        rt->bit_width() != bits || ft->bit_width() != bits)
+      return false;
     if ((name == "__VERIFIER_nondet_int" || name == "__VERIFIER_nondet_uint") &&
         bits == 32 && t->has_frontend())
       return true;
@@ -338,20 +369,22 @@ class BucketListOwnership::Impl {
     return result;
   }
   std::uint64_t bytes(llvm::Type* t) {
-    need(t->isSized());
-    return main->getParent()
-        ->getDataLayout()
-        .getTypeStoreSize(t)
-        .getFixedValue();
+    need(t->isSized() && (!t->isPointerTy() ||
+                         t->getPointerAddressSpace() == 0));
+    const auto size = main->getParent()->getDataLayout().getTypeStoreSize(t);
+    need(!size.isScalable() && size.getFixedValue() <= UINT32_MAX);
+    return size.getFixedValue();
   }
   std::uint64_t extent(llvm::Type* t) {
     need(t->isSized());
-    return main->getParent()
-        ->getDataLayout()
-        .getTypeAllocSize(t)
-        .getFixedValue();
+    const auto size = main->getParent()->getDataLayout().getTypeAllocSize(t);
+    // This theorem still covers bounded graph objects, not giant native heaps.
+    need(!size.isScalable() && size.getFixedValue() <= UINT32_MAX);
+    return size.getFixedValue();
   }
   Pointer pointer(const State& s, llvm::Value* v) {
+    need(v && v->getType()->isPointerTy() &&
+         v->getType()->getPointerAddressSpace() == 0);
     if (llvm::isa< llvm::ConstantPointerNull >(v))
       return Pointer(z);
     if (v == global)
@@ -437,30 +470,34 @@ class BucketListOwnership::Impl {
   Pointer gep(const State& s, llvm::GetElementPtrInst* g) {
     need(g->getAddressSpace() == 0);
     auto p = pointer(s, g->getPointerOperand());
-    z3::expr delta = z.bv_val(0, 64);
+    // Small graph offsets remain signed BV64, including temporary negative
+    // container_of views. Each step is checked in BV128 before narrowing.
+    // Native index<=64 bits times extent<=UINT32_MAX fits signed128; the
+    // previous sum is bounded by UINT32_MAX, so even long GEPs cannot wrap.
+    auto exact = z3::sext(p.offset, 64);
+    const auto cap = z.bv_val(UINT64_C(0xffffffff), 128);
+    require(s, exact >= -cap && exact <= cap);
     for (auto it = llvm::gep_type_begin(g), end = llvm::gep_type_end(g);
-         it != end;
-         ++it) {
+         it != end; ++it) {
       auto* index = it.getOperand();
       if (auto* st = it.getStructTypeOrNull()) {
-        auto* n = llvm::dyn_cast< llvm::ConstantInt >(index);
-        need(n && n->getValue().ult(st->getNumElements()));
-        delta = delta + z.bv_val(main->getParent()
-                                     ->getDataLayout()
-                                     .getStructLayout(st)
-                                     ->getElementOffset(n->getZExtValue()),
-                                 64);
+        auto* n = llvm::dyn_cast<llvm::ConstantInt>(index);
+        need(n && n->getValue().getActiveBits() <= 32 &&
+             n->getZExtValue() < st->getNumElements());
+        exact = exact + z.bv_val(main->getParent()->getDataLayout()
+            .getStructLayout(st)->getElementOffset(n->getZExtValue()), 128);
       } else {
         need(scalar(index->getType()) &&
-             index->getType()->getIntegerBitWidth() <= 32);
-        delta = delta + widen(number(s, index), true) *
-                            z.bv_val(extent(it.getIndexedType()), 64);
+             index->getType()->getIntegerBitWidth() <= address_bits);
+        auto value = number(s, index);
+        exact = exact + z3::sext(value, 128 - value.get_sort().bv_size()) *
+                          z.bv_val(extent(it.getIndexedType()), 128);
       }
+      require(s, exact >= -cap && exact <= cap);
     }
-    p.offset = (p.offset + delta).simplify();
-    // Temporary negative container_of views are preserved. No actual access is
-    // justified here. Projection agrees with 32-bit pointer shifts modulo2^32.
-    // Accesses later require a unique nonnegative extent-bounded projection.
+    p.offset = exact.extract(63, 0).simplify();
+    // No pointer-validity or live-allocation conclusion comes from this step.
+    // resolve() must still prove every complete nonnegative byte interval.
     return p;
   }
   // A fully enumerated byte-offset alternative often fixes its source index.
@@ -668,13 +705,13 @@ class BucketListOwnership::Impl {
     if (p.place == Place::Global) {
       payload = global_payload(off, width, type);
       need(p.object == global_id && (payload ||
-           (type->isPointerTy() && width == 4 && head_field(off))));
+           (type->isPointerTy() && width == word && head_field(off))));
       need(!st || !s.spawned || payload);
     } else if (p.place == Place::Heap) {
       need(obj.extent == node_extent);
       payload = off == 0 && width == datum_width && scalar(type);
       need(payload ||
-           (type->isPointerTy() && width == 4 && node_link_field(off)));
+           (type->isPointerTy() && width == word && node_link_field(off)));
       if (!obj.born) {
         // The existing imported Store performs prepare_mem_access on this exact
         // zero-base address. Failed malloc has no normal successor THERE, not
@@ -759,7 +796,7 @@ class BucketListOwnership::Impl {
           reachable_heap.insert(p.object);
         }
         for (auto delta : {std::uint64_t(0), prev_offset}) {
-          auto link = s.links.find({p.object, off + delta, 4});
+          auto link = s.links.find({p.object, off + delta, word});
           need(link != s.links.end());
           pending.push_back(link->second);
         }
@@ -796,7 +833,7 @@ class BucketListOwnership::Impl {
           need(s.scalars.count({p.object, 0, datum_width}));
         }
         for (auto delta : {std::uint64_t(0), prev_offset}) {
-          auto i = s.links.find({p.object, off + delta, 4});
+          auto i = s.links.find({p.object, off + delta, word});
           need(i != s.links.end());
           pending.push_back(i->second);
         }
@@ -886,7 +923,9 @@ class BucketListOwnership::Impl {
     return pt && pt->getAddressSpace() == 0 && st && !st->isOpaque() &&
            st->isSized() && st->hasName() &&
            st->getName() == "union.pthread_mutex_t" &&
-           main->getParent()->getDataLayout().getTypeAllocSize(st) == 24 &&
+           !st->isPacked() &&
+           main->getParent()->getDataLayout().getTypeAllocSize(st) == mutex_bytes &&
+           main->getParent()->getDataLayout().getABITypeAlign(st).value() >= word &&
            (!init ||
             llvm::isa< llvm::ConstantPointerNull >(c->getArgOperand(1)));
   }
@@ -1000,7 +1039,7 @@ class BucketListOwnership::Impl {
       llvm::AllocaInst* allocation = nullptr;
       for (const auto& array : native_arrays) if (array.second == found->second.storage) allocation = array.first;
       need(allocation && s.pointers.count(allocation));
-      auto p = s.pointers.at(allocation); need(p.place == Place::Local && s.objects.at(p.object).extent >= 4);
+      auto p = s.pointers.at(allocation); need(p.place == Place::Local && s.objects.at(p.object).extent >= word);
       // One enclosing range, used solely for object disjointness, not a slot identity.
       record(s, i, p, 0, s.objects.at(p.object).extent, write, false, true);
     };
@@ -1021,7 +1060,7 @@ class BucketListOwnership::Impl {
           covered_native_calls.insert(a);
         }
       } else if (auto* load = llvm::dyn_cast< llvm::LoadInst >(i)) {
-        need(load->getType()->isIntegerTy(32) && !load->isAtomic() && !load->isVolatile()); access(i, false);
+        need(load->getType()->isIntegerTy(address_bits) && !load->isAtomic() && !load->isVolatile()); access(i, false);
       } else if (auto* gep = llvm::dyn_cast< llvm::GetElementPtrInst >(i)) {
         auto* allocation = llvm::dyn_cast< llvm::AllocaInst >(gep->getPointerOperand()->stripPointerCasts());
         need(allocation && native_arrays.count(allocation) && native_handle_element(gep, allocation));
@@ -1047,11 +1086,6 @@ class BucketListOwnership::Impl {
          f->arg_size() == arguments.size());
     visited_functions.insert(f);
     for (unsigned n = 0; n < f->arg_size(); ++n) {
-      for (auto a : {llvm::Attribute::ByVal,
-                     llvm::Attribute::StructRet,
-                     llvm::Attribute::InAlloca,
-                     llvm::Attribute::Preallocated})
-        need(!f->hasParamAttribute(n, a));
       initial.values.erase(f->getArg(n));
       initial.pointers.erase(f->getArg(n));
       initial.opaque.erase(f->getArg(n));
@@ -1198,10 +1232,10 @@ class BucketListOwnership::Impl {
         } else if (auto* projection = llvm::dyn_cast< llvm::PtrToIntInst >(i)) {
           auto p = pointer(s, projection->getOperand(0));
           if (p.place == Place::Null) {
-            need(projection->getType()->isIntegerTy(32));
+            need(projection->getType()->isIntegerTy(address_bits));
             auto n = p.offset.simplify();
             need(n.is_numeral() && n.get_numeral_uint64() <= UINT32_MAX);
-            set(s, i, n.extract(31, 0));
+            set(s, i, n.extract(address_bits - 1, 0));
           } else {
             // Program exit code is not an application-memory observation.
             // Never turn this address into an integer usable by the program.
@@ -1284,7 +1318,10 @@ class BucketListOwnership::Impl {
                      ar::Intrinsic::LibcMalloc) {
             need(root == main && !s.spawned && called->getName() == "malloc" &&
                  call->arg_size() == 1 && call->getType()->isPointerTy() &&
-                 call->getArgOperand(0)->getType()->isIntegerTy(32));
+                 call->getType()->getPointerAddressSpace() == 0 &&
+                 call->getType()->getPointerElementType()->isIntegerTy(8) &&
+                 call->getArgOperand(0)->getType()->isIntegerTy(address_bits) &&
+                 source_integer_binding(a->argument(0), call->getArgOperand(0)));
             auto size = constant(s, number(s, call->getArgOperand(0)));
             need(size == node_extent);
             auto id = ++tokens;
@@ -1349,17 +1386,34 @@ class BucketListOwnership::Impl {
               results.push_back(FunctionResult{std::move(s), {}, {}, false});
               break;
             }
-            need(constant(s, p.offset) == 0 && s.objects.at(p.object).extent == 4 &&
-                 allocation &&
-                 allocation->getAllocatedType()->isIntegerTy(32) &&
-                 allocation->getAlign().value() >= 4);
+            auto* imported = allocation
+                ? dyn_cast_or_null<ar::Allocate>(original(allocation)) : nullptr;
+            auto* repetitions = imported
+                ? dyn_cast<ar::IntegerConstant>(imported->array_size()) : nullptr;
+            auto* cell = imported
+                ? dyn_cast<ar::IntegerType>(imported->allocated_type()) : nullptr;
+            auto* child = dyn_cast_or_null<ar::FunctionPointerConstant>(pointer_copy_origin(a->argument(2)));
+            need(constant(s, p.offset) == 0 &&
+                 s.objects.at(p.object).extent == word && allocation &&
+                 allocation->getAllocatedType()->isIntegerTy(address_bits) &&
+                 allocation->getAlign().value() >= word &&
+                 imported && unique_allocation_definition(imported) &&
+                 repetitions && repetitions->value().to_z_number() == 1 &&
+                 cell && cell->bit_width() == address_bits &&
+                 imported->result()->alignment() >= word &&
+                 ctx.bundle->data_layout().alloc_size_in_bytes(cell) == word &&
+                 pointer_copy_origin(a->argument(0)) == imported->result() &&
+                 isa<ar::NullConstant>(a->argument(1)) &&
+                 isa<ar::NullConstant>(a->argument(3)) && child &&
+                 child->function()->has_frontend() &&
+                 child->function()->frontend<llvm::Value>() == worker);
             if (!s.spawned) {
               freeze(s);
               worlds.push_back(s);
             }
-            record(s, i, p, 0, 4, true, false);
+            record(s, i, p, 0, word, true, false);
             // Native output is unconstrained; first scope forbids consuming it.
-            invalidate(s, {p.object, 0, 4});
+            invalidate(s, {p.object, 0, word});
             set(s, i, fresh(32));
           } else
             throw Refuse{};
@@ -1380,21 +1434,40 @@ class BucketListOwnership::Impl {
          ctx.opts.entry_points.size() == 1 &&
          ctx.opts.entry_points.front()->name() == "main" &&
          ctx.opts.entry_points.front()->has_frontend() &&
-         ctx.bundle->data_layout().pointers.bit_width == 32 &&
          ctx.opts.no_init_globals.empty() &&
          !ctx.bundle->global_or_null("ar.global_ctors") &&
          !ctx.bundle->global_or_null("ar.global_dtors"));
     main = ctx.opts.entry_points.front()->frontend< llvm::Function >();
     auto* module = main->getParent();
-    llvm::Triple triple(module->getTargetTriple());
+    const auto abi = pthread_object_layout(ctx.bundle, module);
+    need(bool(abi) &&
+         module->getDataLayout().getIndexSizeInBits(0) == abi.word * 8);
+    word = abi.word;
+    mutex_bytes = abi.mutex;
+    address_bits = word * 8;
     need(main->use_empty() && main->arg_empty() &&
          main->getReturnType()->isIntegerTy(32) &&
-         module->getDataLayout().getPointerSizeInBits(0) == 32 &&
          module->getModuleInlineAsm().empty() &&
          !module->getNamedGlobal("llvm.global_ctors") &&
-         !module->getNamedGlobal("llvm.global_dtors") &&
-         triple.getArch() == llvm::Triple::x86 && triple.isOSLinux() &&
-         triple.getEnvironment() == llvm::Triple::GNU);
+         !module->getNamedGlobal("llvm.global_dtors"));
+    // Clang can lower a zero mutex initializer to an anonymous literal type.
+    // Classify it through its actual API and AR binding, never size alone.
+    std::set< llvm::GlobalVariable* > mutex_candidates;
+    for (auto it = ctx.bundle->function_begin();
+         it != ctx.bundle->function_end(); ++it) {
+      if (!(*it)->is_definition()) continue;
+      for (auto* block : *(*it)->body()) for (auto* statement : *block) {
+        spend();
+        auto* call = dyn_cast< ar::CallBase >(statement);
+        auto* source = call && call->has_frontend()
+            ? llvm::dyn_cast< llvm::CallInst >(call->frontend< llvm::Value >())
+            : nullptr;
+        if (source && source_call_binding(source, call) == call) {
+          const auto mutex = normal_mutex(ctx, call);
+          if (mutex.source) mutex_candidates.insert(mutex.source);
+        }
+      }
+    }
     for (auto& g : module->globals()) {
       if (g.isConstant()) {
         auto* text = g.hasInitializer() ? llvm::dyn_cast< llvm::ConstantDataArray >(g.getInitializer()) : nullptr;
@@ -1402,7 +1475,8 @@ class BucketListOwnership::Impl {
         literals.insert(&g); continue;
       }
       auto* type = llvm::dyn_cast< llvm::StructType >(g.getValueType());
-      if (type && !type->isOpaque() && extent(type) == 24) {
+      if (type && !type->isOpaque() && !type->isPacked() &&
+          mutex_candidates.count(&g) && extent(type) == mutex_bytes) {
         auxiliary_mutexes.insert(&g); continue;
       }
       need(!global && !g.isThreadLocal() && !g.isExternallyInitialized() &&
@@ -1411,7 +1485,7 @@ class BucketListOwnership::Impl {
     }
     need(global);
     auto* gtype = llvm::dyn_cast< llvm::StructType >(global->getValueType());
-    need(gtype && !gtype->isOpaque() && gtype->getNumElements() == 2);
+    need(gtype && !gtype->isOpaque() && !gtype->isPacked() && gtype->getNumElements() == 2);
     auto* heads = llvm::dyn_cast< llvm::ArrayType >(gtype->getElementType(0));
     auto* mutexes = llvm::dyn_cast< llvm::ArrayType >(gtype->getElementType(1));
     head_type =
@@ -1428,9 +1502,10 @@ class BucketListOwnership::Impl {
         mutexes ? llvm::dyn_cast< llvm::StructType >(mutexes->getElementType())
                 : nullptr;
     need(heads && mutexes && head_type && !head_type->isOpaque() &&
-         head_type->getNumElements() == 2 && mtype && !mtype->isOpaque() &&
+         !head_type->isPacked() && head_type->getNumElements() == 2 &&
+         mtype && !mtype->isOpaque() && !mtype->isPacked() &&
          mtype->hasName() && mtype->getName() == "union.pthread_mutex_t" &&
-         extent(mtype) == 24 && heads->getNumElements() &&
+         extent(mtype) == mutex_bytes && heads->getNumElements() &&
          heads->getNumElements() <= 64 &&
          heads->getNumElements() == mutexes->getNumElements());
     for (auto* type : head_type->elements()) {
@@ -1448,12 +1523,17 @@ class BucketListOwnership::Impl {
     head_begin = gl->getElementOffset(0);
     mutex_begin = gl->getElementOffset(1);
     mutex_stride = extent(mtype);
-    need(hl->getElementOffset(0) == 0 && prev_offset == 4 && link_extent == 8 &&
+    need(hl->getElementOffset(0) == 0 && prev_offset == word &&
+         link_extent == 2 * word &&
+         dl.getABITypeAlign(head_type).value() >= word &&
+         dl.getABITypeAlign(mtype).value() >= word &&
+         head_begin % word == 0 && head_stride % word == 0 &&
+         mutex_begin % word == 0 && mutex_stride % word == 0 &&
          head_begin + buckets * head_stride <= mutex_begin &&
          mutex_begin + buckets * mutex_stride <= extent(gtype) &&
          extent(gtype) <= UINT32_MAX &&
          (global->getAlign() ? global->getAlign()->value()
-                             : dl.getABITypeAlign(gtype).value()) >= 4);
+                             : dl.getABITypeAlign(gtype).value()) >= word);
     for (auto* type : module->getIdentifiedStructTypes()) {
       if (type->isOpaque() || type->getNumElements() != 2 ||
           !scalar(type->getElementType(0)) ||
@@ -1463,11 +1543,13 @@ class BucketListOwnership::Impl {
       need(!shared_graph || type == global_node);
       node_type = type;
       auto* layout = dl.getStructLayout(type);
-      need(layout->getElementOffset(0) == 0);
+      need(!type->isPacked() && layout->getElementOffset(0) == 0 &&
+           dl.getABITypeAlign(type).value() >= word);
       node_link = layout->getElementOffset(1);
       datum_width = bytes(type->getElementType(0));
       node_extent = extent(type);
       need(datum_width && datum_width <= 8 && datum_width <= node_link &&
+           node_link % word == 0 && node_extent % word == 0 &&
            node_link + link_extent <= node_extent && node_extent <= UINT32_MAX);
     }
     need(node_type);
@@ -1750,11 +1832,11 @@ class BucketListOwnership::Impl {
     std::reverse(cc.begin(), cc.end());
     for (const auto& e : found->second)
       if (e.root->getName() == r.thread_id && e.calls == cc &&
-          ((e.private_range && (r.width == 4 ||
+          ((e.private_range && (r.width == word ||
               (r.width == 0 && llvm::isa< llvm::CallBase >(i) &&
                native_handle_api(llvm::cast< llvm::CallBase >(i), true)))) ||
            e.width == r.width ||
-           (r.width == 0 && e.place == Place::Local && e.width == 4 &&
+           (r.width == 0 && e.place == Place::Local && e.width == word &&
             llvm::isa< llvm::CallBase >(i) &&
             native_handle_api(llvm::cast< llvm::CallBase >(i), true))) &&
           e.write == (r.kind == AccessKind::Write))
@@ -1792,7 +1874,7 @@ public:
   JsonDict info() const {
     return {{"bucket_list_contract", shared_graph ? "complete-typed-immutable-node-graph-v1"
                                                    : "complete-finite-closed-bucket-graph-v1"},
-            {"mutex_model", "GNU/Linux i386 default NORMAL; sealed ordinary runtime"},
+            {"mutex_model", "checked GNU/Linux x86 ILP32 or x86_64 LP64 default NORMAL; sealed ordinary runtime"},
             {"shared_payload_proof", shared_payload_closed
                 ? "all-concurrent-payloads-share-sealed-normal-mutex" : "not-established"},
             {"scope", shared_graph

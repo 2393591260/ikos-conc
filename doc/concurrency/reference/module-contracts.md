@@ -251,7 +251,7 @@ change with pointer width.
 | ReadonlyHeapReads | Checked GNU32/64 | Native malloc, handle and source/AR GEP bindings; signed i32 construction counts and actual-width data. Byte geometry uses 128-bit checks before native narrowing; complete immutable initialization and the two narrow consumers remain required. |
 | FirstPublication | Checked GNU32/64 | Root slots, padded self-link layout, exact birth extents and literal 24/40-byte graph mutex storage match native/AR bytes. |
 | SymbolicArena | Checked GNU32/64 | Reservation bounds remain signed i32; native allocation/GEP/handle widths and exact source/AR bindings are checked. Byte extents have a nonwrapping mathematical bound. |
-| BucketListOwnership | ILP32 only | Link slots, native mutex layout, address arithmetic and source/AR mapping remain restricted. |
+| BucketListOwnership | Checked GNU32/64 | Native link slots, padded node layout, normal mutex layout and actual handle storage match source/AR. Both MAY endpoint cross-products and all immutable shared graph alternatives are checked. Graph-relative offsets remain within the explicit small-graph bound. |
 | ThreadLifecycle | Checked GNU32/64 | Native opaque handles and private unread join output storage match source/AR width and alignment; scalar lifecycle state retains its declared widths. |
 | ScProtocol/protected protocol | Checked GNU32/64 | Native handle storage and normal mutex layout are checked separately from the actual-width scalar protocol state. |
 | SelfPublication | Checked GNU32/64 | Native output storage, array stride/index correspondence and normal mutex layout are checked; the exhaustive finite argument and publication proof is unchanged. |
@@ -262,11 +262,10 @@ change with pointer width.
 
 Unsupported certificate ABIs refuse the certificate and preserve the ordinary
 analysis/coverage obligations. They are not silently treated as verified SAFE,
-nor counted as positive LP64 support. The certificate ABI boundary test retains the bucket-list-ownership ILP32-only
-boundary, with a 32-bit hit and 64-bit refusal, plus GNU32/64 array-slices and
-runtime-stdio positive rows. Each migrated mechanism has module-owned native
-positive and premise-breaking tests; retire the duplicate matrix after the final
-bucket migration.
+nor counted as positive LP64 support. Each migrated mechanism has module-owned
+native positive and premise-breaking tests. The former generic ILP32-only
+refusal matrix is retired after its final migration; array slices, bucket graphs
+and runtime stdio keep their own dual-ABI controls.
 
 ThreadPrivateHeap keeps allocation privacy conditional on a live allocation:
 overflow or allocation failure does not create a private live object. Worker

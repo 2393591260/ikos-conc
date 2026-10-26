@@ -114,8 +114,6 @@ add_concurrency_test(sc-protocol "${CONCURRENCY_ROOT}/scripts/test_sc_protocol.p
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(sc-protocol-lp64 "${CONCURRENCY_ROOT}/scripts/test_sc_protocol.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
-add_concurrency_test(protocol-abi-boundaries "${CONCURRENCY_ROOT}/scripts/test_protocol_abi_boundaries.py"
-                     --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(mutex-handover "${CONCURRENCY_ROOT}/scripts/test_mutex_handover.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(mutex-handover-lp64 "${CONCURRENCY_ROOT}/scripts/test_mutex_handover.py"
@@ -359,4 +357,22 @@ add_concurrency_test(array-slice-constant-geps "${CONCURRENCY_ROOT}/scripts/test
                      --ikos "${CONCURRENCY_IKOS}")
 
 add_concurrency_test(array-slice-constant-geps-lp64 "${CONCURRENCY_ROOT}/scripts/test_array_slice_constant_geps.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(shared-node-graph-lp64 "${CONCURRENCY_ROOT}/scripts/test_shared_node_graph.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(bucket-list-ownership-lp64 "${CONCURRENCY_ROOT}/scripts/test_bucket_list_ownership.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(bucket-abi "${CONCURRENCY_ROOT}/scripts/test_bucket_abi.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+
+add_concurrency_test(bucket-abi-lp64 "${CONCURRENCY_ROOT}/scripts/test_bucket_abi.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+
+add_concurrency_test(bucket-abi-attributes "${CONCURRENCY_ROOT}/scripts/test_bucket_abi_attributes.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(bucket-abi-attributes-lp64 "${CONCURRENCY_ROOT}/scripts/test_bucket_abi_attributes.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)

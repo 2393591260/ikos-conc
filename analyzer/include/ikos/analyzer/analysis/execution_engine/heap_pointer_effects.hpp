@@ -333,11 +333,13 @@ inline bool zero_based_layout_projection(const llvm::Value* value,
                                          const llvm::DataLayout& layout,
                                          std::uint64_t* result = nullptr) {
   auto* cast = llvm::dyn_cast< llvm::Operator >(value);
+  const auto bits = layout.getPointerSizeInBits(0);
   if (!cast || cast->getOpcode() != llvm::Instruction::PtrToInt ||
-      !cast->getType()->isIntegerTy(32) || layout.getPointerSizeInBits(0) != 32)
+      (bits != 32 && bits != 64) || layout.getIndexSizeInBits(0) != bits ||
+      !cast->getType()->isIntegerTy(bits))
     return false;
   value = cast->getOperand(0);
-  llvm::APInt offset(32, 0);
+  llvm::APInt offset(bits, 0);
   for (unsigned depth = 0; depth < 32; ++depth) {
     if (!value->getType()->isPointerTy() ||
         value->getType()->getPointerAddressSpace() != 0) return false;
@@ -346,7 +348,7 @@ inline bool zero_based_layout_projection(const llvm::Value* value,
       return true;
     }
     if (auto* gep = llvm::dyn_cast< llvm::GEPOperator >(value)) {
-      llvm::APInt delta(32, 0);
+      llvm::APInt delta(bits, 0);
       if (!gep->accumulateConstantOffset(layout, delta)) return false;
       offset += delta;
       value = gep->getPointerOperand();
@@ -360,15 +362,19 @@ inline bool zero_based_layout_projection(const llvm::Value* value,
 inline bool zero_based_layout_projection(ar::UnaryOperation* cast) {
   if ((cast->op() != ar::UnaryOperation::PtrToUI &&
        cast->op() != ar::UnaryOperation::PtrToSI) || !cast->has_frontend() ||
-      !cast->result()->type()->is_integer() ||
-      ar::cast< ar::IntegerType >(cast->result()->type())->bit_width() != 32)
+      !cast->result()->type()->is_integer())
     return false;
   auto* source = llvm::dyn_cast< llvm::PtrToIntInst >(cast->frontend< llvm::Value >());
   std::uint64_t expected;
   if (!source || !zero_based_layout_projection(source, source->getModule()->getDataLayout(), &expected)) return false;
   auto* value = cast->operand();
-  core::ZNumber offset(0), modulus = core::ZNumber(1) << 32;
+  const auto bits = source->getModule()->getDataLayout().getPointerSizeInBits(0);
+  if (ar::cast< ar::IntegerType >(cast->result()->type())->bit_width() != bits ||
+      cast->bundle()->data_layout().pointers.bit_width != bits)
+    return false;
+  core::ZNumber offset(0), modulus = core::ZNumber(1) << bits;
   for (unsigned depth = 0; depth < 32; ++depth) {
+    if (!value->type()->is_pointer()) return false;
     if (isa< ar::NullConstant >(value)) {
       offset = ((offset % modulus) + modulus) % modulus;
       return offset == core::ZNumber(expected);
