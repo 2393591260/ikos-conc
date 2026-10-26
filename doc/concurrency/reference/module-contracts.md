@@ -247,7 +247,8 @@ change with pointer width.
 | Finite ArenaReservation | Checked GNU32/64 | Signed i32 reservation arithmetic; only checked sext to the native LP64 index. |
 | LockedCreation, closed pthread_once, one-shot PosixBarrier | Checked GNU32/64 subcontracts | No general descendant completion, callback effect or reusable-barrier claim. |
 | ThreadPrivateHeap, ArraySlices, ReadonlyHeapReads | ILP32 only | Native allocation/count/index/handle correspondence needs a coordinated migration. Internal BV64 arithmetic is not LP64 support. |
-| FirstPublication, BucketListOwnership, SymbolicArena | ILP32 only | Link slots, native mutex layout, address arithmetic and source/AR mapping remain restricted. |
+| FirstPublication | Checked GNU32/64 | Root slots, padded self-link layout, exact birth extents and literal 24/40-byte graph mutex storage match native/AR bytes. |
+| BucketListOwnership, SymbolicArena | ILP32 only | Link slots, native mutex layout, address arithmetic and source/AR mapping remain restricted. |
 | ThreadLifecycle, ScProtocol/protected protocol, SelfPublication | ILP32 only | Their independent state interpreters still depend on the native 32-bit frame. |
 | PthreadInitializationFrame, RuntimeStdioFrame | ILP32 only for these certificates | Narrower native initialization/scan models are independent. A pthread_t slot follows the native ABI. |
 | PosixSemaphore effects, binary ownership and finite BMC prefixes | GNU ILP32 and LP64 | Native sem_t is 16/32 bytes with 4/8 alignment; all byte effects and independent execution checks follow the same verified layout. int results and permit counts remain i32. |
@@ -255,9 +256,19 @@ change with pointer width.
 
 Unsupported certificate ABIs refuse the certificate and preserve the ordinary
 analysis/coverage obligations. They are not silently treated as verified SAFE,
-nor counted as positive LP64 support. The certificate ABI boundary test exercises all 11 remaining ILP32-only boundaries with
+nor counted as positive LP64 support. The certificate ABI boundary test exercises all 10 remaining ILP32-only boundaries with
 32-bit hits and 64-bit refusal; each migrated protocol has both positive and
 premise-breaking tests.
+
+FirstPublication uses native-size root cells and checked whole-array extents. Its
+single self-link graph layout is checked field by field against native padding,
+allocation and store sizes; packed or mismatched layouts decline this proof.
+The source call binding rejects special parameter ABIs, operand bundles and
+mismatched helper/library identities. Literal graph locks require full native
+zero storage and effective alignment. These checks retain both-endpoint birth
+ordering, all-alternative joins, escape/lifetime restrictions and the refusal
+to exclude ordinary Good/Good payload conflicts. They grant no pointer validity
+or additional successful pthread outcomes.
 
 Further migrations must update producers and every consumer together. For
 example, the semaphore migration updates the native object, numerical byte

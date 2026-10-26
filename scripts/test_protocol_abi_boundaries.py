@@ -29,7 +29,6 @@ def main():
         ('array-slices', 'array_slices_contract'),
         ('readonly-heap-reads', 'readonly_heap_reads_contract'),
         ('bucket-list-ownership', 'bucket_list_contract'),
-        ('first-publication', 'publication_contract'),
         ('symbolic-arena', 'arena_reservation_contract'),
         ('runtime-stdio', 'runtime_stdio_contract'),
         ('heap-pthread-initialization', None),

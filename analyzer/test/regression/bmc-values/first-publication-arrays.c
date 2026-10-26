@@ -12,7 +12,8 @@ typedef int payload;
 extern int __VERIFIER_nondet_int(void);
 struct cell { payload datum; struct cell *next; };
 #if CASE == 9
-struct cell *roots[6];
+struct cell *roots[sizeof(pthread_mutex_t) / sizeof(void *)];
+_Static_assert(sizeof roots == sizeof(pthread_mutex_t), "overlap control extent");
 #define GRAPH ((pthread_mutex_t *)roots)
 #else
 struct cell *roots[5];

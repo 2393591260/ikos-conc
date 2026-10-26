@@ -96,6 +96,8 @@ add_concurrency_test(constant-thread-completion "${CONCURRENCY_ROOT}/scripts/tes
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(first-publication "${CONCURRENCY_ROOT}/scripts/test_first_publication.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(first-publication-lp64 "${CONCURRENCY_ROOT}/scripts/test_first_publication.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(pthread-key-effects "${CONCURRENCY_ROOT}/scripts/test_pthread_key_effects.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(tls-destructor-effects "${CONCURRENCY_ROOT}/scripts/test_tls_destructor_effects.py"

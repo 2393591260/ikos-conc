@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <deque>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
+#include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/analysis/execution_engine/heap_initialization_prefix.hpp>
 #include <ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
@@ -78,33 +79,10 @@ struct Certificate {
 };
 
 bool direct_abi(ar::CallBase* call, ar::Function* target) {
-  auto* source =
-      call->has_frontend()
-          ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >())
-          : nullptr;
-  auto* original = source ? llvm::dyn_cast< llvm::Function >(
-                                source->getCalledOperand()->stripPointerCasts())
-                          : nullptr;
-  if (!target || !target->has_frontend() || !original ||
-      target->type()->is_var_arg() || original->isVarArg() ||
-      target->frontend< llvm::Value >() != original ||
-      source->getFunctionType() != original->getFunctionType() ||
-      source->getCallingConv() != llvm::CallingConv::C ||
-      original->getCallingConv() != llvm::CallingConv::C ||
-      call->num_arguments() != target->num_parameters() ||
-      source->arg_size() != call->num_arguments())
-    return false;
-  for (unsigned i = 0; i < call->num_arguments(); ++i) {
-    if (call->argument(i)->type() != target->type()->param_type(i))
-      return false;
-    for (auto attr : {llvm::Attribute::ByVal,
-                      llvm::Attribute::StructRet,
-                      llvm::Attribute::InAlloca,
-                      llvm::Attribute::Preallocated})
-      if (source->paramHasAttr(i, attr) || original->hasParamAttribute(i, attr))
-        return false;
-  }
-  return true;
+  auto* source = call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+  return target && target->has_frontend() && !target->type()->is_var_arg() &&
+         source && source_call_binding(source, call) == call;
 }
 
 bool mutex_api(ar::CallBase* call, const char* name) {
@@ -226,6 +204,7 @@ class FirstPublication::Impl {
   Context& ctx;
   const std::vector< AccessRecord >& accesses;
   ar::StructType* layout = nullptr;
+  PthreadObjectLayout abi;
   ZNumber extent{0}, link{0}, pointer_width{0};
   std::set< ar::GlobalVariable* > roots, mutexes, root_arrays, effect_arrays;
   ar::GlobalVariable* lock = nullptr;
@@ -409,6 +388,18 @@ bool FirstPublication::Impl::closed_function_uses(ar::Function* f) {
 }
 
 bool FirstPublication::Impl::inventory() {
+  if (ctx.opts.entry_points.size() != 1 ||
+      ctx.opts.entry_points.front()->name() != "main" ||
+      ctx.opts.entry_points.front()->num_parameters() != 0 ||
+      !ctx.opts.entry_points.front()->has_frontend())
+    return fail("entry scope");
+  auto* main = ctx.opts.entry_points.front();
+  auto* module = main->frontend< llvm::Function >()->getParent();
+  abi = pthread_object_layout(ctx.bundle, module);
+  if (!abi || module->getDataLayout().getIndexSizeInBits(0) != abi.word * 8)
+    return fail("native graph ABI");
+  pointer_width = ZNumber(abi.word);
+  const ZNumber address_limit = ZNumber(1) << (abi.word * 8);
   // Structural layout: one self link and scalar payload. No source identifiers.
   for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end();
        ++it) {
@@ -445,25 +436,67 @@ bool FirstPublication::Impl::inventory() {
         source->isExternallyInitialized() || source->getAddressSpace() != 0 ||
         source->isConstant())
       return fail("root initialization");
-    if (array) {
-      auto* original =
-          llvm::dyn_cast< llvm::ArrayType >(source->getValueType());
-      if (!original || array->num_elements() <= 0 ||
-          array->num_elements() != ZNumber(original->getNumElements()) ||
-          ctx.bundle->data_layout().alloc_size_in_bytes(array) !=
-              4 * array->num_elements() ||
-          source->getParent()->getDataLayout().getTypeAllocSize(original) !=
-              4 * original->getNumElements() ||
-          4 * array->num_elements() >= (ZNumber(1) << 32))
-        return fail("root array layout");
-      root_arrays.insert(global);
+    const auto& native = module->getDataLayout();
+    const auto& ar_layout = ctx.bundle->data_layout();
+    auto* native_array = llvm::dyn_cast< llvm::ArrayType >(source->getValueType());
+    auto* native_pointer = llvm::dyn_cast< llvm::PointerType >(
+        native_array ? native_array->getElementType() : source->getValueType());
+    auto* native_graph = native_pointer
+        ? llvm::dyn_cast< llvm::StructType >(native_pointer->getPointerElementType())
+        : nullptr;
+    const auto alignment = source->getAlign() ? source->getAlign()->value()
+        : native.getABITypeAlign(source->getValueType()).value();
+    if (source->getParent() != module || !native_pointer ||
+        native_pointer->getAddressSpace() != 0 || !native_graph ||
+        native_graph->isOpaque() || !native_graph->isSized() ||
+        native_graph->isPacked() || alignment < abi.word ||
+        native_graph->getNumElements() != object->layout().size() ||
+        ZNumber(native.getTypeAllocSize(native_graph).getFixedValue()) != extent ||
+        ar_layout.store_size_in_bytes(object) !=
+            ZNumber(native.getTypeStoreSize(native_graph).getFixedValue()))
+      return fail("native graph layout");
+    const auto* native_fields = native.getStructLayout(native_graph);
+    unsigned index = 0;
+    for (const auto& member : object->layout()) {
+      auto* field_type = native_graph->getElementType(index);
+      if (member.offset != ZNumber(native_fields->getElementOffset(index)) ||
+          ar_layout.alloc_size_in_bytes(member.type) !=
+              ZNumber(native.getTypeAllocSize(field_type).getFixedValue()) ||
+          ar_layout.store_size_in_bytes(member.type) !=
+              ZNumber(native.getTypeStoreSize(field_type).getFixedValue()))
+        return fail("native graph field layout");
+      if (member.type->is_pointer()) {
+        auto* pointer = llvm::dyn_cast< llvm::PointerType >(field_type);
+        if (!pointer || pointer->getAddressSpace() != 0 ||
+            pointer->getPointerElementType() != native_graph)
+          return fail("native graph link");
+      } else if (member.type->is_integer()) {
+        if (!field_type->isIntegerTy() ||
+            field_type->getIntegerBitWidth() !=
+                cast< ar::IntegerType >(member.type)->bit_width())
+          return fail("native graph scalar");
+      } else if (!field_type->isFloatingPointTy()) {
+        return fail("native graph scalar");
+      }
+      ++index;
     }
+    const ZNumber cells = array ? array->num_elements() : ZNumber(1);
+    const ZNumber bytes = pointer_width * cells;
+    if (cells <= 0 || bytes >= address_limit ||
+        (array && (!native_array ||
+            cells != ZNumber(native_array->getNumElements()))) ||
+        (!array && native_array) ||
+        ar_layout.alloc_size_in_bytes(global->type()->pointee()) != bytes ||
+        ar_layout.store_size_in_bytes(global->type()->pointee()) != bytes ||
+        ZNumber(native.getTypeAllocSize(source->getValueType()).getFixedValue()) != bytes ||
+        ZNumber(native.getTypeStoreSize(source->getValueType()).getFixedValue()) != bytes)
+      return fail("root array layout");
+    if (array) root_arrays.insert(global);
     roots.insert(global);
   }
   if (!layout)
     return fail("no scalar graph roots");
-  pointer_width = ctx.bundle->data_layout().pointers.bit_width / 8;
-  if (pointer_width != 4 || extent <= 0 || link < 0 ||
+  if (extent <= 0 || extent >= address_limit || link < 0 ||
       link + pointer_width > extent || ctx.opts.entry_points.size() != 1 ||
       ctx.opts.entry_points.front()->name() != "main" ||
       ctx.opts.entry_points.front()->num_parameters() != 0 ||
@@ -474,7 +507,6 @@ bool FirstPublication::Impl::inventory() {
       ctx.bundle->global_or_null("ar.global_ctors") ||
       ctx.bundle->global_or_null("ar.global_dtors"))
     return fail("global closure");
-  auto* main = ctx.opts.entry_points.front();
   if (!main->has_frontend() ||
       !main->frontend< llvm::Function >()->use_empty() ||
       !mutex_effect_pointer_representations_closed(
@@ -512,9 +544,13 @@ bool FirstPublication::Impl::inventory() {
             global->getAlign()
                 ? global->getAlign()->value()
                 : native.getABITypeAlign(global->getValueType()).value();
-        if (native.getTypeAllocSize(declared) != 24 ||
-            native.getTypeAllocSize(global->getValueType()) != 24 ||
-            alignment < 4)
+        if (global->getParent() != module ||
+            native.getTypeAllocSize(declared) != abi.mutex ||
+            native.getTypeStoreSize(declared) != abi.mutex ||
+            native.getABITypeAlign(declared).value() != abi.word ||
+            native.getTypeAllocSize(global->getValueType()) != abi.mutex ||
+            native.getTypeStoreSize(global->getValueType()) != abi.mutex ||
+            alignment < abi.word)
           continue;
         for (auto it = ctx.bundle->global_begin();
              it != ctx.bundle->global_end();
@@ -525,7 +561,9 @@ bool FirstPublication::Impl::inventory() {
               object->is_definition() && !object->is_thread_local() &&
               exact_handle_slot(call->argument(0), object) &&
               ctx.bundle->data_layout().alloc_size_in_bytes(
-                  object->type()->pointee()) == 24) {
+                  object->type()->pointee()) == abi.mutex &&
+              ctx.bundle->data_layout().store_size_in_bytes(
+                  object->type()->pointee()) == abi.mutex) {
             if (roots.count(object))
               return fail("overlapping graph and mutex storage");
             mutexes.insert(object);
@@ -554,6 +592,13 @@ bool FirstPublication::Impl::inventory() {
         auto* target = native_handle_callee(call);
         if (!target)
           return fail("indirect call");
+        if (target->intrinsic_id() != ar::Intrinsic::IkosNonDet) {
+          auto* native_call = call->has_frontend()
+              ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >())
+              : nullptr;
+          if (!native_call || source_call_binding(native_call, call) != call)
+            return fail("native call binding");
+        }
         if (target->is_definition()) {
           if (!direct_abi(call, target))
             return fail("helper ABI");
@@ -564,7 +609,9 @@ bool FirstPublication::Impl::inventory() {
                             ? dyn_cast< ar::IntegerConstant >(call->argument(0))
                             : nullptr;
           Birth birth;
+          auto* native_call = call->frontend< llvm::CallBase >();
           if (!count || count->value().to_z_number() != extent ||
+              !source_integer_binding(count, native_call->getArgOperand(0)) ||
               !prove_heap_initialization_prefix(
                   call, link, ctx, &birth.description))
             return fail("incomplete birth prefix");
