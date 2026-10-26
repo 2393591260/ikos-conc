@@ -369,3 +369,18 @@ successful-create/exact-provider-join language, including provider writes,
 completion, main guards and normal mutex ordering. It imports no production
 candidate selector, unroller, encoder or solver. Provider plus heap remains a
 declared unsupported combination; UNKNOWN does not count as its delivery.
+
+### Creator release execution controls
+
+`test_bmc_creator_release.py --bits 32` and `--bits 64` check real post-create
+main releases, branch values, distinct create occurrences, and provider
+completion/read-from. Independent replay rejects omitted or wrong-object
+releases, releases after a blocked acquisition, borrowed create generations,
+and forged values or provider completion. CLI checks bind evidence to the
+actual source bytes and reject damaged hashes. These are AR and source-binding
+checks; source witness projection and external source validation are separate.
+
+Negative controls retain common-lock ordering, impossible guards, missing or
+wrong releases and instance/coverage limits. `--ablate` disables only the new
+release searches and records their support contribution, without claiming a
+same-semantics performance comparison.

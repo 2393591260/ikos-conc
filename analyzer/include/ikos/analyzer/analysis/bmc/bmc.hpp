@@ -6,6 +6,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstdlib>
 #include <set>
 #include <string>
 #include <vector>
@@ -806,13 +807,33 @@ inline Result confirm_race_later(ar::Function* funcA, ar::Statement* stmtA,
 // data reads, creates, locks and exact joins share the solver timeline with a
 // real finite provider and the two target instances. This is a witness search,
 // not an activation summary, and no failure grants a SAFE permission.
+enum class ProviderEndpoint { Create, CreatorRelease };
+
+inline bool creator_release_search_enabled() {
+  return std::getenv("IKOS_BMC_DISABLE_CREATOR_RELEASE") == nullptr;
+}
+
+inline bool creator_release_endpoint(ar::Statement* statement) {
+  auto* call = core::dyn_cast< ar::CallBase >(statement);
+  auto* callee = call != nullptr ? exact_callee(call) : nullptr;
+  BmcEvent event;
+  return callee != nullptr && callee->is_declaration() &&
+         (callee->name() == "pthread_mutex_unlock" ||
+          callee->intrinsic_id() == ar::Intrinsic::PthreadMutexUnlock) &&
+         call->num_arguments() == 1 &&
+         classify_event(statement, event) && event.kind == EvKind::Unlock;
+}
+
 inline Result confirm_race_provider(ar::Function* funcA, ar::Statement* stmtA,
     std::uint64_t widthA, ar::Function* funcB, ar::Statement* stmtB,
     std::uint64_t widthB, Diagnostics* diagnostics, SearchBudget& budget,
     std::vector< ar::Statement* >* creations, const CandidateFacts* facts,
     AccessTargets access_targets = {}, AccessSearchProgress* progress = nullptr,
-    AccessSearchProgress* completion_progress = nullptr) {
+    AccessSearchProgress* completion_progress = nullptr,
+    ProviderEndpoint endpoint_mode = ProviderEndpoint::Create) {
   Result outcome(Status::NotSearched);
+  const bool release = endpoint_mode == ProviderEndpoint::CreatorRelease;
+  if (release && !creator_release_search_enabled()) return outcome;
   if (funcA->name() == "main" || funcB->name() == "main") return outcome;
   auto* main = funcA->bundle()->function_or_null("main");
   if (main == nullptr || !main->is_definition() || access_targets.a == 0 ||
@@ -872,13 +893,15 @@ inline Result confirm_race_provider(ar::Function* funcA, ar::Statement* stmtA,
   std::vector< ar::Statement* > endpoints;
   for (auto* block : *main->body()) for (auto* statement : *block) {
     BmcEvent event;
-    if (classify_event(statement, event) && event.kind == EvKind::Create &&
-        (event.thread == reinterpret_cast< std::uint64_t >(funcA) ||
-         event.thread == reinterpret_cast< std::uint64_t >(funcB))) endpoints.push_back(statement);
+    if (release ? creator_release_endpoint(statement) :
+        (classify_event(statement, event) && event.kind == EvKind::Create &&
+         (event.thread == reinterpret_cast< std::uint64_t >(funcA) ||
+          event.thread == reinterpret_cast< std::uint64_t >(funcB)))) endpoints.push_back(statement);
   }
   std::map< ar::Function*, UnrollResult > completed_providers;
-  // With at most three actual creates, a retained endpoint can occur at most
-  // three times. This counts creation occurrences, independently of accesses.
+  // Create mode preserves the original occurrence order. Release mode searches
+  // only its first three actual occurrences; this is a search limit, not a
+  // claim that the create bound limits how often a mutex may be released.
   for (auto* endpoint : endpoints) for (unsigned occurrence = 1; occurrence <= 3; ++occurrence) {
     if (!spend()) return outcome;
     auto mains = unroll_to(main, endpoint, occurrence, bound, false, nullptr,
@@ -896,6 +919,10 @@ inline Result confirm_race_provider(ar::Function* funcA, ar::Statement* stmtA,
         record(diagnostics, "provider_instance_bound"); continue;
       }
       for (auto ca : created) for (auto cb : created) {
+        if (release && (main_prefix.empty() ||
+                        main_prefix.back().stmt != endpoint ||
+                        main_prefix.back().kind != EvKind::Unlock ||
+                        ca >= main_prefix.size() - 1 || cb >= main_prefix.size() - 1)) continue;
         if (ca == cb || main_prefix[ca].thread != reinterpret_cast< std::uint64_t >(funcA) ||
             main_prefix[cb].thread != reinterpret_cast< std::uint64_t >(funcB)) continue;
         StartupProviderPlan plan;
@@ -939,6 +966,7 @@ inline Result confirm_race_provider(ar::Function* funcA, ar::Statement* stmtA,
             if (!spend()) return;
             if (diagnostics != nullptr) ++diagnostics->path_pairs;
             record(diagnostics, "provider_timeline_query");
+            if (release) record(diagnostics, "creator_release_timeline_query");
             outcome.merge(check_race(a, b, funcA, funcB, diagnostics, facts, nullptr,
                 &outcome.metrics, nullptr, &budget.deadline, budget.solver_timeout_ms, &plan));
             if (outcome.confirmed()) return;
@@ -976,6 +1004,7 @@ inline Result confirm_race_provider(ar::Function* funcA, ar::Statement* stmtA,
         }
         if (outcome.confirmed()) {
           record(diagnostics, "provider_timeline_confirmed");
+          if (release) record(diagnostics, "creator_release_timeline_confirmed");
           if (creations != nullptr) {
             creations->clear();
             for (auto index : created) creations->push_back(plan.main[index].stmt);
@@ -999,12 +1028,15 @@ inline Result confirm_race_provider_later(ar::Function* funcA, ar::Statement* st
     std::uint64_t widthA, ar::Function* funcB, ar::Statement* stmtB,
     std::uint64_t widthB, Diagnostics* diagnostics, SearchBudget& budget,
     std::vector< ar::Statement* >* creations, const CandidateFacts* facts,
-    unsigned requested_frontier = 0, LaterAccessState* saved_state = nullptr) {
+    unsigned requested_frontier = 0, LaterAccessState* saved_state = nullptr,
+    ProviderEndpoint endpoint_mode = ProviderEndpoint::Create) {
+  if (endpoint_mode == ProviderEndpoint::CreatorRelease &&
+      !creator_release_search_enabled()) return Result(Status::NotSearched);
   auto confirm_exact = [&](AccessTargets targets, AccessSearchProgress& ordinary,
                            AccessSearchProgress& completed) {
     record(diagnostics, "provider_later_access_query");
     return confirm_race_provider(funcA, stmtA, widthA, funcB, stmtB, widthB,
-        diagnostics, budget, creations, facts, targets, &ordinary, &completed);
+        diagnostics, budget, creations, facts, targets, &ordinary, &completed, endpoint_mode);
   };
   auto outcome = search_later_access_frontiers(diagnostics, budget, confirm_exact,
                                               requested_frontier, saved_state);

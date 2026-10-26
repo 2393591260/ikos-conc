@@ -565,3 +565,8 @@ add_concurrency_test(architecture-combinations-lp64 "${CONCURRENCY_ROOT}/scripts
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(combination-oracle "${CONCURRENCY_ROOT}/scripts/test_bmc_combination_oracle.py"
 )
+
+add_concurrency_test(bmc-creator-release "${CONCURRENCY_ROOT}/scripts/test_bmc_creator_release.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+add_concurrency_test(bmc-creator-release-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_creator_release.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)

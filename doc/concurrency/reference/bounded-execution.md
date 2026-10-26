@@ -15,8 +15,8 @@ own recorded source and execution-checker versions.
 ### Search sequence and shared budget
 
 The scheduler in [data_race_search.cpp](../../../analyzer/src/checker/data_race_search.cpp)
-uses ten ordered passes. Later passes visit only deferred, applicable groups;
-they are not ten complete analyses or ten independent time allowances.
+uses twelve ordered passes. Later passes visit only deferred, applicable groups;
+they are not twelve complete analyses or twelve independent time allowances.
 
 | Pass | Work considered |
 | --- | --- |
@@ -30,6 +30,8 @@ they are not ten complete analyses or ten independent time allowances.
 | 7 | Exact later access ordinals across the supported retained execution profiles. |
 | 8 | Timed main with zero or one completed provider and two selected workers. |
 | 9 | Exact later access ordinals in the timed main/provider profile. |
+| 10 | Timed main/provider prefixes ending at an actual creator mutex release. |
+| 11 | Later target access ordinals in those creator-release prefixes. |
 
 All passes share the file deadline. Candidate/query counters and structural
 limits are separate: the existing early retries reset their counters, while the
@@ -271,3 +273,20 @@ argument/result types. Actual generation, joinability and completed child
 execution remain separate requirements. Rehashing an inconsistent program
 snapshot cannot bypass these API checks. This is selected AR validation, not a
 proof of source-to-AR translation or a source witness.
+
+### Creator release endpoints
+
+The timed main/provider profile can end at an actual normal-mutex Unlock in
+main after both selected creates. This retains the real release, its preceding
+guards and memory effects in the common execution timeline; it does not infer a
+release from a lock summary or from a worker's blocked acquisition. A provider,
+when present, still executes through its actual Return before a successful join.
+The existing dynamic create, handle, read-from and mutex-ownership checks apply.
+
+The release searches run after the earlier ten passes with the same remaining
+deadline and counters. At most the first three occurrences of each eligible
+main-body release are considered. Helper-only releases and unsupported numeric
+pointer coverage remain outside this extension. Disabling the added searches
+with `IKOS_BMC_DISABLE_CREATOR_RELEASE=1` preserves the earlier searches and
+returns an inconclusive result when they cannot find a supported execution.
+Neither unsuccessful search nor an AR-accepted execution grants SAFE.
