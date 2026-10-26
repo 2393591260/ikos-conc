@@ -90,34 +90,44 @@ void ThreadModularAnalysis::run() {
   ar::Bundle* bundle = _ctx.bundle;
   // Driver options and native/AR input are now fixed. Each preflight Context
   // configures its own certificate, before any scan can publish MAY escape.
+  Timer preparation;
+  preparation.start();
   configure_runtime_stdio_frame(_ctx);
   configure_pthread_initialization_frame(_ctx);
   configure_native_thread_handles(_ctx);
   configure_posix_semaphore(_ctx);
   configure_posix_barrier(_ctx);
+  preparation.stop();
+  _ctx.output_db->times.insert("ikos-analyzer.prepare.library-frames",
+                               preparation.elapsed().count());
+  preparation.start();
+  const bool preflight_enabled = _ctx.opts.use_checks &&
+      std::find(_ctx.opts.analyses.begin(), _ctx.opts.analyses.end(),
+                CheckerName::DataRace) != _ctx.opts.analyses.end();
+  std::string preflight_status = preflight_enabled ? "missing-premise" : "not-enabled";
+  std::size_t requested = 0, established = 0, published = 0;
 
   // Certify only opaque mutex effects in an independent, conservative run.
   // Its memory, coverage flags, threads and caches never enter the real run.
-  if (_ctx.opts.use_checks && _ctx.opts.entry_points.size() == 1 &&
+  if (preflight_enabled && _ctx.opts.entry_points.size() == 1 &&
       _ctx.opts.entry_points.front()->name() == "main" &&
       _ctx.opts.entry_points.front()->num_parameters() == 0 &&
       _ctx.opts.no_init_globals.empty() &&
       !bundle->global_or_null("ar.global_ctors") &&
-      !bundle->global_or_null("ar.global_dtors") &&
-      std::find(_ctx.opts.analyses.begin(), _ctx.opts.analyses.end(),
-                CheckerName::DataRace) != _ctx.opts.analyses.end()) {
+      !bundle->global_or_null("ar.global_dtors")) {
+    preflight_status = "not-applicable";
     std::map< ar::CallBase*, GlobalArraySubobject > queries;
     std::map< ar::Statement*, GlobalArraySubobject > bounds;
     std::vector< GlobalArraySubobject > nested;
     for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it)
       for (const auto& object : global_array_subobjects(*it))
         if (object.nested() && object.type->element_type()->is_pointer()) nested.push_back(object);
-    bool closed = true, constructor = false;
+    bool closed = true, constructor = false, scan_exhausted = false;
     unsigned budget = 8192;
     for (auto it = bundle->function_begin(); it != bundle->function_end(); ++it) {
       if (!(*it)->is_definition()) continue;
       for (auto* block : *(*it)->body()) for (auto* statement : *block) {
-        if (budget == 0) { closed = false; break; }
+        if (budget == 0) { closed = false; scan_exhausted = true; break; }
         --budget;
         if (auto* cast = dyn_cast< ar::UnaryOperation >(statement)) {
           if (cast->op() == ar::UnaryOperation::UIToPtr ||
@@ -159,6 +169,11 @@ void ThreadModularAnalysis::run() {
       auto* source = _ctx.opts.entry_points.front()->frontend< llvm::Function >();
       closed = mutex_effect_pointer_representations_closed(*source->getParent());
     }
+    requested = queries.size() + bounds.size() + _ctx.native_handle_accesses.size();
+    if (scan_exhausted)
+      preflight_status = "internal-bound";
+    else if (requested != 0)
+      preflight_status = "missing-premise";
     if (closed && ((constructor && !queries.empty()) || native_queries)) {
       auto options = _ctx.opts;
       options.use_checks = false;
@@ -176,22 +191,32 @@ void ThreadModularAnalysis::run() {
       preflight.mutex_effect_queries = queries;
       preflight.subarray_bounds_queries = bounds;
       ThreadModularAnalysis(preflight, false).run();
-      bool complete = !preflight.concurrent_env.is_dirty() &&
+      const bool stable = !preflight.concurrent_env.is_dirty();
+      preflight_status = stable ? "missing-premise" : "invalidated";
+      bool complete = stable &&
                       preflight.concurrent_env.unmodeled_thread_creations().empty();
       // Private unread handle slots cannot affect range decisions. Unknown
       // writes can change shared guards, so they must not certify ranges.
       for (const auto& effect : preflight.concurrent_env.unmodeled_effects())
         complete &= effect.second == "synthetic pthread handle representation not modeled";
       for (const auto& query : queries) {
-        complete &= Context::range_premise(race_rules::Id::RangeMutexEffects, preflight.mutex_effect_ranges, query.first);
+        const bool proved = Context::range_premise(race_rules::Id::RangeMutexEffects, preflight.mutex_effect_ranges, query.first);
+        established += proved;
+        complete &= proved;
       }
       for (const auto& query : bounds) {
-        complete &= Context::range_premise(race_rules::Id::RangeSubarray, preflight.subarray_ranges, query.first);
+        const bool proved = Context::range_premise(race_rules::Id::RangeSubarray, preflight.subarray_ranges, query.first);
+        established += proved;
+        complete &= proved;
       }
       for (const auto& query : _ctx.native_handle_accesses) {
-        complete &= Context::range_premise(race_rules::Id::RangeNativeHandles, preflight.native_handle_ranges, query.first);
+        const bool proved = Context::range_premise(race_rules::Id::RangeNativeHandles, preflight.native_handle_ranges, query.first);
+        established += proved;
+        complete &= proved;
       }
       if (complete) {
+        preflight_status = "proved";
+        published = requested;
         for (const auto& query : _ctx.native_handle_accesses)
           if (auto* call = dyn_cast< ar::CallBase >(query.first))
             _ctx._native_handle_effect_certificates.insert(call);
@@ -206,6 +231,17 @@ void ThreadModularAnalysis::run() {
       }
     }
   }
+
+  preparation.stop();
+  _ctx.output_db->times.insert("ikos-analyzer.prepare.range-preflight",
+                               preparation.elapsed().count());
+  if (log::is_enabled_for(LogLevel::Debug))
+    log::debug("Cooperation preflight: status=" + preflight_status +
+        " scope=pre-publication-certificate role=" +
+        (_ctx.memory_independent_ranges ? "memory-independent" : "ordinary") +
+        " requested=" + std::to_string(requested) +
+        " established=" + std::to_string(established) +
+        " published=" + std::to_string(published));
 
   // Create checkers
   std::vector< std::unique_ptr< Checker > > checkers;
@@ -469,7 +505,10 @@ void ThreadModularAnalysis::run() {
         _ctx.concurrent_env.initialize_mutex_value(
             core::IndexableTraits< MemoryLocation* >::index(location), initial, cell.offset);
       }
-      if (std::getenv("IKOS_DISABLE_MUTEX_FIELD_EQUALITIES")) continue;
+      if (std::getenv("IKOS_DISABLE_MUTEX_FIELD_EQUALITIES")) {
+        log::debug("Cooperation equality: status=not-enabled reason=channel-disabled");
+        continue;
+      }
       // Native memory does not extract subcell values from aggregate_zero.
       // One complete typed zero initializer is also a direct equality proof.
       unsigned blocks = 0, statements = 0;

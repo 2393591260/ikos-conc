@@ -1928,14 +1928,17 @@ public:
     return result;
   }
 
-  void join_mutex_equality_release(std::uint64_t addr, std::uint64_t left,
+  bool join_mutex_equality_release(std::uint64_t addr, std::uint64_t left,
                                    std::uint64_t right, std::uint64_t width,
                                    std::uint64_t released, bool equal) {
-    if (equal) return;
+    if (equal) return false;
     std::lock_guard< std::mutex > lock(_mutex);
     auto it = _mutex_unequal_releases.find({addr, left, right, width});
-    if (it != _mutex_unequal_releases.end() && it->second.insert(released).second)
+    if (it != _mutex_unequal_releases.end() && it->second.insert(released).second) {
       _is_dirty = true;
+      return true;
+    }
+    return false;
   }
 
   bool mutex_equality_available(std::uint64_t addr, std::uint64_t left,

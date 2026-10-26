@@ -788,6 +788,20 @@ public:
     }
     return true;
   }
+  void diagnose() const {
+    if (!log::is_enabled_for(LogLevel::Debug)) return;
+    const char* status = !roots ? "not-applicable" :
+        valid ? "proved" :
+        reason == "finite owner analysis budget" ? "internal-bound" : "missing-premise";
+    log::debug(std::string("Cooperation owner: status=") + status +
+        " scope=family-transfer-completion mode=" +
+        (direct_heads ? "direct-heads" : "indexed-live-heap") +
+        " reason=" + reason +
+        " snapshots=" + std::to_string(snapshots.size()) +
+        " certificate_records=" + std::to_string(certificates.size()) +
+        " remaining=" + std::to_string(
+            reason == "finite owner analysis budget" ? 0 : remaining));
+  }
   JsonDict info() const {
     return {{"ownership_contract", direct_heads
                                       ? "indexed-head-publication-owner-v1"
@@ -1179,6 +1193,7 @@ void RegionOwnership::observe(ar::Statement* stmt,
 }
 void RegionOwnership::run() {
   _impl->run();
+  _impl->diagnose();
 }
 bool RegionOwnership::excludes(ar::Statement* a,
                                CallContext* ac,

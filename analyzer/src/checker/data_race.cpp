@@ -472,7 +472,11 @@ inline bool region_of(ar::Value* v, Context& ctx, CallContext* cc,
 } // end anonymous namespace
 
 DataRaceChecker::DataRaceChecker(Context& ctx) : Checker(ctx) {
-  this->_ownership.reset(new RegionOwnership(ctx));
+  {
+    ScopeTimerDatabase timer(ctx.output_db->times,
+                             "ikos-analyzer.prepare.region-ownership-inventory");
+    this->_ownership.reset(new RegionOwnership(ctx));
+  }
   const char* configured = std::getenv("IKOS_AI_PAIR_EXCLUSION");
   const std::string mode = configured ? configured : "";
   this->_pair_exclusion_enabled = mode == "1" || mode == "native";
@@ -498,9 +502,22 @@ void DataRaceChecker::finalize() {
 void DataRaceChecker::finalize_checks() {
   ScopeTimerDatabase timer(this->_ctx.output_db->times,
                            "ikos-analyzer.race.finalize");
-  this->_ownership->run();
+  {
+    ScopeTimerDatabase owner_timer(this->_ctx.output_db->times,
+                                   "ikos-analyzer.prepare.region-ownership");
+    this->_ownership->run();
+  }
+  Timer preparation;
+  preparation.start();
   ReadonlyHeapReads readonly_heap_reads(this->_ctx);
+  preparation.stop();
+  this->_ctx.output_db->times.insert("ikos-analyzer.prepare.readonly-heap",
+                                     preparation.elapsed().count());
+  preparation.start();
   BucketListOwnership bucket_list_ownership(this->_ctx, this->_accesses);
+  preparation.stop();
+  this->_ctx.output_db->times.insert("ikos-analyzer.prepare.bucket-ownership",
+                                     preparation.elapsed().count());
   this->check_effect_coverage(readonly_heap_reads, bucket_list_ownership);
   this->refresh_coverage();
   if (this->_coverage.state != RaceCoverageSummary::State::Checked) {

@@ -264,3 +264,30 @@ example, the semaphore migration updates the native object, numerical byte
 havoc, finite encoding and independent replay together. Pointer-table offsets and pthread_t VLA strides cannot be
 ported by merely changing a compiler flag. Independent interpreters retain
 their own contracts until an equivalence argument justifies replacement.
+
+## Cooperation diagnostics and preparation cost
+
+The existing times table records library-frame and range-preflight preparation,
+RegionOwnership inventory and transfer, and each final auxiliary constructor.
+Constructor order and pair-rule order are unchanged. These are nested wall-time
+scopes: preflight includes its independent AI run, and finalization includes
+its preparation. Do not sum parent and child entries as independent costs;
+multiple entries can come from independent and ordinary contexts.
+
+Debug diagnostics observe results already computed by the mechanisms. Preflight
+distinguishes disabled, no subject, missing premises, withheld unstable snapshots,
+finite scan limits and published certificates. Owner reports completion of its
+family transfer and stored certificate records, not the number of excluded
+pairs; existing pair observations record actual consumption. Equality import
+eligibility and import attempts do not establish strict state strengthening.
+An unproved release can newly invalidate a candidate for one mutex and request
+shared recomputation; the diagnostic does not claim that candidate was previously
+imported or used. An unproved equality is not a proof of inequality.
+
+Pair observations retain at most 4096 detailed records per finalization. If the
+limit is reached, a summary reports emitted and skipped records and marks the
+observation incomplete. All semantic pair decisions and rule counts still run.
+Enable debug logging and optional pair observations only when needed. Their
+verdict, rule, query-count and resource effects require same-binary off/on
+calibration, including budget-sensitive paths. These observations do not grant
+coverage, pointer-validity or counterexample-confirmation permission.

@@ -231,18 +231,32 @@ bool protected_cells_equal(D observation, C& ctx, ar::GlobalVariable* global,
 template < typename E >
 void refresh_protected_equalities(E& eng, std::uint64_t acquired) {
   auto& env = eng.ctx().concurrent_env;
-  if (!env.mutex_values_available() || eng.data().normal().is_bottom()) return;
+  if (!env.mutex_values_available()) {
+    log::debug("Cooperation equality: status=missing-premise reason=handoff-unavailable");
+    return;
+  }
+  if (eng.data().normal().is_bottom()) {
+    log::debug("Cooperation equality: status=not-applicable reason=unreachable-state");
+    return;
+  }
   auto* bundle = eng.ctx().bundle;
+  bool has_candidates = false;
   for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it) {
     auto* global = *it;
     if (!global->is_definition() || global->is_thread_local()) continue;
     auto* location = eng.ctx().mem_factory->get_global(global);
     auto addr = core::IndexableTraits< MemoryLocation* >::index(location);
     auto pairs = env.mutex_equalities(addr);
+    const auto candidates = pairs.size();
+    has_candidates |= candidates != 0;
     pairs.erase(std::remove_if(pairs.begin(), pairs.end(), [&](const auto& pair) {
       return !env.mutex_equality_available(addr, std::get<0>(pair), std::get<1>(pair),
                                            std::get<2>(pair), acquired);
     }), pairs.end());
+    if (log::is_enabled_for(LogLevel::Debug) && candidates != 0)
+      log::debug("Cooperation equality: candidates=" + std::to_string(candidates) +
+          " eligible=" + std::to_string(pairs.size()) +
+          " scope=import-premise status=" + (pairs.empty() ? "missing-premise" : "proved"));
     if (pairs.empty()) continue;
     // Consumer-only ablation keeps release proofs and scalar handoffs intact.
     const bool suppress_import =
@@ -284,6 +298,8 @@ void refresh_protected_equalities(E& eng, std::uint64_t acquired) {
     }
     for (const auto& value : values) eng.data().normal().scalar_forget(value.second);
   }
+  if (!has_candidates)
+    log::debug("Cooperation equality: status=not-applicable reason=no-candidate");
 }
 
 template < typename E >
@@ -415,8 +431,13 @@ void publish_protected_release(E& eng,
           log::debug("Mutex field equality: release-check global=" + global->name() +
               " fields=" + std::to_string(left.offset) + "," + std::to_string(right.offset) +
               " mutex=" + std::to_string(released) + " equal=" + (equal ? "true" : "false"));
-        env.join_mutex_equality_release(addr, left.offset, right.offset,
-                                        std::get<2>(pair), released, equal);
+        const bool invalidated =
+            env.join_mutex_equality_release(addr, left.offset, right.offset,
+                                            std::get<2>(pair), released, equal);
+        if (invalidated && log::is_enabled_for(LogLevel::Debug))
+          log::debug("Cooperation equality: status=invalidated global=" + global->name() +
+              " scope=candidate-per-mutex reason=release-equality-unproved"
+              " dirty=true previous-consumption=not-tracked");
       }
     }
     for (const auto& cell : cells) {

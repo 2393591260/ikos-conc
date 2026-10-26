@@ -528,7 +528,16 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
   // (after the non-unique write duplication above).
   joined_names.resize(this->_accesses.size());
   std::vector< std::unordered_set< std::string > > inactive_names(this->_accesses.size());
+  Timer preparation;
+  auto prepared = [&](const char* name) {
+    preparation.stop();
+    this->_ctx.output_db->times.insert(
+        std::string("ikos-analyzer.prepare.") + name,
+        preparation.elapsed().count());
+  };
+  preparation.start();
   ConstantThreadCompletion completion(this->_ctx);
+  prepared("constant-completion");
   // Wrapper-resolved start routines are absent from this syntactic creator
   // map. Require coverage of every registered site before using its uniqueness.
   std::unordered_set< std::uint64_t > covered_create_sites;
@@ -599,22 +608,50 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
   }
 
   // Publication requires its own freshness and happens-before proof.
+  preparation.start();
   InitPublication init_publication(this->_ctx, this->_accesses);
+  prepared("init-publication");
+  preparation.start();
   FirstPublication first_publication(this->_ctx, this->_accesses);
+  prepared("first-publication");
+  preparation.start();
   ThreadPrivateHeap private_heap(this->_ctx, this->_accesses);
+  prepared("private-heap");
+  preparation.start();
   BinaryTokenOwnership binary_token(this->_ctx, this->_accesses);
+  prepared("binary-token");
+  preparation.start();
   ArenaReservation arena_reservation(this->_ctx, this->_accesses, binary_token);
+  prepared("arena-reservation");
+  preparation.start();
   ArraySlices array_slices(this->_ctx);
+  prepared("array-slices");
+  preparation.start();
   ThreadLifecycle thread_lifecycle(this->_ctx);
+  prepared("thread-lifecycle");
+  preparation.start();
   OnceInitialization once_initialization(this->_ctx, this->_accesses, binary_token);
+  prepared("once-initialization");
+  preparation.start();
   MutexHandover mutex_handover(this->_ctx);
+  prepared("mutex-handover");
+  preparation.start();
   LockedCreation locked_creation(this->_ctx);
+  prepared("locked-creation");
+  preparation.start();
   GuardedPublication guarded_publication(this->_ctx);
+  prepared("guarded-publication");
+  preparation.start();
   ScProtocol sc_protocol(this->_ctx);
+  prepared("sc-protocol");
+  preparation.start();
   SelfPublication self_publication(this->_ctx);
+  prepared("self-publication");
   // Consumer-only ablation: producers and coverage keep their original roles.
   const bool suppress_owner = std::getenv("IKOS_RACE_DISABLE_OWNER_CONSUMER") != nullptr;
   std::ofstream observations;
+  std::uint64_t observation_emitted = 0, observation_skipped = 0;
+  constexpr std::uint64_t observation_limit = 4096;
   if (const char* path = std::getenv("IKOS_RACE_PAIR_OBSERVATIONS")) {
     observations.open(path, std::ios::app);
     if (!observations) throw std::runtime_error("Cannot open race pair observations");
@@ -1042,7 +1079,8 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
       const AccessRecord& b = this->_accesses[j];
       owner_attempted = owner_suppressed = false;
       const auto decision = evaluate_pair(i, j);
-      if (observations.is_open()) {
+      if (observations.is_open() && observation_emitted < observation_limit) {
+        ++observation_emitted;
         // These independent predicates only read frozen access records.
         observations << JsonDict{{"kind", "pair-observation-v1"},
             {"a", access_observation(a)}, {"b", access_observation(b)},
@@ -1056,6 +1094,8 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
             {"overlap_unique_thread", !a.thread_id.empty() && a.thread_id == b.thread_id && a.is_unique_thread},
             {"overlap_atomic_atomic", a.is_atomic && b.is_atomic}}.str() << '\n';
         if (!observations) throw std::runtime_error("Cannot write race pair observations");
+      } else if (observations.is_open()) {
+        ++observation_skipped;
       }
       if (decision.excluded()) {
         this->consume_pair_proof(i, j, decision);
@@ -1157,6 +1197,12 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
     exclusion_report << summary.str() << '\n';
   }
 
+  if (observations.is_open() && observation_skipped != 0) {
+    observations << JsonDict{{"kind", "pair-observation-summary-v1"},
+        {"record_limit", observation_limit}, {"emitted", observation_emitted},
+        {"skipped", observation_skipped}, {"complete", false}}.str() << '\n';
+    if (!observations) throw std::runtime_error("Cannot write race pair observations");
+  }
   return all_pairs;
 }
 
