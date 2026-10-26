@@ -37,6 +37,7 @@ def heap_handle_contract():
     replay.memory = {'global:other': [0] * 4}
     replay.created, replay.writers, replay.traces = {}, {}, {}
     replay.next_instance = 1
+    replay.heap_counts = {}
     frame = Frame('main', 'entry', 1)
     thread = Thread(0, [frame], {0: 0})
     invoke = lambda name, args, inst, step: replay.api(name, args, inst, step, 'startup', 0, thread, frame)
@@ -92,6 +93,76 @@ def heap_handle_contract():
     checks += rejected(lambda: replay.region(heap, 4))
     assert invoke('ar.libc.free', [('null', 0)], {}, {}) is UNDEFINED
     checks += 1
+    return checks
+
+
+def heap_generation_contract():
+    """Direct independent malloc/free checks; no solver metadata creates identity."""
+    checks = 0
+    for bits in (32, 64):
+        replay = Replay.__new__(Replay)
+        replay.semaphores, replay.created, replay.writers = {}, {}, {}
+        replay.objects, replay.memory, replay.heap_counts = {}, {}, {}
+        replay.atomic_owner = None
+        replay.program = dict(pointer_bits=bits, little_endian=True,
+            target_triple='i386-pc-linux-gnu' if bits == 32 else 'x86_64-pc-linux-gnu')
+        size_type = dict(kind='integer', bits=bits, signed=False)
+        pointer_type = dict(kind='pointer', bits=bits)
+        replay.functions = {'ar.libc.malloc': dict(declaration=True, variadic=False,
+            parameter_types=[size_type], return_type=pointer_type), 'ar.libc.free': {}}
+        allocation = dict(calling_convention=0, operands=[{}, dict(type=size_type)],
+            result=dict(type=pointer_type), native_malloc=dict(name='malloc',
+            declaration=True, variadic=False, calling_convention=0, operand_bundles=False,
+            matching_signature=True, parameter_bits=[bits], argument_bits=[bits],
+            return_address_space=0, result_address_space=0))
+        frame = Frame('main', 'entry', 1)
+        thread = Thread(0, [frame], {0: 0})
+        def invoke(name, args, index, step, instruction=None):
+            return replay.api(name, args, allocation if instruction is None else instruction,
+                              step, 'startup', index, thread, frame)
+        def rejected(action, reason):
+            try:
+                action()
+            except Reject as error:
+                assert str(error) == reason, (reason, str(error))
+                return 1
+            raise AssertionError('accepted corrupt dynamic allocation identity')
+        first = invoke('ar.libc.malloc', [8], 2, {'statement': 'same_malloc'})
+        second = invoke('ar.libc.malloc', [8], 7, {'statement': 'same_malloc'})
+        assert first != second
+        assert replay.objects[first[0]]['occurrence'] == 1
+        assert replay.objects[second[0]]['occurrence'] == 2
+        assert replay.objects[first[0]]['allocation_event'] == dict(trace='startup', step=2)
+        assert replay.objects[second[0]]['allocation_event'] == dict(trace='startup', step=7)
+        checks += 1
+        def address(occurrence, index):
+            return dict(encoded_address=dict(object=dict(kind='heap', allocation='same_malloc',
+                owner='main', occurrence=occurrence, extent='8',
+                allocation_event=dict(trace='startup', step=index)), offset='0', width=0))
+        correct = address(2, 7)
+        broken = copy.deepcopy(correct)
+        broken['encoded_address']['object']['occurrence'] = 1
+        checks += rejected(lambda: replay.encoded_address(broken, second, 0),
+                           'SMT allocation instance mismatch')
+        for event in (dict(trace='startup', step=2), dict(trace='a', step=7)):
+            broken = copy.deepcopy(correct)
+            broken['encoded_address']['object']['allocation_event'] = event
+            checks += rejected(lambda: replay.encoded_address(broken, second, 0),
+                               'SMT allocation event mismatch')
+        broken = copy.deepcopy(correct)
+        del broken['encoded_address']['object']['allocation_event']
+        checks += rejected(lambda: replay.encoded_address(broken, second, 0),
+                           'missing dynamic allocation event')
+        replay.created[1] = {}
+        checks += rejected(lambda: invoke('ar.libc.free', [second], 9, correct, {}),
+                           'repeated allocation free outside pre-spawn main')
+        replay.created.clear()
+        assert invoke('ar.libc.free', [first], 10, address(1, 2), {}) is UNDEFINED
+        assert replay.objects[second[0]]['live']
+        assert invoke('ar.libc.free', [second], 11, correct, {}) is UNDEFINED
+        checks += 1
+        checks += rejected(lambda: invoke('ar.libc.free', [second], 12, correct, {}),
+                           'double free')
     return checks
 
 
@@ -267,7 +338,7 @@ def main():
     parser.add_argument('--bits', choices=("32", "64"), default="32")
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     args = parser.parse_args()
-    checks = detach_history_contract() + heap_handle_contract() + join_abi_contract()
+    checks = detach_history_contract() + heap_handle_contract() + heap_generation_contract() + join_abi_contract()
     with tempfile.TemporaryDirectory(prefix='ikos-replay-') as temp:
         work = Path(temp)
         for bits in (args.bits,):

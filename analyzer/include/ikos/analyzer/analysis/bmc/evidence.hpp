@@ -36,12 +36,22 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
     auto found = replay_offsets.find(&event);
     return found != replay_offsets.end() ? number(found->second) : event.const_off;
   };
+  const auto main_index = traces[1].root->name() == "main" ? 1 :
+                          traces[2].root->name() == "main" ? 2 : 0;
+  auto heap_object = [&](const BmcEvent& pointer) {
+    return JsonDict{{"kind", "heap"},
+                    {"allocation", snapshot.statement_id(pointer.heap_allocation)},
+                    {"owner", "main"}, {"occurrence", pointer.heap_occurrence},
+                    {"allocation_event", JsonDict{{"trace", traces[main_index].id},
+                                                  {"step", pointer.heap_allocation_step}}},
+                    {"extent", pointer.heap_extent.str()}};
+  };
   auto read_sources = [&](const BmcEvent& read, std::size_t trace_index, std::size_t index) {
     JsonList bytes;
     const auto offset = offset_of(read);
     auto same_object = [&](const BmcEvent& write, std::size_t writer_trace) {
       if (read.base != 0) return read.base == write.base;
-      if (read.heap_allocation != nullptr) return read.heap_allocation == write.heap_allocation;
+      if (read.heap_allocation != nullptr) return same_heap_object(read, write);
       return read.local_base != nullptr && read.local_base == write.local_base &&
              (trace_index == writer_trace || (read.shared_main_local && write.shared_main_local));
     };
@@ -134,10 +144,7 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
         if (found != object_pointer_reads->end()) {
           const auto& pointer = found->second;
           step.put("encoded_object_pointer", JsonDict{
-              {"object", JsonDict{{"kind", "heap"},
-                                  {"allocation", snapshot.statement_id(pointer.heap_allocation)},
-                                  {"owner", "main"}, {"occurrence", 1},
-                                  {"extent", pointer.heap_extent.str()}}},
+              {"object", heap_object(pointer)},
               {"offset", pointer.const_off.str()}, {"width", 0}});
         }
       }
@@ -148,8 +155,7 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
         auto offset = replay_offsets.find(&e);
         if (offset != replay_offsets.end() || e.var_id == 0) {
           JsonDict object = e.heap_allocation != nullptr
-              ? JsonDict{{"kind", "heap"}, {"allocation", snapshot.statement_id(e.heap_allocation)},
-                         {"owner", "main"}, {"occurrence", 1}, {"extent", e.heap_extent.str()}}
+              ? heap_object(e)
               : snapshot.value(e.base != 0 ? static_cast< ar::Value* >(reinterpret_cast< ar::GlobalVariable* >(e.base)) : e.local_base);
           JsonDict encoded_address{
               {"object", object},

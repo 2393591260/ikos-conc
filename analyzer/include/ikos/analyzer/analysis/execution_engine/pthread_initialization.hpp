@@ -4,6 +4,9 @@
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Operator.h>
+
+#include <ikos/analyzer/analysis/source_call_binding.hpp>
 
 #include <ikos/analyzer/analysis/context.hpp>
 #include <ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp>
@@ -239,6 +242,353 @@ inline bool pthread_initialized_mutex_consumer(ar::CallBase* call) {
          source->getCallingConv() == llvm::CallingConv::C;
 }
 
+// This supplemental frame proves only disjointness from sealed global/stack
+// runtime storage. It exports no nonnull, validity, uniqueness or value fact.
+// The old frame remains authoritative; failed refinement retains its rejection.
+class PthreadInitializationFreshStorage {
+  ar::Bundle* _bundle;
+  const std::vector< ar::Statement* >& _statements;
+  const std::map< ar::Value*, unsigned >& _objects;
+  unsigned& _budget;
+
+  bool step() { if (_budget == 0) return false; --_budget; return true; }
+  ar::Statement* definition(ar::InternalVariable* value) {
+    ar::Statement* result = nullptr;
+    for (auto* statement : _statements) {
+      if (!step()) return nullptr;
+      if (statement->result_or_null() != value) continue;
+      if (result) return nullptr;
+      result = statement;
+    }
+    return result;
+  }
+  ar::Statement* original(llvm::Instruction* source) {
+    ar::Statement* result = nullptr;
+    for (auto* statement : _statements) {
+      if (!step()) return nullptr;
+      if (!statement->has_frontend() ||
+          statement->frontend< llvm::Value >() != source) continue;
+      // Importer casts can share metadata with a call. Only the actual call
+      // participates; its actual callee/arguments are checked separately.
+      if (llvm::isa< llvm::CallBase >(source) && !isa< ar::CallBase >(statement))
+        continue;
+      if (result) return nullptr;
+      result = statement;
+    }
+    return result;
+  }
+  llvm::Value* native_zero_base(llvm::Value* source) {
+    for (unsigned depth = 0; depth != 32; ++depth) {
+      if (!step() || !source || !source->getType()->isPointerTy() ||
+          llvm::cast< llvm::PointerType >(source->getType())->getAddressSpace())
+        return nullptr;
+      if (auto* cast = llvm::dyn_cast< llvm::BitCastOperator >(source)) {
+        source = cast->getOperand(0); continue;
+      }
+      if (auto* gep = llvm::dyn_cast< llvm::GEPOperator >(source)) {
+        for (auto& index : gep->indices()) {
+          auto* constant = llvm::dyn_cast< llvm::ConstantInt >(index.get());
+          if (!constant || !constant->isZero()) return nullptr;
+        }
+        source = gep->getPointerOperand(); continue;
+      }
+      return source;
+    }
+    return nullptr;
+  }
+  bool private_runtime_roots() {
+    for (const auto& item : _objects) {
+      if (!step()) return false;
+      auto* base = direct_byte_object(item.first);
+      if (auto* global = dyn_cast_or_null< ar::GlobalVariable >(base)) {
+        if (!global->has_frontend()) return false;
+        auto* native = global->frontend< llvm::GlobalVariable >();
+        if (!native->hasLocalLinkage() || native->isExternallyInitialized())
+          return false;
+      } else if (!dyn_cast_or_null< ar::LocalVariable >(base)) return false;
+    }
+    for (auto* statement : _statements) {
+      if (!step()) return false;
+      auto* call = dyn_cast< ar::CallBase >(statement);
+      if (!call) continue;
+      auto* target = pthread_initialization_callee(call);
+      if (!target || target->intrinsic_id() == ar::Intrinsic::LibcFree ||
+          target->name() == "free" || target->name() == "realloc" ||
+          target->name() == "ar.libc.realloc" ||
+          (target->type()->return_type()->is_pointer() &&
+           target->intrinsic_id() != ar::Intrinsic::LibcMalloc)) return false;
+    }
+    return true;
+  }
+  // Real create with the same callback in source and AR. No formal substitution
+  // is licensed by a name, frontend annotation or one observed spawn alone.
+  ar::CallBase* create(llvm::CallBase* native, llvm::Function* worker) {
+    auto* call = dyn_cast_or_null< ar::CallBase >(original(native));
+    auto* target = call ? pthread_initialization_callee(call) : nullptr;
+    auto* function = llvm::dyn_cast< llvm::Function >(
+        native->getCalledOperand()->stripPointerCasts());
+    const unsigned bits = _bundle->data_layout().pointers.bit_width;
+    if (!call || !target || !source_call_binding(native, call) || !function ||
+        !function->isDeclaration() || function->getName() != "pthread_create" ||
+        function->arg_size() != 4 || native->arg_size() != 4 ||
+        !native->use_empty() || !native->getType()->isIntegerTy(32) ||
+        !function->getReturnType()->isIntegerTy(32) ||
+        !pthread_object_layout(bits, native->getModule()) ||
+        !target->is_declaration() ||
+        (target->intrinsic_id() != ar::Intrinsic::PthreadCreate &&
+         target->name() != "pthread_create") ||
+        !target->has_frontend() || target->frontend< llvm::Value >() != function ||
+        call->num_arguments() != 4 ||
+        !isa< ar::NullConstant >(call->argument(1)) ||
+        !llvm::isa< llvm::ConstantPointerNull >(native->getArgOperand(1)) ||
+        native->getArgOperand(2) != worker || worker->isDeclaration() ||
+        worker->isVarArg() || worker->arg_size() != 1 ||
+        worker->getCallingConv() != llvm::CallingConv::C ||
+        !worker->getReturnType()->isPointerTy() ||
+        !worker->getArg(0)->getType()->isPointerTy() ||
+        !ordinary_source_function_abi_attributes(worker) ||
+        llvm::cast< llvm::PointerType >(worker->getReturnType())->getAddressSpace() ||
+        llvm::cast< llvm::PointerType >(worker->getArg(0)->getType())->getAddressSpace() ||
+        native->getModule()->getDataLayout().getPointerSizeInBits() != bits)
+      return nullptr;
+    for (unsigned i = 0; i != 4; ++i) {
+      auto* type = llvm::dyn_cast< llvm::PointerType >(native->getArgOperand(i)->getType());
+      if (!type || type->getAddressSpace() || type->isOpaque() ||
+          type != function->getFunctionType()->getParamType(i)) return nullptr;
+      if ((i == 0 && !type->getPointerElementType()->isIntegerTy(bits)) ||
+          (i == 2 && type->getPointerElementType() != worker->getFunctionType()))
+        return nullptr;
+    }
+    auto* actual = dyn_cast< ar::FunctionPointerConstant >(call->argument(2));
+    if (!actual || !actual->function()->is_definition() ||
+        !actual->function()->has_frontend() ||
+        actual->function()->frontend< llvm::Value >() != worker ||
+        actual->function()->num_parameters() != 1 ||
+        !actual->function()->param(0)->type()->is_pointer() ||
+        !actual->function()->type()->return_type()->is_pointer()) return nullptr;
+    return call;
+  }
+  // Full source use closure (all CFG arms). Every extra pointer escape is a
+  // refusal, including a stored pointer, free, realloc, helper or integer cast.
+  bool closed_pointer_uses(llvm::Value* root) {
+    std::vector< llvm::Value* > pending{root};
+    std::set< llvm::Value* > seen;
+    while (!pending.empty()) {
+      auto* value = pending.back(); pending.pop_back();
+      if (!seen.insert(value).second) continue;
+      for (auto* user : value->users()) {
+        if (!step()) return false;
+        if (auto* cast = llvm::dyn_cast< llvm::BitCastOperator >(user)) {
+          if (!cast->getType()->isPointerTy()) return false;
+          pending.push_back(cast); continue;
+        }
+        if (auto* gep = llvm::dyn_cast< llvm::GEPOperator >(user)) {
+          auto* base = native_zero_base(gep);
+          if (!base || base != native_zero_base(value)) return false;
+          pending.push_back(gep); continue;
+        }
+        if (auto* load = llvm::dyn_cast< llvm::LoadInst >(user)) {
+          if (load->getPointerOperand() != value || !load->getType()->isIntegerTy())
+            return false;
+          continue;
+        }
+        if (auto* store = llvm::dyn_cast< llvm::StoreInst >(user)) {
+          if (store->getPointerOperand() != value ||
+              !store->getValueOperand()->getType()->isIntegerTy()) return false;
+          continue;
+        }
+        if (auto* compare = llvm::dyn_cast< llvm::ICmpInst >(user)) {
+          if (!compare->isEquality()) return false;
+          auto* other = compare->getOperand(compare->getOperand(0) == value ? 1 : 0);
+          if (!llvm::isa< llvm::ConstantPointerNull >(other)) return false;
+          continue;
+        }
+        auto* call = llvm::dyn_cast< llvm::CallBase >(user);
+        auto* worker = call && call->arg_size() == 4
+            ? llvm::dyn_cast< llvm::Function >(call->getArgOperand(2)) : nullptr;
+        if (!call || !worker || call->getArgOperand(3) != value ||
+            !create(call, worker)) return false;
+      }
+    }
+    return true;
+  }
+  bool extent(ar::Value* value, llvm::Value* native,
+              core::ZNumber& bytes, std::set< ar::Value* >& active) {
+    if (!step() || !value || !value->type()->is_pointer() ||
+        !active.insert(value).second) return false;
+    auto* variable = dyn_cast< ar::InternalVariable >(value);
+    auto* source = native_zero_base(native);
+    if (!variable || !source) return false;
+    auto* function = variable->code()->function_or_null();
+    if (function && function->num_parameters() == 1 && function->param(0) == variable) {
+      auto* argument = llvm::dyn_cast< llvm::Argument >(source);
+      auto* worker = argument ? argument->getParent() : nullptr;
+      if (!worker || argument->getArgNo() != 0 || !function->has_frontend() ||
+          function->frontend< llvm::Value >() != worker ||
+          !worker->hasLocalLinkage() || !closed_pointer_uses(argument)) return false;
+      bool found = false;
+      for (auto* user : worker->users()) {
+        if (!step()) return false;
+        auto* c = llvm::dyn_cast< llvm::CallBase >(user);
+        auto* a = c ? create(c, worker) : nullptr;
+        if (!a) return false;
+        // A recursive create or any unsupported incoming actual rejects.
+        auto ancestors = active;
+        core::ZNumber incoming;
+        if (!extent(a->argument(3), c->getArgOperand(3), incoming, ancestors))
+          return false;
+        if (!found || incoming < bytes) bytes = incoming;
+        found = true;
+      }
+      // Independently audit every imported occurrence of the callback address.
+      // Aggregate/indirect/copy uses do not fit this narrow profile.
+      for (auto* s : _statements) for (auto it = s->op_begin(); it != s->op_end(); ++it) {
+        if (!step()) return false;
+        auto* pointer = dyn_cast< ar::FunctionPointerConstant >(*it);
+        if (!pointer || pointer->function() != function) continue;
+        auto* a = dyn_cast< ar::CallBase >(s);
+        auto* c = a && a->has_frontend()
+            ? llvm::dyn_cast< llvm::CallBase >(a->frontend< llvm::Value >()) : nullptr;
+        if (!c || create(c, worker) != a || a->argument(2) != *it) return false;
+      }
+      return found;
+    }
+    auto* d = definition(variable);
+    if (auto* copy = dyn_cast_or_null< ar::Assignment >(d))
+      return extent(copy->operand(), native, bytes, active);
+    if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(d))
+      return cast->op() == ar::UnaryOperation::Bitcast &&
+             cast->operand()->type()->is_pointer() &&
+             extent(cast->operand(), native, bytes, active);
+    if (auto* shift = dyn_cast_or_null< ar::PointerShift >(d)) {
+      for (auto it = shift->term_begin(); it != shift->term_end(); ++it) {
+        auto* index = dyn_cast< ar::IntegerConstant >((*it).second);
+        if (!index || !index->value().is_zero()) return false;
+      }
+      return extent(shift->pointer(), native, bytes, active);
+    }
+    auto* allocation = dyn_cast_or_null< ar::CallBase >(d);
+    auto* c = llvm::dyn_cast< llvm::CallBase >(source);
+    auto* f = c ? llvm::dyn_cast< llvm::Function >(
+        c->getCalledOperand()->stripPointerCasts()) : nullptr;
+    auto* target = allocation ? pthread_initialization_callee(allocation) : nullptr;
+    const auto bits = _bundle->data_layout().pointers.bit_width;
+    if (!allocation || !c || !allocation->has_frontend() ||
+        allocation->frontend< llvm::Value >() != c ||
+        !source_call_binding(c, allocation) || !f || !f->isDeclaration() ||
+        f->getName() != "malloc" || !target ||
+        target->intrinsic_id() != ar::Intrinsic::LibcMalloc ||
+        !target->has_frontend() || target->frontend< llvm::Value >() != f ||
+        c->arg_size() != 1 || !c->getArgOperand(0)->getType()->isIntegerTy(bits) ||
+        !f->getReturnType()->isPointerTy() || !c->getType()->isPointerTy() ||
+        c->getModule()->getDataLayout().getPointerSizeInBits() != bits ||
+        !closed_pointer_uses(c)) return false;
+    auto* count = llvm::dyn_cast< llvm::ConstantInt >(c->getArgOperand(0));
+    auto* actual = dyn_cast< ar::IntegerConstant >(allocation->argument(0));
+    if (!count || !actual || count->getValue().getActiveBits() > 63 ||
+        count->isZero() || actual->value().bit_width() != bits ||
+        actual->value().cast(bits, core::Unsigned).to_z_number() !=
+            core::ZNumber(count->getZExtValue())) return false;
+    bytes = core::ZNumber(count->getZExtValue());
+    return true;
+  }
+public:
+  PthreadInitializationFreshStorage(
+      ar::Bundle* bundle, const std::vector< ar::Statement* >& statements,
+      const std::map< ar::Value*, unsigned >& objects, unsigned& budget)
+      : _bundle(bundle), _statements(statements), _objects(objects), _budget(budget) {}
+  bool scalar_access(ar::Statement* statement) {
+    if (!private_runtime_roots() || !statement->has_frontend()) return false;
+    ar::Value* address = nullptr;
+    ar::Type* datum = nullptr;
+    llvm::Value* native_address = nullptr;
+    llvm::Type* native_datum = nullptr;
+    if (auto* load = dyn_cast< ar::Load >(statement)) {
+      auto* native = llvm::dyn_cast< llvm::LoadInst >(statement->frontend< llvm::Value >());
+      if (!native || load->is_atomic() != native->isAtomic() ||
+          load->is_volatile() != native->isVolatile()) return false;
+      address = load->operand(); datum = load->result()->type();
+      native_address = native->getPointerOperand(); native_datum = native->getType();
+    } else if (auto* store = dyn_cast< ar::Store >(statement)) {
+      auto* native = llvm::dyn_cast< llvm::StoreInst >(statement->frontend< llvm::Value >());
+      if (!native || store->is_atomic() != native->isAtomic() ||
+          store->is_volatile() != native->isVolatile()) return false;
+      address = store->pointer(); datum = store->value()->type();
+      native_address = native->getPointerOperand(); native_datum = native->getValueOperand()->getType();
+    } else return false;
+    auto* integer = dyn_cast< ar::IntegerType >(datum);
+    if (!integer || !native_datum->isIntegerTy(integer->bit_width()) ||
+        (integer->bit_width() != 32 && integer->bit_width() != 64)) return false;
+    std::set< ar::Value* > active;
+    core::ZNumber bytes;
+    return extent(address, native_address, bytes, active) &&
+           _bundle->data_layout().store_size_in_bytes(datum) <= bytes;
+  }
+  bool create_argument(ar::CallBase* call, std::size_t index) {
+    if (index != 3 || !private_runtime_roots() || !call->has_frontend()) return false;
+    auto* source = llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >());
+    auto* worker = source && source->arg_size() == 4
+        ? llvm::dyn_cast< llvm::Function >(source->getArgOperand(2)) : nullptr;
+    if (!worker || create(source, worker) != call) return false;
+    std::set< ar::Value* > active;
+    core::ZNumber bytes;
+    return extent(call->argument(index), source->getArgOperand(index), bytes, active);
+  }
+};
+
+// Additional initialized-mutex consumer, at arg1 only. Keep exact source ABI,
+// real disjoint whole global condition storage and the existing storage closure.
+inline bool pthread_initialized_condition_consumer(ar::CallBase* call) {
+  auto* source = call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+  auto* function = source ? llvm::dyn_cast< llvm::Function >(
+      source->getCalledOperand()->stripPointerCasts()) : nullptr;
+  if (!function || !source_call_binding(source, call) || !function->isDeclaration() ||
+      function->getName() != "pthread_cond_wait" || function->arg_size() != 2 ||
+      source->arg_size() != 2 || !source->getType()->isIntegerTy(32) ||
+      !function->getReturnType()->isIntegerTy(32)) return false;
+  auto* mutex = pthread_initialization_object(call->argument(1), true);
+  auto* condition = dyn_cast_or_null< ar::GlobalVariable >(direct_byte_object(call->argument(0)));
+  if (!mutex || !condition || condition == mutex || !condition->has_frontend() ||
+      !condition->is_definition() || condition->is_thread_local() ||
+      !exact_handle_slot(call->argument(0), condition)) return false;
+  auto* native = condition->frontend< llvm::GlobalVariable >();
+  auto* native_mutex = mutex->frontend< llvm::GlobalVariable >();
+  // This extension uses a static default condition lifetime only. A separate
+  // initialization/destruction protocol needs its own certificate.
+  if (!native->hasInitializer() || !native->getInitializer()->isNullValue())
+    return false;
+  unsigned budget = 8192;
+  for (auto& function : *native->getParent())
+    for (auto& block : function) for (auto& instruction : block) {
+      if (budget == 0) return false;
+      --budget;
+      auto* c = llvm::dyn_cast< llvm::CallBase >(&instruction);
+      auto* f = c ? llvm::dyn_cast< llvm::Function >(
+          c->getCalledOperand()->stripPointerCasts()) : nullptr;
+      if (f && (f->getName() == "pthread_cond_init" ||
+                f->getName() == "pthread_cond_destroy")) return false;
+    }
+  auto* type = llvm::dyn_cast< llvm::StructType >(native->getValueType());
+  const auto abi = pthread_object_layout(call->bundle(), native->getParent());
+  const auto& layout = native->getParent()->getDataLayout();
+  const auto alignment = native->getAlign() ? native->getAlign()->value()
+      : layout.getABITypeAlign(native->getValueType()).value();
+  return abi && type && native->getAddressSpace() == 0 && !native->isThreadLocal() &&
+      layout.getABITypeAlign(type).value() == abi.word && alignment >= abi.word &&
+      call->bundle()->data_layout().alloc_size_in_bytes(condition->type()->pointee()) == 48 &&
+      call->bundle()->data_layout().store_size_in_bytes(condition->type()->pointee()) == 48 &&
+      call->bundle()->data_layout().abi_alignment(condition->type()->pointee()) >= abi.word && type->hasName() && !type->isOpaque() &&
+      type->getName() == "union.pthread_cond_t" && !native->isConstant() &&
+      native->hasLocalLinkage() && native_mutex->hasLocalLinkage() &&
+      !native->isExternallyInitialized() &&
+      source->getArgOperand(0)->stripPointerCasts() == native &&
+      source->getArgOperand(1)->stripPointerCasts() == native_mutex &&
+      function->getFunctionType()->getParamType(0) == native->getType() &&
+      function->getFunctionType()->getParamType(1) == native_mutex->getType() &&
+      native->getParent()->getDataLayout().getTypeAllocSize(type) == 48;
+}
+
 // Check all AR aliases and runtime-storage consumers, including unvisited CFG arms.
 inline bool pthread_initialization_storage_closed(
     ar::Bundle* bundle,
@@ -388,6 +738,7 @@ inline bool pthread_initialization_storage_closed(
     }
     return roles;
   };
+  PthreadInitializationFreshStorage fresh(bundle, statements, objects, budget);
   for (auto* statement : statements) {
     if (budget-- == 0)
       return false;
@@ -396,16 +747,15 @@ inline bool pthread_initialization_storage_closed(
     // disjointness.
     if (auto* load = dyn_cast< ar::Load >(statement)) {
       auto* base = direct_byte_object(load->operand());
-      if (!base || objects.count(base) || load->result()->type()->is_pointer())
-        return false;
-      if (auto* global = dyn_cast< ar::GlobalVariable >(base))
+      if (load->result()->type()->is_pointer() || objects.count(base) ||
+          (!base && !fresh.scalar_access(load))) return false;
+      if (auto* global = dyn_cast_or_null< ar::GlobalVariable >(base))
         if (!global->is_definition())
           return false; // Hidden library-state writes have no AR body.
     } else if (auto* store = dyn_cast< ar::Store >(statement)) {
       auto* base = direct_byte_object(store->pointer());
-      if (!base)
-        return false;
-      if (auto* global = dyn_cast< ar::GlobalVariable >(base))
+      if (!base && !fresh.scalar_access(store)) return false;
+      if (auto* global = dyn_cast_or_null< ar::GlobalVariable >(base))
         if (!global->is_definition())
           return false;
       if (objects.count(base) && store->code()->is_function_body())
@@ -422,6 +772,7 @@ inline bool pthread_initialization_storage_closed(
       if (covered.count(call))
         continue;
       bool sync = pthread_initialized_mutex_consumer(call);
+      bool wait = pthread_initialized_condition_consumer(call);
       unsigned runtime =
           synchronization_runtime_arguments(call,
                                             pthread_initialization_callee(
@@ -436,20 +787,20 @@ inline bool pthread_initialization_storage_closed(
         if (!objects.count(value))
           return false;
         if (role & 3u) {
-          if (role != 2 || !sync || i != 0)
+          if (role != 2 || !((sync && i == 0) || (wait && i == 1)))
             return false;
           if (mutex_arrays && array_consumers) array_consumers->insert(call);
         } else if (role != 4 || i >= 4 || !(runtime & (1u << i)))
           return false;
       }
-      for (auto it = call->arg_begin(); it != call->arg_end(); ++it) {
-        auto* value = *it;
+      for (std::size_t index = 0; index < call->num_arguments(); ++index) {
+        auto* value = call->argument(index);
         if (!value->type()->is_pointer() || objects.count(value) ||
             isa< ar::NullConstant >(value) ||
             isa< ar::FunctionPointerConstant >(value))
           continue;
         auto* base = direct_byte_object(value);
-        if (!base || objects.count(base))
+        if (objects.count(base) || (!base && !fresh.create_argument(call, index)))
           return false;
       }
       continue;

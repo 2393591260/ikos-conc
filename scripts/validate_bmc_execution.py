@@ -110,6 +110,7 @@ class Replay:
         self.threads, self.memory, self.objects = {}, {}, {}
         self.created, self.locks, self.accesses = {}, {}, {}
         self.next_instance, self.next_frame = 1, 0
+        self.heap_counts = {}
         self.atomic_owner = None
         self.atomic_sections = []
         self.pending_markers = {}
@@ -383,6 +384,13 @@ class Replay:
                     self.objects[pointer[0]].get('owner') == obj['owner'] and
                     self.objects[pointer[0]].get('occurrence') == obj['occurrence'], 'SMT allocation instance mismatch')
             require(self.objects[pointer[0]]['size'] == int(obj['extent']), 'SMT allocation extent mismatch')
+            # Legacy occurrence-one evidence may omit the extra event binding.
+            # Replay still owns identity; later ordinals require the actual step.
+            if 'allocation_event' in obj:
+                require(self.objects[pointer[0]].get('allocation_event') ==
+                        obj['allocation_event'], 'SMT allocation event mismatch')
+            else:
+                require(obj['occurrence'] == 1, 'missing dynamic allocation event')
         else: raise Unsupported('encoded object')
         require(pointer[1] == int(address['offset']), 'SMT byte offset mismatch')
         require(width == int(address['width']), 'SMT access width mismatch')
@@ -643,10 +651,14 @@ class Replay:
             require(len(args) == 1 and isinstance(args[0], int) and 0 < args[0] <= 1_048_576, 'malloc extent')
             if thread.instance != 0 or len(thread.frames) != 1 or frame.function != 'main' or self.created:
                 raise Unsupported('allocation outside pre-spawn main')
-            object_id = 'heap:' + str(frame.uid) + ':' + step['statement']
-            if object_id in self.objects: raise Unsupported('repeated allocation site')
+            key = (frame.uid, step['statement'])
+            occurrence = self.heap_counts.get(key, 0) + 1
+            self.heap_counts[key] = occurrence
+            object_id = 'heap:' + str(frame.uid) + ':' + step['statement'] + ':' + str(occurrence)
+            require(object_id not in self.objects, 'duplicate dynamic allocation identity')
             self.objects[object_id] = dict(size=args[0], live=True, variable=object_id, thread_local=False,
-                allocation=step['statement'], owner='main', occurrence=1,
+                allocation=step['statement'], owner='main', occurrence=occurrence,
+                allocation_event=dict(trace=trace_id, step=index),
                 alignment=self.program['pointer_bits']//8 if self.verified_pthread_abi() else None)
             self.memory[object_id] = [None] * args[0]
             return (object_id, 0)
@@ -660,6 +672,10 @@ class Replay:
                     pointer[0] in self.objects and 'allocation' in self.objects[pointer[0]] and
                     pointer[1] == 0, 'invalid free pointer')
             require(self.objects[pointer[0]]['live'], 'double free')
+            if any(count > 1 for count in self.heap_counts.values()):
+                require(thread.instance == 0 and len(thread.frames) == 1 and
+                        frame.function == 'main' and not self.created,
+                        'repeated allocation free outside pre-spawn main')
             require('encoded_address' in step, 'missing encoded free address')
             self.encoded_address(step, pointer, 0)
             self.objects[pointer[0]]['live'] = False
@@ -974,7 +990,7 @@ class Replay:
                             heap_null &= (isinstance(value, tuple) and len(value) == 2 and
                                           value[1] == 0 and obj.get('live') is True and
                                           'allocation' in obj and obj.get('owner') == 'main' and
-                                          obj.get('occurrence') == 1)
+                                          type(obj.get('occurrence')) is int and obj['occurrence'] >= 1)
                     if not (numeric_null or heap_null): raise Unsupported('pointer comparison')
                 require((a==b) if predicate==35 else (a!=b), 'false pointer CFG guard')
             else:

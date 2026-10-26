@@ -177,12 +177,12 @@ inline bool completion_join_creation(const std::vector< BmcEvent >& path,
       !memory_extent(address, extent) || address.const_off < 0 ||
       address.const_off + width > extent || address.const_off % width != 0) return false;
   auto same_object = [&](const BmcEvent& other) {
-    return heap ? other.heap_allocation == address.heap_allocation
+    return heap ? same_heap_object(other, address)
                 : other.local_base == address.local_base;
   };
   bool matched = false;
   for (std::size_t j = read; j-- > 0;) {
-    if (heap ? path[j].stmt == address.heap_allocation
+    if (heap ? j == address.heap_allocation_step
              : path[j].stmt->result_or_null() == address.local_base) break;
     if (path[j].kind != EvKind::Create) continue;
     auto* call = core::cast< ar::CallBase >(path[j].stmt);

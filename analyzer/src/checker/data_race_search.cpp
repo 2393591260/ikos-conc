@@ -335,7 +335,12 @@ void DataRaceChecker::search_race_candidates(
                                   ? cast< ar::Load >(event.stmt)->operand()
                                   : cast< ar::Store >(event.stmt)->pointer();
               // Resolve each executed iteration, not the static index variable.
+              // This raw startup identity is provisional: check_race clears all
+              // heap fields and resolves again after canonical event expansion.
               event.base = 0; event.local_base = nullptr; event.const_off = 0; event.local_extent = 0;
+              event.shared_main_local = false;
+              event.heap_allocation = nullptr; event.heap_extent = 0;
+              event.heap_allocation_step = 0; event.heap_occurrence = 0;
               event.var_id = 0; event.var_before = 0; event.coeff = 0;
               core::ZNumber size;
               if (!bmc::pointer_on_path(pointer, path, step, main, nullptr, event) ||
@@ -432,6 +437,8 @@ void DataRaceChecker::search_race_candidates(
                            a.shared_main_local == b.shared_main_local &&
                            a.single_function_execution == b.single_function_execution &&
                            a.heap_allocation == b.heap_allocation && a.heap_extent == b.heap_extent &&
+                           a.heap_allocation_step == b.heap_allocation_step &&
+                           a.heap_occurrence == b.heap_occurrence &&
                            a.base == b.base && a.const_off == b.const_off &&
                            a.var_id == b.var_id && a.var_before == b.var_before &&
                            a.coeff == b.coeff && a.width == b.width && a.thread == b.thread;

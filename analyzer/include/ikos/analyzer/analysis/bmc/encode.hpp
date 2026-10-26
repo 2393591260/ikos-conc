@@ -470,21 +470,48 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         record(diagnostics, "condition_storage_alias", event.stmt); return Result(Status::Unsupported);
       }
   }
+  // Canonical event positions are shared by every heap object and creation
+  // reference. Expand ALL traces before resolving any persistent address: a
+  // worker prepared before main must see the same malloc step as main itself.
+  // Keep the library-object audits above on the original calls; in particular,
+  // mutex-attribute checking must not mistake a synthetic cond marker for a
+  // one-argument mutex API call. Their temporary path indices are no longer used.
+  for (auto& trace : traces) {
+    auto& path = trace.events;
+    for (std::size_t i = 0; i < path.size(); ++i) {
+      auto* wait = core::dyn_cast< ar::CallBase >(path[i].stmt);
+      if (path[i].synthetic_condition || wait == nullptr || !condition_call(wait) ||
+          exact_callee(wait)->name() != "pthread_cond_wait") continue;
+      // Fixed plans carry pre-normalization create/join indices. Both
+      // completion and timed-provider profiles exclude condition expansion.
+      if (completion != nullptr || provider_plan != nullptr) {
+        record(diagnostics, "completion_condition_expansion", wait);
+        return Result(Status::Unsupported);
+      }
+      // POSIX permits a finite spurious wake. Release/reacquire the owned mutex
+      // without inventing signal HB, using the same events as the old prepare.
+      BmcEvent release(wait, EvKind::Unlock), reacquire(wait, EvKind::Lock);
+      release.synthetic_condition = reacquire.synthetic_condition = true;
+      path.insert(path.begin() + i + 1, {release, reacquire});
+      i += 2;
+    }
+  }
+  // Rebind only legacy creation indices on the canonical origin before
+  // address preparation. Fixed completion/provider plans retain exact steps.
+  if (completion == nullptr && provider_plan == nullptr)
+    for (std::size_t id = 1; id < 3; ++id) {
+      auto& trace = traces[id];
+      if (trace.root->name() == "main" || trace.creator_step == ExecutionTrace::no_creation) continue;
+      const auto ordinal = selected_workers ? (id == 1 ? facts->worker_a_occurrence : facts->worker_b_occurrence) :
+                           (id == 2 && funcA == funcB ? 1 : 0);
+      trace.creator_step = created_occurrence(trace.root, traces[trace.creator_path].events, ordinal);
+    }
   std::map< std::tuple< std::uint64_t, ar::LocalVariable*, core::ZNumber >, std::uint64_t > lock_ids;
   auto prepare = [&](std::vector< BmcEvent >& path, ar::Function* root, ThreadArgument argument) {
     std::set< std::uint64_t > held;
     std::set< std::size_t > consumed_handles;
     std::uint64_t symbolic_lock = 0;
     for (std::size_t i = 0; i < path.size(); ++i) {
-      auto* wait = core::dyn_cast< ar::CallBase >(path[i].stmt);
-      if (!path[i].synthetic_condition && wait != nullptr && condition_call(wait) &&
-          exact_callee(wait)->name() == "pthread_cond_wait") {
-        // POSIX permits a spurious wake: choose a finite successful wait, with
-        // the owned mutex released and reacquired, without inventing signal HB.
-        BmcEvent release(wait, EvKind::Unlock), reacquire(wait, EvKind::Lock);
-        release.synthetic_condition = reacquire.synthetic_condition = true;
-        path.insert(path.begin() + i + 1, {release, reacquire});
-      }
       auto& event = path[i];
       if (event.kind == EvKind::Join && completion == nullptr && provider_plan == nullptr) {
         // Condition expansion may have shifted earlier creation indices.
@@ -512,6 +539,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       if (pointer != nullptr) {
         event.base = 0; event.local_base = nullptr; event.shared_main_local = false; event.const_off = 0; event.var_id = 0; event.coeff = 0;
         event.heap_allocation = nullptr; event.heap_extent = 0; event.local_extent = 0;
+        // Discard provisional producer identities; indices now name the canonical path.
+        event.heap_allocation_step = 0; event.heap_occurrence = 0;
         if (!pointer_on_path(pointer, path, i, root, argument, event, &allocation_origin)) {record(diagnostics, "prefix_address", event.stmt); return false;}
       }
       if (event.zero_fill && (event.base != 0 || !event.local_base ||
@@ -604,15 +633,6 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   }
   for (auto& trace : traces)
     if (!prepare(trace.events, trace.root, trace.argument)) return Result(Status::Unsupported);
-  // Expansion in the old search can shift a creation; recover its ordinal.
-  if (completion == nullptr && provider_plan == nullptr)
-    for (std::size_t id = 1; id < 3; ++id) {
-      auto& trace = traces[id];
-      if (trace.root->name() == "main" || trace.creator_step == ExecutionTrace::no_creation) continue;
-      const auto ordinal = selected_workers ? (id == 1 ? facts->worker_a_occurrence : facts->worker_b_occurrence) :
-                           (id == 2 && funcA == funcB ? 1 : 0);
-      trace.creator_step = created_occurrence(trace.root, traces[trace.creator_path].events, ordinal);
-    }
   // Only actually accessed child objects use shared SC sources. Main's
   // private handle storage keeps its existing modeled-create definedness.
   std::unordered_set< ar::LocalVariable* > shared_stack;
@@ -688,6 +708,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           output.shared_main_local = address.shared_main_local;
           output.local_extent = address.local_extent;
           output.heap_allocation = address.heap_allocation; output.heap_extent = address.heap_extent;
+          output.heap_allocation_step = address.heap_allocation_step;
+          output.heap_occurrence = address.heap_occurrence;
           output.const_off = address.const_off; output.var_id = address.var_id;
           output.var_before = address.var_before; output.coeff = address.coeff; output.width = address.width;
         }
@@ -701,7 +723,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   auto same_storage_object = [](const BmcEvent& a, const void* path_a,
                                 const BmcEvent& b, const void* path_b) {
     return a.base != 0 ? a.base == b.base :
-        a.heap_allocation != nullptr ? a.heap_allocation == b.heap_allocation :
+        a.heap_allocation != nullptr ? same_heap_object(a, b) :
         a.local_base != nullptr && a.local_base == b.local_base &&
         (path_a == path_b || (a.shared_main_local && b.shared_main_local));
   };
@@ -788,6 +810,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   }
   // A fixed startup may publish live allocations to its selected children.
   // Interleaved main/free retains the narrower private-handle contract.
+  bool repeated_startup_heap = false;
+  std::set< HeapObjectId > published_heap_generations;
   auto private_heap_lifetime = [&](std::vector< BmcEvent >& path) {
     bool finite = std::any_of(path.begin(), path.end(),
                               [](const auto& e) {return e.finite_source;});
@@ -797,31 +821,47 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     });
     const bool joined_heap = completion != nullptr && std::any_of(path.begin(), path.end(),
         [](const auto& e) {return e.joined_handle_read && e.heap_allocation != nullptr;});
-    if (!finite && !has_free && !joined_heap) return true;
-    const bool shared_startup = selected_workers && &path == &startup && finite;
-    if (shared_startup && has_free) return false;
-    const bool private_heap = finite || has_free || joined_heap;
-    std::set< ar::CallBase* > live, freed;
+    std::set< ar::CallBase* > sites;
+    bool repeated = false;
+    for (const auto& event : path)
+      if (auto* call = core::dyn_cast< ar::CallBase >(event.stmt))
+        if (malloc_call(call) && !sites.insert(call).second) repeated = true;
+    const bool generation_startup = selected_workers && &path == &startup && repeated;
+    if (repeated && !generation_startup) return false;
+    if (!finite && !has_free && !joined_heap && !generation_startup) return true;
+    const bool shared_startup = selected_workers && &path == &startup &&
+                                (finite || generation_startup);
+    if (shared_startup && has_free && !generation_startup) return false;
+    const bool private_heap = finite || has_free || joined_heap || generation_startup;
+    std::set< HeapObjectId > live, freed;
+    bool spawned = false;
     unsigned allocations = 0;
     for (std::size_t i = 0; i < path.size(); ++i) {
       auto& event = path[i];
-      if (event.heap_allocation != nullptr && freed.count(event.heap_allocation)) return false;
+      if (event.heap_allocation != nullptr &&
+          (event.heap_occurrence == 0 || freed.count(heap_object_id(event)))) return false;
+      spawned |= event.kind == EvKind::Create;
       auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
       if (call != nullptr && malloc_call(call)) {
         core::ZNumber extent;
-        if (!main_allocation(call, path, i, extent) || ++allocations > (shared_startup ? 4u : 1u)) return false;
-        live.insert(call);
+        if ((generation_startup && spawned) || !main_allocation(call, path, i, extent) ||
+            ++allocations > (shared_startup ? 4u : 1u)) return false;
+        if (!live.insert({call, i}).second) return false;
       }
       if (call != nullptr && free_call(call)) {
+        if (generation_startup && spawned) return false;
         BmcEvent pointer;
         if (call->num_arguments() != 1 ||
             !pointer_on_path(call->argument(0), path, i, path[i].stmt->code()->function_or_null(),
                              nullptr, pointer) ||
             pointer.heap_allocation == nullptr || pointer.var_id != 0 ||
-            pointer.const_off != 0 || !live.erase(pointer.heap_allocation) ||
-            !freed.insert(pointer.heap_allocation).second) return false;
+            pointer.const_off != 0 || pointer.heap_occurrence == 0 ||
+            !live.erase(heap_object_id(pointer)) ||
+            !freed.insert(heap_object_id(pointer)).second) return false;
         event.heap_allocation = pointer.heap_allocation;
         event.heap_extent = pointer.heap_extent;
+        event.heap_allocation_step = pointer.heap_allocation_step;
+        event.heap_occurrence = pointer.heap_occurrence;
         event.const_off = 0;
         event.width = 0;
       }
@@ -847,8 +887,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
             continue;
           }
           if (pointer.heap_allocation != nullptr &&
-              ((!live.count(pointer.heap_allocation) &&
-                !(free_call(call) && arg == 0 && freed.count(pointer.heap_allocation))) ||
+              ((!live.count(heap_object_id(pointer)) &&
+                !(free_call(call) && arg == 0 && freed.count(heap_object_id(pointer)))) ||
                !(((event.kind == EvKind::Create || free_call(call)) && arg == 0) ||
                  (shared_startup && event.kind == EvKind::Create && arg == 3)))) return false;
         }
@@ -862,7 +902,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           if (!pointer_on_path(cast->operand(), path, i, path[i].stmt->code()->function_or_null(),
                                nullptr, pointer)) return false;
           if (pointer.heap_allocation != nullptr &&
-              (freed.count(pointer.heap_allocation) || cast->op() == ar::UnaryOperation::PtrToUI ||
+              (freed.count(heap_object_id(pointer)) || cast->op() == ar::UnaryOperation::PtrToUI ||
                cast->op() == ar::UnaryOperation::PtrToSI)) return false;
         }
         auto* store = core::dyn_cast< ar::Store >(event.stmt);
@@ -875,7 +915,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           if (pointer.heap_allocation != nullptr) {
             auto* slot = global_pointer_slot(store->pointer());
             std::size_t origin = 0;
-            if (!shared_startup || !live.count(pointer.heap_allocation) || slot == nullptr ||
+            if (!shared_startup || !live.count(heap_object_id(pointer)) || slot == nullptr ||
                 published_pointer(slot, path, origin) != store || origin != i) return false;
           }
         }
@@ -891,10 +931,15 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                                  nullptr, pointer) ||
                 native == nullptr || !native->isInBounds() || native->getPointerAddressSpace() != 0 || pointer.var_id != 0 ||
                 pointer.const_off < 0 || pointer.const_off > pointer.heap_extent ||
-                freed.count(pointer.heap_allocation)) return false;
+                freed.count(heap_object_id(pointer))) return false;
           }
         }
       }
+    }
+    if (generation_startup) {
+      if (!spawned || live.empty()) return false;
+      repeated_startup_heap = true;
+      published_heap_generations = live;
     }
     return !private_heap || (shared_startup ? allocations > 0 : allocations == 1);
   };
@@ -903,6 +948,18 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         !private_heap_lifetime(trace.events)) {
       record(diagnostics, "heap_lifetime"); return Result(Status::Unsupported);
     }
+  if (repeated_startup_heap) {
+    for (const auto& trace : traces) {
+      if (trace.root != nullptr && trace.root->name() == "main") continue;
+      for (const auto& event : trace.events)
+        if (event.heap_allocation != nullptr &&
+            (event.heap_occurrence == 0 ||
+             !published_heap_generations.count(heap_object_id(event)))) {
+          record(diagnostics, "heap_generation_not_live", event.stmt);
+          return Result(Status::Unsupported);
+        }
+    }
+  }
   auto aliases_library = [&](const BmcEvent& access, const void* path, bool opaque_only) {
     for (const auto& storage : library_storage) {
       if (opaque_only && !storage.opaque) continue;
@@ -957,7 +1014,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       for (const auto& writer : traces) {
         for (std::size_t j = 0; j < writer.events.size(); ++j) {
           const auto& write = writer.events[j];
-          if (write.kind != EvKind::Write || write.heap_allocation != slot.heap_allocation ||
+          if (write.kind != EvKind::Write || !same_heap_object(write, slot) ||
               (&writer.events == &allocation_origin && j < publication_index)) continue;
           if (write.var_id != 0 || write.width == 0 ||
               (write.const_off < slot.const_off + path[i].width &&
@@ -1346,7 +1403,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
            type->bit_width() != access.width * 8 ||
            access.const_off % load->bundle()->data_layout().abi_alignment(type) != 0)) return false;
       auto same_object = [&](const BmcEvent& write) {
-        if (access.heap_allocation != nullptr) return write.heap_allocation == access.heap_allocation;
+        if (access.heap_allocation != nullptr) return same_heap_object(write, access);
         if (access.base != 0) return write.base == access.base;
         return access.local_base != nullptr && write.local_base == access.local_base &&
                (!access.shared_main_local || write.shared_main_local);
@@ -2069,7 +2126,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     const BmcEvent& eb = pathB[targetB];
     // 同址必须可证：base 提取失败（0）或 base 不同 → 缺失同址约束会让两访问被
     // 「假相邻」确认 → FP。保守不确认（UNKNOWN）。
-    const bool same_heap = ea.heap_allocation != nullptr && ea.heap_allocation == eb.heap_allocation;
+    const bool same_heap = same_heap_object(ea, eb);
     const bool same_stack = ea.shared_main_local && eb.shared_main_local &&
                             ea.local_base != nullptr && ea.local_base == eb.local_base;
     if (!same_heap && !same_stack && (ea.base == 0 || eb.base == 0 || ea.base != eb.base)) {

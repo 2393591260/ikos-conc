@@ -309,3 +309,31 @@ identity. The source witness mapper accepts the timed roles, keeps the selected
 schedule, and reports UNKNOWN for its declared registration-order projection
 limit. Corrupt source or execution evidence remains an error. The legacy
 GraphML adapter explicitly rejects timed main/provider traces.
+
+### Allocation-generation and canonical-event controls
+
+The test_bmc_heap_generations.py runner selects --bits 32 or --bits 64
+and checks repeated executions of one real main allocation site. It requires
+actual later-generation targets, simultaneous live allocations, a freed early
+generation followed by allocation, and later-generation thread-handle output
+slots. Allocation identity includes its canonical event and site ordinal;
+byte values, extent, alignment, lifetime and read-from retain that identity.
+Corrupt generation, free, event, extent, output alignment and read-from evidence
+must be rejected by independent replay.
+
+The test_bmc_heap_canonical_events.py runner checks real condition-wait
+release/reacquire markers before allocation, including executions with main as
+the second selected root. Every trace is normalized before persistent allocation
+or creation indices are resolved. Fixed completion and provider profiles refuse
+index-changing condition expansion. Repeated allocation support remains limited
+to pre-spawn main; it does not admit concurrent free, realloc, arbitrary heap
+graphs or observations of reused raw addresses.
+
+When ordinary heap accesses coexist with opaque initialization, coverage still
+needs an independent storage-disjointness argument. The supplemental check in
+the existing initialization frame admits only bounded scalar accesses through
+zero-offset native malloc origins and fully closed actual callback arguments.
+Unknown or mixed origins, escaping pointers and unsupported lifetimes retain
+the unresolved obligation. This supplies no pointer-validity, nonnull, value or
+counterexample fact; the ordinary strict coverage and BMC execution checks remain
+required.

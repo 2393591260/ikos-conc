@@ -70,7 +70,9 @@ struct BmcEvent {
   core::ZNumber local_extent{0}; // Executed, path-constant dynamic stack extent.
   bool shared_main_local = false; // One live allocation in the implicit main prefix.
   bool single_function_execution = false; // Static lifetime certificate, not thread liveness.
-  ar::CallBase* heap_allocation = nullptr; // One executed allocation in implicit main.
+  ar::CallBase* heap_allocation = nullptr; // Static source, never the dynamic object alone.
+  std::size_t heap_allocation_step = 0; // Exact event in canonical initial-main origin.
+  unsigned heap_occurrence = 0; // One-based executed ordinal at this same source.
   core::ZNumber heap_extent{0};
   std::uint64_t base = 0;
   core::ZNumber const_off{0};
@@ -88,6 +90,25 @@ struct BmcEvent {
   BmcEvent(ar::Statement* s, EvKind k, std::uint64_t m = 0)
       : stmt(s), kind(k), mutex(m) {}
 };
+
+using HeapObjectId = std::pair< ar::CallBase*, std::size_t >;
+inline HeapObjectId heap_object_id(const BmcEvent& event) {
+  return {event.heap_allocation, event.heap_allocation_step};
+}
+inline bool same_heap_object(const BmcEvent& a, const BmcEvent& b) {
+  return a.heap_allocation != nullptr && b.heap_allocation != nullptr &&
+         a.heap_occurrence != 0 && a.heap_occurrence == b.heap_occurrence &&
+         heap_object_id(a) == heap_object_id(b);
+}
+inline unsigned heap_allocation_ordinal(ar::CallBase* call,
+                                       const std::vector< BmcEvent >& path,
+                                       std::size_t index) {
+  if (index >= path.size() || path[index].stmt != call) return 0;
+  unsigned ordinal = 0;
+  for (std::size_t i = 0; i <= index; ++i)
+    if (path[i].stmt == call) ++ordinal;
+  return ordinal;
+}
 
 // A unique static definition is usable only when its execution is also
 // established by the selected path (encode.hpp).
@@ -285,7 +306,7 @@ inline bool symbolic_byte_offset(ar::Value* ptr, BmcEvent& ev) {
 inline bool memory_extent(const BmcEvent& event, core::ZNumber& size) {
   if (event.heap_allocation != nullptr) {
     size = event.heap_extent;
-    return size > 0 && size <= 1048576;
+    return event.heap_occurrence != 0 && size > 0 && size <= 1048576;
   }
   if (event.base != 0) {
     auto* g = reinterpret_cast< ar::GlobalVariable* >(event.base);
@@ -1072,8 +1093,8 @@ inline bool affine_integer_on_path(ar::Value* value,
   return true;
 }
 
-// A successful, bounded malloc choice is usable only at one executed site in
-// implicit main before any child starts. Repeated sites need dynamic identities.
+// Each successful bounded malloc event denotes a fresh generation in initial
+// main before any child starts. Callers must retain its exact path index.
 inline bool main_allocation(ar::CallBase* call, const std::vector< BmcEvent >& path,
                             std::size_t index, core::ZNumber& size) {
   auto* function = exact_callee(call);
@@ -1081,8 +1102,7 @@ inline bool main_allocation(ar::CallBase* call, const std::vector< BmcEvent >& p
       !call->code()->is_function_body() || call->code()->function()->name() != "main" ||
       !call->has_result() || !call->result()->type()->is_pointer() ||
       index >= path.size() || path[index].stmt != call ||
-      invocation_call(path, call->code(), index) != path.size() ||
-      std::count_if(path.begin(), path.end(), [&](const auto& event) {return event.stmt == call;}) != 1)
+      invocation_call(path, call->code(), index) != path.size())
     return false;
   for (std::size_t i = 0; i < index; ++i)
     if (path[i].kind == EvKind::Create) return false;
@@ -1242,7 +1262,7 @@ inline ar::Store* initialized_heap_pointer(
     BmcEvent address;
     if (!pointer_on_path(store->pointer(), origin, j, origin[j].stmt->code()->function_or_null(),
                          nullptr, address, &origin, depth + 1)) return nullptr;
-    if (address.heap_allocation != slot.heap_allocation) continue;
+    if (!same_heap_object(address, slot)) continue;
     if (address.var_id != 0 || origin[j].width == 0) return nullptr;
     if (address.const_off >= slot.const_off + width ||
         slot.const_off >= address.const_off + origin[j].width) continue;
@@ -1340,7 +1360,9 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
           variable->type()->is_pointer() &&
           ((copy != nullptr && copy->operand()->type() == variable->type()) ||
            (cast != nullptr && cast->op() == ar::UnaryOperation::Bitcast &&
-            cast->operand()->type()->is_pointer()) || core::isa< ar::PointerShift >(definition));
+            cast->operand()->type()->is_pointer()) || core::isa< ar::PointerShift >(definition) ||
+           (core::isa< ar::CallBase >(definition) &&
+            malloc_call(core::cast< ar::CallBase >(definition))));
       exact_external_chain &= forwarding || (unique_def_bmc(variable) == definition &&
           std::count_if(origins->begin(), origins->end(), [&](const auto& event) {
             return event.stmt == definition;
@@ -1382,10 +1404,15 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
       if (store == nullptr || !load->result()->type()->is_pointer() ||
           (definitions == origins && store_index >= index)) return false;
       value = store->value(); external = true; definitions = origins; before = store_index;
+      // Both publication helpers retained the actual source store occurrence.
+      selected_argument_origin = true;
     } else if (auto* call = core::dyn_cast< ar::CallBase >(definition)) {
       core::ZNumber size;
       if (main_allocation(call, *definitions, index, size)) {
-        event.heap_allocation = call; event.heap_extent = size; return true;
+        event.heap_allocation = call; event.heap_extent = size;
+        event.heap_allocation_step = index;
+        event.heap_occurrence = heap_allocation_ordinal(call, *definitions, index);
+        return event.heap_occurrence != 0;
       }
       if (external) return false;
       auto* callee = callee_on_path(call, path, index);
@@ -1594,6 +1621,8 @@ inline bool symbolic_startup_create_output(const std::vector< BmcEvent >& path,
   output.local_extent = address.local_extent;
   output.shared_main_local = address.shared_main_local;
   output.heap_allocation = address.heap_allocation; output.heap_extent = address.heap_extent;
+  output.heap_allocation_step = address.heap_allocation_step;
+  output.heap_occurrence = address.heap_occurrence;
   output.const_off = address.const_off; output.var_id = address.var_id;
   output.var_before = address.var_before; output.coeff = address.coeff; output.width = width;
   extent = size; alignment = required_alignment;

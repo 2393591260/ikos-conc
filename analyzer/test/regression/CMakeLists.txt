@@ -546,3 +546,11 @@ add_concurrency_test(startup-provider "${CONCURRENCY_ROOT}/scripts/test_bmc_star
                      --ikos "${CONCURRENCY_IKOS}" --bits 32)
 add_concurrency_test(startup-provider-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_startup_provider.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
+add_concurrency_test(heap-generations "${CONCURRENCY_ROOT}/scripts/test_bmc_heap_generations.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+add_concurrency_test(heap-generations-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_heap_generations.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+add_concurrency_test(heap-canonical-events "${CONCURRENCY_ROOT}/scripts/test_bmc_heap_canonical_events.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+add_concurrency_test(heap-canonical-events-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_heap_canonical_events.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
