@@ -8,12 +8,15 @@ import sqlite3
 import subprocess
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/boolean-guards.c').read_text()
     env = dict(os.environ)
@@ -29,8 +32,8 @@ def main():
                     source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') + text)
                     report = work / 'report.json'
                     database = work / 'output.db'
-                    proc = subprocess.run([str(args.ikos.resolve()), '--analyses=prover',
-                        '--partitioning=' + strategy, '-m32', '--format=json',
+                    proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=prover',
+                        '--partitioning=' + strategy, f'-m{args.bits}', '--format=json',
                         '--status-filter=*', '--report-file=' + str(report),
                         '-o', str(database), str(source)], env=env,
                         capture_output=True, text=True, timeout=30)
@@ -54,9 +57,9 @@ def main():
                 text = text.replace('make_element', 'build_node')
                 source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') + text)
                 report = work / 'owner.json'
-                proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                     '--concurrency=auto', '--demote-race-to-unknown', '--bmc-deadline-ms=0',
-                    '--partitioning=guards', '-m32', '--format=json', '--status-filter=*',
+                    '--partitioning=guards', f'-m{args.bits}', '--format=json', '--status-filter=*',
                     '--report-file=' + str(report), '-o', str(work / 'owner.db'), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
                 assert proc.returncode == 0, (case, wide, proc.stdout, proc.stderr)

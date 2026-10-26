@@ -101,7 +101,8 @@ The runner records both attempts. Its wall timeout and BMC limits apply to each
 attempt (at most two); an external BenchExec CPU limit still covers the whole
 tool invocation. Both refinement and forced inlining are disabled by default.
 
-The BMC also supports a narrow GNU/Linux ILP32 semaphore prefix. It reuses the
+The BMC also supports a narrow GNU/Linux x86 ILP32 and x86-64 LP64 semaphore
+prefix. It reuses the
 closed library-effect proof, requires a real initialization with a constant
 permit count from zero through the GNU semaphore maximum,
 and retains actual main-thread posts before starting the selected workers.
@@ -120,7 +121,9 @@ including after an unlock, remains unsupported; an empty owner set does not
 end a mutex lifetime. Distinct, disjoint mutex fields keep separate lifetimes.
 
 Selected ordinary executions may also use an explicitly initialized mutex
-field in one live allocation of the initial main frame, on GNU/Linux ILP32.
+field in one live allocation of the initial main frame, on GNU/Linux x86
+ILP32 or x86-64 LP64. The native mutex leaf is respectively 24 bytes aligned
+to 4 bytes or 40 bytes aligned to 8 bytes.
 The encoder checks the actual LLVM-declared mutex subobject, its byte bounds
 and alignment, and binds worker arguments to their actual creation and helper
 invocations. The independent AR checker resolves the raw native layout and
@@ -180,7 +183,8 @@ publication, byte overlap, thread multiplicity and selected executions.
 `concurrency-strict-coverage` checks common-lock safety, supported races,
 uncovered effects/entries, global initialization, mixed atomic boundaries,
 late destructor changes, no-checks, unanchored required entries, display filters,
-mixed properties and SQLite/JSON agreement on ILP32, including long-long data.
+mixed properties and SQLite/JSON agreement on native ILP32 and LP64, including
+long-long data.
 `concurrency-race-result` checks protocol corruption and safety-only permissions.
 
 For a compact pair-exclusion summary, set `IKOS_RACE_RULE_REPORT` to a writable
@@ -204,6 +208,31 @@ constraint. A successful release check alone does not establish that every write
 is covered. `scripts/test_protected_field_values.py --bits 32` and `--bits 64`
 exercise both normal analysis and import-only positive and negative controls.
 
+
+## Maintained cooperation controls
+
+`concurrency-bmc-fact-switches` and its `-lp64` counterpart exercise the
+production numeric-bound, no-wrap and single-execution consumers. Each control
+requires an actual metric hit or its withdrawal under the corresponding switch;
+numeric fact switches must preserve the AI candidate population. Confirmed
+executions require nonempty strict AR acceptance.
+
+`concurrency-pair-exclusion` and `-lp64` test native and solver-assisted
+pair exclusion with their respective ablations. They run with BMC disabled:
+a pair exclusion proves only the supported separation query and cannot authorize
+a concrete counterexample. `concurrency-pair-exclusion-unit` independently
+enumerates tiny address spaces to check the range/congruence abstraction.
+
+`concurrency-results` compares selected execution models with detailed BMC
+diagnostics disabled and enabled, and independently checks every exported
+execution. The lightweight `ablate-bmc`, `reference-unknowns` and `witness-export`
+groups check offline evidence classification and export contracts without running
+an external source validator.
+
+Maintained end-to-end runners select the installed runtime's own isolated Python
+through `ikos_runtime.runtime_command`. This prevents a copied entry's absolute
+shebang or an ambient Python path from silently selecting a different install.
+Record the actual runtime before and after a frozen acceptance round.
 
 ## Local acceptance and remote CI
 

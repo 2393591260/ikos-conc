@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     entry = args.ikos.resolve()
     identity = runtime_identity(entry)
@@ -28,19 +29,20 @@ def main():
                                   fixture.replace('use_range', 'inspect_leaf').replace('integer_guard', 'condition_value'))
                 result = subprocess.run(command + ['--analyses=race', '--concurrency=auto',
                     '--partitioning=guards', '--demote-race-to-unknown', '--bmc-deadline-ms=0',
-                    '--log=debug', '-m32', '-o', str(work / 'output.db'), str(source)],
+                    '--log=debug', f'-m{args.bits}', '-o', str(work / 'output.db'), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
                 output = result.stdout + result.stderr
                 assert result.returncode == 0, (case, wide, output)
                 certified = 'mutex-array preflight certified' in output
-                if case % 2 == 0 or case == 19:
-                    # These are range-pressure controls, not safe-program labels.
+                if case % 2 == 0 or case in (11, 19):
+                    # CASE11's aggregate-copy effect remains outside the complete
+                    # range subset. WIDE is datum width; --bits selects the ABI.
                     assert not certified, (case, wide, output)
-                elif case not in {11}:
+                else:
                     assert certified, (case, wide, output)
                 # The guard communication is unsynchronized even with valid leaves.
                 assert 'The program is SAFE' not in output, (case, wide, output)
-                print(f'CASE={case}/WIDE={int(wide)} certified={certified} PASS', flush=True)
+                print(f'BITS={args.bits}/CASE={case}/WIDE={int(wide)} certified={certified} PASS', flush=True)
     verify_runtime(identity)
 
 if __name__ == '__main__':

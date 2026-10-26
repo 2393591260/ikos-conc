@@ -20,7 +20,9 @@ pthread_join(a,0); return 0; }
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ikos", type=Path, required=True)
-    entry = parser.parse_args().ikos
+    parser.add_argument("--bits", type=int, choices=(32, 64), default=32)
+    args = parser.parse_args()
+    entry = args.ikos
     cases = [
         ("disjoint", "shared.b=2;", True),
         ("overlap", "((char*)&shared.a)[1]=2;", False),
@@ -37,7 +39,7 @@ def main():
             env["IKOS_RACE_RULE_REPORT"] = str(report)
             proc = subprocess.run(
                 [*runtime_command(entry), "--analyses=race", "--demote-race-to-unknown",
-                 "-m32", "-o", str(work / "output.db"), str(source)],
+                 f"-m{args.bits}", "-o", str(work / "output.db"), str(source)],
                 env=env, capture_output=True, text=True, timeout=30,
             )
             assert proc.returncode == 0, proc.stderr

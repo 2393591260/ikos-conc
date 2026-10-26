@@ -10,6 +10,8 @@ import sys
 import tempfile
 from validate_bmc_execution import Replay, Reject, Unsupported, check, digest_json
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from analyzer.python.ikos.race_result import validate_race_result
@@ -83,7 +85,7 @@ def main():
                               ('#define WIDE\n' if variant == 'wide' else '') +
                               ('#define CONSTANT\n' if variant == 'constant' else '') + body)
             report.unlink(missing_ok=True)
-            result = subprocess.run([str(args.ikos.resolve()), '--analyses=race', '--concurrency=auto',
+            result = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race', '--concurrency=auto',
                 '--demote-race-to-unknown', '-m', '32', '--format=json', '--report-file=' + str(report),
                 '-o', str(work / 'output.db'), str(source)],
                 env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True, text=True, timeout=40)

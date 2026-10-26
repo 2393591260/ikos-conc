@@ -10,7 +10,8 @@ import tempfile
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
-sys.path.insert(0, str(ROOT))
+sys.path[:0] = [str(ROOT), str(ROOT / 'scripts')]
+from ikos_runtime import runtime_command
 import svcomp_race_test as suite
 import svcomp_witness
 
@@ -109,7 +110,7 @@ def main():
                     env.pop("IKOS_BMC_DIAGNOSTICS", None)
                 if case == "disabled":
                     env.pop("IKOS_BMC_RECOVER", None)
-                command = [str(args.ikos.resolve()), "--analyses=race", "--concurrency=auto",
+                command = runtime_command(args.ikos.resolve()) + [ "--analyses=race", "--concurrency=auto",
                            "--demote-race-to-unknown", "-m", bits, "-D",
                            "CASE=" + str(case if isinstance(case, int) else 0),
                            "--format=json", "--report-file=" + str(report),

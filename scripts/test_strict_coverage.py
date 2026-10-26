@@ -19,6 +19,7 @@ from sweep_bmc_execution import validate_report
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     command = runtime_command(args.ikos.resolve())
     identity = runtime_identity(args.ikos.resolve())
@@ -33,7 +34,7 @@ def main():
                     db, report = work / 'output.db', work / 'report.json'
                     options = ['--status-filter=safe', '--log=error'] if filtered else []
                     proc = subprocess.run(command + ['--analyses=race', '--concurrency=auto',
-                        '--partitioning=guards', '--demote-race-to-unknown', '-m32',
+                        '--partitioning=guards', '--demote-race-to-unknown', f'-m{args.bits}',
                         '--format=json', '--report-file=' + str(report), *options,
                         '-o', str(db), str(source)], env=dict(os.environ, IKOS_BMC_RECOVER='1'),
                         capture_output=True, text=True, timeout=30)
@@ -67,7 +68,7 @@ def main():
                 source = work / 'renamed.c'
                 source.write_text(f'#define CASE {case}\n' + body)
                 proc = subprocess.run(command + ['--analyses=race', '--concurrency=auto',
-                    '--partitioning=guards', '--demote-race-to-unknown', '-m32',
+                    '--partitioning=guards', '--demote-race-to-unknown', f'-m{args.bits}',
                     '--format=json', '--report-file=' + str(report), '-o', str(db), str(source)],
                     env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True, text=True, timeout=30)
                 assert proc.returncode == 0, (fixture_name, case, proc.stdout, proc.stderr)
@@ -86,8 +87,10 @@ def main():
  @llvm.global_KIND = appending global [1 x { i32, void ()*, i8* }] [{ i32, void ()*, i8* } { i32 65535, void ()* @absent, i8* null }]
  declare void @absent()
  define i32 @main() { ret i32 0 }
-""".replace('KIND', kind))
-            proc = subprocess.run(command + ['--analyses=race', '-m32', '--format=json',
+""".replace('KIND', kind).replace('p:32:32', f'p:{args.bits}:{args.bits}')
+                .replace('i386-pc-linux-gnu', 'i386-pc-linux-gnu' if args.bits == 32
+                         else 'x86_64-pc-linux-gnu'))
+            proc = subprocess.run(command + ['--analyses=race', f'-m{args.bits}', '--format=json',
                 '--report-file=' + str(report), '-o', str(db), str(source)],
                 capture_output=True, text=True, timeout=30)
             assert proc.returncode == 0, (kind, proc.stdout, proc.stderr)
@@ -96,7 +99,7 @@ def main():
             assert any(o['source'] == 'required_entry' for o in metadata['obligations']), metadata
         source = work / 'renamed.c'
         source.write_text('#define CASE 1\n' + fixture)
-        proc = subprocess.run(command + ['--analyses=race', '--no-checks', '-m32',
+        proc = subprocess.run(command + ['--analyses=race', '--no-checks', f'-m{args.bits}',
             '--format=json', '--report-file=' + str(report), '-o', str(db), str(source)],
             capture_output=True, text=True, timeout=30)
         assert proc.returncode == 0, (proc.stdout, proc.stderr)
@@ -106,7 +109,7 @@ def main():
         # A different checker must retain its real property error.
         source.write_text('#define CASE 4\n' + fixture.replace('missing_effect();\n  return 0;',
             'missing_effect();\n  return 1 / (__VERIFIER_nondet_int() * 0);'))
-        proc = subprocess.run(command + ['--analyses=race,dbz', '-m32',
+        proc = subprocess.run(command + ['--analyses=race,dbz', f'-m{args.bits}',
             '--format=json', '--report-file=' + str(report), '-o', str(db), str(source)],
             capture_output=True, text=True, timeout=30)
         assert proc.returncode == 0, (proc.stdout, proc.stderr)

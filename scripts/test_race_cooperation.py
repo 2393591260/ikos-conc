@@ -24,6 +24,7 @@ FLAGS = ('IKOS_RACE_DISABLE_OWNER_CONSUMER', 'IKOS_RACE_PAIR_OBSERVATIONS',
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix='ikos-cooperation-') as temp:
         work = Path(temp)
@@ -42,7 +43,7 @@ def main():
             command = runtime_command(args.ikos.resolve()) + [
                 '--analyses=race', '--concurrency=auto', '--partitioning=guards',
                 '--demote-race-to-unknown', '--bmc-deadline-ms=20000',
-                '--bmc-solver-timeout-ms=1000', '-m32', '--format=json',
+                '--bmc-solver-timeout-ms=1000', f'-m{args.bits}', '--format=json',
                 '--report-file=' + str(folder / 'report.json'),
                 '-o', str(folder / 'output.db'), str(source)]
             if observe:

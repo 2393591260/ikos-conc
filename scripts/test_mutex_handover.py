@@ -8,6 +8,8 @@ import sqlite3
 import subprocess
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -26,7 +28,7 @@ def main():
             for case in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 17, 18, 19, 20, 21, 26, 27, 28, 29, 30):
                 source = work / 'renamed.c'
                 source.write_text(f'#define CASE {case}\n#define WIDE {wide}\n' + fixture)
-                proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                     '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
                     '--bmc-deadline-ms=0', '-m' + str(args.bits), '-o', str(work / 'output.db'), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
@@ -50,7 +52,7 @@ def main():
             'pthread_create(&thread,', 'pthread_create((pthread_t *)&thread,')
         source = work / 'wrong-handle-width.c'
         source.write_text('#define CASE 0\n#define WIDE 0\n' + text)
-        proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+        proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
             '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
             '--bmc-deadline-ms=0', '-m' + str(args.bits),
             '-o', str(work / 'output.db'), str(source)],

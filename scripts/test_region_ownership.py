@@ -8,6 +8,8 @@ import subprocess
 import sys
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from svcomp_race_test import classify, VERDICT_SAFE, VERDICT_UNKNOWN
@@ -33,7 +35,7 @@ def main():
                 text = text.replace('guards', 'locks').replace('roots', 'heads')
                 source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') + text)
                 report = work / 'report.json'
-                result = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                result = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                     '--concurrency=auto', '--demote-race-to-unknown', '--bmc-deadline-ms=0',
                     '--format=json', '--status-filter=*', '--report-file=' + str(report),
                     '--log=debug', f'-m{args.bits}', '-o', str(work / 'output.db'), str(source)],

@@ -23,7 +23,11 @@ void *entry(void *arg) {
   intptr_t bits = (intptr_t)arg;
   *(int *)bits = 1;
 #elif CASE == 18
-  long long bits = (long long)arg;
+#if UINTPTR_MAX == UINT64_MAX
+  int32_t bits = (int32_t)arg;
+#else
+  int64_t bits = (int64_t)arg;
+#endif
   data[bits & 1] = 1;
 #else
 #ifdef WIDE

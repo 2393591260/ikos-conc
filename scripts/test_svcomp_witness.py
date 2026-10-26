@@ -12,6 +12,9 @@ import sys
 import tempfile
 import unittest
 
+from ikos_runtime import runtime_command
+from sweep_bmc_execution import validate_report
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 SPEC = importlib.util.spec_from_file_location(
@@ -151,7 +154,7 @@ class WitnessTests(unittest.TestCase):
             str(self.source), self.pair(), "ILP32", str(self.ikos)
         )
         version = subprocess.check_output(
-            [str(self.ikos), "--version"], text=True
+            runtime_command(self.ikos) + ["--version"], text=True
         ).splitlines()[0].split()[-1]
         self.assertEqual(witness[0]["metadata"]["producer"]["version"], version)
 
@@ -533,7 +536,8 @@ sys.exit(3 if mode == "crash" else 0)
         fake.chmod(0o755)
         config = self.folder / "ikos-config"
         frontend = subprocess.run(
-            [str(self.ikos.parent / "ikos-config"), "--clang", "--includedir"],
+            runtime_command(self.ikos)[:-1] + [
+                str(self.ikos.parent / "ikos-config"), "--clang", "--includedir"],
             capture_output=True, text=True, check=True,
         ).stdout.splitlines()
         self.assertEqual(len(frontend), 2)
@@ -587,7 +591,7 @@ sys.exit(3 if mode == "crash" else 0)
         )
         return proc, out
 
-    def real_pair(self):
+    def real_pair(self, bits=32):
         self.source.write_text("""#include <pthread.h>
 int shared;
 void *worker(void *arg) { shared = 1; return 0; }
@@ -599,14 +603,37 @@ int main(void) {
 }
 """)
         report = self.folder / "real-report.json"
-        proc = subprocess.run([str(self.ikos), '--analyses=race', '--concurrency=auto',
-            '--partitioning=guards', '--demote-race-to-unknown', '-m32', '--format=json',
+        proc = subprocess.run(runtime_command(self.ikos) + ['--analyses=race', '--concurrency=auto',
+            '--partitioning=guards', '--demote-race-to-unknown', f'-m{bits}', '--format=json',
             '--report-file=' + str(report), '-o', str(self.folder / 'real.db'), str(self.source)],
             env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True, text=True, timeout=30)
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
-        pair = wrapper.first_race(json.loads(report.read_text()))
+        data = json.loads(report.read_text())
+        executions = validate_report(data)
+        self.assertTrue(executions, (bits, proc.stdout + proc.stderr))
+        self.assertTrue(all(row['status'] == 'ACCEPT' and row['strict_false_publishable']
+                            for row in executions), executions)
+        pair = wrapper.first_race(data)
         self.assertIsNotNone(pair, proc.stdout + proc.stderr)
+        self.assertEqual(pair['counterexample']['program']['pointer_bits'], bits)
         return pair
+
+    def test_real_pair_and_witness_support_both_abis(self):
+        for bits, model in ((32, 'ILP32'), (64, 'LP64')):
+            with self.subTest(bits=bits):
+                pair = self.real_pair(bits)
+                # The fake transport remains deliberate; the selected execution
+                # came from the real chosen-ABI analyzer and passed strict AR.
+                proc, out = self.run_wrapper(
+                    'race', pair, extra_options=('--data-model=' + model,))
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                self.assertIn('definitely UNSAFE', proc.stdout)
+                witness = json.loads(out.read_text())
+                self.assertEqual(witness[0]['metadata']['task']['data_model'], model)
+                self.assertEqual(
+                    {waypoint['waypoint']['thread_id']
+                     for waypoint in witness[0]['content'][-1]['segment']}, {0, 1})
+
 
     def test_default_budgets_inherit_analyzer_settings(self):
         proc, _ = self.run_wrapper("safe")

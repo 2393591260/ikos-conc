@@ -199,6 +199,11 @@ bool allocator_wrapper(Function& f) {
   std::set< Value* > observed;
   CallInst* allocation = nullptr;
   uint64_t extent = 0;
+  // Standard malloc storage accommodates fundamental pointer alignment. Only
+  // extend the scalar-store bound when LLVM agrees with the native 32/64-bit
+  // heap alignment used by the BMC and independent execution checker.
+  const auto pointer_alignment = layout.getPointerABIAlignment(0);
+  const bool native_heap_alignment = pointer_alignment.value() == bits / 8;
   unsigned budget = 128;
   for (auto& instruction : f.front()) {
     if (!budget--)
@@ -268,7 +273,8 @@ bool allocator_wrapper(Function& f) {
       if (size.isScalable() || size.getFixedValue() == 0 ||
           address->second > extent ||
           size.getFixedValue() > extent - address->second ||
-          store->getAlign() > layout.getABITypeAlign(value->getType()) ||
+          (store->getAlign() > layout.getABITypeAlign(value->getType()) &&
+           (!native_heap_alignment || store->getAlign() > pointer_alignment)) ||
           address->second % store->getAlign().value())
         return false;
       const auto end = address->second + size.getFixedValue();

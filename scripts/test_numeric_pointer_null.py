@@ -20,6 +20,7 @@ from validate_bmc_execution import check, digest_json
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/numeric-pointer-null.c').read_text()
     corruptions = 0
@@ -33,7 +34,7 @@ def main():
                 report.unlink(missing_ok=True)
                 proc = subprocess.run(runtime_command(args.ikos) + ['--analyses=race',
                     '--concurrency=auto', '--demote-race-to-unknown', '--partitioning=guards',
-                    '-m32', '--bmc-deadline-ms=20000', '--bmc-solver-timeout-ms=5000',
+                    f'-m{args.bits}', '--bmc-deadline-ms=20000', '--bmc-solver-timeout-ms=5000',
                     '--format=json', '--report-file=' + str(report),
                     '-o', str(work / 'output.db'), str(source)],
                     env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True,
@@ -50,7 +51,8 @@ def main():
                     assert not m['search_performed'] and not executions, m
                 else:
                     assert m['coverage'] == 'Checked', (case, wide, m, proc.stdout)
-                    if case in (1, 3):
+                    # The 2**32 token is NULL only under ILP32.
+                    if case == 1 or (case == 3 and args.bits == 32):
                         assert m['verdict'] == 'SAFE', (case, wide, m)
                     elif case in (5, 6):
                         assert m['verdict'] in ('SAFE', 'UNKNOWN'), (case, wide, m)
@@ -81,7 +83,7 @@ def main():
                 controls += 1
                 print(f'CASE={case}/wide={wide}: {m["verdict"]}/{m["coverage"]}', flush=True)
     assert corruptions >= 1, corruptions
-    print(f'{controls} ILP32 controls and {corruptions} corrupted executions passed')
+    print(f'{controls} {args.bits}-bit controls and {corruptions} corrupted executions passed')
 
 
 if __name__ == '__main__':

@@ -44,8 +44,11 @@ def replay_mutations(certificate):
     replay.run()
     obj = next(k for k, meta in replay.objects.items() if meta.get('dynamic_stack'))
     pointer = (obj, 0)
-    inst = dict(inbounds=True, index_bits=32, address_space=0, factors=['4'],
-                native_terms=[dict(kind='index', stride=4, bits=32)], operands=[{}, dict(type=dict(bits=32))])
+    bits = original['pointer_bits']
+    stride = int(replay.objects[obj]['type']['extent'])
+    inst = dict(inbounds=True, index_bits=bits, address_space=0, factors=[str(stride)],
+                native_terms=[dict(kind='index', stride=stride, bits=bits)],
+                operands=[{}, dict(type=dict(bits=bits))])
     try:
         replay.pointer_shift(inst, [pointer, replay.objects[obj]['count'] + 1])
     except (Reject, Unsupported):
@@ -58,6 +61,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     parser.add_argument('--case', type=int, choices=range(19), action='append')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     entry = args.ikos.resolve()
     runtime = runtime_identity(entry)
@@ -72,7 +76,7 @@ def main():
                                   body.replace('worker', 'entry').replace('capacity', 'limit'))
                 report = work / 'output.json'
                 result = subprocess.run(command + ['--analyses=race', '--concurrency=auto',
-                    '--partitioning=guards', '--demote-race-to-unknown', '-m32',
+                    '--partitioning=guards', '--demote-race-to-unknown', f'-m{args.bits}',
                     '--bmc-deadline-ms=20000', '--bmc-solver-timeout-ms=5000',
                     '--format=json', '--report-file=' + str(report), '-o', str(work / 'output.db'), str(source)],
                     env=dict(os.environ, IKOS_BMC_RECOVER='1', IKOS_BMC_DIAGNOSTICS='1'),
@@ -92,7 +96,7 @@ def main():
                 print(f'CASE={case}/WIDE={int(wide)} {verdict} PASS', flush=True)
                 if case == 18:
                     configured = subprocess.run(command + ['--analyses=race', '--concurrency=auto',
-                        '--partitioning=guards', '--demote-race-to-unknown', '--argc=3', '-m32',
+                        '--partitioning=guards', '--demote-race-to-unknown', '--argc=3', f'-m{args.bits}',
                         '-o', str(work / 'configured.db'), str(source)],
                         env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True, text=True, timeout=35)
                     assert configured.returncode == 0, configured.stdout + configured.stderr

@@ -9,6 +9,8 @@ import subprocess
 import sys
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'scripts')]
 from svcomp_race_test import classify
@@ -148,7 +150,7 @@ def main():
                                   body.replace('permit', 'credit').replace('worker', 'entry'))
                 report = work / 'report.json'
                 report.unlink(missing_ok=True)
-                proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                     '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
                     '--bmc-deadline-ms=20000', '--bmc-solver-timeout-ms=1000', '-m' + str(args.bits),
                     '--format=json', '--report-file=' + str(report), '-o', str(work/'out.db'), str(source)],

@@ -8,6 +8,8 @@ import sqlite3
 import subprocess
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -25,7 +27,7 @@ def main():
             for case in range(41):
                 source = work / 'renamed.c'
                 source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') + fixture)
-                proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                     '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
                     '--bmc-deadline-ms=0', '-m' + str(args.bits), '-o', str(work / 'output.db'), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
@@ -53,7 +55,7 @@ def main():
                 text = text.replace('storage[token]', 'storage[' + index + ']')
                 source = work / 'unsupported-index.c'
                 source.write_text('#define CASE 0\n' + text)
-                proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                     '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
                     '--bmc-deadline-ms=0', '-m64', '-o', str(work / 'output.db'), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)

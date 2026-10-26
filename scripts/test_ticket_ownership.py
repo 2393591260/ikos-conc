@@ -8,6 +8,8 @@ import sqlite3
 import subprocess
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -28,7 +30,7 @@ def main():
                 text = fixture.replace('served', 'service_index').replace('next', 'issued_index')
                 text = text.replace('protocol', 'work_item').replace('__VERIFIER_atomic_issue', '__VERIFIER_atomic_reserve_ticket')
                 source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') + text)
-                proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                     '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
                     '--bmc-deadline-ms=0', '-m' + str(args.bits), '-o', str(work / 'output.db'), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)

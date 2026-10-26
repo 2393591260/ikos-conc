@@ -7,7 +7,7 @@
 <a id="numeric-thread-arguments"></a>
 ### Native numerical thread arguments
 
-On GNU/Linux x86 ILP32, a native-width integer may travel as a `void*` payload
+On GNU/Linux x86 ILP32 or x86-64 LP64, a native-width integer may travel as a `void*` payload
 without acquiring the ability to address application memory. The producer uses
 the existing AbsoluteZero plus offset representation. A bounded static check in
 `numeric_thread_argument.hpp` requires closed uses in both LLVM and AR: pointer
@@ -25,12 +25,12 @@ its own bit-pattern checks. Existing byte/unknown-effect obligations and the
 strict result gate still apply. This representation contract grants neither
 pointer validity nor completion, uniqueness or a final verdict.
 
-Regression: `scripts/test_numeric_thread_argument.py --ikos install/bin/ikos`.
+Regression: `scripts/test_numeric_thread_argument.py --ikos install/bin/ikos` (add `--bits 64` for LP64).
 
 <a id="numeric-pointer-null-tests"></a>
 ### Native numerical pointers used only in null tests
 
-On GNU/Linux x86 ILP32, `numeric_pointer_null.hpp` checks the complete pointer-use
+On GNU/Linux x86 ILP32 or x86-64 LP64, `numeric_pointer_null.hpp` checks the complete pointer-use
 closure in both LLVM and AR. A native-width integer-to-pointer conversion may
 only be copied or bitcast and compared for equality/inequality with literal NULL.
 Dereferences, publication, calls, returns, pointer arithmetic, other comparisons,
@@ -50,7 +50,7 @@ remains unsupported; no free pointer symbol replaces an unknown origin. Independ
 AR replay computes numeric bits itself and accepts numeric equality only against
 literal NULL. It still refuses numeric object access and general pointer equality.
 
-Regression: `scripts/test_numeric_pointer_null.py --ikos install/bin/ikos`.
+Regression: `scripts/test_numeric_pointer_null.py --ikos install/bin/ikos` (add `--bits 64` for LP64).
 The source/import contract remains a trusted dependency; finite controls and
 AR ACCEPT are not a source-witness validation or a whole-tool proof.
 
@@ -147,7 +147,7 @@ It does not establish list ownership, initialization or first-publication safety
 <a id="pure-ffs-effects"></a>
 ### Pure ffs application effects
 
-The GNU/Linux x86 ILP32 `int ffs(int)` declaration has no application-memory,
+The GNU/Linux x86 ILP32 and x86-64 LP64 `int ffs(int)` declaration has no application-memory,
 errno or synchronization effects. The ordinary numerical transfer returns TOP,
 so it retains every possible result and dependent path. This model introduces
 no value range or safety exclusion. The [BMC value model](bounded-execution.md#exact-ffs-values-in-bmc)
@@ -165,13 +165,13 @@ The [POSIX value contract](https://pubs.opengroup.org/onlinepubs/9799919799/func
 and [glibc 2.39 x86 implementation](https://github.com/bminor/glibc/blob/glibc-2.39/sysdeps/i386/ffs.c)
 support this restricted library summary. Implementation: `try_exec_ffs` in
 [`numerical.hpp`](../../../analyzer/include/ikos/analyzer/analysis/execution_engine/numerical.hpp).
-Regression: `scripts/test_bmc_ffs.py --ikos install/bin/ikos`, including wide
+Regression: `scripts/test_bmc_ffs.py --ikos install/bin/ikos` (add `--bits 64` for LP64), including wide
 data, incorrect results, source definitions, ABI and effect controls.
 
 <a id="private-array-zero-effects"></a>
 ### Private integer-array zeroing
 
-On ILP32, a nonvolatile LLVM `memset` intrinsic can have complete private
+On native ILP32 and LP64, a nonvolatile LLVM `memset` intrinsic can have complete private
 application effects for a fixed, one-dimensional stack integer array. The
 LLVM allocation and AR allocation must agree on element width, count, extent
 and alignment; the exact call must zero the entire allocation. Each actual

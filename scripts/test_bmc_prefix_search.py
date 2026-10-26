@@ -9,6 +9,8 @@ import subprocess
 import sys
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from svcomp_race_test import classify, VERDICT_RACE
@@ -18,6 +20,7 @@ from validate_bmc_execution import check, digest_json
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     fixture = (ROOT / 'analyzer/test/regression/bmc-correctness/loop-prefix.c').read_text()
     cases = [(0, 20, False, False), (0, 43, False, False),
@@ -33,8 +36,8 @@ def main():
                               fixture.replace('worker', 'entry').replace('flag', 'ready'))
             report = work / 'report.json'
             report.unlink(missing_ok=True)
-            proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
-                '--concurrency=auto', '--demote-race-to-unknown', '-m32', '--format=json',
+            proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
+                '--concurrency=auto', '--demote-race-to-unknown', f'-m{args.bits}', '--format=json',
                 '--report-file=' + str(report), '-o', str(work / 'output.db'), str(source)],
                 env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True,
                 text=True, timeout=30)

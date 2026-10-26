@@ -7,6 +7,9 @@ from pathlib import Path
 import subprocess
 import tempfile
 
+from ikos_runtime import runtime_command
+from sweep_bmc_execution import validate_report
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -15,6 +18,7 @@ def main():
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     args = parser.parse_args()
     source = ROOT / 'analyzer/test/regression/bmc-values/values.c'
+    accepted_executions = 0
     with tempfile.TemporaryDirectory(prefix='ikos-results-') as temp:
         work = Path(temp)
         for bits in ('32', '64'):
@@ -27,16 +31,24 @@ def main():
                         env['IKOS_BMC_DIAGNOSTICS'] = '1'
                     report = work / 'report.json'
                     report.unlink(missing_ok=True)
-                    proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                    proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                         '--concurrency=auto', '--demote-race-to-unknown', '-m', bits,
                         '-DCASE=' + str(case), '--format=json', '--report-file=' + str(report),
                         '-o', str(work / 'output.db'), str(source)], cwd=work, env=env,
                         capture_output=True, text=True, timeout=30)
                     assert proc.returncode == 0, proc.stdout + proc.stderr
-                    infos = [r['info'] for r in json.loads(report.read_text())['reports']
-                             if 'bmc_result' in r['info']]
+                    data = json.loads(report.read_text())
+                    infos = [r['info'] for r in data['reports'] if 'bmc_result' in r['info']]
                     confirmed = [i for i in infos if i['bmc_result']['status'] == 'CONFIRMED']
                     assert bool(confirmed) == (case in (1, 11, 31)), (bits, case, infos)
+                    executions = validate_report(data)
+                    if confirmed:
+                        assert len(executions) == len(confirmed) and all(
+                            row['status'] == 'ACCEPT' and row['strict_false_publishable']
+                            for row in executions), (bits, case, diagnostic, executions)
+                        accepted_executions += len(executions)
+                    else:
+                        assert not executions, (bits, case, diagnostic, executions)
                     for info in infos:
                         assert ('counterexample' in info) == (info in confirmed)
                         if info in confirmed:
@@ -53,6 +65,8 @@ def main():
                     evidence.append(selected)
                 assert evidence[0] == evidence[1], (bits, case, 'diagnostics changed selected model')
                 print(f'{bits}-bit case {case}: diagnostic-off/on evidence [PASS]')
+    assert accepted_executions > 0
+    print(f'PASS {accepted_executions} nonempty strict AR executions ACCEPT', flush=True)
 
 
 if __name__ == '__main__':

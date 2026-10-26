@@ -8,6 +8,8 @@ import subprocess
 import sys
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'scripts')]
 from svcomp_race_test import classify
@@ -39,7 +41,8 @@ def api_contract(program, certificate):
         else:
             raise AssertionError('reinitialized live/overlapping mutex accepted')
     replay = Replay(program, certificate)
-    for offset in (0, 24):
+    mutex_extent = int(program['globals'][name]['type']['element']['extent'])
+    for offset in (0, mutex_extent):
         replay.api('pthread_mutex_init', [(pointer[0], offset), ('null', 0)],
                    init, {}, 'a', 0, main, None)
     replay = Replay(program, certificate)
@@ -56,6 +59,7 @@ def api_contract(program, certificate):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     body = (ROOT / 'analyzer/test/regression/bmc-values/mutex-lifetime.c').read_text()
     positive = {0, 3, 4, 5, 12, 13, 14, 16}
@@ -68,9 +72,9 @@ def main():
                                   body.replace('guards', 'locks').replace('worker', 'entry'))
                 report = work / 'report.json'
                 report.unlink(missing_ok=True)
-                proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                     '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
-                    '--bmc-deadline-ms=20000', '--bmc-solver-timeout-ms=5000', '-m32',
+                    '--bmc-deadline-ms=20000', '--bmc-solver-timeout-ms=5000', f'-m{args.bits}',
                     '--format=json', '--report-file=' + str(report), '-o', str(work / 'output.db'), str(source)],
                     env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True, text=True, timeout=35)
                 output = proc.stdout + proc.stderr

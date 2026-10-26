@@ -9,6 +9,8 @@ import subprocess
 import sys
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from svcomp_race_test import classify, VERDICT_RACE
@@ -53,6 +55,7 @@ def api_contract():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     api_contract()
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/ffs.c').read_text()
@@ -72,8 +75,8 @@ def main():
                                   fixture.replace('datum', 'payload').replace('first', 'entry'))
                 report = work / 'report.json'
                 report.unlink(missing_ok=True)
-                result = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
-                    '--concurrency=auto', '--demote-race-to-unknown', '-m32',
+                result = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
+                    '--concurrency=auto', '--demote-race-to-unknown', f'-m{args.bits}',
                     '--format=json', '--report-file=' + str(report),
                     '-o', str(work / 'output.db'), str(source)],
                     env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True,
@@ -120,8 +123,8 @@ def main():
                 for wide in (False, True)):
             source = work / 'renamed.c'
             source.write_text('#define ' + option + '\n' + ('#define WIDE\n' if wide else '') + fixture)
-            proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
-                '--concurrency=auto', '--demote-race-to-unknown', '-m32',
+            proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
+                '--concurrency=auto', '--demote-race-to-unknown', f'-m{args.bits}',
                 '--format=json', '--report-file=' + str(report),
                 '-o', str(work / 'output.db'), str(source)],
                 env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True,
@@ -135,7 +138,8 @@ def main():
             else:
                 assert metadata['verdict'] == 'UNKNOWN' and metadata['coverage'] == 'Blocked', (option, metadata)
                 assert not metadata['search_performed'] and any(
-                    o['reason'] == 'external call effects not covered' and not o['contract']
+                    o['reason'] == ('source call ABI attributes not covered' if option == 'STDCALL'
+                                    else 'external call effects not covered') and not o['contract']
                     for o in metadata['obligations']), (option, metadata)
             print(f'ffs ABI/effect control {option}/wide={wide}: {metadata["verdict"]}', flush=True)
 

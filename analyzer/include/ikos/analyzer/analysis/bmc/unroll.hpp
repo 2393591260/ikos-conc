@@ -1169,23 +1169,28 @@ inline bool main_mutex_subobject(const BmcEvent& address) {
       local->bundle()->global_or_null("ar.global_ctors") ||
       local->bundle()->global_or_null("ar.global_dtors")) return false;
   const llvm::Triple target(source->getModule()->getTargetTriple());
-  if (target.getArch() != llvm::Triple::x86 || !target.isOSLinux() ||
-      target.getEnvironment() != llvm::Triple::GNU ||
-      local->bundle()->data_layout().pointers.bit_width != 32) return false;
+  const auto bits = local->bundle()->data_layout().pointers.bit_width;
+  if (!target.isOSLinux() || target.getEnvironment() != llvm::Triple::GNU ||
+      !((bits == 32 && target.getArch() == llvm::Triple::x86) ||
+        (bits == 64 && target.getArch() == llvm::Triple::x86_64))) return false;
+  const unsigned width = bits == 32 ? 24 : 40;
+  const unsigned alignment = bits / 8;
+  if (local->alignment() < alignment ||
+      source->getAlign().value() < alignment) return false;
   const auto& layout = source->getModule()->getDataLayout();
   auto* type = source->getAllocatedType();
   core::ZNumber extent;
   if (!type->isSized() || !memory_extent(address, extent) ||
       layout.getTypeAllocSize(type).isScalable() ||
       extent != core::ZNumber(layout.getTypeAllocSize(type).getFixedValue()) ||
-      address.const_off + 24 > extent || address.const_off % 4 != 0) return false;
+      address.const_off + width > extent || address.const_off % alignment != 0) return false;
   auto offset = address.const_off.to< std::uint64_t >();
   for (unsigned depth = 0; depth < 32; ++depth) {
     if (auto* record = llvm::dyn_cast< llvm::StructType >(type)) {
       if (record->isOpaque()) return false;
       if (record->hasName() && record->getName() == "union.pthread_mutex_t")
-        return offset == 0 && layout.getTypeAllocSize(type) == 24 &&
-               layout.getABITypeAlign(type).value() == 4;
+        return offset == 0 && layout.getTypeAllocSize(type) == width &&
+               layout.getABITypeAlign(type).value() == alignment;
       const auto* fields = layout.getStructLayout(record);
       bool found = false;
       for (unsigned i = 0; i < record->getNumElements(); ++i) {

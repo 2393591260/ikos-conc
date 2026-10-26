@@ -10,7 +10,12 @@ extern long long ffs(long long);
 #elif defined(VARARGS)
 extern int ffs(int, ...);
 #elif defined(STDCALL)
+#if defined(__x86_64__)
+// stdcall is ignored on x86_64; exercise a real incompatible calling convention.
+extern int __attribute__((ms_abi)) ffs(int);
+#else
 extern int __attribute__((stdcall)) ffs(int);
+#endif
 #elif defined(NO_RETURN)
 extern int ffs(int) __attribute__((noreturn));
 #elif defined(RETURNS_TWICE)

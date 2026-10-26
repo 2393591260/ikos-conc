@@ -210,6 +210,8 @@ add_concurrency_test(calloc-overflow "${CONCURRENCY_ROOT}/scripts/test_calloc_ov
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(region-ownership "${CONCURRENCY_ROOT}/scripts/test_region_ownership.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(region-ownership-lp64 "${CONCURRENCY_ROOT}/scripts/test_region_ownership.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(head-publication "${CONCURRENCY_ROOT}/scripts/test_head_publication.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(array-slices "${CONCURRENCY_ROOT}/scripts/test_array_slices.py"
@@ -244,14 +246,24 @@ add_concurrency_test(boolean-partitioning "${CONCURRENCY_ROOT}/scripts/test_bool
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(protected-field-values "${CONCURRENCY_ROOT}/scripts/test_protected_field_values.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(protected-field-values-lp64 "${CONCURRENCY_ROOT}/scripts/test_protected_field_values.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(mutex-array-effects "${CONCURRENCY_ROOT}/scripts/test_mutex_array_effects.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(mutex-array-effects-lp64 "${CONCURRENCY_ROOT}/scripts/test_mutex_array_effects.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(race-cooperation "${CONCURRENCY_ROOT}/scripts/test_race_cooperation.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(race-cooperation-lp64 "${CONCURRENCY_ROOT}/scripts/test_race_cooperation.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(preflight-memory-ranges "${CONCURRENCY_ROOT}/scripts/test_preflight_memory_ranges.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(preflight-memory-ranges-lp64 "${CONCURRENCY_ROOT}/scripts/test_preflight_memory_ranges.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(nested-array-ownership "${CONCURRENCY_ROOT}/scripts/test_nested_array_ownership.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(nested-array-ownership-lp64 "${CONCURRENCY_ROOT}/scripts/test_nested_array_ownership.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(native-thread-handles "${CONCURRENCY_ROOT}/scripts/test_native_thread_handles.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(native-thread-handles-lp64 "${CONCURRENCY_ROOT}/scripts/test_native_thread_handles.py"
@@ -280,7 +292,7 @@ add_concurrency_test(prefix-search "${CONCURRENCY_ROOT}/scripts/test_bmc_prefix_
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(sibling-atomic "${CONCURRENCY_ROOT}/scripts/test_bmc_sibling_atomic.py"
                      --ikos "${CONCURRENCY_IKOS}")
-foreach(bits 32)
+foreach(bits 32 64)
   add_concurrency_test(p0-${bits}
     "${CONCURRENCY_ROOT}/docs/review-repros/bmc-2026-10-08/run.py"
     --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
@@ -288,6 +300,8 @@ endforeach()
 foreach(suite address values correctness auxiliary)
   add_concurrency_test(${suite} "${CMAKE_CURRENT_SOURCE_DIR}/bmc-${suite}/runtest"
                        --ikos "${CONCURRENCY_IKOS}")
+  add_concurrency_test(${suite}-lp64 "${CMAKE_CURRENT_SOURCE_DIR}/bmc-${suite}/runtest"
+                       --ikos "${CONCURRENCY_IKOS}" --bits 64)
 endforeach()
 add_concurrency_test(execution "${CONCURRENCY_ROOT}/scripts/test_bmc_execution.py"
                      --ikos "${CONCURRENCY_IKOS}")
@@ -376,3 +390,114 @@ add_concurrency_test(bucket-abi-attributes "${CONCURRENCY_ROOT}/scripts/test_buc
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(bucket-abi-attributes-lp64 "${CONCURRENCY_ROOT}/scripts/test_bucket_abi_attributes.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(allocator-inlining-lp64 "${CONCURRENCY_ROOT}/scripts/test_allocator_inlining.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(atomic-completion-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_atomic_completion.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(ffs-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_ffs.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(heap-completion-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_heap_completion.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(bmc-main-stack-mutex-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_main_stack_mutex.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(bmc-main-vla-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_main_vla.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(bmc-mutex-lifetime-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_mutex_lifetime.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(prefix-search-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_prefix_search.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(sibling-atomic-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_sibling_atomic.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(boolean-partitioning-lp64 "${CONCURRENCY_ROOT}/scripts/test_boolean_partitioning.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(calloc-overflow-lp64 "${CONCURRENCY_ROOT}/scripts/test_calloc_overflow.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(direct-token-lp64 "${CONCURRENCY_ROOT}/scripts/test_direct_token.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(freeze-array-lp64 "${CONCURRENCY_ROOT}/scripts/test_freeze_array.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(head-publication-lp64 "${CONCURRENCY_ROOT}/scripts/test_head_publication.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(heap-constructors-lp64 "${CONCURRENCY_ROOT}/scripts/test_heap_constructor_fields.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(heap-initialization-prefix-lp64 "${CONCURRENCY_ROOT}/scripts/test_heap_initialization_prefix.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(heap-initialization-lp64 "${CONCURRENCY_ROOT}/scripts/test_heap_pointer_initialization.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(initialized-pointer-fields-lp64 "${CONCURRENCY_ROOT}/scripts/test_initialized_pointer_fields.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(numeric-pointer-null-lp64 "${CONCURRENCY_ROOT}/scripts/test_numeric_pointer_null.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(numeric-thread-argument-lp64 "${CONCURRENCY_ROOT}/scripts/test_numeric_thread_argument.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(private-array-zero-lp64 "${CONCURRENCY_ROOT}/scripts/test_private_array_zero.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(race-rule-trace-lp64 "${CONCURRENCY_ROOT}/scripts/test_race_rule_trace.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(spawn-arguments-lp64 "${CONCURRENCY_ROOT}/scripts/test_spawn_arguments.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(strict-coverage-lp64 "${CONCURRENCY_ROOT}/scripts/test_strict_coverage.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(budgets-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_budgets.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(modes-lp64 "${CONCURRENCY_ROOT}/scripts/test_race_modes.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(execution-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_execution.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(results "${CONCURRENCY_ROOT}/scripts/test_bmc_results.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+
+add_concurrency_test(ablate-bmc "${CONCURRENCY_ROOT}/scripts/test_ablate_bmc.py")
+
+add_concurrency_test(reference-unknowns "${CONCURRENCY_ROOT}/scripts/test_reference_unknowns.py")
+
+add_concurrency_test(witness-export "${CONCURRENCY_ROOT}/scripts/test_bmc_witnesses.py")
+
+add_concurrency_test(bmc-fact-switches "${CONCURRENCY_ROOT}/scripts/test_bmc_fact_switches.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+
+add_concurrency_test(bmc-fact-switches-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_fact_switches.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(pair-exclusion "${CONCURRENCY_ROOT}/scripts/test_pair_exclusion.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+
+add_concurrency_test(pair-exclusion-lp64 "${CONCURRENCY_ROOT}/scripts/test_pair_exclusion.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_executable(test-analysis-pair-exclusion pair_exclusion.cpp)
+target_include_directories(test-analysis-pair-exclusion PRIVATE
+                           "${CONCURRENCY_ROOT}/analyzer/include")
+target_link_libraries(test-analysis-pair-exclusion ${Z3_LIB} ${GMPXX_LIB} ${GMP_LIB})
+add_dependencies(build-analyzer-tests test-analysis-pair-exclusion)
+add_test(NAME concurrency-pair-exclusion-unit
+         COMMAND $<TARGET_FILE:test-analysis-pair-exclusion>)
+set_tests_properties(concurrency-pair-exclusion-unit PROPERTIES LABELS concurrency)

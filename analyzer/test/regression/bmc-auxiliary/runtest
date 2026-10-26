@@ -12,6 +12,7 @@ import tempfile
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
 sys.path[:0] = [str(ROOT), str(ROOT / 'scripts')]
+from ikos_runtime import runtime_command
 import svcomp_race_test as suite
 from validate_bmc_execution import check, digest_json
 import svcomp_witness
@@ -40,7 +41,7 @@ def main():
             source.write_text(text)
             report = folder / 'report.json'
             report.unlink(missing_ok=True)
-            proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+            proc = subprocess.run(runtime_command(args.ikos.resolve()) + [ '--analyses=race',
                 '--concurrency=auto', '--demote-race-to-unknown', '-m', str(bits),
                 '--format=json', '--report-file=' + str(report),
                 '-o', str(folder / 'output.db'), str(source)], cwd=folder,
@@ -113,11 +114,11 @@ def main():
             for variant, text in variants.items():
                 for case in range(12, 24):
                     _, verdict, report_data = analyze(f'#define CASE {case}\n' + text, bits)
-                    if case == 21 and bits == 32:
+                    if case == 21:
                         metadata = validate_race_result(report_data)
                         assert verdict == suite.VERDICT_RACE, (bits, variant, case, verdict)
                         assert metadata['coverage'] == 'Checked' and not metadata['obligations'], metadata
-                    elif case in (21, 22):
+                    elif case == 22:
                         metadata = validate_race_result(report_data)
                         assert verdict == suite.VERDICT_UNKNOWN and not metadata['search_performed'], metadata
                         assert any(o['reason'] == 'external call effects not covered' and not o['contract']

@@ -10,7 +10,9 @@ import tempfile
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
-sys.path.insert(0, str(ROOT))
+sys.path[:0] = [str(ROOT), str(ROOT / 'scripts')]
+from ikos_runtime import runtime_command
+from sweep_bmc_execution import validate_report
 import svcomp_race_test as suite
 from analyzer.python.ikos.race_result import validate_race_result
 
@@ -38,7 +40,7 @@ def main():
             for case in CASES:
                 report = work / 'report.json'
                 report.unlink(missing_ok=True)
-                cmd = [str(args.ikos.resolve()), '--analyses=race', '--concurrency=auto',
+                cmd = runtime_command(args.ikos.resolve()) + [ '--analyses=race', '--concurrency=auto',
                        '--demote-race-to-unknown', '-m', bits, '-D', f'CASE={case}',
                        '--format=json', '--report-file=' + str(report),
                        '-o', str(work / 'output.db'), str(source)]
@@ -57,7 +59,7 @@ def main():
                     passed = actual == suite.VERDICT_RACE if native_race else actual in (suite.VERDICT_SAFE, suite.VERDICT_UNKNOWN)
                 if case == 39:
                     passed = actual == suite.VERDICT_UNKNOWN and counts.get('call_summary', 0) > 0
-                if case >= 56 and (bits == '64' or case in (62, 64)):
+                if case >= 56 and (case == 64 or (case == 62 and bits == '32')):
                     metadata = validate_race_result(json.loads(report.read_text()))
                     assert metadata['coverage'] == 'Blocked' and not metadata['search_performed'], metadata
                     assert any(o['reason'] == 'integer-derived pointer aliasing is not modeled'
@@ -67,6 +69,10 @@ def main():
                     metadata = validate_race_result(json.loads(report.read_text()))
                     assert metadata['coverage'] == 'Checked' and not metadata['obligations'], metadata
                 rows.append(dict(bits=bits, case=case, verdict=actual, passed=passed, counts=counts))
+                if actual == suite.VERDICT_RACE:
+                    checks = validate_report(json.loads(report.read_text()))
+                    assert checks and all(c['status'] == 'ACCEPT' and c['strict_false_publishable']
+                                          for c in checks), (bits, case, checks)
                 if case == 31:
                     data = json.loads(report.read_text())
                     assert any(r.get('info', {}).get('bmc', {}).get('counts', {}).get('ai_no_wrap', 0)

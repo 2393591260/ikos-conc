@@ -7,6 +7,8 @@ import sqlite3
 import subprocess
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -27,7 +29,7 @@ def main():
                 source = work / 'renamed.c'
                 source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') + fixture)
                 dbpath = work / 'output.db'
-                result = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                result = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                     '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
                     '--bmc-deadline-ms=0', '--log=debug', '-m' + str(args.bits), '-o', str(dbpath), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
@@ -48,7 +50,7 @@ def main():
         for count in (2, 10000):
             source = work / 'renamed.c'
             source.write_text(f'#define COUNT {count}\n' + fixture)
-            proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race', '--concurrency=auto',
+            proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race', '--concurrency=auto',
                 '--partitioning=guards', '--demote-race-to-unknown', '--bmc-deadline-ms=0', '--log=debug',
                 '-m' + str(args.bits), '-o', str(work / 'output.db'), str(source)], env=env, capture_output=True, text=True, timeout=30)
             output = proc.stdout + proc.stderr
@@ -58,7 +60,7 @@ def main():
                        'ASSERT_MODE 4', 'FAKE_CREATE', 'pthread_create fake_pthread_create'):
             source = work / 'renamed.c'
             source.write_text(f'#define {define}\n' + fixture)
-            proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race', '--concurrency=auto',
+            proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race', '--concurrency=auto',
                 '--partitioning=guards', '--demote-race-to-unknown', '--bmc-deadline-ms=0', '--log=debug',
                 '-m' + str(args.bits), '-o', str(work / 'output.db'), str(source)], env=env, capture_output=True, text=True, timeout=30)
             output = proc.stdout + proc.stderr
@@ -90,7 +92,7 @@ def main():
         for name, program in variants.items():
             source = work / 'renamed.c'
             source.write_text(program)
-            proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+            proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                 '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
                 '--bmc-deadline-ms=0', '--log=debug', '-m' + str(args.bits),
                 '-o', str(work / 'output.db'), str(source)],

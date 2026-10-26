@@ -11,7 +11,8 @@ import tempfile
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
-sys.path.insert(0, str(ROOT))
+sys.path[:0] = [str(ROOT), str(ROOT / 'scripts')]
+from ikos_runtime import runtime_command
 import svcomp_race_test as suite
 import svcomp_witness
 from scripts.validate_bmc_execution import check, digest_json
@@ -40,7 +41,7 @@ def main():
                 source.write_text("#define CASE " + str(case) + "\n" + text)
                 report = work / "report.json"
                 report.unlink(missing_ok=True)
-                cmd = [str(args.ikos.resolve()), "--analyses=race", "--concurrency=auto",
+                cmd = runtime_command(args.ikos.resolve()) + [ "--analyses=race", "--concurrency=auto",
                        "--demote-race-to-unknown", "-m", bits,
                        "--format=json", "--report-file=" + str(report),
                        "-o", str(work / "output.db"), str(source)]

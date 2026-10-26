@@ -22,6 +22,7 @@ from validate_bmc_execution import check
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/private-array-zero.c').read_text()
     supported = [[], ['INDEX'], ['LOOP'], ['TWO_INSTANCES'], ['LOCKED'],
@@ -44,7 +45,7 @@ def main():
                 report = work / 'report.json'
                 report.unlink(missing_ok=True)
                 result = subprocess.run(runtime_command(args.ikos) + ['--analyses=race',
-                    '--concurrency=auto', '--demote-race-to-unknown', '-m32',
+                    '--concurrency=auto', '--demote-race-to-unknown', f'-m{args.bits}',
                     '--bmc-deadline-ms=20000', '--bmc-solver-timeout-ms=5000',
                     '--partitioning=guards', '--log=debug', '--format=json', '--report-file=' + str(report),
                     '-o', str(work / 'output.db'), str(source)],
@@ -115,7 +116,7 @@ def main():
         source = work / 'plain.c'
         source.write_text(fixture)
         raw = work / 'plain.ll'
-        subprocess.run(['clang-14', '-m32', '-O0', '-Xclang', '-disable-O0-optnone',
+        subprocess.run(['clang-14', f'-m{args.bits}', '-O0', '-Xclang', '-disable-O0-optnone',
                         '-g', '-S', '-emit-llvm', str(source), '-o', str(raw)], check=True)
         text = raw.read_text()
         for label, mutated in (
@@ -126,7 +127,7 @@ def main():
             changed = work / 'changed.ll'
             changed.write_text(mutated)
             result = subprocess.run(runtime_command(args.ikos) + ['--analyses=race',
-                '--concurrency=auto', '--demote-race-to-unknown', '-m32', '--bmc-deadline-ms=0',
+                '--concurrency=auto', '--demote-race-to-unknown', f'-m{args.bits}', '--bmc-deadline-ms=0',
                 '--format=json', '--report-file=' + str(report),
                 '-o', str(work / 'output.db'), str(changed)],
                 env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True,

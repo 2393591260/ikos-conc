@@ -6,6 +6,10 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from ikos_runtime import runtime_command
 
 
 def main():
@@ -28,7 +32,7 @@ def main():
                     options.append('--demote-race-to-unknown')
                 if mode == 'bmc':
                     env['IKOS_BMC_RECOVER'] = '1'
-                command = [str(args.ikos.resolve()), '--analyses=race',
+                command = runtime_command(args.ikos.resolve()) + [ '--analyses=race',
                            '--concurrency=auto', '-m', args.bits, *options,
                            '-o', str(out / 'output.db'), str(source)]
                 try:

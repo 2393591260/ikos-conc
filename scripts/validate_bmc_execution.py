@@ -166,16 +166,16 @@ class Replay:
         return obj, offset
 
     def stack_mutex(self, pointer):
-        obj, offset = self.region(pointer, 24, 4, opaque=True)
+        require(self.verified_pthread_abi(), 'stack mutex GNU x86 ABI')
+        bits = self.program['pointer_bits']
+        width, alignment = (24, 4) if bits == 32 else (40, 8)
+        obj, offset = self.region(pointer, width, alignment, opaque=True)
         meta = self.objects[obj]
-        triple = self.program.get('target_triple', '').split('-')
-        require(self.program['pointer_bits'] == 32 and triple[0] in ('i386', 'i486', 'i586', 'i686') and
-                'linux' in triple and triple[-1] == 'gnu', 'stack mutex GNU ILP32 ABI')
         require(meta.get('owner_frame') == getattr(self, 'initial_main_frame', None) and
                 meta.get('owner_function') == 'main' and meta.get('owner_thread') == 0 and
                 meta.get('count') == 1 and not self.functions['main']['parameters'],
                 'stack mutex initial main allocation')
-        require(meta.get('alignment', 0) >= 4 and meta.get('native_alignment', 0) >= 4 and
+        require(meta.get('alignment', 0) >= alignment and meta.get('native_alignment', 0) >= alignment and
                 meta.get('native_address_space') == 0 and meta.get('native_owner') == 'main',
                 'stack mutex native allocation')
         node = meta.get('native_layout', {})
@@ -184,7 +184,7 @@ class Replay:
         for _ in range(32):
             if node.get('kind') == 'struct':
                 if node.get('name') == 'union.pthread_mutex_t':
-                    require(relative == 0 and int(node['extent']) == 24 and node['alignment'] == 4,
+                    require(relative == 0 and int(node['extent']) == width and node['alignment'] == alignment,
                             'stack mutex declared leaf')
                     break
                 fields = [f for f in node.get('fields', []) if int(f['offset']) <= relative <
@@ -200,7 +200,7 @@ class Replay:
                 raise Unsupported('stack mutex declared object type')
         else:
             raise Unsupported('stack mutex layout depth')
-        require((offset, 24) in meta.get('mutex_regions', []) and pointer in self.locks and
+        require((offset, width) in meta.get('mutex_regions', []) and pointer in self.locks and
                 self.locks[pointer].get('kind') == 0, 'stack mutex explicit default initialization')
 
     def pointer_shift(self, inst, values):
@@ -440,7 +440,7 @@ class Replay:
             require(inst.get('native_intrinsic') == 'llvm.memset' and fn['declaration'] and
                     not fn['variadic'] and fn['return_type']['kind'] == 'unsupported' and
                     'result' not in inst and len(args) == len(types) == 5 and
-                    self.program['pointer_bits'] == 32, 'private zero intrinsic')
+                    self.program['pointer_bits'] in (32, 64), 'private zero intrinsic')
             require(all(op['type'] == t for op, t in zip(inst['operands'][1:], types)) and
                     types[0]['kind'] == 'pointer' and
                     all(t['kind'] == 'integer' for t in types[1:]),
@@ -948,10 +948,10 @@ class Replay:
             a,b=values; predicate=inst['predicate']; op=CMP.get(predicate)
             if predicate in (35,36):
                 if not all(isinstance(v,tuple) and v[0] in ('function','null') for v in values):
-                    numeric_null = (self.program['pointer_bits'] == 32 and
+                    numeric_null = (self.program['pointer_bits'] in (32, 64) and
                         any(v['kind'] == 'null' for v in operands) and
                         all(isinstance(v,tuple) and v[0] in ('absolute','null') and
-                            type(v[1]) is int and 0 <= v[1] < (1 << 32) and
+                            type(v[1]) is int and 0 <= v[1] < (1 << self.program['pointer_bits']) and
                             ((v[0] == 'null') == (v[1] == 0)) for v in values))
                     heap_null = any(v['kind'] == 'null' for v in operands)
                     for operand, value in zip(operands, values):

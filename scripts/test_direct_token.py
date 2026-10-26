@@ -8,12 +8,15 @@ import sqlite3
 import subprocess
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/direct-token.c').read_text()
     env = dict(os.environ)
@@ -24,9 +27,9 @@ def main():
             for case in range(33):
                 source = work / 'renamed.c'
                 source.write_text(f'#define CASE {case}\n#define TOKEN_BITS {bits}\n' + fixture)
-                proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                     '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
-                    '--bmc-deadline-ms=0', '-m32', '-o', str(work / 'output.db'), str(source)],
+                    '--bmc-deadline-ms=0', f'-m{args.bits}', '-o', str(work / 'output.db'), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
                 output = proc.stdout + proc.stderr
                 assert proc.returncode == 0, (case, bits, output)

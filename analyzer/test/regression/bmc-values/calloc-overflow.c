@@ -10,7 +10,8 @@ typedef long long datum;
 #else
 typedef int datum;
 #endif
-extern unsigned int __VERIFIER_nondet_uint(void);
+// GNU ILP32 and LP64 both use unsigned long for size_t; WIDE changes only data.
+extern unsigned long __VERIFIER_nondet_ulong(void);
 datum shared;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -21,24 +22,24 @@ void *worker(void *arg) {
   if (p) free(p);
   shared++;
 #elif CASE == 1
-  size_t n = __VERIFIER_nondet_uint();
+  size_t n = __VERIFIER_nondet_ulong();
   if (n <= SIZE_MAX / 2) abort();
   p = calloc(n, 2);
   shared++;
 #elif CASE == 2
-  size_t n = __VERIFIER_nondet_uint();
+  size_t n = __VERIFIER_nondet_ulong();
   p = calloc(n, 2);
   if (n > SIZE_MAX / 2) shared++;
 #elif CASE == 3
-  size_t n = __VERIFIER_nondet_uint();
+  size_t n = __VERIFIER_nondet_ulong();
   p = calloc(2, n);
   if (n > SIZE_MAX / 2) shared++;
 #elif CASE == 4
-  size_t n = __VERIFIER_nondet_uint(), m = __VERIFIER_nondet_uint();
+  size_t n = __VERIFIER_nondet_ulong(), m = __VERIFIER_nondet_ulong();
   p = calloc(n, m);
   if (n > SIZE_MAX / 2 && m >= 2) shared++;
 #elif CASE == 5
-  size_t n = __VERIFIER_nondet_uint();
+  size_t n = __VERIFIER_nondet_ulong();
   p = calloc(n, 2);
   if (!p && n > SIZE_MAX / 2) shared++;
 #elif CASE == 6

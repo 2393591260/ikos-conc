@@ -10,6 +10,8 @@ import subprocess
 import sys
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from svcomp_race_test import classify, VERDICT_RACE, VERDICT_UNKNOWN
@@ -42,6 +44,7 @@ def publication_contract():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     publication_contract()
     fixture = (ROOT / 'analyzer/test/regression/bmc-correctness/sibling-atomic.c').read_text()
@@ -55,8 +58,8 @@ def main():
                               fixture.replace('worker', 'entry').replace('payload', 'datum'))
             report = work / 'report.json'
             report.unlink(missing_ok=True)
-            proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
-                '--concurrency=auto', '--demote-race-to-unknown', '-m32', '--format=json',
+            proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
+                '--concurrency=auto', '--demote-race-to-unknown', f'-m{args.bits}', '--format=json',
                 '--report-file=' + str(report), '-o', str(work / 'output.db'), str(source)],
                 env=dict(os.environ, IKOS_BMC_RECOVER='1', IKOS_BMC_DIAGNOSTICS='1'),
                 capture_output=True, text=True, timeout=30)
@@ -89,8 +92,8 @@ def main():
             assert bool(infos) == (case in positive)
             print(f'sibling case={case}/wide={wide}: {verdict}', flush=True)
         source = ROOT / 'analyzer/test/regression/bmc-correctness/atomic-publication.c'
-        proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race', '--concurrency=auto',
-            '--demote-race-to-unknown', '-m32', '-o', str(work / 'publication.db'), str(source)],
+        proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race', '--concurrency=auto',
+            '--demote-race-to-unknown', f'-m{args.bits}', '-o', str(work / 'publication.db'), str(source)],
             env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True, text=True, timeout=30)
         assert proc.returncode == 0 and classify(proc.stdout, proc.returncode, False) != VERDICT_RACE, (proc.stdout, proc.stderr)
         print('atomic publication: no false race', flush=True)

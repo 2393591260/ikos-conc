@@ -9,6 +9,8 @@ import subprocess
 import sys
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'scripts')]
 from svcomp_race_test import classify, VERDICT_RACE, VERDICT_SAFE, VERDICT_UNKNOWN
@@ -76,7 +78,7 @@ def main():
                 'pthread_mutex_lock(&lock);' if locked else '').replace('AFTER',
                 'pthread_mutex_unlock(&lock);' if locked else ''))
             report.unlink(missing_ok=True)
-            proc = subprocess.run([str(entry), '--analyses=race', '--concurrency=auto',
+            proc = subprocess.run(runtime_command(entry) + ['--analyses=race', '--concurrency=auto',
                 '--demote-race-to-unknown', '-m', str(bits), '--format=json',
                 '--report-file=' + str(report), '-o', str(database), *options, str(source)],
                 cwd=work, env=env, capture_output=True, text=True, timeout=30)

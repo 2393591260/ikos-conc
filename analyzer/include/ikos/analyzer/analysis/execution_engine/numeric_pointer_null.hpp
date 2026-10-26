@@ -18,14 +18,16 @@ inline bool numeric_pointer_null(ar::UnaryOperation* cast, Context& ctx) {
   auto* integer = dyn_cast< ar::IntegerType >(cast->operand()->type());
   auto* original = cast->has_frontend()
       ? llvm::dyn_cast< llvm::IntToPtrInst >(cast->frontend< llvm::Value >()) : nullptr;
-  if (width != 32 || !integer || integer->bit_width() != width || !original ||
+  if ((width != 32 && width != 64) || !integer || integer->bit_width() != width || !original ||
       !original->getOperand(0)->getType()->isIntegerTy(width) ||
       original->getType()->getPointerAddressSpace() != 0 ||
       original->getModule()->getDataLayout().getPointerSizeInBits() != width ||
       !original->getModule()->getModuleInlineAsm().empty() ||
       !cast->code()->is_function_body()) return false;
   const llvm::Triple target(original->getModule()->getTargetTriple());
-  if (target.getArch() != llvm::Triple::x86 || !target.isOSLinux() ||
+  if (!((target.getArch() == llvm::Triple::x86 && width == 32) ||
+         (target.getArch() == llvm::Triple::x86_64 && width == 64)) ||
+      !target.isOSLinux() ||
       target.getEnvironment() != llvm::Triple::GNU) return false;
 
   unsigned budget = 32768;

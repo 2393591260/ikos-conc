@@ -10,6 +10,8 @@ import sys
 import tempfile
 from validate_bmc_execution import Frame, Replay, Reject, Thread, UNDEFINED, Unsupported, check, digest_json
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from analyzer.python.ikos.race_result import validate_race_result
@@ -274,7 +276,7 @@ def main():
             for case in cases:
                 report = work / 'report.json'
                 report.unlink(missing_ok=True)
-                proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race', '--concurrency=auto',
+                proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race', '--concurrency=auto',
                     '--demote-race-to-unknown', '-m', bits, '-DCASE=' + str(case), '--format=json',
                     '--report-file=' + str(report), '-o', str(work / 'output.db'),
                     str(ROOT / 'analyzer/test/regression/bmc-values/values.c')], cwd=work,

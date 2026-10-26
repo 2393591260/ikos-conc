@@ -3340,7 +3340,7 @@ private:
 
   // GNU ffs(int) reads only its argument. TOP covers every returned index;
   // the separate BMC and AR models retain responsibility for exact values.
-  // ponytail: direct ILP32 declarations only; wider APIs need their own contract.
+  // Direct GNU x86 declarations only; ffs itself remains int32 on both ABIs.
   bool try_exec_ffs(ar::CallBase* call) {
     if (!this->_ctx.opts.enable_thread_modular || !isa< ar::Call >(call)) return false;
     auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
@@ -3362,8 +3362,10 @@ private:
         !api->getFunctionType()->getParamType(0)->isIntegerTy(32)) return false;
     const llvm::Triple triple(source->getModule()->getTargetTriple());
     const auto& layout = source->getModule()->getDataLayout();
-    if (this->data_layout().pointers.bit_width != 32 || layout.getPointerSizeInBits() != 32 ||
-        triple.getArch() != llvm::Triple::x86 || !triple.isOSLinux() ||
+    const auto bits = this->data_layout().pointers.bit_width;
+    if (!((bits == 32 && triple.getArch() == llvm::Triple::x86) ||
+          (bits == 64 && triple.getArch() == llvm::Triple::x86_64)) ||
+        layout.getPointerSizeInBits() != bits || !triple.isOSLinux() ||
         triple.getEnvironment() != llvm::Triple::GNU) return false;
     auto integer = [](ar::Type* type) {
       auto* value = dyn_cast< ar::IntegerType >(type);

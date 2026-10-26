@@ -702,8 +702,12 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     // An unused initialized local object already had a supported call effect.
     // Acquiring it additionally needs the declared-type and live-owner proof.
     if (api != nullptr && api->name() == "pthread_mutex_init") continue;
+    const auto bits = address.local_base
+        ? address.local_base->bundle()->data_layout().pointers.bit_width : 0;
+    const unsigned mutex_width = bits == 32 ? 24 : 40;
+    const unsigned mutex_alignment = bits / 8;
     if (!main_local_mutex || api == nullptr || !main_mutex_subobject(address) ||
-        address.width != 24 || storage.alignment != 4 ||
+        address.width != mutex_width || storage.alignment != mutex_alignment ||
         (api->name() != "pthread_mutex_lock" &&
          api->name() != "pthread_mutex_unlock" &&
          api->intrinsic_id() != ar::Intrinsic::PthreadMutexLock &&
@@ -713,7 +717,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           if (init->path != &allocation_origin ||
               !same_storage_object(address, storage.path, init->address, init->path) ||
               address.const_off != init->address.const_off ||
-              init->address.width != 24 || init->alignment != 4) return false;
+              init->address.width != mutex_width || init->alignment != mutex_alignment) return false;
           auto* init_call = core::dyn_cast< ar::CallBase >(allocation_origin[init->occurrence].stmt);
           return init_call != nullptr && init_call->num_arguments() == 2 &&
                  core::isa< ar::NullConstant >(init_call->argument(1));
@@ -1790,8 +1794,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           auto* integer = core::dyn_cast< ar::IntegerType >(cast->operand()->type());
           if ((cast->op() == ar::UnaryOperation::UIToPtr ||
                cast->op() == ar::UnaryOperation::SIToPtr) && integer &&
-              integer->bit_width() == 32 &&
-              cast->bundle()->data_layout().pointers.bit_width == 32) {
+              integer->bit_width() == cast->bundle()->data_layout().pointers.bit_width &&
+              (integer->bit_width() == 32 || integer->bit_width() == 64)) {
             // Low-bit zero is invariant under sign casts and follows truncation
             // by modular arithmetic. Keep dynamic definitions, without forcing
             // a mixed integer/bitvector representation of the pointer value.

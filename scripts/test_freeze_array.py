@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     entry = args.ikos.resolve()
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/freeze-array.c').read_text()
@@ -36,7 +37,7 @@ def main():
                     ir.mkdir()
                     proc = subprocess.run(command + ['--analyses=race', '--concurrency=auto',
                         '--partitioning=guards', '--demote-race-to-unknown', '--bmc-deadline-ms=0',
-                        '--save-temps', '--temp-dir', str(ir), '--display-ar', '-m32',
+                        '--save-temps', '--temp-dir', str(ir), '--display-ar', f'-m{args.bits}',
                         '-o', str(work / 'output.db'), str(source)], env=env, text=True,
                         capture_output=True, timeout=30)
                     assert proc.returncode == 0, (wide, scalar, case, proc.stdout, proc.stderr)

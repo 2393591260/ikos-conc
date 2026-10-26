@@ -57,12 +57,14 @@ inline bool private_array_zero_structure(ar::CallBase* call,
       element->bit_width() % 8 != 0) return reject(__LINE__);
   const auto extent = call->bundle()->data_layout().alloc_size_in_bytes(type);
   const auto& layout = source->getModule()->getDataLayout();
-  if (call->bundle()->data_layout().pointers.bit_width != 32 || layout.getPointerSizeInBits() != 32 ||
+  const auto bits = call->bundle()->data_layout().pointers.bit_width;
+  if ((bits != 32 && bits != 64) || layout.getPointerSizeInBits() != bits ||
+      layout.getIndexSizeInBits(0) != bits ||
       extent != call->bundle()->data_layout().store_size_in_bytes(type) ||
       extent != type->num_elements() * (element->bit_width() / 8) ||
       extent != core::ZNumber(layout.getTypeAllocSize(original_type).getFixedSize()) ||
       extent != core::ZNumber(layout.getTypeStoreSize(original_type).getFixedSize()) ||
-      length->getValue().getActiveBits() > 32 || extent != core::ZNumber(length->getZExtValue()) ||
+      length->getValue().getActiveBits() > bits || extent != core::ZNumber(length->getZExtValue()) ||
       local->alignment() != storage->getAlign().value()) return reject(__LINE__);
   auto constant = [&](unsigned index, const core::ZNumber& expected) {
     auto* value = dyn_cast< ar::IntegerConstant >(call->argument(index));

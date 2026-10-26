@@ -8,6 +8,8 @@ import sqlite3
 import subprocess
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -28,7 +30,7 @@ def main():
             actual_env = dict(env)
             if bmc:
                 actual_env['IKOS_BMC_RECOVER'] = '1'
-            proc = subprocess.run([str(args.ikos.resolve()), '--analyses=' + analyses,
+            proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=' + analyses,
                 '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
                 '--bmc-deadline-ms=' + ('5000' if bmc else '0'), '-m' + args.bits,
                 '-o', str(work / 'output.db'), str(source)],

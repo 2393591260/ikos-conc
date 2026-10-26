@@ -8,6 +8,8 @@ import subprocess
 import sys
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from svcomp_race_test import classify, VERDICT_SAFE, VERDICT_UNKNOWN
@@ -16,6 +18,7 @@ from svcomp_race_test import classify, VERDICT_SAFE, VERDICT_UNKNOWN
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/head-publication.c').read_text()
     env = dict(os.environ)
@@ -29,10 +32,10 @@ def main():
                 source = work / 'renamed.c'
                 source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') + text)
                 report = work / 'report.json'
-                result = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                result = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                     '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
                     '--bmc-deadline-ms=0', '--format=json', '--status-filter=*',
-                    '--report-file=' + str(report), '--log=debug', '-m32',
+                    '--report-file=' + str(report), '--log=debug', f'-m{args.bits}',
                     '-o', str(work / 'output.db'), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
                 verdict = classify(result.stdout, result.returncode, False)

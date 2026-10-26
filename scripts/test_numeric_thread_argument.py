@@ -18,6 +18,7 @@ from sweep_bmc_execution import validate_report
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/numeric-thread-argument.c').read_text()
     command = runtime_command(args.ikos.resolve())
@@ -28,7 +29,7 @@ def main():
                 source, report = work / 'renamed.c', work / 'report.json'
                 source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') + fixture)
                 proc = subprocess.run(command + ['--analyses=race', '--concurrency=auto',
-                    '--demote-race-to-unknown', '--partitioning=guards', '-m32',
+                    '--demote-race-to-unknown', '--partitioning=guards', f'-m{args.bits}',
                     '--format=json', '--report-file=' + str(report),
                     '-o', str(work / 'output.db'), str(source)],
                     capture_output=True, text=True, timeout=30,
@@ -36,11 +37,17 @@ def main():
                 assert proc.returncode == 0, (case, wide, proc.stdout, proc.stderr)
                 data = json.loads(report.read_text())
                 metadata = validate_race_result(data)
-                # CASE15 is lowered to an explicit native truncation before packing.
-                expected = 'SAFE' if case == 1 else 'FALSE' if case in (0, 15, 16) else 'UNKNOWN'
+                # ILP32 truncates CASE15 before packing; LP64 preserves an invalid index.
+                expected = ('SAFE' if case == 1 else
+                            'FALSE' if case in (0, 16) or (case == 15 and args.bits == 32)
+                            else 'UNKNOWN')
                 assert metadata['verdict'] == expected, (case, wide, metadata, proc.stdout)
                 executions = validate_report(data)
-                if expected == 'UNKNOWN':
+                if case == 15 and args.bits == 64:
+                    assert not any(row['info'].get('counterexample')
+                                   for row in data['reports']), data
+                    assert not executions, executions
+                elif expected == 'UNKNOWN':
                     assert metadata['coverage'] == 'Blocked' and any(
                         o['reason'] == 'integer-derived pointer aliasing is not modeled'
                         and not o['contract'] for o in metadata['obligations']), metadata
@@ -50,7 +57,7 @@ def main():
                     if expected == 'FALSE':
                         assert executions and all(e['status'] == 'ACCEPT' for e in executions), executions
                 print(f'CASE={case}/wide={wide}: {expected}', flush=True)
-    print('32 ILP32 numeric argument controls passed')
+    print(f'32 {args.bits}-bit numeric argument controls passed')
 
 
 if __name__ == '__main__':

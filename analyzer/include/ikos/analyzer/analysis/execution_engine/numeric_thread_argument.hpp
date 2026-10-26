@@ -20,13 +20,15 @@ inline bool numeric_thread_argument(ar::UnaryOperation* cast, Context& ctx) {
   auto* integer = dyn_cast< ar::IntegerType >(cast->operand()->type());
   auto* original = cast->has_frontend()
       ? llvm::dyn_cast< llvm::IntToPtrInst >(cast->frontend< llvm::Value >()) : nullptr;
-  if (width != 32 || !integer || integer->bit_width() != width || !original ||
+  if ((width != 32 && width != 64) || !integer || integer->bit_width() != width || !original ||
       !original->getOperand(0)->getType()->isIntegerTy(width) ||
       original->getType()->getPointerAddressSpace() != 0 ||
       original->getModule()->getDataLayout().getPointerSizeInBits() != width)
     return false;
   const llvm::Triple target(original->getModule()->getTargetTriple());
-  if (target.getArch() != llvm::Triple::x86 || !target.isOSLinux() ||
+  if (!((target.getArch() == llvm::Triple::x86 && width == 32) ||
+         (target.getArch() == llvm::Triple::x86_64 && width == 64)) ||
+      !target.isOSLinux() ||
       target.getEnvironment() != llvm::Triple::GNU) return false;
 
   std::set< llvm::CallBase* > source_creates;
@@ -54,7 +56,7 @@ inline bool numeric_thread_argument(ar::UnaryOperation* cast, Context& ctx) {
           auto* api = llvm::dyn_cast< llvm::Function >(call->getCalledOperand());
           auto* root = llvm::dyn_cast< llvm::Function >(call->getArgOperand(2));
           auto* byte_pointer = llvm::Type::getInt8PtrTy(call->getContext());
-          auto* handle_pointer = llvm::Type::getInt32PtrTy(call->getContext());
+          auto* handle_pointer = llvm::IntegerType::get(call->getContext(), width)->getPointerTo();
           if (!api || !api->isDeclaration() || api->getName() != "pthread_create" ||
               api->isVarArg() || api->arg_size() != 4 || !api->getReturnType()->isIntegerTy(32) ||
               api->getCallingConv() != llvm::CallingConv::C ||

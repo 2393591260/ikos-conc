@@ -9,6 +9,8 @@ import subprocess
 import tempfile
 from test_allocation_continuations import wrapped
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -47,7 +49,7 @@ def main():
                     source = work / 'renamed.c'
                     source.write_text(f'#define CASE {case}\n' +
                                       ('#define WIDE\n' if wide else '') + body)
-                    proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                    proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                         '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
                         '--bmc-deadline-ms=0', f'-m{bits}', '-o', str(work / 'output.db'), str(source)],
                         env=env, capture_output=True, text=True, timeout=30)

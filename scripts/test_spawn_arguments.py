@@ -8,6 +8,8 @@ import subprocess
 import sys
 import tempfile
 
+from ikos_runtime import runtime_command
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from svcomp_race_test import classify, VERDICT_RACE, VERDICT_SAFE, VERDICT_UNKNOWN
@@ -18,6 +20,7 @@ from analyzer.python.ikos.race_result import validate_race_result
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     fixture = ROOT / 'analyzer/test/regression/bmc-values/spawn-null.c'
     with tempfile.TemporaryDirectory(prefix='ikos-spawn-arguments-') as temp:
@@ -29,9 +32,9 @@ def main():
                                   ('#define WIDE\n' if wide else '') +
                                   fixture.read_text().replace('worker', 'entry'))
                 report = work / 'report.json'
-                result = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
+                result = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                     '--concurrency=auto', '--demote-race-to-unknown',
-                    '--bmc-deadline-ms=0', '-m32', '--format=json', '--report-file=' + str(report), '-o', str(work / 'output.db'),
+                    '--bmc-deadline-ms=0', f'-m{args.bits}', '--format=json', '--report-file=' + str(report), '-o', str(work / 'output.db'),
                     str(source)], capture_output=True, text=True, timeout=30,
                     env=dict(os.environ, IKOS_BMC_RECOVER='1'))
                 actual = classify(result.stdout, result.returncode, False)
@@ -60,8 +63,8 @@ def main():
         for helper in (False, True):
             source.write_text('#define CASE 7\n' + ('#define HELPER_GUARD\n' if helper else '') + fixture.read_text())
             report = work / 'report.json'
-            result = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
-                '--concurrency=auto', '--demote-race-to-unknown', '-m32',
+            result = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
+                '--concurrency=auto', '--demote-race-to-unknown', f'-m{args.bits}',
                 '--format=json', '--report-file=' + str(report),
                 '-o', str(work / 'output.db'), str(source)], capture_output=True,
                 text=True, timeout=30, env=dict(os.environ, IKOS_BMC_RECOVER='1'))

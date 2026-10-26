@@ -5,6 +5,11 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
+
+ROOT = Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(ROOT / "scripts"))
+from ikos_runtime import runtime_command
 
 
 CASES = {
@@ -52,7 +57,7 @@ def main():
         source.write_text((here / "address.c").read_text())
         for bits in [args.bits]:
             for case, (name, expected) in CASES.items():
-                cmd = [str(ikos), "--analyses=race", "--concurrency=auto",
+                cmd = runtime_command(ikos) + [ "--analyses=race", "--concurrency=auto",
                        "--demote-race-to-unknown", "-m", bits,
                        "-D", f"CASE={case}", "-o", str(work / "output.db"),
                        str(source)]
