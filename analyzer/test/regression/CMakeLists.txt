@@ -575,3 +575,8 @@ add_concurrency_test(bmc-once-physical "${CONCURRENCY_ROOT}/scripts/test_bmc_onc
                      --ikos "${CONCURRENCY_IKOS}" --bits 32 --broken-premises --export-source-witness)
 add_concurrency_test(bmc-once-physical-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_once_physical.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64 --broken-premises --export-source-witness)
+
+add_concurrency_test(bmc-barrier-execution "${CONCURRENCY_ROOT}/scripts/test_bmc_barrier_execution.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+add_concurrency_test(bmc-barrier-execution-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_barrier_execution.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)

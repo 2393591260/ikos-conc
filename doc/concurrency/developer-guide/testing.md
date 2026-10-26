@@ -400,3 +400,18 @@ closure, marker origin, actual callback Return and API result; physical create
 and process-lifetime damage must fail independently. Source export checks keep
 one real registration and the actual physical thread IDs. `--with-ablation`
 uses the same input and budget with only the once search disabled.
+
+### Barrier arrival/departure controls
+
+`test_bmc_barrier_execution.py --bits 32` and `--bits 64` cover post-barrier
+and between-barrier races, long-long accesses, pre/post ordering, common locks,
+wrong objects/capacity, missing initialization/participants, repeated waits,
+observed results, repeated initialization and raw control storage.
+
+Independent replay must accept the legal schedule in which main departs and
+writes before the child departs and writes. It must reject missing or forged
+departures, early departure, wrong native target/layout/convention and fabricated
+API results. In one-round controls a genuine main Return is appended at its
+correct CFG location before a child event; rejection must identify process
+exit, rather than an unrelated malformed statement. CLI source binding and
+maintained witness projection are checked separately from AR replay.

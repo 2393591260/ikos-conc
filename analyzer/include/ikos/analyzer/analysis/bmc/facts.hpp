@@ -27,6 +27,7 @@ struct CandidateFacts {
   std::function< bool(ar::Function*) > single_execution;
   // Independent closed-library effect proof, not an AI numeric or lock hint.
   std::function< ar::GlobalVariable*(ar::CallBase*) > semaphore_effect;
+  std::function< ar::GlobalVariable*(ar::CallBase*) > barrier_effect;
 };
 
 } } }

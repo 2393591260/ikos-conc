@@ -236,7 +236,9 @@ public:
           }
           if (callee && (callee->getName() == "sem_init" ||
                          callee->getName() == "sem_wait" ||
-                         callee->getName() == "sem_post")) {
+                         callee->getName() == "sem_post" ||
+                         callee->getName() == "pthread_barrier_init" ||
+                         callee->getName() == "pthread_barrier_wait")) {
             JsonDict native;
             native.put("name", callee->getName().str());
             native.put("declaration", callee->isDeclaration());
@@ -273,7 +275,7 @@ public:
                 ? callee->getReturnType()->getIntegerBitWidth() : 0);
             native.put("result_bits", call->getType()->isIntegerTy()
                 ? call->getType()->getIntegerBitWidth() : 0);
-            out.put("native_semaphore", native);
+            out.put(callee->getName().startswith("pthread_barrier_") ? "native_barrier" : "native_semaphore", native);
           }
            if (callee && callee->getName() == "pthread_once") {
              JsonDict native;
@@ -382,9 +384,9 @@ public:
         auto* source = global->frontend< llvm::GlobalVariable >();
         if (auto* structure = llvm::dyn_cast< llvm::StructType >(source->getValueType())) {
           if (structure->hasName()) object.put("frontend_type_name", structure->getName().str());
-          if (structure->hasName() && structure->getName() == "union.sem_t" && structure->isSized()) {
+          if (structure->hasName() && (structure->getName() == "union.sem_t" || structure->getName() == "union.pthread_barrier_t") && structure->isSized()) {
             const auto& layout = source->getParent()->getDataLayout();
-            object.put("native_semaphore", JsonDict{
+            object.put(structure->getName() == "union.sem_t" ? "native_semaphore" : "native_barrier", JsonDict{
                 {"extent", layout.getTypeAllocSize(structure).getFixedValue()},
                 {"store_size", layout.getTypeStoreSize(structure).getFixedValue()},
                 {"type_alignment", layout.getABITypeAlign(structure).value()},

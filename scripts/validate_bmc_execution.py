@@ -118,6 +118,7 @@ class Replay:
         self.writers = {}
         self.attributes, self.conditions = {}, {}
         self.semaphores = {}
+        self.barriers = {}
         self.stdout_vc = {}
         self.once_states = {}
         self.once_profile = any("once_role" in s for t in self.traces.values() for s in t["steps"])
@@ -164,6 +165,8 @@ class Replay:
     def region(self, pointer, size, alignment=0, opaque=False):
         require(isinstance(pointer, tuple) and len(pointer) == 2, 'invalid concrete pointer')
         obj, offset = pointer
+        if obj in self.barriers and not opaque:
+            raise Unsupported('raw access to opaque barrier storage')
         if obj in self.semaphores and not opaque:
             raise Unsupported('raw access to opaque semaphore storage')
         if obj not in self.objects:
@@ -576,6 +579,76 @@ class Replay:
                     # glibc acquire observes all earlier release providers.
                     self.join_vc(thread.vc, state['providers'])
             return 0
+        if name in ('pthread_barrier_init', 'pthread_barrier_wait'):
+            count = 3 if name == 'pthread_barrier_init' else 1
+            bits = self.program['pointer_bits']
+            extent, alignment = (20 if bits == 32 else 32), bits // 8
+            types = fn['parameter_types']
+            require(fn['declaration'] and not fn['variadic'] and len(args) == len(types) == count and
+                    types[0]['kind'] == 'pointer' and types[0]['bits'] == bits and
+                    int(types[0]['size']) == bits // 8 and
+                    fn['return_type']['kind'] == 'integer' and fn['return_type']['bits'] == 32 and
+                    fn['return_type']['signed'] and int(fn['return_type']['size']) == 4,
+                    'barrier ABI')
+            require(all(op['type'] == t for op, t in zip(inst['operands'][1:], types)) and
+                    ('result' not in inst or inst['result']['type'] == fn['return_type']), 'barrier call types')
+            native = inst.get('native_barrier', {})
+            expected = [0, 0, 32] if count == 3 else [0]
+            require(self.program.get('little_endian') is True and
+                    native.get('pointer_bits') == bits and native.get('little_endian') is True and
+                    native.get('target_triple') == self.program.get('target_triple') and
+                    native.get('name') == name and native.get('declaration') is True and
+                    native.get('variadic') is False and native.get('calling_convention') == 0 and
+                    native.get('matching_signature') is True and native.get('operand_bundles') is False and
+                    native.get('special_parameter_abi') is False and
+                    native.get('parameter_bits') == native.get('argument_bits') == expected and
+                    native.get('parameter_address_space') == native.get('argument_address_space') == 0 and
+                    native.get('return_bits') == native.get('result_bits') == 32, 'native barrier ABI')
+            self.library_layout(inst, 0, extent, alignment)
+            require(inst['argument_layouts'][0].get('name') == 'union.pthread_barrier_t', 'barrier argument type')
+            pointer = args[0]
+            self.region(pointer, extent, alignment, opaque=True)
+            require(pointer[0].startswith('global:') and pointer[1] == 0, 'barrier identity')
+            glob = self.program['globals'][pointer[0][len('global:'):]]
+            require(not glob['declaration'] and not glob['thread_local'] and
+                    glob.get('frontend_type_name') == 'union.pthread_barrier_t' and
+                    int(glob['type']['size']) == int(glob['type']['extent']) == extent and
+                    glob['alignment'] >= alignment, 'barrier object')
+            storage = glob.get('native_barrier', {})
+            require(storage.get('extent') == storage.get('store_size') == extent and
+                    storage.get('type_alignment') == alignment and storage.get('alignment', 0) >= alignment and
+                    storage.get('address_space') == 0 and storage.get('declaration') is False and
+                    storage.get('thread_local') is False and storage.get('constant') is False and
+                    storage.get('externally_initialized') is False, 'native barrier object')
+            if 'result' in inst:
+                uid = inst['result']['id']
+                require(not any(op.get('id') == uid and op.get('kind') in ('variable', 'local')
+                                for code in self.program['instructions'].values()
+                                for op in code.get('operands', [])), 'used barrier result')
+            require('encoded_result' not in step, 'unobserved barrier result encoding')
+            if count == 3:
+                require(types[1]['kind'] == 'pointer' and types[1]['bits'] == bits and args[1] == ('null', 0) and
+                        types[2]['kind'] == 'integer' and types[2]['bits'] == 32 and args[2] == 2 and
+                        thread.instance == 0 and not self.created and pointer[0] not in self.barriers,
+                        'barrier initialization')
+                require(all(v == 0 for v in self.memory[pointer[0]]), 'barrier initial storage')
+                self.barriers[pointer[0]] = dict(arrivals={}, departed=set(), released=None, serial=None)
+                return 0
+            require(pointer[0] in self.barriers, 'uninitialized barrier')
+            state = self.barriers[pointer[0]]
+            require(thread.instance not in state['arrivals'] and len(state['arrivals']) < 2,
+                    'one-shot barrier arrival')
+            state['arrivals'][thread.instance] = dict(thread.vc)
+            if len(state['arrivals']) == 2:
+                # Freeze the arrival join: a departing thread's later accesses
+                # cannot order another thread's post-barrier accesses.
+                state['released'] = {}
+                for arrived in state['arrivals'].values(): self.join_vc(state['released'], arrived)
+                state['serial'] = thread.instance
+            self.marker(trace_id, step['statement'], 'barrier_departure', pointer[0])
+            # Exactly one serial result exists internally; this profile rejects
+            # all observations and therefore exports no numerical wait result.
+            return UNDEFINED
         if name == 'ffs':
             types = fn['parameter_types'] + [fn['return_type']]
             require(fn['declaration'] and not fn['variadic'] and len(args) == 1 and
@@ -1034,6 +1107,9 @@ class Replay:
         require(trace_id in self.threads, 'thread executes before actual create')
         thread = self.threads[trace_id]
         require(not thread.finished, 'execution after return')
+        if self.barriers:
+            require(not any(t.instance == 0 and t.finished for t in self.threads.values()),
+                    'barrier execution after process exit')
         if self.once_profile:
             require(not any(t.finished and self.traces[n]['entry'] == 'main'
                             for n, t in self.threads.items()), 'once profile execution after main Return')
@@ -1051,6 +1127,14 @@ class Replay:
                 self.atomic_end(thread)
             elif name == 'atomic_begin':
                 self.atomic_begin(thread)
+            elif name == 'barrier_departure':
+                require('encoded_result' not in step, 'barrier departure has no API result')
+                require(pointer in self.barriers, 'barrier departure identity')
+                state = self.barriers[pointer]
+                require(state['released'] is not None and thread.instance in state['arrivals'] and
+                        thread.instance not in state['departed'], 'barrier departure before all arrivals')
+                self.join_vc(thread.vc, state['released'])
+                state['departed'].add(thread.instance)
             elif name in ('condition_release', 'condition_reacquire'):
                 state = self.locks[pointer]
                 width = 24 if self.program['pointer_bits']==32 else 40

@@ -44,6 +44,7 @@
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/checker/race_rules.hpp>
 #include <ikos/analyzer/analysis/posix_semaphore.hpp>
+#include <ikos/analyzer/analysis/posix_barrier.hpp>
 #include <ikos/analyzer/analysis/execution_engine/closed_once.hpp>
 #include <ikos/analyzer/analysis/bmc/bmc.hpp>
 #include <ikos/analyzer/analysis/bmc/unroll.hpp>
@@ -756,6 +757,11 @@ void DataRaceChecker::search_race_candidates(
               getenv("IKOS_BMC_DISABLE_SEMAPHORE_FACTS") == nullptr) {
             facts.semaphore_effect = [&](ar::CallBase* call) {
               return this->_ctx.posix_semaphore()->effect(call);
+            };
+          }
+          if (this->_ctx.posix_barrier()) {
+            facts.barrier_effect = [&](ar::CallBase* call) {
+              return this->_ctx.posix_barrier()->effect(call);
             };
           }
           const bool disable_ai_facts = getenv("IKOS_BMC_DISABLE_AI_FACTS") != nullptr;

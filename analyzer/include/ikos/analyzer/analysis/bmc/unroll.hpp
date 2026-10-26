@@ -35,7 +35,12 @@ namespace bmc {
 
 /// 事件种类。
 enum class EvKind { Read, Write, Lock, Unlock, Assume, Create, Join, Local, Unsupported,
-                    SemaphoreInit, SemaphoreWait, SemaphorePost };
+                    SemaphoreInit, SemaphoreWait, SemaphorePost,
+                    BarrierInit, BarrierWait, BarrierDepart };
+
+inline bool barrier_event(EvKind kind) {
+  return kind == EvKind::BarrierInit || kind == EvKind::BarrierWait || kind == EvKind::BarrierDepart;
+}
 
 inline bool semaphore_event(EvKind kind) {
   return kind == EvKind::SemaphoreInit || kind == EvKind::SemaphoreWait ||
@@ -57,6 +62,7 @@ struct BmcEvent {
   ar::Function* once_callback = nullptr; // Never the callee of pthread_once.
   std::size_t once_origin = 0; // Exact actual API call step in this physical trace.
   bool once_active = false; // A checked execution choice, not a source fact.
+  bool synthetic_barrier = false; // Real arrival followed by one departure.
   bool synthetic_atomic = false; // Boundary marker, not another source call.
   bool synthetic_condition = false; // Wait's release/reacquire, not another call.
   ar::ReturnValue* join_completion = nullptr; // Actual selected child return.
@@ -1915,6 +1921,10 @@ inline bool classify_event(
     }
     if (declared != nullptr && declared->is_declaration()) {
       const auto& name = declared->name();
+      if (name == "pthread_barrier_init" || name == "pthread_barrier_wait") {
+        ev = BmcEvent{stmt, name == "pthread_barrier_init" ? EvKind::BarrierInit : EvKind::BarrierWait};
+        return true; // Closed object and generation are checked by the encoder.
+      }
       if (name == "sem_init" || name == "sem_wait" || name == "sem_post") {
         ev = BmcEvent{stmt, name == "sem_init" ? EvKind::SemaphoreInit :
                            name == "sem_wait" ? EvKind::SemaphoreWait : EvKind::SemaphorePost};

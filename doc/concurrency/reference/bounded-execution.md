@@ -316,3 +316,28 @@ SAFE permission. Independent AR replay validates the physical roots and actual
 callback completion; source projection registers only real thread creates and
 retains callback targets on their caller's thread. Neither replay nor export
 success constitutes external source-witness validation.
+
+### One-shot capacity-two barriers
+
+Supported barrier execution reuses the closed native barrier-object and
+whole-program effect checks, then establishes its own successful initialization
+and physical participant execution. A real main initializes one static GNU
+ILP32/LP64 barrier with NULL attributes and literal capacity two before creating
+one worker. Each physical participant waits once on that object. Every arrival
+precedes each synthetic departure; both departures acquire an immutable join of
+the arrival clocks. Accesses after one departure do not enter the other
+participant's release clock and are not mutually exclusive.
+
+The first profile rejects repeated waits on one object, reinitialization, opaque
+storage access, missing participants, used API results and unsupported profile
+combinations. The unobserved serial-thread result is not exported as zero for
+every participant. A departure marker has no API result of its own. Multiple
+objects are permitted only when each retained round has its actual two arrivals.
+A prefix between two barriers can retain the first round without claiming
+completion of the later one. Main Return terminates the process; replay rejects
+later worker events.
+
+`IKOS_BMC_DISABLE_BARRIER_EXECUTION=1` disables this execution profile without
+authorizing SAFE. Existing barrier safety proofs and their premises are
+unchanged. The selected execution, source mapping and external source-witness
+validation remain distinct evidence layers.

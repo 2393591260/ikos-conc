@@ -110,6 +110,7 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
     }
     for (std::size_t i = 0; i < path.size(); ++i) {
       JsonDict step; step.put("statement", snapshot.statement_id(path[i].stmt));
+      if (path[i].synthetic_barrier) step.put("synthetic_event", "barrier_departure");
       if (path[i].synthetic_atomic)
         step.put("synthetic_event", path[i].kind == EvKind::Lock ? "atomic_begin" : "atomic_end");
       if (path[i].synthetic_condition)

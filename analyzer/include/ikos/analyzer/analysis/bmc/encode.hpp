@@ -21,6 +21,7 @@
 #include "evidence.hpp"
 #include "function_values.hpp"
 #include "semaphore.hpp"
+#include "barrier.hpp"
 #include "result.hpp"
 
 namespace ikos {
@@ -497,6 +498,11 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       i += 2;
     }
   }
+  std::vector< BarrierRound > barrier_rounds;
+  if (!prepare_barrier_execution(traces, facts, completion, provider_plan, barrier_rounds)) {
+    record(diagnostics, "barrier_execution_profile");
+    return Result(Status::Unsupported);
+  }
   // Rebind only legacy creation indices on the canonical origin before
   // address preparation. Fixed completion/provider plans retain exact steps.
   if (completion == nullptr && provider_plan == nullptr)
@@ -665,7 +671,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   auto library_outputs = [&](std::vector< BmcEvent >& path, ar::Function* root, ThreadArgument argument) {
     for (std::size_t i = 0; i < path.size(); ++i) {
       const auto& event = path[i];
-      if (event.synthetic_atomic || event.synthetic_condition) continue;
+      if (event.synthetic_atomic || event.synthetic_condition || event.synthetic_barrier) continue;
       auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
       auto* function = call != nullptr ? exact_callee(call) : nullptr;
       if (function == nullptr || !function->is_declaration()) continue;
@@ -673,7 +679,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       std::vector< unsigned > arguments;
       const bool opaque = ((event.kind == EvKind::Lock || event.kind == EvKind::Unlock) &&
                            !is_verifier_atomic(call)) || mutex_attribute_call(call) || condition_call(call) ||
-                          semaphore_event(event.kind);
+                          semaphore_event(event.kind) || barrier_event(event.kind);
       if (opaque || event.kind == EvKind::Create) arguments.push_back(0);
       if (name == "pthread_cond_wait") arguments.push_back(1);
       if (event.kind == EvKind::Join && call->num_arguments() == 2 &&
@@ -1122,6 +1128,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     record(diagnostics, "once_physical_timeline");
   }
 
+  for (const auto& round : barrier_rounds)
+    for (auto arrival : round.arrivals) for (auto released : round.arrivals)
+      s.add(clock[traces[arrival.first].clock_start + arrival.second] <
+            clock[traces[released.first].clock_start + released.second + 1]);
   // SC memory and indivisible stdout calls have a common strict order. Ties
   // must not invent distinct latest writes or omit the stream synchronization.
   z3::expr_vector memory_clocks(ctx);
