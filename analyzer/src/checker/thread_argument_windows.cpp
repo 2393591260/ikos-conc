@@ -5,6 +5,9 @@
 #include <ikos/analyzer/analysis/call_context.hpp>
 #include <ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp>
 #include <llvm/IR/Operator.h>
+#include <llvm/IR/Dominators.h>
+#include <llvm/IR/GetElementPtrTypeIterator.h>
+#include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <algorithm>
 #include <cstdlib>
 #include <set>
@@ -42,6 +45,111 @@ bool singleton(const Interval& interval, const Z& expected) {
   auto value = interval.singleton();
   return value && value->to_z_number() == expected;
 }
+
+// Source mode deliberately carries no numeric anchor or scratch variables.
+// Pointer equations come from the imported/source operations; intervals only
+// discharge value-preservation and modular-span premises.
+bool pointer_binding(ar::Value* value, llvm::Value* source) {
+  for (unsigned depth = 0; depth < 32; ++depth) {
+    if (!value || !value->type()->is_pointer() || !source ||
+        !source->getType()->isPointerTy() ||
+        source->getType()->getPointerAddressSpace() != 0) return false;
+    if (auto* cast = llvm::dyn_cast< llvm::BitCastOperator >(source)) {
+      source = cast->getOperand(0); continue;
+    }
+    auto* variable = dyn_cast< ar::InternalVariable >(value);
+    if (!variable) return false;
+    if (variable->has_frontend() &&
+        variable->frontend< llvm::Value >() == source) return true;
+    auto* definition = unique_def(variable);
+    if (auto* copy = dyn_cast_or_null< ar::Assignment >(definition)) value = copy->operand();
+    else if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
+      if (cast->op() != ar::UnaryOperation::Bitcast) return false;
+      value = cast->operand();
+    } else return false;
+  }
+  return false;
+}
+bool fits_nonnegative(const Z& upper, unsigned bits, core::Signedness sign) {
+  return bits && bits <= 64 && upper <= core::MachineInt::max(bits, sign).to_z_number();
+}
+// Return every intermediate constant displacement, in origin-to-use order.
+// Requiring unique definitions excludes loads, phi merges and helper returns.
+bool ar_residual(ar::Value* pointer, ar::Function* function, std::vector< Z >& path) {
+  std::vector< Z > reverse;
+  for (unsigned depth = 0; depth < 32; ++depth) {
+    if (pointer == function->param(0)) {
+      Z total(0); path.push_back(total);
+      for (auto it = reverse.rbegin(); it != reverse.rend(); ++it) {
+        total += *it; path.push_back(total);
+      }
+      return true;
+    }
+    auto* variable = dyn_cast< ar::InternalVariable >(pointer);
+    if (!variable || variable->code() != function->body() ||
+        !variable->type()->is_pointer()) return false;
+    auto* definition = unique_def(variable);
+    if (auto* copy = dyn_cast_or_null< ar::Assignment >(definition)) pointer = copy->operand();
+    else if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
+      if (cast->op() != ar::UnaryOperation::Bitcast ||
+          !cast->operand()->type()->is_pointer()) return false;
+      pointer = cast->operand();
+    } else if (auto* shift = dyn_cast_or_null< ar::PointerShift >(definition)) {
+      if (shift->num_terms() > 32) return false;
+      Z displacement(0);
+      for (auto it = shift->term_begin(); it != shift->term_end(); ++it) {
+        auto term = *it;
+        auto* constant = dyn_cast< ar::IntegerConstant >(term.second);
+        if (!constant) return false;
+        displacement += term.first.to_z_number() * constant->value().to_z_number();
+      }
+      reverse.push_back(displacement); pointer = shift->pointer();
+    } else return false;
+  }
+  return false;
+}
+bool source_residual(llvm::Value* pointer, llvm::Function* function,
+                     unsigned bits, std::vector< Z >& path) {
+  std::vector< Z > reverse;
+  const auto& layout = function->getParent()->getDataLayout();
+  for (unsigned depth = 0; depth < 32; ++depth) {
+    if (!pointer->getType()->isPointerTy() ||
+        pointer->getType()->getPointerAddressSpace() != 0) return false;
+    if (pointer == function->getArg(0)) {
+      Z total(0); path.push_back(total);
+      for (auto it = reverse.rbegin(); it != reverse.rend(); ++it) {
+        total += *it; path.push_back(total);
+      }
+      return true;
+    }
+    if (auto* cast = llvm::dyn_cast< llvm::BitCastInst >(pointer)) {
+      if (cast->getFunction() != function) return false;
+      pointer = cast->getOperand(0); continue;
+    }
+    auto* gep = llvm::dyn_cast< llvm::GetElementPtrInst >(pointer);
+    if (!gep || gep->getFunction() != function || gep->getNumIndices() > 32) return false;
+    Z displacement(0);
+    for (auto it = llvm::gep_type_begin(gep), end = llvm::gep_type_end(gep);
+         it != end; ++it) {
+      auto* index = llvm::dyn_cast< llvm::ConstantInt >(it.getOperand());
+      // Native GEP indices are signed, even when their C origin is unsigned.
+      if (!index || index->getBitWidth() > bits) return false;
+      if (auto* structure = it.getStructTypeOrNull()) {
+        if (index->getValue().getActiveBits() > 32 ||
+            index->getZExtValue() >= structure->getNumElements()) return false;
+        displacement += Z(layout.getStructLayout(structure)
+                              ->getElementOffset(index->getZExtValue()));
+      } else {
+        if (!it.getIndexedType()->isSized()) return false;
+        auto size = layout.getTypeAllocSize(it.getIndexedType());
+        if (size.isScalable()) return false;
+        displacement += Z(index->getSExtValue()) * Z(size.getFixedValue());
+      }
+    }
+    reverse.push_back(displacement); pointer = gep->getPointerOperand();
+  }
+  return false;
+}
 } // namespace
 
 class ThreadArgumentWindows::Impl {
@@ -57,14 +165,21 @@ public:
   MemoryLocation* object = nullptr;
   bool create_seen = false, step_seen = false, valid = true;
   unsigned pointer_bits;
+  const bool source_mode;
+  std::vector< ar::UnaryOperation* > index_adapters;
+  llvm::Value* source_index = nullptr;
+  llvm::PHINode* source_counter = nullptr;
+  bool index_seen = false;
+  Z index_lower{0}, index_upper{0};
   std::size_t creator_queries = 0, window_queries = 0;
   mutable std::size_t pair_queries = 0;
 
   explicit Impl(Context& context) : ctx(context),
-      pointer_bits(context.bundle->data_layout().pointers.bit_width) {
-    // ponytail: start with the native relational configuration already tested;
-    // additional domains need their own projection/cost checks.
-    if (ctx.opts.machine_int_domain != MachineIntDomainOption::VarPackApronPolkaPolyhedra ||
+      pointer_bits(context.bundle->data_layout().pointers.bit_width),
+      source_mode(context.opts.machine_int_domain == MachineIntDomainOption::Interval) {
+    // The explicit Polka mode retains its native projection. Default interval
+    // mode authenticates the actual source affine family without ghost state.
+    if ((!source_mode && ctx.opts.machine_int_domain != MachineIntDomainOption::VarPackApronPolkaPolyhedra) ||
         ctx.opts.entry_points.size() != 1 || !ctx.opts.no_init_globals.empty() ||
         ctx.bundle->global_or_null("ar.global_ctors") ||
         ctx.bundle->global_or_null("ar.global_dtors")) return;
@@ -155,8 +270,11 @@ public:
           ? dyn_cast_or_null< ar::UnaryOperation >(unique_def(variable)) : nullptr;
       if (!conversion || (conversion->op() != ar::UnaryOperation::SExt &&
                           conversion->op() != ar::UnaryOperation::ZExt &&
-                          conversion->op() != ar::UnaryOperation::Bitcast) ||
+                          conversion->op() != ar::UnaryOperation::Bitcast &&
+                          (!source_mode || (conversion->op() != ar::UnaryOperation::UTrunc &&
+                                            conversion->op() != ar::UnaryOperation::STrunc))) ||
           !conversion->operand()->type()->is_integer()) break;
+      if (source_mode) index_adapters.push_back(conversion);
       index_value = conversion->operand();
     }
     auto* index = dyn_cast< ar::InternalVariable >(index_value);
@@ -205,7 +323,9 @@ public:
       if (auto* cast = dyn_cast< ar::UnaryOperation >(stmt)) {
         if (cast->op() != ar::UnaryOperation::Bitcast &&
             cast->op() != ar::UnaryOperation::SExt &&
-            cast->op() != ar::UnaryOperation::ZExt) return;
+            cast->op() != ar::UnaryOperation::ZExt &&
+            (!source_mode || (cast->op() != ar::UnaryOperation::UTrunc &&
+                             cast->op() != ar::UnaryOperation::STrunc))) return;
       } else if (!isa< ar::Comparison >(stmt) && !isa< ar::PointerShift >(stmt)) return;
     }
     for (auto* stmt : *header)
@@ -215,10 +335,203 @@ public:
     auto* base_def = base_var ? unique_def(base_var) : nullptr;
     if (!base_def || base_def->parent() == body || base_def->parent() == header ||
         !isa< ar::CallBase >(base_def)) return;
+    if (source_mode && !prepare_source(main, source_main, child, source_worker,
+                                       candidate, source, shift, index, advance)) return;
     create = candidate; worker = child; counter = index; step = advance;
     base = shift->pointer(); stride = term.first.to_z_number();
+    if (source_mode) return; // No anchor allocation or numeric-state mutation.
     auto* type = ar::IntegerType::get(ctx.bundle->context(), pointer_bits, core::Unsigned);
     anchor = ctx.var_factory->get_named_shadow(type, "thread.argument.anchor." + worker->name());
+  }
+
+
+  // Authenticate the narrower source certificate independently of Polka.
+  bool prepare_source(ar::Function* main, llvm::Function* source_main,
+                      ar::Function* child, llvm::Function* source_worker,
+                      ar::CallBase* candidate, llvm::CallInst* source,
+                      ar::PointerShift* shift, ar::InternalVariable* index,
+                      ar::BinaryOperation* advance) {
+    const auto& layout = source->getModule()->getDataLayout();
+    const auto abi = pthread_object_layout(pointer_bits, source->getModule());
+    auto* api = source->getCalledFunction();
+    auto* output = llvm::dyn_cast< llvm::PointerType >(source->getArgOperand(0)->getType());
+    auto* ar_output = dyn_cast< ar::PointerType >(candidate->argument(0)->type());
+    auto* handle = ar_output ? dyn_cast< ar::IntegerType >(ar_output->pointee()) : nullptr;
+    if (!abi || abi.word * 8 != pointer_bits ||
+        layout.getIndexSizeInBits(0) != pointer_bits || !output ||
+        !output->getPointerElementType()->isIntegerTy(pointer_bits) ||
+        !handle || handle->bit_width() != pointer_bits ||
+        !ordinary_source_call_abi_attributes(source, api) ||
+        !ordinary_source_function_abi_attributes(source_main) ||
+        !ordinary_source_function_abi_attributes(source_worker) ||
+        source_main->arg_size() || source_main->isVarArg() ||
+        source_main->getCallingConv() != llvm::CallingConv::C ||
+        !llvm::isa< llvm::ConstantPointerNull >(source->getArgOperand(1))) return false;
+    // Independent AR use closure (LLVM closure is checked by the constructor).
+    auto closed = [&](ar::Code* code) {
+      unsigned budget = 8192;
+      for (auto* block : *code) for (auto* statement : *block) {
+        if (!budget--) return false;
+        if (code == child->body() && statement->result_or_null() == child->param(0))
+          return false;
+        for (auto it = statement->op_begin(); it != statement->op_end(); ++it) {
+          auto* function = dyn_cast< ar::FunctionPointerConstant >(*it);
+          if (!function) continue;
+          if (function->function() == main) return false;
+          if (function->function() == child &&
+              (statement != candidate || *it != candidate->argument(2))) return false;
+        }
+      }
+      return true;
+    };
+    for (auto fi = ctx.bundle->function_begin(); fi != ctx.bundle->function_end(); ++fi)
+      if ((*fi)->is_definition() && !closed((*fi)->body())) return false;
+    for (auto gi = ctx.bundle->global_begin(); gi != ctx.bundle->global_end(); ++gi)
+      if ((*gi)->is_definition() && !closed((*gi)->initializer())) return false;
+    unsigned source_creates = 0;
+    for (auto& f : *source->getModule()) for (auto& block : f) for (auto& i : block)
+      if (auto* call = llvm::dyn_cast< llvm::CallBase >(&i))
+        if (call->getCalledOperand()->stripPointerCasts() == api) {
+          if (call != source || ++source_creates != 1) return false;
+        }
+    auto* gep = llvm::dyn_cast< llvm::GetElementPtrInst >(
+        source->getArgOperand(3)->stripPointerCasts());
+    auto* phi = index->has_frontend()
+        ? llvm::dyn_cast< llvm::PHINode >(index->frontend< llvm::Value >()) : nullptr;
+    auto* source_step = advance->has_frontend()
+        ? llvm::dyn_cast< llvm::BinaryOperator >(advance->frontend< llvm::Value >()) : nullptr;
+    if (!gep || gep->getFunction() != source_main || gep->getAddressSpace() != 0 ||
+        gep->getNumIndices() != 1 || !gep->getSourceElementType()->isSized() ||
+        !pointer_binding(candidate->argument(3), source->getArgOperand(3)) ||
+        !pointer_binding(shift->pointer(), gep->getPointerOperand()) ||
+        !source_integer_binding(shift->term(0).second, gep->getOperand(1)) ||
+        !phi || phi->getFunction() != source_main || phi->getNumIncomingValues() != 2 ||
+        !source_step || source_step->getOpcode() != llvm::Instruction::Add ||
+        source_step->getOperand(0) != phi) return false;
+    // LLVM retains a separate increment latch that AR may merge into body.
+    // Certify that exact one-way chain; dominance alone would permit a bypass
+    // or another visit to create before the selected +1 step.
+    auto* source_body = source->getParent();
+    auto* latch = source_step->getParent();
+    auto* header = phi->getParent();
+    auto* header_branch = llvm::dyn_cast< llvm::BranchInst >(header->getTerminator());
+    auto* body_branch = llvm::dyn_cast< llvm::BranchInst >(source_body->getTerminator());
+    auto* latch_branch = llvm::dyn_cast< llvm::BranchInst >(latch->getTerminator());
+    if (header == source_body || header == latch || !header_branch ||
+        !header_branch->isConditional() ||
+        (header_branch->getSuccessor(0) != source_body &&
+         header_branch->getSuccessor(1) != source_body) ||
+        source_body->getSinglePredecessor() != header || !body_branch ||
+        !body_branch->isUnconditional() || !latch_branch ||
+        !latch_branch->isUnconditional() || latch_branch->getSuccessor(0) != header)
+      return false;
+    if (source_body == latch) {
+      if (!source->comesBefore(source_step)) return false;
+    } else {
+      if (body_branch->getSuccessor(0) != latch ||
+          latch->getSinglePredecessor() != source_body) return false;
+      for (auto& instruction : *latch)
+        if (&instruction != source_step && &instruction != latch_branch) return false;
+    }
+    auto* one = llvm::dyn_cast< llvm::ConstantInt >(source_step->getOperand(1));
+    bool initial = false, backedge = false;
+    for (unsigned i = 0; i < 2; ++i) {
+      auto* constant = llvm::dyn_cast< llvm::ConstantInt >(phi->getIncomingValue(i));
+      if (constant && constant->isZero()) {
+        auto* pre = phi->getIncomingBlock(i);
+        auto* branch = llvm::dyn_cast< llvm::BranchInst >(pre->getTerminator());
+        if (pre == header || pre == source_body || pre == latch || !branch ||
+            !branch->isUnconditional() || branch->getSuccessor(0) != header) return false;
+        initial = true;
+      } else if (phi->getIncomingValue(i) == source_step &&
+               phi->getIncomingBlock(i) == source_step->getParent()) backedge = true;
+      else return false;
+    }
+    auto size = layout.getTypeAllocSize(gep->getSourceElementType());
+    if (!one || !one->isOne() || !initial || !backedge || size.isScalable() ||
+        Z(size.getFixedValue()) != shift->term(0).first.to_z_number()) return false;
+    llvm::DominatorTree dominance(*source_main);
+    auto* source_base = llvm::dyn_cast< llvm::Instruction >(
+        gep->getPointerOperand()->stripPointerCasts());
+    if (!source_base || !dominance.dominates(source_base, gep) ||
+        !dominance.dominates(gep, source)) return false;
+    source_index = gep->getOperand(1); source_counter = phi;
+    return true;
+  }
+
+  bool adapters_preserve(const Z& upper) const {
+    for (auto* conversion : index_adapters) {
+      auto* input = dyn_cast< ar::IntegerType >(conversion->operand()->type());
+      auto* output = dyn_cast< ar::IntegerType >(conversion->result()->type());
+      if (!input || !output || !fits_nonnegative(upper, input->bit_width(), input->sign()) ||
+          !fits_nonnegative(upper, output->bit_width(), output->sign())) return false;
+      if (conversion->op() == ar::UnaryOperation::SExt &&
+          !fits_nonnegative(upper, input->bit_width(), core::Signed)) return false;
+      if (conversion->op() == ar::UnaryOperation::Bitcast &&
+          input->bit_width() != output->bit_width()) return false;
+    }
+    if (!source_index->getType()->isIntegerTy() ||
+        !fits_nonnegative(upper, source_index->getType()->getIntegerBitWidth(), core::Signed))
+      return false; // GEP sign-extends/truncates its index, not the byte product.
+    auto* value = source_index;
+    for (unsigned depth = 0; depth < 32; ++depth) {
+      if (!value->getType()->isIntegerTy() ||
+          !fits_nonnegative(upper, value->getType()->getIntegerBitWidth(), core::Unsigned))
+        return false;
+      if (value == source_counter) return true;
+      auto* conversion = llvm::dyn_cast< llvm::CastInst >(value);
+      if (!conversion || !conversion->getOperand(0)->getType()->isIntegerTy()) return false;
+      const unsigned input = conversion->getOperand(0)->getType()->getIntegerBitWidth();
+      switch (conversion->getOpcode()) {
+        case llvm::Instruction::SExt:
+          if (!fits_nonnegative(upper, input, core::Signed)) return false;
+          break;
+        case llvm::Instruction::ZExt: case llvm::Instruction::Trunc: break;
+        case llvm::Instruction::BitCast:
+          if (input != value->getType()->getIntegerBitWidth()) return false;
+          break;
+        default: return false;
+      }
+      value = conversion->getOperand(0);
+    }
+    return false;
+  }
+
+  bool span(const std::vector< Z >& path, std::uint64_t width = 0) const {
+    if (!index_seen || path.empty()) return false;
+    const Z modulus = Z(1) << pointer_bits;
+    for (const auto& residual : path)
+      if (stride * index_lower + residual < 0 ||
+          stride * index_upper + residual >= modulus) return false;
+    return !width || stride * index_upper + path.back() + Z(width) <= modulus;
+  }
+
+  bool source_endpoint(const AccessRecord& access) const {
+    if (!access.stmt || !access.stmt->has_frontend() || !access.argument_window ||
+        !access.width || access.argument_window->lower != access.argument_window->upper)
+      return false;
+    auto* source = llvm::dyn_cast< llvm::Instruction >(access.stmt->frontend< llvm::Value >());
+    auto* load = llvm::dyn_cast_or_null< llvm::LoadInst >(source);
+    auto* store = llvm::dyn_cast_or_null< llvm::StoreInst >(source);
+    auto* ar_load = dyn_cast< ar::Load >(access.stmt);
+    auto* ar_store = dyn_cast< ar::Store >(access.stmt);
+    if ((!load && !store) || bool(load) != bool(ar_load) || bool(store) != bool(ar_store) ||
+        (access.kind == AccessKind::Write) != bool(store) ||
+        source->getFunction() != worker->frontend< llvm::Value >()) return false;
+    auto* type = load ? load->getType() : store->getValueOperand()->getType();
+    auto* ar_type = ar_load ? ar_load->result()->type() : ar_store->value()->type();
+    const auto bytes = source->getModule()->getDataLayout().getTypeStoreSize(type);
+    if (bytes.isScalable() || bytes.getFixedValue() != access.width ||
+        ctx.bundle->data_layout().store_size_in_bytes(ar_type) != Z(access.width)) return false;
+    auto* pointer = load ? load->getPointerOperand() : store->getPointerOperand();
+    auto* ar_pointer = ar_load ? ar_load->operand() : ar_store->pointer();
+    std::vector< Z > ar_path, source_path;
+    if (!pointer_binding(ar_pointer, pointer) || !ar_residual(ar_pointer, worker, ar_path) ||
+        !source_residual(pointer, llvm::cast< llvm::Function >(worker->frontend< llvm::Value >()),
+                         pointer_bits, source_path) ||
+        ar_path.back() != source_path.back() ||
+        ar_path.back() != access.argument_window->lower) return false;
+    return span(ar_path, access.width) && span(source_path, access.width);
   }
 
   Variable* scratch(unsigned bits, const char* name) {
@@ -236,6 +549,8 @@ public:
     if (range.is_bottom() || range.lb().to_z_number() < 0 ||
         range.ub().to_z_number() >= core::MachineInt::max(type->bit_width(), type->sign()).to_z_number())
       valid = false;
+    if (source_mode && !range.is_bottom() &&
+        !adapters_preserve(range.ub().to_z_number())) valid = false;
     if (stmt == step) { step_seen = true; return; }
     create_seen = true;
     ++creator_queries;
@@ -252,6 +567,14 @@ public:
         !isa< DynAllocMemoryLocation >(*pts.begin()) ||
         (object && object != *pts.begin())) { valid = false; return; }
     object = *pts.begin();
+    if (source_mode) {
+      if (range.is_bottom()) { valid = false; return; }
+      const Z lower = range.lb().to_z_number(), upper = range.ub().to_z_number();
+      if (!index_seen) { index_lower = lower; index_upper = upper; }
+      else { index_lower = std::min(index_lower, lower); index_upper = std::max(index_upper, upper); }
+      index_seen = true;
+      return;
+    }
     auto query = state;
     unsigned width = 2 * std::max< unsigned >(pointer_bits, type->bit_width()) + 2;
     auto* actual = scratch(width, "thread.window.creator.actual");
@@ -271,6 +594,11 @@ public:
     const auto& literal = ctx.lit_factory->get_scalar(pointer);
     if (!literal.is_pointer_var() || inv.first().normal().uninit_is_uninitialized(literal.var()))
       return boost::none;
+    if (source_mode) {
+      std::vector< Z > path;
+      if (!ar_residual(pointer, worker, path)) return boost::none;
+      return ThreadArgumentWindow{worker, path.back(), path.back()};
+    }
     auto query = inv.first().normal();
     auto* offset = scratch(pointer_bits + 2, "thread.window.access.offset");
     auto* entry = scratch(pointer_bits + 2, "thread.window.access.entry");
@@ -286,7 +614,8 @@ public:
         !a.argument_window || !b.argument_window ||
         !a.pts.is_set() || !b.pts.is_set() ||
         a.pts.size() != 1 || b.pts.size() != 1) return false;
-    ++pair_queries; // attempted native-window pairs, including invalid snapshots
+    ++pair_queries; // attempted window pairs, including invalid snapshots
+    if (source_mode && (!source_endpoint(a) || !source_endpoint(b))) return false;
     const ThreadArgumentWindowConsumerState state{
         worker, worker->name(), stride, object, valid, create_seen, step_seen};
     const auto& x = *a.argument_window;
@@ -304,8 +633,9 @@ std::shared_ptr< ThreadArgumentWindows > ThreadArgumentWindows::prepare(Context&
   // from IKOS_RACE_DISABLE_THREAD_ARGUMENT_CONSUMER.
   if (std::getenv("IKOS_RACE_DISABLE_THREAD_ARGUMENT_PRODUCER") ||
       !ctx.opts.use_checks || ctx.memory_independent_ranges ||
-      ctx.opts.machine_int_domain != MachineIntDomainOption::VarPackApronPolkaPolyhedra ||
-      !ctx.opts.use_partitioning_domain || !ctx.opts.auto_boolean_partitioning ||
+      (ctx.opts.machine_int_domain != MachineIntDomainOption::Interval &&
+       (ctx.opts.machine_int_domain != MachineIntDomainOption::VarPackApronPolkaPolyhedra ||
+        !ctx.opts.use_partitioning_domain || !ctx.opts.auto_boolean_partitioning)) ||
       ctx.opts.entry_points.size() != 1 || !ctx.opts.no_init_globals.empty() ||
       ctx.bundle->global_or_null("ar.global_ctors") ||
       ctx.bundle->global_or_null("ar.global_dtors") ||
@@ -345,7 +675,8 @@ bool ThreadArgumentWindows::disjoint(const AccessRecord& a, const AccessRecord& 
 }
 JsonDict ThreadArgumentWindows::proof(const AccessRecord& a, const AccessRecord& b) const {
   JsonDict proof;
-  proof.put("thread_argument_contract", "creation-family-native-window-v1");
+  proof.put("thread_argument_contract", _impl->source_mode
+      ? "creation-family-source-affine-window-v1" : "creation-family-native-window-v1");
   proof.put("family", _impl->worker->name());
   proof.put("spacing_bytes", _impl->stride.str());
   proof.put("a_lower", a.argument_window->lower.str());
@@ -358,6 +689,7 @@ JsonDict ThreadArgumentWindows::proof(const AccessRecord& a, const AccessRecord&
 }
 JsonDict ThreadArgumentWindows::statistics() const {
   return JsonDict{{"candidate_family", _impl->worker != nullptr},
+                  {"source_affine_mode", _impl->source_mode},
                   {"native_creator_queries", _impl->creator_queries},
                   {"native_window_queries", _impl->window_queries},
                   {"pair_queries", _impl->pair_queries}};

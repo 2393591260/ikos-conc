@@ -63,7 +63,7 @@ exclusion remain distinct permissions even when supplied by the same component.
 | `mutex-protected-scalar-protocols` | Mutex-protected scalar protocols — explore protected values and synchronization histories | [Contract](synchronization.md#mutex-protected-scalar-protocols) |
 | `serial-dynamic-thread-lifecycles` | Serial dynamic thread lifecycles — check when child activations cannot overlap | [Contract](synchronization.md#serial-dynamic-thread-lifecycles) |
 | `constant-main-thread-completion` | Complete native handle generations at the actual access point | [Contract](synchronization.md#constant-main-thread-completion) |
-| `native-thread-argument-windows` | Explicit native relational observations and final byte-window exclusion | [Contract](../developer-guide/architecture.md#native-thread-argument-windows) |
+| `native-thread-argument-windows` | Native relational or source-certified default affine observations and final byte-window exclusion | [Contract](../developer-guide/architecture.md#native-thread-argument-windows) |
 | `bmc-thread-instances-arguments-and-heap-handles` | BMC thread instances, arguments and heap handles | [Contract](bounded-execution.md#bmc-thread-instances-arguments-and-heap-handles) |
 | `atomic-targets-and-communication` | Atomic targets and communication — retain the required execution suffixes and ordering | [Contract](bounded-execution.md#atomic-targets-and-communication) |
 | `exact-ffs-values-in-bmc` | Exact ffs values in BMC — compute the lowest set bit of the actual argument | [Contract](bounded-execution.md#exact-ffs-values-in-bmc) |
@@ -127,7 +127,7 @@ extra I/O can change wall-clock timings.
 | Concrete or corresponding mutex | Both accesses protected; actual lock equality or overlap-implies-lock-equality proof | Shared read/read locks or unresolved identities retain the pair. |
 | Publication, token, ownership, graph and slice passes | The full mechanism-specific contract linked above | An unsupported effect, missing bound or invalidated premise retains the pair. |
 | Optional AI offset exclusion | Stable all-offset interval/congruence facts; unbounded overlap query is UNSAT | SAT, invalid facts, timeout or exhausted query budget retains the pair. |
-| Optional native argument windows | Closed creation family, observed native relative windows and positive stride in the explicit supported domain | Missing/dirty observations, wrong family/object or overlap retains the pair. |
+| Optional native argument windows | Closed creation family, native relative windows or source-certified default affine windows, nonwrapping coordinates and positive stride | Missing/dirty observations, wrong family/object or overlap retains the pair. |
 
 These rules rely on the recorded accesses conservatively covering program
 behavior. They do not prove frontend translation or every library transfer;

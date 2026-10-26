@@ -276,8 +276,9 @@ for arbitrary C or a new SAFE rule. `--self-test` runs the oracle alone.
 `test_thread_argument_windows.py` runs both ABI modes with explicit
 VarPack Polka and guard partitioning. Positive cases require actual native
 creator/window queries and the final pair rule; independent producer and
-consumer ablations must withdraw that proof. Default-domain, non-race,
-checks-off and other partitioning modes must not prepare the helper.
+consumer ablations must withdraw that proof. Non-race, checks-off and unsupported
+relational partitioning modes must not prepare the native relational helper.
+The default interval path has a separate test below.
 
 The thread driver prepares one closed creation family before constructing
 checkers. A shadow copies each native entry argument offset; existing native
@@ -293,6 +294,13 @@ production consumer. The last unit includes a real shared-board write and a
 fresh native query of its changed value: dirty first withdraws the old proof,
 and the recomputed broader window continues to block it. A separate independent
 round checks recovery; this does not claim automatic whole-worklist reconvergence.
+
+`test_default_thread_argument_windows.py` tests the default interval path with
+guard partitioning and BMC disabled on both ABIs. It checks byte/short/int/long-long
+and nonzero-field widths, renamed programs, value-preserving index adapters,
+producer/consumer ablations, repeated arguments, byte overlap, additional creates,
+reentry, mutable bases and unproved/merged pointer origins. Database settings
+must confirm the default interval configuration; this suite does not run Polka.
 
 ### Timed main and provider execution controls
 

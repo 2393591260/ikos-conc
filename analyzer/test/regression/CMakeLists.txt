@@ -520,6 +520,11 @@ add_concurrency_test(thread-argument-windows "${CONCURRENCY_ROOT}/scripts/test_t
 add_concurrency_test(thread-argument-windows-lp64 "${CONCURRENCY_ROOT}/scripts/test_thread_argument_windows.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
 
+add_concurrency_test(default-thread-argument-windows "${CONCURRENCY_ROOT}/scripts/test_default_thread_argument_windows.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+add_concurrency_test(default-thread-argument-windows-lp64 "${CONCURRENCY_ROOT}/scripts/test_default_thread_argument_windows.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
 add_executable(test-analysis-thread-argument-window-consumer thread_argument_window_consumer.cpp)
 target_include_directories(test-analysis-thread-argument-window-consumer PRIVATE "${CONCURRENCY_ROOT}/analyzer/include")
 target_link_libraries(test-analysis-thread-argument-window-consumer ${GMPXX_LIB} ${GMP_LIB} ${APRON_LIBRARIES} LLVMSupport Threads::Threads)

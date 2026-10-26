@@ -313,7 +313,7 @@ def main():
         for bits in ([args.bits] if args.bits else [32, 64]):
             source = work / "unrelated-mode.c"
             source.write_text(PREFIX + CASES[0][1] + MAIN)
-            for mode in ("default-domain", "non-race", "checks-off",
+            for mode in ("non-race", "checks-off",
                          "no-partitioning", "return-partitioning"):
                 partitioning = {"no-partitioning": "no",
                                 "return-partitioning": "return"}.get(mode, "guards")

@@ -178,9 +178,19 @@ creation stride. Both endpoints must refer to the same certified family and
 object. Missing observations, incomplete analysis or a dirty shared summary
 withdraw the proof.
 
-This optional path is absent under the default interval domain. It grants only
-pair exclusion, not pointer validity, effect coverage, thread completion or BMC
-execution permission. The implemented dirty controls exercise withdrawal and
+The default interval domain also supports a narrower source-certified affine
+family without adding shadows or changing numerical transfers. The actual LLVM
+induction and matching AR loop must create each worker from the same stable heap
+base at a positive constant stride. Every observed counter range, cast and native
+GEP index must preserve that coordinate without wrap; a failed observation
+invalidates the family. Each access needs matching LLVM/AR constant displacement
+from the real worker parameter and its actual byte width. The final consumer
+checks non-overlap in both orientations. Unknown origins, extra activations,
+mutable bases, reentry, overlapping windows or an incomplete/dirty analysis
+retain the candidate. GNU/Linux ILP32 and LP64 use their own native widths.
+
+Both paths grant only pair exclusion, not pointer validity, effect coverage,
+thread completion or BMC execution permission. The implemented dirty controls exercise withdrawal and
 fresh native queries; they do not establish a generic BMC-to-AI refinement loop
 or automatic whole-worklist reconvergence. See the [window controls](testing.md#native-thread-argument-windows)
 and [pair contract index](../reference/module-contracts.md#pair-rule-groups-and-proof-premises).
