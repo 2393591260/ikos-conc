@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check that ILP32-only certificates refuse LP64 inputs."""
+"""Check retained ABI refusals and supported native-width certificates."""
 import argparse
 import json
 import os
@@ -46,13 +46,14 @@ def main():
                     infos = [json.loads(row[0]) for row in db.execute('SELECT info FROM checks')]
                     result = json.loads(db.execute(
                         "SELECT value FROM settings WHERE name='race_result'").fetchone()[0])
-                expected = 'SAFE' if bits == 32 else 'UNKNOWN'
+                supported = bits == 32 or fixture_name == 'runtime-stdio'
+                expected = 'SAFE' if supported else 'UNKNOWN'
                 assert result['verdict'] == expected, (fixture_name, bits, result, proc.stdout)
                 if contract:
                     proofs = [info for info in infos if info.get(contract)]
-                    assert bool(proofs) == (bits == 32), (fixture_name, bits, proofs)
+                    assert bool(proofs) == supported, (fixture_name, bits, proofs)
                 else:
-                    assert (result['unresolved_count'] == 0) == (bits == 32), result
+                    assert (result['unresolved_count'] == 0) == supported, result
                 print(f'{fixture_name}/bits={bits}: {expected}', flush=True)
     verify_runtime(identity)
 

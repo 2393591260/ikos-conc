@@ -1,5 +1,5 @@
 // Copyright and license: see analysis/context.hpp.
-// First subset: scalar globals/locals, startup argv, counted i32 stack pools,
+// First subset: scalar globals/locals, startup argv, i32-counted native pools,
 // exact pthread byte effects, and literal/integer fprintf on runtime stderr.
 // Heap objects and mutexes deliberately remain outside this first subset.
 #include <llvm/ADT/SmallString.h>
@@ -43,6 +43,13 @@ struct Pool {
   llvm::LoadInst* snapshot;
   std::uint64_t upper;
 };
+struct Induction {
+  llvm::PHINode* phi;
+  llvm::Loop* loop;
+  llvm::BinaryOperator* update;
+  llvm::BranchInst* branch;
+  llvm::ICmpInst* guard;
+};
 } // namespace
 
 class RuntimeStdioFrame::Impl {
@@ -50,6 +57,8 @@ class RuntimeStdioFrame::Impl {
   ar::Bundle* const bundle;
   llvm::Function* main = nullptr;
   llvm::Module* module = nullptr;
+  PthreadObjectLayout abi;
+  unsigned native_bits = 0;
   llvm::GlobalVariable* stderr_global = nullptr;
   std::map< llvm::Function*, ar::Function* > functions;
   std::map< llvm::Instruction*, ar::Statement* > originals;
@@ -360,7 +369,7 @@ class RuntimeStdioFrame::Impl {
     need(!ag->is_definition() && !ag->is_thread_local() &&
              ag->type()->pointee()->is_pointer() &&
              bundle->data_layout().store_size_in_bytes(ag->type()->pointee()) ==
-                 4,
+                 abi.word,
          "stderr AR declaration");
   }
   void fprintf_call(llvm::CallBase* c, ar::CallBase* a) {
@@ -459,10 +468,10 @@ class RuntimeStdioFrame::Impl {
     need(rt && rt->bit_width() == 32, "pthread AR result ABI");
     for (unsigned i = 0; i < n; ++i) {
       if (!create && i == 0) {
-        need(c->getArgOperand(i)->getType()->isIntegerTy(32) &&
+        need(c->getArgOperand(i)->getType()->isIntegerTy(native_bits) &&
                  a->argument(i)->type()->is_integer() &&
                  cast< ar::IntegerType >(a->argument(i)->type())->bit_width() ==
-                     32,
+                     native_bits,
              "join handle ABI");
       } else {
         auto* p =
@@ -478,11 +487,11 @@ class RuntimeStdioFrame::Impl {
       auto* p = llvm::cast< llvm::PointerType >(c->getArgOperand(0)->getType());
       auto* ap = cast< ar::PointerType >(a->argument(0)->type());
       auto* handle = dyn_cast< ar::IntegerType >(ap->pointee());
-      need(handle && handle->bit_width() == 32,
+      need(handle && handle->bit_width() == native_bits,
            "actual AR create output width");
       auto* child = llvm::dyn_cast< llvm::Function >(
           c->getArgOperand(2)->stripPointerCasts());
-      need(!p->isOpaque() && p->getPointerElementType()->isIntegerTy(32) &&
+      need(!p->isOpaque() && p->getPointerElementType()->isIntegerTy(native_bits) &&
                child && child != main && !child->isDeclaration() &&
                child->arg_size() == 1 &&
                child->getArg(0)->getType()->isPointerTy() &&
@@ -608,6 +617,47 @@ class RuntimeStdioFrame::Impl {
       }
     active.erase(f);
   }
+  // A fixed i32 protocol value is separate from its native-size use. Never
+  // teach value()/peel() that arbitrary extensions or truncations are identity.
+  llvm::Value* native_i32_source(llvm::Value* actual) const {
+    need(actual && actual->getType()->isIntegerTy(native_bits),
+         "actual native-size integer width");
+    if (native_bits == 32)
+      return actual;
+    auto* cast = llvm::dyn_cast< llvm::CastInst >(actual);
+    need(cast && (cast->getOpcode() == llvm::Instruction::SExt ||
+                  cast->getOpcode() == llvm::Instruction::ZExt) &&
+             cast->getOperand(0)->getType()->isIntegerTy(32),
+         "native size must be one explicit i32 extension");
+    return cast->getOperand(0);
+  }
+  ar::Value* native_i32_binding(ar::Value* imported, llvm::Value* actual) const {
+    auto* narrow = native_i32_source(actual);
+    auto* type = dyn_cast< ar::IntegerType >(imported->type());
+    need(type && type->bit_width() == native_bits && value(imported, actual),
+         "source/AR native integer identity");
+    if (native_bits == 32)
+      return imported;
+    auto* native = llvm::cast< llvm::CastInst >(actual);
+    auto* result = dyn_cast_or_null< ar::InternalVariable >(peel(imported));
+    auto* cast = result
+                     ? dyn_cast_or_null< ar::UnaryOperation >(unique_def(result))
+                     : nullptr;
+    const bool sign = native->getOpcode() == llvm::Instruction::SExt;
+    auto* input = cast ? dyn_cast< ar::IntegerType >(cast->operand()->type())
+                       : nullptr;
+    auto* output = cast ? dyn_cast< ar::IntegerType >(cast->result()->type())
+                        : nullptr;
+    need(cast && cast->has_frontend() &&
+             cast->frontend< llvm::Value >() == native &&
+             cast->op() == (sign ? ar::UnaryOperation::SExt
+                                : ar::UnaryOperation::ZExt) &&
+             input && input->bit_width() == 32 && input->is_signed() == sign &&
+             output && output->bit_width() == native_bits &&
+             output->is_signed() == sign && value(cast->operand(), narrow),
+         "actual source/AR extension operation");
+    return cast->operand();
+  }
   llvm::LoadInst* count_load(llvm::Value* v) const {
     auto* l = llvm::dyn_cast< llvm::LoadInst >(v);
     auto* g = l ? llvm::dyn_cast< llvm::GlobalVariable >(
@@ -700,12 +750,19 @@ class RuntimeStdioFrame::Impl {
             need(constant->isOne(), "fixed arrays outside first frame");
             continue;
           }
-          auto* load = count_load(storage->getArraySize());
-          auto* g = count_global(storage->getArraySize());
-          need(f == main && storage->getAllocatedType()->isIntegerTy(32) &&
-                   load && g && storage->getAlign().value() >= 4 &&
-                   startup(storage),
-               "startup i32 VLA source");
+          auto* count = native_i32_source(storage->getArraySize());
+          auto* load = count_load(count);
+          auto* g = count_global(count);
+          need(f == main &&
+                   storage->getAllocatedType()->isIntegerTy(native_bits) &&
+                   load && g && storage->getAlign().value() >= abi.word &&
+                   module->getDataLayout().getTypeAllocSize(
+                       storage->getAllocatedType()) == abi.word &&
+                   bundle->data_layout().alloc_size_in_bytes(
+                       a->allocated_type()) == abi.word &&
+                   startup(storage) &&
+                   native_i32_binding(a->array_size(), storage->getArraySize()),
+               "startup native VLA with fixed i32 count");
           scalar_global(g);
           need(stable_after(g, load), "VLA count changed after snapshot");
           auto upper = upper_bound(storage, a, g);
@@ -808,10 +865,10 @@ class RuntimeStdioFrame::Impl {
          "complete imported induction mapping");
     return commit;
   }
-  void indexed_range(llvm::Instruction* access,
-                     llvm::Value* address,
-                     ar::Value* ap,
-                     ar::Statement* a) {
+  Induction indexed_range(llvm::Instruction* access,
+                          llvm::Value* address,
+                          ar::Value* ap,
+                          ar::Statement* a) {
     auto* gep =
         llvm::dyn_cast< llvm::GetElementPtrInst >(address->stripPointerCasts());
     auto* base = gep ? llvm::dyn_cast< llvm::AllocaInst >(
@@ -819,11 +876,12 @@ class RuntimeStdioFrame::Impl {
                      : nullptr;
     need(gep && base && pools.count(base) && access->getFunction() == main &&
              gep->getNumIndices() == 1 &&
-             gep->getSourceElementType()->isIntegerTy(32) &&
+             gep->getSourceElementType()->isIntegerTy(native_bits) &&
              dom(main).dominates(base, access),
          "native VLA access identity");
     const auto& p = pools.at(base);
-    auto* phi = llvm::dyn_cast< llvm::PHINode >(gep->getOperand(1));
+    auto* phi = llvm::dyn_cast< llvm::PHINode >(
+        native_i32_source(gep->getOperand(1)));
     auto* loop = phi ? loops(main).getLoopFor(phi->getParent()) : nullptr;
     auto* latch = loop ? loop->getLoopLatch() : nullptr;
     auto* pre = loop ? loop->getLoopPreheader() : nullptr;
@@ -872,10 +930,11 @@ class RuntimeStdioFrame::Impl {
       auto* k = dyn_cast< ar::IntegerConstant >((*it).second);
       if (k && k->value().is_zero())
         continue;
-      need((*it).first.to_z_number() == 4 && value((*it).second, phi),
-           "actual AR VLA index/stride");
+      need((*it).first.to_z_number() == abi.word,
+           "actual native AR VLA stride");
       ++terms;
-      index = (*it).second;
+      index = native_i32_binding((*it).second, gep->getOperand(1));
+      need(value(index, phi), "actual AR VLA i32 induction source");
     }
     need(terms == 1, "one complete VLA byte term");
     auto* commit = ar_phi(index, phi, update);
@@ -895,9 +954,16 @@ class RuntimeStdioFrame::Impl {
              !ar_repeats_without(add, guard) &&
              !ar_repeats_without(commit, add),
          "AR guarded increment and fresh PHI commit on every iteration");
-    // The native +1 and imported +1 have the same induction. Under i<count<=U,
-    // 0<=i, i+1<=U and 4*i+4<=4*count<=4*U<=INT_MAX. No nsw/inbounds premise.
+    // The fixed i32 +1 induction proves 0<=i<count<=U and i+1<=U, where
+    // U<=INT32_MAX/4. On this enabled body, either checked extension is exact.
+    // word*i+word<=word*count<=word*U: at word=4 this fits signed i32, and at
+    // word=8 it fits signed i64. This also equals the allocation-size extension
+    // of the same stable positive count. No nsw/inbounds premise is used.
+    need(core::ZNumber(abi.word) * core::ZNumber(p.upper) <=
+             (core::ZNumber(1) << (native_bits - 1)) - 1,
+         "mathematical native byte extent");
     storage_uses[base].insert(access);
+    return {phi, loop, update, branch, cmp};
   }
   void seed_range(llvm::StoreInst* store,
                   ar::Store* a,
@@ -906,9 +972,10 @@ class RuntimeStdioFrame::Impl {
     auto* source = llvm::dyn_cast< llvm::CallBase >(store->getValueOperand());
     need(store->getMetadata("ikos.freeze_uninit") && source &&
              source->getMetadata("ikos.freeze_uninit") &&
-             source->getType()->isIntegerTy(32) && source->arg_empty() &&
+             source->getType()->isIntegerTy(native_bits) && source->arg_empty() &&
              source_callee(source) &&
-             source_callee(source)->getName() == "__ikos_nondet_int" &&
+             source_callee(source)->getName() ==
+                 (native_bits == 32 ? "__ikos_nondet_int" : "__ikos_nondet_int64") &&
              binding(source) && value(a->pointer(), base) &&
              value(a->value(), source) && dom(main).dominates(base, store),
          "actual first-cell seed shape");
@@ -937,12 +1004,15 @@ class RuntimeStdioFrame::Impl {
     // Existing Allocate contract, not a new source/path assumption:
     // the admitted interprocedural value engine enables UpdateAllocSizeVar and
     // uses unsigned MulNoWrap for this exact AR Allocate (see draft notes).
-    // On its normal continuation extent=4*u32(count), without wrap. The same
-    // count!=0 guard gives extent>=4. Negative signed counts are NOT declared
-    // positive; their explicit signed create/read loops are never enabled.
+    // On its normal continuation extent=word*unsigned(actual_size), without
+    // wrap in the verified native width. The guard is on that actual Allocate
+    // size, not the i32 protocol interpretation, so nonzero implies extent>=word.
+    // Negative signed protocol counts are NOT declared positive; their explicit
+    // signed create/read loops are never enabled. Neither zero continuation nor
+    // failed allocation behavior is strengthened here.
     need(p.imported->array_size()->type()->is_integer() &&
              cast< ar::IntegerType >(p.imported->array_size()->type())
-                     ->bit_width() == 32 &&
+                     ->bit_width() == native_bits &&
              !cast< ar::IntegerType >(p.imported->array_size()->type())
                   ->is_signed(),
          "seed requires actual unsigned Allocate size contract");
@@ -958,9 +1028,29 @@ class RuntimeStdioFrame::Impl {
              a->result()->type()->is_pointer() && startup(load),
          "startup argv pointer load");
     auto* k = llvm::dyn_cast< llvm::ConstantInt >(gep->getOperand(1));
-    need(k && k->getBitWidth() == 32 && k->getSExtValue() >= 0 &&
+    need(k && k->getBitWidth() == native_bits && k->getSExtValue() >= 0 &&
              k->getSExtValue() <= 16 && value(a->operand(), gep),
          "bounded argv index identity");
+    if (k->isZero()) {
+      need(value(peel(a->operand()), main->getArg(1)),
+           "actual zero-offset AR argv base");
+    } else {
+      auto* address =
+          dyn_cast_or_null< ar::InternalVariable >(peel(a->operand()));
+      auto* shift =
+          address ? dyn_cast_or_null< ar::PointerShift >(unique_def(address))
+                  : nullptr;
+      need(shift && value(shift->pointer(), main->getArg(1)),
+           "actual AR argv base");
+      unsigned terms = 0;
+      for (auto it = shift->term_begin(); it != shift->term_end(); ++it) {
+        need((*it).first.to_z_number() == abi.word &&
+                 value((*it).second, k),
+             "actual AR argv native index/stride");
+        ++terms;
+      }
+      need(terms == 1, "one complete argv pointer term");
+    }
     // These input reads stay explicit unknown-length Read effects. They are
     // allowed by serial phase, not by asserting argv/FILE disjointness.
     for (auto* use : load->users()) {
@@ -995,7 +1085,7 @@ class RuntimeStdioFrame::Impl {
             address->stripPointerCasts())) {
       need(value(ap, global), "whole global source/AR address");
       if (global == stderr_global) {
-        need(l && type == stderr_global->getValueType() && width == 4 &&
+        need(l && type == stderr_global->getValueType() && width == abi.word &&
                  at->is_pointer(),
              "stderr pointer rebound or partial access");
         for (auto* user : l->users()) {
@@ -1018,7 +1108,7 @@ class RuntimeStdioFrame::Impl {
                    type->getIntegerBitWidth(),
            "whole local source/AR access");
       if (pools.count(base)) {
-        need(s && type->isIntegerTy(32), "unindexed VLA access");
+        need(s && type->isIntegerTy(native_bits), "unindexed VLA access");
         seed_range(s, as, base);
       } else {
         auto* count = llvm::dyn_cast< llvm::ConstantInt >(base->getArraySize());
@@ -1029,8 +1119,9 @@ class RuntimeStdioFrame::Impl {
     } else if (l && type->isPointerTy()) {
       argv_read(l, al);
     } else {
-      need(l && type->isIntegerTy(32) && width == 4 && at->is_integer() &&
-               cast< ar::IntegerType >(at)->bit_width() == 32,
+      need(l && type->isIntegerTy(native_bits) && width == abi.word &&
+               at->is_integer() &&
+               cast< ar::IntegerType >(at)->bit_width() == native_bits,
            "foreign/non-handle indirect memory");
       indexed_range(i, address, ap, al);
       need(!l->user_empty(), "unused handle read");
@@ -1194,16 +1285,15 @@ class RuntimeStdioFrame::Impl {
                     load->getPointerOperand(),
                     imported_load->operand(),
                     binding(join));
-      auto* gep = llvm::cast< llvm::GetElementPtrInst >(
-          create->getArgOperand(0)->stripPointerCasts());
-      auto* phi = llvm::cast< llvm::PHINode >(gep->getOperand(1));
-      auto* loop = loops(main).getLoopFor(phi->getParent());
-      auto* latch = loop->getLoopLatch();
-      auto* update = llvm::cast< llvm::BinaryOperator >(
-          phi->getIncomingValueForBlock(latch));
-      auto* header =
-          llvm::cast< llvm::BranchInst >(loop->getHeader()->getTerminator());
-      auto* cmp = llvm::cast< llvm::ICmpInst >(header->getCondition());
+      const auto induction = indexed_range(create,
+                                           create->getArgOperand(0),
+                                           binding(create)->argument(0),
+                                           binding(create));
+      auto* phi = induction.phi;
+      auto* loop = induction.loop;
+      auto* update = induction.update;
+      auto* header = induction.branch;
+      auto* cmp = induction.guard;
       auto* a_update = imported_pure(update);
       need(dom(main).dominates(create, update) &&
                ar_dominates(binding(create), a_update),
@@ -1371,18 +1461,17 @@ class RuntimeStdioFrame::Impl {
              opts.entry_points.size() == 1 && opts.no_init_globals.empty() &&
              opts.entry_points.front()->name() == "main" &&
              opts.entry_points.front()->has_frontend() &&
-             bundle->data_layout().pointers.bit_width == 32 &&
              !bundle->global_or_null("ar.global_ctors") &&
              !bundle->global_or_null("ar.global_dtors"),
-         "supported main/interprocedural ILP32 context");
+         "supported main/interprocedural context");
     main = opts.entry_points.front()->frontend< llvm::Function >();
     module = main->getParent();
     auto* stream = module->getNamedGlobal("stderr");
     need(stream && !stream->use_empty(), "no runtime stderr use");
-    const llvm::Triple triple(module->getTargetTriple());
-    need(triple.getArch() == llvm::Triple::x86 && triple.isOSLinux() &&
-             triple.getEnvironment() == llvm::Triple::GNU &&
-             module->getDataLayout().getPointerSizeInBits(0) == 32 &&
+    abi = pthread_object_layout(bundle, module);
+    native_bits = abi.word * 8;
+    need(abi && bundle->data_layout().is_little_endian() &&
+             module->getDataLayout().getIndexSizeInBits(0) == native_bits &&
              main->getReturnType()->isIntegerTy(32) && main->use_empty() &&
              module->getModuleInlineAsm().empty() && module->alias_empty() &&
              module->ifunc_empty() &&
@@ -1478,6 +1567,9 @@ public:
             {"scalar_scan_non_exposure_contract",
              "whole-program-scalar-representation-closure-v1"},
             {"stack_range_contract", "native-ar-counted-i32-stack-effects-v1"},
+            {"native_word_bytes", static_cast< int >(abi.word)},
+            {"native_index_bits", static_cast< int >(native_bits)},
+            {"count_protocol_bits", 32},
             {"allocation_contract",
              "existing interprocedural Allocate unsigned MulNoWrap normal "
              "continuation"},

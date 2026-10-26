@@ -124,11 +124,10 @@ llvm::CallInst* scalar_scan_declaration(ar::CallBase* call) {
   if (call->has_result() &&
       call->result()->type() != imported->type()->return_type())
     return nullptr;
-  const llvm::Triple triple(source->getParent()->getTargetTriple());
-  if (triple.getArch() != llvm::Triple::x86 || !triple.isOSLinux() ||
-      triple.getEnvironment() != llvm::Triple::GNU ||
-      source->getParent()->getDataLayout().getPointerSizeInBits(0) != 32 ||
-      call->bundle()->data_layout().pointers.bit_width != 32)
+  // Format/output/rc/errno stay i32; only pointer storage follows the
+  // source/AR-checked GNU little-endian x86 or x86-64 layout.
+  const auto abi = pthread_object_layout(call->bundle(), source->getParent());
+  if (!abi || !call->bundle()->data_layout().is_little_endian())
     return nullptr;
   for (unsigned i = 0; i < 3; ++i) {
     if (i < 2 &&
@@ -150,6 +149,9 @@ llvm::CallInst* scalar_scan_declaration(ar::CallBase* call) {
 }
 
 bool verified_stderr_declaration(ar::Bundle* bundle, llvm::GlobalVariable& g) {
+  const auto abi = pthread_object_layout(bundle, g.getParent());
+  if (!abi || !bundle->data_layout().is_little_endian())
+    return false;
   auto* type = llvm::dyn_cast< llvm::PointerType >(g.getValueType());
   auto* file =
       type && !type->isOpaque()
@@ -168,7 +170,7 @@ bool verified_stderr_declaration(ar::Bundle* bundle, llvm::GlobalVariable& g) {
     if (object->is_definition() || object->is_thread_local() ||
         !object->type()->pointee()->is_pointer() ||
         bundle->data_layout().store_size_in_bytes(object->type()->pointee()) !=
-            4)
+            abi.word)
       return false;
     ++matches;
   }

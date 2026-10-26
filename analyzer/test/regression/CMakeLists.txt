@@ -142,10 +142,16 @@ add_concurrency_test(token-arena-lp64 "${CONCURRENCY_ROOT}/scripts/test_token_ar
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(scanf-errno "${CONCURRENCY_ROOT}/scripts/test_scanf_errno.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(scanf-errno-lp64 "${CONCURRENCY_ROOT}/scripts/test_scanf_errno.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(runtime-stdio "${CONCURRENCY_ROOT}/scripts/test_runtime_stdio.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(runtime-stdio-lp64 "${CONCURRENCY_ROOT}/scripts/test_runtime_stdio.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(scalar-scan "${CONCURRENCY_ROOT}/scripts/test_scalar_scan.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(scalar-scan-lp64 "${CONCURRENCY_ROOT}/scripts/test_scalar_scan.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(freeze-array "${CONCURRENCY_ROOT}/scripts/test_freeze_array.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(ticket-ownership "${CONCURRENCY_ROOT}/scripts/test_ticket_ownership.py"

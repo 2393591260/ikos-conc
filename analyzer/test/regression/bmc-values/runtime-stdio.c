@@ -20,7 +20,22 @@ typedef int datum;
 #endif
 extern void __VERIFIER_atomic_begin(void);
 extern void __VERIFIER_atomic_end(void);
+#if CASE == 36
+// Wide protocol counters are outside this fixed-i32 certificate.
+static long long population = INITIAL;
+static int scanned_population = INITIAL;
+#else
 static int population = INITIAL;
+#endif
+#if CASE == 33
+#define SLOT_INDEX(i) ((uint64_t)(i) + (UINT64_C(1) << 32) + 1)
+#elif CASE == 37
+#define SLOT_INDEX(i) ((unsigned short)(i))
+#elif defined(UNSIGNED_INDEX)
+#define SLOT_INDEX(i) ((unsigned)(i))
+#else
+#define SLOT_INDEX(i) (i)
+#endif
 static datum payload;
 #if CASE == 13
 static FILE *saved_stream;
@@ -69,11 +84,19 @@ int main(int argc, char **argv) {
 #if CASE == 14
   stderr = stdout;
 #endif
+#if CASE == 36
+#define SCAN_DEST scanned_population
+#else
+#define SCAN_DEST population
+#endif
 #ifdef MAPPED
   extern int raw_scan(const char *, const char *, ...) __asm__("sscanf");
-  if (argc == 2) (void)raw_scan(argv[1], "%d", &population);
+  if (argc == 2) (void)raw_scan(argv[1], "%d", &SCAN_DEST);
 #else
-  if (argc == 2) (void)sscanf(argv[1], "%d", &population);
+  if (argc == 2) (void)sscanf(argv[1], "%d", &SCAN_DEST);
+#endif
+#if CASE == 36
+  population = scanned_population;
 #endif
 #if CASE != 2
   if (population > LIMIT) exit(1);
@@ -82,6 +105,10 @@ int main(int argc, char **argv) {
   int snapshot = population;
   population = LIMIT;
   pthread_t handles[snapshot];
+#elif CASE == 32
+  pthread_t handles[population - 1];
+#elif defined(SIGNED_EXTENT)
+  pthread_t handles[(intptr_t)population];
 #else
   pthread_t handles[population];
 #endif
@@ -112,10 +139,14 @@ int main(int argc, char **argv) {
     status = pthread_create(&handles[index], 0, worker, &population);
 #elif CASE == 9
     status = pthread_create(&handles[index + 1], 0, worker, 0);
+#elif CASE == 38
+    status = (unsigned char)pthread_create(&handles[SLOT_INDEX(index)], 0, worker, 0);
 #else
-    status = pthread_create(&handles[index], 0, worker, 0);
+    status = pthread_create(&handles[SLOT_INDEX(index)], 0, worker, 0);
 #endif
-#if CASE != 10
+#if CASE == 39
+    if (status != 0) { fprintf(stderr, "create %d\n", status); continue; }
+#elif CASE != 10
     if (status != 0) { fprintf(stderr, "create %d\n", status); exit(1); }
 #endif
   }
@@ -124,6 +155,8 @@ int main(int argc, char **argv) {
 #endif
 #if CASE == 20
   handles[0] = 0;
+#elif CASE == 35
+  ((unsigned char *)handles)[sizeof(pthread_t) - 1] = 0;
 #endif
 #if CASE == 31
   pthread_t chosen;
@@ -158,8 +191,10 @@ done_consumer:
 repeat_consumer:
     status = pthread_join(handle, 0);
     if (argc & 1) goto repeat_consumer;
+#elif CASE == 34
+    status = pthread_join((pthread_t)(unsigned int)handles[index], 0);
 #else
-    status = pthread_join(handles[index], 0);
+    status = pthread_join(handles[SLOT_INDEX(index)], 0);
 #endif
     if (status != 0) { fprintf(stderr, "join %d\n", status); exit(1); }
 #if CASE == 21
@@ -173,7 +208,7 @@ repeat_consumer:
   pthread_join((pthread_t)population, 0);
 #endif
 #if CASE == 23
-  (void)sscanf(argv[1], "%d", &population);
+  (void)sscanf(argv[1], "%d", &SCAN_DEST);
 #endif
   return 0;
 #endif

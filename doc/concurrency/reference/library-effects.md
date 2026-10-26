@@ -429,7 +429,7 @@ conversion result nor a particular errno value.
 
 `python3 scripts/test_scanf_errno.py` covers raw and mapped APIs, cached-error
 branches, unconditional conflicts and a no-input impossible-branch control,
-with both int and long-long payloads under ILP32.
+with both int and long-long payloads; use --bits 32 or --bits 64.
 
 </details>
 
@@ -438,8 +438,8 @@ with both int and long-long payloads under ILP32.
 <summary>Exact scalar string input — model a restricted sscanf call</summary>
 
 The thread-modular analyzer supports a narrow source/AR-verified string-input
-summary: actual declared `sscanf` or `__isoc99_sscanf`, GNU/Linux i386 ABI, an
-immutable literal `%d`, and one complete signed 32-bit global or scalar-local
+summary: actual declared `sscanf` or `__isoc99_sscanf`, verified GNU/Linux x86
+ILP32 or x86-64 LP64 ABI, an immutable literal `%d`, and one complete signed 32-bit global or scalar-local
 output object. Both raw extern and mapped libc routes use the same descriptor.
 The input remains a possibly unbounded Read; the output is a four-byte possible
 Write. The immutable format is separately verified. Return and output values
@@ -457,7 +457,8 @@ remain in force. This summary does not establish stream isolation or remove
 `python3 scripts/test_scalar_scan.py` checks raw/mapped calls, failure and cached
 errno paths, private-output fallback, input/output conflicts, API/format/width
 controls, shifted-input and partial-output overlaps, read-lock versus exclusive
-mutex protection, and ILP32 long-long payloads. Implementation: `stdio_effects.hpp/.cpp`
+mutex protection, and long-long payloads with --bits 32 or --bits 64.
+Implementation: `stdio_effects.hpp/.cpp`
 in `analysis/execution_engine` and `src/analysis`, consumed by numerical transfer
 and the data-race checker.
 
@@ -469,8 +470,9 @@ and the data-race checker.
 
 An optional, immutable `RuntimeStdioFrame` is configured in each thread-modular
 Context before numerical analysis. It inventories the actual reachable LLVM and
-AR effects, entry options, source identities and GNU i386 ABI. Only a complete
-frame supplies either of its two capabilities:
+AR effects, entry options, source identities and GNU/Linux x86 ILP32 or x86-64
+LP64 layout. Source/AR pointer width and native index width must match.
+Only a complete frame supplies either of its two capabilities:
 
 * A verified `fprintf(stderr, literal, ...)` with only promoted `%d` and `%%`
   conversions may omit its stream argument's synthetic application Write. All
@@ -481,9 +483,27 @@ frame supplies either of its two capabilities:
   mutex invalidation, errno/output havoc and failure coverage remain unchanged.
 
 The first subset admits whole integer storage, sealed serial argv input and
-counted private i32 stack pools. Actual signed upper edges, stable counts,
+private native-word pthread handle pools counted by a fixed signed i32 protocol.
+The count, PHI, unit increment, signed guards, pthread return codes, argc, `%d`
+outputs and errno remain 32 bits on both ABIs. Handle cells, pointer storage,
+allocation sizes and GEP offsets use the verified 4- or 8-byte native word.
+An LP64 size/index must be one actual source extension of the i32 value,
+independently matched to the AR operation and operand; arbitrary casts or
+truncation are not identity. Actual signed upper edges, stable counts,
 zero/unit induction, native/AR byte strides, physical nonzero seed guards and
-stack lifetime must match. Each pool's creation phase must cover every consumed
+stack lifetime must match.
+
+For an enabled body the proof is mathematical: `0 <= i < count <= U`,
+`i + 1 <= U`, and `word*i + word <= word*count <= word*U`, with
+`U <= INT32_MAX/4`. The product fits the native signed offset width on either
+ABI. It does not rely on LLVM inbounds or nsw. A first-cell seed writes one
+native handle only after a nonzero guard on the actual unsigned Allocate size;
+the existing no-wrap allocation extent on its normal continuation is at least
+one word. A negative signed protocol count is never assumed positive.
+The verified induction descriptor is reused for create coverage; an extended
+GEP operand is never treated directly as a PHI.
+
+Each pool's creation phase must cover every consumed
 slot with a successful actual create; failure cannot reach a join. Its sole join
 phase consumes each slot at most once. Native header and AR PHI-commit checks
 reject repeated occurrences, irreducible cycles and restarted phases. These are
@@ -501,7 +521,10 @@ Implementation: `analysis/runtime_stdio_frame.hpp`,
 `src/analysis/runtime_stdio_frame.cpp`, numerical transfer and the data-race
 checker. `python3 scripts/test_runtime_stdio.py` covers refusal controls, real
 neighboring races, renamed objects, raw/mapped scans, changed bounds, zero and
-negative counts, repeated consumption and ILP32 long-long payloads.
+negative counts, repeated consumption and long-long payloads with --bits 32
+or --bits 64. Native-handle narrowing, shifted or truncated indices, undersized
+pools, partial-slot mutation, wide protocol counters and truncated create status
+must refuse the frame. A narrowed native handle is an identity only on ILP32.
 
 </details>
 
