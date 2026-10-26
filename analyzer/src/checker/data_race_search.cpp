@@ -165,6 +165,10 @@ void DataRaceChecker::search_race_candidates(
   // intervening waits or unknown calls. Loop/conditional creation needs modeling.
   std::map< std::pair< std::string, std::string >, std::vector< std::vector< bmc::BmcEvent > > > activation_prefixes;
   decltype(activation_prefixes) short_activation_prefixes;
+  // Move previously constructed startup choices aside when old passes reset
+  // their caches. Later access selection must preserve every legacy activation
+  // mode, including short startups, exact create generations and semaphores.
+  decltype(activation_prefixes) later_activation_prefixes;
   std::set< std::pair< std::string, std::string > > incomplete_activations;
   std::map< std::pair< std::string, std::string >, bmc::Diagnostics > activation_diagnostics;
   auto two_live_threads = [&](const std::string& thread_a, const std::string& thread_b) {
@@ -363,14 +367,14 @@ void DataRaceChecker::search_race_candidates(
   std::set< std::string > larger_activation_groups;
   std::set< std::string > occurrence_groups;
   std::set< std::string > hinted_activation_groups;
-  std::set< std::string > completion_groups, semaphore_groups;
+  std::set< std::string > completion_groups, semaphore_groups, later_access_groups;
   std::map< std::string, bmc::Result > deferred_results;
   std::map< std::string, JsonList > deferred_candidates;
   std::map< std::string, JsonList > occurrence_candidates;
   std::map< std::string, std::map< std::string, std::size_t > > deferred_counts;
   bool file_confirmed = false;
   unsigned startup_hint = 16;
-  for (unsigned pass = 0; pass < 7; ++pass) {
+  for (unsigned pass = 0; pass < 8; ++pass) {
     // Try every candidate's short execution before deeper loop alternatives.
     search_budget.defer_large_loops = pass < 2;
     if (pass == 4 && !hinted_activation_groups.empty() && !file_confirmed &&
@@ -386,8 +390,58 @@ void DataRaceChecker::search_race_candidates(
       instance_proofs.clear();
       // Bounded DFS need not emit a superset: keep short startup + deep worker
       // combinations when the larger startup enumeration saturates.
-      if (pass == 2) short_activation_prefixes = std::move(activation_prefixes);
+      if (pass == 2) {
+        short_activation_prefixes = std::move(activation_prefixes);
+      } else {
+        for (auto& entry : activation_prefixes) {
+          if (search_budget.expired()) break;
+          auto& saved = later_activation_prefixes[entry.first];
+          for (auto& path : entry.second) saved.push_back(std::move(path));
+        }
+      }
       activation_prefixes.clear();
+      if (pass == 7) {
+        for (auto& entry : short_activation_prefixes) {
+          if (search_budget.expired()) break;
+          auto& saved = later_activation_prefixes[entry.first];
+          for (auto& path : entry.second) saved.push_back(std::move(path));
+        }
+        activation_prefixes = std::move(later_activation_prefixes);
+        // Deduplicate only after old searches have run. The concrete source
+        // choices and expanded callees are part of this invocation identity.
+        for (auto& entry : activation_prefixes) {
+          if (search_budget.expired()) break;
+          std::vector< std::vector< bmc::BmcEvent > > unique;
+          for (auto& path : entry.second) {
+            if (search_budget.expired()) break;
+            const bool duplicate = std::any_of(unique.begin(), unique.end(), [&](const auto& other) {
+              if (search_budget.expired()) return false;
+              return path.size() == other.size() &&
+                  std::equal(path.begin(), path.end(), other.begin(), [](const auto& a, const auto& b) {
+                    return a.blocker == b.blocker && a.stmt == b.stmt &&
+                           a.kind == b.kind && a.called_function == b.called_function &&
+                           a.synthetic_atomic == b.synthetic_atomic &&
+                           a.synthetic_condition == b.synthetic_condition &&
+                           a.join_completion == b.join_completion &&
+                           a.join_creation == b.join_creation && a.candidate == b.candidate &&
+                           a.zero_fill == b.zero_fill && a.finite_source == b.finite_source &&
+                           a.joined_handle_read == b.joined_handle_read &&
+                           a.finite_value == b.finite_value && a.mutex == b.mutex &&
+                           a.reader == b.reader && a.local_base == b.local_base &&
+                           a.local_extent == b.local_extent &&
+                           a.shared_main_local == b.shared_main_local &&
+                           a.single_function_execution == b.single_function_execution &&
+                           a.heap_allocation == b.heap_allocation && a.heap_extent == b.heap_extent &&
+                           a.base == b.base && a.const_off == b.const_off &&
+                           a.var_id == b.var_id && a.var_before == b.var_before &&
+                           a.coeff == b.coeff && a.width == b.width && a.thread == b.thread;
+                  });
+            });
+            if (!duplicate) unique.push_back(std::move(path));
+          }
+          entry.second = std::move(unique);
+        }
+      }
       incomplete_activations.clear();
       if (pass >= 3) small_activation.clear();
     }
@@ -404,7 +458,8 @@ void DataRaceChecker::search_race_candidates(
         (pass == 3 && occurrence_groups.count(kv.first) == 0) ||
         (pass == 4 && hinted_activation_groups.count(kv.first) == 0) ||
         (pass == 5 && completion_groups.count(kv.first) == 0) ||
-        (pass == 6 && semaphore_groups.count(kv.first) == 0)) continue;
+        (pass == 6 && semaphore_groups.count(kv.first) == 0) ||
+        (pass == 7 && later_access_groups.count(kv.first) == 0)) continue;
     search_budget.saw_interrupted = false;
     const std::vector< std::size_t >& pair_indices = kv.second;
     if (pair_indices.empty()) {
@@ -503,7 +558,7 @@ void DataRaceChecker::search_race_candidates(
       const AccessRecord& b = this->_accesses[pr.j];
       const bool worker_pair = a.thread_id != "main" && b.thread_id != "main";
       group_worker_pairs |= worker_pair;
-      if (pass == 5 ? worker_pair : pass >= 3 && !worker_pair) continue;
+      if (pass == 5 ? worker_pair : pass >= 3 && pass != 7 && !worker_pair) continue;
       bmc::Result candidate_result(bmc::Status::NotSearched);
       bmc::Diagnostics diagnostics;
       bmc::Diagnostics* trace = diagnostics_enabled ? &diagnostics : nullptr;
@@ -521,7 +576,10 @@ void DataRaceChecker::search_race_candidates(
         auto proof = instance_proofs.find(key);
         if (proof == instance_proofs.end()) {
           bool live = false;
-          if (pass >= 3) {
+          if (pass == 7) {
+            const auto retained = activation_prefixes.find(key);
+            live = retained != activation_prefixes.end() && !retained->second.empty();
+          } else if (pass >= 3) {
             if (pass == 4) bmc::record(trace, "startup_literal_loop_hint");
             live = conditional_live_threads(a.thread_id, b.thread_id, pass == 4 ? startup_hint : 16, true, nullptr, 0, pass == 6);
             if (!live && (pass == 3 || pass == 6)) {
@@ -654,7 +712,9 @@ void DataRaceChecker::search_race_candidates(
           candidate_result.merge(bmc::Result(bmc::Status::BudgetExceeded));
         } else {
           ++group_attempts;
-          --search_budget.candidates;
+          // Each exact access request spends this same budget in the later
+          // search. Legacy static candidate charging remains unchanged.
+          if (pass != 7) --search_budget.candidates;
           bmc::CandidateFacts facts;
           facts.main_argc_one = !this->_ctx.opts.argc || *this->_ctx.opts.argc == 1;
           // Keep the historical master switch; independent factors isolate
@@ -678,8 +738,14 @@ void DataRaceChecker::search_race_candidates(
             facts.bounded_a = eff_interval(a, facts.lo_a, facts.hi_a);
             facts.bounded_b = eff_interval(b, facts.lo_b, facts.hi_b);
           }
+          unsigned later_frontier = 0;
+          bmc::LaterAccessState* later_state = nullptr;
           auto confirm = [&] {
-            if (pass == 5) {
+            if (pass == 7) {
+              candidate_result.merge(bmc::confirm_race_later(fa, a.stmt, a.width,
+                  fb, b.stmt, b.width, trace, search_budget, &confirmed_creations, &facts,
+                  later_frontier, later_state));
+            } else if (pass == 5) {
               candidate_result.merge(bmc::confirm_race_completion(fa, a.stmt, a.width,
                   fb, b.stmt, b.width, trace, search_budget, &confirmed_creations, &facts));
             } else {
@@ -735,20 +801,39 @@ void DataRaceChecker::search_race_candidates(
               });
               facts.selected_worker_occurrences = true;
               std::size_t occurrence_attempts = 0;
-              for (const auto& selection : selections) {
-                if (occurrence_attempts >= 32 || search_budget.expired() || search_budget.queries == 0) break;
-                facts.startup = *selection.startup;
-                facts.worker_a_occurrence = selection.a;
-                facts.worker_b_occurrence = selection.b;
-                ++occurrence_attempts;
-                bmc::record(trace, "selected_activation_occurrences");
-                if ((bmc_confirmed = confirm())) {
-                  confirmed_creations.clear();
-                  for (const auto& event : *selection.startup)
-                    if (event.kind == bmc::EvKind::Create) confirmed_creations.push_back(event.stmt);
-                  break;
+              std::vector< bmc::LaterAccessState > later_states;
+              if (pass == 7) later_states.resize(std::min< std::size_t >(32, selections.size()));
+              unsigned frontier = 2;
+              bool pending = true;
+              do {
+                occurrence_attempts = 0;
+                pending = false;
+                for (const auto& selection : selections) {
+                  if (occurrence_attempts >= 32 || search_budget.expired() || search_budget.queries == 0 ||
+                      (pass == 7 && search_budget.candidates == 0)) break;
+                  if (pass == 7) {
+                    later_state = &later_states[occurrence_attempts];
+                    later_frontier = frontier;
+                    ++occurrence_attempts;
+                    if (!later_state->pending(frontier)) continue;
+                    pending = true;
+                  } else ++occurrence_attempts;
+                  facts.startup = *selection.startup;
+                  facts.worker_a_occurrence = selection.a;
+                  facts.worker_b_occurrence = selection.b;
+                  bmc::record(trace, "selected_activation_occurrences");
+                  if ((bmc_confirmed = confirm())) {
+                    confirmed_creations.clear();
+                    for (const auto& event : *selection.startup)
+                      if (event.kind == bmc::EvKind::Create) confirmed_creations.push_back(event.stmt);
+                    break;
+                  }
                 }
-              }
+                // Give every retained create selection the same access frontier
+                // before one disjoint instance can consume all later requests.
+              } while (pass == 7 && pending && !bmc_confirmed &&
+                       !search_budget.expired() && search_budget.candidates != 0 &&
+                       search_budget.queries != 0 && ++frontier <= bmc::MAX_PATH_EVENTS);
               if (!bmc_confirmed && (occurrence_attempts < selections.size() || more_occurrences)) {
                 bmc::record(trace, occurrence_attempts >= 32 ? "activation_selection_budget" : "search_budget");
                 candidate_result.merge(bmc::Result(bmc::Status::BudgetExceeded));
@@ -836,7 +921,11 @@ void DataRaceChecker::search_race_candidates(
       semaphore_groups.insert(kv.first);
     const bool semaphore_deferred = pass < 6 && bmc_enabled &&
         semaphore_groups.count(kv.first) != 0 && !file_confirmed;
-    if (!bmc_confirmed && (legacy_deferred || occurrence_deferred || hint_deferred || completion_deferred || semaphore_deferred)) {
+    // Keep every still-inconclusive report until the additional exact-access
+    // pass, including main/worker pairs with joins only after a later target.
+    const bool later_access_deferred = pass < 7 && bmc_enabled && !file_confirmed;
+    if (!bmc_confirmed && (legacy_deferred || occurrence_deferred || hint_deferred ||
+                          completion_deferred || semaphore_deferred || later_access_deferred)) {
       deferred_results[kv.first] = group_result;
       if (legacy_deferred) {
         if (pass == 0) deferred_groups.insert(kv.first);
@@ -844,6 +933,7 @@ void DataRaceChecker::search_race_candidates(
       } else if (hint_deferred) hinted_activation_groups.insert(kv.first);
       else if (occurrence_deferred) occurrence_groups.insert(kv.first);
       if (completion_deferred) completion_groups.insert(kv.first);
+      if (later_access_deferred) later_access_groups.insert(kv.first);
       if (diagnostics_enabled) {
         if (pass == 0) deferred_candidates.emplace(kv.first, candidate_diagnostics);
         if (pass == 3) occurrence_candidates[kv.first] = candidate_diagnostics;
@@ -853,6 +943,7 @@ void DataRaceChecker::search_race_candidates(
     }
     completion_groups.erase(kv.first);
     semaphore_groups.erase(kv.first);
+    later_access_groups.erase(kv.first);
     // Flat targets and the report anchor must refer to the confirmed pair.
     JsonDict info{
         {"memory_location", first.first_conflict_loc.empty()

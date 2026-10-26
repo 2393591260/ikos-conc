@@ -2089,6 +2089,8 @@ struct UnrollBudget {
   std::size_t steps = 0;
   unsigned loop_bound = 1;
   unsigned target_occurrence = 1;
+  bool exact_target = false; // Legacy helper search can retain later invocations.
+  unsigned max_target_occurrence = 0; // Observed only for exact-target search.
   ar::Statement* root_target = nullptr;
   bool completed = false;
   const char* exhausted = nullptr;
@@ -2258,6 +2260,15 @@ inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
         budget.rejected_statement = s;
         return; // This executed prefix cannot reach a supported SAT query.
       }
+      if (budget.exact_target && s == budget.root_target) {
+        const auto occurrences = std::count_if(current.begin(), current.end(),
+            [&](const BmcEvent& event) {
+              return !event.synthetic_atomic && !event.synthetic_condition &&
+                     event.stmt == budget.root_target;
+            });
+        budget.max_target_occurrence = std::max(
+            budget.max_target_occurrence, static_cast< unsigned >(occurrences));
+      }
       if (s == target) {
         auto occurrences = std::count_if(current.begin(), current.end(),
                                           [&](const BmcEvent& event) {return !event.synthetic_atomic && event.stmt == target;});
@@ -2272,8 +2283,17 @@ inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
       if (s == budget.root_target && candidate_index(current) == current.size() &&
           (target == budget.root_target || budget.completed || open_atomic_prefix(current))) {
         auto occurrences = std::count_if(current.begin(), current.end(),
-            [&](const BmcEvent& event) {return !event.synthetic_atomic && event.stmt == budget.root_target;});
-        if (occurrences >= budget.target_occurrence) current.back().candidate = true;
+            [&](const BmcEvent& event) {
+              return !event.synthetic_atomic &&
+                     (!budget.exact_target || !event.synthetic_condition) &&
+                     event.stmt == budget.root_target;
+            });
+        // Keep the established helper-search behavior in legacy mode:
+        // a completed earlier invocation can be replayed without a marker.
+        // Exact requests select one root-trace ordinal across all invocations.
+        if (budget.exact_target ? occurrences == budget.target_occurrence
+                                : occurrences >= budget.target_occurrence)
+          current.back().candidate = true;
       }
       // Continue the real CFG until the selected atomic region is closed.
       if (target == budget.root_target && candidate_index(current) < current.size() &&
@@ -2364,6 +2384,7 @@ struct UnrollResult {
   std::vector< std::vector< BmcEvent > > paths;
   bool incomplete = false;  // true = construction budget exhausted
   bool pruned_join = false; // Search hint only; never a safety conclusion.
+  unsigned max_target_occurrence = 0; // Search frontier, never a safety fact.
   const char* reason = nullptr;
   const char* rejected_reason = nullptr;
   ar::Statement* rejected_statement = nullptr;
@@ -2377,7 +2398,8 @@ inline UnrollResult unroll_to(
     const std::map< ar::Function*, unsigned >* create_limits = nullptr,
     const std::chrono::steady_clock::time_point* deadline = nullptr,
     ar::CallBase* finite_source = nullptr,
-    unsigned finite_value = 0) {
+    unsigned finite_value = 0,
+    bool exact_target = false) {
   UnrollResult result;
   if (unsupported_source_function_abi(func)) {
     result.rejected_reason = "source_call_abi";
@@ -2400,12 +2422,14 @@ inline UnrollResult unroll_to(
   budget.finite_value = finite_value;
   budget.create_limits = create_limits;
   budget.target_occurrence = target_occurrence;
+  budget.exact_target = exact_target;
   budget.loop_bound = loop_bound;
   budget.root_target = target;
   std::vector< BmcEvent > current;
   std::vector< ar::BasicBlock* > in_stack;
   dfs_paths(body->entry_block(), target, current, result.paths, in_stack,
             budget);
+  result.max_target_occurrence = budget.max_target_occurrence;
   result.pruned_join = budget.pruned_join;
   result.rejected_reason = budget.rejected_reason;
   result.rejected_statement = budget.rejected_statement;
@@ -2429,7 +2453,9 @@ inline UnrollResult unroll_completed(ar::Function* func, ar::Statement* target,
                                      unsigned loop_bound,
     const std::chrono::steady_clock::time_point* deadline = nullptr,
     ar::CallBase* finite_source = nullptr,
-    unsigned finite_value = 0) {
+    unsigned finite_value = 0,
+    unsigned target_occurrence = 1,
+    bool exact_target = false) {
   UnrollResult result;
   if (unsupported_source_function_abi(func)) {
     result.rejected_reason = "source_call_abi";
@@ -2440,6 +2466,8 @@ inline UnrollResult unroll_completed(ar::Function* func, ar::Statement* target,
   UnrollBudget budget;
   budget.root_target = target;
   budget.completed = true;
+  budget.target_occurrence = target_occurrence;
+  budget.exact_target = exact_target;
   budget.deadline = deadline;
   budget.finite_source = finite_source;
   budget.finite_value = finite_value;
@@ -2450,6 +2478,7 @@ inline UnrollResult unroll_completed(ar::Function* func, ar::Statement* target,
     std::vector< BmcEvent > current;
     dfs_paths(body->entry_block(), statement, current, result.paths, {}, budget);
   }
+  result.max_target_occurrence = budget.max_target_occurrence;
   result.pruned_join = budget.pruned_join;
   result.rejected_reason = budget.rejected_reason;
   result.rejected_statement = budget.rejected_statement;

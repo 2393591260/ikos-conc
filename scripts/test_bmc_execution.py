@@ -272,7 +272,7 @@ def main():
         work = Path(temp)
         for bits in (args.bits,):
             cases = (1, 11, 21, 25, 31, 34, 36, 38, 48, 49, 52, 53, 54,
-                     56, 57, 58, 61, 65, 63 if bits == '32' else 62)
+                     56, 57, 58, 61, 64, 65, 63 if bits == '32' else 62)
             for case in cases:
                 report = work / 'report.json'
                 report.unlink(missing_ok=True)
@@ -283,7 +283,7 @@ def main():
                     env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True, text=True, timeout=30)
                 assert proc.returncode == 0, proc.stdout + proc.stderr
                 data = json.loads(report.read_text())
-                if case >= 56 and (bits == '64' or case in (62, 64)):
+                if case == 64 or (case == 62 and bits == '32'):
                     metadata = validate_race_result(data)
                     assert metadata['verdict'] == 'UNKNOWN' and not metadata['search_performed'], metadata
                     assert any(o['reason'] == 'integer-derived pointer aliasing is not modeled'

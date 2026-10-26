@@ -124,6 +124,25 @@ controls, alias/output corruption and damaged execution evidence.
 
 </details>
 
+### Later dynamic access targets
+
+A static candidate can select a later execution of the same memory instruction.
+Access ordinals count real occurrences in the complete root trace, including
+expanded helper invocations; they are separate from thread-create generations.
+The additional exact-target search follows every established search mode and
+uses the remaining file deadline and candidate/query budgets. It preserves the
+legacy helper alternatives rather than changing their interpretation.
+
+The same requested occurrences pass through loop retries, finite input samples,
+atomic-root completion and main/worker auxiliary completion. Exported targets
+identify actual trace steps; independent replay checks the executed definitions,
+byte addresses, read-from sources, synchronization and lifetimes. Exhausted or
+unsupported searches stay inconclusive and grant no SAFE permission.
+
+Run `python3 scripts/test_bmc_later_accesses.py --bits 32` and `--bits 64`
+for later direct/helper targets, distinct create generations, required completion
+suffixes, boundary controls and damaged selected executions.
+
 ### Executed constant read addresses
 
 For supported shared main-stack and heap reads, an address index can become a

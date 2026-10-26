@@ -179,6 +179,37 @@ struct SearchBudget {
   }
 };
 
+// Access ordinals are independent of matching-entry create ordinals in facts.
+// Legacy search deliberately preserves its historical helper alternatives.
+struct AccessTargets {
+  unsigned a = 1, b = 1;
+  bool exact = false;
+};
+
+struct LaterAccessState {
+  unsigned limit_a = MAX_PATH_EVENTS, limit_b = MAX_PATH_EVENTS;
+  bool pending(unsigned frontier) const {
+    return limit_a != 0 && limit_b != 0 &&
+           frontier <= std::max(limit_a, limit_b);
+  }
+};
+
+struct AccessSearchProgress {
+  struct Side {
+    unsigned maximum = 0;
+    bool observed = false, incomplete = false, pruned_join = false;
+    bool complete_frontier() const { return observed && !incomplete && !pruned_join; }
+  };
+  Side a, b;
+  void note(const UnrollResult& result, bool side_a) {
+    auto& side = side_a ? a : b;
+    side.observed = true;
+    side.maximum = std::max(side.maximum, result.max_target_occurrence);
+    side.incomplete |= result.incomplete;
+    side.pruned_join |= result.pruned_join;
+  }
+};
+
 inline bool atomic_candidate(const std::vector< BmcEvent >& path) {
   int active = 0;
   for (const auto& event : path) {
@@ -204,8 +235,14 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
                          const CandidateFacts* facts = nullptr,
                          unsigned loop_bound = 1,
                          ar::CallBase* finite_source = nullptr,
-                         unsigned finite_value = 0) {
+                         unsigned finite_value = 0,
+                         AccessTargets targets = {},
+                         AccessSearchProgress* progress = nullptr) {
   Result outcome(Status::NotSearched);
+  if (targets.a == 0 || targets.b == 0) {
+    record(diagnostics, "invalid_target_occurrence");
+    return Result(Status::Unsupported);
+  }
   if (budget != nullptr && budget->expired()) {
     budget->record_exhaustion(diagnostics);
     return Result(Status::BudgetExceeded);
@@ -226,16 +263,20 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
         if (budget != nullptr && (budget->expired() || budget->queries == 0)) break;
         outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
                                    diagnostics, budget, creations, facts, 1, source,
-                                   value));
+                                   value, targets, progress));
         if (outcome.confirmed()) return;
       }
   };
   // The actual startup and worker prefixes reject unsupported atomic memory
   // events/calls. Synchronization outside them need not be executable here.
-  UnrollResult rA = unroll_to(funcA, stmtA, 1, loop_bound, true,
-                              nullptr, deadline, finite_source, finite_value);
-  UnrollResult rB = unroll_to(funcB, stmtB, 1, loop_bound, true,
-                              nullptr, deadline, finite_source, finite_value);
+  UnrollResult rA = unroll_to(funcA, stmtA, targets.a, loop_bound, true,
+                              nullptr, deadline, finite_source, finite_value, targets.exact);
+  UnrollResult rB = unroll_to(funcB, stmtB, targets.b, loop_bound, true,
+                              nullptr, deadline, finite_source, finite_value, targets.exact);
+  if (progress != nullptr) {
+    progress->note(rA, true);
+    progress->note(rB, false);
+  }
   auto needs_completion_search = [](ar::Function* parent, ar::Function* child, const UnrollResult& paths) {
     if (parent->name() != "main" || child->name() == "main") return false;
     if (paths.pruned_join) return true;
@@ -265,9 +306,13 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     // The completed main suffix can contain joins absent before either target.
     outcome.needs_completion |= (funcA->name() == "main") != (funcB->name() == "main");
     rA = unroll_completed(funcA, stmtA, loop_bound, deadline,
-                          finite_source, finite_value);
+                          finite_source, finite_value, targets.a, targets.exact);
     rB = unroll_completed(funcB, stmtB, loop_bound, deadline,
-                          finite_source, finite_value);
+                          finite_source, finite_value, targets.b, targets.exact);
+    if (progress != nullptr) {
+      progress->note(rA, true);
+      progress->note(rB, false);
+    }
     record(diagnostics, "atomic_completed_paths");
   }
   if (rA.rejected_reason != nullptr) {
@@ -311,7 +356,7 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
       record(diagnostics, "interrupted_small_bound");
       outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
                                  diagnostics, budget, creations, facts, 2,
-                                 finite_source, finite_value));
+                                 finite_source, finite_value, targets, progress));
       if (outcome.confirmed()) return outcome;
       if (diagnostics != nullptr) {
         diagnostics->paths_a = rA.paths.size();
@@ -329,7 +374,7 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
         record(diagnostics, "deferred_loop_search");
       } else outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
                                         diagnostics, budget, creations, facts, bound,
-                                        finite_source, finite_value));
+                                        finite_source, finite_value, targets, progress));
       finite_fallback();
       return outcome;
     }
@@ -438,7 +483,7 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
       record(diagnostics, "deferred_loop_search");
     } else outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
                                       diagnostics, budget, creations, facts, bound,
-                                      finite_source, finite_value));
+                                      finite_source, finite_value, targets, progress));
   }
   finite_fallback();
   return outcome;
@@ -450,14 +495,21 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
     std::uint64_t widthA, ar::Function* funcB, ar::Statement* stmtB,
     std::uint64_t widthB, Diagnostics* diagnostics, SearchBudget& budget,
     std::vector< ar::Statement* >* creations, const CandidateFacts* facts,
-    ar::CallBase* finite_source = nullptr, unsigned finite_value = 0) {
+    ar::CallBase* finite_source = nullptr, unsigned finite_value = 0,
+    AccessTargets targets = {}, AccessSearchProgress* progress = nullptr) {
   Result outcome(Status::NotSearched);
+  if (targets.a == 0 || targets.b == 0) {
+    record(diagnostics, "invalid_target_occurrence");
+    return Result(Status::Unsupported);
+  }
   const bool main_a = funcA->name() == "main";
   if (main_a == (funcB->name() == "main")) return outcome;
   auto* main = main_a ? funcA : funcB;
   auto* worker = main_a ? funcB : funcA;
   auto* main_target = main_a ? stmtA : stmtB;
   auto* worker_target = main_a ? stmtB : stmtA;
+  const auto main_occurrence = main_a ? targets.a : targets.b;
+  const auto worker_occurrence = main_a ? targets.b : targets.a;
   const std::size_t main_index = main_a ? 1 : 2, target_index = main_a ? 2 : 1;
   std::set< ar::Function* > scanned;
   std::function< bool(ar::Function*, unsigned) > has_join;
@@ -487,8 +539,9 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
   };
   if (!spend()) return outcome;
   const auto bound = std::max(literal_loop_search_bound(main), literal_loop_search_bound(worker));
-  auto mains = unroll_to(main, main_target, 1, bound, false, nullptr, &budget.deadline,
-                         finite_source, finite_value);
+  auto mains = unroll_to(main, main_target, main_occurrence, bound, false, nullptr, &budget.deadline,
+                         finite_source, finite_value, targets.exact);
+  if (progress != nullptr) progress->note(mains, main_a);
   UnrollResult prefixes;
   UnrollResult completed;
   bool completed_unrolled = false;
@@ -503,12 +556,16 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
     }
   };
   note_unroll(mains);
-  prefixes = unroll_to(worker, worker_target, 1, bound, false, nullptr, &budget.deadline);
+  prefixes = unroll_to(worker, worker_target, worker_occurrence, bound, false, nullptr,
+                       &budget.deadline, nullptr, 0, targets.exact);
+  if (progress != nullptr) progress->note(prefixes, !main_a);
   note_unroll(prefixes);
   const bool complete_roots = std::any_of(mains.paths.begin(), mains.paths.end(), atomic_candidate) ||
       std::any_of(prefixes.paths.begin(), prefixes.paths.end(), atomic_candidate);
   if (complete_roots) {
-    mains = unroll_completed(main, main_target, bound, &budget.deadline, finite_source, finite_value);
+    mains = unroll_completed(main, main_target, bound, &budget.deadline, finite_source,
+                             finite_value, main_occurrence, targets.exact);
+    if (progress != nullptr) progress->note(mains, main_a);
     note_unroll(mains);
     record(diagnostics, "atomic_auxiliary_completed_paths");
   }
@@ -541,15 +598,15 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
     }
     if (!supported) {outcome.merge(Result(Status::Unsupported)); continue;}
     if (joined.empty()) continue;
-    std::vector< std::size_t > targets;
+    std::vector< std::size_t > target_creations;
     for (std::size_t i = 0; i < main_prefix.size(); ++i)
       if (main_prefix[i].kind == EvKind::Create &&
-          main_prefix[i].thread == reinterpret_cast< std::uint64_t >(worker)) targets.push_back(i);
-    if (targets.empty()) continue;
-    std::stable_sort(targets.begin(), targets.end(), [&](auto a, auto b) {
+          main_prefix[i].thread == reinterpret_cast< std::uint64_t >(worker)) target_creations.push_back(i);
+    if (target_creations.empty()) continue;
+    std::stable_sort(target_creations.begin(), target_creations.end(), [&](auto a, auto b) {
       return joined.count(a) < joined.count(b);
     });
-    for (auto target_creation : targets) {
+    for (auto target_creation : target_creations) {
       // Only joined target instances finish before main's stack/process death.
       if (complete_roots && joined.count(target_creation) == 0) {
         record(diagnostics, "completion_target_unjoined");
@@ -557,7 +614,9 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
       }
       if (!spend()) return outcome;
       if (joined.count(target_creation) != 0 && !completed_unrolled) {
-        completed = unroll_completed(worker, worker_target, bound, &budget.deadline);
+        completed = unroll_completed(worker, worker_target, bound, &budget.deadline,
+                                     nullptr, 0, worker_occurrence, targets.exact);
+        if (progress != nullptr) progress->note(completed, !main_a);
         completed_unrolled = true;
         note_unroll(completed);
       }
@@ -663,9 +722,67 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
     if (source != nullptr)
       for (unsigned value = 1; value <= 4 && !budget.expired() && budget.queries != 0; ++value) {
         outcome.merge(confirm_race_completion(funcA, stmtA, widthA, funcB, stmtB, widthB,
-            diagnostics, budget, creations, facts, source, value));
+            diagnostics, budget, creations, facts, source, value, targets, progress));
         if (outcome.confirmed()) break;
       }
+  }
+  return outcome;
+}
+
+// Additional exact-access requests run only after every legacy search pass.
+// The frontier is bounded by retained event capacity and shrinks when a fully
+// constructed prefix search cannot even visit the requested occurrence. This
+// only schedules witness searches; it never proves an absent race or SAFE.
+inline Result confirm_race_later(ar::Function* funcA, ar::Statement* stmtA,
+    std::uint64_t widthA, ar::Function* funcB, ar::Statement* stmtB,
+    std::uint64_t widthB, Diagnostics* diagnostics, SearchBudget& budget,
+    std::vector< ar::Statement* >* creations, const CandidateFacts* facts,
+    unsigned requested_frontier = 0, LaterAccessState* saved_state = nullptr) {
+  Result outcome(Status::NotSearched);
+  LaterAccessState local_state;
+  auto& state = saved_state != nullptr ? *saved_state : local_state;
+  auto& limit_a = state.limit_a;
+  auto& limit_b = state.limit_b;
+  const unsigned first = requested_frontier != 0 ? requested_frontier : 2;
+  for (unsigned frontier = first; state.pending(frontier) &&
+       (requested_frontier == 0 || frontier == requested_frontier); ++frontier) {
+    for (unsigned a = 1; a <= frontier && a <= limit_a; ++a) {
+      for (unsigned b = 1; b <= frontier && b <= limit_b; ++b) {
+        if (std::max(a, b) != frontier) continue;
+        if (budget.expired() || budget.candidates == 0 || budget.queries == 0) {
+          budget.record_exhaustion(diagnostics);
+          record(diagnostics, "later_access_budget");
+          outcome.merge(Result(Status::BudgetExceeded));
+          return outcome;
+        }
+        --budget.candidates;
+        record(diagnostics, "later_access_query");
+        const AccessTargets targets{a, b, true};
+        AccessSearchProgress ordinary, completed;
+        auto attempt = confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
+            diagnostics, &budget, creations, facts, 1, nullptr, 0, targets, &ordinary);
+        // A later main target may reveal joins absent before the first target.
+        // Do not inherit completion eligibility solely from an earlier request.
+        if (!attempt.confirmed() && attempt.needs_completion &&
+            !budget.expired() && budget.queries != 0)
+          attempt.merge(confirm_race_completion(funcA, stmtA, widthA, funcB, stmtB,
+              widthB, diagnostics, budget, creations, facts, nullptr, 0, targets, &completed));
+        outcome.merge(std::move(attempt));
+        if (outcome.confirmed()) {
+          record(diagnostics, "later_access_confirmed");
+          return outcome;
+        }
+        auto narrow = [](unsigned requested, const AccessSearchProgress::Side& prefix,
+                         const AccessSearchProgress::Side& completion, unsigned& limit) {
+          const auto observed = std::max(prefix.maximum, completion.maximum);
+          if (observed < requested &&
+              (prefix.complete_frontier() || completion.complete_frontier()))
+            limit = std::min(limit, observed);
+        };
+        narrow(a, ordinary.a, completed.a, limit_a);
+        narrow(b, ordinary.b, completed.b, limit_b);
+      }
+    }
   }
   return outcome;
 }

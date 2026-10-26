@@ -501,3 +501,9 @@ add_dependencies(build-analyzer-tests test-analysis-pair-exclusion)
 add_test(NAME concurrency-pair-exclusion-unit
          COMMAND $<TARGET_FILE:test-analysis-pair-exclusion>)
 set_tests_properties(concurrency-pair-exclusion-unit PROPERTIES LABELS concurrency)
+
+add_concurrency_test(later-accesses "${CONCURRENCY_ROOT}/scripts/test_bmc_later_accesses.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+
+add_concurrency_test(later-accesses-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_later_accesses.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
