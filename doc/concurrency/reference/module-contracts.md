@@ -255,15 +255,17 @@ change with pointer width.
 | ThreadLifecycle | Checked GNU32/64 | Native opaque handles and private unread join output storage match source/AR width and alignment; scalar lifecycle state retains its declared widths. |
 | ScProtocol/protected protocol | Checked GNU32/64 | Native handle storage and normal mutex layout are checked separately from the actual-width scalar protocol state. |
 | SelfPublication | Checked GNU32/64 | Native output storage, array stride/index correspondence and normal mutex layout are checked; the exhaustive finite argument and publication proof is unchanged. |
-| PthreadInitializationFrame, RuntimeStdioFrame | ILP32 only for these certificates | Narrower native initialization/scan models are independent. A pthread_t slot follows the native ABI. |
+| PthreadInitializationFrame | Checked GNU32/64 | Native handle/relay and mutex24/40 byte effects match source/AR layout; mutexattr remains4 bytes. Mathematical GEP bounds and actual-index consumer obligations are independent. |
+| RuntimeStdioFrame | Checked GNU32/64 | Native handle and runtime stream widths are checked separately from fixed-width scanf integer results and counts. |
 | PosixSemaphore effects, binary ownership and finite BMC prefixes | GNU ILP32 and LP64 | Native sem_t is 16/32 bytes with 4/8 alignment; all byte effects and independent execution checks follow the same verified layout. int results and permit counts remain i32. |
 | Pthread-key effects and race-only memory-free destructors | GNU ILP32 and LP64 | Key selectors and create output remain i32; values/callback arguments are native pointers. Return values stay TOP; no TLS equality, privacy or completion is inferred. |
 
 Unsupported certificate ABIs refuse the certificate and preserve the ordinary
 analysis/coverage obligations. They are not silently treated as verified SAFE,
-nor counted as positive LP64 support. The certificate ABI boundary test exercises all 4 remaining ILP32-only boundaries with
-32-bit hits and 64-bit refusal; each migrated protocol has both positive and
-premise-breaking tests.
+nor counted as positive LP64 support. The certificate ABI boundary test retains two ILP32-only boundaries
+(array-slices and bucket-list-ownership), with 32-bit hits and 64-bit refusal, plus
+a GNU32/64 runtime-stdio positive row; each migrated protocol has both positive
+and premise-breaking tests.
 
 ThreadPrivateHeap keeps allocation privacy conditional on a live allocation:
 overflow or allocation failure does not create a private live object. Worker

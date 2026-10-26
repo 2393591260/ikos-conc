@@ -21,6 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     parser.add_argument('--case', type=int, action='append', choices=range(31))
+    parser.add_argument('--bits', choices=('32', '64'), default='32')
     args = parser.parse_args()
     identity = runtime_identity(args.ikos)
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/pthread-array-initialization.c').read_text()
@@ -34,7 +35,7 @@ def main():
                 report.unlink(missing_ok=True)
                 proc = subprocess.run(runtime_command(args.ikos) + ['--analyses=race',
                     '--concurrency=auto', '--demote-race-to-unknown', '--partitioning=guards',
-                    '-m32', '--bmc-deadline-ms=20000', '--bmc-solver-timeout-ms=5000',
+                    '-m' + args.bits, '--bmc-deadline-ms=20000', '--bmc-solver-timeout-ms=5000',
                     '--log=debug', '--format=json', '--report-file=' + str(report),
                     '-o', str(work / 'output.db'), str(source)],
                     env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True,

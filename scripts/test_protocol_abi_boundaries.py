@@ -25,7 +25,6 @@ def main():
         ('array-slices', 'array_slices_contract'),
         ('bucket-list-ownership', 'bucket_list_contract'),
         ('runtime-stdio', 'runtime_stdio_contract'),
-        ('heap-pthread-initialization', None),
     )
     with tempfile.TemporaryDirectory(prefix='ikos-abi-boundary-') as temporary:
         work = Path(temporary)

@@ -865,14 +865,17 @@ void DataRaceChecker::check(ar::Statement* stmt,
       auto* requirement = this->_ctx.pthread_initialization_frame()->array_access(call);
       if (requirement) {
         const auto& index = this->_lit_factory.get_scalar(requirement->index);
-        auto bounds = core::machine_int::Interval::top(32, Signed);
+        auto* index_type = dyn_cast< ar::IntegerType >(requirement->index->type());
+        auto bounds = core::machine_int::Interval::top(
+            index_type ? index_type->bit_width() : 1,
+            index_type ? index_type->sign() : Signed);
         if (index.is_machine_int()) bounds = core::machine_int::Interval(index.machine_int());
         else if (index.is_machine_int_var() &&
-                 !inv.first().normal().uninit_is_uninitialized(index.var()))
+                 inv.first().normal().uninit_is_initialized(index.var()))
           bounds = inv.first().normal().int_to_interval(index.var());
         auto points = this->resolve_points_to(call->argument(0), inv);
         const auto& pointer = this->_lit_factory.get_scalar(call->argument(0));
-        bool proven = pointer.is_pointer_var() &&
+        bool proven = index_type && pointer.is_pointer_var() &&
             inv.first().normal().nullity_is_non_null(pointer.var()) &&
             points.is_set() && points.size() == 1 &&
             *points.begin() == this->_ctx.mem_factory->get_global(requirement->global) &&

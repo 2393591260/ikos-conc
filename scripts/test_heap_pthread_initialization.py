@@ -22,6 +22,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     parser.add_argument('--case', type=int, choices=CASES, action='append')
+    parser.add_argument('--bits', choices=('32', '64'), default='32')
     args = parser.parse_args()
     entry = args.ikos.resolve()
     identity = runtime_identity(entry)
@@ -31,7 +32,7 @@ def main():
     env.pop('IKOS_BMC_RECOVER', None)
     with tempfile.TemporaryDirectory(prefix='ikos-heap-pthread-init-') as temp:
         work = Path(temp)
-        for bits in (32, 64):
+        for bits in (int(args.bits),):
             for wide in (False, True):
                 cases = [(case, variant) for case in (CASES if args.case is None else args.case)
                          for variant in ('plain', 'abort')]
@@ -88,14 +89,11 @@ def main():
                     proofs = [row for row in infos if row.get('pthread_initialization_contract') ==
                               'constant-heap-runtime-byte-frame-v1']
                     safe = 'The program is SAFE' in output
-                    supported = bits == 32 and variant in ('plain', 'abort', 'reverse-null', 'neq', 'two-allocations', 'post-create-byte-check')
+                    supported = variant in ('plain', 'abort', 'reverse-null', 'neq', 'two-allocations', 'post-create-byte-check')
                     if supported and case in POSITIVE:
                         assert proofs and safe, (case, bits, wide, variant, infos, output)
                     elif supported and case in RACY:
                         assert proofs and not safe, (case, bits, wide, variant, infos, output)
-                    elif bits == 64 and case == 21 and variant in ('plain', 'abort'):
-                        # Existing default-normal mutex reasoning already proves this control.
-                        assert not proofs and safe, (case, bits, wide, variant, infos, output)
                     else:
                         assert not proofs and not safe, (case, bits, wide, variant, infos, output)
                     print(f'CASE={case}/bits={bits}/WIDE={int(wide)}/{variant}: safe={safe}, '

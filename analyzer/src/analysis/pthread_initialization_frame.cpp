@@ -7,6 +7,7 @@
 #include <ikos/analyzer/util/log.hpp>
 #include <llvm/Analysis/ConstantFolding.h>
 #include <llvm/IR/Operator.h>
+#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/CFG.h>
 #include <algorithm>
 #include <map>
@@ -53,6 +54,7 @@ class PthreadInitializationFrame::Impl {
   std::vector< llvm::Function* > workers;
   std::map< ar::CallBase*, PthreadInitializationEffect > effects;
   unsigned budget = 8192;
+  PthreadObjectLayout abi;
   bool spawned = false, valid = false, heap_mutex = false, arrays = false;
   llvm::Instruction* prefix_stop = nullptr;
   std::map< llvm::Value*, llvm::ConstantInt* > integers;
@@ -110,8 +112,9 @@ class PthreadInitializationFrame::Impl {
          !g->isExternallyInitialized() && g->getAddressSpace() == 0 &&
          g->getInitializer()->isNullValue(), "global storage origin");
     auto bytes = module->getDataLayout().getTypeAllocSize(g->getValueType()).getFixedValue();
-    need(ctx.bundle->data_layout().alloc_size_in_bytes(globals.at(g)->type()->pointee()) == bytes,
-         "global source/AR layout");
+    need(ctx.bundle->data_layout().alloc_size_in_bytes(globals.at(g)->type()->pointee()) == bytes &&
+         ZNumber(bytes) <= (ZNumber(1) << (abi.word * 8 - 1)) - 1,
+         "global source/AR native extent");
     unsigned id = roots.size();
     roots.push_back({g, nullptr, globals.at(g), ZNumber(bytes)});
     identities.emplace(g, id);
@@ -151,15 +154,47 @@ class PthreadInitializationFrame::Impl {
     auto base = pointer(gep->getPointerOperand(), frame);
     // NULL-based layout expressions are never entered into the address map.
     need(base.first != 0, "layout token is not a memory address");
-    llvm::APInt delta(32, 0);
-    bool exact = gep->accumulateConstantOffset(module->getDataLayout(), delta,
+    const auto bits = abi.word * 8;
+    const auto& data_layout = module->getDataLayout();
+    const ZNumber minimum = -(ZNumber(1) << (bits - 1));
+    const ZNumber maximum = (ZNumber(1) << (bits - 1)) - 1;
+    ZNumber delta(0);
+    // GEP indices are signed at the native index width. Prove mathematical
+    // products and sums before comparing with LLVM's modular displacement.
+    for (auto it = llvm::gep_type_begin(gep), end = llvm::gep_type_end(gep);
+         it != end; ++it) {
+      step();
+      ZNumber term(0);
+      if (auto* structure = it.getStructTypeOrNull()) {
+        auto* index = llvm::dyn_cast< llvm::ConstantInt >(it.getOperand());
+        need(index && index->getValue().ult(structure->getNumElements()),
+             "constant structure field");
+        term = ZNumber(data_layout.getStructLayout(structure)
+                           ->getElementOffset(index->getZExtValue()));
+      } else {
+        auto* index = llvm::dyn_cast< llvm::ConstantInt >(layout(it.getOperand()));
+        need(index, "constant sequential index");
+        const auto mathematical = integer(index->getValue(), true);
+        const auto native = index->getValue().sextOrTrunc(bits);
+        need(mathematical == integer(native, true), "lossy native GEP index");
+        term = mathematical *
+            ZNumber(data_layout.getTypeAllocSize(it.getIndexedType()).getFixedValue());
+      }
+      need(term >= minimum && term <= maximum, "GEP byte product overflow");
+      delta += term;
+      need(delta >= minimum && delta <= maximum, "GEP byte sum overflow");
+    }
+    llvm::APInt native_delta(bits, 0);
+    bool exact = gep->accumulateConstantOffset(data_layout, native_delta,
         [&](llvm::Value& index, llvm::APInt& out) {
           auto* c = llvm::dyn_cast< llvm::ConstantInt >(layout(&index));
           if (!c) return false;
-          out = c->getValue().sextOrTrunc(32); return true;
+          out = c->getValue().sextOrTrunc(bits);
+          return true;
         });
-    need(exact, "nonconstant byte displacement");
-    base.second += integer(delta, true);
+    need(exact && delta == integer(native_delta, true),
+         "native mathematical GEP correspondence");
+    base.second += delta;
     need(base.second >= 0 && base.second <= roots.at(base.first).bytes, "pointer byte bounds");
     return base;
   }
@@ -167,18 +202,152 @@ class PthreadInitializationFrame::Impl {
     need(a.first && bytes > 0 && a.second >= 0 &&
          a.second + bytes <= roots.at(a.first).bytes, "memory byte bounds");
   }
-  bool typed(llvm::Value* value, const char* name, unsigned bytes) {
-    auto* p = llvm::dyn_cast< llvm::PointerType >(value->getType());
-    auto* t = p ? llvm::dyn_cast< llvm::StructType >(p->getPointerElementType()) : nullptr;
-    return p && p->getAddressSpace() == 0 && t && !t->isOpaque() && t->hasName() &&
-        t->getName() == name && module->getDataLayout().getTypeAllocSize(t) == bytes;
+  // Interpret the actual imported address, not its opaque leaf type. The
+  // source interpreter has already proved mathematical bounds; this evaluates
+  // AR's native modular pointer arithmetic and demands the identical live root
+  // and byte offset. It exports no pointer or numerical fact.
+  ZNumber imported_index(ar::Value* value) {
+    const auto bits = abi.word * 8;
+    if (auto* constant = dyn_cast< ar::IntegerConstant >(value))
+      return constant->value().cast(bits, core::Unsigned).to_z_number();
+    auto* variable = dyn_cast< ar::InternalVariable >(value);
+    auto* native = variable && variable->has_frontend()
+        ? variable->frontend< llvm::Value >() : nullptr;
+    auto* type = dyn_cast< ar::IntegerType >(value->type());
+    need(native && type && source_integer_binding(value, native),
+         "actual imported constant-prefix/layout index");
+    auto* constant = scalar(native);
+    if (!constant)
+      constant = llvm::dyn_cast< llvm::ConstantInt >(layout(native));
+    need(constant && constant->getBitWidth() == type->bit_width(),
+         "same-width interpreted imported index");
+    return core::MachineInt(integer(constant->getValue(), type->is_signed()),
+                            type->bit_width(), type->sign())
+        .cast(bits, core::Unsigned).to_z_number();
   }
-  void aligned(const Address& a) {
-    need(a.second % 4 == 0, "runtime leaf alignment");
+  Address imported_pointer(ar::Value* value, Frame& frame, unsigned depth = 0) {
+    step();
+    need(value && value->type()->is_pointer() && depth < 32,
+         "bounded imported pointer chain");
+    if (isa< ar::NullConstant >(value)) return {0, ZNumber(0)};
+    if (auto* g = dyn_cast< ar::GlobalVariable >(value)) {
+      auto* source = g->has_frontend()
+          ? llvm::dyn_cast< llvm::GlobalVariable >(g->frontend< llvm::Value >())
+          : nullptr;
+      need(source && globals.count(source) && globals.at(source) == g,
+           "actual imported global root");
+      return {global(source), ZNumber(0)};
+    }
+    auto* variable = dyn_cast< ar::Variable >(value);
+    auto* source = variable && variable->has_frontend()
+        ? variable->frontend< llvm::Value >() : nullptr;
+    if (auto* local = dyn_cast< ar::LocalVariable >(value)) {
+      auto* native = llvm::dyn_cast_or_null< llvm::AllocaInst >(source);
+      auto* allocation = native
+          ? dyn_cast_or_null< ar::Allocate >(original(native)) : nullptr;
+      need(native && allocation && allocation->result() == local &&
+           frame.pointers.count(native), "actual imported local root");
+      return frame.pointers.at(native);
+    }
+    auto* internal = dyn_cast< ar::InternalVariable >(value);
+    need(internal, "imported pointer variable");
+    if (auto* formal = llvm::dyn_cast_or_null< llvm::Argument >(source)) {
+      auto found = functions.find(formal->getParent());
+      if (found != functions.end() &&
+          found->second->param(formal->getArgNo()) == internal) {
+        need(formal->getType()->isPointerTy() &&
+             formal->getType()->getPointerAddressSpace() == 0 &&
+             frame.pointers.count(formal), "bound imported helper pointer");
+        return frame.pointers.at(formal);
+      }
+      // Importer-generated pointer casts may inherit the formal's frontend.
+      // Only the actual AR parameter is a root; aliases follow their definition.
+    }
+    auto* definition = unique_def(internal);
+    if (auto* copy = dyn_cast_or_null< ar::Assignment >(definition))
+      return imported_pointer(copy->operand(), frame, depth + 1);
+    if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
+      need(cast->op() == ar::UnaryOperation::Bitcast &&
+           cast->operand()->type()->is_pointer(), "pointer-only imported cast");
+      return imported_pointer(cast->operand(), frame, depth + 1);
+    }
+    if (auto* shift = dyn_cast_or_null< ar::PointerShift >(definition)) {
+      auto base = imported_pointer(shift->pointer(), frame, depth + 1);
+      need(base.first, "imported layout token is not memory");
+      const auto bits = abi.word * 8;
+      const ZNumber modulus = ZNumber(1) << bits;
+      ZNumber offset = base.second;
+      for (auto it = shift->term_begin(); it != shift->term_end(); ++it) {
+        step();
+        need((*it).first.bit_width() == bits, "native imported stride width");
+        offset += (*it).first.cast(bits, core::Unsigned).to_z_number() *
+                  imported_index((*it).second);
+      }
+      base.second = offset % modulus;
+      if (base.second < 0) base.second += modulus;
+      need(base.second <= roots.at(base.first).bytes,
+           "imported pointer within live root");
+      return base;
+    }
+    // Allocation results and immutable relay loads have been separately bound
+    // during this exact source/helper activation. No other instruction can be
+    // promoted into a root from frontend metadata alone.
+    if (source && definition && frame.pointers.count(source) && definition == original(source) &&
+        (isa< ar::CallBase >(definition) ||
+         isa< ar::Load >(definition))) {
+      const auto address = frame.pointers.at(source);
+      if (auto* call = dyn_cast< ar::CallBase >(definition))
+        need(address.first && roots.at(address.first).allocation == call,
+             "actual imported allocation result");
+      return address;
+    }
+    need(false, "unsupported imported pointer origin");
+    return {};
+  }
+  bool native_leaf(llvm::Value* value, const char* name, unsigned bytes) const {
+    auto* p = llvm::dyn_cast< llvm::PointerType >(value->getType());
+    auto* t = p && !p->isOpaque()
+        ? llvm::dyn_cast< llvm::StructType >(p->getPointerElementType()) : nullptr;
+    const auto& native = module->getDataLayout();
+    return p && p->getAddressSpace() == 0 && t && !t->isOpaque() &&
+        t->hasName() && t->getName() == name &&
+        native.getTypeAllocSize(t) == bytes &&
+        native.getTypeStoreSize(t) == bytes;
+  }
+  ar::Value* pointer_copies(ar::Value* value) {
+    for (unsigned depth = 0; depth < 32; ++depth) {
+      step();
+      need(value && value->type()->is_pointer(), "pointer-only leaf alias");
+      auto* variable = dyn_cast< ar::InternalVariable >(value);
+      auto* definition = variable ? unique_def(variable) : nullptr;
+      if (auto* copy = dyn_cast_or_null< ar::Assignment >(definition))
+        value = copy->operand();
+      else if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
+        need(cast->op() == ar::UnaryOperation::Bitcast &&
+             cast->operand()->type()->is_pointer(), "pointer-only leaf cast");
+        value = cast->operand();
+      } else return value;
+    }
+    need(false, "leaf alias depth");
+    return nullptr;
+  }
+  bool typed(llvm::Value* value, ar::Value* imported,
+             const char* name, unsigned bytes) {
+    auto* actual = dyn_cast< ar::PointerType >(imported->type());
+    const auto& ar_layout = ctx.bundle->data_layout();
+    // Initializers retain their real typed object. Mapped lock/unlock consumers
+    // use native_leaf plus a bound address to that initialized leaf instead.
+    return native_leaf(value, name, bytes) && actual &&
+        actual->pointee()->is_struct() &&
+        ar_layout.alloc_size_in_bytes(actual->pointee()) == bytes &&
+        ar_layout.store_size_in_bytes(actual->pointee()) == bytes;
+  }
+  void aligned(const Address& a, unsigned required) {
+    need(a.second % required == 0, "runtime leaf alignment");
     if (auto* g = llvm::dyn_cast< llvm::GlobalVariable >(roots.at(a.first).source)) {
       auto alignment = g->getAlign() ? g->getAlign()->value()
           : module->getDataLayout().getABITypeAlign(g->getValueType()).value();
-      need(alignment >= 4, "global runtime alignment");
+      need(alignment >= required, "global runtime alignment");
     } else need(roots.at(a.first).allocation != nullptr, "runtime storage lifetime");
   }
   ar::CallBase* binding(llvm::CallBase* c) {
@@ -209,8 +378,12 @@ class PthreadInitializationFrame::Impl {
       need(functions.count(f) && target == functions.at(f), "helper identity");
       Frame child;
       for (unsigned n = 0; n < c->arg_size(); ++n)
-        if (f->getArg(n)->getType()->isPointerTy())
-          child.pointers.emplace(f->getArg(n), pointer(c->getArgOperand(n), frame));
+        if (f->getArg(n)->getType()->isPointerTy()) {
+          auto address = pointer(c->getArgOperand(n), frame);
+          need(imported_pointer(a->argument(n), frame) == address,
+               "helper actual pointer byte correspondence");
+          child.pointers.emplace(f->getArg(n), address);
+        }
       child.held = frame.held;
       walk(f, child, startup);
       frame.held = std::move(child.held);
@@ -222,7 +395,7 @@ class PthreadInitializationFrame::Impl {
         (name == "__ikos_nondet_int" || name == "__ikos_nondet_int64")) return;
     if (name == "malloc") {
       auto* size = c->arg_size() == 1 ? llvm::dyn_cast< llvm::ConstantInt >(c->getArgOperand(0)) : nullptr;
-      need(startup && !spawned && c->getFunction() == main && size && size->getBitWidth() == 32 &&
+      need(startup && !spawned && c->getFunction() == main && size && size->getBitWidth() == abi.word * 8 &&
            size->getZExtValue() > 0 && size->getZExtValue() <= 1048576 &&
            target->intrinsic_id() == ar::Intrinsic::LibcMalloc && c->getType()->isPointerTy(),
            "one-shot constant allocation");
@@ -267,9 +440,12 @@ class PthreadInitializationFrame::Impl {
              "actual initialization index without truncation/wrap");
       }
       auto dest = pointer(c->getArgOperand(0), frame);
-      range(dest, ZNumber(mutex_init ? 24 : 4)); aligned(dest);
-      need(typed(c->getArgOperand(0), mutex_init ? "union.pthread_mutex_t" : "union.pthread_mutexattr_t",
-                 mutex_init ? 24 : 4), "runtime opaque type/layout");
+      need(imported_pointer(a->argument(0), frame) == dest,
+           "initialization source/AR byte address");
+      range(dest, ZNumber(mutex_init ? abi.mutex : 4));
+      aligned(dest, mutex_init ? abi.word : 4);
+      need(typed(c->getArgOperand(0), a->argument(0), mutex_init ? "union.pthread_mutex_t" : "union.pthread_mutexattr_t",
+                 mutex_init ? abi.mutex : 4), "runtime opaque type/layout");
       if (attr_init) {
         need(roots.at(dest.first).global && dest.second == 0 &&
              roots.at(dest.first).bytes == 4 && !attributes.count(dest), "attribute lifetime/one init");
@@ -286,16 +462,17 @@ class PthreadInitializationFrame::Impl {
         bool nonnull = !llvm::isa< llvm::ConstantPointerNull >(c->getArgOperand(1));
         if (nonnull) {
           auto attr = pointer(c->getArgOperand(1), frame);
-          need(attributes.count(attr) && typed(c->getArgOperand(1), "union.pthread_mutexattr_t", 4),
+          need(attributes.count(attr) && imported_pointer(a->argument(1), frame) == attr &&
+               typed(c->getArgOperand(1), a->argument(1), "union.pthread_mutexattr_t", 4),
                "initialized attribute input");
           kind = attributes.at(attr);
         }
         need(((roots.at(dest.first).allocation && born.count(dest.first)) ||
-              (arrays && roots.at(dest.first).global && dest.second % 24 == 0)) &&
+              (arrays && roots.at(dest.first).global && dest.second % abi.mutex == 0)) &&
              mutexes.emplace(dest, kind).second, "live storage and distinct mutex initialization");
         heap_mutex = true;
       }
-      effect(a, dest, mutex_init ? 24 : 4,
+      effect(a, dest, mutex_init ? abi.mutex : 4,
              mutex_init && !llvm::isa< llvm::ConstantPointerNull >(c->getArgOperand(1)) ? 4 : 0);
       return;
     }
@@ -304,8 +481,10 @@ class PthreadInitializationFrame::Impl {
            target->intrinsic_id() == (name == "pthread_mutex_lock" ?
              ar::Intrinsic::PthreadMutexLock : ar::Intrinsic::PthreadMutexUnlock), "mutex API identity");
       auto dest = pointer(c->getArgOperand(0), frame);
-      need(mutexes.count(dest) && typed(c->getArgOperand(0), "union.pthread_mutex_t", 24),
-           "initialized mutex consumer");
+      need(mutexes.count(dest) &&
+           native_leaf(c->getArgOperand(0), "union.pthread_mutex_t", abi.mutex) &&
+           imported_pointer(a->argument(0), frame) == dest,
+           "source/AR address of initialized mutex consumer");
       if (name == "pthread_mutex_lock")
         need(frame.held.insert(dest).second, "repeated acquisition");
       else if (!frame.held.erase(dest))
@@ -319,10 +498,13 @@ class PthreadInitializationFrame::Impl {
            (target->has_frontend() && target->frontend< llvm::Value >() == f &&
             target->name() == "pthread_create"), "AR create identity");
       need(unread_private_thread_output(a), "private create output/callback");
-      auto output = pointer(c->getArgOperand(0), frame); range(output, ZNumber(4));
+      auto output = pointer(c->getArgOperand(0), frame);
+      need(imported_pointer(a->argument(0), frame) == output,
+           "create source/AR output address");
+      range(output, ZNumber(abi.word));
       auto* storage = llvm::dyn_cast< llvm::AllocaInst >(roots.at(output.first).source);
-      need(storage && output.second == 0 && roots.at(output.first).bytes == 4 &&
-           storage->getAlign().value() >= 4, "private native output bounds");
+      need(storage && output.second == 0 && roots.at(output.first).bytes == abi.word &&
+           storage->getAlign().value() >= abi.word, "private native output bounds");
       auto* worker = llvm::cast< llvm::Function >(c->getArgOperand(2)->stripPointerCasts());
       workers.push_back(worker); spawned = true; return;
     }
@@ -410,9 +592,38 @@ class PthreadInitializationFrame::Impl {
       if (auto* c = llvm::dyn_cast< llvm::CallBase >(&i)) call(c, frame, startup);
       else if (auto* alloca = llvm::dyn_cast< llvm::AllocaInst >(&i)) {
         auto* count = llvm::dyn_cast< llvm::ConstantInt >(alloca->getArraySize());
-        need(f == main && alloca->getAllocatedType()->isIntegerTy(32) && count && count->isOne() &&
-             alloca->getAddressSpace() == 0, "private scalar stack storage");
-        unsigned id = roots.size(); roots.push_back({alloca, nullptr, nullptr, ZNumber(4)});
+        auto* actual = dyn_cast_or_null< ar::Allocate >(original(alloca));
+        auto* actual_count = actual
+            ? dyn_cast< ar::IntegerConstant >(actual->array_size()) : nullptr;
+        auto* actual_type = actual
+            ? dyn_cast< ar::IntegerType >(actual->allocated_type()) : nullptr;
+        bool native_output = false;
+        if (f == main && alloca->getAllocatedType()->isIntegerTy(abi.word * 8)) {
+          for (auto& block : *main) for (auto& instruction : block) {
+            step();
+            auto* call = llvm::dyn_cast< llvm::CallBase >(&instruction);
+            if (!call || !native_handle_api(call, true) ||
+                call->getArgOperand(0)->stripPointerCasts() != alloca) continue;
+            auto* imported = dyn_cast_or_null< ar::CallBase >(original(call));
+            if (imported && unread_private_thread_output(imported))
+              native_output = true;
+          }
+        }
+        need(f == main &&
+             (alloca->getAllocatedType()->isIntegerTy(32) || native_output) &&
+             count && count->isOne() && alloca->getAddressSpace() == 0 &&
+             actual && actual_count && actual_count->value().to_z_number() == 1 &&
+             actual_type &&
+             actual_type->bit_width() == alloca->getAllocatedType()->getIntegerBitWidth() &&
+             value(actual->result(), alloca) &&
+             ctx.bundle->data_layout().alloc_size_in_bytes(actual_type) ==
+                 module->getDataLayout().getTypeAllocSize(alloca->getAllocatedType()).getFixedValue(),
+             "private source/AR scalar stack storage");
+        consumed.insert(actual);
+        const auto bytes = module->getDataLayout()
+                               .getTypeAllocSize(alloca->getAllocatedType()).getFixedValue();
+        unsigned id = roots.size();
+        roots.push_back({alloca, nullptr, nullptr, ZNumber(bytes)});
         frame.pointers.emplace(alloca, Address{id, ZNumber(0)});
       } else if (auto* store = llvm::dyn_cast< llvm::StoreInst >(&i)) {
         auto* actual = dyn_cast_or_null< ar::Store >(original(store));
@@ -423,13 +634,17 @@ class PthreadInitializationFrame::Impl {
              "store correspondence");
         consumed.insert(actual);
         auto dest = pointer(store->getPointerOperand(), frame);
+        need(imported_pointer(actual->pointer(), frame) == dest,
+             "store source/AR byte address");
         ZNumber bytes(module->getDataLayout().getTypeStoreSize(store->getValueOperand()->getType()).getFixedValue());
         range(dest, bytes); ordinary.push_back({dest, bytes});
         if (store->getValueOperand()->getType()->isPointerTy()) {
           auto* g = llvm::dyn_cast< llvm::GlobalVariable >(roots.at(dest.first).source);
           need(startup && !spawned && g && g->getValueType()->isPointerTy() &&
-               dest.second == 0 && bytes == 4 && !relays.count(g), "immutable global pointer relay");
+               dest.second == 0 && bytes == abi.word && !relays.count(g), "immutable global pointer relay");
           auto origin = pointer(store->getValueOperand(), frame);
+          need(imported_pointer(actual->value(), frame) == origin,
+               "relay source/AR pointer value");
           need(origin.first && roots.at(origin.first).allocation && origin.second == 0,
                "relay allocation origin");
           relays.emplace(g, origin);
@@ -446,11 +661,13 @@ class PthreadInitializationFrame::Impl {
              value(actual->result(), load) && width(actual->result()->type(), load->getType()), "load correspondence");
         consumed.insert(actual);
         auto source = pointer(load->getPointerOperand(), frame);
+        need(imported_pointer(actual->operand(), frame) == source,
+             "load source/AR byte address");
         ZNumber bytes(module->getDataLayout().getTypeStoreSize(load->getType()).getFixedValue());
         range(source, bytes); ordinary.push_back({source, bytes});
         if (load->getType()->isPointerTy()) {
           auto* g = llvm::dyn_cast< llvm::GlobalVariable >(roots.at(source.first).source);
-          need(g && relays.count(g) && source.second == 0 && bytes == 4, "closed pointer load");
+          need(g && relays.count(g) && source.second == 0 && bytes == abi.word, "closed pointer load");
           frame.pointers.emplace(load, relays.at(g));
           ordinary.back().relay_ok = true;
         } else need(load->getType()->isIntegerTy(), "noninteger application load");
@@ -587,10 +804,11 @@ class PthreadInitializationFrame::Impl {
       need(root.global && type && type->getNumElements() > 0 && type->getNumElements() <= 128 &&
            element && !element->isOpaque() && element->hasName() &&
            element->getName() == "union.pthread_mutex_t" &&
-           module->getDataLayout().getTypeAllocSize(element) == 24 &&
-           root.bytes == ZNumber(type->getNumElements() * 24), "homogeneous native mutex array");
+           module->getDataLayout().getTypeAllocSize(element) == abi.mutex &&
+           module->getDataLayout().getTypeStoreSize(element) == abi.mutex &&
+           root.bytes == ZNumber(type->getNumElements()) * abi.mutex, "homogeneous native mutex array");
       for (unsigned index = 0; index < type->getNumElements(); ++index)
-        need(mutexes.count({id, ZNumber(index * 24)}), "complete initialized array");
+        need(mutexes.count({id, ZNumber(index) * abi.mutex}), "complete initialized array");
       need(!source->isConstant(), "writable runtime array");
       objects.emplace(root.global, 2); mutex_arrays.insert(root.global);
     }
@@ -612,14 +830,19 @@ class PthreadInitializationFrame::Impl {
       auto* g = llvm::dyn_cast< llvm::GlobalVariable >(gep->getPointerOperand());
       if (!g || !identities.count(g) || !mutex_roots.count(identities.at(g))) continue;
       auto* zero = gep->getNumIndices() == 2 ? llvm::dyn_cast< llvm::ConstantInt >(gep->getOperand(1)) : nullptr;
-      need(zero && zero->isZero() && gep->getOperand(2)->getType()->isIntegerTy(32) &&
-           typed(c->getArgOperand(0), "union.pthread_mutex_t", 24), "typed array leaf expression");
+      need(zero && zero->isZero() && gep->getOperand(2)->getType()->isIntegerTy(abi.word * 8) &&
+           native_leaf(c->getArgOperand(0), "union.pthread_mutex_t", abi.mutex),
+           "typed native array leaf expression");
+      // All leaves of this exact AR global were initialized with matching
+      // source/AR layout above. Consumer arguments may canonically be opaque;
+      // the complete actual root/stride/index chain is checked below.
+      auto* leaf = pointer_copies(a->argument(0));
       ar::Value* index = nullptr;
       for (auto* block : *a->code()) for (auto* statement : *block) {
         step();
         auto* shift = dyn_cast< ar::PointerShift >(statement);
-        if (!shift || shift->result() != a->argument(0) || shift->pointer() != globals.at(g)) continue;
-        auto* result = dyn_cast< ar::InternalVariable >(a->argument(0));
+        if (!shift || shift->result() != leaf || shift->pointer() != globals.at(g)) continue;
+        auto* result = dyn_cast< ar::InternalVariable >(leaf);
         need(result && unique_def(result) == shift &&
              (!shift->has_frontend() || shift->frontend< llvm::Value >() == gep),
              "unique source/AR leaf definition");
@@ -627,13 +850,21 @@ class PthreadInitializationFrame::Impl {
         for (auto it = shift->term_begin(); it != shift->term_end(); ++it) {
           auto* constant = dyn_cast< ar::IntegerConstant >((*it).second);
           if (constant && constant->value().is_zero()) continue;
-          need((*it).first == 24 && value((*it).second, gep->getOperand(2)), "source/AR leaf stride/index");
+          need((*it).first == abi.mutex && source_integer_binding((*it).second, gep->getOperand(2)), "source/AR leaf stride/index");
           index = (*it).second; ++nonzero;
         }
         need(nonzero <= 1, "array displacement shape");
         if (!nonzero) {
           for (auto it = shift->term_begin(); it != shift->term_end(); ++it)
-            if ((*it).first == 24 && value((*it).second, gep->getOperand(2))) index = (*it).second;
+            if ((*it).first == abi.mutex && source_integer_binding((*it).second, gep->getOperand(2))) index = (*it).second;
+        }
+      }
+      if (!index) {
+        auto* native_zero = llvm::dyn_cast< llvm::ConstantInt >(gep->getOperand(2));
+        if (native_zero && native_zero->isZero() &&
+            exact_handle_slot(a->argument(0), globals.at(g))) {
+          index = ar::IntegerConstant::get(ctx.bundle->context(),
+              ar::IntegerType::size_type(ctx.bundle), 0);
         }
       }
       need(index, "complete source/AR leaf mapping");
@@ -652,13 +883,26 @@ class PthreadInitializationFrame::Impl {
       auto* c = llvm::dyn_cast< llvm::CallBase >(mapping.first);
       auto* f = c ? llvm::dyn_cast< llvm::Function >(c->getCalledOperand()->stripPointerCasts()) : nullptr;
       auto* target = native_handle_callee(a);
-      need(f && target, "closed array direct calls");
+      need(f && target && source_call_binding(c, a) == a,
+           "closed array direct calls");
       if (!f->isDeclaration()) continue; // Every body is scanned by AR closure.
-      if (pthread_initialized_mutex_consumer(a) ||
-          target->intrinsic_id() == ar::Intrinsic::IkosNonDet ||
+      if (pthread_initialized_mutex_consumer(a)) continue;
+      const auto name = f->getName();
+      const bool internal_nondet =
+          target->intrinsic_id() == ar::Intrinsic::IkosNonDet &&
+          c->getMetadata("ikos.freeze_uninit") &&
+          ((name == "__ikos_nondet_int" && c->getType()->isIntegerTy(32)) ||
+           (name == "__ikos_nondet_int64" && c->getType()->isIntegerTy(64)));
+      auto* returned = dyn_cast< ar::IntegerType >(target->type()->return_type());
+      const bool verifier_nondet =
+          name == "__VERIFIER_nondet_int" && f->arg_empty() &&
+          f->getReturnType()->isIntegerTy(32) &&
+          c->getType()->isIntegerTy(32) &&
+          target->has_frontend() && target->frontend< llvm::Value >() == f &&
+          returned && returned->bit_width() == 32 && returned->is_signed();
+      if (c->arg_empty() && (internal_nondet || verifier_nondet)) continue;
+      if (name == "abort" && c->arg_empty() && c->getType()->isVoidTy() &&
           target->intrinsic_id() == ar::Intrinsic::LibcAbort) continue;
-      if (f->getName() == "__VERIFIER_nondet_int" && c->arg_empty() &&
-          c->getType()->isIntegerTy(32)) continue;
       need(f->getName() == "pthread_create" && native_handle_api(c, true) &&
            unread_private_thread_output(a), "uncovered array library effect");
     }
@@ -670,7 +914,7 @@ class PthreadInitializationFrame::Impl {
          std::find(ctx.opts.analyses.begin(), ctx.opts.analyses.end(), CheckerName::DataRace) != ctx.opts.analyses.end() &&
          ctx.opts.entry_points.size() == 1 &&
          ctx.opts.entry_points.front()->name() == "main" && ctx.opts.entry_points.front()->num_parameters() == 0 &&
-         ctx.opts.no_init_globals.empty() && ctx.bundle->data_layout().pointers.bit_width == 32 &&
+         ctx.opts.no_init_globals.empty() &&
          !ctx.bundle->global_or_null("ar.global_ctors") && !ctx.bundle->global_or_null("ar.global_dtors"),
          "entry/ABI/options");
     for (auto it = ctx.bundle->function_begin(); it != ctx.bundle->function_end(); ++it) {
@@ -681,16 +925,16 @@ class PthreadInitializationFrame::Impl {
       if (f == ctx.opts.entry_points.front()) { main = source; module = source->getParent(); }
       for (auto* block : *f->body()) for (auto* s : *block) {
         step();
-        if (isa< ar::Load >(s) || isa< ar::Store >(s) || isa< ar::CallBase >(s))
+        if (isa< ar::Load >(s) || isa< ar::Store >(s) || isa< ar::CallBase >(s) || isa< ar::Allocate >(s))
           need(s->has_frontend() && originals.emplace(s->frontend< llvm::Value >(), s).second,
                "complete source memory/call mapping");
       }
     }
     need(main && main->use_empty() && module->getModuleInlineAsm().empty(), "closed main/representations");
-    llvm::Triple triple(module->getTargetTriple());
-    need(triple.getArch() == llvm::Triple::x86 && triple.isOSLinux() &&
-         triple.getEnvironment() == llvm::Triple::GNU && module->getDataLayout().getPointerSizeInBits() == 32,
-         "GNU i386 runtime");
+    abi = pthread_object_layout(ctx.bundle, module);
+    need(abi && ctx.bundle->data_layout().is_little_endian() &&
+         module->getDataLayout().getIndexSizeInBits(0) == abi.word * 8,
+         "GNU native/AR pointer and index ABI");
     for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end(); ++it) {
       auto* g = *it;
       if (g->has_frontend()) globals.emplace(g->frontend< llvm::GlobalVariable >(), g);
@@ -704,25 +948,25 @@ class PthreadInitializationFrame::Impl {
     }
     for (auto* function : visited)
       for (auto* block : *functions.at(function)->body()) for (auto* statement : *block)
-        if (isa< ar::Load >(statement) || isa< ar::Store >(statement) || isa< ar::CallBase >(statement))
+        if (isa< ar::Load >(statement) || isa< ar::Store >(statement) || isa< ar::CallBase >(statement) || isa< ar::Allocate >(statement))
           need(consumed.count(statement), "unconsumed AR memory/call effect");
     for (const auto& access : ordinary) {
       for (const auto& relay : relays) {
         auto id = identities.at(relay.first);
-        need(access.address.first != id || access.address.second >= 4 || access.relay_ok,
+        need(access.address.first != id || access.address.second >= abi.word || access.relay_ok,
              "ordinary pointer-relay representation access");
       }
       for (const auto& leaf : mutexes)
         need(access.address.first != leaf.first.first || access.address.second + access.bytes <= leaf.first.second ||
-             leaf.first.second + 24 <= access.address.second, "ordinary runtime mutex-byte access");
+             leaf.first.second + abi.mutex <= access.address.second, "ordinary runtime mutex-byte access");
       for (const auto& leaf : attributes)
         need(access.address.first != leaf.first.first || access.address.second + access.bytes <= leaf.first.second ||
              leaf.first.second + 4 <= access.address.second, "ordinary attribute-byte access");
     }
     for (auto a = mutexes.begin(); a != mutexes.end(); ++a)
       for (auto b = std::next(a); b != mutexes.end(); ++b)
-        need(a->first.first != b->first.first || a->first.second + 24 <= b->first.second ||
-             b->first.second + 24 <= a->first.second, "overlapping runtime mutex leaves");
+        need(a->first.first != b->first.first || a->first.second + abi.mutex <= b->first.second ||
+             b->first.second + abi.mutex <= a->first.second, "overlapping runtime mutex leaves");
     valid = true;
   }
 public:

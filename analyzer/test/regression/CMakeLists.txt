@@ -331,3 +331,15 @@ add_concurrency_test(readonly-abi-lp64 "${CONCURRENCY_ROOT}/scripts/test_readonl
 
 add_concurrency_test(array-slice-occurrences "${CONCURRENCY_ROOT}/scripts/test_array_slice_occurrences.py"
                      --ikos "${CONCURRENCY_IKOS}")
+
+add_concurrency_test(heap-pthread-initialization-lp64 "${CONCURRENCY_ROOT}/scripts/test_heap_pthread_initialization.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(pthread-array-initialization-lp64 "${CONCURRENCY_ROOT}/scripts/test_pthread_array_initialization.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(pthread-initialization-abi "${CONCURRENCY_ROOT}/scripts/test_pthread_initialization_abi.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+
+add_concurrency_test(pthread-initialization-abi-lp64 "${CONCURRENCY_ROOT}/scripts/test_pthread_initialization_abi.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)

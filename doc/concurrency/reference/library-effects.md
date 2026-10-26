@@ -532,9 +532,10 @@ must refuse the frame. A narrowed native handle is an identity only on ILP32.
 <details>
 <summary>Heap and finite global-array pthread initialization — checked runtime-storage effects</summary>
 
-A source-only `PthreadInitializationFrame` can seal constant byte effects for
+A source/AR-verified `PthreadInitializationFrame` can seal constant byte effects for
 `pthread_mutexattr_init`, recognized NORMAL/ERRORCHECK setters, and heap mutex
-initialization before thread creation. The supported GNU i386/glibc route keeps
+initialization before thread creation. The supported GNU/Linux x86 ILP32 and
+x86-64 LP64 glibc routes keep
 default private, nonrobust, PRIO_NONE attribute flags; successful valid
 initialization is justified by this restricted runtime contract. Results remain
 TOP in the numerical analysis. This is not a POSIX-general success assumption.
@@ -546,6 +547,12 @@ accesses to runtime storage. It refuses repeated/overlapping initialization,
 representation aliases, lifetime changes, unsupported CFG/effects and exhausted
 budgets. A layout-only NULL-based offsetof expression may contribute an exact
 LLVM-folded integer displacement; it cannot become an application address.
+Pointer and native index widths must agree in LLVM and AR. Native pointer and
+handle bytes are 4 or 8, mutex bytes are 24 or 40, and attribute/status widths
+remain four bytes. Every constant GEP product and sum must fit native signed
+arithmetic before matching the imported address. Initializers verify both leaf
+layouts; mapped lock/unlock arguments may be opaque only when their actual AR
+address resolves to the same source leaf already initialized in this frame.
 
 Both numerical transfer and the race checker consume the same immutable effect
 description. Transfer checks the actual destination root and byte offset,
@@ -572,7 +579,7 @@ admits a deterministic main initialization prefix with bounded direct CFG
 enumeration. PHIs commit simultaneously on the actual predecessor; integer
 arithmetic checks no-wrap flags, and truncations must preserve the interpreted
 signed value. Unknown control ends the prefix. Every mutex in a homogeneous
-GNU i386 array must be initialized once with an exact legal index before any
+native array must be initialized once with an exact legal index before any
 create. Suffix reachability must exclude another initialization activation,
 including reentry into a previously covered instruction. Attribute pointers
 remain whole globals without byte arithmetic. Calls and ordinary representation
@@ -584,8 +591,11 @@ compatibility check: the source enumeration establishes the complete actual
 occurrences, and memory forgetting conservatively covers the whole offset
 interval plus the written bytes. No byte inside that interval is thereby
 certified as a mutex leaf. Each mutex consumer must have a unique source/AR
-definition for an actual typed array GEP and a matching native 32-bit index.
-At every final checker context the index must be initialized and in range, with
+definition for an actual typed source array GEP and a matching native 32- or
+64-bit imported index. Opaque runtime arguments retain the exact initialized
+global, stride and index correspondence.
+At every final checker context the index must be definitely initialized and in
+range, with
 a non-NULL singleton root. Failure adds an unresolved coverage obligation and
 keeps UNKNOWN; it neither changes convergence state nor fills a premise back
 into the earlier frame. A range proof does not grant lock success, HB,
@@ -594,10 +604,11 @@ AR execution checks still establish the selected mutex behavior.
 
 Unproved cases retain the old fallback.
 Implementation: `analysis/pthread_initialization_frame.hpp` and its source;
-regressions: `python3 scripts/test_heap_pthread_initialization.py` (ILP32,
-including long-long payloads and invalidation controls), and
-`python3 scripts/test_pthread_array_initialization.py` (constant/dynamic
-consumers, whole-array initialization, wide counters, truncation and wrapping
-refusals, prefix reentry and representation aliases). LP64 is deferred.
+regressions: `python3 scripts/test_heap_pthread_initialization.py`,
+`python3 scripts/test_pthread_array_initialization.py`, and
+`python3 scripts/test_pthread_initialization_abi.py` accept `--bits=32` or
+`--bits=64`. They cover long-long payloads, actual native layouts, constant and
+dynamic consumers, whole-array initialization, wide counters, truncation and
+wrapping refusals, prefix reentry, representation aliases and failure effects.
 
 </details>
