@@ -733,10 +733,9 @@ inline Result confirm_race_completion(ar::Function* funcA, ar::Statement* stmtA,
 // The frontier is bounded by retained event capacity and shrinks when a fully
 // constructed prefix search cannot even visit the requested occurrence. This
 // only schedules witness searches; it never proves an absent race or SAFE.
-inline Result confirm_race_later(ar::Function* funcA, ar::Statement* stmtA,
-    std::uint64_t widthA, ar::Function* funcB, ar::Statement* stmtB,
-    std::uint64_t widthB, Diagnostics* diagnostics, SearchBudget& budget,
-    std::vector< ar::Statement* >* creations, const CandidateFacts* facts,
+template < typename ConfirmExact >
+inline Result search_later_access_frontiers(Diagnostics* diagnostics,
+    SearchBudget& budget, ConfirmExact&& confirm_exact,
     unsigned requested_frontier = 0, LaterAccessState* saved_state = nullptr) {
   Result outcome(Status::NotSearched);
   LaterAccessState local_state;
@@ -759,14 +758,7 @@ inline Result confirm_race_later(ar::Function* funcA, ar::Statement* stmtA,
         record(diagnostics, "later_access_query");
         const AccessTargets targets{a, b, true};
         AccessSearchProgress ordinary, completed;
-        auto attempt = confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
-            diagnostics, &budget, creations, facts, 1, nullptr, 0, targets, &ordinary);
-        // A later main target may reveal joins absent before the first target.
-        // Do not inherit completion eligibility solely from an earlier request.
-        if (!attempt.confirmed() && attempt.needs_completion &&
-            !budget.expired() && budget.queries != 0)
-          attempt.merge(confirm_race_completion(funcA, stmtA, widthA, funcB, stmtB,
-              widthB, diagnostics, budget, creations, facts, nullptr, 0, targets, &completed));
+        auto attempt = confirm_exact(targets, ordinary, completed);
         outcome.merge(std::move(attempt));
         if (outcome.confirmed()) {
           record(diagnostics, "later_access_confirmed");
@@ -787,6 +779,29 @@ inline Result confirm_race_later(ar::Function* funcA, ar::Statement* stmtA,
   return outcome;
 }
 
+// Preserve the original pass-7 strategy and state ownership. Only its shell
+// loop is shared with provider search; no cache, plan or budget is shared anew.
+inline Result confirm_race_later(ar::Function* funcA, ar::Statement* stmtA,
+    std::uint64_t widthA, ar::Function* funcB, ar::Statement* stmtB,
+    std::uint64_t widthB, Diagnostics* diagnostics, SearchBudget& budget,
+    std::vector< ar::Statement* >* creations, const CandidateFacts* facts,
+    unsigned requested_frontier = 0, LaterAccessState* saved_state = nullptr) {
+  auto confirm_exact = [&](AccessTargets targets, AccessSearchProgress& ordinary,
+                           AccessSearchProgress& completed) {
+    auto attempt = confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
+        diagnostics, &budget, creations, facts, 1, nullptr, 0, targets, &ordinary);
+    // A later main target may reveal joins absent before the first target.
+    // Do not inherit completion eligibility solely from an earlier request.
+    if (!attempt.confirmed() && attempt.needs_completion &&
+        !budget.expired() && budget.queries != 0)
+      attempt.merge(confirm_race_completion(funcA, stmtA, widthA, funcB, stmtB,
+          widthB, diagnostics, budget, creations, facts, nullptr, 0, targets, &completed));
+    return attempt;
+  };
+  return search_later_access_frontiers(diagnostics, budget, confirm_exact,
+                                       requested_frontier, saved_state);
+}
+
 // The main prefix is not evaluated before child execution. All its guards,
 // data reads, creates, locks and exact joins share the solver timeline with a
 // real finite provider and the two target instances. This is a witness search,
@@ -795,7 +810,8 @@ inline Result confirm_race_provider(ar::Function* funcA, ar::Statement* stmtA,
     std::uint64_t widthA, ar::Function* funcB, ar::Statement* stmtB,
     std::uint64_t widthB, Diagnostics* diagnostics, SearchBudget& budget,
     std::vector< ar::Statement* >* creations, const CandidateFacts* facts,
-    AccessTargets access_targets = {}) {
+    AccessTargets access_targets = {}, AccessSearchProgress* progress = nullptr,
+    AccessSearchProgress* completion_progress = nullptr) {
   Result outcome(Status::NotSearched);
   if (funcA->name() == "main" || funcB->name() == "main") return outcome;
   auto* main = funcA->bundle()->function_or_null("main");
@@ -829,10 +845,12 @@ inline Result confirm_race_provider(ar::Function* funcA, ar::Statement* stmtA,
   auto pathsA = unroll_to(funcA, stmtA, access_targets.a, bound, false, nullptr,
                          &budget.deadline, nullptr, 0, access_targets.exact);
   note(pathsA);
+  if (progress != nullptr) progress->note(pathsA, true);
   if (!spend()) return outcome;
   auto pathsB = unroll_to(funcB, stmtB, access_targets.b, bound, false, nullptr,
                          &budget.deadline, nullptr, 0, access_targets.exact);
   note(pathsB);
+  if (progress != nullptr) progress->note(pathsB, false);
   UnrollResult completeA, completeB;
   const bool atomic = std::any_of(pathsA.paths.begin(), pathsA.paths.end(), atomic_candidate) ||
                       std::any_of(pathsB.paths.begin(), pathsB.paths.end(), atomic_candidate);
@@ -841,10 +859,12 @@ inline Result confirm_race_provider(ar::Function* funcA, ar::Statement* stmtA,
     completeA = unroll_completed(funcA, stmtA, bound, &budget.deadline, nullptr, 0,
                                 access_targets.a, access_targets.exact);
     note(completeA);
+    if (completion_progress != nullptr) completion_progress->note(completeA, true);
     if (!spend()) return outcome;
     completeB = unroll_completed(funcB, stmtB, bound, &budget.deadline, nullptr, 0,
                                 access_targets.b, access_targets.exact);
     note(completeB);
+    if (completion_progress != nullptr) completion_progress->note(completeB, false);
   }
   const auto& choicesA = atomic ? completeA.paths : pathsA.paths;
   const auto& choicesB = atomic ? completeB.paths : pathsB.paths;
@@ -969,6 +989,26 @@ inline Result confirm_race_provider(ar::Function* funcA, ar::Statement* stmtA,
       }
     }
   }
+  return outcome;
+}
+
+// Run only after every first-access provider candidate has had its existing
+// pass. Actual target ordinals are independent of the provider plan's exact
+// create steps, including two distinct instances of one shared entry function.
+inline Result confirm_race_provider_later(ar::Function* funcA, ar::Statement* stmtA,
+    std::uint64_t widthA, ar::Function* funcB, ar::Statement* stmtB,
+    std::uint64_t widthB, Diagnostics* diagnostics, SearchBudget& budget,
+    std::vector< ar::Statement* >* creations, const CandidateFacts* facts,
+    unsigned requested_frontier = 0, LaterAccessState* saved_state = nullptr) {
+  auto confirm_exact = [&](AccessTargets targets, AccessSearchProgress& ordinary,
+                           AccessSearchProgress& completed) {
+    record(diagnostics, "provider_later_access_query");
+    return confirm_race_provider(funcA, stmtA, widthA, funcB, stmtB, widthB,
+        diagnostics, budget, creations, facts, targets, &ordinary, &completed);
+  };
+  auto outcome = search_later_access_frontiers(diagnostics, budget, confirm_exact,
+                                              requested_frontier, saved_state);
+  if (outcome.confirmed()) record(diagnostics, "provider_later_access_confirmed");
   return outcome;
 }
 

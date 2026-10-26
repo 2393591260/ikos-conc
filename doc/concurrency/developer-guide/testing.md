@@ -337,3 +337,27 @@ Unknown or mixed origins, escaping pointers and unsupported lifetimes retain
 the unresolved obligation. This supplies no pointer-validity, nonnull, value or
 counterexample fact; the ordinary strict coverage and BMC execution checks remain
 required.
+
+### Cross-component execution controls
+
+The test_bmc_architecture_combinations.py runner exercises both ABIs and
+composes exact later access ordinals with timed main/provider execution,
+changing helper arguments, atomic completion and repeated heap generations.
+First-access provider searches keep their earlier pass; later provider queries
+reuse the same frontier scheduler, deadline and resource counters. Retargeting
+an earlier access, borrowing another create/allocation event, deleting a
+required Return or forging read-from must fail independent replay.
+
+The window controls distinguish two permissions. With explicit VarPack Polka,
+one stable native window proof excludes a private pair while a distinct shared
+pair still needs BMC confirmation. Independent producer and consumer ablations
+withdraw the exclusion. Duplicate actual thread arguments must produce no
+window proof; AI-only remains UNKNOWN, and BMC must exhibit the real same-object
+conflict. This is final pair consumption, not an automatic BMC-to-AI refinement
+loop or a claim of automatic whole-worklist reconvergence.
+
+The test_bmc_combination_oracle.py runner independently enumerates a finite
+successful-create/exact-provider-join language, including provider writes,
+completion, main guards and normal mutex ordering. It imports no production
+candidate selector, unroller, encoder or solver. Provider plus heap remains a
+declared unsupported combination; UNKNOWN does not count as its delivery.

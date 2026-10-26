@@ -554,3 +554,9 @@ add_concurrency_test(heap-canonical-events "${CONCURRENCY_ROOT}/scripts/test_bmc
                      --ikos "${CONCURRENCY_IKOS}" --bits 32)
 add_concurrency_test(heap-canonical-events-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_heap_canonical_events.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
+add_concurrency_test(architecture-combinations "${CONCURRENCY_ROOT}/scripts/test_bmc_architecture_combinations.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+add_concurrency_test(architecture-combinations-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_architecture_combinations.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+add_concurrency_test(combination-oracle "${CONCURRENCY_ROOT}/scripts/test_bmc_combination_oracle.py"
+)
