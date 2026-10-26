@@ -1,3 +1,8 @@
+#if __SIZEOF_POINTER__ == 4
+#define READONLY_NON_C __attribute__((fastcall))
+#else
+#define READONLY_NON_C __attribute__((ms_abi))
+#endif
 // This file is part of the SV-Benchmarks collection of verification tasks:
 // https://gitlab.com/sosy-lab/benchmarking/sv-benchmarks
 //
@@ -25,12 +30,12 @@ extern int pthread_create (pthread_t *__restrict __newthread,
       void *__restrict __arg) __attribute__ ((__nothrow__)) __attribute__ ((__nonnull__ (1, 3)));
 extern int pthread_join (pthread_t __th, void **__thread_return);
 
-typedef unsigned int size_t;
+typedef __SIZE_TYPE__ size_t;
 extern void *malloc (size_t __size) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__malloc__)) ;
 
 extern int  __VERIFIER_nondet_int(void);
 #if CASE == 15
-extern _Bool __attribute__((fastcall)) __VERIFIER_nondet_bool(void);
+extern _Bool READONLY_NON_C __VERIFIER_nondet_bool(void);
 #elif CASE == 13
 extern int __VERIFIER_nondet_bool(void);
 #else

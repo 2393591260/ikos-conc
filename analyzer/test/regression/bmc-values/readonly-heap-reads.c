@@ -1,3 +1,8 @@
+#if __SIZEOF_POINTER__ == 4
+#define READONLY_NON_C __attribute__((fastcall))
+#else
+#define READONLY_NON_C __attribute__((ms_abi))
+#endif
 // SPDX-License-Identifier: MIT
 #include <pthread.h>
 #include <stdlib.h>
@@ -11,14 +16,14 @@ extern long long __VERIFIER_nondet_longlong(void);
 #else
 typedef int datum;
 #if CASE == 48
-extern int __attribute__((fastcall)) __VERIFIER_nondet_int(void);
+extern int READONLY_NON_C __VERIFIER_nondet_int(void);
 #else
 extern int __VERIFIER_nondet_int(void);
 #endif
 #define arbitrary __VERIFIER_nondet_int
 #endif
 #if CASE == 48
-extern int __attribute__((fastcall)) __VERIFIER_nondet_int(void);
+extern int READONLY_NON_C __VERIFIER_nondet_int(void);
 #else
 extern int __VERIFIER_nondet_int(void);
 #endif

@@ -3,6 +3,7 @@
 
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/Dominators.h>
+#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <z3++.h>
 #include <algorithm>
 #include <deque>
@@ -80,6 +81,7 @@ class ReadonlyHeapReads::Impl {
   Context& ctx;
   z3::context z;
   llvm::Function* main = nullptr;
+  unsigned address_bits = 0, word = 0;
   std::map< llvm::Value*, ar::Statement* > originals;
   std::map< llvm::Function*, ar::Function* > functions;
   std::set< llvm::Function* > active, workers;
@@ -136,6 +138,12 @@ class ReadonlyHeapReads::Impl {
       return false;
     const auto name = f->getName();
     const unsigned bits = c->getType()->getIntegerBitWidth();
+    auto* result = a->result_or_null();
+    auto* result_type = result ? dyn_cast<ar::IntegerType>(result->type()) : nullptr;
+    auto* return_type = dyn_cast<ar::IntegerType>(t->type()->return_type());
+    if (!f->getReturnType()->isIntegerTy(bits) || !return_type || !result_type ||
+        return_type->bit_width() != bits || result_type->bit_width() != bits)
+      return false;
     if (name == "__VERIFIER_nondet_bool" && bits == 1 && t->has_frontend()) {
       auto* type = dyn_cast< ar::IntegerType >(t->type()->return_type());
       auto* result = a->result_or_null();
@@ -332,6 +340,30 @@ class ReadonlyHeapReads::Impl {
     return sign ? z3::sext(v, 64 - v.get_sort().bv_size())
                 : z3::zext(v, 64 - v.get_sort().bv_size());
   }
+  z3::expr wide(const z3::expr& v, bool sign = false) {
+    const auto bits = v.get_sort().bv_size();
+    if (bits > 64) throw Refuse{};
+    return sign ? z3::sext(v, 128 - bits) : z3::zext(v, 128 - bits);
+  }
+  z3::expr address_limit() {
+    return address_bits == 32 ? z.bv_val("4294967295", 128)
+                              : z.bv_val("18446744073709551615", 128);
+  }
+  z3::expr displaced(const State& s, const Pointer& p,
+                     const z3::expr& index, std::uint64_t stride) {
+    // The source index is signed; geometry is mathematical before narrowing.
+    auto result = wide(p.offset) + wide(index, true) * z.bv_val(stride, 128);
+    require(s, result >= z.bv_val(0, 128) && result <= address_limit());
+    return result.extract(63, 0);
+  }
+  bool induction_index(llvm::Value* index, llvm::PHINode* phi) const {
+    if (index == phi) return true;
+    auto* cast = llvm::dyn_cast<llvm::CastInst>(index);
+    return cast && address_bits == 64 && cast->getType()->isIntegerTy(64) &&
+           cast->getOperand(0) == phi && phi->getType()->isIntegerTy(32) &&
+           (cast->getOpcode() == llvm::Instruction::SExt ||
+            cast->getOpcode() == llvm::Instruction::ZExt);
+  }
   bool zero(const z3::expr& v) {
     return (v == z.bv_val(0, v.get_sort().bv_size())).simplify().is_true();
   }
@@ -339,6 +371,7 @@ class ReadonlyHeapReads::Impl {
     if (llvm::isa< llvm::ConstantPointerNull >(v))
       return Pointer(z, Place::Null);
     if (auto* g = llvm::dyn_cast< llvm::GlobalVariable >(v)) {
+      if (g->getAddressSpace() != 0) throw Refuse{};
       Pointer p(z, Place::Global);
       p.object = g;
       p.extent = z.bv_val(main->getParent()
@@ -354,34 +387,14 @@ class ReadonlyHeapReads::Impl {
     return i->second;
   }
   std::uint64_t bytes(llvm::Type* t) {
-    if (!scalar(t) && !t->isPointerTy())
+    if ((!scalar(t) && !t->isPointerTy()) ||
+        (t->isPointerTy() && t->getPointerAddressSpace() != 0))
       throw Refuse{};
-    return main->getParent()
-        ->getDataLayout()
-        .getTypeStoreSize(t)
-        .getFixedValue();
-  }
-  bool same_index(ar::Value* v, llvm::Value* n) const {
-    for (unsigned depth = 0; depth < 32; ++depth) {
-      auto* type = dyn_cast< ar::IntegerType >(v->type());
-      if (!type || type->bit_width() != 32 || !n->getType()->isIntegerTy(32))
-        return false;
-      auto* var = dyn_cast< ar::InternalVariable >(v);
-      if (!var)
-        return false;
-      if (var->has_frontend() && var->frontend< llvm::Value >() == n)
-        return true;
-      auto* d = unique_def(var);
-      if (auto* a = dyn_cast_or_null< ar::Assignment >(d))
-        v = a->operand();
-      else if (auto* a = dyn_cast_or_null< ar::UnaryOperation >(d)) {
-        if (a->op() != ar::UnaryOperation::Bitcast)
-          return false;
-        v = a->operand();
-      } else
-        return false;
-    }
-    return false;
+    const auto& layout = main->getParent()->getDataLayout();
+    const auto width = layout.getTypeStoreSize(t).getFixedValue();
+    if (layout.getTypeAllocSize(t).getFixedValue() != width || width > 8)
+      throw Refuse{};
+    return width;
   }
   bool ar_index(ar::Value* v, llvm::Value* n, std::uint64_t stride) const {
     for (unsigned depth = 0; depth < 32; ++depth) {
@@ -390,7 +403,7 @@ class ReadonlyHeapReads::Impl {
       if (auto* p = dyn_cast_or_null< ar::PointerShift >(d)) {
         auto b = p->term_begin(), e = p->term_end();
         return b != e && (*b).first.to_z_number() == core::ZNumber(stride) &&
-               same_index((*b).second, n) && ++b == e;
+               source_integer_binding((*b).second, n) && ++b == e;
       }
       if (auto* a = dyn_cast_or_null< ar::Assignment >(d))
         v = a->operand();
@@ -702,7 +715,7 @@ class ReadonlyHeapReads::Impl {
         throw Refuse{};
       auto* gep = llvm::dyn_cast< llvm::GetElementPtrInst >(
           prefix_store->getPointerOperand()->stripPointerCasts());
-      if (!gep || gep->getNumIndices() != 1 || gep->getOperand(1) != phi)
+      if (!gep || gep->getNumIndices() != 1 || !induction_index(gep->getOperand(1), phi))
         throw Refuse{};
       if (mode == Mode::Constructor) {
         if (gep->getPointerOperand()->stripPointerCasts() != allocation ||
@@ -795,8 +808,7 @@ class ReadonlyHeapReads::Impl {
           require(s,
                   count >= z.bv_val(0, 32) &&
                       table.extent == extend(count) * z.bv_val(stride, 64) &&
-                      extend(count) * z.bv_val(stride, 64) <=
-                          z.bv_val(UINT64_C(0xffffffff), 64));
+                      wide(count) * z.bv_val(stride, 128) <= address_limit());
           auto* argument = row_constructor->getArgOperand(0);
           // The row length may be a loop-local whole scalar global reload.
           auto* ld = llvm::dyn_cast< llvm::LoadInst >(argument);
@@ -900,25 +912,53 @@ class ReadonlyHeapReads::Impl {
         auto* a = dyn_cast_or_null< ar::Allocate >(original(i));
         auto* count =
             llvm::dyn_cast< llvm::ConstantInt >(alloca->getArraySize());
-        if (!a || !count || !count->isOne() ||
-            !scalar(alloca->getAllocatedType()) || (loop && loop->contains(i)))
+        auto* ar_count = a ? dyn_cast<ar::IntegerConstant>(a->array_size()) : nullptr;
+        if (!a || !count || !count->isOne() || !ar_count ||
+            ar_count->value().to_z_number() != 1 || alloca->getAddressSpace() ||
+            !scalar(alloca->getAllocatedType()) || (loop && loop->contains(i)) ||
+            !unique_allocation_definition(a) ||
+            !a->result()->has_frontend() ||
+            a->result()->frontend<llvm::Value>() != alloca ||
+            ctx.bundle->data_layout().alloc_size_in_bytes(a->allocated_type()) !=
+                core::ZNumber(bytes(alloca->getAllocatedType())))
           throw Refuse{};
         Pointer p(z, Place::Local);
         p.object = alloca;
         p.extent = z.bv_val(bytes(alloca->getAllocatedType()), 64);
         put(s.pointers, i, p);
       } else if (auto* gep = llvm::dyn_cast< llvm::GetElementPtrInst >(i)) {
+        if (gep->getAddressSpace() != 0) throw Refuse{};
         auto base_pointer = pointer(s, gep->getPointerOperand());
         if (base_pointer.place == Place::Global &&
             llvm::cast< llvm::GlobalVariable >(base_pointer.object)
                 ->isConstant() &&
             gep->hasAllConstantIndices()) {
-          llvm::APInt displacement(32, 0);
+          llvm::APInt displacement(address_bits, 0);
           if (!gep->accumulateConstantOffset(main->getParent()->getDataLayout(),
                                              displacement))
             throw Refuse{};
-          base_pointer.offset =
-              base_pointer.offset + z.bv_val(displacement.getSExtValue(), 64);
+          auto exact = wide(base_pointer.offset);
+          auto& layout = main->getParent()->getDataLayout();
+          for (auto it = llvm::gep_type_begin(gep), end = llvm::gep_type_end(gep);
+               it != end; ++it) {
+            auto* index = llvm::dyn_cast<llvm::ConstantInt>(it.getOperand());
+            if (!index || index->getBitWidth() > address_bits) throw Refuse{};
+            if (auto* structure = it.getStructTypeOrNull()) {
+              if (index->getValue().getActiveBits() > 32 ||
+                  index->getZExtValue() >= structure->getNumElements()) throw Refuse{};
+              exact = exact + z.bv_val(layout.getStructLayout(structure)
+                  ->getElementOffset(index->getZExtValue()), 128);
+            } else {
+              auto value = number(s, index);
+              exact = exact + wide(value, true) *
+                  z.bv_val(layout.getTypeAllocSize(it.getIndexedType())
+                      .getFixedValue(), 128);
+            }
+          }
+          require(s, exact >= z.bv_val(0, 128) && exact <= address_limit());
+          auto low = exact.extract(address_bits - 1, 0);
+          require(s, low == z.bv_val(displacement.getZExtValue(), address_bits));
+          base_pointer.offset = exact.extract(63, 0);
           require(s,
                   base_pointer.offset >= z.bv_val(0, 64) &&
                       base_pointer.offset <= base_pointer.extent);
@@ -928,7 +968,8 @@ class ReadonlyHeapReads::Impl {
           continue;
         }
         if (gep->getNumIndices() != 1 ||
-            !gep->getOperand(1)->getType()->isIntegerTy(32) ||
+            (!gep->getOperand(1)->getType()->isIntegerTy() ||
+              gep->getOperand(1)->getType()->getIntegerBitWidth() > address_bits) ||
             (!scalar(gep->getSourceElementType()) &&
              !gep->getSourceElementType()->isPointerTy()))
           throw Refuse{};
@@ -938,8 +979,7 @@ class ReadonlyHeapReads::Impl {
           throw Refuse{};
         const bool direct = p.root && p.offset.simplify().is_numeral() &&
                             p.offset.simplify().get_numeral_uint64() == 0;
-        p.offset = p.offset + extend(number(s, gep->getOperand(1)), true) *
-                                  z.bv_val(step, 64);
+        p.offset = displaced(s, p, number(s, gep->getOperand(1)), step);
         p.index = direct ? gep->getOperand(1) : nullptr;
         put(s.pointers, i, p);
       } else if (auto* conversion = llvm::dyn_cast< llvm::BitCastInst >(i)) {
@@ -970,9 +1010,8 @@ class ReadonlyHeapReads::Impl {
             load ? load->getType() : store->getValueOperand()->getType();
         const auto width = bytes(type);
         require(s,
-                p.offset >= z.bv_val(0, 64) &&
-                    p.offset <= z.bv_val(UINT64_C(0xffffffff), 64) &&
-                    p.offset + z.bv_val(width, 64) <= p.extent);
+                wide(p.offset) <= address_limit() &&
+                    wide(p.offset) + z.bv_val(width, 128) <= wide(p.extent));
         if (p.place == Place::Global) {
           auto* g = llvm::cast< llvm::GlobalVariable >(p.object);
           if ((store && mode == Mode::Worker &&
@@ -1132,7 +1171,10 @@ class ReadonlyHeapReads::Impl {
               (mode == Mode::Constructor && call != allocation) || s.spawned ||
               call->arg_size() != 1 || called->getName() != "malloc" ||
               !call->getType()->isPointerTy() ||
-              !call->getArgOperand(0)->getType()->isIntegerTy(32))
+              !call->getArgOperand(0)->getType()->isIntegerTy(address_bits) ||
+              call->getType()->getPointerAddressSpace() != 0 ||
+              !call->getType()->getPointerElementType()->isIntegerTy(8) ||
+              !source_integer_binding(a->argument(0), call->getArgOperand(0)))
             throw Refuse{};
           auto size = number(s, call->getArgOperand(0));
           if (mode == Mode::Constructor) {
@@ -1140,8 +1182,7 @@ class ReadonlyHeapReads::Impl {
             require(s,
                     length >= z.bv_val(0, 32) &&
                         extend(size) == extend(length) * z.bv_val(stride, 64) &&
-                        extend(length) * z.bv_val(stride, 64) <=
-                            z.bv_val(UINT64_C(0xffffffff), 64));
+                        wide(length) * z.bv_val(stride, 128) <= address_limit());
           }
           Pointer p(z, Place::Heap);
           p.object = call;
@@ -1170,7 +1211,9 @@ class ReadonlyHeapReads::Impl {
               call->getArgOperand(2)->stripPointerCasts());
           if (p.place != Place::Local || !zero(p.offset) ||
               !p.extent.simplify().is_numeral() ||
-              p.extent.simplify().get_numeral_uint64() != 4 || !child ||
+              p.extent.simplify().get_numeral_uint64() != word ||
+              llvm::cast<llvm::AllocaInst>(p.object)->getAlign().value() < word ||
+              !child ||
               child == main || child->isDeclaration())
             throw Refuse{};
           workers.insert(child);
@@ -1178,7 +1221,7 @@ class ReadonlyHeapReads::Impl {
             s.spawned = true;
             worlds.push_back(s);
           }
-          put(s.cells, p.object, fresh(32));
+          put(s.cells, p.object, fresh(address_bits));
           set(s, i, fresh(32));
         } else if (native_handle_api(call, false)) {
           if (mode != Mode::Main ||
@@ -1205,18 +1248,21 @@ class ReadonlyHeapReads::Impl {
         ctx.opts.entry_points.size() != 1 ||
         ctx.opts.entry_points.front()->name() != "main" ||
         !ctx.opts.entry_points.front()->has_frontend() ||
-        ctx.bundle->data_layout().pointers.bit_width != 32 ||
         !ctx.opts.no_init_globals.empty() ||
         ctx.bundle->global_or_null("ar.global_ctors") ||
         ctx.bundle->global_or_null("ar.global_dtors"))
       throw Refuse{};
     main = ctx.opts.entry_points.front()->frontend< llvm::Function >();
     if (!main->use_empty() || !main->getReturnType()->isIntegerTy(32) ||
-        main->getParent()->getDataLayout().getPointerSizeInBits(0) != 32 ||
         !main->getParent()->getModuleInlineAsm().empty() ||
         main->getParent()->getNamedGlobal("llvm.global_ctors") ||
         main->getParent()->getNamedGlobal("llvm.global_dtors"))
       throw Refuse{};
+    auto abi = pthread_object_layout(ctx.bundle, main->getParent());
+    if (!abi || main->getParent()->getDataLayout().getIndexSizeInBits(0) !=
+                    abi.word * 8) throw Refuse{};
+    word = abi.word;
+    address_bits = word * 8;
     for (auto it = ctx.bundle->function_begin();
          it != ctx.bundle->function_end();
          ++it) {

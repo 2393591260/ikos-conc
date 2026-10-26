@@ -247,7 +247,8 @@ change with pointer width.
 | Finite ArenaReservation | Checked GNU32/64 | Signed i32 reservation arithmetic; only checked sext to the native LP64 index. |
 | LockedCreation, closed pthread_once, one-shot PosixBarrier | Checked GNU32/64 subcontracts | No general descendant completion, callback effect or reusable-barrier claim. |
 | ThreadPrivateHeap | Checked GNU32/64 | Native calloc/malloc sizes, handle and index widths are bound to the AR operations; closed signed-int loops and live-allocation privacy remain conditional. |
-| ArraySlices, ReadonlyHeapReads | ILP32 only | Native allocation/count/index/handle correspondence needs a coordinated migration. Internal BV64 arithmetic is not LP64 support. |
+| ArraySlices | ILP32 only | Native allocation/count/index/handle correspondence needs a coordinated migration. Internal BV64 arithmetic is not LP64 support. |
+| ReadonlyHeapReads | Checked GNU32/64 | Native malloc, handle and source/AR GEP bindings; signed i32 construction counts and actual-width data. Byte geometry uses 128-bit checks before native narrowing; complete immutable initialization and the two narrow consumers remain required. |
 | FirstPublication | Checked GNU32/64 | Root slots, padded self-link layout, exact birth extents and literal 24/40-byte graph mutex storage match native/AR bytes. |
 | SymbolicArena | Checked GNU32/64 | Reservation bounds remain signed i32; native allocation/GEP/handle widths and exact source/AR bindings are checked. Byte extents have a nonwrapping mathematical bound. |
 | BucketListOwnership | ILP32 only | Link slots, native mutex layout, address arithmetic and source/AR mapping remain restricted. |
@@ -260,7 +261,7 @@ change with pointer width.
 
 Unsupported certificate ABIs refuse the certificate and preserve the ordinary
 analysis/coverage obligations. They are not silently treated as verified SAFE,
-nor counted as positive LP64 support. The certificate ABI boundary test exercises all 5 remaining ILP32-only boundaries with
+nor counted as positive LP64 support. The certificate ABI boundary test exercises all 4 remaining ILP32-only boundaries with
 32-bit hits and 64-bit refusal; each migrated protocol has both positive and
 premise-breaking tests.
 

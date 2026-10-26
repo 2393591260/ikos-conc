@@ -20,6 +20,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
     parser.add_argument('--case', type=int, choices=CASES, action='append')
+    parser.add_argument('--bits', choices=('32', '64'), default='32')
     args = parser.parse_args()
     entry = args.ikos.resolve()
     identity = runtime_identity(entry)
@@ -38,7 +39,7 @@ def main():
                 result = subprocess.run(command + ['--analyses=race',
                     '--concurrency=auto', '--partitioning=guards',
                     '--demote-race-to-unknown', '--bmc-deadline-ms=0',
-                    '--log=debug', '-m32', '-o', str(dbpath), str(source)],
+                    '--log=debug', '-m' + args.bits, '-o', str(dbpath), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
                 output = result.stdout + result.stderr
                 assert result.returncode == 0, (case, wide, output)

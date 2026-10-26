@@ -216,8 +216,12 @@ add_concurrency_test(pthread-array-initialization "${CONCURRENCY_ROOT}/scripts/t
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(readonly-heap-reads "${CONCURRENCY_ROOT}/scripts/test_readonly_heap_reads.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(readonly-heap-reads-lp64 "${CONCURRENCY_ROOT}/scripts/test_readonly_heap_reads.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(readonly-loop-snapshots "${CONCURRENCY_ROOT}/scripts/test_readonly_loop_snapshots.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(readonly-loop-snapshots-lp64 "${CONCURRENCY_ROOT}/scripts/test_readonly_loop_snapshots.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(initialized-pointer-fields "${CONCURRENCY_ROOT}/scripts/test_initialized_pointer_fields.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(allocator-inlining "${CONCURRENCY_ROOT}/scripts/test_allocator_inlining.py"
@@ -313,6 +317,11 @@ add_dependencies(build-analyzer-tests test-analysis-source-program-facts)
 add_test(NAME concurrency-source-program-facts
          COMMAND $<TARGET_FILE:test-analysis-source-program-facts>)
 set_tests_properties(concurrency-source-program-facts PROPERTIES LABELS concurrency)
+
+add_concurrency_test(readonly-abi "${CONCURRENCY_ROOT}/scripts/test_readonly_abi.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(readonly-abi-lp64 "${CONCURRENCY_ROOT}/scripts/test_readonly_abi.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 
 add_concurrency_test(array-slice-occurrences "${CONCURRENCY_ROOT}/scripts/test_array_slice_occurrences.py"
                      --ikos "${CONCURRENCY_IKOS}")
