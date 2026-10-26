@@ -224,6 +224,8 @@ add_concurrency_test(protected-protocol "${CONCURRENCY_ROOT}/scripts/test_protec
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(thread-lifecycle "${CONCURRENCY_ROOT}/scripts/test_thread_lifecycle.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(thread-lifecycle-lp64 "${CONCURRENCY_ROOT}/scripts/test_thread_lifecycle.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(boolean-partitioning "${CONCURRENCY_ROOT}/scripts/test_boolean_partitioning.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(protected-field-values "${CONCURRENCY_ROOT}/scripts/test_protected_field_values.py"

@@ -22,7 +22,6 @@ def main():
     env = {k: v for k, v in os.environ.items()
            if not k.startswith('IKOS_') and k not in {'PYTHONPATH', 'PYTHONHOME'}}
     cases = (
-        ('thread-lifecycle', 'thread_lifecycle_contract'),
         ('sc-protocol', 'sc_protocol_contract'),
         ('self-publication', 'self_publication_contract'),
         ('array-slices', 'array_slices_contract'),

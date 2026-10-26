@@ -4,6 +4,7 @@
 #include <deque>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
+#include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/checker/normal_mutex.hpp>
 #include <ikos/analyzer/checker/thread_lifecycle.hpp>
 #include <ikos/analyzer/util/log.hpp>
@@ -80,6 +81,7 @@ class ThreadLifecycle::Impl {
       absent;
   bool attempted = false, valid = false;
   unsigned budget = 131072;
+  unsigned word = 0;
   llvm::Instruction* last = nullptr;
   void spend() {
     if (!budget)
@@ -91,36 +93,9 @@ class ThreadLifecycle::Impl {
     return i == originals.end() ? nullptr : i->second;
   }
   ar::CallBase* binding(llvm::CallBase* c) const {
-    auto* a = dyn_cast_or_null< ar::CallBase >(original(c));
-    auto* f = callee(c);
-    auto* t = a ? native_handle_callee(a) : nullptr;
-    if (!a || !isa< ar::Call >(a) || !f || !t ||
-        !llvm::isa< llvm::CallInst >(c) || c->isInlineAsm() ||
-        c->hasOperandBundles() || c->getCallingConv() != llvm::CallingConv::C ||
-        f->getCallingConv() != llvm::CallingConv::C ||
-        c->arg_size() != f->arg_size() || a->num_arguments() != c->arg_size() ||
-        t->num_parameters() != a->num_arguments() ||
-        (t->has_frontend() && t->frontend< llvm::Value >() != f) ||
-        (f->isDeclaration() ? !t->is_declaration()
-                            : !t->is_definition() || !t->has_frontend()))
-      return nullptr;
-    bool nondet = f->isDeclaration() && c->arg_empty() &&
-                  f->getName() == "__VERIFIER_nondet_int";
-    if (!nondet &&
-        (f->isVarArg() || c->getFunctionType() != f->getFunctionType()))
-      return nullptr;
-    for (unsigned n = 0; n < c->arg_size(); ++n) {
-      if (a->argument(n)->type() != t->type()->param_type(n))
-        return nullptr;
-      for (auto attr : {llvm::Attribute::ByVal,
-                        llvm::Attribute::StructRet,
-                        llvm::Attribute::InAlloca,
-                        llvm::Attribute::Preallocated})
-        if (c->paramHasAttr(n, attr) || f->hasParamAttribute(n, attr))
-          return nullptr;
-    }
-    return a;
+    return source_call_binding(c, original(c));
   }
+
   bool api(llvm::CallBase* c, bool create) const {
     auto* a = binding(c);
     auto* f = callee(c);
@@ -134,7 +109,7 @@ class ThreadLifecycle::Impl {
     for (unsigned n = 0; n < count; ++n) {
       auto* t = c->getArgOperand(n)->getType();
       if (n == 0 && !create) {
-        if (!t->isIntegerTy(32))
+        if (!t->isIntegerTy(word * 8))
           return false;
       } else {
         auto* p = llvm::dyn_cast< llvm::PointerType >(t);
@@ -165,7 +140,9 @@ class ThreadLifecycle::Impl {
     if (!t || !f->isDeclaration() || !c->arg_empty() || !scalar(c->getType()))
       return false;
     if (f->getName() == "__VERIFIER_nondet_int" &&
-        c->getType()->isIntegerTy(32) && t->has_frontend())
+        c->getType()->isIntegerTy(32) && t->has_frontend() &&
+        t->frontend< llvm::Value >() == f && t->type()->return_type()->is_integer() &&
+        cast< ar::IntegerType >(t->type()->return_type())->bit_width() == 32)
       return true;
     return c->getMetadata("ikos.freeze_uninit") &&
            t->intrinsic_id() == ar::Intrinsic::IkosNonDet &&
@@ -251,11 +228,13 @@ class ThreadLifecycle::Impl {
         a ? dyn_cast< ar::IntegerConstant >(a->array_size()) : nullptr;
     if (!local || !n || !n->isOne() ||
         !local->getAllocatedType()->isPointerTy() || local->getAddressSpace() ||
-        local->getAlign().value() < 4 || !a || !count ||
+        llvm::cast< llvm::PointerType >(local->getAllocatedType())->getAddressSpace() ||
+        local->getModule()->getDataLayout().getTypeAllocSize(local->getAllocatedType()) != word ||
+        local->getAlign().value() < word || !a || !count ||
         count->value().to_z_number() != 1 ||
         !a->allocated_type()->is_pointer() ||
         ctx.bundle->data_layout().alloc_size_in_bytes(a->allocated_type()) !=
-            4 ||
+            word ||
         !exact_pointer(binding(c)->argument(1), local))
       return false;
     std::vector< llvm::Value* > work{local};
@@ -595,14 +574,14 @@ class ThreadLifecycle::Impl {
   }
   void inventory() {
     auto& module = *main->getParent();
-    llvm::Triple triple(module.getTargetTriple());
-    if (triple.getArch() != llvm::Triple::x86 || !triple.isOSLinux() ||
-        triple.getEnvironment() != llvm::Triple::GNU ||
+    const auto abi = pthread_object_layout(ctx.bundle, &module);
+    if (!abi || module.getDataLayout().getIndexSizeInBits(0) != abi.word * 8 ||
         !module.getModuleInlineAsm().empty() ||
         module.getNamedGlobal("llvm.global_ctors") ||
         module.getNamedGlobal("llvm.global_dtors") ||
         !mutex_effect_pointer_representations_closed(module))
       throw Refuse{};
+    word = abi.word;
     roots.insert(main);
     // Recover the complete native creation inventory before assigning roles.
     for (auto& f : module)
@@ -626,13 +605,13 @@ class ThreadLifecycle::Impl {
             auto* a = binding(c);
             auto* entry =
                 dyn_cast< ar::FunctionPointerConstant >(a->argument(2));
-            if (!whole_global(slot) || !slot->getValueType()->isIntegerTy(32) ||
+            if (!whole_global(slot) || !slot->getValueType()->isIntegerTy(word * 8) ||
                 !child || child == main || !entry ||
                 !entry->function()->has_frontend() ||
                 entry->function()->frontend< llvm::Value >() != child ||
                 !exact_pointer(a->argument(0), slot) ||
                 !functions.count(child) || !roots.insert(child).second ||
-                slot->getAlign().valueOrOne().value() < 4)
+                slot->getAlign().valueOrOne().value() < word)
               throw Refuse{};
             for (const auto& old : children)
               if (old.slot == slot)
@@ -726,6 +705,7 @@ class ThreadLifecycle::Impl {
                        : nullptr;
               if (!api(c, false) || !load || !slot ||
                   load->getParent() != c->getParent() || !load->hasOneUse() ||
+                  !source_integer_binding(a->argument(0), load) ||
                   !private_result(c))
                 throw Refuse{};
               for (auto* next = load->getNextNode(); next != c;
@@ -863,7 +843,6 @@ class ThreadLifecycle::Impl {
         ctx.opts.entry_points.front()->name() != "main" ||
         ctx.opts.entry_points.front()->num_parameters() != 0 ||
         !ctx.opts.entry_points.front()->has_frontend() ||
-        ctx.bundle->data_layout().pointers.bit_width != 32 ||
         !ctx.opts.no_init_globals.empty() || ctx.concurrent_env.is_dirty() ||
         !ctx.concurrent_env.unmodeled_effects().empty() ||
         !ctx.concurrent_env.unmodeled_thread_creations().empty() ||
