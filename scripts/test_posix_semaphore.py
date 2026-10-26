@@ -29,8 +29,13 @@ def main():
                           ('failure-write', 'return-null', 'failure-call',
                            'escaped-definition', 'unused-effect', 'guarded-size',
                            'repeat-allocation')]
+                if bits == 64:
+                    cases += [(7, 'upper-byte16'), (7, 'upper-byte31')]
                 for case, variant in cases:
-                    body = fixture if variant == 'plain' else wrapped(fixture, variant)
+                    body = fixture if variant in ('plain', 'upper-byte16', 'upper-byte31') else wrapped(fixture, variant)
+                    if variant.startswith('upper-byte'):
+                        body = body.replace('*(char *)&gate = 1;',
+                            '((char *)&gate)[' + variant[len('upper-byte'):] + '] = 1;')
                     if variant == 'guarded-size':
                         body = body.replace('pthread_t *ids = malloc(n * sizeof *ids);',
                             'if ((unsigned)n > (size_t)-1 / sizeof(pthread_t)) abort(); '
@@ -51,7 +56,7 @@ def main():
                     with sqlite3.connect(work / 'output.db') as db:
                         rows = [json.loads(r[0]) for r in db.execute('SELECT info FROM checks')]
                     proofs = [r for r in rows if r.get('semaphore_ownership_contract')]
-                    supported = bits == 32 and variant in ('plain', 'abort', 'unused-effect', 'guarded-size')
+                    supported = variant in ('plain', 'abort', 'unused-effect', 'guarded-size')
                     positive = supported and case in {0, 6, 15}
                     assert bool(proofs) == positive, (case, bits, wide, variant, proofs, output)
                     if supported and case == 2:

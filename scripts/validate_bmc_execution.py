@@ -484,22 +484,52 @@ class Replay:
         if name in ('sem_init', 'sem_wait', 'sem_post'):
             count = 3 if name == 'sem_init' else 1
             types = fn['parameter_types']
-            require(self.program['pointer_bits'] == 32 and fn['declaration'] and
+            bits = self.program['pointer_bits']
+            extent, alignment = (16, 4) if bits == 32 else (32, 8)
+            require(self.verified_pthread_abi() and fn['declaration'] and
+                    inst.get('calling_convention') == 0 and
                     not fn['variadic'] and len(args) == len(types) == count and
-                    types[0]['kind'] == 'pointer' and fn['return_type']['kind'] == 'integer' and
-                    fn['return_type']['bits'] == 32 and fn['return_type']['signed'], 'semaphore ABI')
+                    types[0]['kind'] == 'pointer' and types[0]['bits'] == bits and
+                    int(types[0]['size']) == bits // 8 and fn['return_type']['kind'] == 'integer' and
+                    fn['return_type']['bits'] == 32 and fn['return_type']['signed'] and
+                    int(fn['return_type']['size']) == 4, 'semaphore ABI')
             require(all(op['type'] == t for op, t in zip(inst['operands'][1:], types)) and
                     ('result' not in inst or inst['result']['type'] == fn['return_type']), 'semaphore call types')
-            self.library_layout(inst, 0, 16, 4)
+            native = inst.get('native_semaphore', {})
+            expected_bits = [0, 32, 32] if name == 'sem_init' else [0]
+            require(self.program.get('little_endian') is True and
+                    native.get('pointer_bits') == bits and native.get('little_endian') is True and
+                    native.get('target_triple') == self.program.get('target_triple') and
+                    native.get('name') == name and native.get('declaration') is True and
+                    native.get('variadic') is False and native.get('calling_convention') == 0 and
+                    native.get('matching_signature') is True and
+                    native.get('operand_bundles') is False and
+                    native.get('special_parameter_abi') is False and
+                    native.get('parameter_bits') == native.get('argument_bits') == expected_bits and
+                    native.get('parameter_address_space') == native.get('argument_address_space') == 0 and
+                    native.get('return_bits') == native.get('result_bits') == 32,
+                    'native semaphore ABI')
+            self.library_layout(inst, 0, extent, alignment)
             require(inst['argument_layouts'][0].get('name') == 'union.sem_t', 'semaphore argument type')
             pointer = args[0]
-            self.region(pointer, 16, 4, opaque=True)
+            self.region(pointer, extent, alignment, opaque=True)
             require(pointer[0].startswith('global:') and pointer[1] == 0, 'semaphore identity')
             global_name = pointer[0][len('global:'):]
             glob = self.program['globals'][global_name]
             require(not glob['declaration'] and not glob['thread_local'] and
                     glob.get('frontend_type_name') == 'union.sem_t' and
-                    int(glob['type']['extent']) == 16 and glob['alignment'] >= 4, 'semaphore object')
+                    int(glob['type']['size']) == int(glob['type']['extent']) == extent and
+                    glob['alignment'] >= alignment, 'semaphore object')
+            source_object = glob.get('native_semaphore', {})
+            require(source_object.get('extent') == source_object.get('store_size') == extent and
+                    source_object.get('type_alignment') == alignment and
+                    source_object.get('alignment', 0) >= alignment and
+                    source_object.get('address_space') == 0 and
+                    source_object.get('declaration') is False and
+                    source_object.get('thread_local') is False and
+                    source_object.get('constant') is False and
+                    source_object.get('externally_initialized') is False,
+                    'native semaphore object')
             if 'result' in inst:
                 result = inst['result']['id']
                 require(not any(op.get('id') == result and op.get('kind') in ('variable', 'local')

@@ -71,7 +71,14 @@ def check_damage(program, certificate):
     def named(step, name):
         inst = program['instructions'][step['statement']]
         return inst['kind'] == 'call' and inst['operands'][0].get('id') == name
-    for operation in ('post', 'wait', 'init', 'creator', 'layout'):
+    for operation in ('post', 'wait', 'init', 'creator', 'layout',
+                      'native-missing', 'native-declaration', 'native-cc',
+                      'native-signature', 'native-bundle', 'native-attribute',
+                      'native-width', 'native-return', 'native-address-space',
+                      'global-extent', 'global-store-size', 'global-type-alignment',
+                      'global-alignment', 'global-address-space', 'call-cc',
+                      'endian', 'target', 'native-pointer-bits', 'native-endian',
+                      'native-target', 'ar-store-size'):
         damaged, model = copy.deepcopy(certificate), copy.deepcopy(program)
         startup = next(t for t in damaged['traces'] if t['id'] == 'startup')
         if operation == 'post':
@@ -84,10 +91,43 @@ def check_damage(program, certificate):
             worker['steps'].pop(next(i for i, step in enumerate(worker['steps']) if named(step, 'sem_wait')))
         elif operation == 'creator':
             next(t for t in damaged['traces'] if t['id'] == 'b')['creator_step'] = 0
+        elif operation in ('endian', 'target'):
+            model['little_endian' if operation == 'endian' else 'target_triple'] = (
+                False if operation == 'endian' else 'x86_64-unknown-linux-musl')
+        elif operation == 'ar-store-size':
+            next(g for g in model['globals'].values()
+                 if g.get('frontend_type_name') == 'union.sem_t')['type']['size'] = '1'
+        elif operation.startswith('global-'):
+            obj = next(g for g in model['globals'].values()
+                       if g.get('frontend_type_name') == 'union.sem_t')
+            field = operation[len('global-'):].replace('-', '_')
+            obj['native_semaphore'][field] = 1
         else:
             for inst in model['instructions'].values():
-                if inst['kind'] == 'call' and inst['operands'][0].get('id') == 'sem_wait':
+                if inst['kind'] != 'call' or inst['operands'][0].get('id') != 'sem_wait':
+                    continue
+                native = inst['native_semaphore']
+                if operation == 'layout':
                     inst['argument_layouts'][0]['size'] = 15
+                elif operation == 'native-missing':
+                    del inst['native_semaphore']
+                elif operation == 'call-cc':
+                    inst['calling_convention'] = 8
+                else:
+                    key, value = {
+                        'native-pointer-bits': ('pointer_bits', 16),
+                        'native-endian': ('little_endian', False),
+                        'native-target': ('target_triple', 'x86_64-unknown-linux-musl'),
+                        'native-declaration': ('declaration', False),
+                        'native-cc': ('calling_convention', 8),
+                        'native-signature': ('matching_signature', False),
+                        'native-bundle': ('operand_bundles', True),
+                        'native-attribute': ('special_parameter_abi', True),
+                        'native-width': ('parameter_bits', [64]),
+                        'native-return': ('return_bits', 64),
+                        'native-address-space': ('parameter_address_space', 1),
+                    }[operation]
+                    native[key] = value
         damaged['program_sha256'] = digest_json(model)
         result = check(model, damaged)
         assert result['status'] != 'ACCEPT', (operation, result)
@@ -96,6 +136,7 @@ def check_damage(program, certificate):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     body = (ROOT / 'analyzer/test/regression/bmc-values/semaphore-prefix.c').read_text()
     with tempfile.TemporaryDirectory(prefix='ikos-semaphore-') as tmp:
@@ -109,7 +150,7 @@ def main():
                 report.unlink(missing_ok=True)
                 proc = subprocess.run([str(args.ikos.resolve()), '--analyses=race',
                     '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
-                    '--bmc-deadline-ms=20000', '--bmc-solver-timeout-ms=1000', '-m32',
+                    '--bmc-deadline-ms=20000', '--bmc-solver-timeout-ms=1000', '-m' + str(args.bits),
                     '--format=json', '--report-file=' + str(report), '-o', str(work/'out.db'), str(source)],
                     env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True, text=True, timeout=35)
                 verdict = classify(proc.stdout + proc.stderr, proc.returncode, False)

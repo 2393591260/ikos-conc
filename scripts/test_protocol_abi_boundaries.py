@@ -32,7 +32,6 @@ def main():
         ('first-publication', 'publication_contract'),
         ('symbolic-arena', 'arena_reservation_contract'),
         ('runtime-stdio', 'runtime_stdio_contract'),
-        ('posix-semaphore', 'semaphore_ownership_contract'),
         ('heap-pthread-initialization', None),
     )
     with tempfile.TemporaryDirectory(prefix='ikos-abi-boundary-') as temporary:

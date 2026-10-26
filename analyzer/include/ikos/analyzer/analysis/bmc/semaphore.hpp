@@ -2,6 +2,7 @@
 #pragma once
 #include "facts.hpp"
 #include "traces.hpp"
+#include <ikos/analyzer/analysis/execution_engine/heap_pointer_effects.hpp>
 
 namespace ikos { namespace analyzer { namespace bmc {
 
@@ -37,7 +38,9 @@ inline bool semaphore_prefix_supported(const std::vector< ExecutionTrace >& trac
       auto* source = call && call->has_frontend()
           ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
       BmcEvent address;
-      if (global == nullptr || source == nullptr || !source->use_empty() ||
+      if (global == nullptr || source == nullptr ||
+          !pthread_object_layout(global->bundle(), source->getModule()) ||
+          !source->use_empty() ||
           call->num_arguments() != (event.kind == EvKind::SemaphoreInit ? 3 : 1) ||
           !pointer_on_path(call->argument(0), trace.events, i, trace.root,
                            trace.argument, address, &traces[0].events) ||

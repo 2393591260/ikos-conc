@@ -2433,10 +2433,11 @@ public:
           if (offset && offset->is_zero() && pointer.points_to().is_set() &&
               pointer.points_to().size() == 1 && pointer.points_to().contains(location) &&
               this->prepare_mem_access(dest)) {
-            auto width = MachineInt(16, this->_data_layout.pointers.bit_width, Unsigned);
+            const auto extent = this->_data_layout.alloc_size_in_bytes(global->type()->pointee());
+            auto width = MachineInt(extent, this->_data_layout.pointers.bit_width, Unsigned);
             this->data().normal().mem_forget_reachable(dest.var(), width);
             auto address = core::IndexableTraits< MemoryLocation* >::index(location);
-            this->_ctx.concurrent_env.record_pointer_write(address, pointer.offset(), core::ZNumber(16), false);
+            this->_ctx.concurrent_env.record_pointer_write(address, pointer.offset(), extent, false);
             this->_ctx.concurrent_env.record_privatized_write(
                 core::ConcurrentGlobalEnv::kNoLockPartitionAddr, address,
                 core::machine_int::Interval::top(64, Signed));

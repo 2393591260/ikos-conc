@@ -234,6 +234,47 @@ public:
               native.put("result_address_space", type->getAddressSpace());
             out.put("native_malloc", native);
           }
+          if (callee && (callee->getName() == "sem_init" ||
+                         callee->getName() == "sem_wait" ||
+                         callee->getName() == "sem_post")) {
+            JsonDict native;
+            native.put("name", callee->getName().str());
+            native.put("declaration", callee->isDeclaration());
+            native.put("variadic", callee->isVarArg());
+            native.put("calling_convention", callee->getCallingConv());
+            native.put("matching_signature", call->getFunctionType() == callee->getFunctionType());
+            native.put("operand_bundles", call->hasOperandBundles());
+            bool special = false;
+            JsonList parameters, arguments;
+            for (auto* type : callee->getFunctionType()->params())
+              parameters.add(type->isIntegerTy() ? type->getIntegerBitWidth() : 0);
+            for (unsigned i = 0; i < call->arg_size(); ++i) {
+              auto* type = call->getArgOperand(i)->getType();
+              arguments.add(type->isIntegerTy() ? type->getIntegerBitWidth() : 0);
+              for (auto attr : {llvm::Attribute::ByVal, llvm::Attribute::StructRet,
+                               llvm::Attribute::InAlloca, llvm::Attribute::Preallocated})
+                special |= call->paramHasAttr(i, attr) ||
+                    (i < callee->arg_size() && callee->hasParamAttribute(i, attr));
+            }
+            native.put("special_parameter_abi", special);
+            const auto& module_layout = call->getModule()->getDataLayout();
+            native.put("pointer_bits", module_layout.getPointerSizeInBits(0));
+            native.put("little_endian", module_layout.isLittleEndian());
+            native.put("target_triple", call->getModule()->getTargetTriple());
+            native.put("parameter_bits", parameters);
+            native.put("argument_bits", arguments);
+            auto* parameter = callee->arg_empty() ? nullptr
+                : llvm::dyn_cast< llvm::PointerType >(callee->getFunctionType()->getParamType(0));
+            auto* argument = call->arg_empty() ? nullptr
+                : llvm::dyn_cast< llvm::PointerType >(call->getArgOperand(0)->getType());
+            if (parameter) native.put("parameter_address_space", parameter->getAddressSpace());
+            if (argument) native.put("argument_address_space", argument->getAddressSpace());
+            native.put("return_bits", callee->getReturnType()->isIntegerTy()
+                ? callee->getReturnType()->getIntegerBitWidth() : 0);
+            native.put("result_bits", call->getType()->isIntegerTy()
+                ? call->getType()->getIntegerBitWidth() : 0);
+            out.put("native_semaphore", native);
+          }
           JsonList layouts;
           const auto& layout = call->getModule()->getDataLayout();
           for (const auto& argument : call->args()) {
@@ -292,8 +333,23 @@ public:
       object.put("alignment", global->alignment());
       if (global->has_frontend()) {
         auto* source = global->frontend< llvm::GlobalVariable >();
-        if (auto* structure = llvm::dyn_cast< llvm::StructType >(source->getValueType()))
+        if (auto* structure = llvm::dyn_cast< llvm::StructType >(source->getValueType())) {
           if (structure->hasName()) object.put("frontend_type_name", structure->getName().str());
+          if (structure->hasName() && structure->getName() == "union.sem_t" && structure->isSized()) {
+            const auto& layout = source->getParent()->getDataLayout();
+            object.put("native_semaphore", JsonDict{
+                {"extent", layout.getTypeAllocSize(structure).getFixedValue()},
+                {"store_size", layout.getTypeStoreSize(structure).getFixedValue()},
+                {"type_alignment", layout.getABITypeAlign(structure).value()},
+                {"alignment", source->getAlign() ? source->getAlign()->value()
+                                                : layout.getABITypeAlign(structure).value()},
+                {"address_space", source->getAddressSpace()},
+                {"declaration", source->isDeclaration()},
+                {"thread_local", source->isThreadLocal()},
+                {"constant", source->isConstant()},
+                {"externally_initialized", source->isExternallyInitialized()}});
+          }
+        }
       }
       object.put("declaration", global->is_declaration()); JsonList stores;
       if (global->has_frontend() && global->type()->pointee()->is_pointer()) {

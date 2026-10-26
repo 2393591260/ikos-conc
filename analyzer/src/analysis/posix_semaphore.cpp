@@ -1,6 +1,7 @@
 // Copyright and license: see context.hpp.
 #include <ikos/analyzer/analysis/posix_semaphore.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
+#include <ikos/analyzer/analysis/execution_engine/heap_pointer_effects.hpp>
 #include <ikos/analyzer/analysis/execution_engine/allocation_continuation.hpp>
 #include <llvm/IR/CFG.h>
 #include <algorithm>
@@ -10,6 +11,7 @@ namespace ikos {
 namespace analyzer {
 class PosixSemaphore::Impl {
   Context& ctx;
+  PthreadObjectLayout abi;
   std::map< llvm::Value*, ar::Statement* > originals;
   std::map< llvm::GlobalVariable*, ar::GlobalVariable* > globals;
   std::map< llvm::Function*, ar::Function* > functions;
@@ -49,7 +51,7 @@ class PosixSemaphore::Impl {
   bool heap(llvm::CallBase* allocation, llvm::Function* main) {
     auto* a = binding(allocation);
     if (!a || allocation->getFunction() != main ||
-        allocation->arg_size() != 1 || !allocation->getArgOperand(0)->getType()->isIntegerTy(32) ||
+        allocation->arg_size() != 1 || !allocation->getArgOperand(0)->getType()->isIntegerTy(abi.word * 8) ||
         !allocation->getType()->isPointerTy() ||
         native_handle_callee(a)->intrinsic_id() != ar::Intrinsic::LibcMalloc) return false;
     // Preserve single execution even when size/failure guards split main.
@@ -71,7 +73,7 @@ class PosixSemaphore::Impl {
       for (auto* u : v->users()) {
         if (auto* cast = llvm::dyn_cast< llvm::BitCastOperator >(u)) { todo.push_back(cast); continue; }
         if (auto* gep = llvm::dyn_cast< llvm::GEPOperator >(u)) {
-          if (gep->getPointerOperand() != v || !gep->getSourceElementType()->isIntegerTy(32)) return false;
+          if (gep->getPointerOperand() != v || !gep->getSourceElementType()->isIntegerTy(abi.word * 8)) return false;
           todo.push_back(gep); continue;
         }
         if (auto* compare = llvm::dyn_cast< llvm::ICmpInst >(u)) {
@@ -89,7 +91,7 @@ class PosixSemaphore::Impl {
           continue;
         }
         if (auto* load = llvm::dyn_cast< llvm::LoadInst >(u)) {
-          if (load->getPointerOperand() != v || !load->getType()->isIntegerTy(32) ||
+          if (load->getPointerOperand() != v || !load->getType()->isIntegerTy(abi.word * 8) ||
               load->isAtomic() || load->isVolatile() || load->getFunction() != main) return false;
           for (auto* use : load->users()) {
             auto* c = llvm::dyn_cast< llvm::CallBase >(use);
@@ -117,12 +119,16 @@ class PosixSemaphore::Impl {
   bool semaphore(llvm::GlobalVariable* g, llvm::Function* main) {
     auto* type = llvm::dyn_cast< llvm::StructType >(g->getValueType());
     auto* module = main->getParent();
+    const unsigned extent = abi.word == 4 ? 16 : 32;
     if (!type || type->isOpaque() || !type->hasName() || type->getName() != "union.sem_t" ||
         !globals.count(g) || !globals.at(g)->is_definition() || globals.at(g)->is_thread_local() || g->isConstant() || g->isThreadLocal() || g->isExternallyInitialized() ||
         g->getAddressSpace() != 0 || !g->hasInitializer() || !g->getInitializer()->isNullValue() ||
-        module->getDataLayout().getTypeAllocSize(type) != 16 ||
-        (g->getAlign() ? g->getAlign()->value() : module->getDataLayout().getABITypeAlign(type).value()) < 4 ||
-        ctx.bundle->data_layout().alloc_size_in_bytes(globals.at(g)->type()->pointee()) != 16) return false;
+        module->getDataLayout().getTypeAllocSize(type) != extent ||
+        module->getDataLayout().getTypeStoreSize(type) != extent ||
+        module->getDataLayout().getABITypeAlign(type).value() != abi.word ||
+        (g->getAlign() ? g->getAlign()->value() : module->getDataLayout().getABITypeAlign(type).value()) < abi.word ||
+        ctx.bundle->data_layout().alloc_size_in_bytes(globals.at(g)->type()->pointee()) != extent ||
+        ctx.bundle->data_layout().store_size_in_bytes(globals.at(g)->type()->pointee()) != extent) return false;
     llvm::CallBase* init = nullptr;
     bool binary_permit = false;
     Token token{g, {}}; std::map< ar::CallBase*, ar::GlobalVariable* > candidate;
@@ -173,9 +179,11 @@ class PosixSemaphore::Impl {
     if (!ctx.opts.enable_thread_modular || ctx.opts.procedural == Procedural::Intraprocedural ||
         ctx.opts.entry_points.size() != 1 || ctx.opts.entry_points.front()->name() != "main" ||
         ctx.opts.entry_points.front()->num_parameters() != 0 || !ctx.opts.entry_points.front()->has_frontend() ||
-        ctx.bundle->data_layout().pointers.bit_width != 32 || !ctx.opts.no_init_globals.empty() ||
+        !ctx.opts.no_init_globals.empty() ||
         ctx.bundle->global_or_null("ar.global_ctors") || ctx.bundle->global_or_null("ar.global_dtors")) return false;
     auto* main = ctx.opts.entry_points.front()->frontend< llvm::Function >();
+    abi = pthread_object_layout(ctx.bundle, main->getParent());
+    if (!abi) return false;
     bool potential = false;
     for (auto& g : main->getParent()->globals()) {
       if (g.isDeclaration() && !g.use_empty()) return false;
@@ -183,9 +191,7 @@ class PosixSemaphore::Impl {
       potential |= t && t->hasName() && t->getName() == "union.sem_t";
     }
     if (!potential) return false;
-    llvm::Triple target(main->getParent()->getTargetTriple());
-    if (!main->use_empty() || target.getArch() != llvm::Triple::x86 || !target.isOSLinux() ||
-        target.getEnvironment() != llvm::Triple::GNU ||
+    if (!main->use_empty() ||
         !mutex_effect_pointer_representations_closed(*main->getParent()) ||
         !main->getParent()->getModuleInlineAsm().empty()) return false;
     for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end(); ++it)

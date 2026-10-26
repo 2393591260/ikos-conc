@@ -150,6 +150,8 @@ add_concurrency_test(posix-semaphore "${CONCURRENCY_ROOT}/scripts/test_posix_sem
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(bmc-semaphore "${CONCURRENCY_ROOT}/scripts/test_bmc_semaphore.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(bmc-semaphore-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_semaphore.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(bmc-mutex-lifetime "${CONCURRENCY_ROOT}/scripts/test_bmc_mutex_lifetime.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(bmc-main-stack-mutex "${CONCURRENCY_ROOT}/scripts/test_bmc_main_stack_mutex.py"

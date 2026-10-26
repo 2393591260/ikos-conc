@@ -249,18 +249,18 @@ change with pointer width.
 | ThreadPrivateHeap, ArraySlices, ReadonlyHeapReads | ILP32 only | Native allocation/count/index/handle correspondence needs a coordinated migration. Internal BV64 arithmetic is not LP64 support. |
 | FirstPublication, BucketListOwnership, SymbolicArena | ILP32 only | Link slots, native mutex layout, address arithmetic and source/AR mapping remain restricted. |
 | ThreadLifecycle, ScProtocol/protected protocol, SelfPublication | ILP32 only | Their independent state interpreters still depend on the native 32-bit frame. |
-| PthreadInitializationFrame, RuntimeStdioFrame, PosixSemaphore | ILP32 only for these certificates | Narrower native initialization/scan models are independent. A pthread_t slot follows the native ABI. |
+| PthreadInitializationFrame, RuntimeStdioFrame | ILP32 only for these certificates | Narrower native initialization/scan models are independent. A pthread_t slot follows the native ABI. |
+| PosixSemaphore effects, binary ownership and finite BMC prefixes | GNU ILP32 and LP64 | Native sem_t is 16/32 bytes with 4/8 alignment; all byte effects and independent execution checks follow the same verified layout. int results and permit counts remain i32. |
 | Pthread-key effects and race-only memory-free destructors | GNU ILP32 and LP64 | Key selectors and create output remain i32; values/callback arguments are native pointers. Return values stay TOP; no TLS equality, privacy or completion is inferred. |
 
 Unsupported certificate ABIs refuse the certificate and preserve the ordinary
 analysis/coverage obligations. They are not silently treated as verified SAFE,
-nor counted as positive LP64 support. The certificate ABI boundary test exercises all 12 remaining ILP32-only boundaries with
+nor counted as positive LP64 support. The certificate ABI boundary test exercises all 11 remaining ILP32-only boundaries with
 32-bit hits and 64-bit refusal; each migrated protocol has both positive and
 premise-breaking tests.
 
 Further migrations must update producers and every consumer together. For
-example, a GNU LP64 semaphore uses a different object extent; changing only its
-entry gate would leave the numerical opaque-memory effect at the old 16-byte
-width. Likewise, pointer-table offsets and pthread_t VLA strides cannot be
+example, the semaphore migration updates the native object, numerical byte
+havoc, finite encoding and independent replay together. Pointer-table offsets and pthread_t VLA strides cannot be
 ported by merely changing a compiler flag. Independent interpreters retain
 their own contracts until an equivalence argument justifies replacement.

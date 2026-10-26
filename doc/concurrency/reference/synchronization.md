@@ -332,10 +332,13 @@ partial effects or another actual payload refuse the binding.
 <summary>Closed GNU binary semaphores — prove exclusion under a restricted runtime contract</summary>
 
 A shared `PosixSemaphore` description covers an aligned, zero-initialized,
-16-byte global `sem_t` in the GNU/Linux i386 profile. It requires one actual
+global `sem_t` in the checked GNU/Linux i386 or x86-64 profile:
+16 bytes/alignment 4 on ILP32, 32 bytes/alignment 8 on LP64. LLVM and AR
+allocation/store extents must agree. It requires one actual
 `sem_init(&object, 0, 1)` in main's entry block before all helper/worker entry,
 exact source/AR calls, and closed object uses through `sem_wait`/`sem_post` only.
-Numerical transfer forgets the control bytes and publishes their interference;
+Numerical transfer forgets the full verified native object and publishes the
+same byte extent as interference;
 results remain TOP. The checker omits only this sealed opaque control storage,
 whose representation cannot be observed or changed by application accesses.
 
@@ -376,7 +379,16 @@ omitted from the executable effect inventory.
 Implementation: `analysis/posix_semaphore.hpp` and its source, numerical transfer,
 and `src/checker/binary_token.cpp`. Run `python3 scripts/test_posix_semaphore.py`
 for dual-ABI int/long-long, checked allocation, branching, capacity, lifecycle,
-alias, TLS and API controls; this semaphore profile remains ILP32-only.
+alias, TLS and API controls, including LP64 upper-half storage accesses.
+
+The separate finite BMC successful-prefix contract supports the same two ABIs.
+It keeps int results, pshared and permit counts at 32 bits. Concrete waits must
+fit the real preexisting credits, with actual initialization and creator events.
+The exporter records native API attributes, signature, target and control-object
+layout; independent replay checks these against the AR program before consuming
+credits. Run scripts/test_bmc_semaphore.py with --bits 32 and --bits 64 for real
+executions and premise-damage controls. Neither effect coverage nor bounded
+failure establishes general safety.
 
 </details>
 
