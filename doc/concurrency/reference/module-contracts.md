@@ -53,6 +53,7 @@ exclusion remain distinct permissions even when supplied by the same component.
 | `self-publication-one-write-repeated-reads` | Self-publication: one write, repeated reads | [Contract](synchronization.md#self-publication-one-write-repeated-reads) |
 | `finite-sequentially-consistent-protocols` | Finite sequentially consistent protocols — exhaust the supported protocol state space | [Contract](synchronization.md#finite-sequentially-consistent-protocols) |
 | `two-mutex-handover` | Two-mutex handover — prove ordering through a checked lock history | [Contract](synchronization.md#two-mutex-handover) |
+| `initialization-publication-pair` | Pair-specific initialization and mutex publication | [Contract](synchronization.md#initialization-publication-pair) |
 | `closed-first-publication-ordering` | Closed first-publication ordering — order initialization before acquired accesses | [Contract](synchronization.md#closed-first-publication-ordering) |
 | `sealed-runtime-initialization-gates` | Sealed runtime initialization gates — check one-time initialization before later accesses | [Contract](synchronization.md#sealed-runtime-initialization-gates) |
 | `monotone-publication-through-a-mutex-protected-flag` | Monotone publication through a mutex-protected flag — order earlier writes before observed reads | [Contract](synchronization.md#monotone-publication-through-a-mutex-protected-flag) |
@@ -61,10 +62,15 @@ exclusion remain distinct permissions even when supplied by the same component.
 | `monotone-ticket-ownership` | Monotone ticket ownership — track unique reserved and held access rights | [Contract](synchronization.md#monotone-ticket-ownership) |
 | `mutex-protected-scalar-protocols` | Mutex-protected scalar protocols — explore protected values and synchronization histories | [Contract](synchronization.md#mutex-protected-scalar-protocols) |
 | `serial-dynamic-thread-lifecycles` | Serial dynamic thread lifecycles — check when child activations cannot overlap | [Contract](synchronization.md#serial-dynamic-thread-lifecycles) |
+| `constant-main-thread-completion` | Complete native handle generations at the actual access point | [Contract](synchronization.md#constant-main-thread-completion) |
+| `native-thread-argument-windows` | Explicit native relational observations and final byte-window exclusion | [Contract](../developer-guide/architecture.md#native-thread-argument-windows) |
 | `bmc-thread-instances-arguments-and-heap-handles` | BMC thread instances, arguments and heap handles | [Contract](bounded-execution.md#bmc-thread-instances-arguments-and-heap-handles) |
 | `atomic-targets-and-communication` | Atomic targets and communication — retain the required execution suffixes and ordering | [Contract](bounded-execution.md#atomic-targets-and-communication) |
 | `exact-ffs-values-in-bmc` | Exact ffs values in BMC — compute the lowest set bit of the actual argument | [Contract](bounded-execution.md#exact-ffs-values-in-bmc) |
 | `startup-heap-pointer-fields-in-bounded-executions` | Startup heap pointer fields in bounded executions — bind loads to actual initialization stores | [Contract](bounded-execution.md#startup-heap-pointer-fields-in-bounded-executions) |
+| `later-dynamic-access-targets` | Exact access ordinals across supported execution profiles | [Contract](bounded-execution.md#later-dynamic-access-targets) |
+| `timed-main-and-a-completed-provider` | Actual main/provider timeline, joins and memory effects | [Contract](bounded-execution.md#timed-main-and-a-completed-provider) |
+| `repeated-main-heap-allocations` | Canonical allocation occurrences, bytes and lifetimes | [Contract](bounded-execution.md#repeated-main-heap-allocations) |
 | `partition-inclusion-and-convergence` | Partition inclusion and convergence — check coverage when abstract states merge | [Contract](abstract-state.md#partition-inclusion-and-convergence) |
 
 ## Maintaining a contract
@@ -121,6 +127,7 @@ extra I/O can change wall-clock timings.
 | Concrete or corresponding mutex | Both accesses protected; actual lock equality or overlap-implies-lock-equality proof | Shared read/read locks or unresolved identities retain the pair. |
 | Publication, token, ownership, graph and slice passes | The full mechanism-specific contract linked above | An unsupported effect, missing bound or invalidated premise retains the pair. |
 | Optional AI offset exclusion | Stable all-offset interval/congruence facts; unbounded overlap query is UNSAT | SAT, invalid facts, timeout or exhausted query budget retains the pair. |
+| Optional native argument windows | Closed creation family, observed native relative windows and positive stride in the explicit supported domain | Missing/dirty observations, wrong family/object or overlap retains the pair. |
 
 These rules rely on the recorded accesses conservatively covering program
 behavior. They do not prove frontend translation or every library transfer;
@@ -242,7 +249,7 @@ change with pointer width.
 | --- | --- | --- |
 | Native pthread handles, default-normal mutex identity | Checked GNU/Linux x86 ILP32 and x86-64 LP64 | Handle/size_t words are 4/8 bytes; mutex objects are 24/40 bytes. |
 | RegionOwnership, InitPublication, ConstantThreadCompletion | Checked GNU32/64 subcontracts | Object/context, all-alternative coverage and actual endpoint checks remain necessary. |
-| BinaryToken atomic/ticket modes | Checked GNU32/64 | Token/ticket protocol integers remain i32; ticket wrap is still refused. Semaphore mode has a separate restriction. |
+| BinaryToken atomic/ticket modes | Checked GNU32/64 | Token/ticket protocol integers remain i32; ticket wrap is still refused. Semaphore object layout and effects follow their separate contract below. |
 | OnceInitialization, MutexHandover, GuardedPublication | Checked GNU32/64 | Once state remains i32; cond storage stays 48 bytes with native alignment; malloc uses native size_t. |
 | Finite ArenaReservation | Checked GNU32/64 | Signed i32 reservation arithmetic; only checked sext to the native LP64 index. |
 | LockedCreation, closed pthread_once, one-shot PosixBarrier | Checked GNU32/64 subcontracts | No general descendant completion, callback effect or reusable-barrier claim. |
@@ -259,6 +266,7 @@ change with pointer width.
 | RuntimeStdioFrame | Checked GNU32/64 | Native handle and runtime stream widths are checked separately from fixed-width scanf integer results and counts. |
 | PosixSemaphore effects, binary ownership and finite BMC prefixes | GNU ILP32 and LP64 | Native sem_t is 16/32 bytes with 4/8 alignment; all byte effects and independent execution checks follow the same verified layout. int results and permit counts remain i32. |
 | Pthread-key effects and race-only memory-free destructors | GNU ILP32 and LP64 | Key selectors and create output remain i32; values/callback arguments are native pointers. Return values stay TOP; no TLS equality, privacy or completion is inferred. |
+| ThreadArgumentWindows | Checked GNU32/64, explicit VarPack Polka plus guards | Native argument/stride/window arithmetic and stable observation checks; default interval is unchanged. |
 
 Unsupported certificate ABIs refuse the certificate and preserve the ordinary
 analysis/coverage obligations. They are not silently treated as verified SAFE,

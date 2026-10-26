@@ -96,7 +96,8 @@ Run `python3 scripts/test_locked_creation.py` for dual-ABI wide-payload controls
 The race checker can independently saturate a finite SC protocol state space.
 Its initial subset closes two distinct, once-created worker roots, direct whole
 1–64-bit integer scalar effects, and all LLVM/AR call and memory effects on
-ILP32. Each protocol global has an exact constant initializer and only actual
+the checked GNU/Linux ILP32 and LP64 layouts. Native handle storage is checked
+separately from the protocol integers. Each protocol global has an exact constant initializer and only actual
 system-scope sequentially consistent loads and literal stores. RMW, fences,
 weak or mixed accesses, escaped addresses, heap/array effects and unknown calls
 refuse this certificate. The parent cannot write globals; its private scalar
@@ -166,10 +167,12 @@ unproved protocol path disable the rule. This is separate from the disabled
 legacy `private_init` heuristic and from the indexed ownership proof.
 
 The ordering uses program order, thread creation and the POSIX mutex release /
-acquisition memory synchronization contract. The first implementation limits
-normal mutex representation to the checked GNU x86 ILP32 ABI (24 complete zero
-bytes, aligned storage and the actual typed pthread API). It is not a claim of
-support for arbitrary weak-memory publication protocols or for LP64.
+acquisition memory synchronization contract. Both checked GNU/Linux native
+layouts are supported: graph pointer slots and padded fields match LLVM/AR,
+and the normal mutex has complete zero storage, native alignment and the actual
+typed pthread API. The [ABI table](module-contracts.md#per-mechanism-abi-boundaries)
+records the sizes and remaining premises. This is not a claim of arbitrary
+weak-memory publication support.
 
 </details>
 

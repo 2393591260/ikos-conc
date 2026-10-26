@@ -109,18 +109,20 @@ when the native comparison matches that proof. The object remains pending until
 the existing real zero-base payload Store establishes its normal continuation;
 the guard does not grant memory access, graph ownership or FALSE confirmation.
 Other nullable comparisons and failure-side effects still refuse the certificate.
-This bucket/list subset retains its ILP32 layout boundary.
+The bucket/list subset uses the checked GNU/Linux ILP32 and LP64 layouts,
+with native link, mutex and handle bindings.
 
 The private main-to-worker heap handoff certificate accepts this same exact
 pure-abort NULL comparison as a nonescaping use. Fresh allocation before each
 create attempt, a single transfer, closed uses, access bounds and worker lifetime
-remain required. Other pointer comparisons still refuse this ILP32 certificate.
+remain required on both checked ABIs. Other pointer comparisons still refuse
+this certificate.
 
 Regression: `scripts/test_allocation_continuations.py --ikos install/bin/ikos`
 uses native headers in both ABIs and includes long-long payloads, partial
 initialization, early escape/publication, overlapping writes, failure-side effects
-and shared fallback objects. The dynamic-list helper control remains UNKNOWN in
-LP64 because its separate handle/object coverage is unsupported.
+and shared fallback objects. Each consumer must establish its own handle/object
+coverage; accepting the allocation continuation alone cannot complete that proof.
 
 </details>
 

@@ -37,8 +37,9 @@ Allocation failure does not grant non-nullness or prune the caller's path.
 Only pairs whose two recorded accesses match certified LLVM/AR effects and exact
 heap provenance are excluded. All existing access records, shared interference,
 coverage checks and unrelated race candidates remain active. The calloc
-certificate targets the ILP32 Linux/GNU ABI and does not establish general
-creator-to-child or per-iteration ownership.
+certificate supports the checked GNU/Linux ILP32 and LP64 layouts; native
+size_t, handle and index bindings remain separate from signed-i32 loop reasoning.
+It does not establish general creator-to-child or per-iteration ownership.
 
 A separate certificate supports a positive constant-size `malloc` in `main`
 whose result is passed to exactly one child. The allocation must dominate the
@@ -163,8 +164,10 @@ transformed examples run with BMC disabled via
 
 `ArraySlices` can exclude a pair of heap accesses when complete native/AR
 frames establish disjoint inductive ranges over the same stable global pointer.
-The current ILP32 subset handles one signed i32 induction loop per worker and
-per array constructor, with exact scalar helpers and pre-create initialization.
+The checked GNU/Linux ILP32 and LP64 subset handles one signed i32 induction
+loop per worker and per array constructor, with exact scalar helpers and
+pre-create initialization. Native allocation/GEP/handle widths are checked
+separately; byte arithmetic is validated before narrowing.
 Each loop uses an arbitrary iteration satisfying its inductive lower bound;
 the actual guard, stride, allocation extent and full access width must be
 proved. The increment must preserve the invariant without wrapping. This is
@@ -188,7 +191,8 @@ the loop receive no loop-body certificate. Unsupported frames and solver
 limits retain the existing candidate.
 
 Run `python3 scripts/test_array_slices.py` for renamed positive, overlap,
-effect-frame and byte-width controls, including 64-bit payloads on ILP32.
+effect-frame and byte-width controls, including 64-bit payloads; use
+`--bits 32` and `--bits 64` for the distinct native ABI paths.
 Implementation: `checker/array_slices.hpp` and `src/checker/array_slices.cpp`.
 
 </details>
@@ -197,11 +201,12 @@ Implementation: `checker/array_slices.hpp` and `src/checker/array_slices.cpp`.
 <details>
 <summary>Serialized arena reservations — prove that successful reservations do not overlap</summary>
 
-An independent ILP32-only symbolic mode handles a closed, immutable heap array initialized
-before all worker creation. It interprets every normal startup prefix and proves
-the allocation size equals the positive element count times its stride without
-32-bit wrap. Under one real default-normal mutex, the shared counter starts at
-zero and every successful transaction strictly increases it within that count.
+An independent symbolic mode handles a closed, immutable heap array initialized
+before all worker creation on the checked GNU/Linux ILP32 and LP64 layouts. It
+interprets every normal startup prefix and proves the native allocation size
+equals the positive signed-i32 element count times its stride without wrap.
+Under one real default-normal mutex, the shared counter starts at zero and every
+successful transaction strictly increases it within that count.
 A success at zero is a nonempty reservation; a transaction without a Store must
 have a provably empty processing loop. Later workers see an arbitrary counter
 in the inductive range, rather than the first worker's startup value.
@@ -270,8 +275,10 @@ The finite global-array modes support checked GNU/Linux x86 ILP32 and x86-64
 LP64 layouts. Their counter, reservation outputs and checked intermediate arithmetic
 remain signed i32. LP64 accepts only a sign extension of that checked i32 index to
 i64; zero extension, truncation, independent i64 indices and arithmetic after the
-extension refuse certification. The symbolic heap mode remains ILP32-only.
-Unfolded NULL-root layout projections retain their separate ILP32 restriction.
+extension refuse certification. The symbolic heap mode also supports both native
+layouts, retaining signed-i32 reservation bounds and its own checked GEP/byte
+geometry. NULL-root layout projections keep their narrow constant-offset
+contract; native-width representation is not a general address observation.
 These certificates do not order unrelated runtime initialization against later
 accesses; general initialization phases still need separate proofs.
 
@@ -408,9 +415,10 @@ Application writes, graph changes and unsupported suffix calls refuse even after
 a join. Only a complete source proof can explain its exact synthetic-native-call
 coverage warnings; it does not clear the shared environment's coverage markers.
 
-A shared narrow address gate recognizes NULL-root, constant, 32-bit layout
-projections with identical computed LLVM/AR offsets. This observes no application
-object address and supplies no nonnull, lifetime or inbounds/UB premise. Real
+A shared narrow address gate recognizes NULL-root constant layout projections
+in the checked native pointer width, with identical LLVM/AR offsets within its
+explicit small-offset bound. This observes no application object address and
+supplies no nonnull, lifetime or inbounds/UB premise. Real
 address observations, dynamic offsets and integer-to-pointer casts keep their
 previous conservative gates. The native-array route does not extend this
 exception to a pointer returned as main's exit code.
@@ -429,8 +437,9 @@ access record by statement, thread root, call context, width and kind. This matc
 alone does not prove that AI pointer summaries cover every source target. To
 discharge an unknown-address startup link write, the source graph proof must also
 establish that every concurrent payload endpoint holds a common, exact, sealed
-GNU/Linux ILP32 NORMAL mutex. Its lock state is tracked across helpers and kept
-in loop-state signatures and endpoint alternatives; it is not inherited by child
+GNU/Linux ILP32 or LP64 NORMAL mutex with matching native storage. Its lock
+state is tracked across helpers and kept in loop-state signatures and endpoint
+alternatives; it is not inherited by child
 threads. Conditional acquisition, early release or an unprotected main/worker
 access prevents this complete synchronization proof.
 

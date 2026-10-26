@@ -2,6 +2,10 @@
 
 [Concurrent analysis documentation](../../CONCURRENCY.md)
 
+This page describes the current source checkout. Published archives retain the
+source revision and capabilities recorded in their `BUILD-INFO.json`; updating
+the repository does not update an archive.
+
 ## Architecture and code navigation
 
 The frontend translates C through LLVM into AR, IKOS's intermediate representation.
@@ -116,7 +120,7 @@ The explicit finalizer calls these stages in order:
 | Coverage | `check_effect_coverage`, `refresh_coverage` | Retain registered entries/effects/completion/stability obligations and exact safety-only replacements. Block determinate verdicts before scanning when unresolved. |
 | Access preparation | `prepare_access_regions` | Invalidate ambiguous region labels or backfill labels already established during collection. |
 | Candidate scan | `collect_race_pairs` | Represent nonunique worker writes, compute completion facts, apply exclusions and retain unresolved pairs. Register surviving mixed atomic boundaries and recheck coverage. |
-| Search | `search_race_candidates` | Only with checked coverage and no safety-only replacement, group unresolved pairs and run the existing seven bounded passes. |
+| Search | `search_race_candidates` | With checked coverage and no safety-only replacement, group unresolved pairs and schedule applicable execution profiles under the file deadline; see the [search sequence](../reference/bounded-execution.md#search-sequence-and-shared-budget). |
 | Reporting | `report_race_group`, `publish_result` | Buffer group reports; recheck coverage before inserting confirmation/evidence. Write the final property metadata once. |
 
 `ReadonlyHeapReads` and `BucketListOwnership` are constructed before access
@@ -164,6 +168,23 @@ BMC receives candidates only after the strict coverage gate and checks its own e
 no range, pair or coverage proof grants it general execution permission.
 
 
+## Native thread-argument windows
+
+With explicit VarPack Polka and guard partitioning, the thread driver can prepare
+one closed creation family before constructing the checkers. Native abstract
+transfers propagate the relation between each entry argument and its shadow;
+the final consumer combines stable relative access windows with the proven
+creation stride. Both endpoints must refer to the same certified family and
+object. Missing observations, incomplete analysis or a dirty shared summary
+withdraw the proof.
+
+This optional path is absent under the default interval domain. It grants only
+pair exclusion, not pointer validity, effect coverage, thread completion or BMC
+execution permission. The implemented dirty controls exercise withdrawal and
+fresh native queries; they do not establish a generic BMC-to-AI refinement loop
+or automatic whole-worklist reconvergence. See the [window controls](testing.md#native-thread-argument-windows)
+and [pair contract index](../reference/module-contracts.md#pair-rule-groups-and-proof-premises).
+
 ## Shared source identities and static queries
 
 The frontend finishes its LLVM/AR transformations before constructing Context.
@@ -174,10 +195,14 @@ have separate caches even when they share an input bundle. These identities
 grant no safety, library-effect or execution permission.
 
 The inventory retains separate duplicate policies for calls/loads/stores and
-for those statements plus allocations. Missing frontend identities stay missing.
-Consumers still enforce their own complete-effect inventory, function ownership,
-ABI and library contracts. Dominance queries preserve instruction order within
-a block; each consumer retains its own conservative reachability checks.
+for those statements plus allocations. It also records whether every selected
+statement has a source instruction in its actual function, and distinguishes
+defined functions from declarations. `ThreadLifecycle` reuses these indices and
+requires both unique and complete mappings while charging its original statement
+work bound. Missing frontend identities stay missing. Consumers still enforce
+their own complete-effect inventory, function ownership, ABI and library contracts.
+Dominance queries preserve instruction order within a block; each consumer retains
+its own conservative reachability checks.
 
 The once transfer caches only a closed source/effect query's selected callbacks,
 keyed by the actual AR call. The original 16384-step logical bound still counts

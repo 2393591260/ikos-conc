@@ -9,6 +9,36 @@ all conflicts is not necessarily a concrete value source for a BMC execution.
 The strict coverage gate must pass before BMC may confirm a race. Registered
 unresolved obligations and safety-only replacements with remaining candidates
 return UNKNOWN even when an older execution model could confirm a trace.
+These contracts describe the source checkout; an archived release retains its
+own recorded source and execution-checker versions.
+
+### Search sequence and shared budget
+
+The scheduler in [data_race_search.cpp](../../../analyzer/src/checker/data_race_search.cpp)
+uses ten ordered passes. Later passes visit only deferred, applicable groups;
+they are not ten complete analyses or ten independent time allowances.
+
+| Pass | Work considered |
+| --- | --- |
+| 0 | Initial short searches for the collected candidate groups. |
+| 1 | Deferred initial groups, including newly established short activations. |
+| 2 | Deeper loop/startup alternatives, retaining earlier short startup prefixes. |
+| 3 | Selected dynamic create occurrences and supported finite allocation-size samples. |
+| 4 | Larger startup bounds suggested by literal loop structure. |
+| 5 | Main/worker searches requiring actual auxiliary-child completion. |
+| 6 | Supported finite semaphore startup prefixes. |
+| 7 | Exact later access ordinals across the supported retained execution profiles. |
+| 8 | Timed main with zero or one completed provider and two selected workers. |
+| 9 | Exact later access ordinals in the timed main/provider profile. |
+
+All passes share the file deadline. Candidate/query counters and structural
+limits are separate: the existing early retries reset their counters, while the
+later exact-target/provider searches use the remaining allowances. An earlier
+confirmation can stop later retries. Exhaustion or an unsupported combination
+leaves the search inconclusive; neither proves SAFE. This bounded schedule makes
+no claim to exhaust every candidate occurrence, path or interleaving. The
+[budget guide](../user-guide/benchmarking.md#resource-limits) distinguishes these
+limits from process CPU and wall limits.
 
 <a id="bmc-thread-instances-arguments-and-heap-handles"></a>
 <details>
@@ -65,8 +95,11 @@ that allocation's base exactly once; publication, integer address export,
 unknown pointer derivation, interior or repeated free, and subsequent use
 leave the execution unconfirmed. Actual intermediate inbounds pointer shifts
 are checked as well. The AR checker independently checks allocation size,
-create output identity/alignment, free identity and lifetime. Heap join loads
-still require additional handle-source and generation support.
+create output identity/alignment, free identity and lifetime. Supported heap
+join loads bind the actual load occurrence to the real create output and its
+joinable instance; copying an opaque handle does not establish a new creation.
+The [repeated-allocation profile](#repeated-main-heap-allocations) below retains
+separate identities when the same allocation site executes more than once.
 
 </details>
 
@@ -119,8 +152,9 @@ A certified pointer Load exports its allocation instance, extent and byte offset
 The independent AR checker compares them with the pointer obtained from its own
 byte-memory replay and also verifies the actual read-from source. This validates
 the selected AR prefix, not a C-source witness. Run
-`python3 scripts/test_initialized_pointer_fields.py` for ILP32 int/long-long
-controls, alias/output corruption and damaged execution evidence.
+`python3 scripts/test_initialized_pointer_fields.py --bits 32` or `--bits 64`
+for native-layout int/long-long controls, alias/output corruption and damaged
+execution evidence.
 
 </details>
 
@@ -129,9 +163,11 @@ controls, alias/output corruption and damaged execution evidence.
 A static candidate can select a later execution of the same memory instruction.
 Access ordinals count real occurrences in the complete root trace, including
 expanded helper invocations; they are separate from thread-create generations.
-The additional exact-target search follows every established search mode and
-uses the remaining file deadline and candidate/query budgets. It preserves the
-legacy helper alternatives rather than changing their interpretation.
+The exact-target pass follows the earlier activation/completion/semaphore
+searches; a later provider-specific pass composes exact targets with timed main
+execution. Both use the remaining file deadline and candidate/query budgets.
+They preserve the existing helper alternatives rather than changing their
+interpretation.
 
 The same requested occurrences pass through loop retries, finite input samples,
 atomic-root completion and main/worker auxiliary completion. Exported targets
@@ -142,6 +178,39 @@ unsupported searches stay inconclusive and grant no SAFE permission.
 Run `python3 scripts/test_bmc_later_accesses.py --bits 32` and `--bits 64`
 for later direct/helper targets, distinct create generations, required completion
 suffixes, boundary controls and damaged selected executions.
+
+### Timed main and a completed provider
+
+The supported profile retains one bounded main timeline, zero or one provider,
+and two selected target workers. Actual creates, the provider's memory effects
+and Return, exact handle-generation joins, main reads and guards, and normal
+mutex operations participate in the same execution order and read-from encoding.
+A join-completion edge cannot replace the provider body. Later target occurrences
+use the same exact-access frontier as the other supported profiles.
+
+Execution export and independent AR replay retain the timed roles and canonical
+event identities. Source mapping preserves the selected schedule and reports
+UNKNOWN for its declared registration-order projection limit; damaged source or
+execution evidence remains an error. The legacy GraphML adapter rejects this
+profile. Provider plus heap is currently unsupported. The
+[provider and combination controls](../developer-guide/testing.md#timed-main-and-provider-execution-controls)
+do not substitute for independent source-witness validation.
+
+### Repeated main heap allocations
+
+Before spawning workers, the supported profile permits at most four main malloc
+events in total, including repeated execution of the same site. Allocation identity includes the actual
+canonical event and site occurrence. Distinct live allocations, a freed early
+generation followed by another allocation, and passing a later generation through
+supported arguments or handle storage retain separate byte contents, extents,
+alignment and lifetimes. `free` consumes only its actual allocation instance.
+
+Every trace is normalized before allocation/create indices become persistent;
+read-from and exported targets keep those identities through independent replay.
+Exact later access targets can compose with this profile. Concurrent free,
+realloc, arbitrary mutable heap graphs, observations of raw-address reuse and
+provider-plus-heap execution remain unsupported. See the
+[allocation and canonical-event controls](../developer-guide/testing.md#allocation-generation-and-canonical-event-controls).
 
 ### Executed constant read addresses
 
