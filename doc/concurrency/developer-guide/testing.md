@@ -252,3 +252,21 @@ regression for build/dependency changes or a release candidate, and record the
 tested commit. Ordinary mechanism stages do not require a full remote rerun.
 Investigate concrete CI failures before treating the affected checks as passed;
 neither local acceptance nor a successful push implies remote CI success.
+
+### Independent finite BMC coverage comparison
+
+`python3 scripts/test_bmc_finite_coverage.py --bits 32` and `--bits 64`
+compare 84 fixed program/input instances with an independent exhaustive oracle.
+The language has two workers, three global int objects, ordinary outer mutex
+sections, immutable Boolean guards and one to three payload accesses per worker.
+Its own vector-clock interpreter enumerates all 404 retained-event schedules;
+a separate closed-form conflict calculation cross-checks the event-pair sets.
+
+All 29 oracle-racy inputs must produce FALSE with nonempty strict AR evidence.
+Actual source locations, static instruction identities, dynamic access ordinals
+and objects must map back to oracle-racy pairs. Oracle-safe inputs may be SAFE
+or UNKNOWN and must never be FALSE. Missing candidates, missing targets, wrong
+ordinals/objects, errors and resource termination cannot pass as coverage.
+Comparator self-checks inject these failures, including mutations of real
+observations. This establishes the stated finite comparison, not completeness
+for arbitrary C or a new SAFE rule. `--self-test` runs the oracle alone.

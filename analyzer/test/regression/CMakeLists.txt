@@ -507,3 +507,9 @@ add_concurrency_test(later-accesses "${CONCURRENCY_ROOT}/scripts/test_bmc_later_
 
 add_concurrency_test(later-accesses-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_later_accesses.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(finite-coverage "${CONCURRENCY_ROOT}/scripts/test_bmc_finite_coverage.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+
+add_concurrency_test(finite-coverage-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_finite_coverage.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
