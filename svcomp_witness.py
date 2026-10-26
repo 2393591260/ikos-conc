@@ -32,6 +32,10 @@ SPECIFICATION = "G ! data-race"
 CREATE_NAMES = {"pthread_create", "ar.pthread.create"}
 
 
+class WitnessProjectionUnsupported(ValueError):
+    """A valid selected schedule cannot use the supported source projection."""
+
+
 def require(condition, reason):
     if not condition:
         raise ValueError(reason)
@@ -358,7 +362,7 @@ def build_witness(source, info, data_model, ikos="ikos"):
     traces = {t["id"]: t for t in trace_list}
     require(
         len(traces) == len(trace_list)
-        and all(name in {"startup", "a", "b"} or
+        and all(name in {"startup", "main", "provider", "a", "b"} or
                 (name.startswith("aux_") and name[4:].isdigit()) for name in traces)
         and {"a", "b"} <= set(traces),
         "invalid dynamic trace identities",
@@ -372,6 +376,10 @@ def build_witness(source, info, data_model, ikos="ikos"):
     )
     if "startup" in traces:
         require(root == "startup", "startup is not the main instance")
+    if "main" in traces:
+        require(root == "main", "main is not the timed main instance")
+    if "provider" in traces:
+        require(root == "main", "provider requires a timed main instance")
 
     def instruction(name, index):
         require(
@@ -440,6 +448,9 @@ def build_witness(source, info, data_model, ikos="ikos"):
         "race needs exactly two targets",
     )
     target_occurrences = [(target["trace"], target["step"]) for target in targets]
+    if root == "main":
+        require({name for name, _ in target_occurrences} == {"a", "b"},
+                "timed main requires selected worker targets")
     target_instructions = [
         instruction(*occurrence) for occurrence in target_occurrences
     ]
@@ -468,6 +479,17 @@ def build_witness(source, info, data_model, ikos="ikos"):
     earliest_target = min(orders[occurrence] for occurrence in target_occurrences)
     source_map = SourceMap(source)
     source_map.load_ast(ikos, data_model)
+    # Diagnose corrupt source bindings before a representational limit can
+    # downgrade the selected execution to UNKNOWN. Include selected late creates.
+    creation_locations = {}
+    for order, name, index, inst in events:
+        operands = inst.get("operands", [])
+        if (inst.get("kind") == "call" and operands
+                and operands[0].get("kind") == "function"
+                and operands[0].get("id") in CREATE_NAMES
+                and (order < earliest_target or (name, index) in children)):
+            creation_locations[(name, index)] = source_map.creation(inst)
+    target_locations = [source_map.target(inst) for inst in target_instructions]
     tids = {root: 0}
     content = []
     next_tid = 1
@@ -483,9 +505,8 @@ def build_witness(source, info, data_model, ikos="ikos"):
         # Final target segments cannot precede registrations. Preserve the
         # selected schedule instead of silently moving a later spawn earlier.
         if order >= earliest_target:
-            require(
-                (name, index) not in children, "selected creation follows a race target"
-            )
+            if (name, index) in children:
+                raise WitnessProjectionUnsupported("selected creation follows a race target")
             continue
         require(name in tids, "creation belongs to an unregistered dynamic creator")
         content.append(
@@ -496,7 +517,7 @@ def build_witness(source, info, data_model, ikos="ikos"):
                             "type": "function_enter",
                             "action": "follow",
                             "thread_id": tids[name],
-                            "location": source_map.creation(inst),
+                            "location": creation_locations[(name, index)],
                         }
                     }
                 ]
@@ -522,10 +543,10 @@ def build_witness(source, info, data_model, ikos="ikos"):
                         "type": "target",
                         "action": "follow",
                         "thread_id": tids[name],
-                        "location": source_map.target(inst),
+                        "location": location,
                     }
                 }
-                for (name, _), inst in zip(target_occurrences, target_instructions)
+                for (name, _), location in zip(target_occurrences, target_locations)
             ]
         }
     )
@@ -698,7 +719,16 @@ def main():
                         validation.get("reason", "unsupported execution")))
                     print("The program is UNKNOWN")
                     return 0
-                witness = build_witness(args.source, info, args.data_model, args.ikos)
+                try:
+                    witness = build_witness(args.source, info, args.data_model, args.ikos)
+                except WitnessProjectionUnsupported as exc:
+                    with open(args.source, "rb") as f:
+                        require(hashlib.sha256(f.read()).digest() == source_hash,
+                                "source changed during execution validation or witness mapping")
+                    sys.stderr.write(proc.stderr)
+                    sys.stderr.write("[ikos-conc] Witness projection unsupported: {}\n".format(exc))
+                    print("The program is UNKNOWN")
+                    return 0
                 with open(args.source, "rb") as f:
                     require(hashlib.sha256(f.read()).digest() == source_hash,
                             "source changed during execution validation or witness mapping")

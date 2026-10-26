@@ -293,3 +293,19 @@ production consumer. The last unit includes a real shared-board write and a
 fresh native query of its changed value: dirty first withdraws the old proof,
 and the recomputed broader window continues to block it. A separate independent
 round checks recovery; this does not claim automatic whole-worklist reconvergence.
+
+### Timed main and provider execution controls
+
+The test_bmc_startup_provider.py runner supports --bits 32 and --bits 64.
+It exercises a bounded actual main timeline, zero or one completed provider,
+and two selected workers. Creates, provider writes and Return, exact
+handle-generation joins, main reads and guards, normal mutex operations and
+read-from share the existing BMC encoding. A failed or unsupported search does
+not grant SAFE.
+
+Positive controls require the actual timeline and strict independent AR replay;
+negative controls damage creation, join, completion, read-from and source
+identity. The source witness mapper accepts the timed roles, keeps the selected
+schedule, and reports UNKNOWN for its declared registration-order projection
+limit. Corrupt source or execution evidence remains an error. The legacy
+GraphML adapter explicitly rejects timed main/provider traces.

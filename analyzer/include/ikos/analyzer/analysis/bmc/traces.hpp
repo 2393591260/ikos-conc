@@ -32,6 +32,45 @@ struct CompletionPlan {
   std::map< std::size_t, std::size_t > joins; // main join step -> trace index
 };
 
+// A bounded main prefix is scheduled alongside its selected children. Index 0
+// remains an empty legacy-startup slot, targets remain 1/2, main is 3, provider
+// (if present) is 4. The actual dynamic creations, not entry names, bind roots.
+struct StartupProviderPlan {
+  std::vector< BmcEvent > main;
+  ExecutionTrace provider;
+  std::size_t creation_a = ExecutionTrace::no_creation;
+  std::size_t creation_b = ExecutionTrace::no_creation;
+  std::map< std::size_t, std::size_t > joins; // main step -> provider index 4
+};
+
+// Preserve exact step indices and the existing supported leaf-call semantics.
+// This first timeline profile has direct creation and normal mutexes. Child
+// lifecycles, condition expansion, semaphore/rwlock contracts, and dynamic heap
+// lifetimes belong to separate profiles; none may be silently erased here.
+inline bool startup_provider_prefix_supported(const std::vector< BmcEvent >& path,
+                                               bool child = false) {
+  for (const auto& event : path) {
+    auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+    auto* callee = call != nullptr ? exact_callee(call) : nullptr;
+    if (event.kind == EvKind::Unsupported || event.synthetic_condition ||
+        semaphore_event(event.kind) ||
+        (call != nullptr && (condition_call(call) || malloc_call(call) || free_call(call) ||
+                             constant_output_call(call))) ||
+        (callee != nullptr && (callee->name() == "pthread_detach" ||
+                              callee->name().find("pthread_rwlock_") == 0)) ||
+        (child && (event.kind == EvKind::Create || event.kind == EvKind::Join)) ||
+        (event.called_function != nullptr && event.called_function->name() == "main")) return false;
+    if (event.kind == EvKind::Create) {
+      auto* owner = call != nullptr ? call->code()->function_or_null() : nullptr;
+      if (call == nullptr || callee == nullptr || !callee->is_declaration() ||
+          owner == nullptr || owner->name() != "main" ||
+          call->num_arguments() != 4 ||
+          !core::isa< ar::FunctionPointerConstant >(call->argument(2))) return false;
+    }
+  }
+  return true;
+}
+
 inline bool bind_creation_step(ar::Function* child,
     const std::vector< BmcEvent >& creator, std::size_t step, ThreadArgument& out) {
   std::size_t ordinal = 0;

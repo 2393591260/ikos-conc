@@ -31,6 +31,19 @@ def digest(path):
 
 def thread_ids(pair):
     """Only assign instances when the saved creation list is unambiguous."""
+    for field in ("counterexample", "replay"):
+        if field not in pair:
+            continue
+        replay = pair[field]
+        if not isinstance(replay, dict):
+            raise ValueError("malformed " + field + " field in legacy pair")
+        traces = replay.get("traces")
+        if (not isinstance(traces, list) or not traces
+                or any(not isinstance(trace, dict)
+                       or not isinstance(trace.get("id"), str) for trace in traces)):
+            raise ValueError("malformed " + field + " traces in legacy pair")
+        if any(trace["id"] in {"main", "provider"} for trace in traces):
+            raise ValueError("timed main/provider source projection is unsupported by the legacy adapter")
     creations = pair["thread_creations"]
     instances = {"main": [0]}
     main_steps = list(pair.get("confirmed_startup", []))

@@ -82,6 +82,41 @@ def main():
             pass
         else:
             raise AssertionError("missing creation prefix fabricated")
+        for field in ("counterexample", "replay"):
+            timed = copy.deepcopy(row["confirmed_pairs"][0])
+            timed[field] = dict(traces=[dict(id="main", entry="main"),
+                                       dict(id="provider", entry="provider")])
+            for mode in ("targets", "prefix"):
+                try:
+                    projected_steps(timed, mode)
+                except ValueError as exc:
+                    assert str(exc) == (
+                        "timed main/provider source projection is unsupported by the legacy adapter"), exc
+                else:
+                    raise AssertionError("timed provider was silently projected as a legacy startup")
+        for field, other in (("counterexample", "replay"), ("replay", "counterexample")):
+            timed = copy.deepcopy(row["confirmed_pairs"][0])
+            timed[field] = dict(traces=[dict(id="main", entry="main")])
+            timed[other] = dict(traces=[dict(id="startup", entry="main")])
+            for mode in ("targets", "prefix"):
+                try:
+                    projected_steps(timed, mode)
+                except ValueError as exc:
+                    assert str(exc) == (
+                        "timed main/provider source projection is unsupported by the legacy adapter"), exc
+                else:
+                    raise AssertionError("one replay alias hid the other timed execution")
+            for malformed in (None, [], {}, dict(traces=None), dict(traces=[]),
+                              dict(traces=[None]), dict(traces=[{}])):
+                broken = copy.deepcopy(row["confirmed_pairs"][0])
+                broken[field] = malformed
+                for mode in ("targets", "prefix"):
+                    try:
+                        projected_steps(broken, mode)
+                    except ValueError as exc:
+                        assert str(exc).startswith("malformed " + field), exc
+                    else:
+                        raise AssertionError("malformed replay provenance was ignored")
         pair = copy.deepcopy(row["confirmed_pairs"][0])
         pair["access_b"]["thread_id"] = "a"
         try:

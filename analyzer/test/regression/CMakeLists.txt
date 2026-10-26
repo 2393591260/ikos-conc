@@ -540,3 +540,9 @@ target_link_libraries(test-analysis-thread-argument-window-projection ${GMPXX_LI
 add_dependencies(build-analyzer-tests test-analysis-thread-argument-window-projection)
 add_test(NAME concurrency-thread-argument-window-projection COMMAND $<TARGET_FILE:test-analysis-thread-argument-window-projection>)
 set_tests_properties(concurrency-thread-argument-window-projection PROPERTIES LABELS concurrency)
+
+# Maintained bounded concurrency completeness controls.
+add_concurrency_test(startup-provider "${CONCURRENCY_ROOT}/scripts/test_bmc_startup_provider.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+add_concurrency_test(startup-provider-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_startup_provider.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)

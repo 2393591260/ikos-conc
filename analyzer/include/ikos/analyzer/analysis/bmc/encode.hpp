@@ -54,7 +54,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                        GuardRejection* rejection = nullptr, Metrics* metrics = nullptr,
                        const CompletionPlan* completion = nullptr,
                        const std::chrono::steady_clock::time_point* deadline = nullptr,
-                       unsigned solver_timeout_ms = 1000) {
+                       unsigned solver_timeout_ms = 1000,
+                       const StartupProviderPlan* provider_plan = nullptr) {
   auto* entry = funcA->bundle()->function_or_null("main");
   // Address folding can consume argc without demanding an SMT integer value.
   // Reject an incompatible configured input before any such folded execution.
@@ -62,21 +63,44 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     record(diagnostics, "main_entry_environment");
     return Result(Status::Unsupported);
   }
+  if (provider_plan != nullptr &&
+      (completion != nullptr || funcA->name() == "main" || funcB->name() == "main" ||
+       (facts != nullptr && (!facts->startup.empty() || facts->selected_worker_occurrences))))
+    return Result(Status::Unsupported);
   if (metrics != nullptr) {
     ++metrics->path_queries;
     metrics->prefix_events += inputA.size() + inputB.size() + (facts != nullptr ? facts->startup.size() : 0);
     if (completion != nullptr)
       for (const auto& trace : completion->auxiliary) metrics->prefix_events += trace.events.size();
+    if (provider_plan != nullptr)
+      metrics->prefix_events += provider_plan->main.size() + provider_plan->provider.events.size();
   }
   if (rejection != nullptr) *rejection = {};
   std::vector< ExecutionTrace > traces;
-  traces.reserve(3 + (completion != nullptr ? completion->auxiliary.size() : 0));
+  traces.reserve(3 + (completion != nullptr ? completion->auxiliary.size() : 0) + (provider_plan != nullptr ? 2 : 0));
   traces.push_back({"startup", funcA->bundle()->function_or_null("main"),
                     facts != nullptr ? facts->startup : std::vector< BmcEvent >{}});
   traces.push_back({"a", funcA, inputA});
   traces.push_back({"b", funcB, inputB});
   if (completion != nullptr)
     for (const auto& auxiliary : completion->auxiliary) traces.push_back(auxiliary);
+  if (provider_plan != nullptr) {
+    traces.push_back({"main", entry, provider_plan->main});
+    if (provider_plan->provider.root != nullptr) traces.push_back(provider_plan->provider);
+    if (entry == nullptr || provider_plan->main.empty() ||
+        !startup_provider_prefix_supported(traces[3].events) ||
+        !startup_provider_prefix_supported(inputA, true) ||
+        !startup_provider_prefix_supported(inputB, true)) return Result(Status::Unsupported);
+    // A main Return terminates the process; this profile retains a live prefix.
+    if (completion_return(traces[3].events, entry) != nullptr) return Result(Status::Unsupported);
+    for (auto& event : traces[3].events) event.candidate = false;
+    if (traces.size() == 5) {
+      if (traces[4].id != "provider" || traces[4].root->name() == "main" ||
+          completion_return(traces[4].events, traces[4].root) == nullptr ||
+          !startup_provider_prefix_supported(traces[4].events, true)) return Result(Status::Unsupported);
+      for (auto& event : traces[4].events) event.candidate = false;
+    }
+  }
   auto& startup = traces[0].events;
   auto& pathA = traces[1].events;
   auto& pathB = traces[2].events;
@@ -115,8 +139,35 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     record(diagnostics, "selected_creation_missing");
     return Result(Status::Unsupported);
   }
-  const std::size_t main_index = funcA->name() == "main" ? 1 : funcB->name() == "main" ? 2 : 0;
-  if (completion != nullptr) {
+  const std::size_t main_index = provider_plan != nullptr ? 3 : funcA->name() == "main" ? 1 : funcB->name() == "main" ? 2 : 0;
+  if (provider_plan != nullptr) {
+    for (std::size_t id = 1; id < 3; ++id) {
+      auto& child = traces[id];
+      child.creator_path = main_index;
+      child.creator_step = id == 1 ? provider_plan->creation_a : provider_plan->creation_b;
+      if (!bind_creation_step(child.root, traces[main_index].events, child.creator_step, child.argument))
+        return Result(Status::Unsupported);
+    }
+    argumentA = traces[1].argument; argumentB = traces[2].argument;
+    std::set< std::size_t > retained;
+    for (std::size_t id = 1; id < traces.size(); ++id) {
+      if (id == main_index) continue;
+      if (traces[id].creator_path != main_index ||
+          !retained.insert(traces[id].creator_step).second) return Result(Status::Unsupported);
+    }
+    std::size_t create_count = 0;
+    for (std::size_t i = 0; i < traces[main_index].events.size(); ++i) {
+      const auto& event = traces[main_index].events[i];
+      if (event.kind == EvKind::Create) {
+        if (!retained.count(i)) return Result(Status::Unsupported);
+        ++create_count;
+      }
+      if (event.kind == EvKind::Join && !provider_plan->joins.count(i))
+        return Result(Status::Unsupported);
+    }
+    if (create_count != retained.size() || provider_plan->joins.size() > 1)
+      return Result(Status::Unsupported);
+  } else if (completion != nullptr) {
     if (main_index == 0 || !startup.empty()) return Result(Status::Unsupported);
     auto& child = traces[main_index == 1 ? 2 : 1];
     child.creator_path = main_index;
@@ -137,6 +188,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     }
   }
   for (std::size_t id = 3; id < traces.size(); ++id) {
+    if (id == main_index) continue;
     auto& trace = traces[id];
     if (trace.creator_path != main_index || trace.events.empty() ||
         !bind_creation_step(trace.root, traces[main_index].events, trace.creator_step, trace.argument))
@@ -434,7 +486,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         path.insert(path.begin() + i + 1, {release, reacquire});
       }
       auto& event = path[i];
-      if (event.kind == EvKind::Join && completion == nullptr) {
+      if (event.kind == EvKind::Join && completion == nullptr && provider_plan == nullptr) {
         // Condition expansion may have shifted earlier creation indices.
         event.join_completion = inert_join_source(core::cast< ar::CallBase >(event.stmt),
                                                   path, i, event.join_creation);
@@ -486,7 +538,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         if (!synchronization_layout(call, argument_index, event.width, alignment)) {
           record(diagnostics, "mutex_storage_layout", event.stmt); return false;
         }
-        if (completion != nullptr) {
+        if (completion != nullptr || provider_plan != nullptr) {
           const auto bits = call->bundle()->data_layout().pointers.bit_width;
           auto* api = exact_callee(call);
           const bool rwlock = api != nullptr && api->name().find("pthread_rwlock_") == 0;
@@ -527,22 +579,33 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     }
     return true;
   };
-  if (completion != nullptr) {
-    for (const auto& joined : completion->joins) {
+  const auto* completion_joins = completion != nullptr ? &completion->joins :
+                                 provider_plan != nullptr ? &provider_plan->joins : nullptr;
+  if (completion_joins != nullptr) {
+    for (const auto& joined : *completion_joins) {
       if (joined.first >= traces[main_index].events.size() || joined.second >= traces.size() ||
           joined.second == main_index) return Result(Status::Unsupported);
       auto& join = traces[main_index].events[joined.first];
       const auto& child = traces[joined.second];
+      if (child.events.empty()) return Result(Status::Unsupported);
       auto* ret = core::dyn_cast< ar::ReturnValue >(child.events.back().stmt);
       if (join.kind != EvKind::Join || ret == nullptr || ret->code() != child.root->body_or_null() ||
           child.creator_path != main_index) return Result(Status::Unsupported);
+      if (provider_plan != nullptr) {
+        std::size_t actual_creation = 0, actual_read = 0;
+        if (joined.second != 4 ||
+            !completion_join_creation(traces[main_index].events, joined.first,
+                                      actual_creation, false, &actual_read) ||
+            actual_creation != child.creator_step) return Result(Status::Unsupported);
+        traces[main_index].events[actual_read].joined_handle_read = true;
+      }
       join.join_completion = ret; join.join_creation = child.creator_step;
     }
   }
   for (auto& trace : traces)
     if (!prepare(trace.events, trace.root, trace.argument)) return Result(Status::Unsupported);
   // Expansion in the old search can shift a creation; recover its ordinal.
-  if (completion == nullptr)
+  if (completion == nullptr && provider_plan == nullptr)
     for (std::size_t id = 1; id < 3; ++id) {
       auto& trace = traces[id];
       if (trace.root->name() == "main" || trace.creator_step == ExecutionTrace::no_creation) continue;
@@ -617,7 +680,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
             record(diagnostics, "startup_create_output", call); return false;
           }
           address = path[i];
-        } else if ((selected_workers || completion != nullptr || address.heap_allocation != nullptr) &&
+        } else if ((selected_workers || completion != nullptr || provider_plan != nullptr || address.heap_allocation != nullptr) &&
                    event.kind == EvKind::Create) {
           // Preserve the concrete output also when a loop index folded early.
           auto& output = path[i];
@@ -935,7 +998,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   }
   if (memory_clocks.size() > 1) s.add(z3::distinct(memory_clocks));
 
-  if (completion != nullptr) {
+  if (completion != nullptr || provider_plan != nullptr) {
     std::set< std::pair< std::size_t, std::size_t > > bindings;
     for (std::size_t id = 1; id < traces.size(); ++id) {
       const auto& child = traces[id];
@@ -944,7 +1007,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           child.creator_step >= traces[child.creator_path].events.size()) return Result(Status::Unsupported);
       s.add(clock[traces[child.creator_path].clock_start + child.creator_step] < clock[child.clock_start]);
     }
-    for (const auto& joined : completion->joins) {
+    for (const auto& joined : *completion_joins) {
       const auto& child = traces[joined.second];
       s.add(clock[child.clock_start + child.events.size() - 1] < clock[traces[main_index].clock_start + joined.first]);
     }
@@ -1468,7 +1531,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       std::vector< z3::expr > sources;
       struct Write {z3::expr time; z3::expr value; z3::expr matches;};
       std::vector< Write > writes;
-      bool ordered_sources = completion == nullptr && (access.base != 0 || access.heap_allocation != nullptr || access.shared_main_local) && access.var_id == 0;
+      bool ordered_sources = completion == nullptr && provider_plan == nullptr && (access.base != 0 || access.heap_allocation != nullptr || access.shared_main_local) && access.var_id == 0;
       const auto& other_path = prefix == "value_a_" ? pathB : pathA;
       auto* root = prefix == "value_a_" ? funcA : funcB;
       auto* other_root = prefix == "value_a_" ? funcB : funcA;
@@ -1721,7 +1784,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       // A proven join consumes an actual opaque create identity. Numerical
       // consumers still go through encode_value and its library-source gate.
       if ((path[i].heap_allocation != nullptr || path[i].shared_main_local) && path[i].kind == EvKind::Read &&
-          !(completion != nullptr && path[i].joined_handle_read)) {
+          !((completion != nullptr || provider_plan != nullptr) && path[i].joined_handle_read)) {
         // Even an unused shared read must have a defined actual SC source.
         // Pointer or unsupported sources cannot become free malloc data.
         auto* load = core::cast< ar::Load >(path[i].stmt);
@@ -1910,7 +1973,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     // A prepopulated cache may hide dependencies encoded for the other path.
     // A fixed startup contradiction can stop this group; worker rejections
     // additionally need the read/write check in the caller.
-    guard_reusable = completion == nullptr && prefix != "value_init_" && cache.empty();
+    guard_reusable = completion == nullptr && provider_plan == nullptr && prefix != "value_init_" && cache.empty();
     guard_reads.clear();
     for (std::size_t i = 0; i < path.size(); ++i) {
       const auto& e = path[i];

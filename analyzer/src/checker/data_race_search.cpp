@@ -367,14 +367,14 @@ void DataRaceChecker::search_race_candidates(
   std::set< std::string > larger_activation_groups;
   std::set< std::string > occurrence_groups;
   std::set< std::string > hinted_activation_groups;
-  std::set< std::string > completion_groups, semaphore_groups, later_access_groups;
+  std::set< std::string > completion_groups, semaphore_groups, later_access_groups, provider_groups;
   std::map< std::string, bmc::Result > deferred_results;
   std::map< std::string, JsonList > deferred_candidates;
   std::map< std::string, JsonList > occurrence_candidates;
   std::map< std::string, std::map< std::string, std::size_t > > deferred_counts;
   bool file_confirmed = false;
   unsigned startup_hint = 16;
-  for (unsigned pass = 0; pass < 8; ++pass) {
+  for (unsigned pass = 0; pass < 9; ++pass) {
     // Try every candidate's short execution before deeper loop alternatives.
     search_budget.defer_large_loops = pass < 2;
     if (pass == 4 && !hinted_activation_groups.empty() && !file_confirmed &&
@@ -392,7 +392,7 @@ void DataRaceChecker::search_race_candidates(
       // combinations when the larger startup enumeration saturates.
       if (pass == 2) {
         short_activation_prefixes = std::move(activation_prefixes);
-      } else {
+      } else if (pass < 8) {
         for (auto& entry : activation_prefixes) {
           if (search_budget.expired()) break;
           auto& saved = later_activation_prefixes[entry.first];
@@ -459,7 +459,8 @@ void DataRaceChecker::search_race_candidates(
         (pass == 4 && hinted_activation_groups.count(kv.first) == 0) ||
         (pass == 5 && completion_groups.count(kv.first) == 0) ||
         (pass == 6 && semaphore_groups.count(kv.first) == 0) ||
-        (pass == 7 && later_access_groups.count(kv.first) == 0)) continue;
+        (pass == 7 && later_access_groups.count(kv.first) == 0) ||
+        (pass == 8 && provider_groups.count(kv.first) == 0)) continue;
     search_budget.saw_interrupted = false;
     const std::vector< std::size_t >& pair_indices = kv.second;
     if (pair_indices.empty()) {
@@ -571,7 +572,7 @@ void DataRaceChecker::search_race_candidates(
         }
       };
       // Evaluate independent eligibility gates even when another one fails.
-      if (worker_pair) {
+      if (worker_pair && pass != 8) {
         auto key = std::minmax(a.thread_id, b.thread_id);
         auto proof = instance_proofs.find(key);
         if (proof == instance_proofs.end()) {
@@ -741,7 +742,10 @@ void DataRaceChecker::search_race_candidates(
           unsigned later_frontier = 0;
           bmc::LaterAccessState* later_state = nullptr;
           auto confirm = [&] {
-            if (pass == 7) {
+            if (pass == 8) {
+              candidate_result.merge(bmc::confirm_race_provider(fa, a.stmt, a.width,
+                  fb, b.stmt, b.width, trace, search_budget, &confirmed_creations, &facts));
+            } else if (pass == 7) {
               candidate_result.merge(bmc::confirm_race_later(fa, a.stmt, a.width,
                   fb, b.stmt, b.width, trace, search_budget, &confirmed_creations, &facts,
                   later_frontier, later_state));
@@ -755,7 +759,7 @@ void DataRaceChecker::search_race_candidates(
             return race_rules::permits_execution_premise(race_rules::Id::BmcSelectedExecution) &&
                    candidate_result.confirmed();
           };
-          if (worker_pair) {
+          if (worker_pair && pass != 8) {
             const auto& startups = activation_prefixes.at(std::minmax(a.thread_id, b.thread_id));
             if (pass < 3) {
               for (const auto& startup : startups) {
@@ -924,8 +928,12 @@ void DataRaceChecker::search_race_candidates(
     // Keep every still-inconclusive report until the additional exact-access
     // pass, including main/worker pairs with joins only after a later target.
     const bool later_access_deferred = pass < 7 && bmc_enabled && !file_confirmed;
+    // This last worker-pair pass constructs timed main/provider executions;
+    // failure of the old fixed-startup proof is not a safety fact. Other gates,
+    // global coverage and the execution-permission rule remain unchanged.
+    const bool provider_deferred = pass < 8 && bmc_enabled && group_worker_pairs && !file_confirmed;
     if (!bmc_confirmed && (legacy_deferred || occurrence_deferred || hint_deferred ||
-                          completion_deferred || semaphore_deferred || later_access_deferred)) {
+                          completion_deferred || semaphore_deferred || later_access_deferred || provider_deferred)) {
       deferred_results[kv.first] = group_result;
       if (legacy_deferred) {
         if (pass == 0) deferred_groups.insert(kv.first);
@@ -934,6 +942,7 @@ void DataRaceChecker::search_race_candidates(
       else if (occurrence_deferred) occurrence_groups.insert(kv.first);
       if (completion_deferred) completion_groups.insert(kv.first);
       if (later_access_deferred) later_access_groups.insert(kv.first);
+      if (provider_deferred) provider_groups.insert(kv.first);
       if (diagnostics_enabled) {
         if (pass == 0) deferred_candidates.emplace(kv.first, candidate_diagnostics);
         if (pass == 3) occurrence_candidates[kv.first] = candidate_diagnostics;
@@ -944,6 +953,7 @@ void DataRaceChecker::search_race_candidates(
     completion_groups.erase(kv.first);
     semaphore_groups.erase(kv.first);
     later_access_groups.erase(kv.first);
+    provider_groups.erase(kv.first);
     // Flat targets and the report anchor must refer to the confirmed pair.
     JsonDict info{
         {"memory_location", first.first_conflict_loc.empty()

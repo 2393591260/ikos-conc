@@ -85,8 +85,19 @@ class Replay:
         self.traces = {t['id']: t for t in certificate['traces']}
         require(len(self.traces) == len(certificate['traces']), 'duplicate trace identity')
         require({'a', 'b'} <= set(self.traces) and all(
-            name in {'startup', 'a', 'b'} or (name.startswith('aux_') and name[4:].isdigit())
+            name in {'startup', 'main', 'provider', 'a', 'b'} or
+            (name.startswith('aux_') and name[4:].isdigit())
             for name in self.traces), 'trace identities')
+        # Timed provider profiles retain a real main root. These names do not
+        # replace the checks below for unique main, actual create and completion.
+        if 'main' in self.traces:
+            require(self.traces['main']['entry'] == 'main' and
+                    'startup' not in self.traces, 'timed main trace identity')
+            require(all(self.traces[name]['entry'] != 'main' for name in ('a', 'b')),
+                    'timed target entry identity')
+        if 'provider' in self.traces:
+            require('main' in self.traces and
+                    self.traces['provider']['entry'] != 'main', 'provider trace identity')
         bindings = set()
         for name, trace in self.traces.items():
             if trace['entry'] == 'main':

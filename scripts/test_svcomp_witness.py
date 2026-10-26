@@ -218,6 +218,122 @@ class WitnessTests(unittest.TestCase):
             [w["waypoint"]["thread_id"] for w in content[-1]["segment"]], [1, 2]
         )
 
+
+    def timed_pair(self, provider=True):
+        # Source mapping control only: strict AR has its separate real-run gates.
+        pair = self.pair()
+        replay = pair["counterexample"]
+        main = replay["traces"][0]
+        main["id"] = "main"
+        for index, step in enumerate(main["steps"]):
+            step["clock"] = str(index + 3)
+        for trace in replay["traces"][1:]:
+            trace["creator_trace"] = "main"
+            trace["steps"][0]["clock"] = "6" if trace["id"] == "a" else "7"
+        if provider:
+            main["steps"][0] = dict(statement="root", clock="0")
+            replay["traces"].append(dict(
+                id="provider", entry="parent", creator_trace="main", creator_step=0,
+                steps=[dict(statement="parent", clock="1")]))
+        return pair
+
+    def test_timed_main_and_provider_source_mapping(self):
+        for provider in (False, True):
+            for model in ("ILP32", "LP64"):
+                with self.subTest(provider=provider, model=model):
+                    pair = self.timed_pair(provider)
+                    unchanged = copy.deepcopy(pair)
+                    witness = wrapper.build_witness(
+                        str(self.source), pair, model, str(self.ikos))
+                    self.assertEqual(pair, unchanged, "mapping changed the selected execution")
+                    content = witness[0]["content"]
+                    self.assertEqual(
+                        [s["segment"][0]["waypoint"]["thread_id"] for s in content[:-1]],
+                        [0, 0, 0])
+                    self.assertEqual(
+                        [w["waypoint"]["thread_id"] for w in content[-1]["segment"]],
+                        [3, 2])
+                    self.assertEqual(
+                        witness[0]["metadata"]["task"]["data_model"], model)
+                    for segment in content:
+                        for item in segment["segment"]:
+                            self.assertEqual(item["waypoint"]["location"]["file_name"],
+                                             self.source.name)
+
+    def test_timed_role_corruption_is_rejected(self):
+        def trace(pair, name):
+            return next(t for t in pair["counterexample"]["traces"] if t["id"] == name)
+        mutations = {
+            "wrong timed main entry": lambda p: trace(p, "main").update(entry="worker"),
+            "provider is main": lambda p: trace(p, "provider").update(entry="main"),
+            "main has creator": lambda p: trace(p, "main").update(creator_trace="a"),
+            "provider borrows target create": lambda p: trace(p, "provider").update(creator_step=1),
+            "provider missing creator": lambda p: trace(p, "provider").pop("creator_trace"),
+            "provider missing clock": lambda p: trace(p, "provider")["steps"][0].pop("clock"),
+            "provider before create": lambda p: trace(p, "provider")["steps"][0].update(clock="-1"),
+            "provider is selected target": lambda p: p["counterexample"]["targets"][0].update(trace="provider"),
+            "unknown role": lambda p: trace(p, "provider").update(id="unexpected"),
+            "unknown source": lambda p: p["counterexample"]["program"]["instructions"]["root"].update(file="/absent/source.c"),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                pair = self.timed_pair()
+                mutate(pair)
+                with self.assertRaises((ValueError, KeyError, TypeError)):
+                    self.content(pair)
+
+    def test_timed_selected_creation_after_target_is_not_reordered(self):
+        pair = self.timed_pair()
+        # A's conflict occurs before main's selected B Create. That selected
+        # execution cannot use this registration-prefix/terminal-target projection.
+        pair["counterexample"]["traces"][1]["steps"][0]["clock"] = "4"
+        pair["counterexample"]["traces"][0]["steps"][1]["clock"] = "3"
+        pair["counterexample"]["traces"][0]["steps"][2]["clock"] = "5"
+        unchanged = copy.deepcopy(pair)
+        with self.assertRaisesRegex(wrapper.WitnessProjectionUnsupported,
+                                    "selected creation follows"):
+            self.content(pair)
+        self.assertEqual(pair, unchanged)
+
+
+    def test_timed_corruption_is_not_projection_unsupported(self):
+        mutations = (
+            lambda p: p["counterexample"]["traces"][0].update(entry="worker"),
+            lambda p: p["counterexample"]["traces"][3].update(creator_step=1),
+            lambda p: p["counterexample"]["traces"][3]["steps"][0].pop("clock"),
+            lambda p: p["counterexample"]["program"]["instructions"]["root"].update(file="/absent/source.c"),
+        )
+        for mutate in mutations:
+            pair = self.timed_pair()
+            mutate(pair)
+            with self.assertRaises((ValueError, KeyError, TypeError)) as raised:
+                self.content(pair)
+            self.assertNotIsInstance(raised.exception, wrapper.WitnessProjectionUnsupported)
+
+    def test_late_selected_creation_does_not_hide_source_damage(self):
+        for damaged in ("target", "late_create"):
+            for damage in ({"file": "/absent/source.c"}, {"column": 0}, {"line": 100000}):
+                with self.subTest(damaged=damaged, damage=damage):
+                    pair = self.timed_pair()
+                    replay = pair["counterexample"]
+                    replay["traces"][1]["steps"][0]["clock"] = "4"
+                    replay["traces"][0]["steps"][1]["clock"] = "3"
+                    replay["traces"][0]["steps"][2]["clock"] = "5"
+                    if damaged == "target":
+                        inst = replay["program"]["instructions"]["worker"]
+                    else:
+                        # Earlier creates reuse helper; damage only the late
+                        # occurrence so an earlier mapping cannot catch it.
+                        inst = copy.deepcopy(replay["program"]["instructions"]["helper"])
+                        replay["program"]["instructions"]["late_helper"] = inst
+                        replay["traces"][0]["steps"][2]["statement"] = "late_helper"
+                    inst.update(damage)
+                    unchanged = copy.deepcopy(pair)
+                    with self.assertRaises((ValueError, KeyError, TypeError)) as raised:
+                        self.content(pair)
+                    self.assertNotIsInstance(raised.exception, wrapper.WitnessProjectionUnsupported)
+                    self.assertEqual(pair, unchanged)
+
     def test_invalid_instance_evidence_rejected(self):
         mutations = {
             "missing counterexample": lambda p: p.pop("counterexample"),
@@ -740,6 +856,73 @@ int main(void) {
         )
         targets = [w["waypoint"]["thread_id"] for w in witness[0]["content"][-1]["segment"]]
         self.assertEqual(set(targets), {0, 1})
+
+
+    def test_cli_projection_boundary_and_corruption_stay_distinct(self):
+        pair = self.real_pair()
+        # This CLI unit isolates the exception boundary after real strict AR.
+        # The direct timed mapping control above establishes the actual trigger.
+        for typed in (True, False):
+            with self.subTest(typed=typed):
+                entry = self.folder / "projection-boundary-entry.py"
+                entry.write_text(
+                    "import sys\nsys.path.insert(0," + repr(str(ROOT)) + ")\n"
+                    "import svcomp_witness as wrapper\n"
+                    "def projection(*args, **kwargs):\n"
+                    "    raise " +
+                    ("wrapper.WitnessProjectionUnsupported" if typed else "ValueError") +
+                    "('selected creation follows a race target')\n"
+                    "wrapper.build_witness = projection\n"
+                    "sys.exit(wrapper.main())\n")
+                proc, out = self.run_wrapper("race", pair, entry=entry)
+                self.assertFalse(out.exists())
+                if typed:
+                    self.assertEqual(proc.returncode, 0, proc.stderr)
+                    self.assertEqual(proc.stdout, "The program is UNKNOWN\n")
+                    self.assertIn("Witness projection unsupported", proc.stderr)
+                else:
+                    # Identical text with a normal exception must remain ERROR.
+                    self.assertNotEqual(proc.returncode, 0)
+                    self.assertEqual(proc.stdout, "")
+                    self.assertIn("cannot produce a competition result", proc.stderr)
+                broken = copy.deepcopy(pair)
+                replay = broken["counterexample"]
+                target = replay["targets"][0]
+                trace = next(t for t in replay["traces"] if t["id"] == target["trace"])
+                trace["steps"][target["step"]]["encoded_address"]["offset"] = "1"
+                proc, out = self.run_wrapper("race", broken, entry=entry)
+                self.assertNotEqual(proc.returncode, 0)
+                self.assertEqual(proc.stdout, "")
+                self.assertIn("selected BMC execution rejected", proc.stderr)
+                self.assertFalse(out.exists())
+
+        source_bytes = self.source.read_bytes()
+        for changed in (False, True):
+            with self.subTest(source_changed_during_mapping=changed):
+                entry = self.folder / "projection-source-change-entry.py"
+                entry.write_text(
+                    "import sys\nfrom pathlib import Path\n"
+                    "sys.path.insert(0," + repr(str(ROOT)) + ")\n"
+                    "import svcomp_witness as wrapper\n"
+                    "def projection(source, *args, **kwargs):\n" +
+                    ("    p = Path(source)\n"
+                     "    p.write_bytes(p.read_bytes() + b'\\n/* mapping changed source */\\n')\n"
+                     if changed else "") +
+                    "    raise wrapper.WitnessProjectionUnsupported('selected creation follows a race target')\n"
+                    "wrapper.build_witness = projection\n"
+                    "sys.exit(wrapper.main())\n")
+                try:
+                    proc, out = self.run_wrapper("race", pair, entry=entry)
+                finally:
+                    self.source.write_bytes(source_bytes)
+                self.assertFalse(out.exists())
+                if changed:
+                    self.assertNotEqual(proc.returncode, 0)
+                    self.assertEqual(proc.stdout, "")
+                    self.assertIn("source changed during execution validation or witness mapping", proc.stderr)
+                else:
+                    self.assertEqual(proc.returncode, 0, proc.stderr)
+                    self.assertEqual(proc.stdout, "The program is UNKNOWN\n")
 
     def test_replay_rejection_does_not_publish_false(self):
         pair = self.real_pair()

@@ -787,6 +787,191 @@ inline Result confirm_race_later(ar::Function* funcA, ar::Statement* stmtA,
   return outcome;
 }
 
+// The main prefix is not evaluated before child execution. All its guards,
+// data reads, creates, locks and exact joins share the solver timeline with a
+// real finite provider and the two target instances. This is a witness search,
+// not an activation summary, and no failure grants a SAFE permission.
+inline Result confirm_race_provider(ar::Function* funcA, ar::Statement* stmtA,
+    std::uint64_t widthA, ar::Function* funcB, ar::Statement* stmtB,
+    std::uint64_t widthB, Diagnostics* diagnostics, SearchBudget& budget,
+    std::vector< ar::Statement* >* creations, const CandidateFacts* facts,
+    AccessTargets access_targets = {}) {
+  Result outcome(Status::NotSearched);
+  if (funcA->name() == "main" || funcB->name() == "main") return outcome;
+  auto* main = funcA->bundle()->function_or_null("main");
+  if (main == nullptr || !main->is_definition() || access_targets.a == 0 ||
+      access_targets.b == 0 ||
+      (facts != nullptr && (!facts->startup.empty() || facts->selected_worker_occurrences)))
+    return Result(Status::Unsupported);
+  auto spend = [&]() {
+    if (budget.expired() || budget.queries == 0) {
+      budget.record_exhaustion(diagnostics);
+      record(diagnostics, "provider_search_budget");
+      outcome.merge(Result(Status::BudgetExceeded));
+      return false;
+    }
+    --budget.queries;
+    return true;
+  };
+  auto note = [&](const UnrollResult& result) {
+    if (result.incomplete) {
+      record(diagnostics, result.reason ? result.reason : "provider_unroll_incomplete");
+      outcome.merge(Result(Status::BudgetExceeded));
+    }
+    if (result.rejected_reason != nullptr) {
+      record(diagnostics, result.rejected_reason, result.rejected_statement);
+      outcome.merge(Result(Status::Unsupported));
+    }
+  };
+  const auto bound = std::max(literal_loop_search_bound(main),
+      std::max(literal_loop_search_bound(funcA), literal_loop_search_bound(funcB)));
+  if (!spend()) return outcome;
+  auto pathsA = unroll_to(funcA, stmtA, access_targets.a, bound, false, nullptr,
+                         &budget.deadline, nullptr, 0, access_targets.exact);
+  note(pathsA);
+  if (!spend()) return outcome;
+  auto pathsB = unroll_to(funcB, stmtB, access_targets.b, bound, false, nullptr,
+                         &budget.deadline, nullptr, 0, access_targets.exact);
+  note(pathsB);
+  UnrollResult completeA, completeB;
+  const bool atomic = std::any_of(pathsA.paths.begin(), pathsA.paths.end(), atomic_candidate) ||
+                      std::any_of(pathsB.paths.begin(), pathsB.paths.end(), atomic_candidate);
+  if (atomic) {
+    if (!spend()) return outcome;
+    completeA = unroll_completed(funcA, stmtA, bound, &budget.deadline, nullptr, 0,
+                                access_targets.a, access_targets.exact);
+    note(completeA);
+    if (!spend()) return outcome;
+    completeB = unroll_completed(funcB, stmtB, bound, &budget.deadline, nullptr, 0,
+                                access_targets.b, access_targets.exact);
+    note(completeB);
+  }
+  const auto& choicesA = atomic ? completeA.paths : pathsA.paths;
+  const auto& choicesB = atomic ? completeB.paths : pathsB.paths;
+  if (choicesA.empty() || choicesB.empty()) return outcome;
+  std::vector< ar::Statement* > endpoints;
+  for (auto* block : *main->body()) for (auto* statement : *block) {
+    BmcEvent event;
+    if (classify_event(statement, event) && event.kind == EvKind::Create &&
+        (event.thread == reinterpret_cast< std::uint64_t >(funcA) ||
+         event.thread == reinterpret_cast< std::uint64_t >(funcB))) endpoints.push_back(statement);
+  }
+  std::map< ar::Function*, UnrollResult > completed_providers;
+  // With at most three actual creates, a retained endpoint can occur at most
+  // three times. This counts creation occurrences, independently of accesses.
+  for (auto* endpoint : endpoints) for (unsigned occurrence = 1; occurrence <= 3; ++occurrence) {
+    if (!spend()) return outcome;
+    auto mains = unroll_to(main, endpoint, occurrence, bound, false, nullptr,
+                           &budget.deadline, nullptr, 0, true);
+    note(mains);
+    for (const auto& main_prefix : mains.paths) {
+      if (!startup_provider_prefix_supported(main_prefix)) {
+        record(diagnostics, "provider_main_profile");
+        outcome.merge(Result(Status::Unsupported)); continue;
+      }
+      std::vector< std::size_t > created;
+      for (std::size_t i = 0; i < main_prefix.size(); ++i)
+        if (main_prefix[i].kind == EvKind::Create) created.push_back(i);
+      if (created.size() < 2 || created.size() > 3) {
+        record(diagnostics, "provider_instance_bound"); continue;
+      }
+      for (auto ca : created) for (auto cb : created) {
+        if (ca == cb || main_prefix[ca].thread != reinterpret_cast< std::uint64_t >(funcA) ||
+            main_prefix[cb].thread != reinterpret_cast< std::uint64_t >(funcB)) continue;
+        StartupProviderPlan plan;
+        plan.main = main_prefix; plan.creation_a = ca; plan.creation_b = cb;
+        for (auto& event : plan.main) event.candidate = false;
+        auto cp = ExecutionTrace::no_creation;
+        for (auto creation : created) if (creation != ca && creation != cb) cp = creation;
+        bool supported = true;
+        for (std::size_t j = 0; j < plan.main.size(); ++j) {
+          if (plan.main[j].kind != EvKind::Join) continue;
+          std::size_t joined = 0, read = 0;
+          if (cp == ExecutionTrace::no_creation || !plan.joins.empty() ||
+              !completion_join_creation(plan.main, j, joined, false, &read) || joined != cp) {
+            supported = false; break;
+          }
+          plan.joins.emplace(j, 4);
+          plan.main[read].joined_handle_read = true;
+        }
+        if (!supported) {
+          record(diagnostics, "provider_join_generation");
+          outcome.merge(Result(Status::Unsupported)); continue;
+        }
+        auto check_targets = [&]() {
+          for (const auto& originalA : choicesA) for (const auto& originalB : choicesB) {
+            if (!startup_provider_prefix_supported(originalA, true) ||
+                !startup_provider_prefix_supported(originalB, true) ||
+                (atomic && (completion_return(originalA, funcA) == nullptr ||
+                            completion_return(originalB, funcB) == nullptr))) {
+              record(diagnostics, "provider_target_profile");
+              outcome.merge(Result(Status::Unsupported)); continue;
+            }
+            if (plan.main.size() + plan.provider.events.size() + originalA.size() +
+                originalB.size() > MAX_PATH_EVENTS) {
+              record(diagnostics, "provider_event_budget");
+              outcome.merge(Result(Status::BudgetExceeded)); continue;
+            }
+            auto a = originalA, b = originalB;
+            const auto ta = candidate_index(a), tb = candidate_index(b);
+            if (ta == a.size() || tb == b.size()) continue;
+            a[ta].width = widthA; b[tb].width = widthB;
+            if (!spend()) return;
+            if (diagnostics != nullptr) ++diagnostics->path_pairs;
+            record(diagnostics, "provider_timeline_query");
+            outcome.merge(check_race(a, b, funcA, funcB, diagnostics, facts, nullptr,
+                &outcome.metrics, nullptr, &budget.deadline, budget.solver_timeout_ms, &plan));
+            if (outcome.confirmed()) return;
+          }
+        };
+        if (cp == ExecutionTrace::no_creation) {
+          check_targets();
+        } else {
+          auto* root = reinterpret_cast< ar::Function* >(plan.main[cp].thread);
+          auto found = completed_providers.find(root);
+          if (found == completed_providers.end()) {
+            if (!spend()) return outcome;
+            auto paths = unroll_terminated(root, literal_loop_search_bound(root), &budget.deadline);
+            note(paths);
+            found = completed_providers.emplace(root, std::move(paths)).first;
+          }
+          for (const auto& provider : found->second.paths) {
+            auto* returned = completion_return(provider, root);
+            if (returned == nullptr || !startup_provider_prefix_supported(provider, true)) {
+              record(diagnostics, "provider_completion_profile");
+              outcome.merge(Result(Status::Unsupported)); continue;
+            }
+            plan.provider.id = "provider";
+            plan.provider.root = root; plan.provider.events = provider;
+            plan.provider.creator_path = 3; plan.provider.creator_step = cp;
+            for (auto& event : plan.provider.events) event.candidate = false;
+            if (!bind_creation_step(root, plan.main, cp, plan.provider.argument)) continue;
+            for (const auto& join : plan.joins) {
+              plan.main[join.first].join_creation = cp;
+              plan.main[join.first].join_completion = returned;
+            }
+            check_targets();
+            if (outcome.confirmed() || budget.expired() || budget.queries == 0) break;
+          }
+        }
+        if (outcome.confirmed()) {
+          record(diagnostics, "provider_timeline_confirmed");
+          if (creations != nullptr) {
+            creations->clear();
+            for (auto index : created) creations->push_back(plan.main[index].stmt);
+          }
+          return outcome;
+        }
+        if (budget.expired() || budget.queries == 0) {
+          budget.record_exhaustion(diagnostics);
+          outcome.merge(Result(Status::BudgetExceeded)); return outcome;
+        }
+      }
+    }
+  }
+  return outcome;
+}
+
 }  // namespace bmc
 }  // namespace analyzer
 }  // namespace ikos
