@@ -10,6 +10,7 @@
 #include <tuple>
 #include <vector>
 #include <ikos/analyzer/checker/data_race.hpp>
+#include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/checker/normal_mutex.hpp>
 #include <ikos/analyzer/util/log.hpp>
 
@@ -31,14 +32,14 @@ bool plain_call(llvm::CallBase* c, llvm::Function* f) {
   return true;
 }
 // C's unprototyped zero-argument verifier declaration can be an LLVM vararg
-// function bitcast to i32(). Only this actual declaration/API is normalized.
+// function or a bitcast to i32(). Only this actual declaration/API is normalized.
 bool nondet_native(llvm::CallBase* c) {
   auto* f = callee(c);
   return f && f->isDeclaration() && f->getName() == "__VERIFIER_nondet_int" &&
       llvm::isa<llvm::CallInst>(c) && !c->isInlineAsm() && !c->hasOperandBundles() &&
       c->arg_empty() && f->arg_empty() && f->getReturnType()->isIntegerTy(32) &&
       c->getFunctionType()->getReturnType()->isIntegerTy(32) &&
-      c->getFunctionType()->getNumParams() == 0 && !c->getFunctionType()->isVarArg() &&
+      c->getFunctionType()->getNumParams() == 0 &&
       c->getCallingConv() == llvm::CallingConv::C && f->getCallingConv() == llvm::CallingConv::C;
 }
 struct Value {
@@ -87,6 +88,8 @@ class SelfPublication::Impl {
   uint64_t initial_bits = 0, elements = 0, element_bytes = 0;
   bool valid = false, saw_write = false;
   unsigned budget = 262144, solver_budget = 256, symbol_id = 0;
+  unsigned word = 0;
+  std::set< llvm::AllocaInst* > outputs;
   bool spend() { if (!budget) return false; --budget; return true; }
   ar::Statement* original(llvm::Value* v) const {
     auto it = originals.find(v); return it == originals.end() ? nullptr : it->second;
@@ -140,7 +143,14 @@ class SelfPublication::Impl {
   }
   bool create(llvm::CallBase* c) const {
     auto* a = binding(c);
+    if (!a || c->arg_size() != 4) return false;
+    auto* slot = llvm::dyn_cast< llvm::AllocaInst >(c->getArgOperand(0)->stripPointerCasts());
+    auto* storage = slot ? dyn_cast_or_null< ar::Allocate >(original(slot)) : nullptr;
     return a && c->getFunction() == main && native_handle_api(c, true) && unread_private_thread_output(a) &&
+           slot && storage && slot->getAllocatedType()->isIntegerTy(word * 8) &&
+           slot->getAlign().value() >= word && address_base(a->argument(0)) == storage->result() &&
+           ctx.bundle->data_layout().alloc_size_in_bytes(storage->allocated_type()) == word &&
+           c->getModule()->getDataLayout().getTypeAllocSize(slot->getAllocatedType()) == word &&
            isa<ar::NullConstant>(a->argument(1)) && isa<ar::NullConstant>(a->argument(3));
   }
   bool cyclic(llvm::BasicBlock* start) {
@@ -197,6 +207,17 @@ class SelfPublication::Impl {
     if (!ar_array || !ar_array->is_definition() || ar_array->is_thread_local() ||
         !ar_array->type()->pointee()->is_array() ||
         ctx.bundle->data_layout().alloc_size_in_bytes(ar_array->type()->pointee()) != elements*element_bytes) return false;
+    auto* actual_array = llvm::cast< llvm::ArrayType >(array->getValueType());
+    auto* imported_array = cast< ar::ArrayType >(ar_array->type()->pointee());
+    const auto& layout = main->getParent()->getDataLayout();
+    if (layout.getTypeAllocSize(actual_array->getElementType()) != element_bytes ||
+        layout.getTypeStoreSize(actual_array->getElementType()) != element_bytes ||
+        layout.getTypeAllocSize(actual_array) != elements * element_bytes ||
+        imported_array->num_elements() != core::ZNumber(elements) ||
+        !imported_array->element_type()->is_integer() ||
+        cast< ar::IntegerType >(imported_array->element_type())->bit_width() != element_bytes * 8 ||
+        ctx.bundle->data_layout().store_size_in_bytes(imported_array->element_type()) != element_bytes)
+      return false;
     count = 0;
     for (auto* b : *ar_array->initializer()) for (auto* s : *b) {
       auto* store = dyn_cast<ar::Store>(s);
@@ -224,13 +245,24 @@ class SelfPublication::Impl {
       auto* first = llvm::dyn_cast<llvm::ConstantInt>(gep->getOperand(1));
       auto* variable = dyn_cast<ar::InternalVariable>(al->operand());
       auto* shift = variable ? dyn_cast_or_null<ar::PointerShift>(unique_def(variable)) : nullptr;
-      return first && first->isZero() && shift && shift->has_frontend() &&
-          shift->frontend<llvm::Value>() == gep && shift->pointer() == ar_array;
+      if (!first || !first->isZero() || !shift || !shift->has_frontend() ||
+          shift->frontend<llvm::Value>() != gep || shift->pointer() != ar_array ||
+          !gep->getOperand(2)->getType()->isIntegerTy(word * 8)) return false;
+      unsigned terms = 0;
+      for (auto it = shift->term_begin(); it != shift->term_end(); ++it) {
+        auto* zero = dyn_cast< ar::IntegerConstant >((*it).second);
+        if (zero && zero->value().is_zero()) continue;
+        if ((*it).first.to_z_number() != core::ZNumber(element_bytes) ||
+            !source_integer_binding((*it).second, gep->getOperand(2))) return false;
+        ++terms;
+      }
+      auto* zero = llvm::dyn_cast< llvm::ConstantInt >(gep->getOperand(2));
+      return terms == 1 || (terms == 0 && zero && zero->isZero());
     }
     auto* local = llvm::dyn_cast<llvm::AllocaInst>(address);
     auto* n = local ? llvm::dyn_cast<llvm::ConstantInt>(local->getArraySize()) : nullptr;
     return i.getFunction() == main && local && n && n->isOne() && !local->getAddressSpace() &&
-        type->isIntegerTy(32) && local->getAllocatedType() == type && base && base->has_frontend() &&
+        (type->isIntegerTy(32) || (outputs.count(local) && type->isIntegerTy(word * 8))) && local->getAllocatedType() == type && base && base->has_frontend() &&
         base->frontend<llvm::Value>() == local;
   }
   bool inventory() {
@@ -246,6 +278,7 @@ class SelfPublication::Impl {
         if (&f != body || (mutex && mutex != m.source)) return false;
         mutex = m.source; mutex_calls.emplace(c,m);
       } else if (create(c)) {
+        outputs.insert(llvm::cast< llvm::AllocaInst >(c->getArgOperand(0)->stripPointerCasts()));
         auto* child = llvm::dyn_cast<llvm::Function>(c->getArgOperand(2)->stripPointerCasts());
         auto* entry = dyn_cast<ar::FunctionPointerConstant>(a->argument(2));
         if (!entry || !entry->function()->has_frontend() || entry->function()->frontend<llvm::Value>() != child ||
@@ -287,9 +320,10 @@ class SelfPublication::Impl {
           auto* n=llvm::dyn_cast<llvm::ConstantInt>(local->getArraySize());
           auto* a=dyn_cast_or_null<ar::Allocate>(original(local));
           auto* count=a?dyn_cast<ar::IntegerConstant>(a->array_size()):nullptr;
-          if (&f!=main || !n || !n->isOne() || local->getAddressSpace() || !local->getAllocatedType()->isIntegerTy(32) ||
+          if (&f!=main || !n || !n->isOne() || local->getAddressSpace() || !(local->getAllocatedType()->isIntegerTy(32) ||
+                 (outputs.count(local) && local->getAllocatedType()->isIntegerTy(word * 8))) ||
               !a || !count || count->value().to_z_number()!=1 || !a->allocated_type()->is_integer() ||
-              cast<ar::IntegerType>(a->allocated_type())->bit_width()!=32 || !a->result()->has_frontend() ||
+              cast<ar::IntegerType>(a->allocated_type())->bit_width()!=local->getAllocatedType()->getIntegerBitWidth() || !a->result()->has_frontend() ||
               a->result()->frontend<llvm::Value>()!=local) return false;
           consumed.insert(local);
         } else if (auto* c=llvm::dyn_cast<llvm::CallBase>(&i)) {
@@ -610,11 +644,15 @@ public:
     if (!ctx.opts.enable_thread_modular || ctx.opts.procedural==Procedural::Intraprocedural ||
         ctx.opts.entry_points.size()!=1 || ctx.opts.entry_points.front()->name()!="main" ||
         ctx.opts.entry_points.front()->num_parameters()!=0 || !ctx.opts.entry_points.front()->has_frontend() ||
-        ctx.bundle->data_layout().pointers.bit_width!=32 || !ctx.opts.no_init_globals.empty() ||
+        !ctx.opts.no_init_globals.empty() ||
         ctx.concurrent_env.is_dirty() || !ctx.concurrent_env.unmodeled_effects().empty() ||
         !ctx.concurrent_env.unmodeled_thread_creations().empty() ||
         ctx.bundle->global_or_null("ar.global_ctors") || ctx.bundle->global_or_null("ar.global_dtors")) return;
-    main=ctx.opts.entry_points.front()->frontend<llvm::Function>();if (!main->use_empty()) return;
+    main=ctx.opts.entry_points.front()->frontend<llvm::Function>();
+    const auto abi = pthread_object_layout(ctx.bundle, main->getParent());
+    if (!abi || !main->use_empty() ||
+        main->getParent()->getDataLayout().getIndexSizeInBits(0) != abi.word * 8) return;
+    word = abi.word;
     for (auto it=ctx.bundle->function_begin();it!=ctx.bundle->function_end();++it) {
       auto* f=*it;if (!f->is_definition()||!f->has_frontend()) continue;
       auto* source=f->frontend<llvm::Function>();functions.emplace(source,f);
