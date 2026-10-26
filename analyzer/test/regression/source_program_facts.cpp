@@ -62,7 +62,88 @@ static void test_integer_layouts() {
   }
 }
 
+static void test_source_call_abi_attributes() {
+  llvm::LLVMContext context;
+  llvm::Module module("typed-source-call-abi", context);
+  auto* wrapper = llvm::Function::Create(
+      llvm::FunctionType::get(llvm::Type::getVoidTy(context), false),
+      llvm::GlobalValue::ExternalLinkage, "wrapper", module);
+  llvm::IRBuilder<> ir(llvm::BasicBlock::Create(context, "entry", wrapper));
+  for (unsigned bits : {1u, 8u, 16u, 32u, 64u}) {
+    auto* type = llvm::IntegerType::get(context, bits);
+    auto* function = llvm::Function::Create(
+        llvm::FunctionType::get(type, {type}, false),
+        llvm::GlobalValue::ExternalLinkage, "scalar", module);
+    auto* call = ir.CreateCall(function, {llvm::ConstantInt::get(type, 0)});
+    auto reset = [&]() {
+      call->setAttributes(llvm::AttributeList());
+      function->setAttributes(llvm::AttributeList());
+    };
+    require(ordinary_source_call_abi_attributes(call, function),
+            "ordinary scalar invocation needs no extension attribute");
+    call->addParamAttr(0, llvm::Attribute::NoUndef);
+    require(ordinary_source_call_abi_attributes(call, function),
+            "ordinary attribute presence need not be identical");
+    reset();
+    for (auto extension : {llvm::Attribute::SExt, llvm::Attribute::ZExt}) {
+      const bool supported = bits == 8 || bits == 16 ||
+                             (bits == 1 && extension == llvm::Attribute::ZExt);
+      for (bool returned : {false, true}) {
+        reset();
+        if (returned) call->addRetAttr(extension);
+        else call->addParamAttr(0, extension);
+        require(!ordinary_source_call_abi_attributes(call, function),
+                "call-only extension is rejected");
+        if (returned) function->addRetAttr(extension);
+        else function->addParamAttr(0, extension);
+        require(ordinary_source_call_abi_attributes(call, function) == supported,
+                "paired narrow integer extension follows typed C policy");
+        require(ordinary_source_function_abi_attributes(function) == supported,
+                "runtime function entry has the same typed policy");
+        call->setAttributes(llvm::AttributeList());
+        require(!ordinary_source_call_abi_attributes(call, function),
+                "declaration-only extension cannot hide behind LLVM fallback");
+      }
+    }
+    reset();
+    call->addParamAttr(0, llvm::Attribute::InReg);
+    function->addParamAttr(0, llvm::Attribute::InReg);
+    require(!ordinary_source_call_site_abi_attributes(call) &&
+            !ordinary_source_call_abi_attributes(call, function) &&
+            !ordinary_source_function_abi_attributes(function),
+            "matching inreg is unsupported, including an indirect actual call");
+    reset();
+    call->addRetAttr(llvm::Attribute::InReg);
+    function->addRetAttr(llvm::Attribute::InReg);
+    require(!ordinary_source_call_abi_attributes(call, function),
+            "matching return inreg is unsupported");
+    reset();
+    call->addParamAttr(0, llvm::Attribute::SExt);
+    call->addParamAttr(0, llvm::Attribute::ZExt);
+    function->addParamAttr(0, llvm::Attribute::SExt);
+    function->addParamAttr(0, llvm::Attribute::ZExt);
+    require(!ordinary_source_call_abi_attributes(call, function),
+            "simultaneous extension kinds are rejected");
+    reset();
+    call->addRetAttr(llvm::Attribute::get(context, "unknown-value-abi"));
+    require(!ordinary_source_call_abi_attributes(call, function),
+            "unknown string value attribute is rejected");
+    reset();
+  }
+  auto* pointer = llvm::Type::getInt8PtrTy(context);
+  auto* function = llvm::Function::Create(
+      llvm::FunctionType::get(pointer, {pointer}, false),
+      llvm::GlobalValue::ExternalLinkage, "pointer", module);
+  auto* call = ir.CreateCall(function, {llvm::ConstantPointerNull::get(pointer)});
+  call->addParamAttr(0, llvm::Attribute::ZExt);
+  function->addParamAttr(0, llvm::Attribute::ZExt);
+  require(!ordinary_source_call_abi_attributes(call, function),
+          "extensions never confer pointer ABI support");
+  ir.CreateRetVoid();
+}
+
 int main() {
+  test_source_call_abi_attributes();
   test_integer_layouts();
   llvm::LLVMContext native_context;
   llvm::Module module("facts", native_context);

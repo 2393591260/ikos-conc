@@ -56,6 +56,7 @@
 #include <ikos/core/domain/concurrent_global_env.hpp>
 
 #include <ikos/analyzer/analysis/context.hpp>
+#include <ikos/analyzer/analysis/source_call_abi.hpp>
 #include <ikos/analyzer/analysis/execution_engine/engine.hpp>
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 #include <ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp>
@@ -2171,10 +2172,102 @@ public:
   /// \name Execute call statements
   /// @{
 
+  // Shared callback over-approximation for unknown extern and unsupported ABI.
+  void register_unknown_call_callbacks(ar::CallBase* call) {
+    // An unknown extern function may invoke its function-pointer arguments
+    // (e.g. `foo(reset_glob)` — `foo` has no body but MAY call its argument,
+    // 04-mutex_26-ptrrace_default.c). Register any DEFINED callee passed by
+    // function pointer as a thread function so the thread-modular driver
+    // analyzes its body and its accesses race with real threads. Sound
+    // over-approximation: the extern MAY call the pointer; treating it as a
+    // concurrent thread only widens the race set, never hides one.
+    if (this->_ctx.opts.enable_thread_modular) {
+      std::vector< ar::Function* > fptrs;
+      auto collect_from_global = [&](ar::GlobalVariable* gv) {
+        if (ar::Code* code = gv->initializer_or_null()) {
+          for (ar::BasicBlock* bb : *code) {
+            for (ar::Statement* stmt : *bb) {
+              if (auto* store = dyn_cast< ar::Store >(stmt)) {
+                collect_function_pointers(store->value(), fptrs);
+              }
+            }
+          }
+        }
+      };
+      for (auto it = call->arg_begin(), et = call->arg_end(); it != et; ++it) {
+        ar::Value* arg = *it;
+        if (auto* fpc = dyn_cast< ar::FunctionPointerConstant >(arg)) {
+          fptrs.push_back(fpc->function());
+        } else if (auto* gv = dyn_cast< ar::GlobalVariable >(arg)) {
+          collect_from_global(gv);
+        } else if (auto* iv = dyn_cast< ar::InternalVariable >(arg)) {
+          // `&global_struct` is materialized as an SSA temporary; resolve its
+          // points-to to find the global whose initializer may carry fptrs
+          // (`dev_ops.g = glob`, 04-mutex_29-funstruct_rc.c). Guard on
+          // pointer-ness: a scalar (e.g. pthread_t) temp must not reach
+          // pointer_to_points_to, which asserts the variable is a pointer.
+          const ScalarLit& lit = this->_lit_factory.get_scalar(iv);
+          if (lit.is_pointer_var()) {
+            auto pts = this->data().normal().pointer_to_points_to(lit.var());
+            if (pts.is_set()) {
+              for (MemoryLocation* loc : pts) {
+                if (auto* gml = dyn_cast< GlobalMemoryLocation >(loc)) {
+                  collect_from_global(gml->global_var());
+                }
+              }
+            }
+          }
+        }
+      }
+      for (ar::Function* fn : fptrs) {
+        if (fn != nullptr && fn->is_definition()) {
+          this->_ctx.concurrent_env.register_thread_func(fn, call);
+        }
+      }
+    }
+  }
+
+  // An unsupported native ABI is not a valid invocation of a known summary.
+  // Preserve a reachable normal continuation with arbitrary memory, values,
+  // locks, thread history and exception state. No argument uninit assertion is
+  // justified by this rejection, and no weak unknown-write option is used.
+  void exec_unsupported_source_abi(ar::CallBase* call) {
+    this->data().normal().normalize();
+    if (this->data().is_normal_flow_bottom()) return;
+    this->register_unknown_call_callbacks(call);
+    if (this->_ctx.opts.enable_thread_modular) {
+      auto& env = this->_ctx.concurrent_env;
+      env.record_unmodeled_effect(call, source_call_abi_reason());
+      env.flush_all_privatized_locks();
+      env.record_unknown_pointer_write();
+      env.record_possible_escape(core::PointsToSet< MemoryLocation* >::top());
+      env.invalidate_mutex_values();
+      for (auto it = this->_ctx.bundle->global_begin();
+           it != this->_ctx.bundle->global_end(); ++it) {
+        auto* global = *it;
+        auto* location = this->_mem_factory.get_global(global);
+        const auto address = core::IndexableTraits< MemoryLocation* >::index(location);
+        auto value = IntInterval::top(64, Signed);
+        if (auto* type = dyn_cast< ar::IntegerType >(global->type()->pointee()))
+          value = IntInterval::top(type->bit_width(), type->sign());
+        // No-lock TOP joins are idempotent and immediately visible, including
+        // aggregate initializer markers. Unknown pointer writes invalidate
+        // pointer/field summaries even when a target cannot be enumerated.
+        env.join_global(address, value);
+      }
+    }
+    this->_inv.set_to_top();
+  }
+
   /// \brief Execute a call to the given extern function
   void exec_extern_call(ar::CallBase* call, ar::Function* fun) override {
     ikos_assert(fun->is_declaration());
     ikos_assert(ar::TypeVerifier::is_valid_call(call, fun->type()));
+
+    if (unsupported_source_call_abi(call, fun)) {
+      this->exec_unsupported_source_abi(call);
+      return;
+    }
 
     if (!fun->is_intrinsic()) {
       observe_mutex_array_effect(*this, call);
@@ -3101,57 +3194,7 @@ public:
           call, "external call effects not covered");
     }
 
-    // An unknown extern function may invoke its function-pointer arguments
-    // (e.g. `foo(reset_glob)` — `foo` has no body but MAY call its argument,
-    // 04-mutex_26-ptrrace_default.c). Register any DEFINED callee passed by
-    // function pointer as a thread function so the thread-modular driver
-    // analyzes its body and its accesses race with real threads. Sound
-    // over-approximation: the extern MAY call the pointer; treating it as a
-    // concurrent thread only widens the race set, never hides one.
-    if (this->_ctx.opts.enable_thread_modular) {
-      std::vector< ar::Function* > fptrs;
-      auto collect_from_global = [&](ar::GlobalVariable* gv) {
-        if (ar::Code* code = gv->initializer_or_null()) {
-          for (ar::BasicBlock* bb : *code) {
-            for (ar::Statement* stmt : *bb) {
-              if (auto* store = dyn_cast< ar::Store >(stmt)) {
-                collect_function_pointers(store->value(), fptrs);
-              }
-            }
-          }
-        }
-      };
-      for (auto it = call->arg_begin(), et = call->arg_end(); it != et; ++it) {
-        ar::Value* arg = *it;
-        if (auto* fpc = dyn_cast< ar::FunctionPointerConstant >(arg)) {
-          fptrs.push_back(fpc->function());
-        } else if (auto* gv = dyn_cast< ar::GlobalVariable >(arg)) {
-          collect_from_global(gv);
-        } else if (auto* iv = dyn_cast< ar::InternalVariable >(arg)) {
-          // `&global_struct` is materialized as an SSA temporary; resolve its
-          // points-to to find the global whose initializer may carry fptrs
-          // (`dev_ops.g = glob`, 04-mutex_29-funstruct_rc.c). Guard on
-          // pointer-ness: a scalar (e.g. pthread_t) temp must not reach
-          // pointer_to_points_to, which asserts the variable is a pointer.
-          const ScalarLit& lit = this->_lit_factory.get_scalar(iv);
-          if (lit.is_pointer_var()) {
-            auto pts = this->data().normal().pointer_to_points_to(lit.var());
-            if (pts.is_set()) {
-              for (MemoryLocation* loc : pts) {
-                if (auto* gml = dyn_cast< GlobalMemoryLocation >(loc)) {
-                  collect_from_global(gml->global_var());
-                }
-              }
-            }
-          }
-        }
-      }
-      for (ar::Function* fn : fptrs) {
-        if (fn != nullptr && fn->is_definition()) {
-          this->_ctx.concurrent_env.register_thread_func(fn, call);
-        }
-      }
-    }
+    this->register_unknown_call_callbacks(call);
 
     this->exec_unknown_call(call,
                             /* may_write_params = */ true,

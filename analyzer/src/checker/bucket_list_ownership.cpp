@@ -1043,6 +1043,7 @@ class BucketListOwnership::Impl {
       const std::vector< Argument >& arguments) {
     need(functions.count(f) && active.insert(f).second && active.size() <= 16 &&
          !f->isVarArg() && f->getCallingConv() == llvm::CallingConv::C &&
+         ordinary_source_function_abi_attributes(f) &&
          f->arg_size() == arguments.size());
     visited_functions.insert(f);
     for (unsigned n = 0; n < f->arg_size(); ++n) {

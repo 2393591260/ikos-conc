@@ -343,3 +343,8 @@ add_concurrency_test(pthread-initialization-abi "${CONCURRENCY_ROOT}/scripts/tes
 
 add_concurrency_test(pthread-initialization-abi-lp64 "${CONCURRENCY_ROOT}/scripts/test_pthread_initialization_abi.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(source-call-abi "${CONCURRENCY_ROOT}/scripts/test_source_call_abi.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(source-call-abi-lp64 "${CONCURRENCY_ROOT}/scripts/test_source_call_abi.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)

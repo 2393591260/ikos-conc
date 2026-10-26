@@ -612,3 +612,39 @@ dynamic consumers, whole-array initialization, wide counters, truncation and
 wrapping refusals, prefix reentry, representation aliases and failure effects.
 
 </details>
+
+## Source call value attributes
+
+Source-derived library and callback proofs require the supported scalar C
+calling representation in addition to the actual callee, exact API prototype,
+source/AR identity, target layout, and the proof's own byte/effect contract.
+The shared attribute gate examines the actual LLVM call and each known
+declaration or definition. An AR intrinsic mapped from a C library call still
+passes this gate; a genuine LLVM intrinsic keeps its existing intrinsic
+contract. Missing source identity grants no new permission.
+
+Ordinary non-ABI value attributes remain admissible without being used as
+success, memory validity, initializedness, access, or happens-before premises.
+The typed gate additionally accepts matching call/declaration extensions for
+i8 and i16 integers, and matching zero-extension for i1. Both raw attribute
+sets must agree on extension kind. Call-only or declaration-only extensions,
+extensions on wider integers or pointers, combined extension kinds, inreg,
+aggregate passing attributes, and unknown value attributes refuse admission.
+This is a supported subset, not arbitrary platform ABI emulation. Variadic
+stdio retains its separate true-vararg and format/byte-effect checks.
+
+Reachable unsupported source calls and runtime entries create unresolved
+source_abi coverage debt. Actual indirect-call attributes are checked before
+target discovery, and resolved targets are checked before a library summary
+or function body is used. Rejected calls retain an arbitrary reachable
+continuation: existing deferred shared writes are flushed, memory/global
+summaries are invalidated, and numerical, lock, thread-history, and exception
+facts are set to top. Rejection does not prove allocation, lock acquisition,
+thread completion, or argument validity. Existing effect certificates cannot
+discharge this ABI debt, and blocked coverage prevents both SAFE publication
+and integrated BMC confirmation. Source-bearing BMC root and call admission
+also apply the same attribute boundary.
+
+The AR execution checker continues to validate the exported AR execution
+contract. It does not recover native call attributes absent from that export,
+so its acceptance alone is not evidence for a source ABI or source witness.

@@ -42,6 +42,7 @@
  ******************************************************************************/
 
 #include <ikos/analyzer/checker/data_race.hpp>
+#include <ikos/analyzer/analysis/source_call_abi.hpp>
 #include <ikos/analyzer/checker/race_rules.hpp>
 #include <ikos/analyzer/checker/init_publication.hpp>
 #include <ikos/analyzer/checker/first_publication.hpp>
@@ -634,6 +635,7 @@ void DataRaceChecker::check_effect_coverage(
 
   for (const auto& effect : this->_ctx.concurrent_env.unmodeled_effects()) {
     auto evaluate_effect = [&]() -> boost::optional< CoverageDecision > {
+      if (effect.second == source_call_abi_reason()) return boost::none;
       if (effect.second == "synthetic pthread handle representation not modeled" &&
           readonly_heap_reads.certifies(effect.first)) {
         auto proof = readonly_heap_reads.info();
@@ -680,6 +682,7 @@ void DataRaceChecker::check_effect_coverage(
 
 void DataRaceChecker::consume_coverage_proof(const CoverageDecision& proof) {
   if (this->_phase != Phase::Finalizing || proof.effect == nullptr ||
+      proof.reason == source_call_abi_reason() ||
       !race_rules::permits_effect_coverage(proof.rule)) {
     throw std::logic_error("invalid effect coverage proof consumption");
   }
@@ -814,6 +817,15 @@ void DataRaceChecker::check(ar::Statement* stmt,
 
   if (inv.first().is_normal_flow_bottom()) {
     // Statement is unreachable
+    return;
+  }
+
+  if (unsupported_source_function_abi(stmt->code()->function_or_null())) {
+    const std::string reason = source_call_abi_reason();
+    this->add_coverage_obligation("source_abi", stmt, reason);
+    this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace,
+                         Result::Warning, stmt, call_context, {},
+                         {{"unknown_reason", reason}});
     return;
   }
 
@@ -1527,6 +1539,18 @@ void DataRaceChecker::check_extern_call_effects(
     ar::CallBase* call,
     const value::AbstractDomain& inv,
     CallContext* call_context) {
+  // An unsupported source ABI is a separate, non-dischargeable obligation.
+  auto reject_abi = [&]() {
+    const std::string reason = source_call_abi_reason();
+    this->add_coverage_obligation("source_abi", call, reason);
+    this->_checks.insert(CheckKind::DataRace, CheckerName::DataRace,
+                         Result::Warning, call, call_context, {},
+                         {{"unknown_reason", reason}});
+  };
+  if (unsupported_source_call_abi(call)) {
+    reject_abi();
+    return;
+  }
   // Determine whether the callee has no analyzable body (extern).
   ar::Value* called = call->called();
   bool extern_call = false;
@@ -1537,6 +1561,10 @@ void DataRaceChecker::check_extern_call_effects(
   };
   bool may_thread_unsafe = false;
   if (auto* cst = dyn_cast< ar::FunctionPointerConstant >(called)) {
+    if (unsupported_source_call_abi(call, cst->function())) {
+      reject_abi();
+      return;
+    }
     extern_call = cst->function()->is_declaration();
     may_thread_unsafe = thread_unsafe(cst->function());
   } else if (auto* ptr = dyn_cast< ar::InternalVariable >(called)) {
@@ -1550,6 +1578,10 @@ void DataRaceChecker::check_extern_call_effects(
         auto* fm = dyn_cast< FunctionMemoryLocation >(loc);
         if (fm == nullptr || fm->function()->is_declaration()) {
           extern_call = true; // any unmodeled target may access user memory
+        }
+        if (fm && unsupported_source_call_abi(call, fm->function())) {
+          reject_abi();
+          return;
         }
         if (fm != nullptr) may_thread_unsafe |= thread_unsafe(fm->function());
       }

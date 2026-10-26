@@ -2,6 +2,7 @@
 #include <llvm/IR/Operator.h>
 #include <ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp>
 #include <ikos/analyzer/analysis/execution_engine/stdio_effects.hpp>
+#include <ikos/analyzer/analysis/source_call_abi.hpp>
 #include <set>
 #include <string>
 #include <vector>
@@ -107,6 +108,7 @@ llvm::CallInst* scalar_scan_declaration(ar::CallBase* call) {
       !imported->type()->is_var_arg() || imported->num_parameters() != 2 ||
       call->num_arguments() != 3)
     return nullptr;
+  if (unsupported_source_call_abi(call)) return nullptr;
   // Mapped libc intrinsics intentionally may have no source frontend identity.
   // This exception is only the actual sscanf API + exact LibcSscanf intrinsic.
   if (imported->has_frontend()) {
@@ -227,7 +229,8 @@ bool errno_call_binding(ar::Bundle* bundle, llvm::CallInst* call) {
       call->getFunctionType() != source->getFunctionType() ||
       call->isInlineAsm() || call->hasOperandBundles() || !pointer ||
       pointer->isOpaque() || pointer->getAddressSpace() != 0 ||
-      !pointer->getPointerElementType()->isIntegerTy(32))
+      !pointer->getPointerElementType()->isIntegerTy(32) ||
+      !ordinary_source_call_abi_attributes(call, source))
     return false;
   unsigned matches = 0;
   for (auto fit = bundle->function_begin(); fit != bundle->function_end();

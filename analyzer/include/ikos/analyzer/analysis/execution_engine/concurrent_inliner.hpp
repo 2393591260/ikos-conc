@@ -338,6 +338,10 @@ private:
 
   /// \brief Execute any call statement
   void exec(ar::CallBase* call) {
+    if (unsupported_source_call_abi(call)) {
+      this->_engine.exec_unsupported_source_abi(call);
+      return;
+    }
     NumericalExecutionEngineT::data_of(this->inv()).normal().normalize();
 
     if (NumericalExecutionEngineT::data_of(this->inv()).is_normal_flow_bottom()) {
@@ -459,6 +463,11 @@ private:
       }
 
       ar::Function* callee = cast< FunctionMemoryLocation >(mem)->function();
+
+      if (unsupported_source_call_abi(call, callee)) {
+        this->_engine.exec_unsupported_source_abi(call);
+        return;
+      }
 
       if (!ar::TypeVerifier::is_valid_call(call, callee->type())) {
         // Ill-formed function call

@@ -584,7 +584,8 @@ class PthreadInitializationFrame::Impl {
   }
   void walk(llvm::Function* f, Frame& frame, bool startup) {
     need(functions.count(f) && (f == main || f->size() == 1) && active.size() < 16 && active.insert(f).second &&
-         f->getCallingConv() == llvm::CallingConv::C && !f->isVarArg(), "finite direct helper tree");
+         f->getCallingConv() == llvm::CallingConv::C && !f->isVarArg() &&
+         ordinary_source_function_abi_attributes(f), "finite direct helper tree");
     visited.insert(f);
     for (auto* source : linear_body(f)) {
       auto& i = *source;

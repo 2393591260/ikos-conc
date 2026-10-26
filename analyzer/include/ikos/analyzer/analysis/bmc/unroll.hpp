@@ -23,6 +23,7 @@
 #include "diagnostics.hpp"
 #include "global_initial.hpp"
 #include <ikos/analyzer/analysis/private_array_zero.hpp>
+#include <ikos/analyzer/analysis/source_call_abi.hpp>
 
 #include <ikos/ar/semantic/code.hpp>
 #include <ikos/ar/semantic/statement.hpp>
@@ -541,6 +542,7 @@ inline bool private_zero_call(ar::CallBase* call, BmcEvent& event) {
 
 inline bool supported_leaf_call(ar::CallBase* call) {
   auto* f = exact_callee(call);
+  if (unsupported_source_call_abi(call, f)) return false;
   if (f == nullptr || !f->is_declaration()) return false;
   BmcEvent zero;
   if (private_zero_call(call, zero) || stack_save_call(call)) return true;
@@ -1787,6 +1789,11 @@ inline bool classify_event(
   }
   if (auto* call = core::dyn_cast< ar::CallBase >(stmt)) {
     auto* declared = exact_callee(call);
+    if (unsupported_source_call_abi(call, declared)) {
+      ev = BmcEvent{stmt, EvKind::Unsupported};
+      ev.blocker = "source_call_abi";
+      return true;
+    }
     if (declared != nullptr && declared->is_declaration()) {
       const auto& name = declared->name();
       if (name == "sem_init" || name == "sem_wait" || name == "sem_post") {
@@ -2019,6 +2026,7 @@ inline bool function_has_loop(ar::Function* f) {
 
 // Inline acyclic definitions; synchronization inside them remains explicit.
 inline bool inline_ok(ar::Function* f) {
+  if (unsupported_source_function_abi(f)) return false;
   if (f == nullptr || f->body_or_null() == nullptr) {
     return false;  // extern（pthread_* / 无体）
   }
@@ -2036,6 +2044,7 @@ inline bool compatible_indirect_callee(ar::CallBase* call, ar::Function* target)
   auto* function = target->frontend< llvm::Function >();
   return source != nullptr && source->getCallingConv() == llvm::CallingConv::C &&
          function->getCallingConv() == llvm::CallingConv::C && !function->isVarArg() &&
+         ordinary_source_call_abi_attributes(source, function) &&
          source->getFunctionType() == function->getFunctionType() &&
          source->arg_size() == call->num_arguments() && target->num_parameters() == call->num_arguments();
 }
@@ -2171,6 +2180,11 @@ inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
       }
       if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
         auto* f = exact_callee(call);
+        if (unsupported_source_call_abi(call, f)) {
+          budget.rejected_reason = "source_call_abi";
+          budget.rejected_statement = s;
+          return;
+        }
         if (f != nullptr && (f->intrinsic_id() == ar::Intrinsic::LibcAbort ||
                              f->intrinsic_id() == ar::Intrinsic::LibcExit)) return;
         // noreturn assert failures terminate the error path like abort():
@@ -2360,6 +2374,10 @@ inline UnrollResult unroll_to(
     ar::CallBase* finite_source = nullptr,
     unsigned finite_value = 0) {
   UnrollResult result;
+  if (unsupported_source_function_abi(func)) {
+    result.rejected_reason = "source_call_abi";
+    return result;
+  }
   // A root invocation has no source call on which to attach the boundaries.
   if (named_verifier_atomic(func)) {
     result.rejected_reason = "atomic_root";
@@ -2408,6 +2426,10 @@ inline UnrollResult unroll_completed(ar::Function* func, ar::Statement* target,
     ar::CallBase* finite_source = nullptr,
     unsigned finite_value = 0) {
   UnrollResult result;
+  if (unsupported_source_function_abi(func)) {
+    result.rejected_reason = "source_call_abi";
+    return result;
+  }
   auto* body = func->body_or_null();
   if (named_verifier_atomic(func) || body == nullptr || !body->has_entry_block()) return result;
   UnrollBudget budget;
@@ -2438,6 +2460,10 @@ inline UnrollResult unroll_completed(ar::Function* func, ar::Statement* target,
 inline UnrollResult unroll_terminated(ar::Function* func, unsigned loop_bound,
     const std::chrono::steady_clock::time_point* deadline = nullptr) {
   UnrollResult result;
+  if (unsupported_source_function_abi(func)) {
+    result.rejected_reason = "source_call_abi";
+    return result;
+  }
   auto* body = func->body_or_null();
   if (named_verifier_atomic(func) || body == nullptr || !body->has_entry_block()) return result;
   UnrollBudget budget;

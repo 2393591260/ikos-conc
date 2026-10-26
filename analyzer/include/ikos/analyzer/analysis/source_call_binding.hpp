@@ -2,6 +2,7 @@
 #pragma once
 
 #include <ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp>
+#include <ikos/analyzer/analysis/source_call_abi.hpp>
 
 namespace ikos {
 namespace analyzer {
@@ -48,23 +49,8 @@ inline bool source_integer_binding(ar::Value* a, llvm::Value* n) {
   return false;
 }
 
-// These library summaries accept ordinary value attributes, not semantic promises.
-inline bool ordinary_source_attributes(llvm::AttributeSet attributes) {
-  for (auto attribute : attributes) {
-    if (attribute.isStringAttribute()) return false;
-    switch (attribute.getKindAsEnum()) {
-      case llvm::Attribute::NoUndef: case llvm::Attribute::NonNull:
-      case llvm::Attribute::NoCapture: case llvm::Attribute::ReadOnly:
-      case llvm::Attribute::WriteOnly: case llvm::Attribute::ReadNone:
-      case llvm::Attribute::Dereferenceable: case llvm::Attribute::DereferenceableOrNull:
-      case llvm::Attribute::Alignment: case llvm::Attribute::NoAlias: break;
-      default: return false;
-    }
-  }
-  return true;
-}
-
-// Bind a source call to its inventoried AR statement; this grants no library effect.
+// Bind source/AR identity and supported scalar C representation.
+// This grants no library effect, successful return, pointer validity or HB.
 inline ar::CallBase* source_call_binding(llvm::CallBase* c,
                                        ar::Statement* original) {
   auto* a = dyn_cast_or_null< ar::CallBase >(original);
@@ -80,6 +66,9 @@ inline ar::CallBase* source_call_binding(llvm::CallBase* c,
       (t->has_frontend() && t->frontend< llvm::Value >() != f) ||
       (f->isDeclaration() ? !t->is_declaration()
                           : !t->is_definition() || !t->has_frontend()))
+    return nullptr;
+  if (unsupported_source_call_abi(a) ||
+      (!f->isIntrinsic() && !ordinary_source_call_abi_attributes(c, f)))
     return nullptr;
   const bool old_nondet = f->isDeclaration() && c->arg_empty() &&
                           (f->getName() == "__VERIFIER_nondet_int" ||

@@ -521,7 +521,8 @@ class ReadonlyHeapReads::Impl {
     auto found = functions.find(f);
     if (found == functions.end())
       throw Refuse{};
-    if (f->isVarArg() || f->getCallingConv() != llvm::CallingConv::C)
+    if (f->isVarArg() || f->getCallingConv() != llvm::CallingConv::C ||
+        !ordinary_source_function_abi_attributes(f))
       throw Refuse{};
     for (unsigned n = 0; n < f->arg_size(); ++n)
       for (auto a : {llvm::Attribute::ByVal,

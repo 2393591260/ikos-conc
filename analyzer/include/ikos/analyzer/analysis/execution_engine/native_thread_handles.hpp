@@ -3,6 +3,7 @@
 
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/IntrinsicInst.h>
+#include <ikos/analyzer/analysis/source_c_abi.hpp>
 #include <ikos/analyzer/analysis/context.hpp>
 #include <ikos/analyzer/analysis/execution_engine/global_array_subobject.hpp>
 #include <ikos/analyzer/analysis/execution_engine/heap_pointer_effects.hpp>
@@ -57,7 +58,8 @@ inline llvm::Function* native_handle_api(llvm::CallBase* call, bool create) {
       function->arg_size() != n || call->arg_size() != n || !call->use_empty() ||
       function->getCallingConv() != llvm::CallingConv::C || call->getCallingConv() != llvm::CallingConv::C ||
       !function->getReturnType()->isIntegerTy(32) || !call->getType()->isIntegerTy(32) ||
-      call->getFunctionType() != function->getFunctionType()) return nullptr;
+      call->getFunctionType() != function->getFunctionType() ||
+      !ordinary_source_call_abi_attributes(call, function)) return nullptr;
   for (unsigned i = 0; i < n; ++i) {
     auto* type = function->getFunctionType()->getParamType(i);
     if (type != call->getArgOperand(i)->getType()) return nullptr;
@@ -81,6 +83,7 @@ inline llvm::Function* native_handle_api(llvm::CallBase* call, bool create) {
         entry->isVarArg() || entry->arg_size() != 1 || !entry->getReturnType()->isPointerTy() ||
         !entry->getFunctionType()->getParamType(0)->isPointerTy() || entry->getName() == "main" ||
         entry->getCallingConv() != llvm::CallingConv::C ||
+        !ordinary_source_function_abi_attributes(entry) ||
         signature->getPointerElementType() != entry->getFunctionType() ||
         llvm::cast< llvm::PointerType >(entry->getReturnType())->getAddressSpace() != 0 ||
         llvm::cast< llvm::PointerType >(entry->getFunctionType()->getParamType(0))->getAddressSpace() != 0) return nullptr;

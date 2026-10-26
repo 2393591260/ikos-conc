@@ -81,9 +81,18 @@ public:
 
   /// \brief Execute any call statement
   void exec(ar::CallBase* call) {
+    if (unsupported_source_call_abi(call)) {
+      this->_engine.exec_unsupported_source_abi(call);
+      return;
+    }
     if (auto cst = dyn_cast< ar::FunctionPointerConstant >(call->called())) {
       // Direct call
       ar::Function* fun = cst->function();
+
+      if (unsupported_source_call_abi(call, fun)) {
+        this->_engine.exec_unsupported_source_abi(call);
+        return;
+      }
 
       if (fun->is_declaration()) {
         // Extern function

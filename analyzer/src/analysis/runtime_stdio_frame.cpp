@@ -14,6 +14,7 @@
 #include <ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp>
 #include <ikos/analyzer/analysis/execution_engine/stdio_effects.hpp>
 #include <ikos/analyzer/analysis/runtime_stdio_frame.hpp>
+#include <ikos/analyzer/analysis/source_call_abi.hpp>
 #include <ikos/analyzer/util/log.hpp>
 #include <map>
 #include <set>
@@ -258,6 +259,9 @@ class RuntimeStdioFrame::Impl {
         f->arg_size() != t->num_parameters() ||
         f->isVarArg() != t->type()->is_var_arg() ||
         (f->isDeclaration() ? !t->is_declaration() : !t->is_definition()))
+      return nullptr;
+    if (unsupported_source_call_abi(a) ||
+        (!f->isIntrinsic() && !ordinary_source_call_abi_attributes(c, f)))
       return nullptr;
     if (t->has_frontend()) {
       if (t->frontend< llvm::Value >() != f)
@@ -527,7 +531,8 @@ class RuntimeStdioFrame::Impl {
     if (reachable.count(f))
       return;
     need(functions.count(f) && !f->isDeclaration() && !f->isVarArg() &&
-             f->getCallingConv() == llvm::CallingConv::C,
+             f->getCallingConv() == llvm::CallingConv::C &&
+             ordinary_source_function_abi_attributes(f),
          "defined reachable function binding");
     active.insert(f);
     reachable.insert(f);
