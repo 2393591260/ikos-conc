@@ -6,7 +6,8 @@ namespace ikos {
 namespace analyzer {
 class Context;
 struct AccessRecord;
-// Inductive byte ranges over immutable, published flat-array bases.
+// GNU/Linux ILP32/LP64 relative byte ranges over immutable published arrays.
+// The loop induction remains signed i32; this proves neither validity nor completion.
 class ArraySlices {
   class Impl;
   std::unique_ptr< Impl > _impl;

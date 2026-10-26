@@ -1,0 +1,122 @@
+; Retained non-inbounds constant-global GEP probes with ordinary i32 arrays.
+; Expanded by test_array_slice_constant_geps.py and run with --opt=none.
+; Every verdict requires the actual pp-bc-file to retain the exact probe.
+target datalayout = "e-p:{{WORD}}:{{WORD}}:{{WORD}}:{{WORD}}-i32:32-i64:{{I64ALIGN}}-n8:16:32:64-S128"
+target triple = "{{TRIPLE}}"
+
+@constant_probe = constant i32 7, align 4
+
+@input = global i32* null, align {{ALIGN}}
+@output = global i32* null, align {{ALIGN}}
+@length = global i32 0, align 4
+@cut = global i32 0, align 4
+
+declare i32 @__VERIFIER_nondet_int()
+declare i8* @malloc(i{{WORD}})
+declare void @abort()
+declare i32 @pthread_create(i{{WORD}}*, i8*, i8* (i8*)*, i8*)
+declare i32 @pthread_join(i{{WORD}}, i8**)
+
+define internal i32* @make(i32 %n) {
+entry:
+  {{EXTEND_N}}
+  %size = mul i{{WORD}} {{NATIVE_N}}, 4
+  %raw = call i8* @malloc(i{{WORD}} %size)
+  %base = bitcast i8* %raw to i32*
+  br label %loop
+loop:
+  %i = phi i32 [ 0, %entry ], [ %next, %body ]
+  %more = icmp slt i32 %i, %n
+  br i1 %more, label %body, label %exit
+body:
+  {{EXTEND_I}}
+  %cell = getelementptr i32, i32* %base, i{{WORD}} {{NATIVE_I}}
+  store i32 0, i32* %cell, align 1
+  %next = add nsw i32 %i, 1
+  br label %loop
+exit:
+  ret i32* %base
+}
+
+define internal i8* @left(i8* %unused) {
+entry:
+  %limit = load i32, i32* @cut, align 4
+  %src = load i32*, i32** @input, align {{ALIGN}}
+  %dst = load i32*, i32** @output, align {{ALIGN}}
+  br label %loop
+loop:
+  %i = phi i32 [ 0, %entry ], [ %next, %body ]
+  %more = icmp slt i32 %i, %limit
+  br i1 %more, label %body, label %exit
+body:
+  {{EXTEND_I}}
+  %source = getelementptr i32, i32* %src, i{{WORD}} {{NATIVE_I}}
+  %destination = getelementptr i32, i32* %dst, i{{WORD}} {{NATIVE_I}}
+  %value = load i32, i32* %source, align 1
+  %changed = add i32 %value, 1
+  store i32 %changed, i32* %destination, align 1
+  %next = add nsw i32 %i, 1
+  br label %loop
+exit:
+  ret i8* null
+}
+
+define internal i8* @right(i8* %unused) {
+entry:
+  %seed = load i32, i32* @cut, align 4
+  %limit = load i32, i32* @length, align 4
+  %src = load i32*, i32** @input, align {{ALIGN}}
+  %dst = load i32*, i32** @output, align {{ALIGN}}
+  br label %loop
+loop:
+  %i = phi i32 [ %seed, %entry ], [ %next, %body ]
+  %more = icmp slt i32 %i, %limit
+  br i1 %more, label %body, label %exit
+body:
+  {{EXTEND_I}}
+  %source = getelementptr i32, i32* %src, i{{WORD}} {{NATIVE_I}}
+  %destination = getelementptr i32, i32* %dst, i{{WORD}} {{NATIVE_I}}
+  %value = load i32, i32* %source, align 1
+  %changed = add i32 %value, 1
+  store i32 %changed, i32* %destination, align 1
+  %next = add nsw i32 %i, 1
+  br label %loop
+exit:
+  ret i8* null
+}
+
+define i32 @main() {
+entry:
+  %a = alloca i{{WORD}}, align {{ALIGN}}
+  %b = alloca i{{WORD}}, align {{ALIGN}}
+  {{PROBE_INSTRUCTIONS}}
+  %n = call i32 @__VERIFIER_nondet_int()
+  %k = call i32 @__VERIFIER_nondet_int()
+  %probe_ok = icmp eq i32 {{PROBE_VALUE}}, 7
+  %positive = icmp sgt i32 %n, 1
+  %bounded = icmp slt i32 %n, 100000
+  %cut_positive = icmp sgt i32 %k, 0
+  %cut_inside = icmp slt i32 %k, %n
+  %valid_n = and i1 %positive, %bounded
+  %valid_k = and i1 %cut_positive, %cut_inside
+  %valid_input = and i1 %valid_n, %probe_ok
+  %valid = and i1 %valid_input, %valid_k
+  br i1 %valid, label %setup, label %failure
+failure:
+  call void @abort()
+  unreachable
+setup:
+  store i32 %n, i32* @length, align 4
+  store i32 %k, i32* @cut, align 4
+  %source = call i32* @make(i32 %n)
+  %destination = call i32* @make(i32 %n)
+  store i32* %source, i32** @input, align {{ALIGN}}
+  store i32* %destination, i32** @output, align {{ALIGN}}
+  %create_a = call i32 @pthread_create(i{{WORD}}* %a, i8* null, i8* (i8*)* @left, i8* null)
+  %create_b = call i32 @pthread_create(i{{WORD}}* %b, i8* null, i8* (i8*)* @right, i8* null)
+  %handle_a = load i{{WORD}}, i{{WORD}}* %a, align {{ALIGN}}
+  %handle_b = load i{{WORD}}, i{{WORD}}* %b, align {{ALIGN}}
+  %join_a = call i32 @pthread_join(i{{WORD}} %handle_a, i8** null)
+  %join_b = call i32 @pthread_join(i{{WORD}} %handle_b, i8** null)
+  ret i32 0
+}

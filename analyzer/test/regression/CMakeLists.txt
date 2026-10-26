@@ -348,3 +348,15 @@ add_concurrency_test(source-call-abi "${CONCURRENCY_ROOT}/scripts/test_source_ca
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(source-call-abi-lp64 "${CONCURRENCY_ROOT}/scripts/test_source_call_abi.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(array-slices-lp64 "${CONCURRENCY_ROOT}/scripts/test_array_slices.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(array-slice-occurrences-lp64 "${CONCURRENCY_ROOT}/scripts/test_array_slice_occurrences.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(array-slice-constant-geps "${CONCURRENCY_ROOT}/scripts/test_array_slice_constant_geps.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+
+add_concurrency_test(array-slice-constant-geps-lp64 "${CONCURRENCY_ROOT}/scripts/test_array_slice_constant_geps.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)

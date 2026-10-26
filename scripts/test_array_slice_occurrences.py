@@ -19,6 +19,7 @@ from svcomp_race_test import classify, VERDICT_SAFE, VERDICT_UNKNOWN
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', type=int, choices=(32, 64), default=32)
     args = parser.parse_args()
     identity = runtime_identity(args.ikos.resolve())
     command = runtime_command(args.ikos.resolve())
@@ -34,7 +35,7 @@ def main():
                 database = work / 'output.db'
                 proc = subprocess.run(command + ['--analyses=race', '--concurrency=auto',
                     '--partitioning=guards', '--demote-race-to-unknown',
-                    '--bmc-deadline-ms=0', '-m32', '-o', str(database), str(source)],
+                    '--bmc-deadline-ms=0', '-m' + str(args.bits), '-o', str(database), str(source)],
                     env=env, capture_output=True, text=True, timeout=30)
                 output = proc.stdout + proc.stderr
                 assert proc.returncode == 0, (case, wide, output)
@@ -45,8 +46,9 @@ def main():
                 assert bool(proofs) == positive, (case, wide, proofs, output)
                 verdict = classify(proc.stdout, proc.returncode, False)
                 assert verdict == (VERDICT_SAFE if positive else VERDICT_UNKNOWN), (case, wide, output)
-                print(f'case={case}/wide={wide}: proofs={len(proofs)}', flush=True)
+                print(f'case={case}/wide={wide}/bits={args.bits}: proofs={len(proofs)}', flush=True)
     verify_runtime(identity)
+    print(f'PASS bits={args.bits} 12 array-slice occurrence controls', flush=True)
 
 
 if __name__ == '__main__':

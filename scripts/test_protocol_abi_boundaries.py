@@ -45,7 +45,7 @@ def main():
                     infos = [json.loads(row[0]) for row in db.execute('SELECT info FROM checks')]
                     result = json.loads(db.execute(
                         "SELECT value FROM settings WHERE name='race_result'").fetchone()[0])
-                supported = bits == 32 or fixture_name == 'runtime-stdio'
+                supported = bits == 32 or fixture_name in {'runtime-stdio', 'array-slices'}
                 expected = 'SAFE' if supported else 'UNKNOWN'
                 assert result['verdict'] == expected, (fixture_name, bits, result, proc.stdout)
                 if contract:

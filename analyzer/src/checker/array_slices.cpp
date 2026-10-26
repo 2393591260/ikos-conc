@@ -3,10 +3,12 @@
 
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/Dominators.h>
+#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <z3++.h>
 #include <algorithm>
 #include <deque>
 #include <functional>
+#include <ikos/analyzer/analysis/source_c_abi.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/util/log.hpp>
@@ -26,6 +28,8 @@ void put(Map& map, typename Map::key_type key, const Value& value) {
     i->second = value;
 }
 
+// Scalar values retain their LLVM width. Relative byte geometry is exact here.
+constexpr unsigned GeometryBits = 128;
 enum class Mode { Main, Constructor, Worker, Scalar };
 enum class Place { Global, Local, Heap, Null };
 struct Pointer {
@@ -36,7 +40,7 @@ struct Pointer {
   std::uint64_t stride = 0;
   z3::expr offset, extent;
   Pointer(z3::context& z, Place p)
-      : place(p), offset(z.bv_val(0, 64)), extent(offset) {}
+      : place(p), offset(z.bv_val(0, GeometryBits)), extent(offset) {}
 };
 struct State {
   std::map< llvm::Value*, z3::expr > values, cells;
@@ -79,6 +83,8 @@ class ArraySlices::Impl {
   Context& ctx;
   z3::context z;
   llvm::Function* main = nullptr;
+  PthreadObjectLayout abi;
+  unsigned address_bits = 0;
   std::map< llvm::Value*, ar::Statement* > originals;
   std::map< llvm::Function*, ar::Function* > functions;
   std::set< llvm::Function* > active, workers;
@@ -165,11 +171,36 @@ class ArraySlices::Impl {
     if (feasible(s.path && !predicate))
       throw Refuse{};
   }
+  z3::expr byte_value(std::uint64_t value) {
+    return z.bv_val(value, GeometryBits);
+  }
+  z3::expr native_max() {
+    llvm::SmallString< 64 > text;
+    llvm::APInt::getMaxValue(address_bits).toString(text, 10, false);
+    return z.bv_val(text.c_str(), GeometryBits);
+  }
   z3::expr extend(const z3::expr& v, bool sign = false) {
-    if (v.get_sort().bv_size() > 64)
+    const unsigned width = v.get_sort().bv_size();
+    if (!width || width > 64)
       throw Refuse{};
-    return sign ? z3::sext(v, 64 - v.get_sort().bv_size())
-                : z3::zext(v, 64 - v.get_sort().bv_size());
+    return sign ? z3::sext(v, GeometryBits - width)
+                : z3::zext(v, GeometryBits - width);
+  }
+  std::uint64_t fixed_alloc_size(llvm::Type* type) {
+    if (!type->isSized())
+      throw Refuse{};
+    const auto size = main->getParent()->getDataLayout().getTypeAllocSize(type);
+    if (size.isScalable())
+      throw Refuse{};
+    const auto value = size.getFixedValue();
+    if (address_bits == 32 && value > UINT32_MAX)
+      throw Refuse{};
+    return value;
+  }
+  void bounded_offset(const State& s, const Pointer& p) {
+    // Reused offsets lie in [0, 2^W-1]. With a signed <=64-bit index
+    // and stride <=8, the next sum/product is below 2^67 in magnitude.
+    require(s, p.offset >= byte_value(0) && p.offset <= native_max());
   }
   bool zero(const z3::expr& v) {
     return (v == z.bv_val(0, v.get_sort().bv_size())).simplify().is_true();
@@ -180,11 +211,9 @@ class ArraySlices::Impl {
     if (auto* g = llvm::dyn_cast< llvm::GlobalVariable >(v)) {
       Pointer p(z, Place::Global);
       p.object = g;
-      p.extent = z.bv_val(main->getParent()
-                              ->getDataLayout()
-                              .getTypeAllocSize(g->getValueType())
-                              .getFixedValue(),
-                          64);
+      if (g->getAddressSpace() != 0)
+        throw Refuse{};
+      p.extent = byte_value(fixed_alloc_size(g->getValueType()));
       return p;
     }
     auto i = s.pointers.find(v);
@@ -193,54 +222,181 @@ class ArraySlices::Impl {
     return i->second;
   }
   std::uint64_t bytes(llvm::Type* t) {
-    if (!scalar(t) && !t->isPointerTy())
+    if ((!scalar(t) && !t->isPointerTy()) ||
+        (t->isPointerTy() && t->getPointerAddressSpace() != 0))
       throw Refuse{};
-    return main->getParent()
-        ->getDataLayout()
-        .getTypeStoreSize(t)
-        .getFixedValue();
+    const auto size = main->getParent()->getDataLayout().getTypeStoreSize(t);
+    if (size.isScalable() || !size.getFixedValue() || size.getFixedValue() > 8)
+      throw Refuse{};
+    return size.getFixedValue();
   }
-  bool same_index(ar::Value* v, llvm::Value* n) const {
-    for (unsigned depth = 0; depth < 32; ++depth) {
-      auto* type = dyn_cast< ar::IntegerType >(v->type());
-      if (!type || type->bit_width() != 32 || !n->getType()->isIntegerTy(32))
-        return false;
-      auto* var = dyn_cast< ar::InternalVariable >(v);
-      if (!var)
-        return false;
-      if (var->has_frontend() && var->frontend< llvm::Value >() == n)
-        return true;
-      auto* d = unique_def(var);
-      if (auto* a = dyn_cast_or_null< ar::Assignment >(d))
-        v = a->operand();
-      else if (auto* a = dyn_cast_or_null< ar::UnaryOperation >(d)) {
-        if (a->op() != ar::UnaryOperation::Bitcast)
-          return false;
-        v = a->operand();
-      } else
-        return false;
-    }
-    return false;
+  std::uint64_t allocation_bytes(llvm::Type* t) {
+    (void)bytes(t);
+    const auto size = fixed_alloc_size(t);
+    if (!size || size > 8)
+      throw Refuse{};
+    return size;
   }
-  bool ar_index(ar::Value* v, llvm::Value* n, std::uint64_t stride) const {
+  bool source_pointer_binding(ar::Value* value, llvm::Value* source) const {
     for (unsigned depth = 0; depth < 32; ++depth) {
-      auto* var = dyn_cast< ar::InternalVariable >(v);
-      auto* d = var ? unique_def(var) : nullptr;
-      if (auto* p = dyn_cast_or_null< ar::PointerShift >(d)) {
-        auto b = p->term_begin(), e = p->term_end();
-        return b != e && (*b).first.to_z_number() == core::ZNumber(stride) &&
-               same_index((*b).second, n) && ++b == e;
+      if (!value || !value->type()->is_pointer() || !source ||
+          !source->getType()->isPointerTy() ||
+          source->getType()->getPointerAddressSpace() != 0)
+        return false;
+      if (auto* cast = llvm::dyn_cast< llvm::BitCastOperator >(source)) {
+        source = cast->getOperand(0);
+        continue;
       }
-      if (auto* a = dyn_cast_or_null< ar::Assignment >(d))
-        v = a->operand();
-      else if (auto* a = dyn_cast_or_null< ar::UnaryOperation >(d)) {
-        if (a->op() != ar::UnaryOperation::Bitcast)
+      if (isa< ar::NullConstant >(value))
+        return llvm::isa< llvm::ConstantPointerNull >(source);
+      if (auto* global = dyn_cast< ar::GlobalVariable >(value))
+        return global->has_frontend() &&
+               global->frontend< llvm::Value >() == source;
+      if (auto* allocation = dyn_cast_or_null< ar::Allocate >(original(source)))
+        if (allocation->result() == value)
+          return true;
+      auto* variable = dyn_cast< ar::InternalVariable >(value);
+      if (variable && variable->has_frontend() &&
+          variable->frontend< llvm::Value >() == source)
+        return true;
+      auto* definition = variable ? unique_def(variable) : nullptr;
+      if (auto* copy = dyn_cast_or_null< ar::Assignment >(definition))
+        value = copy->operand();
+      else if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
+        if (cast->op() != ar::UnaryOperation::Bitcast)
           return false;
-        v = a->operand();
+        value = cast->operand();
       } else
         return false;
     }
     return false;
+  }
+  bool ar_index(ar::Value* value, llvm::GetElementPtrInst* source,
+                std::uint64_t stride) const {
+    if (source->getAddressSpace() != 0 || source->getNumIndices() != 1 ||
+        !source->getOperand(1)->getType()->isIntegerTy(address_bits))
+      return false;
+    for (unsigned depth = 0; depth < 32; ++depth) {
+      auto* variable = dyn_cast< ar::InternalVariable >(value);
+      auto* definition = variable ? unique_def(variable) : nullptr;
+      if (auto* shift = dyn_cast_or_null< ar::PointerShift >(definition)) {
+        auto begin = shift->term_begin(), end = shift->term_end();
+        return source_pointer_binding(shift->pointer(), source->getPointerOperand()) &&
+               begin != end &&
+               (*begin).first.to_z_number() == core::ZNumber(stride) &&
+               source_integer_binding((*begin).second, source->getOperand(1)) &&
+               ++begin == end;
+      }
+      if (auto* copy = dyn_cast_or_null< ar::Assignment >(definition))
+        value = copy->operand();
+      else if (auto* cast = dyn_cast_or_null< ar::UnaryOperation >(definition)) {
+        if (cast->op() != ar::UnaryOperation::Bitcast)
+          return false;
+        value = cast->operand();
+      } else
+        return false;
+    }
+    return false;
+  }
+  llvm::Value* induction_origin(llvm::Value* index, llvm::PHINode* phi) const {
+    if (!phi || !index->getType()->isIntegerTy(address_bits))
+      return nullptr;
+    for (unsigned depth = 0; depth < 16; ++depth) {
+      if (index == phi)
+        return phi;
+      auto* cast = llvm::dyn_cast< llvm::CastInst >(index);
+      if (!cast || !scalar(cast->getType()) ||
+          !scalar(cast->getOperand(0)->getType()))
+        return nullptr;
+      const unsigned from = cast->getOperand(0)->getType()->getIntegerBitWidth();
+      const unsigned to = cast->getType()->getIntegerBitWidth();
+      if (!((cast->getOpcode() == llvm::Instruction::SExt ||
+             cast->getOpcode() == llvm::Instruction::ZExt) &&
+            from >= 32 && from < to && to <= address_bits) &&
+          !(cast->getOpcode() == llvm::Instruction::BitCast && from == to))
+        return nullptr;
+      index = cast->getOperand(0);
+    }
+    return nullptr;
+  }
+  bool scalar_allocation(ar::Allocate* a, llvm::AllocaInst* source) {
+    auto* count = a ? dyn_cast< ar::IntegerConstant >(a->array_size()) : nullptr;
+    auto* type = a ? dyn_cast< ar::IntegerType >(a->allocated_type()) : nullptr;
+    auto* native_count = llvm::dyn_cast< llvm::ConstantInt >(source->getArraySize());
+    if (!a || !count || count->value().to_z_number() != 1 ||
+        !native_count || !native_count->isOne() || !type ||
+        source->getAddressSpace() != 0 || !scalar(source->getAllocatedType()) ||
+        type->bit_width() != source->getAllocatedType()->getIntegerBitWidth() ||
+        !unique_allocation_definition(a))
+      return false;
+    const auto& layout = ctx.bundle->data_layout();
+    return layout.alloc_size_in_bytes(a->allocated_type()) ==
+               core::ZNumber(allocation_bytes(source->getAllocatedType())) &&
+           layout.store_size_in_bytes(a->allocated_type()) ==
+               core::ZNumber(bytes(source->getAllocatedType()));
+  }
+  bool native_status(ar::CallBase* call) const {
+    auto* target = native_handle_callee(call);
+    auto* result = target
+                       ? dyn_cast< ar::IntegerType >(target->type()->return_type())
+                       : nullptr;
+    return result && result->bit_width() == 32 &&
+           (!call->has_result() || call->result()->type() == result);
+  }
+  // Effect identity only. The caller separately keeps native_handle_api,
+  // source_call_binding and every actual value/storage obligation.
+  bool native_pthread_effect(ar::CallBase* call,
+                             llvm::Function* source,
+                             bool create) const {
+    auto* imported = native_handle_callee(call);
+    const auto expected = create ? ar::Intrinsic::PthreadCreate
+                                 : ar::Intrinsic::PthreadJoin;
+    const auto name = create ? "pthread_create" : "pthread_join";
+    if (!source || !source->isDeclaration() || source->getName() != name ||
+        !imported || !imported->is_declaration())
+      return false;
+    if (imported->has_frontend()) {
+      return imported->frontend< llvm::Value >() == source &&
+             (imported->name() == name || imported->intrinsic_id() == expected);
+    }
+    // Only the exact mapped intrinsic can omit a source annotation.
+    // An unannotated name-only external declaration supplies no identity.
+    return imported->intrinsic_id() == expected;
+  }
+  void global_initialization(llvm::GlobalVariable& source) {
+    ar::GlobalVariable* object = nullptr;
+    for (auto i = ctx.bundle->global_begin(); i != ctx.bundle->global_end(); ++i)
+      if ((*i)->has_frontend() &&
+          (*i)->frontend< llvm::Value >() == &source) {
+        if (object) throw Refuse{};
+        object = *i;
+      }
+    if (!object || !object->is_definition() || object->is_thread_local() ||
+        ctx.bundle->data_layout().alloc_size_in_bytes(object->type()->pointee()) !=
+            core::ZNumber(fixed_alloc_size(source.getValueType())))
+      throw Refuse{};
+    // Literal globals are consumed only by the existing exact assertion summary.
+    if (source.isConstant() && !scalar(source.getValueType()) &&
+        !source.getValueType()->isPointerTy())
+      return;
+    unsigned stores = 0;
+    for (auto* block : *object->initializer())
+      for (auto* statement : *block) {
+        auto* store = dyn_cast< ar::Store >(statement);
+        if (!store || store->pointer() != object ||
+            ctx.bundle->data_layout().store_size_in_bytes(store->value()->type()) !=
+                core::ZNumber(bytes(source.getValueType())))
+          throw Refuse{};
+        if (scalar(source.getValueType())) {
+          if (!source_integer_binding(store->value(), source.getInitializer()))
+            throw Refuse{};
+        } else if (!isa< ar::NullConstant >(store->value()) ||
+                   !llvm::isa< llvm::ConstantPointerNull >(source.getInitializer()))
+          throw Refuse{};
+        ++stores;
+      }
+    if (stores != 1)
+      throw Refuse{};
   }
   z3::expr operation(State& s, llvm::Instruction* i) {
     if (auto* cast = llvm::dyn_cast< llvm::CastInst >(i)) {
@@ -337,7 +493,7 @@ class ArraySlices::Impl {
       }
       const unsigned width = a.get_sort().bv_size();
       if (b->hasNoSignedWrap() || b->hasNoUnsignedWrap()) {
-        if (width > 32)
+        if (width > 64)
           throw Refuse{};
         for (bool sign : {false, true}) {
           if (!(sign ? b->hasNoSignedWrap() : b->hasNoUnsignedWrap()))
@@ -369,15 +525,9 @@ class ArraySlices::Impl {
     auto found = functions.find(f);
     if (found == functions.end())
       throw Refuse{};
-    if (f->isVarArg() || f->getCallingConv() != llvm::CallingConv::C)
+    if (f->isVarArg() || f->getCallingConv() != llvm::CallingConv::C ||
+        !ordinary_source_function_abi_attributes(f))
       throw Refuse{};
-    for (unsigned n = 0; n < f->arg_size(); ++n)
-      for (auto a : {llvm::Attribute::ByVal,
-                     llvm::Attribute::StructRet,
-                     llvm::Attribute::InAlloca,
-                     llvm::Attribute::Preallocated})
-        if (f->hasParamAttribute(n, a))
-          throw Refuse{};
     for (auto& a : f->args()) {
       initial.values.erase(&a);
       initial.pointers.erase(&a);
@@ -492,7 +642,7 @@ class ArraySlices::Impl {
           !returned || returned->getAddressSpace() ||
           !scalar(returned->getPointerElementType()))
         throw Refuse{};
-      stride = bytes(returned->getPointerElementType());
+      stride = allocation_bytes(returned->getPointerElementType());
       unsigned returns = 0;
       for (auto& b : *f)
         for (auto& i : b)
@@ -585,54 +735,88 @@ class ArraySlices::Impl {
         throw Refuse{};
       } else if (auto* alloca = llvm::dyn_cast< llvm::AllocaInst >(i)) {
         auto* a = dyn_cast_or_null< ar::Allocate >(original(i));
-        auto* count =
-            llvm::dyn_cast< llvm::ConstantInt >(alloca->getArraySize());
-        if (!a || !count || !count->isOne() ||
-            !scalar(alloca->getAllocatedType()) || (loop && loop->contains(i)))
+        if (!scalar_allocation(a, alloca) || (loop && loop->contains(i)))
           throw Refuse{};
         Pointer p(z, Place::Local);
         p.object = alloca;
-        p.extent = z.bv_val(bytes(alloca->getAllocatedType()), 64);
+        p.extent = byte_value(allocation_bytes(alloca->getAllocatedType()));
         put(s.pointers, i, p);
       } else if (auto* gep = llvm::dyn_cast< llvm::GetElementPtrInst >(i)) {
+        if (gep->getAddressSpace() != 0)
+          throw Refuse{};
         auto base_pointer = pointer(s, gep->getPointerOperand());
+        bounded_offset(s, base_pointer);
         if (base_pointer.place == Place::Global &&
             llvm::cast< llvm::GlobalVariable >(base_pointer.object)
                 ->isConstant() &&
             gep->hasAllConstantIndices()) {
-          llvm::APInt displacement(32, 0);
+          llvm::APInt native_displacement(address_bits, 0);
           if (!gep->accumulateConstantOffset(main->getParent()->getDataLayout(),
-                                             displacement))
+                                             native_displacement))
             throw Refuse{};
-          base_pointer.offset =
-              base_pointer.offset + z.bv_val(displacement.getSExtValue(), 64);
-          require(s,
-                  base_pointer.offset >= z.bv_val(0, 64) &&
-                      base_pointer.offset <= base_pointer.extent);
+          // Constant aggregate GEPs need exact host mathematics: several
+          // huge native-stride terms could overflow even a BV128 sum.
+          core::ZNumber delta(0);
+          const auto& layout = main->getParent()->getDataLayout();
+          for (auto it = llvm::gep_type_begin(gep), end = llvm::gep_type_end(gep);
+               it != end; ++it) {
+            auto* index = llvm::dyn_cast<llvm::ConstantInt>(it.getOperand());
+            if (!index || index->getBitWidth() > address_bits)
+              throw Refuse{};
+            if (auto* structure = it.getStructTypeOrNull()) {
+              if (index->getValue().getActiveBits() > 32 ||
+                  index->getZExtValue() >= structure->getNumElements())
+                throw Refuse{};
+              delta += core::ZNumber(layout.getStructLayout(structure)
+                  ->getElementOffset(index->getZExtValue()));
+            } else {
+              llvm::SmallString<64> text;
+              index->getValue().toString(text, 10, true);
+              delta += core::ZNumber::from_string(text.c_str()) *
+                       core::ZNumber(fixed_alloc_size(it.getIndexedType()));
+            }
+          }
+          const auto modulus = core::ZNumber(1) << address_bits;
+          const auto limit = modulus - 1;
+          auto reduced = delta % modulus;
+          if (reduced < 0) reduced += modulus;
+          if (reduced != core::ZNumber(native_displacement.getZExtValue()))
+            throw Refuse{};
+          auto base = base_pointer.offset.simplify();
+          if (!base.is_numeral())
+            throw Refuse{};
+          const auto exact = core::ZNumber(base.get_numeral_uint64()) + delta;
+          if (exact < 0 || exact > limit)
+            throw Refuse{};
+          base_pointer.offset = byte_value(exact.to<std::uint64_t>());
+          require(s, base_pointer.offset <= base_pointer.extent);
           put(s.pointers, i, base_pointer);
           j.pc = i->getNextNode();
           pending.push_back(std::move(j));
           continue;
         }
         if (gep->getNumIndices() != 1 ||
-            !gep->getOperand(1)->getType()->isIntegerTy(32) ||
+            !gep->getOperand(1)->getType()->isIntegerTy(address_bits) ||
             !scalar(gep->getSourceElementType()))
           throw Refuse{};
         auto p = pointer(s, gep->getPointerOperand());
-        const auto step = bytes(gep->getSourceElementType());
+        const auto step = allocation_bytes(gep->getSourceElementType());
         if (p.place != Place::Heap || step != p.stride)
           throw Refuse{};
-        const bool direct = p.root && p.offset.simplify().is_numeral() &&
-                            p.offset.simplify().get_numeral_uint64() == 0;
+        const bool direct = p.root && zero(p.offset);
         p.offset = p.offset + extend(number(s, gep->getOperand(1)), true) *
-                                  z.bv_val(step, 64);
-        p.index = direct ? gep->getOperand(1) : nullptr;
+                                  byte_value(step);
+        bounded_offset(s, p);
+        p.index = direct ? induction_origin(gep->getOperand(1), phi) : nullptr;
         put(s.pointers, i, p);
       } else if (auto* conversion = llvm::dyn_cast< llvm::BitCastInst >(i)) {
         if (conversion->getType()->isPointerTy() &&
-            conversion->getOperand(0)->getType()->isPointerTy())
+            conversion->getOperand(0)->getType()->isPointerTy()) {
+          if (conversion->getType()->getPointerAddressSpace() != 0 ||
+              conversion->getOperand(0)->getType()->getPointerAddressSpace() != 0)
+            throw Refuse{};
           put(s.pointers, i, pointer(s, conversion->getOperand(0)));
-        else
+        } else
           set(s, i, operation(s, i));
       } else if (llvm::isa< llvm::LoadInst >(i) ||
                  llvm::isa< llvm::StoreInst >(i)) {
@@ -651,9 +835,22 @@ class ArraySlices::Impl {
         auto* type =
             load ? load->getType() : store->getValueOperand()->getType();
         const auto width = bytes(type);
-        require(s,
-                p.offset >= z.bv_val(0, 64) &&
-                    p.offset + z.bv_val(width, 64) <= p.extent);
+        auto* ar_type = load ? cast< ar::Load >(a)->result()->type()
+                            : cast< ar::Store >(a)->value()->type();
+        auto* ar_address = load ? cast< ar::Load >(a)->operand()
+                               : cast< ar::Store >(a)->pointer();
+        auto* native_address = load ? load->getPointerOperand()
+                                    : store->getPointerOperand();
+        const auto& layout = ctx.bundle->data_layout();
+        if (layout.store_size_in_bytes(ar_type) != core::ZNumber(width) ||
+            layout.alloc_size_in_bytes(ar_type) !=
+                core::ZNumber(allocation_bytes(type)) ||
+            (p.place != Place::Heap &&
+             !source_pointer_binding(ar_address, native_address)))
+          throw Refuse{};
+        bounded_offset(s, p);
+        const auto end = p.offset + byte_value(width);
+        require(s, end <= p.extent && end <= native_max());
         if (p.place == Place::Global) {
           auto* g = llvm::cast< llvm::GlobalVariable >(p.object);
           if (mode == Mode::Constructor ||
@@ -681,7 +878,8 @@ class ArraySlices::Impl {
               llvm::cast< llvm::AllocaInst >(p.object)->getAllocatedType() !=
                   type ||
               !p.extent.simplify().is_numeral() ||
-              p.extent.simplify().get_numeral_uint64() != width)
+              p.extent.simplify().get_numeral_uint64() !=
+                  allocation_bytes(type))
             throw Refuse{};
           if (load) {
             auto old = s.cells.find(p.object);
@@ -694,18 +892,9 @@ class ArraySlices::Impl {
         } else if (p.place == Place::Heap) {
           if (!scalar(type) || width > p.stride)
             throw Refuse{};
-          auto* ar_ptr = load ? cast< ar::Load >(a)->operand()
-                              : cast< ar::Store >(a)->pointer();
-          auto* address =
-              load ? load->getPointerOperand() : store->getPointerOperand();
           auto* gep = llvm::dyn_cast< llvm::GetElementPtrInst >(
-              address->stripPointerCasts());
-          auto* ar_type = load ? cast< ar::Load >(a)->result()->type()
-                               : cast< ar::Store >(a)->value()->type();
-          if (!gep || gep->getNumIndices() != 1 ||
-              ctx.bundle->data_layout().store_size_in_bytes(ar_type) !=
-                  core::ZNumber(width) ||
-              !ar_index(ar_ptr, gep->getOperand(1), p.stride))
+              native_address->stripPointerCasts());
+          if (!gep || !ar_index(ar_address, gep, p.stride))
             throw Refuse{};
           if (load)
             set(s, i, fresh(type->getIntegerBitWidth()));
@@ -714,16 +903,15 @@ class ArraySlices::Impl {
           if (mode == Mode::Worker && p.root && p.index == phi && j.low &&
               j.iterator && loop && loop->contains(i) &&
               i->getParent() != loop->getHeader()) {
-            auto* ar_ptr = load ? cast< ar::Load >(a)->operand()
-                                : cast< ar::Store >(a)->pointer();
-            if (!ar_index(ar_ptr, phi, p.stride))
-              throw Refuse{};
+            // Bind the actual native GEP operand above, then prove that its
+            // structural extension chain preserves this invocation's i32 phi.
+            const auto source_index = number(s, gep->getOperand(1));
+            const auto index = number(s, phi);
             require(s, *j.iterator >= *j.low && *j.iterator < number(s, upper));
-            require(s,
-                    number(s, phi) >= z.bv_val(0, 32) &&
-                        extend(number(s, phi)) * z.bv_val(p.stride, 64) +
-                                z.bv_val(width, 64) <=
-                            z.bv_val(UINT64_C(0xffffffff), 64));
+            require(s, index >= z.bv_val(0, 32) &&
+                       source_index == z3::sext(index, address_bits - 32) &&
+                       extend(index) * byte_value(p.stride) + byte_value(width) <=
+                           native_max());
             ranges[i].push_back(
                 {p.root, world, p.stride, *j.low, number(s, upper)});
             recorded_range = true;
@@ -744,8 +932,10 @@ class ArraySlices::Impl {
           set(s, i, fresh(call->getType()->getIntegerBitWidth()));
         else if (!called->isDeclaration()) {
           std::vector< z3::expr > args;
+          unsigned position = 0;
           for (auto& arg : call->args()) {
-            if (!scalar(arg->getType()))
+            if (!scalar(arg->getType()) ||
+                !source_integer_binding(a->argument(position++), arg.get()))
               throw Refuse{};
             args.push_back(number(s, arg.get()));
           }
@@ -776,44 +966,60 @@ class ArraySlices::Impl {
                    ar::Intrinsic::LibcMalloc) {
           if (mode != Mode::Constructor || call != allocation ||
               call->arg_size() != 1 || called->getName() != "malloc" ||
-              !call->getType()->isPointerTy() ||
-              !call->getArgOperand(0)->getType()->isIntegerTy(32))
+              call->getType() != llvm::Type::getInt8PtrTy(call->getContext()) ||
+              !call->getArgOperand(0)->getType()->isIntegerTy(address_bits) ||
+              !source_integer_binding(a->argument(0), call->getArgOperand(0)))
             throw Refuse{};
           auto length = number(s, f->getArg(0)),
                size = number(s, call->getArgOperand(0));
-          require(s,
-                  length >= z.bv_val(0, 32) &&
-                      extend(size) == extend(length) * z.bv_val(stride, 64) &&
-                      extend(length) * z.bv_val(stride, 64) <=
-                          z.bv_val(UINT64_C(0xffffffff), 64));
+          const auto required_extent = extend(length) * byte_value(stride);
+          require(s, length >= z.bv_val(0, 32) &&
+                     extend(size) == required_extent &&
+                     required_extent <= native_max());
           Pointer p(z, Place::Heap);
           p.object = call;
           p.stride = stride;
           p.extent = extend(size);
           put(s.pointers, i, p);
         } else if (native_handle_api(call, true)) {
-          if (mode != Mode::Main ||
+          if (mode != Mode::Main || !native_status(a) ||
+              !native_pthread_effect(a, called, true) ||
               !llvm::isa< llvm::ConstantPointerNull >(call->getArgOperand(1)) ||
-              !llvm::isa< llvm::ConstantPointerNull >(call->getArgOperand(3)))
+              !llvm::isa< llvm::ConstantPointerNull >(call->getArgOperand(3)) ||
+              !isa< ar::NullConstant >(a->argument(1)) ||
+              !isa< ar::NullConstant >(a->argument(3)))
             throw Refuse{};
           auto p = pointer(s, call->getArgOperand(0));
           auto* child = llvm::dyn_cast< llvm::Function >(
               call->getArgOperand(2)->stripPointerCasts());
+          auto* ar_child = dyn_cast< ar::FunctionPointerConstant >(a->argument(2));
+          auto* storage = llvm::dyn_cast_or_null< llvm::AllocaInst >(p.object);
+          auto* ar_storage = storage
+              ? dyn_cast_or_null< ar::Allocate >(original(storage)) : nullptr;
           if (p.place != Place::Local || !zero(p.offset) ||
               !p.extent.simplify().is_numeral() ||
-              p.extent.simplify().get_numeral_uint64() != 4 || !child ||
-              child == main || child->isDeclaration())
+              p.extent.simplify().get_numeral_uint64() != abi.word || !child ||
+              child == main || child->isDeclaration() || !ar_child ||
+              !ar_child->function()->has_frontend() ||
+              ar_child->function()->frontend< llvm::Value >() != child ||
+              !storage || !scalar_allocation(ar_storage, storage) ||
+              !storage->getAllocatedType()->isIntegerTy(address_bits) ||
+              storage->getAlign().value() < abi.word ||
+              !source_pointer_binding(a->argument(0), call->getArgOperand(0)))
             throw Refuse{};
           workers.insert(child);
           if (!s.spawned) {
             worlds.push_back(s);
             s.spawned = true;
           }
-          put(s.cells, p.object, fresh(32));
+          put(s.cells, p.object, fresh(address_bits));
           set(s, i, fresh(32));
         } else if (native_handle_api(call, false)) {
-          if (mode != Mode::Main ||
-              !llvm::isa< llvm::ConstantPointerNull >(call->getArgOperand(1)))
+          if (mode != Mode::Main || !native_status(a) ||
+              !native_pthread_effect(a, called, false) ||
+              !llvm::isa< llvm::ConstantPointerNull >(call->getArgOperand(1)) ||
+              !isa< ar::NullConstant >(a->argument(1)) ||
+              !source_integer_binding(a->argument(0), call->getArgOperand(0)))
             throw Refuse{};
           (void)number(s, call->getArgOperand(0));
           set(s, i, fresh(32));
@@ -836,7 +1042,6 @@ class ArraySlices::Impl {
         ctx.opts.entry_points.size() != 1 ||
         ctx.opts.entry_points.front()->name() != "main" ||
         !ctx.opts.entry_points.front()->has_frontend() ||
-        ctx.bundle->data_layout().pointers.bit_width != 32 ||
         !ctx.opts.no_init_globals.empty() || ctx.concurrent_env.is_dirty() ||
         !ctx.concurrent_env.unmodeled_effects().empty() ||
         !ctx.concurrent_env.unmodeled_thread_creations().empty() ||
@@ -844,8 +1049,10 @@ class ArraySlices::Impl {
         ctx.bundle->global_or_null("ar.global_dtors"))
       throw Refuse{};
     main = ctx.opts.entry_points.front()->frontend< llvm::Function >();
-    if (!main->use_empty() || !main->getReturnType()->isIntegerTy(32) ||
-        main->getParent()->getDataLayout().getPointerSizeInBits(0) != 32 ||
+    abi = pthread_object_layout(ctx.bundle, main->getParent());
+    address_bits = abi.word * 8;
+    if (!abi || !main->use_empty() || !main->getReturnType()->isIntegerTy(32) ||
+        main->getParent()->getDataLayout().getIndexSizeInBits(0) != address_bits ||
         !main->getParent()->getModuleInlineAsm().empty() ||
         main->getParent()->getNamedGlobal("llvm.global_ctors") ||
         main->getParent()->getNamedGlobal("llvm.global_dtors"))
@@ -858,7 +1065,8 @@ class ArraySlices::Impl {
       if (!(*it)->has_frontend())
         throw Refuse{};
       auto* f = (*it)->frontend< llvm::Function >();
-      functions.emplace(f, *it);
+      if (!functions.emplace(f, *it).second)
+        throw Refuse{};
       for (auto* b : *(*it)->body())
         for (auto* s : *b) {
           spend();
@@ -877,6 +1085,7 @@ class ArraySlices::Impl {
       if (g.isThreadLocal() || g.getAddressSpace() ||
           g.isExternallyInitialized() || !g.hasInitializer())
         throw Refuse{};
+      global_initialization(g);
       if (auto* n = llvm::dyn_cast< llvm::ConstantInt >(g.getInitializer()))
         set(initial, &g, number(initial, n));
       else if (llvm::isa< llvm::ConstantPointerNull >(g.getInitializer()))
@@ -897,7 +1106,8 @@ class ArraySlices::Impl {
     valid = true;
   }
   llvm::Instruction* endpoint(const AccessRecord& r) const {
-    if (!r.stmt->has_frontend() || !r.call_context->empty() ||
+    if (!r.stmt || !r.stmt->has_frontend() || !r.call_context ||
+        !r.call_context->empty() || r.is_atomic ||
         !r.pts.is_set() || r.pts.is_empty() || !r.width)
       return nullptr;
     for (auto* object : r.pts)
@@ -907,6 +1117,13 @@ class ArraySlices::Impl {
         llvm::dyn_cast< llvm::Instruction >(r.stmt->frontend< llvm::Value >());
     if (!i || r.thread_id != i->getFunction()->getName().str() ||
         (!llvm::isa< llvm::LoadInst >(i) && !llvm::isa< llvm::StoreInst >(i)))
+      return nullptr;
+    auto* load = llvm::dyn_cast< llvm::LoadInst >(i);
+    auto* store = llvm::dyn_cast< llvm::StoreInst >(i);
+    auto* type = load ? load->getType() : store->getValueOperand()->getType();
+    const auto size = i->getModule()->getDataLayout().getTypeStoreSize(type);
+    if (size.isScalable() || size.getFixedValue() != r.width ||
+        (r.kind == AccessKind::Write) != bool(store))
       return nullptr;
     return i;
   }
@@ -966,8 +1183,10 @@ public:
                 a.width > p.stride || b.width > q.stride)
               return false;
             require(worlds[w],
-                    extend(p.high, true) <= extend(q.low, true) ||
-                        extend(q.high, true) <= extend(p.low, true));
+                    extend(p.high, true) * byte_value(p.stride) <=
+                         extend(q.low, true) * byte_value(q.stride) ||
+                     extend(q.high, true) * byte_value(q.stride) <=
+                         extend(p.low, true) * byte_value(p.stride));
           }
         if (!covered)
           return false;
