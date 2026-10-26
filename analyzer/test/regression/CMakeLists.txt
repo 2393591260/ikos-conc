@@ -110,6 +110,8 @@ add_concurrency_test(self-publication "${CONCURRENCY_ROOT}/scripts/test_self_pub
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(sc-protocol "${CONCURRENCY_ROOT}/scripts/test_sc_protocol.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(sc-protocol-lp64 "${CONCURRENCY_ROOT}/scripts/test_sc_protocol.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(protocol-abi-boundaries "${CONCURRENCY_ROOT}/scripts/test_protocol_abi_boundaries.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(mutex-handover "${CONCURRENCY_ROOT}/scripts/test_mutex_handover.py"
@@ -222,6 +224,8 @@ add_concurrency_test(bucket-list-ownership "${CONCURRENCY_ROOT}/scripts/test_buc
   --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(protected-protocol "${CONCURRENCY_ROOT}/scripts/test_protected_protocol.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(protected-protocol-lp64 "${CONCURRENCY_ROOT}/scripts/test_protected_protocol.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(thread-lifecycle "${CONCURRENCY_ROOT}/scripts/test_thread_lifecycle.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(thread-lifecycle-lp64 "${CONCURRENCY_ROOT}/scripts/test_thread_lifecycle.py"

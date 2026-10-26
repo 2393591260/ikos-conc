@@ -8,6 +8,7 @@
 #include <deque>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
+#include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/checker/normal_mutex.hpp>
 #include <ikos/analyzer/util/log.hpp>
 #include <map>
@@ -90,6 +91,7 @@ class ScProtocol::Impl {
   std::map<std::pair<llvm::Instruction*, llvm::Instruction*>, bool> proofs;
   bool valid = false;
   unsigned budget = 262144;
+  unsigned word = 0;
   bool spend() { if (!budget) return false; --budget; return true; }
   ar::Statement* original(llvm::Value* v) const {
     auto it = originals.find(v); return it == originals.end() ? nullptr : it->second;
@@ -168,7 +170,11 @@ class ScProtocol::Impl {
     auto* child = llvm::dyn_cast<llvm::Function>(c->getArgOperand(2)->stripPointerCasts());
     auto* entry = dyn_cast<ar::FunctionPointerConstant>(a->argument(2));
     auto* output = address_base(a->argument(0));
-    if (!slot || !count || !count->isOne() || !slot->getAllocatedType()->isIntegerTy(32) ||
+    auto* storage = slot ? dyn_cast_or_null< ar::Allocate >(original(slot)) : nullptr;
+    if (!slot || !count || !count->isOne() || !slot->getAllocatedType()->isIntegerTy(word * 8) ||
+        slot->getAddressSpace() || slot->getAlign().value() < word ||
+        !storage || ctx.bundle->data_layout().alloc_size_in_bytes(storage->allocated_type()) != word ||
+        c->getModule()->getDataLayout().getTypeAllocSize(slot->getAllocatedType()) != word ||
         !output || !isa<ar::LocalVariable>(output) || !output->has_frontend() ||
         output->frontend<llvm::Value>() != slot || !child || !entry ||
         !entry->function()->has_frontend() || entry->function()->frontend<llvm::Value>() != child ||
@@ -201,18 +207,18 @@ class ScProtocol::Impl {
             work.push_back(u); continue;
           }
           if (auto* store = llvm::dyn_cast<llvm::StoreInst>(u)) {
-            if (store->getPointerOperand() != v || !store->getValueOperand()->getType()->isIntegerTy(32) ||
+            if (store->getPointerOperand() != v || !store->getValueOperand()->getType()->isIntegerTy(word * 8) ||
                 store->getFunction() != main || !dominance.dominates(store, creator)) return false;
             continue;
           }
           if (auto* load = llvm::dyn_cast<llvm::LoadInst>(u)) {
-            if (load->getPointerOperand() != v || !load->getType()->isIntegerTy(32) ||
+            if (load->getPointerOperand() != v || !load->getType()->isIntegerTy(word * 8) ||
                 load->getFunction() != main || !dominance.dominates(creator, load) || cyclic(load->getParent()) || load->user_empty()) return false;
             for (auto* use : load->users()) {
               auto* join = llvm::dyn_cast<llvm::CallBase>(use);
               auto* a = join ? binding(join) : nullptr;
               if (!join || !native_handle_api(join, false) || join->getArgOperand(0) != load ||
-                  join->getFunction() != main || cyclic(join->getParent()) || ++joins > 1 || !a || !isa<ar::NullConstant>(a->argument(1))) return false;
+                  join->getFunction() != main || cyclic(join->getParent()) || ++joins > 1 || !a || !source_integer_binding(a->argument(0), load) || !isa<ar::NullConstant>(a->argument(1))) return false;
             }
             continue;
           }
@@ -285,9 +291,7 @@ class ScProtocol::Impl {
   bool protected_frame() {
     if (mutexes.empty() || !atomic_slots.empty())
       return false;
-    llvm::Triple triple(main->getParent()->getTargetTriple());
-    if (triple.getArch() != llvm::Triple::x86 || !triple.isOSLinux() ||
-        triple.getEnvironment() != llvm::Triple::GNU)
+    if (!word)
       return false;
     for (auto& b : *main)
       if (cyclic(&b))
@@ -848,12 +852,15 @@ public:
     if (!ctx.opts.enable_thread_modular || ctx.opts.procedural == Procedural::Intraprocedural ||
         ctx.opts.entry_points.size() != 1 || ctx.opts.entry_points.front()->name() != "main" ||
         ctx.opts.entry_points.front()->num_parameters() != 0 || !ctx.opts.entry_points.front()->has_frontend() ||
-        ctx.bundle->data_layout().pointers.bit_width != 32 || !ctx.opts.no_init_globals.empty() ||
+        !ctx.opts.no_init_globals.empty() ||
         ctx.concurrent_env.is_dirty() || !ctx.concurrent_env.unmodeled_effects().empty() ||
         !ctx.concurrent_env.unmodeled_thread_creations().empty() ||
         ctx.bundle->global_or_null("ar.global_ctors") || ctx.bundle->global_or_null("ar.global_dtors")) return;
     main = ctx.opts.entry_points.front()->frontend<llvm::Function>();
-    if (!main->use_empty()) return;
+    const auto abi = pthread_object_layout(ctx.bundle, main->getParent());
+    if (!abi || main->getParent()->getDataLayout().getIndexSizeInBits(0) != abi.word * 8 ||
+        !main->use_empty()) return;
+    word = abi.word;
     for (auto it = ctx.bundle->function_begin(); it != ctx.bundle->function_end(); ++it) {
       auto* f = *it; if (!f->is_definition() || !f->has_frontend()) continue;
       auto* source = f->frontend<llvm::Function>(); functions.emplace(source, f);
