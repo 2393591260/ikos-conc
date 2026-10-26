@@ -32,11 +32,10 @@ inline PthreadKeyEffect pthread_key_api_shape(llvm::CallBase* call) {
       call->getCallingConv() != llvm::CallingConv::C ||
       function->getCallingConv() != llvm::CallingConv::C)
     return PthreadKeyEffect::None;
-  const llvm::Triple target(function->getParent()->getTargetTriple());
-  if (!target.isOSLinux() || target.getEnvironment() != llvm::Triple::GNU ||
-      target.getArch() != llvm::Triple::x86 ||
-      function->getParent()->getDataLayout().getPointerSizeInBits() != 32)
-    return PthreadKeyEffect::None;
+  const auto abi = pthread_object_layout(
+      function->getParent()->getDataLayout().getPointerSizeInBits(0),
+      function->getParent());
+  if (!abi) return PthreadKeyEffect::None;
   PthreadKeyEffect kind = PthreadKeyEffect::None;
   if (function->getName() == "pthread_key_create") kind = PthreadKeyEffect::Create;
   if (function->getName() == "pthread_getspecific") kind = PthreadKeyEffect::Get;
@@ -58,9 +57,14 @@ inline PthreadKeyEffect pthread_key_api_shape(llvm::CallBase* call) {
       ? static_cast< llvm::Type* >(byte_pointer) : integer;
   if (signature->getReturnType() != returned)
     return PthreadKeyEffect::None;
-  for (unsigned i = 0; i < count; ++i)
+  for (unsigned i = 0; i < count; ++i) {
     if (call->getArgOperand(i)->getType() != signature->getParamType(i))
       return PthreadKeyEffect::None;
+    for (auto attr : {llvm::Attribute::ByVal, llvm::Attribute::StructRet,
+                      llvm::Attribute::InAlloca, llvm::Attribute::Preallocated})
+      if (call->paramHasAttr(i, attr) || function->hasParamAttribute(i, attr))
+        return PthreadKeyEffect::None;
+  }
   if (kind == PthreadKeyEffect::Create) {
     auto* destructor = llvm::FunctionType::get(llvm::Type::getVoidTy(context),
                                              {byte_pointer}, false);
@@ -201,6 +205,8 @@ inline PthreadKeyEffect pthread_key_effect(ar::CallBase* call, Context& ctx) {
       ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
   auto kind = pthread_key_api_shape(source);
   if (kind == PthreadKeyEffect::None) return kind;
+  if (!pthread_object_layout(ctx.bundle, source->getModule()))
+    return PthreadKeyEffect::None;
   auto* function = pthread_initialization_callee(call);
   auto* original = llvm::cast< llvm::Function >(
       source->getCalledOperand()->stripPointerCasts());

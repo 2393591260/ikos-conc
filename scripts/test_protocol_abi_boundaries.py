@@ -25,7 +25,6 @@ def main():
         ('thread-lifecycle', 'thread_lifecycle_contract'),
         ('sc-protocol', 'sc_protocol_contract'),
         ('self-publication', 'self_publication_contract'),
-        ('pthread-key-effects', None),
         ('thread-private-heap', 'private_heap_contract'),
         ('array-slices', 'array_slices_contract'),
         ('readonly-heap-reads', 'readonly_heap_reads_contract'),

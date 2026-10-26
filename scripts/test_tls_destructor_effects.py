@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ikos', type=Path, default=ROOT / 'install/bin/ikos')
+    parser.add_argument('--bits', choices=('32', '64'), default='32')
     args = parser.parse_args()
     fixture = (ROOT / 'analyzer/test/regression/bmc-values/tls-destructor-effects.c').read_text()
     env = dict(os.environ)
@@ -29,7 +30,7 @@ def main():
                 actual_env['IKOS_BMC_RECOVER'] = '1'
             proc = subprocess.run([str(args.ikos.resolve()), '--analyses=' + analyses,
                 '--concurrency=auto', '--partitioning=guards', '--demote-race-to-unknown',
-                '--bmc-deadline-ms=' + ('5000' if bmc else '0'), '-m32',
+                '--bmc-deadline-ms=' + ('5000' if bmc else '0'), '-m' + args.bits,
                 '-o', str(work / 'output.db'), str(source)],
                 env=actual_env, capture_output=True, text=True, timeout=30)
             output = proc.stdout + proc.stderr

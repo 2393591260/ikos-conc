@@ -261,9 +261,13 @@ including alignment. Accepting one ABI grants no partial-slot certificate.
 <summary>Pthread keys and destructor effects — account for thread-local library effects</summary>
 
 The interprocedural interpreter has conservative POSIX pthread-key effect
-summaries for Linux GNU ILP32 programs entered at `main`, with no entry-specific
+summaries for Linux GNU ILP32 and LP64 programs entered at `main`, with no entry-specific
 omissions of global initialization or global constructors/destructors. The
 original LLVM declaration, call ABI and imported AR callee must agree.
+Key selectors and the create output stay 32 bits on both ABIs; pointer values
+and callback arguments follow the verified native pointer layout. By-value,
+structure-return, inalloca and preallocated parameter attributes on either
+the declaration or the call refuse the model.
 `pthread_key_create` with a NULL destructor
 havocs its output and returns an unknown status; `pthread_setspecific` returns an
 unknown status, and `pthread_getspecific` returns an unknown pointer including

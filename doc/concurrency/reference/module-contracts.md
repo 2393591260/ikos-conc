@@ -249,11 +249,12 @@ change with pointer width.
 | ThreadPrivateHeap, ArraySlices, ReadonlyHeapReads | ILP32 only | Native allocation/count/index/handle correspondence needs a coordinated migration. Internal BV64 arithmetic is not LP64 support. |
 | FirstPublication, BucketListOwnership, SymbolicArena | ILP32 only | Link slots, native mutex layout, address arithmetic and source/AR mapping remain restricted. |
 | ThreadLifecycle, ScProtocol/protected protocol, SelfPublication | ILP32 only | Their independent state interpreters still depend on the native 32-bit frame. |
-| PthreadInitializationFrame, RuntimeStdioFrame, PosixSemaphore, pthread-key effects | ILP32 only for these certificates | Narrower native initialization/scan models are independent. A key stays i32 on LP64; a pthread_t slot does not. |
+| PthreadInitializationFrame, RuntimeStdioFrame, PosixSemaphore | ILP32 only for these certificates | Narrower native initialization/scan models are independent. A pthread_t slot follows the native ABI. |
+| Pthread-key effects and race-only memory-free destructors | GNU ILP32 and LP64 | Key selectors and create output remain i32; values/callback arguments are native pointers. Return values stay TOP; no TLS equality, privacy or completion is inferred. |
 
 Unsupported certificate ABIs refuse the certificate and preserve the ordinary
 analysis/coverage obligations. They are not silently treated as verified SAFE,
-nor counted as positive LP64 support. The certificate ABI boundary test exercises all 13 listed ILP32-only boundaries with
+nor counted as positive LP64 support. The certificate ABI boundary test exercises all 12 remaining ILP32-only boundaries with
 32-bit hits and 64-bit refusal; each migrated protocol has both positive and
 premise-breaking tests.
 
