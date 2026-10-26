@@ -359,6 +359,11 @@ def build_witness(source, info, data_model, ikos="ikos"):
     program = replay["program"]
     instructions = program["instructions"]
     trace_list = replay["traces"]
+    if any("once_role" in step for trace in trace_list for step in trace["steps"]):
+        require(validate_selected_execution(info, data_model).get("status") == "ACCEPT",
+                "once projection requires complete independent AR replay")
+        # Callback frames use their caller's existing physical trace/thread id.
+        # Only actual pthread_create occurrences below register new threads.
     traces = {t["id"]: t for t in trace_list}
     require(
         len(traces) == len(trace_list)

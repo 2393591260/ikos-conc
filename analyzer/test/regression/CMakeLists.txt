@@ -570,3 +570,8 @@ add_concurrency_test(bmc-creator-release "${CONCURRENCY_ROOT}/scripts/test_bmc_c
                      --ikos "${CONCURRENCY_IKOS}" --bits 32)
 add_concurrency_test(bmc-creator-release-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_creator_release.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(bmc-once-physical "${CONCURRENCY_ROOT}/scripts/test_bmc_once_physical.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32 --broken-premises --export-source-witness)
+add_concurrency_test(bmc-once-physical-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_once_physical.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64 --broken-premises --export-source-witness)

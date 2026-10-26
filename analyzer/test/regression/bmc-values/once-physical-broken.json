@@ -1,0 +1,113 @@
+{
+  "status": "MAINTAINED_CONTROL_SPECIFICATION",
+  "abis": [
+    "ILP32",
+    "LP64"
+  ],
+  "rows": [
+    {
+      "name": "wrong-api-return",
+      "path": "analyzer/test/regression/bmc-values/once-physical-broken/wrong-api-return.c",
+      "purpose": "Native API return must be i32; first argument/callback otherwise exact",
+      "expected_new_once_confirmed": 0,
+      "expected_new_profile": "UNSUPPORTED_OR_NOT_SEARCHED",
+      "notes": "No source SAFE claim. Record frontend failures separately; never count them as semantic refusals."
+    },
+    {
+      "name": "wrong-control-width",
+      "path": "analyzer/test/regression/bmc-values/once-physical-broken/wrong-control-width.c",
+      "purpose": "Native control value must be exactly32 bits",
+      "expected_new_once_confirmed": 0,
+      "expected_new_profile": "UNSUPPORTED_OR_NOT_SEARCHED",
+      "notes": "No source SAFE claim. Record frontend failures separately; never count them as semantic refusals."
+    },
+    {
+      "name": "wrong-callback-prototype",
+      "path": "analyzer/test/regression/bmc-values/once-physical-broken/wrong-callback-prototype.c",
+      "purpose": "Callback must have native void(void) signature",
+      "expected_new_once_confirmed": 0,
+      "expected_new_profile": "UNSUPPORTED_OR_NOT_SEARCHED",
+      "notes": "No source SAFE claim. Record frontend failures separately; never count them as semantic refusals."
+    },
+    {
+      "name": "wrong-api-convention",
+      "path": "analyzer/test/regression/bmc-values/once-physical-broken/wrong-api-convention.c",
+      "purpose": "Non-C API convention: fastcall on ILP32, ms_abi on LP64",
+      "expected_new_once_confirmed": 0,
+      "expected_new_profile": "UNSUPPORTED_OR_NOT_SEARCHED",
+      "notes": "No source SAFE claim. Record frontend failures separately; never count them as semantic refusals."
+    },
+    {
+      "name": "module-assembly",
+      "path": "analyzer/test/regression/bmc-values/once-physical-broken/module-assembly.c",
+      "purpose": "Nonempty module assembly invalidates native object closure",
+      "expected_new_once_confirmed": 0,
+      "expected_new_profile": "UNSUPPORTED_OR_NOT_SEARCHED",
+      "notes": "No source SAFE claim. Record frontend failures separately; never count them as semantic refusals."
+    },
+    {
+      "name": "module-alias",
+      "path": "analyzer/test/regression/bmc-values/once-physical-broken/module-alias.c",
+      "purpose": "Any module alias outside first profile",
+      "expected_new_once_confirmed": 0,
+      "expected_new_profile": "UNSUPPORTED_OR_NOT_SEARCHED",
+      "notes": "No source SAFE claim. Record frontend failures separately; never count them as semantic refusals."
+    },
+    {
+      "name": "module-constructor",
+      "path": "analyzer/test/regression/bmc-values/once-physical-broken/module-constructor.c",
+      "purpose": "Global constructors outside first profile",
+      "expected_new_once_confirmed": 0,
+      "expected_new_profile": "UNSUPPORTED_OR_NOT_SEARCHED",
+      "notes": "No source SAFE claim. Record frontend failures separately; never count them as semantic refusals."
+    },
+    {
+      "name": "module-destructor",
+      "path": "analyzer/test/regression/bmc-values/once-physical-broken/module-destructor.c",
+      "purpose": "Global destructors outside first profile",
+      "expected_new_once_confirmed": 0,
+      "expected_new_profile": "UNSUPPORTED_OR_NOT_SEARCHED",
+      "notes": "No source SAFE claim. Record frontend failures separately; never count them as semantic refusals."
+    },
+    {
+      "name": "raw-control-byte-write",
+      "path": "analyzer/test/regression/bmc-values/once-physical-broken/raw-control-byte-write.c",
+      "purpose": "Raw byte overlap must invalidate complete control-use closure",
+      "expected_new_once_confirmed": 0,
+      "expected_new_profile": "UNSUPPORTED_OR_NOT_SEARCHED",
+      "notes": "No source SAFE claim. Record frontend failures separately; never count them as semantic refusals."
+    },
+    {
+      "name": "callback-escape",
+      "path": "analyzer/test/regression/bmc-values/once-physical-broken/callback-escape.c",
+      "purpose": "Callback address escape to unknown code",
+      "expected_new_once_confirmed": 0,
+      "expected_new_profile": "UNSUPPORTED_OR_NOT_SEARCHED",
+      "notes": "No source SAFE claim. Record frontend failures separately; never count them as semantic refusals."
+    },
+    {
+      "name": "callback-nonlocal-return",
+      "path": "analyzer/test/regression/bmc-values/once-physical-broken/callback-nonlocal-return.c",
+      "purpose": "Unknown/nonlocal callback effects cannot establish complete Return",
+      "expected_new_once_confirmed": 0,
+      "expected_new_profile": "UNSUPPORTED_OR_NOT_SEARCHED",
+      "notes": "No source SAFE claim. Record frontend failures separately; never count them as semantic refusals."
+    },
+    {
+      "name": "multiple-creations",
+      "path": "analyzer/test/regression/bmc-values/once-physical-broken/multiple-creations.c",
+      "purpose": "Retained main prefix contains two real Create events; outside profile",
+      "expected_new_once_confirmed": 0,
+      "expected_new_profile": "UNSUPPORTED_OR_NOT_SEARCHED",
+      "notes": "No source SAFE claim. Record frontend failures separately; never count them as semantic refusals."
+    },
+    {
+      "name": "local-control",
+      "path": "analyzer/test/regression/bmc-values/once-physical-broken/local-control.c",
+      "purpose": "Control must be exact direct static global object",
+      "expected_new_once_confirmed": 0,
+      "expected_new_profile": "UNSUPPORTED_OR_NOT_SEARCHED",
+      "notes": "No source SAFE claim. Record frontend failures separately; never count them as semantic refusals."
+    }
+  ]
+}

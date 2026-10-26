@@ -1044,6 +1044,99 @@ inline Result confirm_race_provider_later(ar::Function* funcA, ar::Statement* st
   return outcome;
 }
 
+// Project the candidate's real statements through a finite physical caller.
+// AI once callback SIDs choose targets only; they never become pthread roots.
+inline Result confirm_race_once_physical(ar::Statement* stmtA, std::uint64_t widthA,
+    ar::Statement* stmtB, std::uint64_t widthB, Diagnostics* diagnostics,
+    SearchBudget& budget, std::vector< ar::Statement* >* creations,
+    const std::function< bool(ar::CallBase*) >& sealed, bool main_argc_one) {
+  Result outcome(Status::NotSearched);
+  if (getenv("IKOS_BMC_DISABLE_ONCE_EXECUTION") != nullptr) return outcome;
+  auto* main = stmtA->bundle()->function_or_null("main");
+  if (!main || !main->is_definition()) return Result(Status::Unsupported);
+  CandidateFacts physical_facts;
+  physical_facts.main_argc_one = main_argc_one;
+  if (main->num_parameters() != 0 && !main_argc_one) {
+    record(diagnostics, "main_entry_environment"); return Result(Status::Unsupported);
+  }
+  auto spend = [&]() {
+    if (budget.expired() || budget.queries == 0) {
+      budget.record_exhaustion(diagnostics); outcome.merge(Result(Status::BudgetExceeded)); return false;
+    }
+    --budget.queries; return true;
+  };
+  auto note = [&](const UnrollResult& paths) {
+    if (paths.incomplete) {
+      record(diagnostics, paths.reason ? paths.reason : "once_unroll_budget");
+      outcome.merge(Result(Status::BudgetExceeded));
+    }
+    if (paths.rejected_reason) {
+      record(diagnostics, paths.rejected_reason, paths.rejected_statement);
+      outcome.merge(Result(Status::Unsupported));
+    }
+  };
+  std::set< ar::Function* > children;
+  for (auto* block : *main->body()) for (auto* statement : *block) {
+    BmcEvent event;
+    if (classify_event(statement, event) && event.kind == EvKind::Create)
+      children.insert(reinterpret_cast< ar::Function* >(event.thread));
+  }
+  for (auto* worker : children) for (bool main_a : {true, false}) {
+    if (!worker || !worker->is_definition() || worker == main) continue;
+    auto* rootA = main_a ? main : worker;
+    auto* rootB = main_a ? worker : main;
+    // Only the current finite literal bound; no new budget or loop escalation.
+    const auto bound = std::max(literal_loop_search_bound(main), literal_loop_search_bound(worker));
+    if (!spend()) return outcome;
+    auto pathsA = unroll_to(rootA, stmtA, 1, bound, false, nullptr,
+                            &budget.deadline, nullptr, 0, true, true);
+    note(pathsA);
+    if (!spend()) return outcome;
+    auto pathsB = unroll_to(rootB, stmtB, 1, bound, false, nullptr,
+                            &budget.deadline, nullptr, 0, true, true);
+    note(pathsB);
+    for (auto a : pathsA.paths) for (auto b : pathsB.paths) {
+      const auto& main_path = main_a ? a : b;
+      const auto& worker_path = main_a ? b : a;
+      std::size_t creation = main_path.size(), count = 0;
+      bool supported = completion_return(main_path, main) == nullptr, has_once = false;
+      for (std::size_t i = 0; i < main_path.size(); ++i) {
+        if (main_path[i].kind == EvKind::Create) { creation = i; ++count; }
+        if (main_path[i].kind == EvKind::Join) supported = false;
+      }
+      supported &= count == 1 && creation < main_path.size() &&
+          main_path[creation].thread == reinterpret_cast< std::uint64_t >(worker);
+      for (const auto& event : worker_path)
+        if (event.kind == EvKind::Create || event.kind == EvKind::Join) supported = false;
+      for (const auto* path : {&a, &b}) for (const auto& event : *path) {
+        if (event.mutex == PSEUDO_ATOMIC_LOCK) supported = false;
+        if (event.once_stage == OnceStage::Call) {
+          has_once = true;
+          auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+          if (!call || !sealed(call)) supported = false;
+        }
+      }
+      if (!supported || !has_once) {
+        record(diagnostics, "once_physical_caller_profile"); outcome.merge(Result(Status::Unsupported)); continue;
+      }
+      const auto ta = candidate_index(a), tb = candidate_index(b);
+      if (ta == a.size() || tb == b.size()) continue;
+      a[ta].width = widthA; b[tb].width = widthB;
+      if (!spend()) return outcome;
+      if (diagnostics) ++diagnostics->path_pairs;
+      record(diagnostics, "once_physical_query");
+      outcome.merge(check_race(a, b, rootA, rootB, diagnostics, &physical_facts, nullptr,
+          &outcome.metrics, nullptr, &budget.deadline, budget.solver_timeout_ms));
+      if (outcome.confirmed()) {
+        record(diagnostics, "once_physical_confirmed");
+        if (creations) { creations->clear(); creations->push_back(main_path[creation].stmt); }
+        return outcome;
+      }
+    }
+  }
+  return outcome;
+}
+
 }  // namespace bmc
 }  // namespace analyzer
 }  // namespace ikos

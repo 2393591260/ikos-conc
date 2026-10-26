@@ -66,6 +66,7 @@ class Frame:
     pc: int = 0
     env: dict = field(default_factory=dict)
     pending: tuple | None = None
+    once_pending: dict | None = None
 
 
 @dataclass
@@ -118,6 +119,8 @@ class Replay:
         self.attributes, self.conditions = {}, {}
         self.semaphores = {}
         self.stdout_vc = {}
+        self.once_states = {}
+        self.once_profile = any("once_role" in s for t in self.traces.values() for s in t["steps"])
         for name, glob in program['globals'].items():
             if glob['declaration'] or glob['type']['kind'] == 'unsupported':
                 continue
@@ -893,10 +896,147 @@ class Replay:
             return UNDEFINED
         raise Unsupported('external API ' + name)
 
+    def once_call(self, args, inst, step, trace_id, index, thread, frame):
+        require(self.atomic_owner is None and frame.pending is None and frame.once_pending is None,
+                'once invocation pending mode')
+        if any(f.once_pending is not None for f in thread.frames):
+            raise Unsupported('nested once callback')
+        require('expanded_callee' not in step and 'encoded_result' not in step,
+                'once callback is not the API callee/result')
+        require(step.get('once_role') in ('active', 'passive') and
+                type(step.get('once_call_step')) is int and step['once_call_step'] == index,
+                'once actual call binding')
+        require(len(args) == 2 and isinstance(args[1], tuple) and args[1][0] == 'function',
+                'once callback identity')
+        control, callback = args
+        require(isinstance(control, tuple) and len(control) == 2 and
+                isinstance(control[0], str) and control[0].startswith('global:') and control[1] == 0,
+                'once global control identity')
+        globname = control[0][7:]
+        glob = self.program['globals'].get(globname, {})
+        native = inst.get('native_once', {})
+        expected = dict(declaration=True, variadic=False, calling_convention=0, call_convention=0,
+                        matching_signature=True, operand_bundles=False, arguments=2, parameters=2,
+                        return_bits=32, result_bits=32, special_parameter_abi=False,
+                        control_bits=32, control_address_space=0, callback_parameter_void=True,
+                        callback_parameter_count=0, callback_parameter_variadic=False,
+                        callback_parameter_address_space=0, callback_signature_matches=True,
+                        callback_declaration=False, callback_void=True, callback_count=0,
+                        callback_variadic=False, callback_convention=0, control=globname, callback=callback[1])
+        require(all(native.get(k) == v for k, v in expected.items()), 'once native API/callback signature')
+        function = self.functions.get(callback[1], {})
+        require(function.get('declaration') is False and function.get('parameters') == [] and
+                function.get('native_void_return') is True and not function.get('variadic'),
+                'once zero-argument callback frame')
+        api = self.functions.get('pthread_once', {})
+        rt = api.get('return_type', {})
+        require(api.get('declaration') is True and rt.get('kind') == 'integer' and
+                rt.get('bits') == 32 and rt.get('signed') is True and not api.get('variadic'),
+                'once AR API signature')
+        bits = self.program.get('pointer_bits')
+        params = api.get('parameter_types', [])
+        operands = inst.get('operands', [])
+        def pointer_type(t, integer_pointee=False):
+            return (t.get('kind') == 'pointer' and t.get('bits') == bits and
+                    (not integer_pointee or
+                     (t.get('pointee', {}).get('kind') == 'integer' and
+                      t.get('pointee', {}).get('bits') == 32)))
+        require(inst.get('calling_convention') == 0 and len(params) == 2 and
+                pointer_type(params[0], True) and pointer_type(params[1]) and
+                len(operands) == 3 and operands[0].get('kind') == 'function' and
+                operands[0].get('id') == 'pthread_once' and
+                operands[1].get('kind') == 'global' and operands[1].get('id') == globname and
+                pointer_type(operands[1].get('type', {}), True) and
+                operands[2].get('kind') == 'function' and operands[2].get('id') == callback[1] and
+                pointer_type(operands[2].get('type', {})), 'once AR call convention/operand signature')
+        result_type = inst.get('result', {}).get('type')
+        if result_type is not None:
+            require(result_type.get('kind') == 'integer' and result_type.get('bits') == 32 and
+                    result_type.get('signed') is True, 'once AR result signature')
+        facts = glob.get('native_once_control', {})
+        expected_object = dict(zero_initializer=True, value_bits=32, address_space=0,
+                               constant=False, externally_initialized=False,
+                               module_inline_asm=False, module_aliases=False,
+                               constructors=False, destructors=False, all_uses_direct=True)
+        require(all(facts.get(k) == v for k, v in expected_object.items()) and
+                glob.get('declaration') is False and glob.get('thread_local') is False and
+                glob.get('alignment', 0) >= 4, 'once static native control closure')
+        t = glob.get('type', {})
+        initial = glob.get('initializers', [])
+        require(t.get('kind') == 'integer' and t.get('bits') == 32 and int(t.get('size', 0)) == 4 and
+                glob.get('simple_initializer') is True and len(initial) == 1 and
+                initial[0].get('kind') in ('integer', 'zero') and
+                (initial[0].get('kind') == 'zero' or int(initial[0].get('value', 1)) == 0),
+                'once AR zero initializer')
+        triple = self.program.get('target_triple', '')
+        require('linux' in triple and 'gnu' in triple and
+                (triple.startswith('x86_64') or triple.startswith(('i386', 'i486', 'i586', 'i686'))) and
+                self.program.get('pointer_bits') in (32, 64) and self.program.get('little_endian') is True,
+                'once native data model')
+        # Cross-check the native-use manifest against complete AR instructions;
+        # a raw write/copy/alias cannot be accepted by an exported seal boolean.
+        uses = facts.get('uses', [])
+        require(len(uses) == len(set(uses)), 'once duplicate source occurrence')
+        actual_uses = set()
+        for sid, instruction in self.instructions.items():
+            operands = instruction.get('operands', [])
+            references = [i for i, op in enumerate(operands)
+                          if op.get('kind') == 'global' and op.get('id') == globname]
+            if not references:
+                continue
+            require(instruction.get('kind') == 'call' and len(operands) == 3 and references == [1] and
+                    operands[0].get('kind') == 'function' and operands[0].get('id') == 'pthread_once',
+                    'once raw control access/alias')
+            actual_uses.add(sid)
+        require(set(uses) == actual_uses and step['statement'] in actual_uses,
+                'once physical native/AR use manifest')
+        state = self.once_states.setdefault(control, dict(phase='unstarted'))
+        role = step['once_role']
+        if role == 'active':
+            require(state['phase'] == 'unstarted', 'once duplicate active initializer')
+            state.update(phase='claimed', owner=(thread.instance, frame.uid))
+        else:
+            require(not (state.get('phase') in ('claimed', 'running') and
+                         state.get('owner', (None,))[0] == thread.instance), 'recursive once')
+        pending = dict(control=control, callback=callback[1], role=role, index=index,
+                       statement=step['statement'], instruction=inst, entered=False, returned=False)
+        frame.once_pending = pending
+        self.marker(trace_id, step['statement'], 'once_enter' if role == 'active' else 'once_return', pending)
+
+    def once_marker(self, name, pending, trace_id, index, step, thread):
+        frame = thread.frames[-1]
+        require(frame.once_pending is pending and step.get('once_call_step') == pending['index'] and
+                step['statement'] == pending['statement'], 'once exact pending boundary')
+        state = self.once_states[pending['control']]
+        if name == 'once_enter':
+            require(pending['role'] == 'active' and not pending['entered'] and
+                    state['phase'] == 'claimed' and state['owner'] == (thread.instance, frame.uid),
+                    'once callback enter state')
+            callback = self.frame(pending['callback'], [])
+            pending.update(entered=True, callback_frame=callback.uid)
+            state.update(phase='running', owner=(thread.instance, callback.uid))
+            thread.frames.append(callback)
+        else:
+            require(state['phase'] == 'done', 'once return before callback completion')
+            if pending['role'] == 'active':
+                require(pending['entered'] and pending['returned'] and
+                        state['owner'] == (thread.instance, pending['callback_frame']), 'once active return owner')
+            else:
+                # Immutable winner clock; never join passive effects back into it.
+                self.join_vc(thread.vc, state['completion'])
+            require('encoded_result' not in step or
+                    ('result' in pending['instruction'] and int(step['encoded_result']) == 0),
+                    'nonzero successful once API result')
+            self.assign(frame, pending['instruction'], step, 0)
+            frame.once_pending = None
+
     def execute(self, trace_id, index, step):
         require(trace_id in self.threads, 'thread executes before actual create')
         thread = self.threads[trace_id]
         require(not thread.finished, 'execution after return')
+        if self.once_profile:
+            require(not any(t.finished and self.traces[n]['entry'] == 'main'
+                            for n, t in self.threads.items()), 'once profile execution after main Return')
         require(self.atomic_owner in (None,thread.instance), 'interleaved verifier atomic block')
         thread.vc[thread.instance] = thread.vc.get(thread.instance,0)+1
         self.current_occurrence = dict(trace=trace_id, step=index)
@@ -905,7 +1045,9 @@ class Replay:
             require(pending and pending[0][:2] == (step['statement'], step['synthetic_event']), 'unjustified synthetic boundary')
             _, name, pointer = pending.pop(0)
             if not pending: del self.pending_markers[trace_id]
-            if name == 'atomic_end':
+            if name in ('once_enter', 'once_return'):
+                self.once_marker(name, pointer, trace_id, index, step, thread)
+            elif name == 'atomic_end':
                 self.atomic_end(thread)
             elif name == 'atomic_begin':
                 self.atomic_begin(thread)
@@ -1013,6 +1155,11 @@ class Replay:
         elif kind=='call':
             require(isinstance(values[0],tuple) and values[0][0]=='function', 'indirect callee')
             name=values[0][1]; fn=self.functions[name]
+            if name == 'pthread_once' and fn['declaration']:
+                self.once_call(values[1:], inst, step, trace_id, index, thread, frame)
+                return
+            if self.once_profile and any(f.once_pending is not None for f in thread.frames) and name in ('pthread_create', 'pthread_join'):
+                raise Unsupported('once nested child lifecycle')
             if 'expanded_callee' in step: require(name == step['expanded_callee'], 'expanded callee differs from actual pointer')
             if not fn['declaration']:
                 frame.pending=(inst,step); thread.frames.append(self.frame(name,values[1:]));
@@ -1023,6 +1170,25 @@ class Replay:
             result=self.api(name,values[1:],inst,step,trace_id,index,thread,frame)
         elif kind=='return':
             result=values[0] if values else UNDEFINED
+            if len(thread.frames) >= 2:
+                parent = thread.frames[-2]
+                pending = parent.once_pending
+                if pending is not None and frame.function == pending['callback']:
+                    require(not values and pending['role'] == 'active' and
+                            step.get('once_callback_return') is True and
+                            step.get('once_call_step') == pending['index'] and
+                            pending.get('callback_frame') == frame.uid, 'once callback Return seal')
+                    state = self.once_states[pending['control']]
+                    require(state['phase'] == 'running' and state['owner'] == (thread.instance, frame.uid),
+                            'once callback owner')
+                    state.update(phase='done', completion=dict(thread.vc))
+                    pending['returned'] = True
+                    for obj, meta in self.objects.items():
+                        if obj.startswith('stack:'+str(frame.uid)+':'): meta['live'] = False
+                    thread.frames.pop()
+                    self.marker(trace_id, pending['statement'], 'once_return', pending)
+                    return
+            require('once_callback_return' not in step, 'unexpected once callback Return')
             for obj, meta in self.objects.items():
                 if obj.startswith('stack:'+str(frame.uid)+':'): meta['live']=False
             thread.frames.pop()
@@ -1071,6 +1237,8 @@ class Replay:
             events.extend((int(s['clock']),name,i,s) for i,s in enumerate(trace['steps']))
         for _,name,i,step in sorted(events): self.execute(name,i,step)
         require(self.atomic_owner is None and not self.pending_markers, 'open synthetic/atomic prefix')
+        require(all(f.once_pending is None for t in self.threads.values() for f in t.frames) and
+                all(s['phase'] == 'done' for s in self.once_states.values()), 'open once execution')
         targets=self.certificate['targets']; require(len(targets)==2, 'target count')
         selected=[]
         for target in targets:

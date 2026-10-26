@@ -1,0 +1,86 @@
+{
+  "status": "MAINTAINED_CONTROL_SPECIFICATION",
+  "abis": [
+    "ILP32",
+    "LP64"
+  ],
+  "positive": {
+    "0": "1066 child once callback versus main direct write",
+    "1": "1067 same callback through distinct main/worker controls",
+    "2": "1069 ordinary worker callback-name function versus main once",
+    "5": "two passive post-return writers remain racing; completion clock immutable",
+    "7": "ordinary helper and repeated helper frames inside callback versus ordinary worker",
+    "14": "ILP32 64-bit datum once versus direct write",
+    "20": "Empty callback; both physical targets follow once API result==0 guards, forcing actual API-return result value encoding"
+  },
+  "negative_no_FALSE": {
+    "3": "shared control invokes callback once total",
+    "4": "initializer write ordered before successful passive return then read",
+    "6": "initializer before create is done for worker",
+    "8": "recursive same control unsupported",
+    "9": "callback create unsupported",
+    "11": "wrong initializer unsupported",
+    "12": "raw control write breaks closure",
+    "13": "unknown escape breaks closure; coverage may block",
+    "15": "callback abort cannot seal real Return",
+    "16": "infeasible callback write",
+    "17": "same physical thread cannot self-race"
+  },
+  "ordinary_profile_control": {
+    "10": "source-defined lookalike must not use once_physical_confirmed; ordinary inline execution may independently confirm a real race"
+  },
+  "originals": {
+    "1066": "pthread-once/norace-race-child-once-vs-main-write.c",
+    "1067": "pthread-once/norace-race-distinct-once-objects.c",
+    "1069": "pthread-once/norace-race-once-init-vs-main-write.c"
+  },
+  "excluded": [
+    "1071 callback-created child lifecycle",
+    "pointer-changing control/callback slots",
+    "non-global or non-GNU object",
+    "verifier atomic target completion or auxiliary/provider profile",
+    "main prefix with target joins or more than one actual Create"
+  ],
+  "ablation": "IKOS_BMC_DISABLE_ONCE_EXECUTION=1 disables only new physical-caller pass; same candidate/input/budget/runtime on/off, no new budget",
+  "required_damaged_prerequisites": [
+    "source-defined API lookalike",
+    "wrong LLVM API/callback prototype or convention/special parameter ABI",
+    "module asm/alias/ctor/dtor",
+    "wrong or absent native/AR zero initializer",
+    "raw control write/copy/escape/overlap",
+    "recursive/indirect/cancel/longjmp/nested-create callback",
+    "multiple/missing/failed physical creation",
+    "callback effect without actual Return",
+    "main Return before retained child event"
+  ],
+  "required_corruptions": [
+    "expanded_callee=callback on once API",
+    "enter omitted/repeated/wrong call_step",
+    "callback Return omitted or wrong callback frame",
+    "once-return omitted/repeated/early/wrong call_step",
+    "active role duplicated same control",
+    "wrong control or callback native/source binding",
+    "API result forged nonzero",
+    "passive return before initializer completion",
+    "reuse/wrong physical Create",
+    "callback trace registered as pthread",
+    "fake callback owner/completion metadata",
+    "raw control use hidden from native manifest",
+    "worker event after main Return",
+    "rehash program after changing AR API calling convention",
+    "rehash program after changing API parameter/operand/result types"
+  ],
+  "source_witness": "Maintained svcomp_witness.build_witness replays once profile and uses actual physical roots/Create events only. Callback targets retain actual source expression. Export success, AR ACCEPT and official source-witness validator result are distinct checks; external source-witness validation is separate.",
+  "fixture_cases": 21,
+  "argc_controls": {
+    "18": {
+      "argc1": "FALSE requires once_physical_confirmed and AR ACCEPT",
+      "argc2": "no FALSE; racy branch infeasible"
+    },
+    "19": {
+      "argc1": "no FALSE; racy branch infeasible",
+      "argc2": "new once profile must not confirm; old independent mechanisms may confirm only with AR ACCEPT"
+    }
+  },
+  "broken_premise_manifest": "analyzer/test/regression/bmc-values/once-physical-broken.json"
+}

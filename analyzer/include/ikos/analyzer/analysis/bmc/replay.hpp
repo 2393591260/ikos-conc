@@ -275,7 +275,53 @@ public:
                 ? call->getType()->getIntegerBitWidth() : 0);
             out.put("native_semaphore", native);
           }
-          JsonList layouts;
+           if (callee && callee->getName() == "pthread_once") {
+             JsonDict native;
+             native.put("declaration", callee->isDeclaration());
+             native.put("variadic", callee->isVarArg());
+             native.put("calling_convention", callee->getCallingConv());
+             native.put("call_convention", call->getCallingConv());
+             native.put("matching_signature", call->getFunctionType() == callee->getFunctionType());
+             native.put("operand_bundles", call->hasOperandBundles());
+             native.put("arguments", call->arg_size());
+             native.put("parameters", callee->arg_size());
+             native.put("return_bits", callee->getReturnType()->isIntegerTy() ? callee->getReturnType()->getIntegerBitWidth() : 0);
+             native.put("result_bits", call->getType()->isIntegerTy() ? call->getType()->getIntegerBitWidth() : 0);
+             bool special = false;
+             for (unsigned i = 0; i < call->arg_size(); ++i)
+               for (auto attr : {llvm::Attribute::ByVal, llvm::Attribute::StructRet,
+                                llvm::Attribute::InAlloca, llvm::Attribute::Preallocated})
+                 special |= call->paramHasAttr(i, attr) ||
+                     (i < callee->arg_size() && callee->hasParamAttribute(i, attr));
+             native.put("special_parameter_abi", special);
+             if (callee->arg_size() == 2 && call->arg_size() == 2) {
+               auto* pointer = llvm::dyn_cast< llvm::PointerType >(callee->getFunctionType()->getParamType(0));
+               native.put("control_bits", pointer && !pointer->isOpaque() && pointer->getPointerElementType()->isIntegerTy()
+                   ? pointer->getPointerElementType()->getIntegerBitWidth() : 0);
+               native.put("control_address_space", pointer ? pointer->getAddressSpace() : 99);
+               auto* callback_pointer = llvm::dyn_cast< llvm::PointerType >(callee->getFunctionType()->getParamType(1));
+               auto* signature = callback_pointer && !callback_pointer->isOpaque()
+                   ? llvm::dyn_cast< llvm::FunctionType >(callback_pointer->getPointerElementType()) : nullptr;
+               native.put("callback_parameter_void", signature && signature->getReturnType()->isVoidTy());
+               native.put("callback_parameter_count", signature ? signature->getNumParams() : 99);
+               native.put("callback_parameter_variadic", !signature || signature->isVarArg());
+               native.put("callback_parameter_address_space", callback_pointer ? callback_pointer->getAddressSpace() : 99);
+               auto* callback = llvm::dyn_cast< llvm::Function >(call->getArgOperand(1)->stripPointerCasts());
+               native.put("callback_signature_matches", callback && signature == callback->getFunctionType());
+               if (callback) {
+                 native.put("callback", callback->getName().str());
+                 native.put("callback_declaration", callback->isDeclaration());
+                 native.put("callback_void", callback->getReturnType()->isVoidTy());
+                 native.put("callback_count", callback->arg_size());
+                 native.put("callback_variadic", callback->isVarArg());
+                 native.put("callback_convention", callback->getCallingConv());
+               }
+               auto* control = llvm::dyn_cast< llvm::GlobalVariable >(call->getArgOperand(0));
+               if (control) native.put("control", control->getName().str());
+             }
+             out.put("native_once", native);
+           }
+           JsonList layouts;
           const auto& layout = call->getModule()->getDataLayout();
           for (const auto& argument : call->args()) {
             JsonDict item;
@@ -308,6 +354,7 @@ public:
           { out.put("target_triple", source->getParent()->getTargetTriple()); target_exported = true; }
       fn.put("declaration", f->is_declaration()); fn.put("return_type", type(f->type()->return_type()));
       fn.put("variadic", f->type()->is_var_arg());
+      if (f->has_frontend()) fn.put("native_void_return", f->frontend< llvm::Function >()->getReturnType()->isVoidTy());
       fn.put("intrinsic_nondet", f->intrinsic_id() == ar::Intrinsic::IkosNonDet);
       fn.put("intrinsic_assume", f->intrinsic_id() == ar::Intrinsic::IkosAssume);
       JsonList parameter_types;
@@ -349,6 +396,37 @@ public:
                 {"constant", source->isConstant()},
                 {"externally_initialized", source->isExternallyInitialized()}});
           }
+        }
+      }
+      if (global->has_frontend()) {
+        auto* source = global->frontend< llvm::GlobalVariable >();
+        if (source->getValueType()->isIntegerTy(32)) {
+          JsonDict native;
+          auto* init = source->hasInitializer() ? llvm::dyn_cast< llvm::ConstantInt >(source->getInitializer()) : nullptr;
+          native.put("zero_initializer", init && init->isZero());
+          native.put("value_bits", 32);
+          native.put("address_space", source->getAddressSpace());
+          native.put("constant", source->isConstant());
+          native.put("externally_initialized", source->isExternallyInitialized());
+          native.put("module_inline_asm", !source->getParent()->getModuleInlineAsm().empty());
+          native.put("module_aliases", !source->getParent()->alias_empty());
+          native.put("constructors", source->getParent()->getGlobalVariable("llvm.global_ctors") != nullptr);
+          native.put("destructors", source->getParent()->getGlobalVariable("llvm.global_dtors") != nullptr);
+          JsonList uses; bool direct = true;
+          for (auto* user : source->users()) {
+            auto* call = llvm::dyn_cast< llvm::CallBase >(user);
+            auto* callee = call ? call->getCalledFunction() : nullptr;
+            if (!callee || callee->getName() != "pthread_once" || call->arg_size() != 2 ||
+                call->getArgOperand(0) != source) { direct = false; continue; }
+            unsigned matches = 0;
+            for (const auto& entry : _statements)
+              if (entry.first->has_frontend() && entry.first->frontend< llvm::Value >() == call) {
+                uses.add(entry.second); ++matches;
+              }
+            if (matches != 1) direct = false;
+          }
+          native.put("all_uses_direct", direct); native.put("uses", uses);
+          object.put("native_once_control", native);
         }
       }
       object.put("declaration", global->is_declaration()); JsonList stores;

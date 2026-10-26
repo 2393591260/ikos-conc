@@ -15,8 +15,8 @@ own recorded source and execution-checker versions.
 ### Search sequence and shared budget
 
 The scheduler in [data_race_search.cpp](../../../analyzer/src/checker/data_race_search.cpp)
-uses twelve ordered passes. Later passes visit only deferred, applicable groups;
-they are not twelve complete analyses or twelve independent time allowances.
+uses up to thirteen ordered passes. Later passes visit only deferred, applicable groups;
+they are not independent complete analyses or independent time allowances.
 
 | Pass | Work considered |
 | --- | --- |
@@ -32,6 +32,7 @@ they are not twelve complete analyses or twelve independent time allowances.
 | 9 | Exact later access ordinals in the timed main/provider profile. |
 | 10 | Timed main/provider prefixes ending at an actual creator mutex release. |
 | 11 | Later target access ordinals in those creator-release prefixes. |
+| 12 | Sealed once callback executions on their actual physical caller threads. |
 
 All passes share the file deadline. Candidate/query counters and structural
 limits are separate: the existing early retries reset their counters, while the
@@ -290,3 +291,28 @@ pointer coverage remain outside this extension. Disabling the added searches
 with `IKOS_BMC_DISABLE_CREATOR_RELEASE=1` preserves the earlier searches and
 returns an inconclusive result when they cannot find a supported execution.
 Neither unsuccessful search nor an AR-accepted execution grants SAFE.
+
+### Once callbacks on their physical caller
+
+A supported `pthread_once` executes the callback in the actual calling pthread.
+The AI callback identity is not a new physical thread or a synthetic create.
+The bounded profile retains one actual main, one actual worker create, the API
+call, callback entry/body/Return and successful API return. Each exact control
+has one active initializer. Passive returns acquire only that initializer's
+completed clock; a later passive caller's accesses cannot flow into another
+passive return through a mutable completion clock.
+
+The profile requires a static zero-initialized GNU ILP32/LP64 control with closed
+uses and a direct native C `void(void)` callback. Native and AR API types, calling
+conventions, initialization, callback identity and control uses are exported
+and independently checked. Ordinary source definitions named `pthread_once`
+execute their real bodies. Unsupported reentry, escaping controls, callback
+thread creation, multiple physical creates or verifier-atomic combinations
+remain inconclusive. Main's configured argument assumptions are preserved.
+
+The optional final search shares the earlier deadline and counters.
+`IKOS_BMC_DISABLE_ONCE_EXECUTION=1` disables only this profile. It grants no
+SAFE permission. Independent AR replay validates the physical roots and actual
+callback completion; source projection registers only real thread creates and
+retains callback targets on their caller's thread. Neither replay nor export
+success constitutes external source-witness validation.

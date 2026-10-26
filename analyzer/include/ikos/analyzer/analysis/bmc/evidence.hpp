@@ -127,6 +127,13 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
               {"creator_step", path[i].join_creation},
               {"statement", snapshot.statement_id(path[i].join_completion)}});
       }
+      if (path[i].once_stage != OnceStage::None) {
+        step.put("once_call_step", path[i].once_origin);
+        if (path[i].once_stage == OnceStage::Call) step.put("once_role", path[i].once_active ? "active" : "passive");
+        if (path[i].once_stage == OnceStage::Enter) step.put("synthetic_event", "once_enter");
+        if (path[i].once_stage == OnceStage::CallbackReturn) step.put("once_callback_return", true);
+        if (path[i].once_stage == OnceStage::Return) step.put("synthetic_event", "once_return");
+      }
       if (path[i].called_function != nullptr) step.put("expanded_callee", path[i].called_function->name());
       auto* result = core::dyn_cast_or_null< ar::InternalVariable >(path[i].stmt->result_or_null());
       if (result != nullptr) {

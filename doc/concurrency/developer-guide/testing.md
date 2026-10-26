@@ -384,3 +384,19 @@ Negative controls retain common-lock ordering, impossible guards, missing or
 wrong releases and instance/coverage limits. `--ablate` disables only the new
 release searches and records their support contribution, without claiming a
 same-semantics performance comparison.
+
+### Physical once callback controls
+
+`test_bmc_once_physical.py --bits 32 --broken-premises --export-source-witness`
+and its `--bits 64` counterpart exercise active/passive completion, distinct
+controls, direct callback-name calls, helper frames, native-width and long-long
+accesses, API-return guards and configured main arguments. Broken-premise
+inputs cover type/convention, control layout/use, module effects, escape and
+unsupported physical creation. The negative same-control controls must never
+confirm a race.
+
+Rehashed snapshot damage checks API and callback types/conventions, control-use
+closure, marker origin, actual callback Return and API result; physical create
+and process-lifetime damage must fail independently. Source export checks keep
+one real registration and the actual physical thread IDs. `--with-ablation`
+uses the same input and budget with only the once search disabled.

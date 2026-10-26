@@ -46,11 +46,17 @@ inline bool semaphore_event(EvKind kind) {
 /// PSEUDO_ATOMIC_LOCK 同值）。编码还须排除原子段外的其他线程事件。
 constexpr std::uint64_t PSEUDO_ATOMIC_LOCK = 0xA7E0AD1CULL;
 
+enum class OnceStage { None, Call, Enter, CallbackReturn, Return };
+
 /// 一个 BMC 事件（内存访问或锁同步）。
 struct BmcEvent {
   const char* blocker = nullptr;
   ar::Statement* stmt = nullptr;  // 对应的 AR 语句
   ar::Function* called_function = nullptr; // Callee proven on this executed call.
+  OnceStage once_stage = OnceStage::None;
+  ar::Function* once_callback = nullptr; // Never the callee of pthread_once.
+  std::size_t once_origin = 0; // Exact actual API call step in this physical trace.
+  bool once_active = false; // A checked execution choice, not a source fact.
   bool synthetic_atomic = false; // Boundary marker, not another source call.
   bool synthetic_condition = false; // Wait's release/reacquire, not another call.
   ar::ReturnValue* join_completion = nullptr; // Actual selected child return.
@@ -526,6 +532,80 @@ inline bool ffs_call(ar::CallBase* call) {
              function->frontend< llvm::Function >();
 }
 
+
+// The first profile accepts the physical GNU/Linux i32 once object only.
+// All LLVM address users must be direct once control arguments: no raw writes,
+// alias stores, casts/escapes, resets, foreign accesses or alternative lifetimes.
+inline bool once_control_closed(ar::GlobalVariable* global) {
+  if (!global || !global->is_definition() || global->is_thread_local() ||
+      !global->has_frontend()) return false;
+  auto* native = global->frontend< llvm::GlobalVariable >();
+  auto* init = native->hasInitializer()
+      ? llvm::dyn_cast< llvm::ConstantInt >(native->getInitializer()) : nullptr;
+  llvm::Triple triple(native->getParent()->getTargetTriple());
+  const auto& layout = native->getParent()->getDataLayout();
+  if (!triple.isOSLinux() || triple.getEnvironment() != llvm::Triple::GNU ||
+      !native->getParent()->getModuleInlineAsm().empty() || !native->getParent()->alias_empty() ||
+      native->getParent()->getGlobalVariable("llvm.global_ctors") ||
+      native->getParent()->getGlobalVariable("llvm.global_dtors") || (triple.getArch() != llvm::Triple::x86 &&
+      triple.getArch() != llvm::Triple::x86_64) || !layout.isLittleEndian() ||
+      (layout.getPointerSizeInBits(0) != 32 && layout.getPointerSizeInBits(0) != 64) ||
+      !init || !init->getType()->isIntegerTy(32) || !init->isZero() ||
+      native->isConstant() || native->isExternallyInitialized() ||
+      native->getAddressSpace() != 0 || global->alignment() < 4) return false;
+  for (auto* user : native->users()) {
+    auto* call = llvm::dyn_cast< llvm::CallBase >(user);
+    auto* callee = call ? call->getCalledFunction() : nullptr;
+    if (!callee || !callee->isDeclaration() || callee->getName() != "pthread_once" ||
+        call->arg_size() != 2 || call->getArgOperand(0) != native) return false;
+  }
+  return true;
+}
+
+inline ar::Function* once_callback(ar::CallBase* call,
+                                   ar::GlobalVariable** object = nullptr) {
+  auto* function = exact_callee(call);
+  auto* direct_api = core::dyn_cast< ar::FunctionPointerConstant >(call->called());
+  if (!function || !direct_api || direct_api->function() != function || !function->is_declaration() || function->name() != "pthread_once" ||
+      function->type()->is_var_arg() || call->num_arguments() != 2 ||
+      !call->has_frontend() || !function->has_frontend()) return nullptr;
+  auto* global = core::dyn_cast< ar::GlobalVariable >(call->argument(0));
+  auto* pointer = core::dyn_cast< ar::FunctionPointerConstant >(call->argument(1));
+  auto* callback = pointer ? pointer->function() : nullptr;
+  auto* integer = core::dyn_cast< ar::IntegerType >(function->type()->return_type());
+  auto* source = llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >());
+  auto* declaration = function->frontend< llvm::Function >();
+  auto* native_callback = callback && callback->has_frontend()
+      ? callback->frontend< llvm::Function >() : nullptr;
+  auto* control_type = declaration->arg_size() == 2
+      ? llvm::dyn_cast< llvm::PointerType >(declaration->getFunctionType()->getParamType(0)) : nullptr;
+  if (!once_control_closed(global) || !integer || integer->bit_width() != 32 ||
+      !integer->is_signed() || !callback || !callback->is_definition() ||
+      callback->num_parameters() != 0 || !callback->type()->return_type()->is_void() ||
+      !source || !llvm::isa< llvm::CallInst >(source) || source->isInlineAsm() ||
+      source->getCalledOperand()->stripPointerCasts() != declaration ||
+      source->getCallingConv() != llvm::CallingConv::C ||
+      declaration->getCallingConv() != llvm::CallingConv::C ||
+      source->getFunctionType() != declaration->getFunctionType() ||
+      source->hasOperandBundles() || !source->getType()->isIntegerTy(32) ||
+      !control_type || control_type->isOpaque() || control_type->getAddressSpace() != 0 ||
+      !control_type->getPointerElementType()->isIntegerTy(32) ||
+      !native_callback || native_callback->isDeclaration() || native_callback->isVarArg() ||
+      native_callback->getCallingConv() != llvm::CallingConv::C ||
+      !native_callback->arg_empty() || !native_callback->getReturnType()->isVoidTy() ||
+      source->getArgOperand(0) != global->frontend< llvm::GlobalVariable >() ||
+      source->getArgOperand(1)->stripPointerCasts() != native_callback) return nullptr;
+  auto* callback_type = llvm::dyn_cast< llvm::PointerType >(declaration->getFunctionType()->getParamType(1));
+  if (!callback_type || callback_type->isOpaque() || callback_type->getAddressSpace() != 0 ||
+      callback_type->getPointerElementType() != native_callback->getFunctionType()) return nullptr;
+  for (unsigned i = 0; i < source->arg_size(); ++i)
+    for (auto attr : {llvm::Attribute::ByVal, llvm::Attribute::StructRet,
+                     llvm::Attribute::InAlloca, llvm::Attribute::Preallocated})
+      if (source->paramHasAttr(i, attr) || declaration->hasParamAttribute(i, attr)) return nullptr;
+  if (object) *object = global;
+  return callback;
+}
+
 // Saving the stack has no memory effect. Its token has no pointer capability;
 // every executed restore remains unsupported in this prefix-only subset.
 inline bool stack_save_call(ar::CallBase* call) {
@@ -727,7 +807,11 @@ inline std::size_t invocation_call(const std::vector< BmcEvent >& path,
                                    ar::Code* code, std::size_t before) {
   std::vector< std::pair< ar::Code*, std::size_t > > stack;
   for (std::size_t i = 0; i < before; ++i) {
-    if (path[i].synthetic_atomic) continue;
+    if (path[i].synthetic_atomic || path[i].once_stage == OnceStage::Return) continue;
+    if (path[i].once_stage == OnceStage::Enter) {
+      if (path[i].once_callback) stack.push_back({path[i].once_callback->body_or_null(), i});
+      continue;
+    }
     if (auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt)) {
       auto* function = path[i].called_function != nullptr ? path[i].called_function : exact_callee(call);
       if (function != nullptr && function->is_definition()) stack.push_back({function->body_or_null(), i});
@@ -747,7 +831,7 @@ inline ar::Statement* reaching_definition(ar::InternalVariable* value,
   std::size_t begin = call == path.size() ? 0 : call + 1;
   ar::Statement* definition = nullptr;
   for (std::size_t i = begin; i < before; ++i)
-    if (!path[i].synthetic_atomic && !path[i].synthetic_condition && path[i].stmt->result_or_null() == value && invocation_call(path, value->code(), i) == call) {definition = path[i].stmt; index = i;}
+    if (!path[i].synthetic_atomic && !path[i].synthetic_condition && path[i].once_stage != OnceStage::Enter && path[i].stmt->result_or_null() == value && invocation_call(path, value->code(), i) == call) {definition = path[i].stmt; index = i;}
   return definition;
 }
 
@@ -1732,6 +1816,7 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
       if (main_allocation(call, path, index, size)) return true;
       if (source_nondet(call)) return true;
       if (ffs_call(call)) return defined(call->argument(0), index, depth + 1);
+      if (path[index].once_stage == OnceStage::Return && once_callback(call)) return true;
       if (successful_create_result(path[index])) return true;
       if (successful_condition_result(path[index]) || successful_join_result(path[index])) return true;
       auto* f = callee_on_path(call, path, index);
@@ -2118,6 +2203,7 @@ struct UnrollBudget {
   std::size_t steps = 0;
   unsigned loop_bound = 1;
   unsigned target_occurrence = 1;
+  bool once_callbacks = false; // Enabled only by the separate physical-caller search.
   bool exact_target = false; // Legacy helper search can retain later invocations.
   unsigned max_target_occurrence = 0; // Observed only for exact-target search.
   ar::Statement* root_target = nullptr;
@@ -2126,6 +2212,15 @@ struct UnrollBudget {
   const char* rejected_reason = nullptr;
   ar::Statement* rejected_statement = nullptr;
 };
+
+inline bool open_once_prefix(const std::vector< BmcEvent >& path) {
+  int active = 0;
+  for (const auto& event : path) {
+    if (event.once_stage == OnceStage::Call) ++active;
+    if (event.once_stage == OnceStage::Return) --active;
+  }
+  return active != 0;
+}
 
 inline bool open_atomic_prefix(const std::vector< BmcEvent >& path) {
   int active = 0;
@@ -2230,8 +2325,61 @@ inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
             (f->name() == "__assert_fail" || f->name() == "__assert_perror_fail" ||
              f->name() == "__assert_rtn")) return;
       }
+      if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
+        auto* callback = once_callback(call);
+        if (callback != nullptr) {
+          if (!budget.once_callbacks || open_once_prefix(current) || open_atomic_prefix(current) ||
+              depth >= MAX_INLINE_DEPTH || !inline_ok(callback)) {
+            budget.rejected_reason = "once_profile"; budget.rejected_statement = s; return;
+          }
+          const auto origin = current.size();
+          // Separate real active/passive calls; their feasibility is decided by
+          // the shared control state in check_race, never by a free local flag.
+          for (bool active : {true, false}) {
+            auto prefix = current;
+            BmcEvent invocation(s, EvKind::Local);
+            invocation.once_stage = OnceStage::Call;
+            invocation.once_active = active; invocation.once_origin = origin;
+            invocation.once_callback = callback;
+            prefix.push_back(invocation);
+            std::vector< std::vector< BmcEvent > > returns;
+            if (active) {
+              auto enter = invocation; enter.once_stage = OnceStage::Enter;
+              prefix.push_back(enter);
+              for (auto* block : *callback->body()) for (auto* ret : *block) {
+                if (!core::isa< ar::ReturnValue >(ret)) continue;
+                auto path = prefix;
+                dfs_paths(callback->body()->entry_block(), ret, path, returns,
+                          in_stack, budget, depth + 1);
+              }
+              for (auto& path : returns) {
+                if (path.empty() || path.back().stmt->code() != callback->body()) continue;
+                path.back().once_stage = OnceStage::CallbackReturn;
+                path.back().once_origin = origin; path.back().once_callback = callback;
+              }
+            } else returns.push_back(prefix);
+            for (auto& path : returns) {
+              auto returned = invocation; returned.once_stage = OnceStage::Return;
+              path.push_back(returned);
+              if (path.size() > MAX_PATH_EVENTS) {
+                budget.exhausted = "unroll_event_budget"; return;
+              }
+              if (target == budget.root_target && candidate_index(path) < path.size() &&
+                  !open_atomic_prefix(path) && !open_once_prefix(path)) out.push_back(path);
+              else {
+                auto frames = in_stack; frames.pop_back();
+                dfs_paths(bb, target, path, out, frames, budget, depth, s);
+              }
+            }
+          }
+          return;
+        }
+      }
       BmcEvent ev;
       if (classify_event(s, ev, &in_stack)) {
+        if (open_once_prefix(current) && (ev.kind == EvKind::Create || ev.kind == EvKind::Join)) {
+          budget.rejected_reason = "once_nested_lifecycle"; budget.rejected_statement = s; return;
+        }
         if (ev.kind == EvKind::Create && budget.create_limits != nullptr) {
           auto limit = budget.create_limits->find(reinterpret_cast< ar::Function* >(ev.thread));
           if (limit != budget.create_limits->end() &&
@@ -2293,6 +2441,7 @@ inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
         const auto occurrences = std::count_if(current.begin(), current.end(),
             [&](const BmcEvent& event) {
               return !event.synthetic_atomic && !event.synthetic_condition &&
+                     event.once_stage != OnceStage::Enter && event.once_stage != OnceStage::Return &&
                      event.stmt == budget.root_target;
             });
         budget.max_target_occurrence = std::max(
@@ -2300,7 +2449,8 @@ inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
       }
       if (s == target) {
         auto occurrences = std::count_if(current.begin(), current.end(),
-                                          [&](const BmcEvent& event) {return !event.synthetic_atomic && event.stmt == target;});
+                                          [&](const BmcEvent& event) {return !event.synthetic_atomic && event.once_stage != OnceStage::Enter &&
+                     event.once_stage != OnceStage::Return && event.stmt == target;});
         if (occurrences >= (target == budget.root_target ? budget.target_occurrence : 1)) {
           if (target != budget.root_target) {
             out.push_back(current);
@@ -2310,10 +2460,11 @@ inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
         }
       }
       if (s == budget.root_target && candidate_index(current) == current.size() &&
-          (target == budget.root_target || budget.completed || open_atomic_prefix(current))) {
+          (target == budget.root_target || budget.completed || open_atomic_prefix(current) || open_once_prefix(current))) {
         auto occurrences = std::count_if(current.begin(), current.end(),
             [&](const BmcEvent& event) {
-              return !event.synthetic_atomic &&
+              return !event.synthetic_atomic && event.once_stage != OnceStage::Enter &&
+                     event.once_stage != OnceStage::Return &&
                      (!budget.exact_target || !event.synthetic_condition) &&
                      event.stmt == budget.root_target;
             });
@@ -2326,7 +2477,7 @@ inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
       }
       // Continue the real CFG until the selected atomic region is closed.
       if (target == budget.root_target && candidate_index(current) < current.size() &&
-          !open_atomic_prefix(current)) {
+          !open_atomic_prefix(current) && !open_once_prefix(current)) {
         out.push_back(current);
         in_stack.pop_back();
         return;
@@ -2386,7 +2537,7 @@ inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
               return;
             }
             if (atomic && target == budget.root_target && candidate_index(returned) < returned.size() &&
-                !open_atomic_prefix(returned)) {
+                !open_atomic_prefix(returned) && !open_once_prefix(returned)) {
               out.push_back(returned);
               continue;
             }
@@ -2428,7 +2579,7 @@ inline UnrollResult unroll_to(
     const std::chrono::steady_clock::time_point* deadline = nullptr,
     ar::CallBase* finite_source = nullptr,
     unsigned finite_value = 0,
-    bool exact_target = false) {
+    bool exact_target = false, bool once_callbacks = false) {
   UnrollResult result;
   if (unsupported_source_function_abi(func)) {
     result.rejected_reason = "source_call_abi";
@@ -2445,6 +2596,7 @@ inline UnrollResult unroll_to(
     return result;
   }
   UnrollBudget budget;
+  budget.once_callbacks = once_callbacks;
   budget.prune_join_prefix = prune_join_prefix;
   budget.deadline = deadline;
   budget.finite_source = finite_source;

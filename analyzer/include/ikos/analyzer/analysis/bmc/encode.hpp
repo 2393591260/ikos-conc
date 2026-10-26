@@ -33,9 +33,10 @@ inline bool stream_output(const BmcEvent& event) {
 }
 
 inline bool atomic_query_barrier(const BmcEvent& event) {
-  return event.kind != EvKind::Local && event.kind != EvKind::Assume &&
+  return event.once_stage != OnceStage::None ||
+         (event.kind != EvKind::Local && event.kind != EvKind::Assume &&
          !((event.kind == EvKind::Lock || event.kind == EvKind::Unlock) &&
-           event.mutex == PSEUDO_ATOMIC_LOCK);
+           event.mutex == PSEUDO_ATOMIC_LOCK));
 }
 
 struct GuardRejection {
@@ -1044,6 +1045,83 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       if (i != 0) s.add(clock.back() > clock[clock.size() - 2]);
     }
   }
+  struct OnceInvocation {
+    ar::GlobalVariable* object;
+    std::size_t trace, call, callback_return, returned;
+    bool active;
+  };
+  std::vector< OnceInvocation > once_invocations;
+  bool has_once = false;
+  for (std::size_t id = 0; id < traces.size(); ++id) {
+    const auto& path = traces[id].events;
+    for (std::size_t i = 0; i < path.size(); ++i) {
+      const auto& event = path[i];
+      if (event.once_stage == OnceStage::None) continue;
+      has_once = true;
+      auto fail = [&]() { record(diagnostics, "once_sealed_profile", event.stmt); return Result(Status::Unsupported); };
+      if (id == 0 || event.once_stage != OnceStage::Call || event.once_origin != i ||
+          event.called_function != nullptr) return fail();
+      auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+      ar::GlobalVariable* object = nullptr;
+      auto* callback = call ? once_callback(call, &object) : nullptr;
+      if (!callback || event.once_callback != callback) return fail();
+      auto boundary = [&](std::size_t step, OnceStage stage) {
+        return step < path.size() && path[step].once_stage == stage &&
+               path[step].stmt == call && path[step].once_origin == i &&
+               path[step].once_callback == callback &&
+               path[step].once_active == event.once_active && path[step].called_function == nullptr;
+      };
+      std::size_t ret = i, returned = i + 1;
+      if (event.once_active) {
+        if (!boundary(i + 1, OnceStage::Enter)) return fail();
+        ret = i + 2;
+        while (ret < path.size() && path[ret].once_stage == OnceStage::None) ++ret;
+        auto* actual_return = ret < path.size() ? core::dyn_cast< ar::ReturnValue >(path[ret].stmt) : nullptr;
+        if (!actual_return || actual_return->has_operand() || actual_return->code() != callback->body() ||
+            path[ret].once_stage != OnceStage::CallbackReturn || path[ret].once_origin != i ||
+            path[ret].once_callback != callback) return fail();
+        returned = ret + 1;
+      }
+      if (!boundary(returned, OnceStage::Return)) return fail();
+      once_invocations.push_back({object, id, i, ret, returned, event.once_active});
+      i = returned;
+    }
+  }
+  if (has_once) {
+    // This finite physical-caller profile does not combine with fixed startup,
+    // auxiliary/provider plans or verifier atomic completion.
+    if (!startup.empty() || traces.size() != 3 || main_index == 0 ||
+        completion != nullptr || provider_plan != nullptr ||
+        completion_return(traces[main_index].events, entry) != nullptr) {
+      record(diagnostics, "once_physical_profile"); return Result(Status::Unsupported);
+    }
+    for (const auto& trace : traces) for (const auto& event : trace.events)
+      if (event.mutex == PSEUDO_ATOMIC_LOCK) return Result(Status::Unsupported);
+    z3::expr_vector strict_clocks(ctx);
+    for (const auto& value : clock) strict_clocks.push_back(value);
+    if (strict_clocks.size() > 1) s.add(z3::distinct(strict_clocks));
+    std::map< ar::GlobalVariable*, const OnceInvocation* > active;
+    for (const auto& invocation : once_invocations) {
+      if (!invocation.active) continue;
+      if (!active.emplace(invocation.object, &invocation).second) {
+        record(diagnostics, "once_duplicate_initializer"); return Result(Status::BoundedUnsat);
+      }
+    }
+    for (const auto& invocation : once_invocations) {
+      if (invocation.active) continue;
+      auto winner = active.find(invocation.object);
+      if (winner == active.end()) {
+        record(diagnostics, "once_completion_unretained"); return Result(Status::Unsupported);
+      }
+      const auto& completed = *winner->second;
+      // A passive call acquires only the immutable callback completion. There
+      // is no passive-to-passive edge or ordinary-call synchronization.
+      s.add(clock[traces[completed.trace].clock_start + completed.callback_return] <
+            clock[traces[invocation.trace].clock_start + invocation.returned]);
+    }
+    record(diagnostics, "once_physical_timeline");
+  }
+
   // SC memory and indivisible stdout calls have a common strict order. Ties
   // must not invent distinct latest writes or omit the stream synchronization.
   z3::expr_vector memory_clocks(ctx);
@@ -1693,6 +1771,9 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         out = ctx.int_val(0);
         cache.emplace(key, out);
         return true;
+      }
+      if (path[definition_index].once_stage == OnceStage::Return && once_callback(call)) {
+        out = ctx.int_val(0); cache.emplace(key, out); return true;
       }
       if (ffs_call(call)) {
         z3::expr value(ctx);
