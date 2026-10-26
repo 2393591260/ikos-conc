@@ -5,6 +5,7 @@
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
+#include <ikos/analyzer/analysis/source_program_facts.hpp>
 #include <ikos/analyzer/checker/normal_mutex.hpp>
 #include <ikos/analyzer/checker/thread_lifecycle.hpp>
 #include <ikos/analyzer/util/log.hpp>
@@ -59,9 +60,9 @@ bool scalar(llvm::Type* t) {
 
 class ThreadLifecycle::Impl {
   Context& ctx;
+  SourceProgramFacts& source_facts;
   llvm::Function* main = nullptr;
-  std::map< llvm::Value*, ar::Statement* > originals;
-  std::map< llvm::Function*, ar::Function* > functions;
+  const std::map< llvm::Value*, ar::Statement* >& originals;
   std::set< llvm::Function* > roots, active;
   std::map< llvm::Function*, std::set< llvm::Function* > > owners;
   struct Child {
@@ -152,11 +153,9 @@ class ThreadLifecycle::Impl {
              c->getType()->isIntegerTy(64)));
   }
   ar::GlobalVariable* global(llvm::GlobalVariable* g) const {
-    for (auto it = ctx.bundle->global_begin(); it != ctx.bundle->global_end();
-         ++it)
-      if ((*it)->has_frontend() && (*it)->frontend< llvm::Value >() == g)
-        return *it;
-    return nullptr;
+    const auto& globals = source_facts.globals();
+    auto it = globals.find(g);
+    return it == globals.end() ? nullptr : it->second;
   }
   bool whole_global(llvm::GlobalVariable* g) const {
     if (!g || !g->hasInitializer() || g->isConstant() || g->isThreadLocal() ||
@@ -610,7 +609,7 @@ class ThreadLifecycle::Impl {
                 !entry->function()->has_frontend() ||
                 entry->function()->frontend< llvm::Value >() != child ||
                 !exact_pointer(a->argument(0), slot) ||
-                !functions.count(child) || !roots.insert(child).second ||
+                !source_facts.definitions().count(child) || !roots.insert(child).second ||
                 slot->getAlign().valueOrOne().value() < word)
               throw Refuse{};
             for (const auto& old : children)
@@ -656,7 +655,7 @@ class ThreadLifecycle::Impl {
     for (auto& f : module) {
       if (f.isDeclaration())
         continue;
-      if (!functions.count(&f) || !owners.count(&f) || f.isVarArg() ||
+      if (!source_facts.definitions().count(&f) || !owners.count(&f) || f.isVarArg() ||
           f.getCallingConv() != llvm::CallingConv::C)
         throw Refuse{};
       for (auto& a : f.args()) {
@@ -852,28 +851,12 @@ class ThreadLifecycle::Impl {
     main = ctx.opts.entry_points.front()->frontend< llvm::Function >();
     if (!main->use_empty())
       throw Refuse{};
-    for (auto it = ctx.bundle->function_begin();
-         it != ctx.bundle->function_end();
-         ++it)
-      if ((*it)->is_definition()) {
-        if (!(*it)->has_frontend())
-          throw Refuse{};
-        auto* f = (*it)->frontend< llvm::Function >();
-        functions.emplace(f, *it);
-        for (auto* b : *(*it)->body())
-          for (auto* s : *b) {
-            spend();
-            if (isa< ar::CallBase >(s) || isa< ar::Load >(s) ||
-                isa< ar::Store >(s) || isa< ar::Allocate >(s)) {
-              auto* i = s->has_frontend() ? llvm::dyn_cast< llvm::Instruction >(
-                                                s->frontend< llvm::Value >())
-                                          : nullptr;
-              if (!i || i->getFunction() != f ||
-                  !originals.emplace(i, s).second)
-                throw Refuse{};
-            }
-          }
-      }
+    if (!source_facts.index(static_cast< std::size_t >(budget) + 1) ||
+        !source_facts.memory_calls_allocations().unique ||
+        !source_facts.memory_calls_allocations().complete)
+      throw Refuse{};
+    // Cached scans still spend the original logical statement budget.
+    budget -= source_facts.statement_count();
     inventory();
     std::set< llvm::Function* > done;
     analyze(main, done);
@@ -908,7 +891,9 @@ class ThreadLifecycle::Impl {
   }
 
 public:
-  explicit Impl(Context& c) : ctx(c) {}
+  explicit Impl(Context& c)
+      : ctx(c), source_facts(source_program_facts(c)),
+        originals(source_facts.memory_calls_allocations().statements) {}
   bool excludes(const AccessRecord& a, const AccessRecord& b) {
     if (!attempted) {
       attempted = true;

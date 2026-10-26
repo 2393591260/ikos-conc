@@ -6,6 +6,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <set>
 #include <vector>
 #include <llvm/IR/Dominators.h>
 #include <ikos/ar/semantic/bundle.hpp>
@@ -21,6 +22,8 @@ public:
   struct StatementIndex {
     std::map< llvm::Value*, ar::Statement* > statements;
     bool unique = true;
+    // Every selected statement has a source instruction in its actual function.
+    bool complete = true;
   };
   // Typed byte layout only; no access-closure or mutex-protection certificate.
   struct IntegerCell {
@@ -33,6 +36,7 @@ private:
   bool _indexed = false;
   StatementIndex _memory_calls, _memory_calls_allocations;
   std::map< llvm::Function*, ar::Function* > _functions;
+  std::set< llvm::Function* > _definitions;
   std::map< llvm::GlobalVariable*, ar::GlobalVariable* > _globals;
   std::size_t _statement_count = 0;
   std::map< llvm::Function*, std::unique_ptr< llvm::DominatorTree > > _dominators;
@@ -46,6 +50,7 @@ public:
   const StatementIndex& memory_calls() const { return _memory_calls; }
   const StatementIndex& memory_calls_allocations() const { return _memory_calls_allocations; }
   const std::map< llvm::Function*, ar::Function* >& functions() const { return _functions; }
+  const std::set< llvm::Function* >& definitions() const { return _definitions; }
   const std::map< llvm::GlobalVariable*, ar::GlobalVariable* >& globals() const { return _globals; }
   // Preserve each consumer's original logical work bound despite cached scans.
   std::size_t statement_count() const { return _statement_count; }

@@ -142,7 +142,64 @@ static void test_source_call_abi_attributes() {
   ir.CreateRetVoid();
 }
 
+static void test_complete_source_index() {
+  for (unsigned bits : {32u, 64u}) {
+    for (unsigned mode = 0; mode != 6; ++mode) {
+      llvm::LLVMContext native_context;
+      llvm::Module module("complete-index", native_context);
+      auto* type = llvm::FunctionType::get(llvm::Type::getVoidTy(native_context), false);
+      auto function = [&](const char* name) {
+        return llvm::Function::Create(type, llvm::GlobalValue::ExternalLinkage, name, module);
+      };
+      auto* native = function("root");
+      auto* other = function("other");
+      llvm::IRBuilder<> ir(llvm::BasicBlock::Create(native_context, "entry", native));
+      auto* slot = ir.CreateAlloca(ir.getInt32Ty());
+      auto* read = ir.CreateLoad(ir.getInt32Ty(), slot);
+      ir.CreateRetVoid();
+      llvm::IRBuilder<> foreign(llvm::BasicBlock::Create(native_context, "entry", other));
+      auto* other_slot = foreign.CreateAlloca(foreign.getInt32Ty());
+      auto* other_read = foreign.CreateLoad(foreign.getInt32Ty(), other_slot);
+      foreign.CreateRetVoid();
+      ar::Context context;
+      auto* bundle = ar::Bundle::create(context,
+          ar::DataLayout::create(ar::LittleEndian, {bits, bits / 8, bits / 8}), "");
+      auto* ar_type = ar::FunctionType::get(context, ar::VoidType::get(context), {}, false);
+      auto* f = ar::Function::create(bundle, ar_type, "root", true);
+      if (mode != 4) f->set_frontend(native);
+      auto* declaration = ar::Function::create(bundle, ar_type, "other", false);
+      declaration->set_frontend(other);
+      auto* block = ar::BasicBlock::create(f->body());
+      auto* word = ar::IntegerType::ui32(context);
+      auto* local = ar::LocalVariable::create(f, ar::PointerType::get(context, word), 4);
+      auto* value = ar::InternalVariable::create(f->body(), word);
+      auto load = ar::Load::create(value, local, 4, false);
+      if (mode != 1) load->set_frontend(mode == 2 ? other_read :
+          mode == 3 ? static_cast< llvm::Value* >(native) : read);
+      block->push_back(std::move(load));
+      if (mode == 5) {
+        auto duplicate = ar::Load::create(value, local, 4, false);
+        duplicate->set_frontend(read);
+        block->push_back(std::move(duplicate));
+      }
+      SourceProgramFacts facts(bundle);
+      const auto count = mode == 5 ? 2u : 1u;
+      require(!facts.index(count) && facts.index(count + 1),
+              "a resumed index retains the consumer's exact work boundary");
+      require(facts.memory_calls().complete == (mode == 0 || mode == 5) &&
+              facts.memory_calls_allocations().complete == (mode == 0 || mode == 5),
+              "missing, foreign-function and non-instruction sources cannot authorize a complete index");
+      require(facts.memory_calls_allocations().unique == (mode != 5),
+              "complete source identity does not imply uniqueness");
+      require(facts.definitions().count(native) == (mode != 4) &&
+              !facts.definitions().count(other) && facts.functions().count(other),
+              "declarations never become defined thread entries");
+    }
+  }
+}
+
 int main() {
+  test_complete_source_index();
   test_source_call_abi_attributes();
   test_integer_layouts();
   llvm::LLVMContext native_context;

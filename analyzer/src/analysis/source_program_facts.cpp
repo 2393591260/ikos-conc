@@ -17,6 +17,7 @@ bool SourceProgramFacts::index(std::size_t limit) {
   _memory_calls = {};
   _memory_calls_allocations = {};
   _functions.clear();
+  _definitions.clear();
   _globals.clear();
   _statement_count = 0;
   auto* bundle = _bundle;
@@ -24,11 +25,23 @@ bool SourceProgramFacts::index(std::size_t limit) {
     auto* f = *it;
     if (f->has_frontend()) _functions.emplace(f->frontend< llvm::Function >(), f);
     if (!f->is_definition()) continue;
+    auto* source_function = f->has_frontend() ? f->frontend< llvm::Function >() : nullptr;
+    if (source_function) _definitions.insert(source_function);
+    else {
+      _memory_calls.complete = false;
+      _memory_calls_allocations.complete = false;
+    }
     for (auto* block : *f->body()) for (auto* s : *block) {
       if (++_statement_count >= limit) return false;
       bool basic = isa< ar::CallBase >(s) || isa< ar::Load >(s) || isa< ar::Store >(s);
-      if ((!basic && !isa< ar::Allocate >(s)) || !s->has_frontend()) continue;
-      auto* native = s->frontend< llvm::Value >();
+      if (!basic && !isa< ar::Allocate >(s)) continue;
+      auto* native = s->has_frontend() ? s->frontend< llvm::Value >() : nullptr;
+      auto* instruction = llvm::dyn_cast_or_null< llvm::Instruction >(native);
+      if (!instruction || instruction->getFunction() != source_function) {
+        if (basic) _memory_calls.complete = false;
+        _memory_calls_allocations.complete = false;
+      }
+      if (!native) continue;
       if (basic && !_memory_calls.statements.emplace(native, s).second)
         _memory_calls.unique = false;
       if (!_memory_calls_allocations.statements.emplace(native, s).second)
