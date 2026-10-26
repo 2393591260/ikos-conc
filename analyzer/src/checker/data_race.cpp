@@ -478,6 +478,7 @@ DataRaceChecker::DataRaceChecker(Context& ctx) : Checker(ctx) {
                              "ikos-analyzer.prepare.region-ownership-inventory");
     this->_ownership.reset(new RegionOwnership(ctx));
   }
+  this->_argument_windows = ctx.thread_argument_windows.get();
   const char* configured = std::getenv("IKOS_AI_PAIR_EXCLUSION");
   const std::string mode = configured ? configured : "";
   this->_pair_exclusion_enabled = mode == "1" || mode == "native";
@@ -830,6 +831,8 @@ void DataRaceChecker::check(ar::Statement* stmt,
   }
 
   this->_ownership->observe(stmt, inv, call_context);
+  if (this->_argument_windows)
+    this->_argument_windows->observe(stmt, inv, call_context);
 
   if (auto* operation = dyn_cast< ar::BinaryOperation >(stmt)) {
     if (this->_ctx.opts.demote_race_to_unknown && getenv("IKOS_BMC_RECOVER") != nullptr && operation->has_no_wrap()) {
@@ -1923,7 +1926,11 @@ void DataRaceChecker::check_load(ar::Load* load,
                    inv.second().live_children_is_top(),
                    load->is_atomic(),
                    provenance,
-                   this->resolve_offset_congruence(load->operand(), inv)});
+                   this->resolve_offset_congruence(load->operand(), inv),
+                   this->_argument_windows
+                       ? this->_argument_windows->window(load->operand(), inv,
+                           this->current_thread_id(load, call_context))
+                       : boost::none});
 }
 
 void DataRaceChecker::check_store(ar::Store* store,
@@ -2008,7 +2015,11 @@ void DataRaceChecker::check_store(ar::Store* store,
                    inv.second().live_children_is_top(),
                    store->is_atomic(),
                    provenance,
-                   this->resolve_offset_congruence(store->pointer(), inv)});
+                   this->resolve_offset_congruence(store->pointer(), inv),
+                   this->_argument_windows
+                       ? this->_argument_windows->window(store->pointer(), inv,
+                           this->current_thread_id(store, call_context))
+                       : boost::none});
 }
 
 } // end namespace analyzer

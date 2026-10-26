@@ -78,6 +78,7 @@ class PthreadInitializationFrame;
 class PosixSemaphore;
 class PosixBarrier;
 class SourceProgramFacts;
+class ThreadArgumentWindows;
 
 // Native storage has no numerical encoding of a thread-instance identity.
 struct NativeHandleArray {
@@ -144,6 +145,9 @@ public:
   /// environment per analysis run, shared by the thread-modular driver,
   /// the transfer engine, and the data-race checker.
   core::ConcurrentGlobalEnv concurrent_env;
+
+  // Prepared by the thread driver; checker consumers never configure native AI.
+  std::shared_ptr< ThreadArgumentWindows > thread_argument_windows;
 
   // Written by the driver only after replay, destructors and shared flush.
   bool race_analysis_complete = false;

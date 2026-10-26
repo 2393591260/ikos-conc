@@ -276,6 +276,7 @@ add_executable(ikos-analyzer
   src/checker/sc_protocol.cpp
   src/checker/self_publication.cpp
   src/analysis/region_ownership.cpp
+  src/checker/thread_argument_windows.cpp
   src/checker/function_call.cpp
   src/checker/int_overflow_base.cpp
   src/checker/memory_watch.cpp

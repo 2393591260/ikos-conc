@@ -513,3 +513,30 @@ add_concurrency_test(finite-coverage "${CONCURRENCY_ROOT}/scripts/test_bmc_finit
 
 add_concurrency_test(finite-coverage-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_finite_coverage.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(thread-argument-windows "${CONCURRENCY_ROOT}/scripts/test_thread_argument_windows.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+
+add_concurrency_test(thread-argument-windows-lp64 "${CONCURRENCY_ROOT}/scripts/test_thread_argument_windows.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_executable(test-analysis-thread-argument-window-consumer thread_argument_window_consumer.cpp)
+target_include_directories(test-analysis-thread-argument-window-consumer PRIVATE "${CONCURRENCY_ROOT}/analyzer/include")
+target_link_libraries(test-analysis-thread-argument-window-consumer ${GMPXX_LIB} ${GMP_LIB} ${APRON_LIBRARIES} LLVMSupport Threads::Threads)
+add_dependencies(build-analyzer-tests test-analysis-thread-argument-window-consumer)
+add_test(NAME concurrency-thread-argument-window-consumer COMMAND $<TARGET_FILE:test-analysis-thread-argument-window-consumer>)
+set_tests_properties(concurrency-thread-argument-window-consumer PROPERTIES LABELS concurrency)
+
+add_executable(test-analysis-thread-argument-window-native thread_argument_window_native.cpp)
+target_include_directories(test-analysis-thread-argument-window-native PRIVATE "${CONCURRENCY_ROOT}/analyzer/include")
+target_link_libraries(test-analysis-thread-argument-window-native ${GMPXX_LIB} ${GMP_LIB} ${APRON_LIBRARIES} LLVMSupport Threads::Threads)
+add_dependencies(build-analyzer-tests test-analysis-thread-argument-window-native)
+add_test(NAME concurrency-thread-argument-window-native COMMAND $<TARGET_FILE:test-analysis-thread-argument-window-native>)
+set_tests_properties(concurrency-thread-argument-window-native PROPERTIES LABELS concurrency)
+
+add_executable(test-analysis-thread-argument-window-projection thread_argument_window_projection.cpp)
+target_include_directories(test-analysis-thread-argument-window-projection PRIVATE "${CONCURRENCY_ROOT}/analyzer/include")
+target_link_libraries(test-analysis-thread-argument-window-projection ${GMPXX_LIB} ${GMP_LIB} ${APRON_LIBRARIES} LLVMSupport Threads::Threads)
+add_dependencies(build-analyzer-tests test-analysis-thread-argument-window-projection)
+add_test(NAME concurrency-thread-argument-window-projection COMMAND $<TARGET_FILE:test-analysis-thread-argument-window-projection>)
+set_tests_properties(concurrency-thread-argument-window-projection PROPERTIES LABELS concurrency)

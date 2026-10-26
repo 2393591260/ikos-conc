@@ -29,6 +29,7 @@ enum class Id {
   InitPublication,
   DisabledPrivateInit,
   DisjointBytes,
+  ThreadArgumentWindows,
   CommonMutex,
   CorrespondingMutexExact,
   CorrespondingMutexCongruence,
@@ -99,6 +100,7 @@ inline Contract contract(Id id) {
     case Id::InitPublication: return {"init-publication-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::DisabledPrivateInit: return {"disabled-private-init-v1", Role::PairExclusion, Stage::FinalPairs, false};
     case Id::DisjointBytes: return {"disjoint-bytes-v1", Role::PairExclusion, Stage::FinalPairs, true};
+    case Id::ThreadArgumentWindows: return {"thread-argument-windows-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::CommonMutex: return {"common-mutex-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::CorrespondingMutexExact: return {"corresponding-mutex-exact-v1", Role::PairExclusion, Stage::FinalPairs, true};
     case Id::CorrespondingMutexCongruence: return {"corresponding-mutex-congruence-v1", Role::PairExclusion, Stage::FinalPairs, true};

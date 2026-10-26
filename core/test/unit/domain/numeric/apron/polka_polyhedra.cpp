@@ -809,3 +809,55 @@ BOOST_AUTO_TEST_CASE(to_interval_congruence) {
                                          3 * VariableExpr(y) + 1) ==
               IntervalCongruence(Interval(Bound(-9), Bound(-4))));
 }
+
+BOOST_AUTO_TEST_CASE(normalize_keeps_relations_and_detects_bottom) {
+  VariableFactory vfac;
+  Variable x(vfac.get("x"));
+  Variable y(vfac.get("y"));
+  auto inv = ApronDomain::top();
+  inv.add(VariableExpr(x) >= 0);
+  inv.add(VariableExpr(y) == VariableExpr(x) + 1);
+  inv.add(VariableExpr(y) <= 3);
+  inv.normalize();
+  BOOST_CHECK(inv.to_interval(x) == Interval(Bound(0), Bound(2)));
+  BOOST_CHECK(inv.to_interval(y) == Interval(Bound(1), Bound(3)));
+
+  auto copy = inv;
+  copy.normalize();
+  auto moved = std::move(copy);
+  moved.normalize();
+  BOOST_CHECK(moved.equals(inv));
+
+  auto next = ApronDomain::top();
+  next.add(VariableExpr(x) >= 4);
+  next.add(VariableExpr(x) <= 6);
+  next.add(VariableExpr(y) == VariableExpr(x) + 1);
+  next.normalize();
+  auto joined = inv;
+  joined.join_with(next);
+  joined.normalize();
+  BOOST_CHECK(inv.leq(joined));
+  BOOST_CHECK(next.leq(joined));
+  BOOST_CHECK(joined.to_interval(x) == Interval(Bound(0), Bound(6)));
+  BOOST_CHECK(joined.to_interval(y) == Interval(Bound(1), Bound(7)));
+  auto broken_relation = joined;
+  broken_relation.add(VariableExpr(y) >= VariableExpr(x) + 2);
+  broken_relation.normalize();
+  BOOST_CHECK(broken_relation.is_bottom());
+
+  auto widened = inv;
+  widened.widen_with(joined);
+  widened.normalize();
+  BOOST_CHECK(inv.leq(widened));
+  BOOST_CHECK(joined.leq(widened));
+
+  moved.forget(x);
+  moved.normalize();
+  BOOST_CHECK(moved.to_interval(x).is_top());
+  BOOST_CHECK(moved.to_interval(y) == Interval(Bound(1), Bound(3)));
+  inv.add(VariableExpr(x) >= 10);
+  inv.normalize();
+  BOOST_CHECK(inv.is_bottom());
+  inv.normalize();
+  BOOST_CHECK(inv.is_bottom());
+}

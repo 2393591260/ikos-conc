@@ -32,6 +32,9 @@ int main() {
   require(permits_range_premise(Id::RangeSubarray), "Range publication is registered");
   require(!permits_range_premise(Id::CoverageBucketOwnership), "Coverage cannot authorize range publication");
   require(!permits_range_premise(Id::BmcSelectedExecution), "Execution cannot authorize range publication");
+  require(permits_pair_exclusion(Id::ThreadArgumentWindows), "Native windows may exclude certified pairs");
+  require(!permits_effect_coverage(Id::ThreadArgumentWindows), "Native windows cannot cover missing effects");
+  require(!permits_execution_premise(Id::ThreadArgumentWindows), "Native windows cannot authorize BMC executions");
   require(!permits_pair_exclusion(Id::None), "No proof retains the candidate");
   require(!permits_pair_exclusion(Id::Count), "Invalid identity grants no permission");
   require(dependency(Id::ArenaReservation) == Id::BinaryToken,

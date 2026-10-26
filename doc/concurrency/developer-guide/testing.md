@@ -270,3 +270,26 @@ ordinals/objects, errors and resource termination cannot pass as coverage.
 Comparator self-checks inject these failures, including mutations of real
 observations. This establishes the stated finite comparison, not completeness
 for arbitrary C or a new SAFE rule. `--self-test` runs the oracle alone.
+
+### Native thread-argument windows
+
+`test_thread_argument_windows.py` runs both ABI modes with explicit
+VarPack Polka and guard partitioning. Positive cases require actual native
+creator/window queries and the final pair rule; independent producer and
+consumer ablations must withdraw that proof. Default-domain, non-race,
+checks-off and other partitioning modes must not prepare the helper.
+
+The thread driver prepares one closed creation family before constructing
+checkers. A shadow copies each native entry argument offset; existing native
+transfers propagate the relation. The final consumer combines the observed
+relative access windows with a proved positive creation stride in both
+orientations. It requires actual create/step observations, matching family
+and object, a clean shared board and completed analysis. It grants only pair
+exclusion; pointer validity, effect coverage and overall SAFE remain separate.
+
+Three native units check machine-width arithmetic/join/widen/forget/wrap,
+full original-state projection after forgetting the shadow, and the actual
+production consumer. The last unit includes a real shared-board write and a
+fresh native query of its changed value: dirty first withdraws the old proof,
+and the recomputed broader window continues to block it. A separate independent
+round checks recovery; this does not claim automatic whole-worklist reconvergence.

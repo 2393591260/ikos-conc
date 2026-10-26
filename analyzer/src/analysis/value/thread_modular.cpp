@@ -68,6 +68,7 @@
 #include <ikos/analyzer/util/timer.hpp>
 
 #include <ikos/core/domain/concurrent_global_env.hpp>
+#include <ikos/analyzer/checker/thread_argument_windows.hpp>
 
 namespace ikos {
 namespace analyzer {
@@ -243,6 +244,18 @@ void ThreadModularAnalysis::run() {
         " established=" + std::to_string(established) +
         " published=" + std::to_string(published));
 
+  {
+    // Configuration and creation-count prefilters avoid helper allocation
+    // before native variables are created.
+    Timer window_preparation;
+    window_preparation.start();
+    _ctx.thread_argument_windows = ThreadArgumentWindows::prepare(_ctx);
+    window_preparation.stop();
+    if (_ctx.thread_argument_windows)
+      _ctx.output_db->times.insert("ikos-analyzer.prepare.thread-argument-windows",
+                                  window_preparation.elapsed().count());
+  }
+
   // Create checkers
   std::vector< std::unique_ptr< Checker > > checkers;
   if (_ctx.opts.use_checks) {
@@ -286,6 +299,14 @@ void ThreadModularAnalysis::run() {
     // base alone — race-2_3b-container_of.c FN). `pointer_refine(p, addrs,
     // offset)` is the existing offset-carrying primitive.
     entry_inv.first().normal().pointer_refine(a0.var(), pts, offset);
+    auto* anchor = _ctx.thread_argument_windows
+        ? _ctx.thread_argument_windows->anchor(func) : nullptr;
+    if (anchor) {
+      // Copy only the ghost offset; never strengthen the original formal.
+      entry_inv.first().normal().int_assign(anchor, a0.var()->offset_var());
+      entry_inv.first().normal().uninit_assign_maybe(anchor);
+      entry_inv.first().normal().uninit_refine(anchor, core::Uninitialized::initialized());
+    }
   };
 
   // Join-then-create HB: inherit the parent's MUST joined digest at the create

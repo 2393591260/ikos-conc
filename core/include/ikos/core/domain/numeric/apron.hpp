@@ -579,6 +579,14 @@ public:
 
   void normalize() override {
     std::lock_guard< std::mutex > lock(this->_mutex);
+    if constexpr (Domain == apron::PolkaPolyhedra) {
+      const auto opt = ap_manager_get_funopt(manager(), AP_FUNID_IS_BOTTOM);
+      if (opt.algorithm >= 0 && opt.timeout == 0 && opt.max_object_size == 0) {
+        // Polka queries prepare their own representations; normalize emptiness.
+        (void)ap_abstract0_is_bottom(manager(), this->_inv.get());
+        return;
+      }
+    }
     ap_abstract0_canonicalize(manager(), this->_inv.get());
   }
 

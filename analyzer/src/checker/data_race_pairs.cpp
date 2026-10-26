@@ -901,6 +901,10 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
           return PairDecision::exclude(race_rules::Id::DisjointBytes);
         }
       }
+      if (this->_argument_windows && this->_argument_windows->disjoint(a, b)) {
+        return PairDecision::exclude(race_rules::Id::ThreadArgumentWindows,
+                                     this->_argument_windows->proof(a, b));
+      }
       // Unknown base displacement cannot be replaced by a relative field
       // offset: equal pointee types do not establish a common object origin.
 
@@ -1178,7 +1182,9 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
     }
     output << JsonDict{{"kind", "pair-rule-summary"}, {"counts", counts},
                        {"accesses", this->_accesses.size()},
-                       {"remaining_pairs", all_pairs.size()}}.str() << '\n';
+                       {"remaining_pairs", all_pairs.size()},
+                       {"thread_argument_windows", this->_argument_windows
+                            ? this->_argument_windows->statistics() : JsonDict{}}}.str() << '\n';
   }
   if (exclusion_report.is_open() && exclusion_report) {
     JsonDict summary;

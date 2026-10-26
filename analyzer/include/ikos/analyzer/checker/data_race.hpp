@@ -43,6 +43,8 @@
 
 #pragma once
 
+#include <ikos/analyzer/checker/thread_argument_windows.hpp>
+
 #include <array>
 #include <map>
 #include <memory>
@@ -168,6 +170,7 @@ struct AccessRecord {
   // Stable local may fact used only by the separate SAFE pair-exclusion query.
   // Extern/synthetic accesses deliberately retain no numerical certificate.
   boost::optional< core::machine_int::Congruence > offset_congruence = boost::none;
+  boost::optional< ThreadArgumentWindow > argument_window = boost::none;
 
 };
 
@@ -204,6 +207,7 @@ public:
 private:
   enum class Phase { Collecting, Finalizing, Complete, Failed };
   Phase _phase = Phase::Collecting;
+  ThreadArgumentWindows* _argument_windows;
 
   void finalize_checks();
 
