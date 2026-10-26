@@ -415,3 +415,18 @@ API results. In one-round controls a genuine main Return is appended at its
 correct CFG location before a child event; rejection must identify process
 exit, rather than an unrelated malformed statement. CLI source binding and
 maintained witness projection are checked separately from AR replay.
+
+### Complete shallow-loop ladder controls
+
+`test_bmc_finite_ladder.py --bits 32` and `--bits 64` compare the same local
+inputs with the bound-three alternative enabled and disabled. Outer bounds
+two, three and four, legal non-atomic prefixes before abort, completed-atomic
+boundaries and common mutexes cover the search choice and its limits. The
+calibrated outer-four case must record the new search branch; disabling it
+must remove that hit. Every confirmed execution needs nonempty independent
+AR acceptance. Matching verdicts do not imply an unmeasured speed advantage.
+
+The existing atomic-completion, sibling-publication, budget, startup-provider
+and later-access suites remain the execution-contract regressions for this
+search-only extension. Neither a later bound nor an exhausted enumeration
+relaxes their completion, communication or lifetime checks.

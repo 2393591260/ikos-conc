@@ -354,11 +354,22 @@ inline Result confirm_race(ar::Function* funcA, ar::Statement* stmtA,
     // Keep first-pass queries unchanged. In deferred groups, a smaller complete
     // enumeration may find short executions absent from the saturated DFS set.
     if (loop_bound >= 16) {
-      record(diagnostics, "interrupted_small_bound");
-      outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
-                                 diagnostics, budget, creations, facts, 2,
-                                 finite_source, finite_value, targets, progress));
-      if (outcome.confirmed()) return outcome;
+      // Bound two is the existing retry. Bound three is another complete
+      // search choice using the same execution checks and remaining budget.
+      for (unsigned short_bound : {2u, 3u}) {
+        if (short_bound == 3 && std::getenv("IKOS_BMC_DISABLE_FINITE_LADDER") != nullptr) break;
+        if (short_bound == 3 && (budget->expired() || budget->queries == 0)) {
+          budget->record_exhaustion(diagnostics);
+          outcome.merge(Result(Status::BudgetExceeded));
+          return outcome;
+        }
+        record(diagnostics, "interrupted_small_bound");
+        if (short_bound == 3) record(diagnostics, "interrupted_shallow_bound_three");
+        outcome.merge(confirm_race(funcA, stmtA, widthA, funcB, stmtB, widthB,
+                                   diagnostics, budget, creations, facts, short_bound,
+                                   finite_source, finite_value, targets, progress));
+        if (outcome.confirmed()) return outcome;
+      }
       if (diagnostics != nullptr) {
         diagnostics->paths_a = rA.paths.size();
         diagnostics->paths_b = rB.paths.size();

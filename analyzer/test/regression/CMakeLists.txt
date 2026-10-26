@@ -580,3 +580,8 @@ add_concurrency_test(bmc-barrier-execution "${CONCURRENCY_ROOT}/scripts/test_bmc
                      --ikos "${CONCURRENCY_IKOS}" --bits 32)
 add_concurrency_test(bmc-barrier-execution-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_barrier_execution.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(bmc-finite-ladder "${CONCURRENCY_ROOT}/scripts/test_bmc_finite_ladder.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+add_concurrency_test(bmc-finite-ladder-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_finite_ladder.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)

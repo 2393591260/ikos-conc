@@ -341,3 +341,18 @@ later worker events.
 authorizing SAFE. Existing barrier safety proofs and their premises are
 unchanged. The selected execution, source mapping and external source-witness
 validation remain distinct evidence layers.
+
+### Complete shallow alternatives after interrupted enumeration
+
+When a deferred large-loop enumeration is interrupted, the existing complete
+bound-two retry remains first. An optional bound-three retry follows it with
+the same remaining deadline, query counters and structural limits. It calls
+the ordinary confirmation path: real loop guards, dynamic definitions, atomic
+root completion, read-from and independent replay are unchanged. An emitted
+path must still reach its selected target and any required real Return; an
+interrupted branch is never treated as completion.
+
+`IKOS_BMC_DISABLE_FINITE_LADDER=1` disables only the added bound-three choice.
+This is a bounded search policy, not a new program abstraction, a completeness
+claim or a proof of safety. A zero-gain comparison is a valid observation; no
+resource limit is increased to obtain a result.
