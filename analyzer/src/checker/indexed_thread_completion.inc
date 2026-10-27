@@ -638,6 +638,8 @@ class ThreadLifecycleObservations::Impl {
     for (auto gi = ctx.bundle->global_begin(); gi != ctx.bundle->global_end(); ++gi)
       if ((*gi)->is_definition()) close((*gi)->initializer());
   }
+  #include "indexed_object_family.inc"
+
   void inventory() {
     auto* module = source_parent->getParent();
     // Closed no-child/no-joiner effect envelope. Unknown or callback-taking
@@ -664,7 +666,8 @@ class ThreadLifecycleObservations::Impl {
       if (call == create.source || call == join.source) {
         const bool creating = call == create.source;
         require(call->getFunction() == source_parent &&
-                native_handle_api(call, creating) &&
+                (creating && family.active ? object_create_api(call)
+                     : native_handle_api(call, creating) != nullptr) &&
                 imported == (creating ? create.call : join.call) &&
                 (native->has_frontend() ||
                  id == (creating ? ar::Intrinsic::PthreadCreate : ar::Intrinsic::PthreadJoin)) &&
@@ -730,8 +733,7 @@ class ThreadLifecycleObservations::Impl {
       if ((*gi)->is_definition()) close((*gi)->initializer());
   }
   void prepare() {
-    require(!std::getenv("IKOS_RACE_DISABLE_INDEXED_JOIN_PRODUCER") &&
-            ctx.opts.enable_thread_modular && ctx.opts.procedural != Procedural::Intraprocedural &&
+    require(ctx.opts.enable_thread_modular && ctx.opts.procedural != Procedural::Intraprocedural &&
             ctx.opts.entry_points.size() == 1 && ctx.opts.no_init_globals.empty() &&
             !ctx.bundle->global_or_null("ar.global_ctors") &&
             !ctx.bundle->global_or_null("ar.global_dtors"));
@@ -763,13 +765,19 @@ class ThreadLifecycleObservations::Impl {
     require(create.source && join.source &&
             create.source->getFunction() == source_parent &&
             join.source->getFunction() == source_parent &&
-            native_handle_api(create.source, true) && native_handle_api(join.source, false));
+            (native_handle_api(create.source, true) || object_create_api(create.source)) &&
+            native_handle_api(join.source, false));
     source_child = llvm::dyn_cast< llvm::Function >(
         create.source->getArgOperand(2)->stripPointerCasts());
-    require(source_child && source_child->getArg(0)->use_empty());
+    require(source_child);
     auto found = facts.functions().find(source_child);
     require(found != facts.functions().end()); child = found->second;
     require(child->is_definition() && child->num_parameters() == 1);
+    if (!llvm::isa< llvm::ConstantPointerNull >(create.source->getArgOperand(3))) {
+      object_prepare(); return;
+    }
+    require(!std::getenv("IKOS_RACE_DISABLE_INDEXED_JOIN_PRODUCER") &&
+            source_child->getArg(0)->use_empty());
     stage = "source create loop"; source_loop(create);
     stage = "source join loop"; source_loop(join);
     require(create.source_condition->getPredicate() == join.source_condition->getPredicate() &&
@@ -1082,6 +1090,7 @@ public:
         stage = "pre-multiply extent bound";
         extent_observation(inv, cc);
       }
+      if (family.active) { object_observe(statement, inv, cc); return; }
       for (auto* loop : {&create, &join})
         if (statement == loop->call || statement == loop->step) {
           stage = loop == &create ? "create range/base/context" : "join range/base/context";
@@ -1097,21 +1106,24 @@ public:
     return prepared && valid && effect_frame && extent_seen && object &&
         create.call_seen && create.step_seen && join.call_seen && join.step_seen &&
         final_range(create) && final_range(join) &&
-        !std::getenv("IKOS_RACE_DISABLE_INDEXED_JOIN_CONSUMER") &&
+        (family.active
+             ? (!std::getenv("IKOS_RACE_DISABLE_INDEXED_OBJECT_CONSUMER") &&
+                family.create_seen && family.join_seen && family.own_free_seen && family.table_free_seen)
+             : !std::getenv("IKOS_RACE_DISABLE_INDEXED_JOIN_CONSUMER")) &&
         ctx.race_analysis_complete && !ctx.concurrent_env.is_dirty() &&
         ctx.concurrent_env.unmodeled_effects().empty() &&
         ctx.concurrent_env.unmodeled_thread_creations().empty();
   }
   bool indexed_family(ar::CallBase* spawning, ar::Function* entry,
                       IndexedThreadFamily& result) const {
-    if (!ready() || spawning != create.call || entry != child) return false;
+    if (family.active || !ready() || spawning != create.call || entry != child) return false;
     result = {create.source_bound, create.bound, source_allocation, allocation,
               extent_count_upper, word};
     return true;
   }
   bool completes_before(ar::CallBase* spawning, ar::Function* entry,
                         ar::CallBase* release, CallContext* cc) const {
-    if (!ready() || spawning != create.call || entry != child || !release ||
+    if (family.active || !ready() || spawning != create.call || entry != child || !release ||
         (cc && cc->has_parent()) || !release->has_frontend()) return false;
     auto* source = llvm::dyn_cast< llvm::CallBase >(release->frontend< llvm::Value >());
     auto* target = source ? callee(source) : nullptr;
@@ -1124,6 +1136,7 @@ public:
         after_join(source) && after_join(release);
   }
   bool excludes(const AccessRecord& a, const AccessRecord& b) const {
+    if (family.active) return object_reason(a, b) != 0;
     if (!ready()) return false;
     // A family can be parallel with itself: only the parent after the completed
     // join loop is ordered. Never reuse the old same-root serial conclusion.
@@ -1131,6 +1144,7 @@ public:
            (endpoint(b, true) && endpoint(a, false));
   }
   JsonDict info(const AccessRecord& a, const AccessRecord& b) const {
+    if (family.active) return object_info(a, b);
     return {{"thread_lifecycle_contract", "indexed-native-handle-completion-v1"},
             {"safe_reason", "all successful children of one exact indexed native handle family completed before the parent endpoint"},
             {"thread_a", a.thread_id}, {"thread_b", b.thread_id},

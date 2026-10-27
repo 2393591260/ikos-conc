@@ -651,3 +651,8 @@ add_concurrency_test(recursive-mutex-bmc-lp64 "${CONCURRENCY_ROOT}/scripts/test_
                      --ikos "${CONCURRENCY_IKOS}" --bits 64 --mode bmc --case 0 --case 1 --case 2 --case 3)
 
 add_concurrency_test(recursive-mutex-replay "${CONCURRENCY_ROOT}/scripts/test_bmc_recursive_mutex.py")
+
+foreach(bits 32 64)
+  add_concurrency_test(indexed-object-family-${bits} "${CONCURRENCY_ROOT}/scripts/test_indexed_object_family.py"
+                       --ikos "${CONCURRENCY_IKOS}" --bits ${bits} --no-originals)
+endforeach()

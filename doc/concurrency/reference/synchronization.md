@@ -619,6 +619,48 @@ Run `python3 scripts/test_indexed_join_family.py` for positive, negative and bro
 premises; `--bits=64` selects LP64. A nonnegative i32 count already fits an LP64
 handle extent, so weakening its size guard need not disable the LP64 proof.
 
+The same observation owner also supports a closed **indexed object family**:
+each creation iteration allocates one fresh non-NULL struct, publishes its pointer
+in one immutable table cell, and passes that exact object to its child while
+writing the struct's native handle field. A later same-count loop reloads the
+same cell, joins that field's current child, reloads the cell again and frees that
+object. Only after the full join loop may the table be freed. Both native LLVM
+and imported AR independently check this complete shape and its use closure.
+A separate step-only native latch and identical integer extension chains for
+the two reload indices are allowed; altered steps, roots or adapters are not.
+Actual DataLayout and imported byte shifts establish struct size, field offsets,
+handle width and table stride for ILP32 and LP64.
+
+All object births precede any free, so distinct successful child activations have
+distinct simultaneously live allocations. A singleton heap-site points-to set
+never supplies this dynamic identity. Direct child scalar writes may target its
+own non-handle struct fields; own-object reads still require initializedness and
+are refused in this subset. Closed direct scalar global accesses and ordinary
+global mutex operations retain their existing semantics. Pre-join table/handle
+separation uses disjoint objects and fields, without assuming future completion.
+A returning own join establishes completion only for its actual successful child;
+failed creation retains the same no-child/output-only library envelope above.
+
+Four pair-only contracts distinguish completion, table/global framing,
+handle/payload field separation and distinct sibling allocations:
+`indexed-object-family-completion-v1`, `indexed-object-family-frame-v1`,
+`indexed-object-family-fields-v1` and `indexed-object-family-sibling-v1`.
+Every consumer requires all extent, index, call and release observations, completed
+analysis, a clean shared board and no unmodeled effects or thread creations.
+Missing observations, escaping aliases, wrong reloads, early frees, extra
+activations or unsupported effects retain the candidate. The old NULL-argument
+family exports refuse this object mode. No AI state, BMC permission, coverage
+waiver, pointer-validity or FALSE conclusion is added.
+
+Use `IKOS_RACE_DISABLE_INDEXED_OBJECT_PRODUCER` or
+`IKOS_RACE_DISABLE_INDEXED_OBJECT_CONSUMER` to disable this mode's evidence or
+consumption. `IKOS_RACE_DISABLE_INDEXED_OBJECT_FIELDS` disables field and sibling
+exclusions; `IKOS_RACE_DISABLE_INDEXED_OBJECT_COMPLETION` disables completion
+alone. Run `python3 scripts/test_indexed_object_family.py --bits 32` and the
+corresponding `--bits 64` run for native-header positive and damaged-premise
+controls. Preprocessed ILP32 originals are accepted only through explicit input
+paths with checked hashes and are never reinterpreted as LP64.
+
 Run `python3 scripts/test_thread_lifecycle.py` for ILP32 serial-loop, transitive,
 failure, stale-handle, helper-context and wide-payload controls.
 Implementation: `checker/thread_lifecycle.hpp` and `src/checker/thread_lifecycle.cpp`.
