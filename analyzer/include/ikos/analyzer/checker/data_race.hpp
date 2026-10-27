@@ -63,6 +63,7 @@ namespace analyzer {
 class RegionOwnership;
 class ReadonlyHeapReads;
 class BucketListOwnership;
+class ThreadLifecycleObservations;
 
 /// \brief Kind of memory access recorded for race detection
 enum class AccessKind { Read, Write };
@@ -208,6 +209,7 @@ private:
   enum class Phase { Collecting, Finalizing, Complete, Failed };
   Phase _phase = Phase::Collecting;
   ThreadArgumentWindows* _argument_windows;
+  std::unique_ptr< ThreadLifecycleObservations > _lifecycle_observations;
 
   void finalize_checks();
 

@@ -627,7 +627,7 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
   ArraySlices array_slices(this->_ctx);
   prepared("array-slices");
   preparation.start();
-  ThreadLifecycle thread_lifecycle(this->_ctx);
+  ThreadLifecycle thread_lifecycle(this->_ctx, this->_lifecycle_observations.get());
   prepared("thread-lifecycle");
   preparation.start();
   OnceInitialization once_initialization(this->_ctx, this->_accesses, binary_token);

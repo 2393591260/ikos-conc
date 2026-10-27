@@ -1,5 +1,9 @@
 // Copyright and license: see data_race.hpp.
 #include <llvm/IR/Dominators.h>
+#include <llvm/IR/CFG.h>
+#include <llvm/IR/Operator.h>
+#include <ikos/analyzer/analysis/call_context.hpp>
+#include <cstdlib>
 #include <algorithm>
 #include <deque>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
@@ -59,6 +63,7 @@ bool scalar(llvm::Type* t) {
 } // namespace
 
 #include "scalar_thread_completion.inc"
+#include "indexed_thread_completion.inc"
 
 class ThreadLifecycle::Impl {
   ScalarThreadCompletion scalar_completion;
@@ -981,13 +986,15 @@ public:
              "no-child effect envelope"}};
   }
 };
-ThreadLifecycle::ThreadLifecycle(Context& ctx) : _impl(new Impl(ctx)) {}
+ThreadLifecycle::ThreadLifecycle(Context& ctx, const ThreadLifecycleObservations* observations)
+    : _impl(new Impl(ctx)), _observations(observations) {}
 ThreadLifecycle::~ThreadLifecycle() = default;
 bool ThreadLifecycle::excludes(const AccessRecord& a, const AccessRecord& b) {
-  return _impl->excludes(a, b);
+  return (_observations && _observations->excludes(a, b)) || _impl->excludes(a, b);
 }
 JsonDict ThreadLifecycle::info(const AccessRecord& a,
                                const AccessRecord& b) const {
+  if (_observations && _observations->excludes(a, b)) return _observations->info(a, b);
   return _impl->info(a, b);
 }
 

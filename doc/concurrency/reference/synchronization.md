@@ -553,6 +553,37 @@ pointer validity. Missing scope, source correspondence or work budget emits no
 certificate. Run `python3 scripts/test_scalar_thread_completion.py` for the
 separate controls; `--bits=64` selects the explicit LP64 run.
 
+An additional `indexed-native-handle-completion-v1` certificate covers one closed
+heap array of native handles: a complete zero-based unit-step Create loop and a
+subsequent complete Join loop use the same immutable count and the same cell
+coordinates. Source and AR independently bind the loops, native APIs, allocation,
+full-width slots and post-Join endpoint. A real non-NULL continuation must
+precede the loops, and final AI replay must prove the same allocated heap object
+is live. Escapes, overwrites, extra activations, competing joiners, detach/cancel,
+parent-held locks, non-NULL Join outputs and unknown effects refuse the proof.
+
+The count range is established before the actual allocation-size multiplication.
+Existing AI invariants supply the range and may supply a MUST-true Boolean bound;
+the latter is consumed only after checking its complete source/AR comparison,
+actual count binding and value-preserving definitions. No helper name supplies a
+range. The reduction is local to this certificate, without changing AI state.
+For address width w and handle stride s, the checked range satisfies
+0 <= s*N < 2^w. For i,j in [0,N) and cell bytes u,v in [0,s), the magnitude of
+s*(i-j)+(u-v) is less than 2^w; equal modular coordinates therefore identify the
+same index and byte. All integer adapters and no-wrap steps are checked over
+the final aggregate count range. No implicit PTRDIFF_MAX allocation cap or new
+undefined-behavior pruning is used.
+
+Only direct main Load/Store endpoints after the complete Join loop can be ordered
+against direct endpoints of the child entry. Parallel child instances are never
+ordered with one another by this certificate. Ordinary GNU conditional completion
+and failed-create/no-child effects retain the explicit library model above.
+Stable complete analysis and strict effect coverage remain required; the proof
+grants no pointer-validity, numeric-handle, BMC or FALSE permission.
+Run `python3 scripts/test_indexed_join_family.py` for positive, negative and broken
+premises; `--bits=64` selects LP64. A nonnegative i32 count already fits an LP64
+handle extent, so weakening its size guard need not disable the LP64 proof.
+
 Run `python3 scripts/test_thread_lifecycle.py` for ILP32 serial-loop, transitive,
 failure, stale-handle, helper-context and wide-payload controls.
 Implementation: `checker/thread_lifecycle.hpp` and `src/checker/thread_lifecycle.cpp`.

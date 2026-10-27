@@ -479,6 +479,7 @@ DataRaceChecker::DataRaceChecker(Context& ctx) : Checker(ctx) {
     this->_ownership.reset(new RegionOwnership(ctx));
   }
   this->_argument_windows = ctx.thread_argument_windows.get();
+  this->_lifecycle_observations.reset(new ThreadLifecycleObservations(ctx));
   const char* configured = std::getenv("IKOS_AI_PAIR_EXCLUSION");
   const std::string mode = configured ? configured : "";
   this->_pair_exclusion_enabled = mode == "1" || mode == "native";
@@ -831,6 +832,7 @@ void DataRaceChecker::check(ar::Statement* stmt,
   }
 
   this->_ownership->observe(stmt, inv, call_context);
+  this->_lifecycle_observations->observe(stmt, inv, call_context);
   if (this->_argument_windows)
     this->_argument_windows->observe(stmt, inv, call_context);
 
