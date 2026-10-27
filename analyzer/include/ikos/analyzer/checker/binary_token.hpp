@@ -13,6 +13,7 @@ class GlobalVariable;
 namespace ikos {
 namespace analyzer {
 class Context;
+class ThreadLifecycleObservations;
 struct AccessRecord;
 
 struct BinaryTokenEvent {
@@ -26,7 +27,8 @@ class BinaryTokenOwnership {
   class Impl;
   std::unique_ptr< Impl > _impl;
 public:
-  BinaryTokenOwnership(Context&, const std::vector< AccessRecord >&);
+  BinaryTokenOwnership(Context&, const std::vector< AccessRecord >&,
+                       const ThreadLifecycleObservations* = nullptr);
   ~BinaryTokenOwnership();
   BinaryTokenEvent event(llvm::CallBase*) const;
   bool excludes(const AccessRecord&, const AccessRecord&) const;

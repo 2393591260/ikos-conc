@@ -2,10 +2,12 @@
 #include <ikos/analyzer/checker/binary_token.hpp>
 
 #include <ikos/analyzer/checker/data_race.hpp>
+#include <ikos/analyzer/checker/thread_lifecycle.hpp>
 #include <ikos/analyzer/analysis/posix_semaphore.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/checker/normal_mutex.hpp>
 #include <ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp>
+#include <llvm/Analysis/LoopInfo.h>
 #include <deque>
 #include <functional>
 #include <map>
@@ -36,6 +38,7 @@ struct Transition {
 
 class BinaryTokenOwnership::Impl {
   Context& ctx;
+  const ThreadLifecycleObservations* lifecycle;
   std::map< llvm::Value*, ar::Statement* > originals;
   std::map< llvm::GlobalVariable*, ar::GlobalVariable* > globals;
   std::map< llvm::Function*, ar::Function* > functions;
@@ -879,6 +882,8 @@ class BinaryTokenOwnership::Impl {
     return true;
   }
 
+#include "monotone_issued_index.inc"
+
   llvm::Instruction* access(const AccessRecord& r) const {
     if (!r.stmt->has_frontend() || !r.pts.is_set() || r.pts.size() != 1 || !r.width) return nullptr;
     auto* i = llvm::dyn_cast< llvm::Instruction >(r.stmt->frontend< llvm::Value >());
@@ -918,7 +923,9 @@ class BinaryTokenOwnership::Impl {
     return nullptr;
   }
 public:
-  Impl(Context& context, const std::vector< AccessRecord >&) : ctx(context) {
+  Impl(Context& context, const std::vector< AccessRecord >& records,
+       const ThreadLifecycleObservations* observations)
+      : ctx(context), lifecycle(observations) {
     if (!ctx.opts.enable_thread_modular || ctx.opts.procedural == Procedural::Intraprocedural ||
         ctx.opts.entry_points.size() != 1 || ctx.opts.entry_points.front()->name() != "main" ||
         ctx.opts.entry_points.front()->num_parameters() != 0 || !ctx.opts.entry_points.front()->has_frontend() ||
@@ -942,6 +949,7 @@ public:
         if (!inserted.second) inserted.first->second = nullptr;
       }
     }
+    prepare_issued_indices(main, records);
     bool potential = ctx.posix_semaphore() && !ctx.posix_semaphore()->tokens().empty();
     for (auto* f : order) if (atomic_signature(f)) potential = true;
     roots.push_back(main);
@@ -970,9 +978,21 @@ public:
     }
     return {};
   }
-  bool excludes(const AccessRecord& a, const AccessRecord& b) const { return pair(a, b); }
+  bool excludes(const AccessRecord& a, const AccessRecord& b) const { return pair(a, b) || issued_index_pair(a, b); }
   JsonDict info(const AccessRecord& a, const AccessRecord& b) const {
     auto* t = pair(a, b);
+    if (!t) if (const auto* issued = issued_index_pair(a, b))
+      return {{"safe_reason", "distinct serialized issued indices select disjoint full payload cells"},
+              {"issued_index_contract", "closed-monotone-issued-index-v1"},
+              {"family_dependency", "indexed-native-handle-completion-v1"},
+              {"creation_count_kind", "attempts"},
+              {"maximum_creates", issued->maximum.str()},
+              {"counter_bits", 32},
+              {"pointer_bits", ctx.bundle->data_layout().pointers.bit_width},
+              {"stride", static_cast< unsigned >(issued->stride)},
+              {"counter", issued->counter->getName().str()},
+              {"base", issued->data->getName().str()},
+              {"issuance_mutex", issued->mutex->getName().str()}};
     if (t && t->semaphore)
       return {{"safe_reason", "both accesses must hold the unique closed GNU semaphore permit"},
               {"semaphore_ownership_contract", "closed-gnu-binary-semaphore-ownership-v1"},
@@ -1000,8 +1020,9 @@ public:
              : JsonDict{};
   }
 };
-BinaryTokenOwnership::BinaryTokenOwnership(Context& ctx, const std::vector< AccessRecord >& records)
-    : _impl(std::make_unique< Impl >(ctx, records)) {}
+BinaryTokenOwnership::BinaryTokenOwnership(Context& ctx, const std::vector< AccessRecord >& records,
+                                           const ThreadLifecycleObservations* observations)
+    : _impl(std::make_unique< Impl >(ctx, records, observations)) {}
 BinaryTokenOwnership::~BinaryTokenOwnership() = default;
 BinaryTokenEvent BinaryTokenOwnership::event(llvm::CallBase* call) const { return _impl->event(call); }
 bool BinaryTokenOwnership::excludes(const AccessRecord& a, const AccessRecord& b) const { return _impl->excludes(a, b); }

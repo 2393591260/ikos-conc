@@ -450,6 +450,41 @@ sections, native API identities and overflow boundaries.
 Implementation: `src/checker/binary_token.cpp`; these are pair-exclusion facts,
 not BMC UNSAT, thread-completion, allocation-success or pointer-validity facts.
 
+
+The same component can prove `closed-monotone-issued-index-v1` for a different
+protocol: one default-normal mutex protects a zero-initialized signed32 counter.
+Each direct child activation captures the counter and increments it once before
+unlocking, then accesses only its captured payload cell. Source and AR independently
+check the acyclic transaction, actual definitions, order, complete cell width and
+closed counter/mutex/pointer uses. An immutable captured value, rather than equal
+interval bounds, connects issuance to the actual address.
+
+This mode consumes the existing final `indexed-native-handle-completion-v1`
+family facts. With at most N creation attempts, at most N successful activations
+issue distinct indices in [0,N). Both allocations must be distinct, single actual
+main invocations; the payload has an exact same-N, nonwrapping byte extent and a
+real non-NULL continuation before its sole publication. The family's range was
+proved before the handle extent multiplication, and must separately suffice for
+the payload width. Signed no-wrap obligations remain explicit. A later tighter
+payload guard cannot retroactively justify either earlier multiplication.
+
+For distinct indices j,k and byte offsets u,v within one full cell of stride s,
+`0 < abs(s*(j-k)+u-v) < s*N < 2^pointer_bits`; therefore the cells cannot coincide
+under modular address arithmetic. Each existing free must follow completion of
+this exact family in both source and AR. Missing frees are allowed; early/double
+frees, pointer escapes, repeated publication, extra activations, truncation,
+modulo indexing and unknown effects refuse the proof. This initial subset uses
+actual direct-main malloc calls after preprocessing; retained allocation wrappers
+conservatively refuse.
+
+The rule excludes only two certified child payload endpoints. It adds no numerical
+handle identity, child-to-child HB, AI state refinement, BMC permission or pointer
+validity conclusion. The existing complete/clean/effect gates and both indexed
+producer/consumer switches also govern its read-only dependencies. Use
+`IKOS_DISABLE_MONOTONE_ISSUED_INDEX=1` to disable this mode alone. Run
+`python3 scripts/test_monotone_issued_index.py --bits 32` and the corresponding
+`--bits 64` run for genuine-header ABI controls and premise damage.
+
 </details>
 
 <a id="mutex-protected-scalar-protocols"></a>

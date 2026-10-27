@@ -623,6 +623,11 @@ add_concurrency_test(numeric-index-windows-lp64 "${CONCURRENCY_ROOT}/scripts/tes
 add_concurrency_test(barrier-capacity "${CONCURRENCY_ROOT}/scripts/test_barrier_capacity_controls.py" --bits 32)
 add_concurrency_test(barrier-capacity-lp64 "${CONCURRENCY_ROOT}/scripts/test_barrier_capacity_controls.py" --bits 64)
 
+foreach(bits 32 64)
+  add_concurrency_test(monotone-issued-index-${bits} "${CONCURRENCY_ROOT}/scripts/test_monotone_issued_index.py"
+                       --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
+endforeach()
+
 add_concurrency_test(indexed-join-family "${CONCURRENCY_ROOT}/scripts/test_indexed_join_family.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 32)
 

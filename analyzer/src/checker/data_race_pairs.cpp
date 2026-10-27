@@ -618,7 +618,8 @@ std::vector< DataRaceChecker::PendingRacePair > DataRaceChecker::collect_race_pa
   ThreadPrivateHeap private_heap(this->_ctx, this->_accesses);
   prepared("private-heap");
   preparation.start();
-  BinaryTokenOwnership binary_token(this->_ctx, this->_accesses);
+  BinaryTokenOwnership binary_token(this->_ctx, this->_accesses,
+                                    this->_lifecycle_observations.get());
   prepared("binary-token");
   preparation.start();
   ArenaReservation arena_reservation(this->_ctx, this->_accesses, binary_token);

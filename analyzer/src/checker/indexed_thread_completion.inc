@@ -1093,15 +1093,38 @@ public:
         log::debug(std::string("Indexed thread completion: invalid ") + stage);
     }
   }
+  bool ready() const {
+    return prepared && valid && effect_frame && extent_seen && object &&
+        create.call_seen && create.step_seen && join.call_seen && join.step_seen &&
+        final_range(create) && final_range(join) &&
+        !std::getenv("IKOS_RACE_DISABLE_INDEXED_JOIN_CONSUMER") &&
+        ctx.race_analysis_complete && !ctx.concurrent_env.is_dirty() &&
+        ctx.concurrent_env.unmodeled_effects().empty() &&
+        ctx.concurrent_env.unmodeled_thread_creations().empty();
+  }
+  bool indexed_family(ar::CallBase* spawning, ar::Function* entry,
+                      IndexedThreadFamily& result) const {
+    if (!ready() || spawning != create.call || entry != child) return false;
+    result = {create.source_bound, create.bound, source_allocation, allocation,
+              extent_count_upper, word};
+    return true;
+  }
+  bool completes_before(ar::CallBase* spawning, ar::Function* entry,
+                        ar::CallBase* release, CallContext* cc) const {
+    if (!ready() || spawning != create.call || entry != child || !release ||
+        (cc && cc->has_parent()) || !release->has_frontend()) return false;
+    auto* source = llvm::dyn_cast< llvm::CallBase >(release->frontend< llvm::Value >());
+    auto* target = source ? callee(source) : nullptr;
+    auto* native = native_handle_callee(release);
+    return source && target && target->isDeclaration() && target->getName() == "free" &&
+        source->arg_size() == 1 && source->getType()->isVoidTy() &&
+        binding(source) == release && native && native->intrinsic_id() == ar::Intrinsic::LibcFree &&
+        release->num_arguments() == 1 && !release->has_result() &&
+        pointer_binding(release->argument(0), source->getArgOperand(0)) &&
+        after_join(source) && after_join(release);
+  }
   bool excludes(const AccessRecord& a, const AccessRecord& b) const {
-    if (!prepared || !valid || !effect_frame || !extent_seen || !object ||
-        !create.call_seen || !create.step_seen ||
-        !join.call_seen || !join.step_seen ||
-        !final_range(create) || !final_range(join) ||
-        std::getenv("IKOS_RACE_DISABLE_INDEXED_JOIN_CONSUMER") ||
-        !ctx.race_analysis_complete || ctx.concurrent_env.is_dirty() ||
-        !ctx.concurrent_env.unmodeled_effects().empty() ||
-        !ctx.concurrent_env.unmodeled_thread_creations().empty()) return false;
+    if (!ready()) return false;
     // A family can be parallel with itself: only the parent after the completed
     // join loop is ordered. Never reuse the old same-root serial conclusion.
     return (endpoint(a, true) && endpoint(b, false)) ||
@@ -1130,4 +1153,12 @@ bool ThreadLifecycleObservations::excludes(const AccessRecord& a, const AccessRe
 }
 JsonDict ThreadLifecycleObservations::info(const AccessRecord& a, const AccessRecord& b) const {
   return _impl->info(a, b);
+}
+bool ThreadLifecycleObservations::indexed_family(ar::CallBase* create, ar::Function* child,
+                                                  IndexedThreadFamily& result) const {
+  return _impl->indexed_family(create, child, result);
+}
+bool ThreadLifecycleObservations::completes_before(ar::CallBase* create, ar::Function* child,
+                                                 ar::CallBase* release, CallContext* cc) const {
+  return _impl->completes_before(create, child, release, cc);
 }
