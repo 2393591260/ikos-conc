@@ -268,6 +268,21 @@ change with pointer width.
 | Pthread-key effects and race-only memory-free destructors | GNU ILP32 and LP64 | Key selectors and create output remain i32; values/callback arguments are native pointers. Return values stay TOP; no TLS equality, privacy or completion is inferred. |
 | ThreadArgumentWindows | Checked GNU32/64, source-certified default affine family or explicit VarPack Polka plus guards | Native byte windows, sticky observations and closed creation family; exact precreate-store ordering is a separate consumer. Default domain remains Interval. |
 
+LockedCreation also supports a closed finite spawn tree whose descendants are
+joined by their actual creators. Every entry has one create occurrence in an
+acyclic activation tree and a distinct native handle slot with one closed join
+consumer. A subtree is drained only when every reachable parent Return is
+dominated by the exact child joins, recursively. Its complete lifetime can then
+stay inside an ancestor's retained main-lock interval. This is lifetime
+containment, not termination or inherited mutex ownership. Unrelated main
+children may remain live. Two unprotected siblings inside that interval still
+need their own exclusion proof. Missing joins, reused or escaped handles, early
+returns, unsupported effects and incomplete analysis retain ordinary candidates.
+`IKOS_RACE_DISABLE_NESTED_JOIN_SCOPE=1` withdraws only descendant scope
+propagation. The [dual-ABI controls](../../../scripts/test_nested_join_scope.py)
+exercise deep payload access, multiple joins, sibling races and premature main
+accesses with BMC disabled.
+
 Unsupported certificate ABIs refuse the certificate and preserve the ordinary
 analysis/coverage obligations. They are not silently treated as verified SAFE,
 nor counted as positive LP64 support. Each migrated mechanism has module-owned

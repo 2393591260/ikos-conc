@@ -8,6 +8,7 @@
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Dominators.h>
 #include <algorithm>
+#include <cstdlib>
 #include <functional>
 #include <set>
 
@@ -190,7 +191,7 @@ class LockedCreation::Impl {
     auto* al = load ? dyn_cast_or_null< ar::Load >(original(load)) : nullptr;
     auto* output = c->arg_size() == 2 ? llvm::dyn_cast< llvm::PointerType >(c->getArgOperand(1)->getType()) : nullptr;
     auto* pointer = output ? llvm::dyn_cast< llvm::PointerType >(output->getPointerElementType()) : nullptr;
-    if (!a || !target || c->getFunction() != main || !f->isDeclaration() || f->getName() != "pthread_join" ||
+    if (!a || !target || !f->isDeclaration() || f->getName() != "pthread_join" ||
         (target->name() != "pthread_join" && target->intrinsic_id() != ar::Intrinsic::PthreadJoin) ||
         !c->use_empty() || !c->getType()->isIntegerTy(32) ||
         !target->type()->return_type()->is_integer() ||
@@ -322,7 +323,8 @@ class LockedCreation::Impl {
            (!interval.unlock || !reaches(interval.unlock, p));
   }
   // ponytail: acyclic spawn/CFG graphs, whole scalars and one normal interval
-  // per root/object; only one closed main/child global-handle join bounds a scope.
+  // per root/object; exclusive same-creator global-handle joins can bound a
+  // closed descendant subtree inside main's retained-lock interval.
   bool build() {
     if (!ctx.opts.enable_thread_modular || ctx.opts.entry_points.size() != 1 ||
         ctx.opts.entry_points.front()->name() != "main" || !ctx.opts.entry_points.front()->has_frontend() ||
@@ -434,9 +436,56 @@ class LockedCreation::Impl {
       }
     }
     for (auto& item : originals) if (!consumed.count(item.first)) return refuse(__LINE__);
-    if (joins.size() > 1) return refuse(__LINE__);
     if (!joins.empty())
       for (auto& item : creates) if (item.second.size() != 1) return refuse(__LINE__);
+    // A static create is one dynamic generation only after closing every
+    // root's incoming create, every CFG, and the acyclic spawn tree above.
+    // A global handle cell must belong to exactly one of these generations.
+    if (!joins.empty()) {
+      std::set< llvm::Value* > slots;
+      for (auto& item : creates)
+        if (!slots.insert(item.second.front()->getArgOperand(0)).second)
+          return refuse(__LINE__);
+    }
+    // A child can outlive its parent unless every returning path drains it.
+    // This is a partial-correctness fact: blocking forever is allowed. It
+    // neither proves termination nor makes the child hold its parent's lock.
+    std::map< llvm::Function*, bool > drains;
+    if (!joins.empty()) for (auto pos = spawn_order.rbegin(); pos != spawn_order.rend(); ++pos) {
+      auto* root = *pos;
+      bool complete = true, returned = false;
+      auto& dt = source_facts.dominators(root);
+      std::vector< llvm::ReturnInst* > returns;
+      for (auto& block : *root)
+        for (auto& instruction : block)
+          if (auto* ret = llvm::dyn_cast< llvm::ReturnInst >(&instruction)) {
+            if (!step()) return refuse(__LINE__);
+            // Do not use impossible disconnected returns to weaken a gate.
+            if (!dt.isReachableFromEntry(ret->getParent())) continue;
+            returned = true;
+            if (root != main &&
+                !llvm::isa< llvm::ConstantPointerNull >(ret->getReturnValue()))
+              complete = false;
+            returns.push_back(ret);
+          }
+      for (auto& item : creates) {
+        if (!step()) return refuse(__LINE__);
+        if (item.second.size() != 1) continue;
+        auto* child = item.first;
+        auto* creation = item.second.front();
+        if (creation->getFunction() != root) continue;
+        auto joined = joined_by.find(child);
+        if (joined == joined_by.end() || !drains[child]) {
+          complete = false;
+          continue;
+        }
+        for (auto* ret : returns) {
+          if (!step()) return refuse(__LINE__);
+          if (!dt.dominates(joined->second, ret)) complete = false;
+        }
+      }
+      drains[root] = complete && returned;
+    }
     auto& parent_dt = source_facts.dominators(main);
     std::map< llvm::Function*, std::set< unsigned > > birth_held, birth_forever, after_release;
     for (auto* root : roots) {
@@ -484,11 +533,26 @@ class LockedCreation::Impl {
       auto* c = creates.at(root).front(); auto* j = joined->second;
       auto* parent = c->getFunction();
       auto& dt = source_facts.dominators(parent);
-      if (parent != main) return refuse(__LINE__);
+      if (parent != main) continue;
       for (unsigned n : birth_held[root]) {
         auto interval = mutexes[n].intervals.at(main);
         if (held(interval, j, dt) &&
             (!interval.unlock || dt.dominates(j, interval.unlock))) bounded_main[root].insert(n);
+      }
+    }
+    // The selected direct-child subtree, rather than all of main's
+    // children, must be drained. Unrelated main children may stay live.
+    // Propagate only lifetime containment; held[] remains the actual root's.
+    for (auto* parent : spawn_order) {
+      if (std::getenv("IKOS_RACE_DISABLE_NESTED_JOIN_SCOPE") ||
+          parent == main || bounded_main[parent].empty() || !drains[parent])
+        continue;
+      for (auto& item : creates) {
+        if (!step()) return refuse(__LINE__);
+        if (item.second.size() != 1 ||
+            item.second.front()->getFunction() != parent) continue;
+        bounded_main[item.first].insert(bounded_main[parent].begin(),
+                                        bounded_main[parent].end());
       }
     }
     for (auto* root : roots) {
@@ -527,7 +591,7 @@ public:
   unsigned direction(const Phase& a, const Phase& b) const {
     // In join mode only a real target access makes its successful birth conditional.
     if (!joins.empty()) {
-      if (a.root == "main" || b.root != functions.at(joined_by.begin()->first)->name()) return 0;
+      if (a.root == "main") return 0;
       for (unsigned n : a.held) if (b.bounded_main.count(n)) return 2 * n + 2;
       return 0;
     }
@@ -554,10 +618,10 @@ public:
     if (!proof) return {};
     unsigned n = (proof - 1) / 2;
     if (proof % 2 == 0 && !joins.empty() && y->bounded_main.count(n))
-      return {{"safe_reason", "one closed joined child stays inside main's mutex interval"},
+      return {{"safe_reason", "a joined child or fully drained descendant stays inside main's mutex interval"},
               {"locked_creation_contract", "closed-normal-mutex-creation-v1"},
               {"mutex", mutexes[n].source->getName().str()},
-              {"relation", "other-holder-outside-parent-joined-child"},
+              {"relation", "other-holder-outside-parent-joined-subtree"},
               {"holder_root", x->root}, {"bounded_root", y->root}};
     return {{"safe_reason", "actual normal-lock intervals and creation chains order accesses"},
             {"locked_creation_contract", "closed-normal-mutex-creation-v1"},

@@ -590,3 +590,8 @@ add_concurrency_test(bmc-finite-ladder "${CONCURRENCY_ROOT}/scripts/test_bmc_fin
                      --ikos "${CONCURRENCY_IKOS}" --bits 32)
 add_concurrency_test(bmc-finite-ladder-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_finite_ladder.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(nested-joined-scope "${CONCURRENCY_ROOT}/scripts/test_nested_join_scope.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+add_concurrency_test(nested-joined-scope-lp64 "${CONCURRENCY_ROOT}/scripts/test_nested_join_scope.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
