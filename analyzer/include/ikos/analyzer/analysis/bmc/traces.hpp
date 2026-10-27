@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <limits>
 #include <map>
 #include <set>
@@ -384,7 +385,7 @@ inline bool completion_join_creation(const std::vector< BmcEvent >& path,
   auto* join = core::dyn_cast< ar::CallBase >(path[before].stmt);
   auto* api = join != nullptr ? exact_callee(join) : nullptr;
   if (api == nullptr || !api->is_declaration() || join->num_arguments() != 2 ||
-      !(api->name() == "pthread_join" || api->intrinsic_id() == ar::Intrinsic::PthreadJoin) ||
+      !ar::is_pthread_join(api) ||
       !core::isa< ar::NullConstant >(join->argument(1))) return false;
   int atomic = 0;
   for (std::size_t i = 0; i < before; ++i) {

@@ -47,6 +47,7 @@
 
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/ar/semantic/intrinsic.hpp>
 #include <ikos/ar/verify/type.hpp>
 
@@ -2303,7 +2304,7 @@ public:
     // ikos-pp maps the plain mutex pair; route rwlocks and conditional
     // acquisitions through their matching transfer functions.
     {
-      std::string fname = fun->name();
+      const auto operation = ar::pthread_operation(fun);
       // trylock / timedlock can FAIL (EBUSY / ETIMEDOUT): the lock is NOT
       // must-held on the failure path. Model them as a CONDITIONAL lock
       // keyed by the result variable, resolved at the access site via the
@@ -2311,14 +2312,14 @@ public:
       // unlocked write was wrongly protected). wrlock blocks until acquired,
       // so it stays an unconditional must-lock.
       if (this->_ctx.opts.enable_thread_modular &&
-          (fname == "pthread_mutex_trylock" ||
-           fname == "pthread_mutex_timedlock")) {
+          (operation == ar::PthreadOperation::MutexTryLock ||
+           operation == ar::PthreadOperation::MutexTimedLock)) {
         exec_pthread_mutex_lock(*this, call, /*read_lock=*/false,
                                 /*trylock=*/true);
         return;
       }
       if (this->_ctx.opts.enable_thread_modular &&
-          fname == "pthread_rwlock_wrlock") {
+          operation == ar::PthreadOperation::RwlockWriteLock) {
         exec_pthread_mutex_lock(*this, call);
         return;
       }
@@ -2328,12 +2329,12 @@ public:
       // mutex tier — otherwise two threads writing under rdlock would
       // appear to share a lock (04-mutex_55-pt_rwlock_rr.c FN).
       if (this->_ctx.opts.enable_thread_modular &&
-          fname == "pthread_rwlock_rdlock") {
+          operation == ar::PthreadOperation::RwlockReadLock) {
         exec_pthread_mutex_lock(*this, call, /*read_lock=*/true);
         return;
       }
       if (this->_ctx.opts.enable_thread_modular &&
-          fname == "pthread_rwlock_unlock") {
+          operation == ar::PthreadOperation::RwlockUnlock) {
         exec_pthread_mutex_unlock(*this, call, /*also_read=*/true);
         return;
       }
@@ -2347,7 +2348,7 @@ public:
     // diagnostic.
     std::string func_name = fun->name();
     if (this->_ctx.opts.enable_thread_modular &&
-        func_name == "pthread_create") {
+        ar::is_pthread_create(fun)) {
       // See concurrent_semantics.hpp. pthread_create has no side
       // effects on user state other than writing to *handle; we
       // deliberately skip exec_unknown_extern_call so the thread
@@ -2358,13 +2359,9 @@ public:
 
     // === Concurrency Probe: pthread_join detection ===
     //
-    // pthread_join is normally mapped to ar::Intrinsic::PthreadJoin (handled
-    // by exec_intrinsic_call → exec_pthread_join). However, when the LLVM
-    // signature differs from the AR intrinsic signature (e.g. pthread_t is
-    // passed by value in some ABIs), the bundle importer rejects the
-    // intrinsic mapping and pthread_join is translated as a plain extern.
-    // In that case it lands here — we still want to update the HB digest.
-    if (this->_ctx.opts.enable_thread_modular && func_name == "pthread_join") {
+    // Native integer handles deliberately stay external; legacy pointer
+    // handles can use PthreadJoin. Both keep the existing join transfer.
+    if (this->_ctx.opts.enable_thread_modular && ar::is_pthread_join(fun)) {
       exec_pthread_join(*this, call);
       return;
     }
@@ -2721,6 +2718,13 @@ public:
       } else {
         exec_pthread_mutex_unlock(*this, call);
       }
+      return;
+    }
+
+    if (id == ar::Intrinsic::PthreadCreate) {
+      // Reserved only. Retain coverage debt before generic operand pruning,
+      // including undefined arguments; no thread/completion fact is granted.
+      this->exec_unknown_extern_call(call);
       return;
     }
 
@@ -3158,6 +3162,7 @@ public:
       ar::Function* called_func = fp->function();
       if (called_func) {
         std::string func_name = called_func->name();
+        const auto operation = ar::pthread_operation(called_func);
         // Gated on thread-modular: these lock/cond semantics only matter for
         // race detection; in sequential mode an extern pthread call falls
         // through to the default unknown-call handling (native behavior).
@@ -3169,20 +3174,20 @@ public:
               this->data().normal().scalar_assign_nondet(ret.var());
             }
             return;
-          } else if (func_name == "pthread_mutex_trylock" ||
-              func_name == "pthread_mutex_timedlock") {
+          } else if (operation == ar::PthreadOperation::MutexTryLock ||
+              operation == ar::PthreadOperation::MutexTimedLock) {
             // Conditional lock (can fail): see exec_extern_call routing.
             exec_pthread_mutex_lock(*this, call, /*read_lock=*/false,
                                     /*trylock=*/true);
             return;
-          } else if (func_name == "pthread_mutex_lock") {
+          } else if (operation == ar::PthreadOperation::MutexLock) {
             // Plan Y: route the indirect extern call through the same
             // precision-preserving lock semantics as the intrinsic handler.
             // Otherwise exec_unknown_call's throw_unknown_exceptions() join
             // collapses the lockset to ⊤ and prevents lock-based write deferral.
             exec_pthread_mutex_lock(*this, call);
             return;
-          } else if (func_name == "pthread_mutex_unlock") {
+          } else if (operation == ar::PthreadOperation::MutexUnlock) {
             // Plan Y: see exec_pthread_mutex_lock comment.
             exec_pthread_mutex_unlock(*this, call);
             return;

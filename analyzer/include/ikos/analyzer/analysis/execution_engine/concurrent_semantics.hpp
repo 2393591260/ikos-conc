@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 
@@ -169,8 +170,7 @@ inline bool identity_only_handle_uses(ar::InternalVariable* root) {
       if (auto* call = dyn_cast< ar::CallBase >(statement)) {
         auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
         if (target != nullptr && target->function()->is_declaration() &&
-            (target->function()->name() == "pthread_join" ||
-             target->function()->intrinsic_id() == ar::Intrinsic::PthreadJoin) &&
+            ar::is_pthread_join(target->function()) &&
             call->num_arguments() == 2 && call->argument(0) == value &&
             call->argument(1) != value) continue;
         // POSIX detach consumes opaque identity and creates no join/HB edge.
@@ -645,8 +645,7 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
                                  eng.lockset().held_mutexes().empty();
   auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
   const bool ordinary_mutex = target &&
-      (target->function()->name() == "pthread_mutex_lock" ||
-       target->function()->name() == "ar.pthread.mutex.lock");
+      ar::pthread_operation(target->function()) == ar::PthreadOperation::MutexLock;
   if (!ordinary_mutex) eng.ctx().concurrent_env.invalidate_mutex_values();
   eng.lockset().record_possible_mutex_acquisition();
   bool precise_acquisition = false;
@@ -973,8 +972,7 @@ void exec_pthread_mutex_unlock(E& eng, ar::CallBase* call, bool also_read = fals
   auto before = value_mutexes(eng);
   auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
   const bool ordinary_mutex = target &&
-      (target->function()->name() == "pthread_mutex_unlock" ||
-       target->function()->name() == "ar.pthread.mutex.unlock");
+      ar::pthread_operation(target->function()) == ar::PthreadOperation::MutexUnlock;
   // Get the mutex argument (first argument). An UNINITIALISED mutex pointer
   // is a dangling reference whose points-to is ⊤. Going BOTTOM here (the old
   // `uninit_assert_initialized`) would mark the whole path dead and silently
@@ -2145,19 +2143,19 @@ inline bool byte_copy_cannot_expose_pointers(
       if (function->type()->param_type(i) != call->argument(i)->type()) return false;
     auto* returned = dyn_cast< ar::IntegerType >(function->type()->return_type());
     if (returned && returned->bit_width() == 32 && returned->is_signed()) {
-      const auto& name = function->name();
-      if (name == "pthread_create" && call->num_arguments() == 4) {
+      if (ar::pthread_operation(function) == ar::PthreadOperation::Create && call->num_arguments() == 4) {
         auto* start = dyn_cast< ar::PointerType >(call->argument(2)->type());
         return call->argument(0)->type()->is_pointer() && call->argument(1)->type()->is_pointer() &&
                start && start->pointee()->is_function() && call->argument(3)->type()->is_pointer();
       }
-      if (name == "pthread_join" && call->num_arguments() == 2) {
+      if (ar::pthread_operation(function) == ar::PthreadOperation::Join && call->num_arguments() == 2) {
         auto* handle = dyn_cast< ar::IntegerType >(call->argument(0)->type());
         return call->argument(1)->type()->is_pointer() &&
                (call->argument(0)->type()->is_pointer() ||
                 (handle && handle->bit_width() == bundle->data_layout().pointers.bit_width));
       }
-      if ((name == "pthread_mutex_lock" || name == "pthread_mutex_unlock") &&
+      if ((ar::pthread_operation(function) == ar::PthreadOperation::MutexLock ||
+           ar::pthread_operation(function) == ar::PthreadOperation::MutexUnlock) &&
           call->num_arguments() == 1) return call->argument(0)->type()->is_pointer();
     }
     if (function->name() != "__assert_fail" || call->num_arguments() != 4 ||

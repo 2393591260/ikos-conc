@@ -1,6 +1,7 @@
 // Copyright and license: see numerical.hpp.
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/analyzer/analysis/call_context.hpp>
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 
@@ -120,7 +121,7 @@ inline ar::CallBase* single_handle_writer(ar::GlobalVariable* slot) {
       } else if (auto* call = dyn_cast< ar::CallBase >(statement)) {
         auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
         bool create = target != nullptr && target->function()->is_declaration() &&
-                      target->function()->name() == "pthread_create" &&
+                      ar::is_pthread_create(target->function()) &&
                       call->num_arguments() == 4;
         if (create && writer == nullptr &&
             exact_handle_slot(call->argument(0), slot) &&

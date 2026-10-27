@@ -516,6 +516,7 @@ FunctionType* Intrinsic::type(Bundle* bundle, ID id, Type* template_ty) {
       ret_ty = void_ty; // ret
     } break;
     // <pthread.h>
+    // Reserved representation; native pthread_create remains an extern.
     case PthreadCreate: {
       ret_ty = si32_ty;              // ret
       params.push_back(void_ptr_ty); // thread
@@ -525,7 +526,7 @@ FunctionType* Intrinsic::type(Bundle* bundle, ID id, Type* template_ty) {
     } break;
     case PthreadJoin: {
       ret_ty = si32_ty;              // ret
-      params.push_back(void_ptr_ty); // thread handle
+      params.push_back(void_ptr_ty); // legacy pointer handle, not native pthread_t
       params.push_back(void_ptr_ty); // retval
     } break;
     case PthreadMutexLock: {

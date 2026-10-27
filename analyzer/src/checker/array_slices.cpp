@@ -1,4 +1,5 @@
 // Copyright and license: see data_race.hpp.
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/analyzer/checker/array_slices.hpp>
 
 #include <llvm/Analysis/LoopInfo.h>
@@ -357,7 +358,7 @@ class ArraySlices::Impl {
       return false;
     if (imported->has_frontend()) {
       return imported->frontend< llvm::Value >() == source &&
-             (imported->name() == name || imported->intrinsic_id() == expected);
+             (ar::pthread_operation(imported) == (create ? ar::PthreadOperation::Create : ar::PthreadOperation::Join));
     }
     // Only the exact mapped intrinsic can omit a source annotation.
     // An unannotated name-only external declaration supplies no identity.

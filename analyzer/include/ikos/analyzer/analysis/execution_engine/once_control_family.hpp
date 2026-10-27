@@ -1,6 +1,7 @@
 // Copyright and license: see numerical.hpp.
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <cstdlib>
 #include <map>
 #include <set>
@@ -281,13 +282,12 @@ public:
             declaration->arg_empty() && declaration->getReturnType()->isIntegerTy(32) &&
             source_call_binding(source_call, call) == call;
       }
-      const auto intrinsic = callee->intrinsic_id();
-      const bool pthread_effect = intrinsic == ar::Intrinsic::PthreadCreate ||
-          intrinsic == ar::Intrinsic::PthreadJoin ||
-          intrinsic == ar::Intrinsic::PthreadMutexLock ||
-          intrinsic == ar::Intrinsic::PthreadMutexUnlock;
-      if (!nondet && !pthread_effect && name != "pthread_once" && name != "pthread_create" &&
-          name != "pthread_join" && name != "pthread_mutex_lock" && name != "pthread_mutex_unlock") return {};
+      const auto operation = ar::pthread_operation(callee);
+      const bool pthread_effect = operation == ar::PthreadOperation::Create ||
+          operation == ar::PthreadOperation::Join ||
+          operation == ar::PthreadOperation::MutexLock ||
+          operation == ar::PthreadOperation::MutexUnlock;
+      if (!nondet && !pthread_effect && name != "pthread_once") return {};
     }
     // A syntactically unconnected integer/unknown pointer write could still
     // overwrite an externally visible slot. Accept only named whole-object

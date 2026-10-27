@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <z3++.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
@@ -1012,10 +1013,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     const unsigned mutex_alignment = bits / 8;
     if (!main_local_mutex || api == nullptr || !main_mutex_subobject(address) ||
         address.width != mutex_width || storage.alignment != mutex_alignment ||
-        (api->name() != "pthread_mutex_lock" &&
-         api->name() != "pthread_mutex_unlock" &&
-         api->intrinsic_id() != ar::Intrinsic::PthreadMutexLock &&
-         api->intrinsic_id() != ar::Intrinsic::PthreadMutexUnlock))
+        (ar::pthread_operation(api) != ar::PthreadOperation::MutexLock &&
+         ar::pthread_operation(api) != ar::PthreadOperation::MutexUnlock))
       return Result(Status::Unsupported);
     if (std::none_of(mutex_initializations.begin(), mutex_initializations.end(), [&](const auto* init) {
           if (init->path != &allocation_origin ||

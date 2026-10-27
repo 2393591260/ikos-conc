@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <unordered_set>
 #include <vector>
 #include <llvm/IR/IntrinsicInst.h>
@@ -103,8 +104,7 @@ inline bool private_array_zero_structure(ar::CallBase* call,
         auto* original = create && create->has_frontend()
             ? llvm::dyn_cast< llvm::CallInst >(create->template frontend< llvm::Value >()) : nullptr;
         if (!create || !api || !api->function()->is_declaration() ||
-            (api->function()->intrinsic_id() != ar::Intrinsic::PthreadCreate &&
-             api->function()->name() != "pthread_create") ||
+            !ar::is_pthread_create(api->function()) ||
             create->num_arguments() != 4 || create->argument(2) != *op ||
             (*it)->name() != "main" || !original || original->arg_size() != 4 ||
             original->getArgOperand(2) != source->getFunction()) return reject(__LINE__);

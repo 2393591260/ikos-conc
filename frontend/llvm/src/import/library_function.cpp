@@ -49,7 +49,8 @@ namespace ikos {
 namespace frontend {
 namespace import {
 
-ar::Function* LibraryFunctionImporter::function(llvm::StringRef name) {
+ar::Function* LibraryFunctionImporter::function(llvm::Function* function) {
+  const auto name = function->getName();
   // ikos functions
   if (this->_enable_ikos) {
     // <ikos/analyzer/intrinsic.h>
@@ -258,15 +259,20 @@ ar::Function* LibraryFunctionImporter::function(llvm::StringRef name) {
     }
   }
 
-  // pthread functions
-  // pthread_create is intentionally NOT mapped to an ar::Intrinsic here.
-  // We keep it as a name-only extern so that NumericalExecutionEngine::
-  // exec_extern_call() can probe it and (a) register the new thread function
-  // via ConcurrentGlobalEnv, (b) record the pthread_t* -> thread_func
-  // binding, and (c) skip the conservative exec_unknown_extern_call() that
-  // would otherwise top-out the global invariants and suppress thread-body
-  // exploration.
+  // Keep create's native signature and call annotation. Its reserved AR ID
+  // does not yet have a complete builtin transfer/confirmation contract.
+  // Native integer join is an intentional external route, not a failed cast
+  // to the legacy pointer-handle intrinsic. Other mismatches still warn.
   if (name == "pthread_join") {
+    auto* type = function->getFunctionType();
+    if (!type->isVarArg() && type->getReturnType()->isIntegerTy(32) &&
+        type->getNumParams() == 2 &&
+        type->getParamType(0)->isIntegerTy(
+            this->_bundle->data_layout().pointers.bit_width) &&
+        type->getParamType(1)->isPointerTy() &&
+        type->getParamType(1)->getPointerAddressSpace() == 0) {
+      return nullptr;
+    }
     return this->_bundle->intrinsic_function(ar::Intrinsic::PthreadJoin);
   } else if (name == "pthread_mutex_lock" ||
              // pthread_spin_lock is soundly modelled as a plain mutex: it

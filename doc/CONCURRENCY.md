@@ -275,3 +275,37 @@ afresh. Work exhaustion refuses the entire computed index. The permanent
 controls; `pthread-attribute-contract` covers native/AR tampering, bounded
 refusals, real abstract-state queries and whole-byte effects in both data models.
 These tests must pass on the actual candidate before claiming a recovered task.
+
+<a id="pthread-operation-routing"></a>
+### Pthread operation identity and import routes
+
+`ar/semantic/pthread.hpp` identifies create, join and the individual mutex,
+conditional-lock and read/write-lock operations from the actual intrinsic ID or
+an exact external name. This pure query grants no declaration, prototype,
+source-origin, success, storage, thread-instance or happens-before proof. Each
+consumer retains those checks. LLVM source-name checks and conservative refusals
+of unsupported API families remain separate from AR operation identification.
+
+The importer retains two representations:
+
+- Native `pthread_create` stays external, preserving its output pointer, callback,
+  original integer widths and LLVM call annotation. The reserved `PthreadCreate`
+  intrinsic has no supported transfer/confirmation contract; the engine routes a
+  reachable manually supplied instance to unknown-call handling before generic
+  uninitialized-argument pruning. It retains coverage debt and does not grant a
+  definite thread handle or completion fact.
+- Native integer `pthread_join` with an i32 result, a machine-pointer-width
+  integer handle and an address-space-zero output pointer deliberately stays
+  external. This is an import-route choice, not complete POSIX ABI validation.
+  Existing consumers still check native prototypes, argument/output types,
+  actual source calls and the conditions of their own join proof. The legacy
+  pointer-handle join representation retains `PthreadJoin`. Other incompatible
+  declarations keep the type-mismatch diagnostic and conservative external
+  fallback. Debug and non-debug declaration imports use the same type check.
+- Ordinary mutex lock/unlock keep their existing intrinsic mapping. Conditional
+  acquisition and shared/exclusive read/write operations remain distinct;
+  identification does not add support for another lock operation.
+
+The independent execution checker retains its own interpretation and source/ABI
+validation. A recognized operation alone cannot confirm a race or discharge a
+coverage obligation.

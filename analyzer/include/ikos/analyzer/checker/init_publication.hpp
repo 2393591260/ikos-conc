@@ -1,6 +1,7 @@
 // Copyright and license: see data_race.hpp.
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/analyzer/analysis/execution_engine/handle_origin.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
@@ -214,8 +215,7 @@ class InitPublication {
         if (!spend()) return false;
         auto* call = dyn_cast< ar::CallBase >(s);
         auto* target = call ? pthread_initialization_callee(call) : nullptr;
-        if (!target || (target->name() != "pthread_create" &&
-                        target->intrinsic_id() != ar::Intrinsic::PthreadCreate)) continue;
+        if (!target || !ar::is_pthread_create(target)) continue;
         if (call->parent() != anchor->parent() || !handle_statement_dominates(anchor, call)) return false;
       }
     }

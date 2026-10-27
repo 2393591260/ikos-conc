@@ -1,4 +1,5 @@
 // Copyright and license: see context.hpp.
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/analyzer/analysis/posix_barrier.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/analysis/source_program_facts.hpp>
@@ -53,7 +54,7 @@ class PosixBarrier::Impl {
     auto* a = binding(c); auto* f = callee(c);
     auto* target = a ? native_handle_callee(a) : nullptr;
     if (!a || !target || !target->has_frontend() || target->frontend< llvm::Value >() != f ||
-        target->name() != "pthread_create" || !target->type()->return_type()->is_integer() ||
+        !ar::is_pthread_create(target) || !target->type()->return_type()->is_integer() ||
         cast< ar::IntegerType >(target->type()->return_type())->bit_width() != 32 ||
         !f || !f->isDeclaration() || f->getName() != "pthread_create" ||
         c->arg_size() != 4 || !c->getType()->isIntegerTy(32) || !c->use_empty() ||

@@ -1,4 +1,5 @@
 // Copyright and license: see context.hpp.
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/analyzer/analysis/posix_semaphore.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/analysis/execution_engine/heap_pointer_effects.hpp>
@@ -40,7 +41,7 @@ class PosixSemaphore::Impl {
     auto* a = binding(c);
     if (!a || !native_handle_api(c, create)) return false;
     auto* t = native_handle_callee(a);
-    if (t->name() != (create ? "pthread_create" : "pthread_join") ||
+    if (ar::pthread_operation(t) != (create ? ar::PthreadOperation::Create : ar::PthreadOperation::Join) ||
         !isa< ar::NullConstant >(a->argument(1))) return false;
     if (!create) return true;
     auto* entry = dyn_cast< ar::FunctionPointerConstant >(a->argument(2));

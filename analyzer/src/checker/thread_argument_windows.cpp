@@ -1,4 +1,5 @@
 // Copyright and license: see data_race.hpp.
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/analyzer/checker/thread_argument_windows.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/checker/thread_argument_window_consumer.hpp>
@@ -201,7 +202,7 @@ public:
       for (auto* block : *(*fi)->body()) for (auto* stmt : *block) {
         auto* call = dyn_cast< ar::CallBase >(stmt);
         auto* api = call ? native_handle_callee(call) : nullptr;
-        if (api && api->name() == "pthread_create") {
+        if (api && ar::is_pthread_create(api)) {
           if (candidate) return;
           candidate = call;
         }
@@ -1068,7 +1069,7 @@ std::shared_ptr< ThreadArgumentWindows > ThreadArgumentWindows::prepare(Context&
     for (auto* block : *(*fi)->body()) for (auto* stmt : *block) {
       auto* call = dyn_cast< ar::CallBase >(stmt);
       auto* api = call ? native_handle_callee(call) : nullptr;
-      if (api && api->name() == "pthread_create") {
+      if (api && ar::is_pthread_create(api)) {
         if (candidate) return nullptr;
         candidate = call;
       }

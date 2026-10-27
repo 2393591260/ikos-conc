@@ -1,4 +1,5 @@
 // Copyright and license: see data_race.hpp.
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/analyzer/checker/thread_private_heap.hpp>
 
 #include <llvm/Analysis/LoopInfo.h>
@@ -115,7 +116,7 @@ class ThreadPrivateHeap::Impl {
         auto* ar_call = calls.at(call);
         auto* ar_target = native_handle_callee(ar_call);
         if (!ar_target || !ar_target->is_declaration() ||
-            ar_target->name() != "pthread_create" || ar_call->num_arguments() != 4 ||
+            !ar::is_pthread_create(ar_target) || ar_call->num_arguments() != 4 ||
             !isa< ar::FunctionPointerConstant >(ar_call->argument(2))) return false;
         auto* child = cast< ar::FunctionPointerConstant >(ar_call->argument(2))->function();
         if (!child->has_frontend() || child->frontend< llvm::Value >() != f) return false;
@@ -446,7 +447,7 @@ class ThreadPrivateHeap::Impl {
     auto* ar_create = calls.at(create);
     auto* ar_api = native_handle_callee(ar_create);
     auto* result = ar_api ? dyn_cast< ar::IntegerType >(ar_api->type()->return_type()) : nullptr;
-    if (!ar_api || !ar_api->is_declaration() || ar_api->name() != "pthread_create" ||
+    if (!ar_api || !ar_api->is_declaration() || !ar::is_pthread_create(ar_api) ||
         !result || result->bit_width() != 32 || ar_api->type()->is_var_arg() ||
         ar_api->num_parameters() != 4 || ar_create->num_arguments() != 4 ||
         ar_create->code() != allocation->code() ||

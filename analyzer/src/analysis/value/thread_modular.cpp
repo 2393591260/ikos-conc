@@ -41,6 +41,7 @@
  *
  ******************************************************************************/
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
@@ -151,8 +152,7 @@ void ThreadModularAnalysis::run() {
             ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
         auto* source_callee = source ? llvm::dyn_cast< llvm::Function >(
             source->getCalledOperand()->stripPointerCasts()) : nullptr;
-        if ((exact && (exact->function()->name() == "pthread_create" ||
-                       exact->function()->intrinsic_id() == ar::Intrinsic::PthreadCreate)) ||
+        if ((exact && ar::is_pthread_create(exact->function())) ||
             (source_callee && source_callee->getName() == "pthread_create"))
           closed &= _ctx.native_handle_accesses.count(call) || unread_private_thread_output(call);
         if (auto object = mutex_array_effect_object(call)) {

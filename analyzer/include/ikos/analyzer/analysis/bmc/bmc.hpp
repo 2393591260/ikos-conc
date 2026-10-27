@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <chrono>
 #include <cstdlib>
 #include <set>
@@ -829,8 +830,7 @@ inline bool creator_release_endpoint(ar::Statement* statement) {
   auto* callee = call != nullptr ? exact_callee(call) : nullptr;
   BmcEvent event;
   return callee != nullptr && callee->is_declaration() &&
-         (callee->name() == "pthread_mutex_unlock" ||
-          callee->intrinsic_id() == ar::Intrinsic::PthreadMutexUnlock) &&
+         (ar::pthread_operation(callee) == ar::PthreadOperation::MutexUnlock) &&
          call->num_arguments() == 1 &&
          classify_event(statement, event) && event.kind == EvKind::Unlock;
 }

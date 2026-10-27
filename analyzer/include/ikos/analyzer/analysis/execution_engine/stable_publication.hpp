@@ -1,6 +1,7 @@
 // Copyright and license: see numerical.hpp.
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/analyzer/analysis/execution_engine/heap_pointer_effects.hpp>
 
 namespace ikos {
@@ -63,12 +64,12 @@ inline bool heap_pointer_call_covered(ar::CallBase* call, const Context* ctx = n
     default: break;
   }
   const auto& name = function->name();
-  if (name == "pthread_create" || id == ar::Intrinsic::PthreadCreate)
+  if (ar::is_pthread_create(function))
     return call->num_arguments() == 4 && direct_storage_address(call->argument(0));
-  if (name == "pthread_join" || id == ar::Intrinsic::PthreadJoin)
+  if (ar::is_pthread_join(function))
     return call->num_arguments() == 2 && isa< ar::NullConstant >(call->argument(1));
-  if (name == "pthread_mutex_lock" || name == "pthread_mutex_unlock" ||
-      id == ar::Intrinsic::PthreadMutexLock || id == ar::Intrinsic::PthreadMutexUnlock)
+  if (ar::pthread_operation(function) == ar::PthreadOperation::MutexLock ||
+      ar::pthread_operation(function) == ar::PthreadOperation::MutexUnlock)
     return call->num_arguments() == 1 && direct_storage_address(call->argument(0));
   if (name == "__VERIFIER_nondet_int" || name == "__VERIFIER_nondet_uint") {
     auto* type = dyn_cast< ar::IntegerType >(function->type()->return_type());
@@ -116,7 +117,7 @@ inline bool worker_created_after(ar::Store* writer, ar::Function* worker,
           auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
           if (i != 2 || call->num_arguments() != 4 || target == nullptr ||
               !target->function()->is_declaration() ||
-              target->function()->name() != "pthread_create" ||
+              !ar::is_pthread_create(target->function()) ||
               !isa< ar::FunctionPointerConstant >(call->argument(i))) return false;
           creates.push_back(call);
         }

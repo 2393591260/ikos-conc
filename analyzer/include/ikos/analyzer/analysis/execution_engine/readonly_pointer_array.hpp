@@ -1,6 +1,7 @@
 // Copyright and license: see numerical.hpp.
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <llvm/IR/Operator.h>
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/Module.h>
@@ -98,7 +99,7 @@ inline bool prove_readonly_pointer_array(ar::GlobalVariable* global,
         }
         auto* function = dyn_cast< ar::FunctionPointerConstant >(called);
         auto* target = function ? function->function() : nullptr;
-        if (target && target->name() == "pthread_create") creates.push_back(call);
+        if (target && ar::is_pthread_create(target)) creates.push_back(call);
         // An indirect call could introduce another entry before initialization.
         if (!target) return false;
       }

@@ -1,6 +1,7 @@
 // Copyright and license: see data_race.hpp.
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <boost/optional.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
@@ -251,15 +252,14 @@ class ConstantThreadCompletion {
       auto* api = pthread_initialization_callee(call);
       if (!api || !api->is_declaration())
         return false;
-      if (api->name() == "pthread_create" || api->name() == "pthread_join" ||
-          api->intrinsic_id() == ar::Intrinsic::PthreadJoin) {
+      if (ar::is_pthread_create(api) || ar::is_pthread_join(api)) {
         auto* ret = dyn_cast< ar::IntegerType >(api->type()->return_type());
         if (!ret || ret->bit_width() != 32 || !ret->is_signed() ||
             api->type()->is_var_arg() ||
             api->num_parameters() != call->num_arguments())
           return false;
       }
-      if (api->name() == "pthread_create" && call->num_arguments() == 4) {
+      if (ar::is_pthread_create(api) && call->num_arguments() == 4) {
         auto* target =
             dyn_cast< ar::FunctionPointerConstant >(call->argument(2));
         Slot address;
@@ -274,8 +274,7 @@ class ConstantThreadCompletion {
           return false;
         _handles[address] = _instances.size();
         _instances.push_back({target->function(), false});
-      } else if ((api->name() == "pthread_join" ||
-                  api->intrinsic_id() == ar::Intrinsic::PthreadJoin) &&
+      } else if (ar::is_pthread_join(api) &&
                  call->num_arguments() == 2) {
         auto h = value(call->argument(0));
         if (h.kind != Value::Handle ||
@@ -301,7 +300,7 @@ class ConstantThreadCompletion {
       for (auto* s : *block) {
         auto* call = dyn_cast< ar::CallBase >(s);
         auto* api = call ? pthread_initialization_callee(call) : nullptr;
-        if (api && api->is_declaration() && api->name() == "pthread_create" &&
+        if (api && api->is_declaration() && ar::is_pthread_create(api) &&
             call->num_arguments() == 4) {
           auto* child =
               dyn_cast< ar::FunctionPointerConstant >(call->argument(2));
@@ -392,9 +391,7 @@ public:
               auto* api = pthread_initialization_callee(call);
               if (api && (api->name() == "pthread_detach" ||
                           api->name() == "pthread_cancel" ||
-                          ((*i) != main && (api->name() == "pthread_join" ||
-                                            api->intrinsic_id() ==
-                                                ar::Intrinsic::PthreadJoin))))
+                          ((*i) != main && ar::is_pthread_join(api))))
                 return;
             }
     for (auto i = ctx.bundle->global_begin(); i != ctx.bundle->global_end();

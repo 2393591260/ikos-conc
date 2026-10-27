@@ -41,6 +41,7 @@
  *
  ******************************************************************************/
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/analysis/source_call_abi.hpp>
 #include <ikos/analyzer/checker/race_rules.hpp>
@@ -1251,7 +1252,7 @@ void DataRaceChecker::build_thread_creators() {
         ar::FunctionPointerConstant* cst =
             dyn_cast< ar::FunctionPointerConstant >(call->called());
         if (cst == nullptr || cst->function() == nullptr ||
-            cst->function()->name() != "pthread_create") {
+            !ar::is_pthread_create(cst->function())) {
           continue;
         }
         if (call->arg_begin() + 2 == call->arg_end()) {

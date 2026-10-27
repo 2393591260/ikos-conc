@@ -684,3 +684,15 @@ add_dependencies(build-analyzer-tests test-analysis-pthread-attributes)
 add_test(NAME concurrency-pthread-attribute-contract
          COMMAND $<TARGET_FILE:test-analysis-pthread-attributes>)
 set_tests_properties(concurrency-pthread-attribute-contract PROPERTIES LABELS concurrency)
+
+add_executable(test-analysis-pthread-operations pthread_operations.cpp)
+target_link_libraries(test-analysis-pthread-operations ${AR_LIB} ${Boost_LIBRARIES})
+add_dependencies(build-analyzer-tests test-analysis-pthread-operations)
+add_test(NAME concurrency-pthread-operation-contract
+         COMMAND $<TARGET_FILE:test-analysis-pthread-operations>)
+set_tests_properties(concurrency-pthread-operation-contract PROPERTIES LABELS concurrency)
+foreach(bits 32 64)
+  add_concurrency_test(pthread-operation-routing-${bits}
+                       "${CONCURRENCY_ROOT}/scripts/test_pthread_operation_routing.py"
+                       --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
+endforeach()

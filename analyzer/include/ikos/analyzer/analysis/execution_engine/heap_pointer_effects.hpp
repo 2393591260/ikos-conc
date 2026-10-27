@@ -1,6 +1,7 @@
 // Copyright and license: see numerical.hpp.
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
@@ -193,12 +194,11 @@ inline GlobalArraySubobject mutex_array_effect_object(ar::CallBase* call) {
   auto* address = dyn_cast< ar::FunctionPointerConstant >(call->called());
   auto* function = address ? address->function() : nullptr;
   if (!function || !function->is_declaration()) return {};
-  const auto id = function->intrinsic_id();
   if ((target->getName() == "pthread_mutex_init" && function->name() != "pthread_mutex_init") ||
       (target->getName() == "pthread_mutex_lock" &&
-       function->name() != "pthread_mutex_lock" && id != ar::Intrinsic::PthreadMutexLock) ||
+       ar::pthread_operation(function) != ar::PthreadOperation::MutexLock) ||
       (target->getName() == "pthread_mutex_unlock" &&
-       function->name() != "pthread_mutex_unlock" && id != ar::Intrinsic::PthreadMutexUnlock))
+       ar::pthread_operation(function) != ar::PthreadOperation::MutexUnlock))
     return {};
   const bool init = target->getName() == "pthread_mutex_init";
   if (!init && target->getName() != "pthread_mutex_lock" &&
@@ -260,8 +260,7 @@ inline bool constant_assertion_effect(ar::CallBase* call) {
 inline bool unread_private_thread_output(ar::CallBase* call) {
   auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
   if (!target || !target->function()->is_declaration() ||
-      (target->function()->name() != "pthread_create" &&
-       target->function()->intrinsic_id() != ar::Intrinsic::PthreadCreate) ||
+      !ar::is_pthread_create(target->function()) ||
       !call->has_frontend() || call->num_arguments() != 4 ||
       call->code()->function()->name() != "main") return false;
   auto* source = llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >());

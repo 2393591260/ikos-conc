@@ -1,4 +1,5 @@
 // Copyright and license: see execution_engine/numerical.hpp.
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/analyzer/analysis/region_ownership.hpp>
 
 #include <algorithm>
@@ -256,7 +257,7 @@ bool create_api(ar::CallBase* call) {
                               source->getCalledOperand()->stripPointerCasts())
                         : nullptr;
   auto* exact = callee(call);
-  if (!exact || !exact->is_declaration() || exact->name() != "pthread_create" ||
+  if (!exact || !exact->is_declaration() || !ar::is_pthread_create(exact) ||
       !target || !target->isDeclaration() ||
       target->getName() != "pthread_create" || target->isVarArg() ||
       target->arg_size() != 4 || source->arg_size() != 4 ||

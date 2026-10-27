@@ -3,6 +3,7 @@
 // Unsupported prefix semantics leave the candidate unconfirmed.
 
 #pragma once
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/analyzer/analysis/native_sc_source.hpp>
 
 #include <ikos/analyzer/analysis/execution_engine/once_control_family.hpp>
@@ -243,15 +244,16 @@ inline bool classify_mutex_call(ar::CallBase* call, EvKind& kind) {
   ar::Function* f = exact_callee(call);
   if (f == nullptr || !f->is_declaration()) return false;
   const auto& name = f->name();
-  if (f->intrinsic_id() == ar::Intrinsic::PthreadMutexLock || name == "pthread_mutex_lock" ||
-      (name == "pthread_rwlock_rdlock" && call->num_arguments() == 1) ||
-      (name == "pthread_rwlock_wrlock" && call->num_arguments() == 1) ||
+  const auto operation = ar::pthread_operation(f);
+  if (operation == ar::PthreadOperation::MutexLock ||
+      (operation == ar::PthreadOperation::RwlockReadLock && call->num_arguments() == 1) ||
+      (operation == ar::PthreadOperation::RwlockWriteLock && call->num_arguments() == 1) ||
       name == "__VERIFIER_atomic_begin") {
     kind = EvKind::Lock;
     return true;
   }
-  if (f->intrinsic_id() == ar::Intrinsic::PthreadMutexUnlock || name == "pthread_mutex_unlock" ||
-      (name == "pthread_rwlock_unlock" && call->num_arguments() == 1) ||
+  if (operation == ar::PthreadOperation::MutexUnlock ||
+      (operation == ar::PthreadOperation::RwlockUnlock && call->num_arguments() == 1) ||
       name == "__VERIFIER_atomic_end") {
     kind = EvKind::Unlock;
     return true;
@@ -1047,7 +1049,7 @@ inline std::size_t created_occurrence(ar::Function* child,
     auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
     auto* api = call != nullptr ? exact_callee(call) : nullptr;
     if (api == nullptr || !api->is_declaration() || call->num_arguments() != 4 ||
-        !(api->name() == "pthread_create" || api->intrinsic_id() == ar::Intrinsic::PthreadCreate))
+        !ar::is_pthread_create(api))
       return creator.size();
     auto* entry = core::dyn_cast< ar::FunctionPointerConstant >(call->argument(2));
     return entry != nullptr && entry->function() == child ? i : creator.size();
@@ -1774,7 +1776,7 @@ inline bool successful_create_result(const BmcEvent& event) {
                      ? core::dyn_cast< ar::IntegerType >(call->result_or_null()->type()) : nullptr;
   auto* returned = f != nullptr ? core::dyn_cast< ar::IntegerType >(f->type()->return_type()) : nullptr;
   return f != nullptr && f->is_declaration() && call->num_arguments() == 4 &&
-         (f->name() == "pthread_create" || f->intrinsic_id() == ar::Intrinsic::PthreadCreate) &&
+         ar::is_pthread_create(f) &&
          core::isa< ar::NullConstant >(call->argument(1)) && event.thread != 0 &&
          result != nullptr && returned != nullptr && result->bit_width() == 32 &&
          result->is_signed() && returned->bit_width() == 32 && returned->is_signed();
@@ -2225,13 +2227,13 @@ inline bool classify_event(
           is_verifier_atomic(call) ? PSEUDO_ATOMIC_LOCK : mutex_id(call, in_stack);
       ev = BmcEvent{stmt, kind, mid};
       auto* lock_function = exact_callee(call);
-      ev.reader = lock_function != nullptr && lock_function->name() == "pthread_rwlock_rdlock";
+      ev.reader = ar::pthread_operation(lock_function) == ar::PthreadOperation::RwlockReadLock;
       return true;
     }
     // pthread_create/pthread_join → Create/Join 事件（spawn/join HB 锚点）。
     ar::Function* f = exact_callee(call);
     if (f != nullptr && f->is_declaration()) {
-      if ((f->name() == "pthread_create" || f->intrinsic_id() == ar::Intrinsic::PthreadCreate) && call->num_arguments() == 4) {
+      if (ar::is_pthread_create(f) && call->num_arguments() == 4) {
         // arg2 = 线程函数（FunctionPointerConstant）。函数指针变量/间接线程函数
         // 提取失败 → 不产生 Create 事件（保守，只丢 TP）。
         auto it = call->arg_begin();
@@ -2246,7 +2248,7 @@ inline bool classify_event(
             }
           }
         }
-      } else if (f->name() == "pthread_join" || f->intrinsic_id() == ar::Intrinsic::PthreadJoin) {
+      } else if (ar::is_pthread_join(f)) {
         // arg0 = pthread_t 句柄（mutex_id_of_value 同款解析到稳定身份）。
         if (call->arg_begin() != call->arg_end()) {
           ev = BmcEvent{stmt, EvKind::Join};
@@ -2370,7 +2372,7 @@ inline ar::ReturnValue* inert_join_source(ar::CallBase* join,
     const std::vector< BmcEvent >& path, std::size_t before, std::size_t& creation) {
   auto* api = join != nullptr ? exact_callee(join) : nullptr;
   if (api == nullptr || !api->is_declaration() || join->num_arguments() != 2 ||
-      !(api->name() == "pthread_join" || api->intrinsic_id() == ar::Intrinsic::PthreadJoin) ||
+      !ar::is_pthread_join(api) ||
       !core::isa< ar::NullConstant >(join->argument(1)) ||
       !handle_creation_on_path(join, path, before, creation)) return nullptr;
   int atomic = 0;

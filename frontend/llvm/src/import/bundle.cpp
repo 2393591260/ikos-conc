@@ -222,7 +222,7 @@ ar::Function* BundleImporter::translate_function_di(llvm::Function* fun,
   // library functions (e.g., pthread_*, malloc) are mapped to ar::Intrinsic
   // even when DWARF debug info is available.
   if (fun->isDeclaration()) {
-    if (ar::Function* lib_fun = _ctx.lib_fun_imp->function(fun->getName())) {
+    if (ar::Function* lib_fun = this->translate_library_function(fun)) {
       return lib_fun;
     }
   }
@@ -345,7 +345,7 @@ ar::Function* BundleImporter::translate_intrinsic_function(
 }
 
 ar::Function* BundleImporter::translate_library_function(llvm::Function* fun) {
-  ar::Function* ar_fun = _ctx.lib_fun_imp->function(fun->getName());
+  ar::Function* ar_fun = _ctx.lib_fun_imp->function(fun);
 
   // Sanity check, can happen if the user uses C/C++ standard library names
   if (ar_fun != nullptr &&

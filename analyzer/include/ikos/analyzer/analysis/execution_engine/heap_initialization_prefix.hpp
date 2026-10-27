@@ -1,6 +1,7 @@
 // Copyright and license: see numerical.hpp.
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/analyzer/analysis/execution_engine/stable_publication.hpp>
 #include <ikos/analyzer/analysis/execution_engine/allocation_continuation.hpp>
 
@@ -176,8 +177,7 @@ class HeapInitializationPrefix {
         auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
         auto* source = call->has_frontend() ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
         auto* original = source ? llvm::dyn_cast< llvm::Function >(source->getCalledOperand()->stripPointerCasts()) : nullptr;
-        if ((target && (target->function()->name() == "pthread_create" ||
-                        target->function()->intrinsic_id() == ar::Intrinsic::PthreadCreate)) ||
+        if ((target && ar::is_pthread_create(target->function())) ||
             (original && original->getName() == "pthread_create"))
           if (call->code() != main->body() || !handle_statement_dominates(completion, call)) return false;
       }

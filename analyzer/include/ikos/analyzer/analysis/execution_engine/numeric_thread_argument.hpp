@@ -1,6 +1,7 @@
 // Copyright and license: see numerical.hpp.
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <set>
 #include <vector>
 
@@ -123,8 +124,7 @@ inline bool numeric_thread_argument(ar::UnaryOperation* cast, Context& ctx) {
           auto* source = call->has_frontend()
               ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
           if (!creator || !api || !api->function()->is_declaration() ||
-              (api->function()->intrinsic_id() != ar::Intrinsic::PthreadCreate &&
-               api->function()->name() != "pthread_create") ||
+              !ar::is_pthread_create(api->function()) ||
               call->num_arguments() != 4 || call->argument(3) != value ||
               !source || !source_creates.count(source)) return false;
           auto* entry = dyn_cast< ar::FunctionPointerConstant >(call->argument(2));

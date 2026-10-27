@@ -1,6 +1,7 @@
 // Copyright and license: see numerical.hpp.
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
@@ -122,8 +123,7 @@ inline unsigned synchronization_runtime_arguments(ar::CallBase* call,
                                                   ar::Function* exact) {
   if (!exact)
     return 0;
-  if (exact->name() == "pthread_create" ||
-      exact->intrinsic_id() == ar::Intrinsic::PthreadCreate)
+  if (ar::is_pthread_create(exact))
     return 0;
   unsigned ignored = synchronization_ignored_arguments(call, exact);
   // once's callback is not runtime storage; create's callback/user args are not
@@ -335,8 +335,7 @@ class PthreadInitializationFreshStorage {
         !function->getReturnType()->isIntegerTy(32) ||
         !pthread_object_layout(bits, native->getModule()) ||
         !target->is_declaration() ||
-        (target->intrinsic_id() != ar::Intrinsic::PthreadCreate &&
-         target->name() != "pthread_create") ||
+        !ar::is_pthread_create(target) ||
         !target->has_frontend() || target->frontend< llvm::Value >() != function ||
         call->num_arguments() != 4 ||
         !isa< ar::NullConstant >(call->argument(1)) ||

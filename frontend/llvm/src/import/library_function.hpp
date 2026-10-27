@@ -43,7 +43,7 @@
 
 #pragma once
 
-#include <llvm/ADT/StringRef.h>
+#include <llvm/IR/Function.h>
 
 #include <ikos/ar/semantic/bundle.hpp>
 #include <ikos/ar/semantic/function.hpp>
@@ -86,7 +86,7 @@ public:
   /// If the given name is the name of a well-known library function (such as
   /// malloc, free, etc.), returns the corresponding intrinsic ar::Function.
   /// Otherwise, return nullptr.
-  ar::Function* function(llvm::StringRef name);
+  ar::Function* function(llvm::Function* function);
 
 }; // end class LibraryFunctionImporter
 

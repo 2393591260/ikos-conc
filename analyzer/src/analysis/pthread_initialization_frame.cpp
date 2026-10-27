@@ -1,4 +1,5 @@
 // Copyright and license: see context.hpp.
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/analyzer/analysis/closed_integer_fold.hpp>
 #include <ikos/analyzer/analysis/pthread_initialization_frame.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
@@ -497,7 +498,7 @@ class PthreadInitializationFrame::Impl {
       need(native_handle_api(c, true), "native create ABI");
       need(target->intrinsic_id() == ar::Intrinsic::PthreadCreate ||
            (target->has_frontend() && target->frontend< llvm::Value >() == f &&
-            target->name() == "pthread_create"), "AR create identity");
+            ar::is_pthread_create(target)), "AR create identity");
       need(unread_private_thread_output(a), "private create output/callback");
       auto output = pointer(c->getArgOperand(0), frame);
       need(imported_pointer(a->argument(0), frame) == output,

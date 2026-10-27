@@ -1,4 +1,5 @@
 // Copyright and license: see data_race.hpp.
+#include <ikos/ar/semantic/pthread.hpp>
 #include <ikos/analyzer/checker/locked_creation.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/analysis/source_program_facts.hpp>
@@ -142,7 +143,7 @@ class LockedCreation::Impl {
     auto* t = a ? native_handle_callee(a) : nullptr;
     if (!a || !t || !t->has_frontend() || t->frontend< llvm::Value >() != f ||
         !f || !f->isDeclaration() || f->getName() != "pthread_create" ||
-        t->name() != "pthread_create" || !c->getType()->isIntegerTy(32) ||
+        !ar::is_pthread_create(t) || !c->getType()->isIntegerTy(32) ||
         !t->type()->return_type()->is_integer() ||
         cast< ar::IntegerType >(t->type()->return_type())->bit_width() != 32 ||
         c->arg_size() != 4 || !c->use_empty() ||
@@ -193,7 +194,7 @@ class LockedCreation::Impl {
     auto* output = c->arg_size() == 2 ? llvm::dyn_cast< llvm::PointerType >(c->getArgOperand(1)->getType()) : nullptr;
     auto* pointer = output ? llvm::dyn_cast< llvm::PointerType >(output->getPointerElementType()) : nullptr;
     if (!a || !target || !f->isDeclaration() || f->getName() != "pthread_join" ||
-        (target->name() != "pthread_join" && target->intrinsic_id() != ar::Intrinsic::PthreadJoin) ||
+        !ar::is_pthread_join(target) ||
         !c->use_empty() || !c->getType()->isIntegerTy(32) ||
         !target->type()->return_type()->is_integer() ||
         cast< ar::IntegerType >(target->type()->return_type())->bit_width() != 32 ||

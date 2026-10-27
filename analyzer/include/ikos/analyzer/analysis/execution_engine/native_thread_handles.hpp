@@ -1,6 +1,7 @@
 // Copyright and license: see numerical.hpp.
 #pragma once
 
+#include <ikos/ar/semantic/pthread.hpp>
 #include <cstdlib>
 
 #include <llvm/ADT/Triple.h>
@@ -249,7 +250,7 @@ inline bool closed_pthread_detach(ar::CallBase* query, Context& ctx) {
       if (auto* call = dyn_cast< ar::CallBase >(statement)) {
         auto* callee = native_handle_callee(call);
         if (!callee || observer(callee->name()) ||
-            callee->intrinsic_id() == ar::Intrinsic::PthreadJoin) return false;
+            ar::is_pthread_join(callee)) return false;
       }
       if (!statement->has_frontend() || statement->code() != query->code()) continue;
       auto* original = statement->frontend< llvm::Value >();
@@ -281,8 +282,7 @@ inline bool closed_pthread_detach(ar::CallBase* query, Context& ctx) {
       allocation->parent() != main->body()->entry_block() ||
       !imported_load || !imported_create || !imported_api || !imported_api->is_declaration() ||
       !isa< ar::Call >(imported_create) ||
-      (imported_api->name() != "pthread_create" &&
-       imported_api->intrinsic_id() != ar::Intrinsic::PthreadCreate) ||
+      !ar::is_pthread_create(imported_api) ||
       imported_api->type()->is_var_arg() || imported_api->num_parameters() != 4 ||
       !create_returned || create_returned->bit_width() != 32 || !create_returned->is_signed() ||
       (imported_create->has_result() && imported_create->result()->type() != create_returned) ||
@@ -593,10 +593,9 @@ inline void configure_native_thread_handles(Context& ctx) {
         for (unsigned i = 0; i < call->num_arguments(); ++i)
           if (called->type()->param_type(i) != call->argument(i)->type()) return;
       }
-      if (callee->getName() == "pthread_create" || called->intrinsic_id() == ar::Intrinsic::PthreadCreate) {
+      if (callee->getName() == "pthread_create" || ar::is_pthread_create(called)) {
         if (!native_handle_api(original, true) || !called->is_declaration() ||
-            (called->name() != "pthread_create" &&
-             called->intrinsic_id() != ar::Intrinsic::PthreadCreate) ||
+            !ar::is_pthread_create(called) ||
             call->code() != main->body() || call->num_arguments() != 4 ||
             !isa< ar::NullConstant >(call->argument(1)) || !isa< ar::NullConstant >(call->argument(3)) ||
             !isa< ar::FunctionPointerConstant >(call->argument(2))) return;
@@ -609,14 +608,13 @@ inline void configure_native_thread_handles(Context& ctx) {
         auto* type = pointer ? dyn_cast< ar::IntegerType >(pointer->pointee()) : nullptr;
         if (!type || type->bit_width() != bits) return;
         creates.insert(original);
-      } else if (callee->getName() == "pthread_join" || called->intrinsic_id() == ar::Intrinsic::PthreadJoin) {
+      } else if (callee->getName() == "pthread_join" || ar::is_pthread_join(called)) {
         if (!native_handle_api(original, false) || !called->is_declaration() ||
             call->code() != main->body() || call->num_arguments() != 2 ||
             !isa< ar::NullConstant >(call->argument(1))) return;
         auto* type = dyn_cast< ar::IntegerType >(call->argument(0)->type());
         if (!type || type->bit_width() != bits ||
-            (called->name() != "pthread_join" &&
-             called->intrinsic_id() != ar::Intrinsic::PthreadJoin)) return;
+            !ar::is_pthread_join(called)) return;
         source_joins.insert(original);
         joins.insert(call);
       } else if (callee->getName().startswith("pthread_") &&
