@@ -116,8 +116,26 @@ checker also requires both roots to finish, so an atomic-end marker alone
 cannot hide a later assumption by truncating the trace.
 
 Absence of pthread synchronization does not exclude communication between
-verifier-atomic sections. BMC therefore retains its conservative adjacency
-conditions for mixed atomic/plain targets. The AR checker also tests ordering
+verifier-atomic sections. BMC first tries its conservative adjacency
+conditions for mixed atomic/plain targets. A final narrow query can instead
+prove that the actual target occurrences are unordered in a complete event
+graph: program order, actual create-to-entry, returned-child-to-consuming-join,
+and the schedule order of every complete verifier atomic section. Ordinary
+read-from constrains values without adding a synchronization edge.
+
+This query requires real completion of every retained timed root and helper.
+It refuses native atomics, mutexes, rwlocks, conditions, semaphores, barriers,
+once, stdout, other opaque external effects, and the startup-provider profile.
+The existing source coverage, value, memory and indivisible-section checks still
+apply. Two Boolean sets closed under all graph edges witness mutual
+unreachability; no graph certificate is exported or trusted by replay.
+The old queries run first; a structurally impossible interior adjacency pair
+can skip directly to the additional query. It shares the existing deadline and
+solver timeout. `IKOS_BMC_DISABLE_ATOMIC_UNORDERED=1` disables only this query;
+4096 retained events and 64 complete atomic sections are structural refusal
+limits. No unsuccessful query establishes SAFE.
+
+The AR checker also tests ordering
 under a stronger relation that serializes complete atomic sections; a pair
 ordered only by this additional relation is `UNSUPPORTED`, not certified as a
 race. This is a conservative acceptance condition, not an implementation of the

@@ -253,6 +253,31 @@ tested commit. Ordinary mechanism stages do not require a full remote rerun.
 Investigate concrete CI failures before treating the affected checks as passed;
 neither local acceptance nor a successful push implies remote CI success.
 
+### Atomic interior unordered query
+
+`python3 scripts/test_bmc_atomic_unordered.py --bits both --output-dir /tmp/atomic-unordered`
+checks named and explicit atomic interiors, complete main/worker joins, repeated
+creation occurrences, publication in both directions, an auxiliary atomic/join
+chain, and refused synchronization classes. Every case also runs on the same
+runtime with only `IKOS_BMC_DISABLE_ATOMIC_UNORDERED=1` changed. Both ordinary
+integers and `long long` are tested on ILP32 and LP64. Added positives require
+the new query diagnostic and independent AR acceptance, including damaged
+returns, boundaries, creation, targets, read-from and interleaving controls.
+
+`--with-related` additionally runs the existing atomic-completion, execution
+corruption and historical sibling suites on each selected ABI. The historical
+sibling suite explicitly pins the earlier adjacent-query mode; its interior
+cases 0 and 10 and its existing positive 15 also run with the new mode in this
+suite. The saved publication execution must retain the exact conservative-order
+`UNSUPPORTED` result, and the publication source must not produce FALSE.
+
+`--original-dir /path/to/pthread-ext` binds five original inputs to their saved
+SHA-256 hashes. Tasks 85 and 138 require a new-query execution and AR acceptance.
+Tasks 95/99 remain separate enumeration diagnostics; task 90 has an independent
+nonreturning-provider obligation and is not claimed as a recovery. Runtime,
+validator, input, options, reports and replay results are saved together.
+These checks do not constitute official source-witness validation.
+
 ### Independent finite BMC coverage comparison
 
 `python3 scripts/test_bmc_finite_coverage.py --bits 32` and `--bits 64`

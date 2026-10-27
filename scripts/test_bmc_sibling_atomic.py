@@ -49,6 +49,8 @@ def main():
     publication_contract()
     fixture = (ROOT / 'analyzer/test/regression/bmc-correctness/sibling-atomic.c').read_text()
     cases = [(case, False) for case in range(17)] + [(case, True) for case in (0, 2, 3, 4, 7, 8, 10, 11, 15, 16)]
+    # Pin this historical contract to the unchanged adjacent-query mode.
+    # Interior-query positives are checked separately by test_bmc_atomic_unordered.py.
     positive = {15}
     with tempfile.TemporaryDirectory(prefix='ikos-sibling-atomic-') as temp:
         work = Path(temp)
@@ -61,7 +63,7 @@ def main():
             proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race',
                 '--concurrency=auto', '--demote-race-to-unknown', f'-m{args.bits}', '--format=json',
                 '--report-file=' + str(report), '-o', str(work / 'output.db'), str(source)],
-                env=dict(os.environ, IKOS_BMC_RECOVER='1', IKOS_BMC_DIAGNOSTICS='1'),
+                env=dict(os.environ, IKOS_BMC_RECOVER='1', IKOS_BMC_DIAGNOSTICS='1', IKOS_BMC_DISABLE_ATOMIC_UNORDERED='1'),
                 capture_output=True, text=True, timeout=30)
             verdict = classify(proc.stdout, proc.returncode, False)
             assert proc.returncode == 0 and (verdict == VERDICT_RACE) == (case in positive), (
@@ -94,7 +96,7 @@ def main():
         source = ROOT / 'analyzer/test/regression/bmc-correctness/atomic-publication.c'
         proc = subprocess.run(runtime_command(args.ikos.resolve()) + ['--analyses=race', '--concurrency=auto',
             '--demote-race-to-unknown', f'-m{args.bits}', '-o', str(work / 'publication.db'), str(source)],
-            env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True, text=True, timeout=30)
+            env=dict(os.environ, IKOS_BMC_RECOVER='1', IKOS_BMC_DISABLE_ATOMIC_UNORDERED='1'), capture_output=True, text=True, timeout=30)
         assert proc.returncode == 0 and classify(proc.stdout, proc.returncode, False) != VERDICT_RACE, (proc.stdout, proc.stderr)
         print('atomic publication: no false race', flush=True)
 

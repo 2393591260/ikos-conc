@@ -22,6 +22,7 @@
 #include "function_values.hpp"
 #include "semaphore.hpp"
 #include "barrier.hpp"
+#include "atomic_unordered.hpp"
 #include "result.hpp"
 
 namespace ikos {
@@ -1280,8 +1281,24 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   };
   // The other target is outside this indivisible interval. A mandatory barrier
   // on each side of this target prevents both adjacent orientations in our query.
-  if (interior(sections_a, pathA, targetA) || interior(sections_b, pathB, targetB)) {
-    record(diagnostics, "atomic_interior_unsat"); return Result(Status::BoundedUnsat);
+  const bool interior_unsat =
+      interior(sections_a, pathA, targetA) || interior(sections_b, pathB, targetB);
+  std::vector< AtomicUnorderedSection > atomic_sections;
+  if (atomicA || atomicB)
+    for (std::size_t id = 0; id < traces.size(); ++id)
+      for (const auto& section : trace_sections[id])
+        if (section.mutex == PSEUDO_ATOMIC_LOCK)
+          atomic_sections.push_back({id, section.begin, section.end});
+  auto unordered_plan = [&]() {
+    return AtomicUnorderedQuery(traces, main_index, completion_joins,
+                                provider_plan != nullptr, atomic_sections, targetA, targetB);
+  };
+  // Fast satisfiable cases pay no occurrence-graph construction cost.
+  AtomicUnorderedQuery unordered;
+  if (interior_unsat) unordered = unordered_plan();
+  if (interior_unsat) {
+    record(diagnostics, "atomic_interior_unsat");
+    if (!unordered.valid()) return Result(Status::BoundedUnsat);
   }
   FunctionValues functions(ctx, s, funcA->bundle(), traces, clock,
       [&](const BmcEvent& access, const void* path) {return aliases_library(access, path, false);});
@@ -2495,7 +2512,16 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     }
   }
   bool solver_unknown = false;
-  for (int dir = 0; dir < 2; ++dir) {
+  // Keep both fast orientations first. An interior target has already proved
+  // those two queries impossible, so skip only those structurally UNSAT queries.
+  // The last query is available solely after the complete occurrence inventory.
+  for (int dir = 0; dir < ((atomicA || atomicB) ? 3 : 2); ++dir) {
+    const bool relational = dir == 2;
+    if (!relational && interior_unsat) continue;
+    if (relational) {
+      if (!interior_unsat) unordered = unordered_plan();
+      if (!unordered.valid()) break;
+    }
     // Each query is independent. push/pop switches Z3 to incremental solving,
     // disabling preprocessing needed by some mixed Int/BV guards.
     z3::solver query(ctx);
@@ -2512,7 +2538,21 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     query.add(s.assertions());
     auto first = dir == 0 ? nA + targetB : targetA;
     auto last = dir == 0 ? targetA : nA + targetB;
-    if (!atomicA && !atomicB) query.add(clock[last] == clock[first] + 1);
+    if (relational) {
+      unordered.constrain(ctx, query, clock);
+      // Constraint construction consumes the same file deadline.
+      if (deadline != nullptr) {
+        const auto remaining = std::chrono::duration_cast< std::chrono::milliseconds >(
+            *deadline - std::chrono::steady_clock::now()).count();
+        if (remaining <= 0) {
+          record(diagnostics, "search_deadline");
+          return Result(Status::BudgetExceeded);
+        }
+        query.set("timeout", static_cast< unsigned >(
+            std::min< std::int64_t >(remaining, solver_timeout_ms)));
+      }
+      record(diagnostics, "atomic_unordered_query");
+    } else if (!atomicA && !atomicB) query.add(clock[last] == clock[first] + 1);
     else {
       query.add(clock[first] < clock[last]);
       auto exclude_between = [&](const std::vector< BmcEvent >& path, std::size_t start) {
@@ -2540,6 +2580,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     if (diagnostics != nullptr && result == z3::unknown && query.reason_unknown() == "timeout")
       record(diagnostics, "smt_timeout");
     if (result == z3::sat) {
+      if (relational) record(diagnostics, "atomic_unordered_sat");
       Result outcome(Status::Confirmed);
       auto model = query.get_model();
       auto export_start = std::chrono::steady_clock::now();

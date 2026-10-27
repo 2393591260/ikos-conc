@@ -296,6 +296,10 @@ add_concurrency_test(prefix-search "${CONCURRENCY_ROOT}/scripts/test_bmc_prefix_
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(sibling-atomic "${CONCURRENCY_ROOT}/scripts/test_bmc_sibling_atomic.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(atomic-unordered "${CONCURRENCY_ROOT}/scripts/test_bmc_atomic_unordered.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(atomic-unordered-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_atomic_unordered.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 foreach(bits 32 64)
   add_concurrency_test(p0-${bits}
     "${CONCURRENCY_ROOT}/docs/review-repros/bmc-2026-10-08/run.py"
