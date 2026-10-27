@@ -534,6 +534,15 @@ exit, longjmp, recursion, indirect/foreign calls and nested synchronization refu
 this first closure. All alternatives remain discovered MAY writers. The pass
 does not select a callback or transfer one alternative's MUST value summary.
 
+A restricted control-pointer closure also retains a finite MAY set of static
+zero-initialized controls through exact SSA pointer merges or main-only plain
+pointer slots. Each possible control registers its own real control identity.
+A multi-control call adds no MUST join, including when one callsite executes in
+a loop. Only a definite singleton receives the existing completion join. Source
+closure remains separate from actual path selection and does not transfer a
+pointer value or grant a new nonnull or memory-validity fact. Unsupported uses,
+unknown writers, pointer cycles and slot escapes retain conservative coverage.
+
 Only two callback roots whose final complete instance sets contain the same
 single sealed control instance can use the new pair exclusion. Ordinary calls
 keep their actual thread root; another control, ordinary spawn or ambiguous

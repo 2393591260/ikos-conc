@@ -310,6 +310,22 @@ execute their real bodies. Unsupported reentry, escaping controls, callback
 thread creation, multiple physical creates or verifier-atomic combinations
 remain inconclusive. Main's configured argument assumptions are preserved.
 
+A separate finite-control form accepts up to eight whole static controls selected
+through pointer-preserving SSA merges and plain main-only pointer slots. Every
+LLVM/AR definition, PHI incoming edge, slot initializer/store/load and control use
+must close. Slots have one live `main(void)` frame; a local slot must have a
+proven dominating initialization. Cyclic origins, pointer arithmetic, NULL or
+integer origins, volatile/atomic slots, escaping slots, opaque external writers
+and unknown-address writes refuse this form. The selected execution keeps the
+actual branches and pointer stores/loads. Each API occurrence resolves its
+executed control; its static MAY set cannot choose that control. The independent
+checker reconstructs the full AR closure and actual pointer bytes, including
+exact static-global address initializers. Global object registration precedes
+initialization so dictionary order has no semantics.
+
+`IKOS_DISABLE_FINITE_ONCE_CONTROLS=1` disables only this finite-pointer extension;
+the earlier direct-control profile remains available.
+
 The optional final search shares the earlier deadline and counters.
 `IKOS_BMC_DISABLE_ONCE_EXECUTION=1` disables only this profile. It grants no
 SAFE permission. Independent AR replay validates the physical roots and actual

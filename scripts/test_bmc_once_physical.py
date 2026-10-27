@@ -18,6 +18,9 @@ import tempfile
 
 POSITIVE = {0, 1, 2, 5, 7, 14, 20}
 NEGATIVE = {3, 4, 6, 8, 9, 11, 12, 13, 15, 16, 17}
+FINITE_POSITIVE = {0, 1, 11, 12, 18, 21, 22}
+FINITE_NEGATIVE = {2, 3, 4, 13, 23}
+FINITE_REFUSE = {5, 6, 7, 8, 9, 10, 14, 15, 16, 17, 19, 20}
 
 
 def sha(path):
@@ -111,11 +114,26 @@ def verify(execution, case, source, check, digest_json, source_binding):
                 lambda p, c, s=sid: p['instructions'][s]['native_once'].update(callback='empty'), True)
         damaged('rehash native API convention',
                 lambda p, c, s=sid: p['instructions'][s]['native_once'].update(call_convention=8), True)
-        control = instructions[sid]['native_once']['control']
+        for field in ('size', 'extent'):
+            damaged('rehash single once control operand '+field,
+                    lambda p, c, s=sid, f=field: p['instructions'][s]['operands'][1]['type'].update({f: '1'}), True)
+            damaged('rehash single once control pointee '+field,
+                    lambda p, c, s=sid, f=field: p['instructions'][s]['operands'][1]['type']['pointee'].update({f: '1'}), True)
+            damaged('rehash once API control parameter '+field,
+                    lambda p, c, f=field: p['functions']['pthread_once']['parameter_types'][0].update({f: '1'}), True)
+        native = instructions[sid]['native_once']
+        finite = native.get('finite_controls')
+        control = sorted(finite['objects'])[0] if finite else native['control']
         damaged('rehash native nonzero control',
                 lambda p, c, g=control: p['globals'][g]['native_once_control'].update(zero_initializer=False), True)
-        damaged('rehash incomplete raw control uses',
-                lambda p, c, g=control: p['globals'][g]['native_once_control'].update(uses=[]), True)
+        if finite:
+            damaged('rehash incomplete finite control uses',
+                    lambda p, c, s=sid: p['instructions'][s]['native_once']['finite_controls'].update(uses=[]), True)
+            damaged('rehash omitted MAY control object',
+                    lambda p, c, s=sid: p['instructions'][s]['native_once']['finite_controls']['objects'].pop(), True)
+        else:
+            damaged('rehash incomplete raw control uses',
+                    lambda p, c, g=control: p['globals'][g]['native_once_control'].update(uses=[]), True)
         damaged('rehash native module alias',
                 lambda p, c, g=control: p['globals'][g]['native_once_control'].update(module_aliases=True), True)
         if call['once_role'] == 'passive':
@@ -125,6 +143,62 @@ def verify(execution, case, source, check, digest_json, source_binding):
             if ret is not None:
                 damaged('passive return before initialization',
                         lambda p, c, n=name, i=ret: step(c, n, i).update(clock='0'))
+    if any(i.get('native_once', {}).get('finite_controls') for i in instructions.values()):
+        def damage_control_layout(program, field, value):
+            def visit(node):
+                if isinstance(node, dict):
+                    if (node.get('kind') == 'pointer' and
+                            node.get('pointee', {}).get('kind') == 'integer' and
+                            node['pointee'].get('bits') == 32):
+                        target = node['pointee'] if field.startswith('pointee_') else node
+                        target[field.removeprefix('pointee_')] = value
+                    for child in node.values():
+                        visit(child)
+                elif isinstance(node, list):
+                    for child in node:
+                        visit(child)
+            visit(program)
+        for field, value in (('size', '1'), ('extent', '16'),
+                             ('pointee_size', '1'), ('pointee_extent', '16')):
+            damaged('rehash all connected once pointer '+field,
+                    lambda p, c, f=field, v=value: damage_control_layout(p, f, v), True)
+        reordered = copy.deepcopy(program)
+        reordered['globals'] = dict(reversed(list(reordered['globals'].items())))
+        cc = copy.deepcopy(certificate); cc['program_sha256'] = digest_json(reordered)
+        assert check(reordered, cc)['status'] == 'ACCEPT', (case, 'global initializer key order')
+        count += 1
+        for sid, inst in instructions.items():
+            ops = inst.get('operands', [])
+            if (inst.get('kind') == 'unary' and inst.get('operator') == 14 and ops and
+                    ops[0].get('kind') == 'function' and
+                    ops[0].get('id') in ('__VERIFIER_nondet_int', '__VERIFIER_nondet_uint')):
+                damaged('rehash old-style nondet callee as effectful API',
+                        lambda p, c, s=sid: p['instructions'][s]['operands'][0].update(id='pthread_once'), True)
+            if inst.get('kind') == 'allocate' and inst.get('allocated_type', {}).get('kind') == 'pointer':
+                for field in ('size', 'extent'):
+                    damaged('rehash local pointer slot '+field,
+                            lambda p, c, s=sid, f=field: p['instructions'][s]['allocated_type'].update({f: '1'}), True)
+                    damaged('rehash local slot pointee '+field,
+                            lambda p, c, s=sid, f=field: p['instructions'][s]['allocated_type']['pointee'].update({f: '1'}), True)
+            incoming = inst.get('native_pointer_phi')
+            if incoming and any(x.get('value', {}).get('kind') == 'global' for x in incoming):
+                original = inst['operands'][0]
+                alternative = next((x['value'] for x in incoming if x['value'].get('id') != original.get('id')), None)
+                if alternative:
+                    damaged('rehash pointer PHI arm from wrong source edge',
+                            lambda p, c, s=sid, v=alternative: p['instructions'][s].update(operands=[copy.deepcopy(v)]), True)
+        for name, glob in program['globals'].items():
+            native = glob.get('native_pointer_initializer')
+            if native:
+                for field in ('size', 'extent'):
+                    damaged('rehash global pointer slot '+field,
+                            lambda p, c, n=name, f=field: p['globals'][n]['type'].update({f: '1'}), True)
+                    damaged('rehash global slot pointee '+field,
+                            lambda p, c, n=name, f=field: p['globals'][n]['type']['pointee'].update({f: '1'}), True)
+                    damaged('rehash global initializer pointer '+field,
+                            lambda p, c, n=name, f=field: p['globals'][n]['initializers'][0]['type'].update({f: '1'}), True)
+                damaged('rehash pointer initializer missing target',
+                        lambda p, c, n=name: p['globals'][n]['native_pointer_initializer'].update(target='missing_object'), True)
     damaged('fake child creation occurrence',
             lambda p, c: trace(c, child['id']).update(creator_step=child['creator_step']+1))
     damaged('callback forged as pthread root',
@@ -150,6 +224,7 @@ def main():
     parser.add_argument('--with-ablation', action='store_true')
     parser.add_argument('--export-source-witness', action='store_true')
     parser.add_argument('--broken-premises', action='store_true')
+    parser.add_argument('--finite-controls', action='store_true')
     parser.add_argument('--original-dir', type=Path,
                         help='optional exact pthread-once original fixture directory')
     args = parser.parse_args()
@@ -184,6 +259,19 @@ def main():
             continue
         for argc in ((1, 2) if case in (18, 19) else (None,)):
             inputs.append((str(case), case, argc, f'#define CASE {case}\n'+fixture))
+    if args.finite_controls:
+        finite = (regression / 'once-finite-controls.c').read_text()
+        for case in range(24):
+            if args.case and 300 + case not in args.case:
+                continue
+            inputs.append((str(300 + case), 300 + case, None, f'#define CASE {case}\n'+finite))
+        if not args.case or 300 in args.case:
+            old_style = finite.replace('extern int __VERIFIER_nondet_int(void);',
+                                       'extern int __VERIFIER_nondet_int();')
+            assert old_style != finite
+            inputs.append(('300-old-declaration', 300, None, '#define CASE 0\n'+old_style))
+        if not args.case or 324 in args.case:
+            inputs.append(('324', 324, None, (regression / 'once-finite-impostor.c').read_text()))
     if args.broken_premises:
         native = json.loads((regression / 'once-physical-broken.json').read_text())
         for i, row in enumerate(native['rows']):
@@ -191,7 +279,9 @@ def main():
     if args.original_dir:
         for number, name in ((1066, 'norace-race-child-once-vs-main-write.c'),
                              (1067, 'norace-race-distinct-once-objects.c'),
-                             (1069, 'norace-race-once-init-vs-main-write.c')):
+                             (1069, 'norace-race-once-init-vs-main-write.c'),
+                             (1068, 'norace-race-distinct-once-state.c'),
+                             (1070, 'norace-race-once-pointer-changes.c')):
             inputs.append((str(number), number, None, (args.original_dir / name).read_text()))
     for bits in (('32', '64') if args.bits == 'both' else (args.bits,)):
         for name, case, argc, text in inputs:
@@ -203,7 +293,8 @@ def main():
                 source.write_text(text)
                 environment = dict(env)
                 if ablation:
-                    environment['IKOS_BMC_DISABLE_ONCE_EXECUTION'] = '1'
+                    environment['IKOS_DISABLE_FINITE_ONCE_CONTROLS' if 300 <= case < 325 or case in (1068,1070)
+                                else 'IKOS_BMC_DISABLE_ONCE_EXECUTION'] = '1'
                 command = [*runtime_command(args.ikos.resolve()), '--analyses=race', '--concurrency=auto',
                            '--partitioning=guards', '--demote-race-to-unknown', '-m'+bits,
                            '--bmc-deadline-ms=20000', '--bmc-solver-timeout-ms=1000',
@@ -222,14 +313,14 @@ def main():
                 confirmations = sum(info.get('bmc', {}).get('counts', {}).get('once_physical_confirmed', 0)
                                     for info in infos)
                 executions = [info['counterexample'] for info in infos if 'counterexample' in info]
-                positive = case in POSITIVE or case in (1066, 1067, 1069) or (case == 18 and argc == 1)
+                positive = case in POSITIVE or case in (1066, 1067, 1068, 1069, 1070) or case - 300 in FINITE_POSITIVE or (case == 18 and argc == 1)
                 infeasible = (case == 18 and argc == 2) or (case == 19 and argc == 1)
-                no_new = 200 <= case < 300 or case == 10 or (case in (18, 19) and argc != 1) or ablation
+                no_new = 200 <= case < 300 or case == 10 or (case in (18, 19) and argc != 1) or ablation or case - 300 in FINITE_REFUSE or case == 324
                 if no_new:
                     assert confirmations == 0, (tag, 'forbidden new once profile', confirmations)
                 if positive and not ablation:
                     assert metadata['verdict'] == 'FALSE' and executions and confirmations > 0, (tag, metadata, confirmations)
-                elif case in NEGATIVE or infeasible:
+                elif case in NEGATIVE or case - 300 in FINITE_NEGATIVE or infeasible:
                     assert metadata['verdict'] in ('SAFE', 'UNKNOWN') and not executions, (tag, metadata)
                     if case != 13:
                         assert metadata['analysis_complete'] and metadata['checks_complete'], (tag, metadata)
@@ -237,6 +328,17 @@ def main():
                 # existing independent mechanism; any FALSE still needs AR ACCEPT.
                 if metadata['verdict'] == 'FALSE':
                     assert executions, (tag, 'FALSE without selected execution')
+                if case == 312 and not ablation:
+                    ai_command = list(command)
+                    ai_report = work / 'ai-only.json'
+                    ai_command = [('--bmc-deadline-ms=0' if v == '--bmc-deadline-ms=20000' else
+                                   '--report-file='+str(ai_report) if v == '--report-file='+str(report) else
+                                   str(work/'ai-only.db') if v == str(work/'output.db') else v) for v in ai_command]
+                    ai = subprocess.run(ai_command, cwd=work, env=environment, capture_output=True, text=True, timeout=60)
+                    (work/'ai-only.stdout').write_text(ai.stdout); (work/'ai-only.stderr').write_text(ai.stderr)
+                    assert ai.returncode == 0 and ai_report.is_file(), (tag, 'AI multiplicity control')
+                    ai_data = json.loads(ai_report.read_text())
+                    assert validate_race_result(ai_data)['verdict'] != 'SAFE', (tag, 'two controls collapsed into one instance')
                 row_damage = []
                 for execution in executions:
                     physical = any('once_role' in s for t in execution['traces'] for s in t['steps'])

@@ -121,6 +121,7 @@ class Replay:
         self.barriers = {}
         self.stdout_vc = {}
         self.once_states = {}
+        self.finite_once_families = {}
         self.once_profile = any("once_role" in s for t in self.traces.values() for s in t["steps"])
         for name, glob in program['globals'].items():
             if glob['declaration'] or glob['type']['kind'] == 'unsupported':
@@ -130,6 +131,12 @@ class Replay:
                                      variable=name, thread_local=glob['thread_local'],
                                      alignment=glob.get('alignment'))
             self.memory[obj] = [None] * min(self.objects[obj]['size'], 1_000_000)
+        # Object identity registration precedes every initializer. A static
+        # address never depends on the JSON dictionary insertion order.
+        for name, glob in program['globals'].items():
+            obj = 'global:' + name
+            if obj not in self.objects:
+                continue
             if self.objects[obj]['size'] > 1_000_000:
                 self.memory[obj] = []
             elif glob.get('frontend_function_initializer') is not None and glob['type']['kind']=='pointer':
@@ -294,6 +301,32 @@ class Replay:
         if kind == 'integer': self.store(pointer, int(value['value']), t)
         elif kind == 'null': self.store(pointer, ('null', 0), t)
         elif kind == 'function': self.store(pointer, ('function', value['id']), t)
+        elif kind == 'global':
+            # This first profile admits only an independently checked plain
+            # pointer slot initializer to a sealed static once-control object.
+            manifests = [i.get('native_once', {}).get('finite_controls', {}) for i in self.instructions.values()]
+            declared = any(m.get('schema') == 1 and any(v.get('kind') == 'global' and
+                           'global:' + v.get('id', '') == obj for v in m.get('slots', [])) for m in manifests)
+            if not self.once_profile or not declared:
+                return  # Preserve the old unsupported/uninitialized form when unused.
+            require(self.once_profile and obj.startswith('global:') and offset == 0,
+                    'once static pointer initializer scope')
+            slotname = obj[7:]
+            slot = self.program['globals'][slotname]
+            target = value.get('id')
+            native = slot.get('native_pointer_initializer', {})
+            expected = dict(target=target, address_space=0, pointer_address_space=0,
+                            pointer_bits=self.program['pointer_bits'], thread_local=False,
+                            declaration=False, externally_initialized=False)
+            require(all(native.get(k) == v for k, v in expected.items()) and
+                    self.control_pointer_type(t) and self.control_pointer_type(slot.get('type', {})) and
+                    slot.get('simple_initializer') is True and slot.get('initializers') == [value],
+                    'once native/AR pointer initializer binding')
+            require(any(m.get('schema') == 1 and target in m.get('objects', []) and
+                        any(v.get('kind') == 'global' and v.get('id') == slotname for v in m.get('slots', []))
+                        for m in manifests), 'once pointer initializer complete family')
+            self.once_static_control(target)
+            self.store(pointer, ('global:' + target, 0), t)
         elif kind == 'undef': pass
         elif kind == 'zero':
             if t['kind'] == 'integer': self.store(pointer, 0, t)
@@ -974,6 +1007,297 @@ class Replay:
             return UNDEFINED
         raise Unsupported('external API ' + name)
 
+    def control_pointer_type(self, t):
+        bits = self.program.get('pointer_bits')
+        return (bits in (32, 64) and t.get('kind') == 'pointer' and t.get('bits') == bits and
+                int(t.get('size', 0)) == bits // 8 and int(t.get('extent', 0)) == bits // 8 and
+                t.get('pointee', {}).get('kind') == 'integer' and
+                t['pointee'].get('bits') == 32 and int(t['pointee'].get('size', 0)) == 4 and
+                int(t['pointee'].get('extent', 0)) == 4)
+
+    def once_static_control(self, name):
+        glob = self.program['globals'].get(name, {})
+        facts = glob.get('native_once_control', {})
+        expected = dict(zero_initializer=True, value_bits=32, address_space=0,
+                        constant=False, externally_initialized=False, module_inline_asm=False,
+                        module_aliases=False, constructors=False, destructors=False)
+        require(all(facts.get(k) == v for k, v in expected.items()) and
+                glob.get('declaration') is False and glob.get('thread_local') is False and
+                glob.get('alignment', 0) >= 4, 'once static native object')
+        t, initial = glob.get('type', {}), glob.get('initializers', [])
+        require(t.get('kind') == 'integer' and t.get('bits') == 32 and int(t.get('size', 0)) == 4 and
+                int(t.get('extent', 0)) == 4 and
+                glob.get('simple_initializer') is True and len(initial) == 1 and
+                initial[0].get('kind') in ('integer', 'zero') and
+                (initial[0].get('kind') == 'zero' or int(initial[0].get('value', 1)) == 0),
+                'once static AR zero object')
+        triple = self.program.get('target_triple', '')
+        require('linux' in triple and 'gnu' in triple and
+                (triple.startswith('x86_64') or triple.startswith(('i386', 'i486', 'i586', 'i686'))) and
+                self.program.get('pointer_bits') in (32, 64) and self.program.get('little_endian') is True,
+                'once native data model')
+
+    def finite_once_controls(self, statement):
+        if statement in self.finite_once_families:
+            return self.finite_once_families[statement]
+        manifest = self.instructions[statement].get('native_once', {}).get('finite_controls', {})
+        require(manifest.get('schema') == 1 and len(self.instructions) <= 16384,
+                'once finite source profile')
+        names = manifest.get('objects', [])
+        require(0 < len(names) <= 8 and len(names) == len(set(names)), 'once finite object set')
+        objects = set(names)
+        for name in objects:
+            self.once_static_control(name)
+        def key(v):
+            return (v.get('kind'), v.get('id'))
+        declared_slots = manifest.get('slots', [])
+        slots = {key(v) for v in declared_slots}
+        require(len(slots) == len(declared_slots) and
+                all(k[0] in ('global', 'local') for k in slots), 'once finite slot identities')
+        owners, positions, definitions = {}, {}, {}
+        for name, function in self.functions.items():
+            if function.get('declaration'):
+                continue
+            for block, facts in function['blocks'].items():
+                for at, sid in enumerate(facts['statements']):
+                    require(sid not in owners, 'once complete AR instruction ownership')
+                    owners[sid], positions[sid] = name, (block, at)
+                    result = self.instructions[sid].get('result')
+                    if result is not None:
+                        definitions.setdefault(key(result), []).append(sid)
+        main = self.functions.get('main', {})
+        require(main.get('parameters') == [] and main.get('declaration') is False, 'once unique main slot frame')
+        require(all(not any(v.get('kind') == 'function' and v.get('id') == 'main'
+                            for v in i.get('operands', [])) for i in self.instructions.values()),
+                'once main address closure')
+        def effect_callee(value):
+            for depth in range(32):
+                if value.get('kind') == 'function':
+                    return value.get('id')
+                ds = definitions.get(key(value), [])
+                require(value.get('kind') == 'variable' and len(ds) == 1,
+                        'once external effect unique callee')
+                definition = self.instructions[ds[0]]
+                ops = definition.get('operands', [])
+                require((definition.get('kind') == 'assign' or
+                         (definition.get('kind') == 'unary' and definition.get('operator') == 14)) and
+                        len(ops) == 1, 'once external effect callee forwarding')
+                value = ops[0]
+            raise Reject('once external effect callee depth')
+        for inst in self.instructions.values():
+            if inst.get('kind') != 'call':
+                continue
+            ops = inst.get('operands', [])
+            require(ops, 'once external effect callee')
+            name = effect_callee(ops[0])
+            indirect = ops[0].get('kind') != 'function'
+            require(not indirect or name in ('__VERIFIER_nondet_int', '__VERIFIER_nondet_uint'),
+                    'once external effect direct identity')
+            function = self.functions.get(name, {})
+            verifier_nondet = (name in ('__VERIFIER_nondet_int', '__VERIFIER_nondet_uint') and
+                               function.get('declaration') is True and function.get('parameter_types') == [] and
+                               function.get('return_type', {}).get('kind') == 'integer' and
+                               function['return_type'].get('bits') == 32 and len(ops) == 1 and
+                               inst.get('calling_convention') == 0 and inst.get('result', {}).get('type') == function['return_type'])
+            require(not indirect or verifier_nondet, 'once exact old-style nondet effect')
+            require(function and (not function.get('declaration') or function.get('intrinsic_nondet') is True or verifier_nondet or
+                    ops[0].get('id') in ('pthread_once', 'pthread_create', 'pthread_join',
+                                        'pthread_mutex_lock', 'pthread_mutex_unlock',
+                                        'ar.pthread.create', 'ar.pthread.join',
+                                        'ar.pthread.mutex.lock', 'ar.pthread.mutex.unlock')),
+                    'once opaque global pointer-slot writer')
+        for inst in self.instructions.values():
+            if inst.get('kind') == 'store':
+                address = inst.get('operands', [{}])[0]
+                require(address.get('kind') in ('global', 'local'), 'once complete named-store write frame')
+        source_values, slot_loads, slot_stores = {}, {}, {}
+        for address in slots:
+            source_values[address], slot_loads[address], slot_stores[address] = [], [], []
+            if address[0] == 'global':
+                glob = self.program['globals'].get(address[1], {})
+                require(glob.get('declaration') is False and glob.get('thread_local') is False and
+                        self.control_pointer_type(glob.get('type', {})) and glob.get('simple_initializer') is True and
+                        len(glob.get('initializers', [])) == 1, 'once global pointer slot')
+                initial = glob['initializers'][0]
+                require(initial.get('kind') == 'global' and initial.get('id') in objects,
+                        'once exact static slot initializer')
+                native = glob.get('native_pointer_initializer', {})
+                expected = dict(target=initial['id'], address_space=0, pointer_address_space=0,
+                                pointer_bits=self.program['pointer_bits'], thread_local=False,
+                                declaration=False, externally_initialized=False)
+                require(all(native.get(k) == v for k, v in expected.items()), 'once slot native initializer')
+                source_values[address].append(initial)
+            else:
+                ds = definitions.get(address, [])
+                require(len(ds) == 1, 'once local slot unique allocation')
+                sid = ds[0]; inst = self.instructions[sid]; operands = inst.get('operands', [])
+                require(inst.get('kind') == 'allocate' and owners[sid] == 'main' and
+                        positions[sid][0] == main['entry'] and self.control_pointer_type(inst.get('allocated_type', {})) and
+                        len(operands) == 1 and operands[0].get('kind') == 'integer' and
+                        int(operands[0].get('value', 0)) == 1 and
+                        inst.get('native_owner') == 'main' and inst.get('native_address_space') == 0 and
+                        inst.get('native_entry_allocation') is True, 'once actual main slot allocation')
+        for sid, inst in self.instructions.items():
+            operands = inst.get('operands', [])
+            refs = [i for i, v in enumerate(operands) if key(v) in slots]
+            if not refs:
+                continue
+            require(owners.get(sid) == 'main' and refs == [0] and
+                    inst.get('atomic') is False and inst.get('volatile') is False,
+                    'once main-only plain slot complete uses')
+            address = key(operands[0])
+            if inst.get('kind') == 'load':
+                require(len(operands) == 1 and self.control_pointer_type(inst.get('result', {}).get('type', {})),
+                        'once typed full slot load')
+                slot_loads[address].append(sid)
+            else:
+                require(inst.get('kind') == 'store' and len(operands) == 2 and
+                        self.control_pointer_type(operands[1].get('type', {})), 'once typed full slot store')
+                source_values[address].append(operands[1]); slot_stores[address].append(sid)
+        # Reconstruct dominance from complete main CFG; no supplied main-only or
+        # initialized flag is consumed. Actual loads still replay through memory.
+        blocks = main['blocks']
+        require(len(blocks) <= 512, 'once main CFG bound')
+        predecessors = {b: set() for b in blocks}
+        for b, facts in blocks.items():
+            for succ in facts['successors']:
+                require(succ in blocks, 'once CFG successor')
+                predecessors[succ].add(b)
+        reachable, pending = set(), [main['entry']]
+        while pending:
+            b = pending.pop()
+            if b in reachable:
+                continue
+            reachable.add(b); pending.extend(blocks[b]['successors'])
+        dominators = {b: ({b} if b == main['entry'] else set(reachable)) for b in reachable}
+        changed = True
+        while changed:
+            changed = False
+            for b in reachable - {main['entry']}:
+                pred = predecessors[b] & reachable
+                value = {b} | (set.intersection(*(dominators[p] for p in pred)) if pred else set())
+                if value != dominators[b]:
+                    dominators[b] = value; changed = True
+        for address in slots:
+            if address[0] != 'local':
+                continue
+            for load in slot_loads[address]:
+                b, at = positions[load]
+                require(b in reachable and any(
+                    (positions[store][0] == b and positions[store][1] < at) or
+                    (positions[store][0] != b and positions[store][0] in dominators[b])
+                    for store in slot_stores[address]), 'once local slot initialized on every path')
+        def native_predecessor(block, function):
+            todo, visited, anchors = [block], set(), set()
+            while todo:
+                current = todo.pop()
+                if current in visited:
+                    continue
+                visited.add(current)
+                require(len(visited) <= 32, 'once pointer PHI edge bound')
+                facts = self.functions[function]['blocks'][current]
+                if 'native_block' in facts:
+                    anchors.add(facts['native_block'])
+                else:
+                    todo.extend(b for b, f in self.functions[function]['blocks'].items()
+                                if current in f['successors'])
+            return anchors
+        checked_phi = set()
+        def check_phi(ds):
+            first = self.instructions[ds[0]]
+            incoming = first.get('native_pointer_phi')
+            if incoming is None:
+                # Every pointer merge with multiple definitions must retain its
+                # exact source incoming edges, rather than only a MAY union.
+                require(len(ds) == 1, 'once pointer merge source binding')
+                return
+            tag = tuple(ds)
+            if tag in checked_phi:
+                return
+            require(len(incoming) == len(ds), 'once complete pointer PHI arms')
+            unmatched = list(incoming)
+            for sid in ds:
+                inst = self.instructions[sid]; ops = inst.get('operands', [])
+                require(inst.get('native_pointer_phi') == incoming and len(ops) == 1,
+                        'once pointer PHI source manifest consistency')
+                anchors = native_predecessor(positions[sid][0], owners[sid])
+                candidates = [i for i, arm in enumerate(unmatched)
+                              if anchors == {arm.get('block')} and key(arm.get('value', {})) == key(ops[0]) and
+                              arm.get('value', {}).get('type') == ops[0].get('type')]
+                require(candidates, 'once actual pointer PHI incoming edge/value')
+                unmatched.pop(candidates[0])
+            require(not unmatched, 'once pointer PHI complete source arms')
+            checked_phi.add(tag)
+        memo, active = {}, set()
+        def sources(v, depth=0):
+            require(self.control_pointer_type(v.get('type', {})), 'once finite pointer use layout')
+            k = key(v)
+            if k in memo:
+                return memo[k]
+            require(depth < 32 and k not in active, 'once finite pointer origin/cycle')
+            active.add(k); values = set()
+            if k[0] == 'global':
+                require(k[1] in objects, 'once unknown global pointer origin')
+                values.add(k[1])
+            else:
+                ds = definitions.get(k, [])
+                require(k[0] == 'variable' and ds, 'once pointer complete definitions')
+                check_phi(ds)
+                for sid in ds:
+                    inst = self.instructions[sid]; ops = inst.get('operands', [])
+                    if inst.get('kind') == 'assign' or (inst.get('kind') == 'unary' and inst.get('operator') == 14):
+                        require(len(ops) == 1, 'once pointer forwarding')
+                        values.update(sources(ops[0], depth + 1))
+                    else:
+                        require(inst.get('kind') == 'load' and len(ops) == 1 and key(ops[0]) in slots and
+                                inst.get('atomic') is False and inst.get('volatile') is False,
+                                'once closed pointer slot source')
+                        for value in source_values[key(ops[0])]:
+                            values.update(sources(value, depth + 1))
+            require(values, 'once uninitialized pointer origin')
+            active.remove(k); memo[k] = values
+            return values
+        calls = manifest.get('calls', {})
+        require(statement in calls, 'once finite query call')
+        for sid, choices in calls.items():
+            require(self.instructions.get(sid, {}).get('native_once', {}).get('finite_controls') == manifest,
+                    'once consistent connected source family')
+            require(sid in self.instructions and len(choices) == len(set(choices)), 'once finite call membership')
+            inst = self.instructions[sid]; ops = inst.get('operands', [])
+            require(inst.get('kind') == 'call' and len(ops) == 3 and key(ops[0]) == ('function', 'pthread_once') and
+                    sources(ops[1]) == set(choices), 'once complete call MAY controls')
+        tainted = set(memo) | {('global', name) for name in objects}
+        actual_uses = set()
+        changed = True
+        while changed:
+            changed = False
+            for sid, inst in self.instructions.items():
+                ops = inst.get('operands', [])
+                refs = [i for i, v in enumerate(ops) if key(v) in tainted or key(v) in slots]
+                if not refs:
+                    continue
+                kind = inst.get('kind')
+                if kind == 'load' and key(ops[0]) in slots:
+                    values = sources(inst['result']); k = key(inst['result'])
+                    changed |= k not in tainted; tainted.add(k)
+                elif kind == 'store':
+                    require(len(ops) == 2 and key(ops[0]) in slots and sources(ops[1]),
+                            'once raw control write/alias')
+                elif kind == 'assign' or (kind == 'unary' and inst.get('operator') == 14):
+                    require(len(ops) == 1 and key(ops[0]) in tainted and sources(inst['result']),
+                            'once closed pointer forwarding')
+                    k = key(inst['result']); changed |= k not in tainted; tainted.add(k)
+                else:
+                    require(kind == 'call' and sid in calls and refs == [1] and
+                            key(ops[0]) == ('function', 'pthread_once'), 'once raw control access/escape')
+                actual_uses.add(sid)
+        uses = manifest.get('uses', [])
+        require(len(uses) == len(set(uses)) and set(uses) == actual_uses and
+                objects == set().union(*(set(v) for v in calls.values())), 'once complete source/AR use manifest')
+        for sid, choices in calls.items():
+            self.finite_once_families[sid] = set(choices)
+        return self.finite_once_families[statement]
+
     def once_call(self, args, inst, step, trace_id, index, thread, frame):
         require(self.atomic_owner is None and frame.pending is None and frame.once_pending is None,
                 'once invocation pending mode')
@@ -993,6 +1317,9 @@ class Replay:
         globname = control[0][7:]
         glob = self.program['globals'].get(globname, {})
         native = inst.get('native_once', {})
+        finite = 'finite_controls' in native
+        if 'control' in native:
+            require(native['control'] == globname, 'once direct native control identity')
         expected = dict(declaration=True, variadic=False, calling_convention=0, call_convention=0,
                         matching_signature=True, operand_bundles=False, arguments=2, parameters=2,
                         return_bits=32, result_bits=32, special_parameter_abi=False,
@@ -1000,7 +1327,9 @@ class Replay:
                         callback_parameter_count=0, callback_parameter_variadic=False,
                         callback_parameter_address_space=0, callback_signature_matches=True,
                         callback_declaration=False, callback_void=True, callback_count=0,
-                        callback_variadic=False, callback_convention=0, control=globname, callback=callback[1])
+                        callback_variadic=False, callback_convention=0, callback=callback[1])
+        if not finite:
+            expected['control'] = globname
         require(all(native.get(k) == v for k, v in expected.items()), 'once native API/callback signature')
         function = self.functions.get(callback[1], {})
         require(function.get('declaration') is False and function.get('parameters') == [] and
@@ -1015,15 +1344,14 @@ class Replay:
         params = api.get('parameter_types', [])
         operands = inst.get('operands', [])
         def pointer_type(t, integer_pointee=False):
-            return (t.get('kind') == 'pointer' and t.get('bits') == bits and
-                    (not integer_pointee or
-                     (t.get('pointee', {}).get('kind') == 'integer' and
-                      t.get('pointee', {}).get('bits') == 32)))
+            return (bits in (32, 64) and t.get('kind') == 'pointer' and t.get('bits') == bits and
+                    int(t.get('size', 0)) == bits // 8 and int(t.get('extent', 0)) == bits // 8 and
+                    (not integer_pointee or self.control_pointer_type(t)))
         require(inst.get('calling_convention') == 0 and len(params) == 2 and
                 pointer_type(params[0], True) and pointer_type(params[1]) and
                 len(operands) == 3 and operands[0].get('kind') == 'function' and
                 operands[0].get('id') == 'pthread_once' and
-                operands[1].get('kind') == 'global' and operands[1].get('id') == globname and
+                (finite or (operands[1].get('kind') == 'global' and operands[1].get('id') == globname)) and
                 pointer_type(operands[1].get('type', {}), True) and
                 operands[2].get('kind') == 'function' and operands[2].get('id') == callback[1] and
                 pointer_type(operands[2].get('type', {})), 'once AR call convention/operand signature')
@@ -1035,13 +1363,16 @@ class Replay:
         expected_object = dict(zero_initializer=True, value_bits=32, address_space=0,
                                constant=False, externally_initialized=False,
                                module_inline_asm=False, module_aliases=False,
-                               constructors=False, destructors=False, all_uses_direct=True)
+                               constructors=False, destructors=False)
+        if not finite:
+            expected_object['all_uses_direct'] = True
         require(all(facts.get(k) == v for k, v in expected_object.items()) and
                 glob.get('declaration') is False and glob.get('thread_local') is False and
                 glob.get('alignment', 0) >= 4, 'once static native control closure')
         t = glob.get('type', {})
         initial = glob.get('initializers', [])
         require(t.get('kind') == 'integer' and t.get('bits') == 32 and int(t.get('size', 0)) == 4 and
+                int(t.get('extent', 0)) == 4 and
                 glob.get('simple_initializer') is True and len(initial) == 1 and
                 initial[0].get('kind') in ('integer', 'zero') and
                 (initial[0].get('kind') == 'zero' or int(initial[0].get('value', 1)) == 0),
@@ -1053,21 +1384,24 @@ class Replay:
                 'once native data model')
         # Cross-check the native-use manifest against complete AR instructions;
         # a raw write/copy/alias cannot be accepted by an exported seal boolean.
-        uses = facts.get('uses', [])
-        require(len(uses) == len(set(uses)), 'once duplicate source occurrence')
-        actual_uses = set()
-        for sid, instruction in self.instructions.items():
-            operands = instruction.get('operands', [])
-            references = [i for i, op in enumerate(operands)
-                          if op.get('kind') == 'global' and op.get('id') == globname]
-            if not references:
-                continue
-            require(instruction.get('kind') == 'call' and len(operands) == 3 and references == [1] and
-                    operands[0].get('kind') == 'function' and operands[0].get('id') == 'pthread_once',
-                    'once raw control access/alias')
-            actual_uses.add(sid)
-        require(set(uses) == actual_uses and step['statement'] in actual_uses,
-                'once physical native/AR use manifest')
+        if finite:
+            require(globname in self.finite_once_controls(step['statement']), 'once actual evaluated control choice')
+        else:
+            uses = facts.get('uses', [])
+            require(len(uses) == len(set(uses)), 'once duplicate source occurrence')
+            actual_uses = set()
+            for sid, instruction in self.instructions.items():
+                operands = instruction.get('operands', [])
+                references = [i for i, op in enumerate(operands)
+                              if op.get('kind') == 'global' and op.get('id') == globname]
+                if not references:
+                    continue
+                require(instruction.get('kind') == 'call' and len(operands) == 3 and references == [1] and
+                        operands[0].get('kind') == 'function' and operands[0].get('id') == 'pthread_once',
+                        'once raw control access/alias')
+                actual_uses.add(sid)
+            require(set(uses) == actual_uses and step['statement'] in actual_uses,
+                    'once physical native/AR use manifest')
         state = self.once_states.setdefault(control, dict(phase='unstarted'))
         role = step['once_role']
         if role == 'active':

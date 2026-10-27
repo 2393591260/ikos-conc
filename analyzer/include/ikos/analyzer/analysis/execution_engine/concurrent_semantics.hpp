@@ -1247,6 +1247,21 @@ void exec_pthread_once(E& eng, ar::CallBase* call) {
   }
   if (once_func && once_func->is_definition()) once_funcs.push_back(once_func);
   if (!once_funcs.empty()) {
+    auto family = sealed ? once_control_family(call) : OnceControlFamily{};
+    if (family.valid) {
+      // Register every MAY object under its real control identity. A loop at
+      // one callsite can initialize several controls and is never one instance.
+      for (auto* control : family.query_controls) {
+        const auto key = core::IndexableTraits< MemoryLocation* >::index(
+            eng.ctx().mem_factory->get_global(control));
+        for (auto* callback : once_funcs) {
+          auto sid = eng.ctx().concurrent_env.register_once_thread(
+              callback, key, true, core::ZNumber(0), true);
+          if (family.query_controls.size() == 1 && sid != 0)
+            eng.lockset().add_joined_thread(sid);
+        }
+      }
+    } else {
     // Key the once-instance by the ONCE-CONTROL object (arg0), not the
     // callback name: distinct fields of one global are distinct controls.
     // Prove an exact static base+offset; summarized or TLS objects may have
@@ -1304,6 +1319,7 @@ void exec_pthread_once(E& eng, ar::CallBase* call) {
       std::uint64_t sid = eng.ctx().concurrent_env.register_once_thread(
           callback, key, joinable, offset, sealed);
       if (sid != 0) eng.lockset().add_joined_thread(sid);
+    }
     }
   } else {
     eng.ctx().concurrent_env.record_unmodeled_effect(

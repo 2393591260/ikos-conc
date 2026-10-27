@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <ikos/analyzer/analysis/execution_engine/once_control_family.hpp>
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
@@ -585,7 +586,9 @@ inline ar::Function* once_callback(ar::CallBase* call,
       ? callback->frontend< llvm::Function >() : nullptr;
   auto* control_type = declaration->arg_size() == 2
       ? llvm::dyn_cast< llvm::PointerType >(declaration->getFunctionType()->getParamType(0)) : nullptr;
-  if (!once_control_closed(global) || !integer || integer->bit_width() != 32 ||
+  const bool direct_control = once_control_closed(global);
+  auto family = direct_control ? OnceControlFamily{} : once_control_family(call);
+  if ((!direct_control && !family.valid) || !integer || integer->bit_width() != 32 ||
       !integer->is_signed() || !callback || !callback->is_definition() ||
       callback->num_parameters() != 0 || !callback->type()->return_type()->is_void() ||
       !source || !llvm::isa< llvm::CallInst >(source) || source->isInlineAsm() ||
@@ -599,7 +602,7 @@ inline ar::Function* once_callback(ar::CallBase* call,
       !native_callback || native_callback->isDeclaration() || native_callback->isVarArg() ||
       native_callback->getCallingConv() != llvm::CallingConv::C ||
       !native_callback->arg_empty() || !native_callback->getReturnType()->isVoidTy() ||
-      source->getArgOperand(0) != global->frontend< llvm::GlobalVariable >() ||
+      (direct_control && source->getArgOperand(0) != global->frontend< llvm::GlobalVariable >()) ||
       source->getArgOperand(1)->stripPointerCasts() != native_callback) return nullptr;
   auto* callback_type = llvm::dyn_cast< llvm::PointerType >(declaration->getFunctionType()->getParamType(1));
   if (!callback_type || callback_type->isOpaque() || callback_type->getAddressSpace() != 0 ||
@@ -608,7 +611,7 @@ inline ar::Function* once_callback(ar::CallBase* call,
     for (auto attr : {llvm::Attribute::ByVal, llvm::Attribute::StructRet,
                      llvm::Attribute::InAlloca, llvm::Attribute::Preallocated})
       if (source->paramHasAttr(i, attr) || declaration->hasParamAttribute(i, attr)) return nullptr;
-  if (object) *object = global;
+  if (object) *object = global ? global : (family.query_controls.size() == 1 ? *family.query_controls.begin() : nullptr);
   return callback;
 }
 
@@ -1199,6 +1202,48 @@ inline bool main_allocation(ar::CallBase* call, const std::vector< BmcEvent >& p
   return constant_integer_on_path(call->argument(0), path, index, size) && size > 0 && size <= 1048576;
 }
 
+// Resolve the actual executed choice; source MAY closure never chooses an arm.
+// The main-only slot seal closes every omitted writer, including after Create.
+inline ar::GlobalVariable* once_control_value_on_path(
+    ar::Value* value, const std::vector< BmcEvent >& path, std::size_t before,
+    const OnceControlFamily& family, unsigned depth = 0) {
+  if (!family.valid || depth >= 32) return nullptr;
+  if (auto* g = core::dyn_cast< ar::GlobalVariable >(value))
+    return family.controls.count(g) ? g : nullptr;
+  auto* variable = core::dyn_cast< ar::InternalVariable >(value);
+  if (!variable) return nullptr;
+  std::size_t at = 0;
+  auto* def = reaching_definition(variable, path, before, at);
+  if (!def || at >= before) return nullptr;
+  if (auto* a = core::dyn_cast< ar::Assignment >(def))
+    return once_control_value_on_path(a->operand(), path, at, family, depth + 1);
+  if (auto* u = core::dyn_cast< ar::UnaryOperation >(def))
+    return u->op() == ar::UnaryOperation::Bitcast
+        ? once_control_value_on_path(u->operand(), path, at, family, depth + 1) : nullptr;
+  auto* load = core::dyn_cast< ar::Load >(def);
+  if (!load || !family.slots.count(load->operand()) ||
+      load->code()->function()->name() != "main" ||
+      invocation_call(path, load->code(), at) != path.size()) return nullptr;
+  for (std::size_t j = at; j > 0; ) {
+    --j;
+    auto* store = core::dyn_cast< ar::Store >(path[j].stmt);
+    if (!store || store->pointer() != load->operand()) continue;
+    if (store->code() != load->code() || invocation_call(path, store->code(), j) != path.size()) return nullptr;
+    return once_control_value_on_path(store->value(), path, j, family, depth + 1);
+  }
+  auto* global = core::dyn_cast< ar::GlobalVariable >(load->operand());
+  if (!global || !global->is_definition()) return nullptr;
+  ar::Value* initial = nullptr;
+  for (auto* b : *global->initializer()) for (auto* stmt : *b) {
+    auto* store = core::dyn_cast< ar::Store >(stmt);
+    if (!store || store->pointer() != global || initial) return nullptr;
+    initial = store->value();
+  }
+  // The first profile permits a plain global address initializer only.
+  auto* control = core::dyn_cast_or_null< ar::GlobalVariable >(initial);
+  return control && family.controls.count(control) ? control : nullptr;
+}
+
 // A pointer slot may be followed outside a worker only if its address never
 // escapes and its sole source store actually ran before all creates. Helpers
 // additionally require the AI's static single-lifetime function certificate.
@@ -1483,6 +1528,18 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
     } else if (auto* assignment = core::dyn_cast< ar::Assignment >(definition)) {
       value = assignment->operand();
     } else if (auto* load = core::dyn_cast< ar::Load >(definition)) {
+      if (!external && load->code()->function_or_null() && load->code()->function()->name() == "main") {
+        for (const auto& occurrence : *definitions) {
+          auto* once = core::dyn_cast< ar::CallBase >(occurrence.stmt);
+          if (!once || exact_callee(once) == nullptr || exact_callee(once)->name() != "pthread_once") continue;
+          auto family = once_control_family(once);
+          if (!family.valid || !family.slots.count(load->operand())) continue;
+          auto* control = once_control_value_on_path(load->result(), *definitions, index + 1, family);
+          if (!control) return false;
+          event.base = reinterpret_cast< std::uint64_t >(control); return true;
+        }
+      }
+
       auto* slot = global_pointer_slot(load->operand());
       std::size_t store_index = 0;
       auto* store = slot != nullptr && origins != nullptr ? published_pointer(slot, *origins, store_index) : nullptr;

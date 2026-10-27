@@ -9,14 +9,15 @@
 #include <ikos/analyzer/analysis/context.hpp>
 #include <ikos/analyzer/analysis/source_program_facts.hpp>
 #include <ikos/analyzer/analysis/execution_engine/native_thread_handles.hpp>
+#include <ikos/analyzer/analysis/execution_engine/once_control_family.hpp>
 
 namespace ikos {
 namespace analyzer {
 
 // A finite source/effect closure, not an evaluator. All alternatives remain MAY
 // writers; the seal only permits exclusion within one unchanged once control.
-inline std::vector< ar::Function* > closed_once_callbacks(Context& ctx,
-                                                          ar::CallBase* query) {
+inline std::vector< ar::Function* > closed_once_callbacks_impl(Context& ctx,
+                                                          ar::CallBase* query, bool finite_controls) {
   std::vector< ar::Function* > result;
   if (ctx.opts.entry_points.size() != 1 ||
       ctx.opts.entry_points.front()->name() != "main" ||
@@ -33,7 +34,8 @@ inline std::vector< ar::Function* > closed_once_callbacks(Context& ctx,
       module->getGlobalVariable("llvm.global_ctors") ||
       module->getGlobalVariable("llvm.global_dtors")) return result;
   auto& facts = source_program_facts(ctx);
-  if (auto* cached = facts.once_callbacks(query)) return *cached;
+  if (!finite_controls)
+    if (auto* cached = facts.once_callbacks(query)) return *cached;
   // Only this source closure is cached; the caller still performs every transfer.
   auto compute = [&]() {
   unsigned budget = 16384;
@@ -127,6 +129,51 @@ inline std::vector< ar::Function* > closed_once_callbacks(Context& ctx,
     if (!slot || !iv || unique_def(iv) != original(load) || !slot_targets(slot)) return false;
     targets.insert(slots.at(slot).begin(), slots.at(slot).end()); return true;
   };
+  std::set< ar::Function* > all, selected;
+  if (finite_controls) {
+  auto family = once_control_family(query);
+  if (!family.valid) return result;
+  for (const auto& entry : family.calls) {
+      auto* actual = entry.first;
+      auto* call = actual->has_frontend()
+          ? llvm::dyn_cast< llvm::CallInst >(actual->frontend< llvm::Value >()) : nullptr;
+      auto* f = call ? call->getCalledFunction() : nullptr;
+      auto* target = native_handle_callee(actual);
+      auto* control_type = f && f->arg_size() == 2
+          ? llvm::dyn_cast< llvm::PointerType >(f->getArg(0)->getType()) : nullptr;
+      auto* callback_type = f && f->arg_size() == 2
+          ? llvm::dyn_cast< llvm::PointerType >(f->getArg(1)->getType()) : nullptr;
+      auto* signature = callback_type && !callback_type->isOpaque()
+          ? llvm::dyn_cast< llvm::FunctionType >(callback_type->getPointerElementType()) : nullptr;
+      if (!control_type || control_type->isOpaque() || control_type->getAddressSpace() != 0 ||
+          !control_type->getPointerElementType()->isIntegerTy(32) ||
+          !callback_type || callback_type->isOpaque() || callback_type->getAddressSpace() != 0 || !signature ||
+          !signature->getReturnType()->isVoidTy() || signature->getNumParams() != 0 ||
+          signature->isVarArg()) return result;
+      auto* ar_ctrl = target && target->num_parameters() == 2
+          ? dyn_cast< ar::PointerType >(target->type()->param_type(0)) : nullptr;
+      auto* ar_fn = target && target->num_parameters() == 2
+          ? dyn_cast< ar::PointerType >(target->type()->param_type(1)) : nullptr;
+      auto* ar_int = ar_ctrl ? dyn_cast< ar::IntegerType >(ar_ctrl->pointee()) : nullptr;
+      auto* ar_signature = ar_fn ? dyn_cast< ar::FunctionType >(ar_fn->pointee()) : nullptr;
+      auto* ar_return = target ? dyn_cast< ar::IntegerType >(target->type()->return_type()) : nullptr;
+      if (!ar_int || ar_int->bit_width() != 32 || !ar_signature ||
+          ar_signature->num_parameters() != 0 || ar_signature->is_var_arg() ||
+          !ar_signature->return_type()->is_void() || !ar_return ||
+          ar_return->bit_width() != 32 || target->is_var_arg()) return result;
+      if (!f || !f->isDeclaration() || f->getName() != "pthread_once" || f->isVarArg() ||
+          f->arg_size() != 2 || call->arg_size() != 2 ||
+          call->getFunctionType() != f->getFunctionType() || !call->getType()->isIntegerTy(32) ||
+          call->getCallingConv() != llvm::CallingConv::C || f->getCallingConv() != llvm::CallingConv::C ||
+          call->hasOperandBundles() || !target || !target->has_frontend() ||
+          target->frontend< llvm::Value >() != f || actual->num_arguments() != 2) return result;
+      std::set< ar::Function* > targets;
+      if (!callbacks(call, actual, targets)) return result;
+      all.insert(targets.begin(), targets.end());
+      if (actual == query) selected = targets;
+  }
+  if (selected.empty()) return result;
+  } else {
   auto* control = llvm::dyn_cast< llvm::GlobalVariable >(source->getArgOperand(0)->stripPointerCasts());
   if (!global(control) || !control->getValueType()->isIntegerTy(32)) return result;
   auto* zero = llvm::dyn_cast< llvm::ConstantInt >(control->getInitializer());
@@ -142,7 +189,6 @@ inline std::vector< ar::Function* > closed_once_callbacks(Context& ctx,
     ++count;
   }
   if (count != 1 || peel(query->argument(0)) != ar_control) return result;
-  std::set< ar::Function* > all, selected;
   std::vector< llvm::Value* > pending{control}; std::set< llvm::Value* > seen;
   bool found = false;
   while (!pending.empty()) {
@@ -191,6 +237,7 @@ inline std::vector< ar::Function* > closed_once_callbacks(Context& ctx,
     }
   }
   if (!found || selected.empty()) return result;
+  }
   // A loaded callback address stays inside once calls; its slot accesses remain
   // ordinary application accesses and can still race with concurrent stores.
   for (const auto& slot : slots) for (auto* use : slot.first->users()) {
@@ -269,8 +316,14 @@ inline std::vector< ar::Function* > closed_once_callbacks(Context& ctx,
   result.assign(selected.begin(), selected.end()); return result;
   };
   auto targets = compute();
-  facts.remember_once_callbacks(query, targets);
+  if (!finite_controls) facts.remember_once_callbacks(query, targets);
   return targets;
+}
+
+// Preserve the accepted direct/loaded-callback path and its source cache.
+inline std::vector< ar::Function* > closed_once_callbacks(Context& ctx, ar::CallBase* query) {
+  auto targets = closed_once_callbacks_impl(ctx, query, false);
+  return targets.empty() ? closed_once_callbacks_impl(ctx, query, true) : targets;
 }
 
 } // namespace analyzer

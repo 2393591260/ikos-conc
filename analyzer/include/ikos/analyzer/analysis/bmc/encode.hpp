@@ -1058,6 +1058,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   };
   std::vector< OnceInvocation > once_invocations;
   bool has_once = false;
+  std::set< const BmcEvent* > once_pointer_reads;
   for (std::size_t id = 0; id < traces.size(); ++id) {
     const auto& path = traces[id].events;
     for (std::size_t i = 0; i < path.size(); ++i) {
@@ -1068,9 +1069,18 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       if (id == 0 || event.once_stage != OnceStage::Call || event.once_origin != i ||
           event.called_function != nullptr) return fail();
       auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
-      ar::GlobalVariable* object = nullptr;
-      auto* callback = call ? once_callback(call, &object) : nullptr;
-      if (!callback || event.once_callback != callback) return fail();
+      ar::GlobalVariable* direct = nullptr;
+      auto* callback = call ? once_callback(call, &direct) : nullptr;
+      const bool legacy = once_control_closed(direct);
+      auto family = !legacy && call ? once_control_family(call) : OnceControlFamily{};
+      auto* object = legacy ? direct : (call ? once_control_value_on_path(call->argument(0), path, i, family) : nullptr);
+      if (!callback || !object || (!legacy && !family.query_controls.count(object)) || event.once_callback != callback) return fail();
+      for (std::size_t j = 0; j < path.size(); ++j) {
+        auto* load = core::dyn_cast< ar::Load >(path[j].stmt);
+        if (!load || !family.slots.count(load->operand())) continue;
+        if (!once_control_value_on_path(load->result(), path, j + 1, family)) return fail();
+        once_pointer_reads.insert(&path[j]);
+      }
       auto boundary = [&](std::size_t step, OnceStage stage) {
         return step < path.size() && path[step].once_stage == stage &&
                path[step].stmt == call && path[step].once_origin == i &&
@@ -1932,7 +1942,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         // Even an unused shared read must have a defined actual SC source.
         // Pointer or unsupported sources cannot become free malloc data.
         auto* load = core::cast< ar::Load >(path[i].stmt);
-        if (object_pointer_reads.count(&path[i])) continue;
+        if (object_pointer_reads.count(&path[i]) || once_pointer_reads.count(&path[i])) continue;
         z3::expr value(ctx);
         if (!encode_value(load->result(), value, cache, prefix, 0, i + 1)) {
           record(diagnostics, "heap_read_origin", load);

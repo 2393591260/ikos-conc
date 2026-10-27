@@ -387,7 +387,7 @@ same-semantics performance comparison.
 
 ### Physical once callback controls
 
-`test_bmc_once_physical.py --bits 32 --broken-premises --export-source-witness`
+`test_bmc_once_physical.py --bits 32 --broken-premises --finite-controls --export-source-witness`
 and its `--bits 64` counterpart exercise active/passive completion, distinct
 controls, direct callback-name calls, helper frames, native-width and long-long
 accesses, API-return guards and configured main arguments. Broken-premise
@@ -400,6 +400,15 @@ closure, marker origin, actual callback Return and API result; physical create
 and process-lifetime damage must fail independently. Source export checks keep
 one real registration and the actual physical thread IDs. `--with-ablation`
 uses the same input and budget with only the once search disabled.
+
+The finite-control matrix adds branch/global/local-slot forwarding, same-control
+and common-lock controls, one callsite selecting two controls, initialization-only
+global pointer sources, and control/slot premise violations. The loop multiplicity
+case also runs with BMC disabled and must retain a non-SAFE result. Rehashed damage
+checks full family uses/MAY objects, PHI incoming edges and pointer initializers;
+reordering the complete global dictionary must preserve valid replay. For these
+cases `--with-ablation` disables only the finite-control extension. Original
+1068/1070 inputs can be supplied with `--original-dir`.
 
 ### Barrier arrival/departure controls
 

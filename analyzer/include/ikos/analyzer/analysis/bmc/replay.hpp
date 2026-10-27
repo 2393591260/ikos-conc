@@ -16,6 +16,8 @@ class ReplaySnapshot {
   std::map< ar::Value*, std::string > _variables;
   std::map< ar::Statement*, std::string > _statements;
   std::map< ar::BasicBlock*, std::string > _blocks;
+  std::map< llvm::BasicBlock*, std::string > _native_blocks;
+  std::map< llvm::Value*, ar::Value* > _native_values;
 
   std::string variable_id(ar::Value* value) {
     return _variables.emplace(value, "v" + std::to_string(_variables.size())).first->second;
@@ -23,12 +25,21 @@ class ReplaySnapshot {
 
 public:
   explicit ReplaySnapshot(ar::Bundle* bundle) : _bundle(bundle) {
+    for (auto it = bundle->global_begin(); it != bundle->global_end(); ++it)
+      if ((*it)->has_frontend()) _native_values.emplace((*it)->frontend< llvm::Value >(), *it);
     for (auto it = bundle->function_begin(); it != bundle->function_end(); ++it) {
       if ((*it)->is_declaration()) continue;
+      if ((*it)->has_frontend())
+        for (auto& block : *(*it)->frontend< llvm::Function >())
+          _native_blocks.emplace(&block, "n" + std::to_string(_native_blocks.size()));
       for (auto* block : *(*it)->body_or_null()) {
         _blocks.emplace(block, "b" + std::to_string(_blocks.size()));
-        for (auto* stmt : *block)
+        for (auto* stmt : *block) {
           _statements.emplace(stmt, "s" + std::to_string(_statements.size()));
+          auto* variable = stmt->has_result() ? core::dyn_cast< ar::Variable >(stmt->result()) : nullptr;
+          if (variable && variable->has_frontend())
+            _native_values.emplace(variable->frontend< llvm::Value >(), variable);
+        }
       }
     }
   }
@@ -127,6 +138,18 @@ public:
       out.put("file", loc.path().string()); out.put("line", loc.line()); out.put("column", loc.column());
     }
     if (stmt->has_result()) out.put("result", value(stmt->result()));
+    if (stmt->has_result() && stmt->result()->type()->is_pointer() && stmt->has_frontend()) {
+      auto* phi = llvm::dyn_cast< llvm::PHINode >(stmt->frontend< llvm::Value >());
+      if (phi) {
+        JsonList incoming;
+        for (unsigned i = 0; i < phi->getNumIncomingValues(); ++i) {
+          auto it = _native_values.find(phi->getIncomingValue(i));
+          incoming.add(JsonDict{{"block", _native_blocks.at(phi->getIncomingBlock(i))},
+              {"value", it == _native_values.end() ? JsonDict{{"kind", "unsupported"}} : value(it->second)}});
+        }
+        out.put("native_pointer_phi", incoming);
+      }
+    }
     JsonList operands;
     for (auto it = stmt->op_begin(); it != stmt->op_end(); ++it) operands.add(value(*it));
     out.put("operands", operands);
@@ -171,6 +194,12 @@ public:
       out.put("alignment", alloc->result()->alignment());
       auto* source = alloc->has_frontend()
           ? llvm::dyn_cast< llvm::AllocaInst >(alloc->frontend< llvm::Value >()) : nullptr;
+      if (source) {
+        out.put("native_owner", source->getFunction()->getName().str());
+        out.put("native_alignment", source->getAlign().value());
+        out.put("native_address_space", source->getAddressSpace());
+        out.put("native_entry_allocation", source->getParent() == &source->getFunction()->getEntryBlock());
+      }
       if (source && source->getAllocatedType()->isAggregateType()) {
         unsigned remaining = 512;
         out.put("native_layout", native_type(source->getAllocatedType(),
@@ -181,10 +210,10 @@ public:
       }
     } else if (auto* load = core::dyn_cast< ar::Load >(stmt)) {
       out.put("kind", "load"); out.put("alignment", load->alignment());
-      out.put("atomic", load->is_atomic());
+      out.put("atomic", load->is_atomic()); out.put("volatile", load->is_volatile());
     } else if (auto* store = core::dyn_cast< ar::Store >(stmt)) {
       out.put("kind", "store"); out.put("alignment", store->alignment());
-      out.put("atomic", store->is_atomic());
+      out.put("atomic", store->is_atomic()); out.put("volatile", store->is_volatile());
     } else if (core::isa< ar::ReturnValue >(stmt)) out.put("kind", "return");
     else if (core::isa< ar::CallBase >(stmt)) {
       out.put("kind", "call"); out.put("abstract_initializer", abstract_initializer(stmt));
@@ -321,6 +350,27 @@ public:
                auto* control = llvm::dyn_cast< llvm::GlobalVariable >(call->getArgOperand(0));
                if (control) native.put("control", control->getName().str());
              }
+              auto* actual = core::dyn_cast< ar::CallBase >(stmt);
+              auto* direct = actual && actual->num_arguments() == 2
+                  ? core::dyn_cast< ar::GlobalVariable >(actual->argument(0)) : nullptr;
+              if (actual && !once_control_closed(direct)) {
+                auto family = once_control_family(actual);
+                if (family.valid) {
+                  JsonDict manifest; JsonList controls, slots, uses; JsonDict calls;
+                  manifest.put("schema", 1);
+                  for (auto* control : family.controls) controls.add(control->name());
+                  for (auto* slot : family.slots) slots.add(value(slot));
+                  for (auto* use : family.statements) uses.add(_statements.at(use));
+                  for (const auto& entry : family.calls) {
+                    JsonList choices;
+                    for (auto* control : entry.second) choices.add(control->name());
+                    calls.put(_statements.at(entry.first), choices);
+                  }
+                  manifest.put("objects", controls); manifest.put("slots", slots);
+                  manifest.put("uses", uses); manifest.put("calls", calls);
+                  native.put("finite_controls", manifest);
+                }
+              }
              out.put("native_once", native);
            }
            JsonList layouts;
@@ -370,7 +420,12 @@ public:
           JsonList statements, successors;
           for (auto* s : *block) {statements.add(_statements.at(s)); instructions.put(_statements.at(s), statement(s));}
           for (auto s = block->successor_begin(); s != block->successor_end(); ++s) successors.add(_blocks.at(*s));
-          blocks.put(_blocks.at(block), JsonDict{{"statements", statements}, {"successors", successors}});
+          JsonDict exported_block{{"statements", statements}, {"successors", successors}};
+          if (block->has_frontend()) {
+            auto* native = llvm::dyn_cast< llvm::BasicBlock >(block->frontend< llvm::Value >());
+            if (native && _native_blocks.count(native)) exported_block.put("native_block", _native_blocks.at(native));
+          }
+          blocks.put(_blocks.at(block), exported_block);
         }
         fn.put("blocks", blocks);
       }
@@ -437,6 +492,19 @@ public:
         if (source->hasInitializer())
           if (auto* target = llvm::dyn_cast< llvm::Function >(source->getInitializer()->stripPointerCasts()))
             object.put("frontend_function_initializer", target->getName().str());
+      }
+      if (global->has_frontend() && global->type()->pointee()->is_pointer()) {
+        auto* source = global->frontend< llvm::GlobalVariable >();
+        auto* pointer = llvm::dyn_cast< llvm::PointerType >(source->getValueType());
+        auto* target = source->hasInitializer()
+            ? llvm::dyn_cast< llvm::GlobalVariable >(source->getInitializer()) : nullptr;
+        if (pointer && target)
+          object.put("native_pointer_initializer", JsonDict{
+              {"target", target->getName().str()}, {"address_space", source->getAddressSpace()},
+              {"pointer_address_space", pointer->getAddressSpace()},
+              {"pointer_bits", source->getParent()->getDataLayout().getPointerSizeInBits(pointer->getAddressSpace())},
+              {"thread_local", source->isThreadLocal()}, {"declaration", source->isDeclaration()},
+              {"externally_initialized", source->isExternallyInitialized()}});
       }
       bool simple = true;
       if (global->is_definition()) for (auto* bb : *global->initializer()) for (auto* stmt : *bb) {
