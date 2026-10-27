@@ -269,6 +269,10 @@ add_concurrency_test(native-thread-handles "${CONCURRENCY_ROOT}/scripts/test_nat
 add_concurrency_test(native-thread-handles-lp64 "${CONCURRENCY_ROOT}/scripts/test_native_thread_handles.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
 foreach(bits 32 64)
+  add_concurrency_test(calloc-${bits} "${CONCURRENCY_ROOT}/scripts/test_bmc_calloc.py"
+                       --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
+endforeach()
+foreach(bits 32 64)
   add_concurrency_test(malloc-helpers-${bits} "${CONCURRENCY_ROOT}/scripts/test_malloc_helpers.py"
                        --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
 endforeach()

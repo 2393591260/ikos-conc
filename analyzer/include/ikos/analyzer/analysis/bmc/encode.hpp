@@ -197,6 +197,22 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       return Result(Status::Unsupported);
   }
   const auto& allocation_origin = traces[main_index].events;
+  // The calloc main/worker profile consumes the already selected real Create,
+  // including loop-index arguments at that occurrence, as provider plans do.
+  if (main_index != 0 && provider_plan == nullptr && completion == nullptr &&
+      std::any_of(allocation_origin.begin(), allocation_origin.end(), [](const auto& event) {
+        auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+        return call != nullptr && calloc_call(call);
+      })) {
+    for (std::size_t id = 1; id < 3; ++id) {
+      auto& child = traces[id];
+      if (id == main_index) continue;
+      if (child.creator_path != main_index ||
+          !bind_creation_step(child.root, allocation_origin, child.creator_step, child.argument))
+        return Result(Status::Unsupported);
+    }
+    argumentA = traces[1].argument; argumentB = traces[2].argument;
+  }
   // Local lock identities require the actual creation's argument/context,
   // before resolving any event in the selected paths.
   bool main_local_mutex = false;
@@ -832,14 +848,30 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     bool repeated = false;
     for (const auto& event : path)
       if (auto* call = core::dyn_cast< ar::CallBase >(event.stmt))
-        if (malloc_call(call) && !sites.insert(call).second) repeated = true;
+        if (heap_allocation_call(call) && !sites.insert(call).second) repeated = true;
+    // This additional main/worker profile owns a bounded set of actual
+    // pre-spawn allocation events. It retains each object's private lifetime
+    // and permits only the already-bound Create argument to publish its data.
+    const bool has_calloc = std::any_of(path.begin(), path.end(),
+        [](const BmcEvent& event) {
+          auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+          return call && calloc_call(call);
+        });
+    const bool calloc_main = has_calloc && !selected_workers && provider_plan == nullptr &&
+        main_index != 0 && &path == &allocation_origin;
+    const bool calloc_startup = has_calloc && selected_workers && &path == &startup;
+    // A later extension can consume actual completion joins before a free.
+    // This profile grants no live-child/free interleaving permission.
+    if (calloc_main && has_free) return false;
     const bool generation_startup = selected_workers && &path == &startup && repeated;
     if (repeated && !generation_startup) return false;
-    if (!finite && !has_free && !joined_heap && !generation_startup) return true;
+    if (!finite && !has_free && !joined_heap && !generation_startup &&
+        !calloc_main && !calloc_startup) return true;
     const bool shared_startup = selected_workers && &path == &startup &&
-                                (finite || generation_startup);
+                                (finite || generation_startup || calloc_startup);
     if (shared_startup && has_free && !generation_startup) return false;
-    const bool private_heap = finite || has_free || joined_heap || generation_startup;
+    const bool private_heap = finite || has_free || joined_heap || generation_startup ||
+                              calloc_main || calloc_startup;
     std::set< HeapObjectId > live, freed;
     bool spawned = false;
     unsigned allocations = 0;
@@ -849,10 +881,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           (event.heap_occurrence == 0 || freed.count(heap_object_id(event)))) return false;
       spawned |= event.kind == EvKind::Create;
       auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
-      if (call != nullptr && malloc_call(call)) {
+      if (call != nullptr && heap_allocation_call(call)) {
         core::ZNumber extent;
         if ((generation_startup && spawned) || !main_allocation(call, path, i, extent) ||
-            ++allocations > (shared_startup ? 4u : 1u)) return false;
+            ++allocations > ((shared_startup || calloc_main) ? 4u : 1u)) return false;
         if (!live.insert({call, i}).second) return false;
       }
       if (call != nullptr && free_call(call)) {
@@ -897,7 +929,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
               ((!live.count(heap_object_id(pointer)) &&
                 !(free_call(call) && arg == 0 && freed.count(heap_object_id(pointer)))) ||
                !(((event.kind == EvKind::Create || free_call(call)) && arg == 0) ||
-                 (shared_startup && event.kind == EvKind::Create && arg == 3)))) return false;
+                 ((shared_startup || calloc_main) && event.kind == EvKind::Create && arg == 3)))) return false;
         }
       }
       if (private_heap) {
@@ -948,7 +980,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       repeated_startup_heap = true;
       published_heap_generations = live;
     }
-    return !private_heap || (shared_startup ? allocations > 0 : allocations == 1);
+    return !private_heap || ((shared_startup || calloc_main) ? allocations > 0 : allocations == 1);
   };
   for (auto& trace : traces)
     if (trace.root != nullptr && trace.root->name() == "main" &&
@@ -1645,6 +1677,25 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           }
         }
       }
+      if (access.heap_allocation != nullptr && calloc_call(access.heap_allocation)) {
+        // The actual successful calloc generation contributes all-zero initial
+        // bytes. malloc remains uninitialized; later real stores still take
+        // part in the same SC latest-write choice below.
+        const auto at = access.heap_allocation_step;
+        core::ZNumber extent;
+        if (at >= allocation_origin.size() ||
+            allocation_origin[at].stmt != access.heap_allocation ||
+            access.heap_occurrence != heap_allocation_ordinal(
+                access.heap_allocation, allocation_origin, at) ||
+            !main_allocation(access.heap_allocation, allocation_origin, at, extent) ||
+            extent != access.heap_extent || access.const_off < 0 ||
+            access.const_off + access.width > extent ||
+            (id == main_index ? at >= definition_index :
+                traces[id].creator_path != main_index || at >= traces[id].creator_step))
+          return false;
+        initial = ctx.int_val(0); known = true;
+        record(diagnostics, "calloc_zero_initial_source", load);
+      }
       if (access.base != 0 || access.heap_allocation != nullptr || access.shared_main_local) {
         // malloc has no initialized source. Fold only actual stores to this
         // allocation, never stores to another heap object or a null local base.
@@ -2209,7 +2260,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         s.add(actual > 0 && actual * ctx.int_val(stride.str().c_str()) == ctx.int_val(extent.str().c_str()));
       }
       auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt);
-      if (call == nullptr || !malloc_call(call)) continue;
+      if (call == nullptr || !heap_allocation_call(call)) continue;
       core::ZNumber extent;
       z3::expr actual(ctx);
       if (!main_allocation(call, path, i, extent) ||
@@ -2218,7 +2269,19 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         record(diagnostics, "heap_extent_source", call);
         return Result(Status::Unsupported);
       }
-      s.add(actual == ctx.int_val(extent.str().c_str()));
+      if (calloc_call(call)) {
+        z3::expr width(ctx);
+        if (!encode_value(call->argument(1), width, caches[id],
+                          traces[id].value_prefix(), 0, i)) {
+          record(diagnostics, "calloc_extent_source", call);
+          return Result(Status::Unsupported);
+        }
+        const auto maximum = (core::ZNumber(1) <<
+            call->bundle()->data_layout().pointers.bit_width) - 1;
+        s.add(actual > 0 && width > 0 &&
+              actual * width <= ctx.int_val(maximum.str().c_str()) &&
+              actual * width == ctx.int_val(extent.str().c_str()));
+      } else s.add(actual == ctx.int_val(extent.str().c_str()));
     }
   }
   for (std::size_t id = 0; id < traces.size(); ++id)

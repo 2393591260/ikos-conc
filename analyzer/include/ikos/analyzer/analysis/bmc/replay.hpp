@@ -243,7 +243,7 @@ public:
             out.put("native_memset", native);
           }
           out.put("calling_convention", call->getCallingConv());
-          if (callee && callee->getName() == "malloc") {
+          if (callee && (callee->getName() == "malloc" || callee->getName() == "calloc")) {
             JsonDict native;
             native.put("name", callee->getName().str());
             native.put("declaration", callee->isDeclaration());
@@ -261,7 +261,18 @@ public:
               native.put("return_address_space", type->getAddressSpace());
             if (auto* type = llvm::dyn_cast< llvm::PointerType >(call->getType()))
               native.put("result_address_space", type->getAddressSpace());
-            out.put("native_malloc", native);
+            if (callee->getName() == "calloc") {
+              auto* imported = core::dyn_cast< ar::CallBase >(stmt);
+              bool bound = imported && imported->num_arguments() == 2 && call->arg_size() == 2;
+              JsonList actuals;
+              if (bound) for (unsigned n = 0; n < 2; ++n) {
+                bound &= source_integer_binding(imported->argument(n), call->getArgOperand(n));
+                actuals.add(value(imported->argument(n)));
+              }
+              native.put("source_operands_bound", bound);
+              native.put("argument_values", actuals);
+              out.put("native_calloc", native);
+            } else out.put("native_malloc", native);
           }
           if (callee && (callee->getName() == "sem_init" ||
                          callee->getName() == "sem_wait" ||

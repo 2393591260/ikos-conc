@@ -54,7 +54,7 @@ inline bool startup_provider_prefix_supported(const std::vector< BmcEvent >& pat
     auto* callee = call != nullptr ? exact_callee(call) : nullptr;
     if (event.kind == EvKind::Unsupported || event.synthetic_condition ||
         semaphore_event(event.kind) ||
-        (call != nullptr && (condition_call(call) || malloc_call(call) || free_call(call) ||
+        (call != nullptr && (condition_call(call) || heap_allocation_call(call) || free_call(call) ||
                              constant_output_call(call))) ||
         (callee != nullptr && (callee->name() == "pthread_detach" ||
                               callee->name().find("pthread_rwlock_") == 0)) ||

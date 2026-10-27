@@ -20,6 +20,7 @@ from analyzer.python.ikos.race_result import validate_race_result
 def gep_contract():
     replay = Replay.__new__(Replay)
     replay.semaphores = {}
+    replay.barriers = {}
     replay.program = dict(pointer_bits=32)
     replay.objects = {'heap': dict(size=8, live=True, thread_local=False, allocation='alloc')}
     replay.memory = {'heap': [None] * 8}

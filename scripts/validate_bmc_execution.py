@@ -746,23 +746,51 @@ class Replay:
                     require(child['entry'] == target and child_id not in self.threads, 'dynamic creation binding')
                     self.threads[child_id] = Thread(instance, [self.frame(target, [args[3]])], dict(thread.vc))
             return 0
-        if name in ('malloc', 'ar.libc.malloc'):
-            native = inst.get('native_malloc', {})
+        if name in ('malloc', 'ar.libc.malloc', 'calloc', 'ar.libc.calloc'):
+            zeroed = name in ('calloc', 'ar.libc.calloc')
+            api = 'calloc' if zeroed else 'malloc'
+            count = 2 if zeroed else 1
+            native = inst.get('native_' + api, {})
             bits = self.program['pointer_bits']
             types, returned = fn['parameter_types'], fn['return_type']
             require(bits in (32, 64) and fn['declaration'] and not fn['variadic'] and
-                    inst.get('calling_convention') == 0 and len(types) == 1 and
-                    types[0].get('kind') == 'integer' and types[0].get('bits') == bits and
+                    inst.get('calling_convention') == 0 and len(types) == count and
+                    all(t.get('kind') == 'integer' and t.get('bits') == bits and
+                        (not zeroed or t.get('signed') is False) for t in types) and
                     returned.get('kind') == 'pointer' and returned.get('bits') == bits and
-                    len(inst['operands']) == 2 and inst['operands'][1]['type'] == types[0] and
-                    inst.get('result', {}).get('type') == returned, 'malloc call types')
-            require(native.get('name') == 'malloc' and native.get('declaration') is True and
+                    len(inst['operands']) == count + 1 and
+                    all(op['type'] == t for op, t in zip(inst['operands'][1:], types)) and
+                    inst.get('result', {}).get('type') == returned, api + ' call types')
+            require(native.get('name') == api and native.get('declaration') is True and
                     native.get('variadic') is False and native.get('calling_convention') == 0 and
                     native.get('operand_bundles') is False and
-                    native.get('matching_signature') is True and native.get('parameter_bits') == [bits] and
-                    native.get('argument_bits') == [bits] and native.get('return_address_space') == 0 and
-                    native.get('result_address_space') == 0, 'native malloc ABI')
-            require(len(args) == 1 and isinstance(args[0], int) and 0 < args[0] <= 1_048_576, 'malloc extent')
+                    native.get('matching_signature') is True and
+                    native.get('parameter_bits') == [bits] * count and
+                    native.get('argument_bits') == [bits] * count and
+                    native.get('return_address_space') == 0 and
+                    native.get('result_address_space') == 0, 'native ' + api + ' ABI')
+            if zeroed:
+                # Check connected native layouts, not only mutually equal type
+                # dictionaries: agreeing corrupt use/definition sizes are not ABI proof.
+                function_pointer = inst['operands'][0].get('type', {})
+                require(function_pointer.get('kind') == 'pointer' and
+                        function_pointer.get('bits') == bits and
+                        all(int(t.get('size', -1)) == bits // 8 and
+                            int(t.get('extent', -1)) == bits // 8
+                            for t in types + [returned, function_pointer]),
+                        'calloc native type layout')
+                require(len(args) == 2 and all(type(value) is int and
+                        0 < value < (1 << bits) for value in args), 'calloc size_t operands')
+                require(native.get('source_operands_bound') is True and
+                        native.get('argument_values') == inst['operands'][1:],
+                        'native calloc actual operands')
+                extent = args[0] * args[1]
+                require(extent < (1 << bits) and 0 < extent <= 1_048_576, 'calloc extent')
+            else:
+                # Keep the existing malloc contract unchanged.
+                require(len(args) == 1 and isinstance(args[0], int) and
+                        0 < args[0] <= 1_048_576, 'malloc extent')
+                extent = args[0]
             if thread.instance != 0 or len(thread.frames) != 1 or frame.function != 'main' or self.created:
                 raise Unsupported('allocation outside pre-spawn main')
             key = (frame.uid, step['statement'])
@@ -770,11 +798,13 @@ class Replay:
             self.heap_counts[key] = occurrence
             object_id = 'heap:' + str(frame.uid) + ':' + step['statement'] + ':' + str(occurrence)
             require(object_id not in self.objects, 'duplicate dynamic allocation identity')
-            self.objects[object_id] = dict(size=args[0], live=True, variable=object_id, thread_local=False,
+            self.objects[object_id] = dict(size=extent, live=True, variable=object_id, thread_local=False,
                 allocation=step['statement'], owner='main', occurrence=occurrence,
                 allocation_event=dict(trace=trace_id, step=index),
                 alignment=self.program['pointer_bits']//8 if self.verified_pthread_abi() else None)
-            self.memory[object_id] = [None] * args[0]
+            # Only the real calloc call zeroes its fresh occurrence. A previous
+            # malloc generation, neighbouring object or fabricated Store cannot.
+            self.memory[object_id] = [0 if zeroed else None] * extent
             return (object_id, 0)
         if name in ('free', 'ar.libc.free'):
             require(len(args) == 1, 'free argument count')

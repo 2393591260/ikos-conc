@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <iterator>
 #include <map>
 #include <set>
@@ -25,6 +26,7 @@
 #include "global_initial.hpp"
 #include <ikos/analyzer/analysis/private_array_zero.hpp>
 #include <ikos/analyzer/analysis/source_call_abi.hpp>
+#include <ikos/analyzer/analysis/source_call_binding.hpp>
 
 #include <ikos/ar/semantic/code.hpp>
 #include <ikos/ar/semantic/statement.hpp>
@@ -430,6 +432,46 @@ inline bool malloc_call(ar::CallBase* call) {
           llvm::cast< llvm::PointerType >(declaration->getReturnType())->getAddressSpace() == 0;
 }
 
+// Exact calloc API only. Zeroed storage is an effect of this actual executed
+// allocation occurrence, never a fabricated Store or a property of malloc.
+inline bool calloc_call(ar::CallBase* call) {
+  if (std::getenv("IKOS_BMC_DISABLE_CALLOC") || !call) return false;
+  auto* function = exact_callee(call);
+  auto* source = call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallInst >(call->frontend< llvm::Value >()) : nullptr;
+  auto* declaration = source ? source->getCalledFunction() : nullptr;
+  const auto bits = call->bundle()->data_layout().pointers.bit_width;
+  if (!function || !function->is_declaration() || function->type()->is_var_arg() ||
+      function->intrinsic_id() != ar::Intrinsic::LibcCalloc ||
+      function->num_parameters() != 2 || call->num_arguments() != 2 ||
+      !call->has_result() || !call->result()->type()->is_pointer() ||
+      call->result()->type() != function->type()->return_type() ||
+      !source || !declaration || !declaration->isDeclaration() ||
+      declaration->getName() != "calloc" || declaration->isVarArg() ||
+      declaration->arg_size() != 2 || source->arg_size() != 2 ||
+      (bits != 32 && bits != 64) || source->isInlineAsm() || source->hasOperandBundles() ||
+      source->getCallingConv() != llvm::CallingConv::C ||
+      declaration->getCallingConv() != llvm::CallingConv::C ||
+      source->getFunctionType() != declaration->getFunctionType() ||
+      !source->getType()->isPointerTy() || !declaration->getReturnType()->isPointerTy() ||
+      source->getType()->getPointerAddressSpace() != 0 ||
+      declaration->getReturnType()->getPointerAddressSpace() != 0 ||
+      unsupported_source_call_abi(call, function)) return false;
+  for (unsigned n = 0; n < 2; ++n) {
+    auto* type = core::dyn_cast< ar::IntegerType >(call->argument(n)->type());
+    if (!type || type->bit_width() != bits || type->is_signed() ||
+        function->type()->param_type(n) != type ||
+        !declaration->getFunctionType()->getParamType(n)->isIntegerTy(bits) ||
+        !source->getArgOperand(n)->getType()->isIntegerTy(bits) ||
+        !source_integer_binding(call->argument(n), source->getArgOperand(n))) return false;
+  }
+  return true;
+}
+
+inline bool heap_allocation_call(ar::CallBase* call) {
+  return malloc_call(call) || calloc_call(call);
+}
+
 inline bool free_call(ar::CallBase* call) {
   auto* function = exact_callee(call);
   auto* source = call->has_frontend()
@@ -658,8 +700,9 @@ inline bool supported_leaf_call(ar::CallBase* call) {
   if (private_zero_call(call, zero) || stack_save_call(call)) return true;
   if (constant_output_call(call) || ffs_call(call)) return true;
   if (f->intrinsic_id() == ar::Intrinsic::IkosNonDet) return true;
-  if (f->intrinsic_id() == ar::Intrinsic::LibcMalloc)
-    return malloc_call(call) && call->code()->is_function_body() &&
+  if (f->intrinsic_id() == ar::Intrinsic::LibcMalloc ||
+      f->intrinsic_id() == ar::Intrinsic::LibcCalloc)
+    return heap_allocation_call(call) && call->code()->is_function_body() &&
            call->code()->function()->name() == "main";
   if (f->intrinsic_id() == ar::Intrinsic::LibcFree)
     return free_call(call) && call->code()->is_function_body() &&
@@ -777,8 +820,12 @@ inline ar::CallBase* allocation_finite_source(ar::Function* function,
     auto* call = core::dyn_cast< ar::CallBase >(statement);
     if (call == nullptr) continue;
     if (source_nondet(call)) sources.insert(call);
-    if (malloc_call(call)) allocations.push_back(call);
+    if (heap_allocation_call(call)) allocations.push_back(call);
   }
+  // The calloc profile keeps at most four individually authenticated objects.
+  // Existing malloc-only sampling retains its earlier one-object default.
+  if (std::any_of(allocations.begin(), allocations.end(), calloc_call))
+    maximum_allocations = std::max(maximum_allocations, 4u);
   if (allocations.empty() || allocations.size() > maximum_allocations) return nullptr;
   // Preserve the earlier source choice even when allocation size is constant.
   if (sources.size() == 1) return *sources.begin();
@@ -803,7 +850,8 @@ inline ar::CallBase* allocation_finite_source(ar::Function* function,
     return true;
   };
   for (auto* allocation : allocations)
-    if (!collect(allocation->argument(0), 0)) return nullptr;
+    for (unsigned n = 0; n < (calloc_call(allocation) ? 2u : 1u); ++n)
+      if (!collect(allocation->argument(n), 0)) return nullptr;
   return extent_sources.size() == 1 ? *extent_sources.begin() : nullptr;
 }
 
@@ -1191,7 +1239,7 @@ inline bool affine_integer_on_path(ar::Value* value,
 inline bool main_allocation(ar::CallBase* call, const std::vector< BmcEvent >& path,
                             std::size_t index, core::ZNumber& size) {
   auto* function = exact_callee(call);
-  if (function == nullptr || !malloc_call(call) ||
+  if (function == nullptr || !heap_allocation_call(call) ||
       !call->code()->is_function_body() || call->code()->function()->name() != "main" ||
       !call->has_result() || !call->result()->type()->is_pointer() ||
       index >= path.size() || path[index].stmt != call ||
@@ -1199,7 +1247,18 @@ inline bool main_allocation(ar::CallBase* call, const std::vector< BmcEvent >& p
     return false;
   for (std::size_t i = 0; i < index; ++i)
     if (path[i].kind == EvKind::Create) return false;
-  return constant_integer_on_path(call->argument(0), path, index, size) && size > 0 && size <= 1048576;
+  if (!constant_integer_on_path(call->argument(0), path, index, size) || size <= 0)
+    return false;
+  if (calloc_call(call)) {
+    core::ZNumber width;
+    if (!constant_integer_on_path(call->argument(1), path, index, width) || width <= 0)
+      return false;
+    // Mathematical product: never wrap the two actual size_t operands.
+    size *= width;
+    if (size > (core::ZNumber(1) << call->bundle()->data_layout().pointers.bit_width) - 1)
+      return false;
+  }
+  return size <= 1048576;
 }
 
 // Resolve the actual executed choice; source MAY closure never chooses an arm.
@@ -1497,7 +1556,7 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
            (cast != nullptr && cast->op() == ar::UnaryOperation::Bitcast &&
             cast->operand()->type()->is_pointer()) || core::isa< ar::PointerShift >(definition) ||
            (core::isa< ar::CallBase >(definition) &&
-            malloc_call(core::cast< ar::CallBase >(definition))));
+            heap_allocation_call(core::cast< ar::CallBase >(definition))));
       exact_external_chain &= forwarding || (unique_def_bmc(variable) == definition &&
           std::count_if(origins->begin(), origins->end(), [&](const auto& event) {
             return event.stmt == definition;
@@ -1659,8 +1718,8 @@ inline bool constant_create_output_aligned(ar::CallBase* call, const BmcEvent& o
     auto* local = output.local_base;
     base_alignment = local->has_alignment() ? core::ZNumber(local->alignment())
                                             : layout.abi_alignment(local->type()->pointee());
-  } else if (output.heap_allocation != nullptr && malloc_call(output.heap_allocation)) {
-    // The verified malloc contract aligns fundamental pthread_t on this ABI.
+  } else if (output.heap_allocation != nullptr && heap_allocation_call(output.heap_allocation)) {
+    // The verified malloc/calloc contracts align fundamental pthread_t on this ABI.
     base_alignment = alignment;
   } else return false;
   return base_alignment >= alignment;

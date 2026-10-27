@@ -372,3 +372,23 @@ interrupted branch is never treated as completion.
 This is a bounded search policy, not a new program abstraction, a completeness
 claim or a proof of safety. A zero-gain comparison is a valid observation; no
 resource limit is increased to obtain a result.
+
+### Actual calloc allocation generations
+
+The bounded heap profile accepts exact native `calloc(size_t, size_t)` calls in
+pre-spawn main. Both actual unsigned operands must have the target ABI width;
+their positive mathematical product must fit size_t and the existing 1 MiB
+object limit. Closed allocation helpers are expanded through LLVM's ordinary
+inliner, preserving their allocation, NULL checks, abort and return behavior.
+
+Each executed allocation occurrence owns fresh all-zero bytes. These supply
+integer load sources only for that live object and byte range; actual later
+stores retain the ordinary SC latest-write constraints. `malloc` remains
+uninitialized. The independent execution checker recomputes operand binding,
+native layout, product, generation and bytes. Zero-sized or overflowing
+allocations, worker allocations, unsupported publication or lifetime effects
+remain inconclusive. This profile adds no SAFE permission.
+
+`IKOS_BMC_DISABLE_CALLOC=1` disables the new allocation execution support.
+Independent AR replay and source projection are separate from official
+source-witness validation.
