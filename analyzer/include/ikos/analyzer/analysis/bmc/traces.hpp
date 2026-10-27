@@ -2,6 +2,7 @@
 
 #include <limits>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -81,6 +82,174 @@ inline bool bind_creation_step(ar::Function* child,
     ++ordinal;
   }
   return false;
+}
+
+// A finite graph of actual successful Create occurrences. Targets remain 1/2,
+// slot 0 is empty, timed main is 3; every other trace is a real child prefix.
+// No omitted children, dormant invocations, joins or allocation summaries.
+struct CreatorGraphPlan {
+  std::vector< ExecutionTrace > traces;
+};
+
+inline bool creator_graph_create_abi(ar::CallBase* call, ar::Function* child) {
+  auto* api = exact_callee(call);
+  auto* source = call && call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallBase >(call->frontend< llvm::Value >()) : nullptr;
+  auto* native_api = api && api->has_frontend() ? api->frontend< llvm::Function >() : nullptr;
+  auto* native_child = child && child->has_frontend() ? child->frontend< llvm::Function >() : nullptr;
+  if (!source || !llvm::isa< llvm::CallInst >(source) || !native_api || !native_child ||
+      !api->is_declaration() || native_api->getName() != "pthread_create" ||
+      !native_api->isDeclaration() || native_api->isVarArg() || native_api->arg_size() != 4 ||
+      source->arg_size() != 4 || source->getCalledOperand()->stripPointerCasts() != native_api ||
+      source->getFunctionType() != native_api->getFunctionType() || source->hasOperandBundles() ||
+      source->getCallingConv() != llvm::CallingConv::C || native_api->getCallingConv() != llvm::CallingConv::C ||
+      !source->getType()->isIntegerTy(32) || !native_api->getReturnType()->isIntegerTy(32) ||
+      !child->is_definition() || child->num_parameters() != 1 || child->type()->is_var_arg() ||
+      !child->param(0)->type()->is_pointer() || !child->type()->return_type()->is_pointer() ||
+      native_child->isDeclaration() || native_child->isVarArg() || native_child->arg_size() != 1 ||
+      native_child->getCallingConv() != llvm::CallingConv::C ||
+      source->getArgOperand(2)->stripPointerCasts() != native_child ||
+      !ordinary_source_call_abi_attributes(source, native_api) ||
+      !ordinary_source_function_abi_attributes(native_child)) return false;
+  auto* entry_pointer = llvm::dyn_cast< llvm::PointerType >(native_api->getFunctionType()->getParamType(2));
+  auto* parameter = llvm::dyn_cast< llvm::PointerType >(native_child->getFunctionType()->getParamType(0));
+  auto* returned = llvm::dyn_cast< llvm::PointerType >(native_child->getReturnType());
+  if (!entry_pointer || entry_pointer->isOpaque() || entry_pointer->getAddressSpace() != 0 ||
+      entry_pointer->getPointerElementType() != native_child->getFunctionType() ||
+      !parameter || parameter->isOpaque() || parameter->getAddressSpace() != 0 ||
+      !parameter->getPointerElementType()->isIntegerTy(8) ||
+      !returned || returned->isOpaque() || returned->getAddressSpace() != 0 ||
+      !returned->getPointerElementType()->isIntegerTy(8)) return false;
+  for (unsigned i = 0; i < 4; ++i)
+    for (auto attribute : {llvm::Attribute::ByVal, llvm::Attribute::StructRet,
+                           llvm::Attribute::InAlloca, llvm::Attribute::Preallocated})
+      if (source->paramHasAttr(i, attribute) || native_api->hasParamAttribute(i, attribute) ||
+          (i == 0 && native_child->hasParamAttribute(0, attribute))) return false;
+  std::uint64_t width, alignment;
+  return create_output_layout(call, width, alignment);
+}
+
+inline bool creator_graph_prefix_supported(const ExecutionTrace& trace) {
+  if (!trace.root || trace.events.empty()) return false;
+  std::set< ar::Function* > invoked{trace.root};
+  std::set< ar::LocalVariable* > allocated, live;
+  for (std::size_t i = 0; i < trace.events.size(); ++i) {
+    const auto& event = trace.events[i];
+    auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+    auto* callee = call ? exact_callee(call) : nullptr;
+    if (event.kind == EvKind::Unsupported || event.kind == EvKind::Join ||
+        event.synthetic_atomic || event.synthetic_condition || event.synthetic_barrier ||
+        event.mutex == PSEUDO_ATOMIC_LOCK || semaphore_event(event.kind) ||
+        barrier_event(event.kind) ||
+        (call && (condition_call(call) || thread_exit_call(call) || heap_allocation_call(call) || free_call(call) ||
+                  constant_output_call(call) || is_verifier_atomic(call))) ||
+        event.recursive_mutex || event.recursive_profile ||
+        (callee && (callee->name() == "pthread_detach" ||
+                    callee->name().find("pthread_rwlock_") == 0 ||
+                    callee->name().find("pthread_mutexattr_") == 0 ||
+                    (callee->name() == "pthread_mutex_init" && call->num_arguments() == 2 &&
+                     !core::isa< ar::NullConstant >(call->argument(1)))))) return false;
+    // Static SSA/local caches are per physical trace. Until their frame key is
+    // exported, reject *every* repeated helper/callback activation, not merely
+    // repeated alloca instructions. Two different physical traces remain valid.
+    auto* invoked_root = event.once_stage == OnceStage::Enter ? event.once_callback :
+                         event.called_function;
+    if (invoked_root && (invoked_root->name() == "main" ||
+                         !invoked.insert(invoked_root).second)) return false;
+    if (auto* allocation = core::dyn_cast< ar::Allocate >(event.stmt)) {
+      if (!allocated.insert(allocation->result()).second) return false;
+      live.insert(allocation->result());
+    }
+    if (auto* returned = core::dyn_cast< ar::ReturnValue >(event.stmt)) {
+      if (returned->code() == trace.root->body_or_null() && trace.root->name() == "main")
+        return false; // a main Return ends the process, not just this prefix
+      for (auto it = live.begin(); it != live.end();) {
+        if ((*it)->function()->body_or_null() == returned->code()) it = live.erase(it);
+        else ++it;
+      }
+    }
+    ar::Value* pointer = nullptr;
+    auto* load = core::dyn_cast< ar::Load >(event.stmt);
+    auto* store = core::dyn_cast< ar::Store >(event.stmt);
+    if ((load && load->is_atomic()) || (store && store->is_atomic())) return false;
+    if (load) pointer = load->operand();
+    if (store) pointer = store->pointer();
+    if (event.zero_fill && call) pointer = call->argument(0);
+    if (event.kind == EvKind::Create) {
+      if (!call || !callee || !callee->is_declaration() || call->num_arguments() != 4 ||
+          !core::isa< ar::FunctionPointerConstant >(call->argument(2)) ||
+          !core::isa< ar::NullConstant >(call->argument(1)) ||
+          !core::isa< ar::NullConstant >(call->argument(3)) ||
+          !creator_graph_create_abi(call, reinterpret_cast< ar::Function* >(event.thread))) return false;
+      pointer = call->argument(0);
+    }
+    if (pointer) {
+      BmcEvent address;
+      if (!pointer_on_path(pointer, trace.events, i, trace.root, trace.argument, address) ||
+          address.heap_allocation || (address.shared_main_local && trace.root->name() != "main") ||
+          (address.local_base && !live.count(address.local_base))) return false;
+      if (event.kind == EvKind::Create) {
+        core::ZNumber extent;
+        std::uint64_t width, alignment;
+        llvm::Type* storage = nullptr;
+        if (address.base) {
+          auto* global = reinterpret_cast< ar::GlobalVariable* >(address.base);
+          if (!global->has_frontend() || global->is_thread_local()) return false;
+          storage = global->frontend< llvm::GlobalVariable >()->getValueType();
+        } else if (address.local_base && address.local_base->has_frontend()) {
+          auto* allocation = llvm::dyn_cast< llvm::AllocaInst >(address.local_base->frontend< llvm::Value >());
+          if (allocation) storage = allocation->getAllocatedType();
+        }
+        while (auto* array = llvm::dyn_cast_or_null< llvm::ArrayType >(storage)) storage = array->getElementType();
+        if (!storage || !storage->isIntegerTy(call->bundle()->data_layout().pointers.bit_width) ||
+            address.var_id != 0 || !memory_extent(address, extent) ||
+            !create_output_layout(call, width, alignment) || !constant_create_output_aligned(call, address) ||
+            address.const_off < 0 || address.const_off + width > extent) return false;
+      }
+      // No automatic object may escape into another physical thread. NULL
+      // thread arguments and no global pointer stores close this first scope.
+      if (store && store->value()->type()->is_pointer() && !address.local_base) return false;
+    }
+  }
+  return !open_once_prefix(trace.events);
+}
+
+inline bool bind_creator_graph(std::vector< ExecutionTrace >& traces) {
+  if (traces.size() < 4 || traces.size() > 9 || traces[0].id != "startup" ||
+      !traces[0].events.empty() || traces[1].id != "a" || traces[2].id != "b" ||
+      traces[3].id != "main" || !traces[3].root || traces[3].root->name() != "main" ||
+      traces[3].creator_step != ExecutionTrace::no_creation) return false;
+  std::set< std::pair< std::size_t, std::size_t > > bindings, actual;
+  std::size_t count = 0;
+  for (std::size_t id = 1; id < traces.size(); ++id) {
+    auto& child = traces[id];
+    if (!child.root || child.events.empty() || (id != 3 && child.root->name() == "main") ||
+        (id >= 4 && child.id != "aux_" + std::to_string(id - 4))) return false;
+    count += child.events.size();
+    std::size_t targets = 0;
+    for (std::size_t step = 0; step < child.events.size(); ++step) {
+      if (child.events[step].candidate) ++targets;
+      if (child.events[step].kind == EvKind::Create) actual.emplace(id, step);
+    }
+    if (targets != (id == 1 || id == 2 ? 1u : 0u)) return false;
+    if (id == 3) continue;
+    if (child.creator_path == 0 || child.creator_path >= traces.size() ||
+        child.creator_path == id ||
+        !bindings.emplace(child.creator_path, child.creator_step).second ||
+        !bind_creation_step(child.root, traces[child.creator_path].events,
+                            child.creator_step, child.argument)) return false;
+    // Parent indices need not be topologically sorted after target placement.
+    std::set< std::size_t > visited;
+    auto ancestor = id;
+    while (ancestor != 3) {
+      if (ancestor == 0 || ancestor >= traces.size() || !visited.insert(ancestor).second) return false;
+      ancestor = traces[ancestor].creator_path;
+    }
+  }
+  if (count > MAX_PATH_EVENTS || actual != bindings) return false;
+  for (std::size_t id = 1; id < traces.size(); ++id)
+    if (!creator_graph_prefix_supported(traces[id])) return false;
+  return true;
 }
 
 // Version one keeps dynamic step indices stable and excludes nested lifecycles.

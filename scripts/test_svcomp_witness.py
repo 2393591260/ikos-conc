@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from ikos_runtime import runtime_command
 from sweep_bmc_execution import validate_report
@@ -133,6 +134,21 @@ class WitnessTests(unittest.TestCase):
             str(self.source), pair, "ILP32", str(self.ikos)
         )[0]["content"]
 
+    def mapping_content(self, pair):
+        # These deliberately partial snapshots test projection only. Actual
+        # creator-graph replay/projection is exercised by its end-to-end runner.
+        with patch.object(wrapper, "validate_selected_execution",
+                          return_value={"status": "ACCEPT"}) as replay:
+            content = self.content(pair)
+            replay.assert_called_once_with(pair, "ILP32")
+            return content
+
+    def test_partial_graph_snapshot_requires_independent_replay(self):
+        pair = self.pair()
+        pair["counterexample"]["creator_graph"] = True
+        with self.assertRaisesRegex(ValueError, "execution data model differs"):
+            self.content(pair)
+
     def test_repeated_helper_and_later_same_entry_instances(self):
         content = self.content(self.pair())
         self.assertEqual(
@@ -210,7 +226,7 @@ class WitnessTests(unittest.TestCase):
             dict(trace="a", step=1),
             dict(trace="b", step=0),
         ]
-        content = self.content(pair)
+        content = self.mapping_content(pair)
         self.assertEqual(
             [s["segment"][0]["waypoint"]["thread_id"] for s in content[:-1]], [0, 1]
         )
@@ -406,10 +422,10 @@ class WitnessTests(unittest.TestCase):
             dict(trace="b", step=0),
         ]
         with self.assertRaisesRegex(ValueError, "creation follows"):
-            self.content(pair)
+            self.mapping_content(pair)
         pair["counterexample"]["traces"][2]["steps"][0]["clock"] = "-1"
         with self.assertRaisesRegex(ValueError, "before its creation"):
-            self.content(pair)
+            self.mapping_content(pair)
 
     def source_map(self):
         sm = wrapper.SourceMap(str(self.source))

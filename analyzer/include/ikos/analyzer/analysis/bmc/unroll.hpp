@@ -2389,7 +2389,8 @@ struct UnrollBudget {
   std::size_t steps = 0;
   unsigned loop_bound = 1;
   unsigned target_occurrence = 1;
-  bool once_callbacks = false; // Enabled only by the separate physical-caller search.
+  bool once_callbacks = false; // Enabled only by physical-caller searches.
+  bool creator_graph = false; // Create in an active callback; no Join extension.
   bool exact_target = false; // Legacy helper search can retain later invocations.
   unsigned max_target_occurrence = 0; // Observed only for exact-target search.
   ar::Statement* root_target = nullptr;
@@ -2563,7 +2564,8 @@ inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
       }
       BmcEvent ev;
       if (classify_event(s, ev, &in_stack)) {
-        if (open_once_prefix(current) && (ev.kind == EvKind::Create || ev.kind == EvKind::Join)) {
+        if (open_once_prefix(current) && (ev.kind == EvKind::Join ||
+            (ev.kind == EvKind::Create && !budget.creator_graph))) {
           budget.rejected_reason = "once_nested_lifecycle"; budget.rejected_statement = s; return;
         }
         if (ev.kind == EvKind::Create && budget.create_limits != nullptr) {
@@ -2765,7 +2767,7 @@ inline UnrollResult unroll_to(
     const std::chrono::steady_clock::time_point* deadline = nullptr,
     ar::CallBase* finite_source = nullptr,
     unsigned finite_value = 0,
-    bool exact_target = false, bool once_callbacks = false) {
+    bool exact_target = false, bool once_callbacks = false, bool creator_graph = false) {
   UnrollResult result;
   if (unsupported_source_function_abi(func)) {
     result.rejected_reason = "source_call_abi";
@@ -2783,6 +2785,7 @@ inline UnrollResult unroll_to(
   }
   UnrollBudget budget;
   budget.once_callbacks = once_callbacks;
+  budget.creator_graph = creator_graph;
   budget.prune_join_prefix = prune_join_prefix;
   budget.deadline = deadline;
   budget.finite_source = finite_source;

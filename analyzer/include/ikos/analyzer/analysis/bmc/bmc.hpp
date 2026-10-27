@@ -1148,6 +1148,185 @@ inline Result confirm_race_once_physical(ar::Statement* stmtA, std::uint64_t wid
   return outcome;
 }
 
+// One additional bounded search in the existing file budget. Static callees
+// only enumerate endpoints: actual CFG paths and Create occurrences establish
+// every dynamic edge. Failure grants no safety premise.
+inline bool creator_graph_search_enabled() {
+  return std::getenv("IKOS_BMC_DISABLE_CREATOR_GRAPH") == nullptr;
+}
+
+inline Result confirm_race_creator_graph(ar::Statement* stmtA, std::uint64_t widthA,
+    ar::Statement* stmtB, std::uint64_t widthB, Diagnostics* diagnostics,
+    SearchBudget& budget, std::vector< ar::Statement* >* creations,
+    const std::function< bool(ar::CallBase*) >& sealed, bool main_argc_one) {
+  Result outcome(Status::NotSearched);
+  if (!creator_graph_search_enabled()) return outcome;
+  auto* main = stmtA->bundle()->function_or_null("main");
+  if (!main || !main->is_definition() || (main->num_parameters() && !main_argc_one))
+    return Result(Status::Unsupported);
+  CandidateFacts facts;
+  facts.main_argc_one = main_argc_one;
+  auto spend = [&]() {
+    if (budget.expired() || budget.queries == 0) {
+      budget.record_exhaustion(diagnostics); outcome.merge(Result(Status::BudgetExceeded)); return false;
+    }
+    --budget.queries; return true;
+  };
+  struct Choice { std::vector< BmcEvent > events; unsigned role = 0; };
+  std::map< ar::Function*, std::vector< Choice > > cached;
+  auto choices = [&](ar::Function* root) -> const std::vector< Choice >& {
+    auto found = cached.find(root);
+    if (found != cached.end()) return found->second;
+    auto& result = cached[root];
+    if (!root || !root->is_definition()) return result;
+    std::vector< ar::Function* > pending{root};
+    std::set< ar::Function* > visited;
+    std::set< ar::Statement* > reachable;
+    std::vector< ar::Statement* > endpoints;
+    std::size_t examined = 0;
+    while (!pending.empty()) {
+      auto* function = pending.back(); pending.pop_back();
+      if (!function || !function->is_definition() || !visited.insert(function).second) continue;
+      if (visited.size() > 64) {outcome.merge(Result(Status::BudgetExceeded)); return result;}
+      for (auto* block : *function->body()) for (auto* statement : *block) {
+        if (++examined > 32768 || budget.expired()) {
+          outcome.merge(Result(Status::BudgetExceeded)); return result;
+        }
+        reachable.insert(statement);
+        BmcEvent event;
+        if (classify_event(statement, event) && event.kind == EvKind::Create)
+          endpoints.push_back(statement);
+        auto* call = core::dyn_cast< ar::CallBase >(statement);
+        if (!call) continue;
+        auto* callee = exact_callee(call);
+        if (callee && callee->is_definition()) pending.push_back(callee);
+        if (auto* callback = once_callback(call)) pending.push_back(callback);
+      }
+    }
+    auto append = [&](ar::Statement* target, unsigned role, unsigned occurrence) {
+      if (result.size() >= 96 || !reachable.count(target) || !spend()) return;
+      auto paths = unroll_to(root, target, occurrence, literal_loop_search_bound(root),
+          false, nullptr, &budget.deadline, nullptr, 0, true, true, true);
+      if (paths.incomplete) outcome.merge(Result(Status::BudgetExceeded));
+      if (paths.rejected_reason) {
+        record(diagnostics, paths.rejected_reason, paths.rejected_statement);
+        outcome.merge(Result(Status::Unsupported));
+      }
+      for (auto& path : paths.paths) {
+        bool supported = true;
+        for (auto& event : path) {
+          if (role == 0) event.candidate = false;
+          if (event.once_stage == OnceStage::Call) {
+            auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+            if (getenv("IKOS_BMC_DISABLE_ONCE_EXECUTION") != nullptr || !call || !sealed(call)) supported = false;
+          }
+        }
+        if (supported) result.push_back({std::move(path), role});
+        if (result.size() >= 96) {
+          record(diagnostics, "creator_graph_path_bound");
+          outcome.merge(Result(Status::BudgetExceeded)); return;
+        }
+      }
+    };
+    if (root != main) { append(stmtA, 1, 1); append(stmtB, 2, 1); }
+    for (auto* endpoint : endpoints) for (unsigned occurrence = 1; occurrence <= 3; ++occurrence) {
+      if (budget.expired() || budget.queries == 0 || result.size() >= 96) return result;
+      append(endpoint, 0, occurrence);
+    }
+    return result;
+  };
+  struct Node { ExecutionTrace trace; unsigned role = 0; };
+  std::vector< Node > nodes;
+  std::function< void(unsigned) > expand;
+  expand = [&](unsigned roles) {
+    if (outcome.confirmed() || !spend()) return;
+    std::size_t count = 0;
+    for (const auto& node : nodes) count += node.trace.events.size();
+    if (count > MAX_PATH_EVENTS) {
+      record(diagnostics, "creator_graph_event_bound"); outcome.merge(Result(Status::BudgetExceeded)); return;
+    }
+    // Expand the first unbound real Create. A child selection can itself
+    // contain Creates, including one within its retained once callback frame.
+    std::size_t parent = nodes.size(), step = 0;
+    for (std::size_t id = 0; id < nodes.size() && parent == nodes.size(); ++id) {
+      for (std::size_t i = 0; i < nodes[id].trace.events.size(); ++i) {
+        if (nodes[id].trace.events[i].kind != EvKind::Create) continue;
+        bool bound = false;
+        for (std::size_t child = 1; child < nodes.size(); ++child)
+          if (nodes[child].trace.creator_path == id && nodes[child].trace.creator_step == i) bound = true;
+        if (!bound) {parent = id; step = i; break;}
+      }
+    }
+    if (parent != nodes.size()) {
+      if (nodes.size() >= 8) {
+        record(diagnostics, "creator_graph_instance_bound"); outcome.merge(Result(Status::BudgetExceeded)); return;
+      }
+      auto* root = reinterpret_cast< ar::Function* >(nodes[parent].trace.events[step].thread);
+      for (const auto& choice : choices(root)) {
+        const unsigned mask = choice.role == 0 ? 0 : (1u << (choice.role - 1));
+        if ((roles & mask) || root == main) continue;
+        ExecutionTrace child;
+        child.root = root; child.events = choice.events;
+        child.creator_path = parent; child.creator_step = step;
+        if (!bind_creation_step(root, nodes[parent].trace.events, step, child.argument) ||
+            !creator_graph_prefix_supported(child)) continue;
+        nodes.push_back({std::move(child), choice.role});
+        expand(roles | mask);
+        nodes.pop_back();
+        if (outcome.confirmed() || budget.expired() || budget.queries == 0) return;
+      }
+      return;
+    }
+    if (roles != 3) return;
+    CreatorGraphPlan plan;
+    plan.traces.resize(nodes.size() + 1);
+    plan.traces[0] = {"startup", main, {}};
+    std::vector< std::size_t > index(nodes.size());
+    index[0] = 3;
+    std::size_t next = 4;
+    for (std::size_t id = 1; id < nodes.size(); ++id)
+      index[id] = nodes[id].role ? nodes[id].role : next++;
+    for (std::size_t id = 0; id < nodes.size(); ++id) {
+      auto trace = nodes[id].trace;
+      trace.id = index[id] == 1 ? "a" : index[id] == 2 ? "b" :
+                 index[id] == 3 ? "main" : "aux_" + std::to_string(index[id] - 4);
+      if (id != 0) trace.creator_path = index[trace.creator_path];
+      if (nodes[id].role) {
+        auto target = candidate_index(trace.events);
+        if (target == trace.events.size()) return;
+        trace.events[target].width = nodes[id].role == 1 ? widthA : widthB;
+      }
+      plan.traces[index[id]] = std::move(trace);
+    }
+    if (!bind_creator_graph(plan.traces)) {
+      record(diagnostics, "creator_graph_profile"); outcome.merge(Result(Status::Unsupported)); return;
+    }
+    if (!spend()) return;
+    if (diagnostics) ++diagnostics->path_pairs;
+    record(diagnostics, "creator_graph_query");
+    outcome.merge(check_race(plan.traces[1].events, plan.traces[2].events,
+        plan.traces[1].root, plan.traces[2].root, diagnostics, &facts, nullptr,
+        &outcome.metrics, nullptr, &budget.deadline, budget.solver_timeout_ms, nullptr, &plan));
+    if (outcome.confirmed()) {
+      record(diagnostics, "creator_graph_confirmed");
+      if (creations) {
+        creations->clear();
+        for (const auto& trace : plan.traces) for (const auto& event : trace.events)
+          if (event.kind == EvKind::Create) creations->push_back(event.stmt);
+      }
+    }
+  };
+  for (const auto& choice : choices(main)) {
+    ExecutionTrace root{"main", main, choice.events};
+    if (!creator_graph_prefix_supported(root)) continue;
+    nodes.push_back({std::move(root), 0});
+    expand(0);
+    nodes.clear();
+    if (outcome.confirmed() || budget.expired() || budget.queries == 0) break;
+  }
+  return outcome;
+}
+
 }  // namespace bmc
 }  // namespace analyzer
 }  // namespace ikos

@@ -427,6 +427,51 @@ public:
                  if (kind->getBitWidth() == 32) native.put("settype_value", kind->getSExtValue());
              out.put("native_mutex", native);
            }
+           if (callee && callee->getName() == "pthread_create") {
+             JsonDict native;
+             native.put("name", callee->getName().str());
+             native.put("declaration", callee->isDeclaration());
+             native.put("variadic", callee->isVarArg());
+             native.put("call_convention", call->getCallingConv());
+             native.put("calling_convention", callee->getCallingConv());
+             native.put("matching_signature", call->getFunctionType() == callee->getFunctionType());
+             native.put("operand_bundles", call->hasOperandBundles());
+             native.put("arguments", call->arg_size()); native.put("parameters", callee->arg_size());
+             native.put("result_bits", call->getType()->isIntegerTy() ? call->getType()->getIntegerBitWidth() : 0);
+             native.put("return_bits", callee->getReturnType()->isIntegerTy() ? callee->getReturnType()->getIntegerBitWidth() : 0);
+             auto* child = call->arg_size() == 4
+                 ? llvm::dyn_cast< llvm::Function >(call->getArgOperand(2)->stripPointerCasts()) : nullptr;
+             bool special = false;
+             for (unsigned i = 0; i < call->arg_size(); ++i)
+               for (auto attribute : {llvm::Attribute::ByVal, llvm::Attribute::StructRet,
+                                      llvm::Attribute::InAlloca, llvm::Attribute::Preallocated})
+                 special |= call->paramHasAttr(i, attribute) ||
+                     (i < callee->arg_size() && callee->hasParamAttribute(i, attribute)) ||
+                     (child && i < child->arg_size() && child->hasParamAttribute(i, attribute));
+             native.put("special_parameter_abi", special);
+             native.put("ordinary_abi", ordinary_source_call_abi_attributes(call, callee));
+             native.put("child_ordinary_abi", child && ordinary_source_function_abi_attributes(child));
+             auto byte_pointer = [](llvm::Type* type) {
+               auto* pointer = llvm::dyn_cast< llvm::PointerType >(type);
+               return pointer && !pointer->isOpaque() && pointer->getAddressSpace() == 0 &&
+                      pointer->getPointerElementType()->isIntegerTy(8);
+             };
+             auto* entry_pointer = callee->arg_size() == 4
+                 ? llvm::dyn_cast< llvm::PointerType >(callee->getFunctionType()->getParamType(2)) : nullptr;
+             native.put("child_signature_matches", child && entry_pointer && !entry_pointer->isOpaque() &&
+                 entry_pointer->getAddressSpace() == 0 && entry_pointer->getPointerElementType() == child->getFunctionType());
+             if (child) {
+               native.put("child", child->getName().str());
+               native.put("child_declaration", child->isDeclaration());
+               native.put("child_variadic", child->isVarArg());
+               native.put("child_convention", child->getCallingConv());
+               native.put("child_parameters", child->arg_size());
+               native.put("child_byte_pointer_argument", child->arg_size() == 1 &&
+                   byte_pointer(child->getFunctionType()->getParamType(0)));
+               native.put("child_byte_pointer_return", byte_pointer(child->getReturnType()));
+             }
+             out.put("native_create", native);
+           }
            JsonList layouts;
           const auto& layout = call->getModule()->getDataLayout();
           for (const auto& argument : call->args()) {

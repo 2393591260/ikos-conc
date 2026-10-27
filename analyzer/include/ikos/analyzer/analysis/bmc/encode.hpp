@@ -59,7 +59,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                        const CompletionPlan* completion = nullptr,
                        const std::chrono::steady_clock::time_point* deadline = nullptr,
                        unsigned solver_timeout_ms = 1000,
-                       const StartupProviderPlan* provider_plan = nullptr) {
+                       const StartupProviderPlan* provider_plan = nullptr,
+                       const CreatorGraphPlan* graph_plan = nullptr) {
   auto* entry = funcA->bundle()->function_or_null("main");
   // Address folding can consume argc without demanding an SMT integer value.
   // Reject an incompatible configured input before any such folded execution.
@@ -70,6 +71,9 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   if (provider_plan != nullptr &&
       (completion != nullptr || funcA->name() == "main" || funcB->name() == "main" ||
        (facts != nullptr && (!facts->startup.empty() || facts->selected_worker_occurrences))))
+    return Result(Status::Unsupported);
+  if (graph_plan != nullptr && (completion != nullptr || provider_plan != nullptr ||
+      (facts != nullptr && (!facts->startup.empty() || facts->selected_worker_occurrences))))
     return Result(Status::Unsupported);
   if (metrics != nullptr) {
     ++metrics->path_queries;
@@ -104,6 +108,14 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           !startup_provider_prefix_supported(traces[4].events, true)) return Result(Status::Unsupported);
       for (auto& event : traces[4].events) event.candidate = false;
     }
+  }
+  if (graph_plan != nullptr) {
+    traces = graph_plan->traces;
+    if (!bind_creator_graph(traces) || traces[1].root != funcA || traces[2].root != funcB) {
+      record(diagnostics, "creator_graph_profile"); return Result(Status::Unsupported);
+    }
+    if (metrics != nullptr)
+      for (std::size_t id = 3; id < traces.size(); ++id) metrics->prefix_events += traces[id].events.size();
   }
   auto& startup = traces[0].events;
   auto& pathA = traces[1].events;
@@ -143,8 +155,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     record(diagnostics, "selected_creation_missing");
     return Result(Status::Unsupported);
   }
-  const std::size_t main_index = provider_plan != nullptr ? 3 : funcA->name() == "main" ? 1 : funcB->name() == "main" ? 2 : 0;
-  if (provider_plan != nullptr) {
+  const std::size_t main_index = (provider_plan != nullptr || graph_plan != nullptr) ? 3 : funcA->name() == "main" ? 1 : funcB->name() == "main" ? 2 : 0;
+  if (graph_plan != nullptr) {
+    argumentA = traces[1].argument; argumentB = traces[2].argument;
+  } else if (provider_plan != nullptr) {
     for (std::size_t id = 1; id < 3; ++id) {
       auto& child = traces[id];
       child.creator_path = main_index;
@@ -191,7 +205,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       if (step < traces[main_index].events.size()) trace.creator_step = step;
     }
   }
-  for (std::size_t id = 3; id < traces.size(); ++id) {
+  for (std::size_t id = 3; graph_plan == nullptr && id < traces.size(); ++id) {
     if (id == main_index) continue;
     auto& trace = traces[id];
     if (trace.creator_path != main_index || trace.events.empty() ||
@@ -347,6 +361,9 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           constant_integer_on_path(call->argument(1), trace.events, i, kind) && kind == 1)
         recursive_requested = true;
     }
+  if (graph_plan != nullptr && recursive_requested) {
+    record(diagnostics, "creator_graph_recursive_mutex_scope"); return Result(Status::Unsupported);
+  }
   if (recursive_requested && std::getenv("IKOS_BMC_DISABLE_RECURSIVE_MUTEX")) {
     record(diagnostics, "recursive_mutex_disabled"); return Result(Status::Unsupported);
   }
@@ -635,7 +652,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   }
   // Rebind only legacy creation indices on the canonical origin before
   // address preparation. Fixed completion/provider plans retain exact steps.
-  if (completion == nullptr && provider_plan == nullptr)
+  if (completion == nullptr && provider_plan == nullptr && graph_plan == nullptr)
     for (std::size_t id = 1; id < 3; ++id) {
       auto& trace = traces[id];
       if (trace.root->name() == "main" || trace.creator_step == ExecutionTrace::no_creation) continue;
@@ -705,7 +722,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         if (!synchronization_layout(call, argument_index, event.width, alignment)) {
           record(diagnostics, "mutex_storage_layout", event.stmt); return false;
         }
-        if (completion != nullptr || provider_plan != nullptr) {
+        if (completion != nullptr || provider_plan != nullptr || graph_plan != nullptr) {
           const auto bits = call->bundle()->data_layout().pointers.bit_width;
           auto* api = exact_callee(call);
           const bool rwlock = api != nullptr && api->name().find("pthread_rwlock_") == 0;
@@ -813,7 +830,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         event.shared_main_local = false;
   for (std::size_t id = 0; id < traces.size(); ++id)
     if (!prefix_values_defined(traces[id].events, diagnostics, traces[id].root, traces[id].argument,
-          id == 0 ? nullptr : &allocation_origin, id == 0 && selected_workers))
+          id == 0 ? nullptr : (graph_plan != nullptr && id != main_index ?
+              &traces[traces[id].creator_path].events : &allocation_origin), id == 0 && selected_workers))
       return Result(Status::Unsupported);
 
   // Calls update handles and opaque synchronization storage without AR Stores.
@@ -866,7 +884,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
             record(diagnostics, "startup_create_output", call); return false;
           }
           address = path[i];
-        } else if ((selected_workers || completion != nullptr || provider_plan != nullptr || address.heap_allocation != nullptr) &&
+        } else if ((selected_workers || completion != nullptr || provider_plan != nullptr || graph_plan != nullptr || address.heap_allocation != nullptr) &&
                    event.kind == EvKind::Create) {
           // Preserve the concrete output also when a loop index folded early.
           auto& output = path[i];
@@ -1299,7 +1317,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   if (has_once) {
     // This finite physical-caller profile does not combine with fixed startup,
     // auxiliary/provider plans or verifier atomic completion.
-    if (!startup.empty() || traces.size() != 3 || main_index == 0 ||
+    if (!startup.empty() || (graph_plan == nullptr && traces.size() != 3) || main_index == 0 ||
         completion != nullptr || provider_plan != nullptr ||
         completion_return(traces[main_index].events, entry) != nullptr) {
       record(diagnostics, "once_physical_profile"); return Result(Status::Unsupported);
@@ -1331,6 +1349,21 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     record(diagnostics, "once_physical_timeline");
   }
 
+  if (graph_plan != nullptr) {
+    // Every event belongs to the same strict timeline, including callback and
+    // handle writes. Keep the source mapper's current representable subset:
+    // all selected ancestor Creates precede both selected memory accesses.
+    z3::expr_vector strict(ctx);
+    for (const auto& value : clock) strict.push_back(value);
+    if (strict.size() > 1) s.add(z3::distinct(strict));
+    for (std::size_t id = 1; id < traces.size(); ++id)
+      for (std::size_t i = 0; i < traces[id].events.size(); ++i)
+        if (traces[id].events[i].kind == EvKind::Create) {
+          const auto& created = clock[traces[id].clock_start + i];
+          s.add(created < clock[targetA] && created < clock[nA + targetB]);
+        }
+  }
+
   // SC memory and indivisible stdout calls have a common strict order. Ties
   // must not invent distinct latest writes or omit the stream synchronization.
   z3::expr_vector memory_clocks(ctx);
@@ -1342,7 +1375,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   }
   if (memory_clocks.size() > 1) s.add(z3::distinct(memory_clocks));
 
-  if (completion != nullptr || provider_plan != nullptr) {
+  if (completion != nullptr || provider_plan != nullptr || graph_plan != nullptr) {
     std::set< std::pair< std::size_t, std::size_t > > bindings;
     for (std::size_t id = 1; id < traces.size(); ++id) {
       const auto& child = traces[id];
@@ -1351,7 +1384,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           child.creator_step >= traces[child.creator_path].events.size()) return Result(Status::Unsupported);
       s.add(clock[traces[child.creator_path].clock_start + child.creator_step] < clock[child.clock_start]);
     }
-    for (const auto& joined : *completion_joins) {
+    if (completion_joins != nullptr) for (const auto& joined : *completion_joins) {
       const auto& child = traces[joined.second];
       s.add(clock[child.clock_start + child.events.size() - 1] < clock[traces[main_index].clock_start + joined.first]);
     }
@@ -1922,7 +1955,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       std::vector< z3::expr > sources;
       struct Write {z3::expr time; z3::expr value; z3::expr matches;};
       std::vector< Write > writes;
-      bool ordered_sources = completion == nullptr && provider_plan == nullptr && (access.base != 0 || access.heap_allocation != nullptr || access.shared_main_local) && access.var_id == 0;
+      bool ordered_sources = completion == nullptr && provider_plan == nullptr && graph_plan == nullptr && (access.base != 0 || access.heap_allocation != nullptr || access.shared_main_local) && access.var_id == 0;
       const auto& other_path = prefix == "value_a_" ? pathB : pathA;
       auto* root = prefix == "value_a_" ? funcA : funcB;
       auto* other_root = prefix == "value_a_" ? funcB : funcA;
@@ -2371,7 +2404,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     // A prepopulated cache may hide dependencies encoded for the other path.
     // A fixed startup contradiction can stop this group; worker rejections
     // additionally need the read/write check in the caller.
-    guard_reusable = completion == nullptr && provider_plan == nullptr && prefix != "value_init_" && cache.empty();
+    guard_reusable = completion == nullptr && provider_plan == nullptr && graph_plan == nullptr && prefix != "value_init_" && cache.empty();
     guard_reads.clear();
     for (std::size_t i = 0; i < path.size(); ++i) {
       const auto& e = path[i];
@@ -2772,6 +2805,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       auto export_start = std::chrono::steady_clock::now();
       outcome.evidence = export_counterexample(traces, caches, clock, replay_offsets, model, &functions,
                                                &object_pointer_reads);
+      if (graph_plan != nullptr) outcome.evidence.replay.put("creator_graph", true);
       if (metrics != nullptr) metrics->evidence_us += std::chrono::duration_cast< std::chrono::microseconds >(
           std::chrono::steady_clock::now() - export_start).count();
       return outcome;

@@ -402,6 +402,55 @@ callback completion; source projection registers only real thread creates and
 retains callback targets on their caller's thread. Neither replay nor export
 success constitutes external source-witness validation.
 
+### Complete bounded creator graphs
+
+A final search pass can retain a bounded tree of actual successful
+`pthread_create` occurrences. Each child is identified by its physical creator
+trace and dynamic Create step. Different invocations of one static worker or
+Create site remain distinct. Every retained Create has exactly one actual child
+prefix; the timed main prefix has no Return. Parent prefixes, target prefixes
+and callback frames share the existing value, memory, mutex and clock encoder.
+All their writes participate in read-from selection.
+
+This first profile uses literal NULL attributes and worker arguments, ordinary
+global scalar memory, private automatic objects and normal global mutexes. It
+excludes joins, detach, heap allocation, escaped automatic objects and new atomic
+or synchronization classes. Attribute-based and recursive mutex profiles remain
+outside this graph mode; their existing non-graph support is unchanged. Within one physical trace, repeated activation of
+the same helper/callback and repeated stack allocations are rejected until the
+static value/local identities have a complete dynamic frame key. Distinct
+physical traces may still invoke the same function.
+
+An active once callback can create a child only when its actual callback Return
+and once Return are retained. The existing native once-control/callee seal and
+unique initializer checks still apply. The AI's leaf-effect once summary is not
+expanded: the bounded search executes the callback instead. The child's clock
+comes from its actual Create, never the later callback completion. Returning
+from the callback ends its local handle object's lifetime while the child
+continues independently.
+
+The independent AR checker reconstructs the creation graph, checks every live
+native-width output slot, and rejects missing children, duplicate edges, cycles,
+invalid frames, unfinished once calls and main process exit. Its resolved-call
+dispatch repeats the supported API checks; executed Create occurrences must
+exactly match the graph bindings. Native Create calls and child entries carry
+and require the complete ordinary ABI checks, including parameter and return
+attributes. G0 currently requires a direct actual Create callee. The source mapper
+requires independent AR acceptance and preserves its current subset: all retained
+Creates precede both selected targets. This mapping is not official source
+witness validation.
+
+The search shares the existing candidate/query limits and deadline. Its local
+enumeration limits are eight physical traces, 1,024 events, three occurrences of
+a Create endpoint and 96 prefix choices per root. Limits affect confirmation
+search only. `IKOS_BMC_DISABLE_CREATOR_GRAPH=1` disables this pass for a
+single-variable diagnostic comparison; it grants no SAFE conclusion. Regression
+controls and certificate corruptions are in `scripts/test_bmc_creator_graph.py`,
+with `--bits=32`, `--bits=64` or its default `--bits=both`. The disabled arm
+requires no graph certificate, while independently replaying any existing-path
+FALSE; it does not require loss of all FALSE results. `--evidence-json` preserves
+both arms' actual verdicts and diagnostics.
+
 ### One-shot capacity-two barriers
 
 Supported barrier execution reuses the closed native barrier-object and

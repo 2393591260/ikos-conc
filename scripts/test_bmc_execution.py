@@ -19,6 +19,7 @@ from analyzer.python.ikos.race_result import validate_race_result
 
 def heap_handle_contract():
     replay = Replay.__new__(Replay)
+    replay.creator_graph = False
     replay.semaphores = {}
     replay.barriers = {}
     replay.atomic_owner = None

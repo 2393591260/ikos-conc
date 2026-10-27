@@ -377,7 +377,7 @@ void DataRaceChecker::search_race_candidates(
   std::set< std::string > completion_groups, semaphore_groups, later_access_groups, provider_groups, provider_later_groups;
   std::set< std::string > creator_release_groups, creator_release_later_groups;
   const bool creator_release_enabled = bmc::creator_release_search_enabled();
-  std::set< std::string > once_groups;
+  std::set< std::string > once_groups, creator_graph_groups;
   const bool has_once_call = [&]() {
     unsigned visited = 0;
     for (auto it = this->_ctx.bundle->function_begin(); it != this->_ctx.bundle->function_end(); ++it) {
@@ -395,13 +395,28 @@ void DataRaceChecker::search_race_candidates(
   const bool once_enabled = has_once_call && getenv("IKOS_BMC_DISABLE_ONCE_EXECUTION") == nullptr &&
       this->_ctx.opts.entry_points.size() == 1 &&
       this->_ctx.opts.entry_points.front()->name() == "main" && this->_ctx.opts.no_init_globals.empty();
+  const bool creator_graph_enabled = bmc::creator_graph_search_enabled() &&
+      this->_ctx.opts.entry_points.size() == 1 &&
+      this->_ctx.opts.entry_points.front()->name() == "main" && this->_ctx.opts.no_init_globals.empty() && [&]() {
+        unsigned visited = 0;
+        for (auto it = this->_ctx.bundle->function_begin(); it != this->_ctx.bundle->function_end(); ++it) {
+          auto* function = *it;
+          if (!function->is_definition() || function->name() == "main") continue;
+          for (auto* block : *function->body()) for (auto* statement : *block) {
+            if (++visited > 32768) return false; // Enumeration gate, never SAFE.
+            bmc::BmcEvent event;
+            if (bmc::classify_event(statement, event) && event.kind == bmc::EvKind::Create) return true;
+          }
+        }
+        return false;
+      }();
   std::map< std::string, bmc::Result > deferred_results;
   std::map< std::string, JsonList > deferred_candidates;
   std::map< std::string, JsonList > occurrence_candidates;
   std::map< std::string, std::map< std::string, std::size_t > > deferred_counts;
   bool file_confirmed = false;
   unsigned startup_hint = 16;
-  for (unsigned pass = 0; pass < (once_enabled ? 13u : (creator_release_enabled ? 12u : 10u)); ++pass) {
+  for (unsigned pass = 0; pass < (creator_graph_enabled ? 14u : (once_enabled ? 13u : (creator_release_enabled ? 12u : 10u))); ++pass) {
     // Try every candidate's short execution before deeper loop alternatives.
     search_budget.defer_large_loops = pass < 2;
     if (pass == 4 && !hinted_activation_groups.empty() && !file_confirmed &&
@@ -493,7 +508,8 @@ void DataRaceChecker::search_race_candidates(
         (pass == 9 && provider_later_groups.count(kv.first) == 0) ||
         (pass == 10 && creator_release_groups.count(kv.first) == 0) ||
         (pass == 11 && creator_release_later_groups.count(kv.first) == 0) ||
-        (pass == 12 && once_groups.count(kv.first) == 0)) continue;
+        (pass == 12 && once_groups.count(kv.first) == 0) ||
+        (pass == 13 && creator_graph_groups.count(kv.first) == 0)) continue;
     search_budget.saw_interrupted = false;
     const std::vector< std::size_t >& pair_indices = kv.second;
     if (pair_indices.empty()) {
@@ -592,7 +608,7 @@ void DataRaceChecker::search_race_candidates(
       const AccessRecord& b = this->_accesses[pr.j];
       const bool worker_pair = a.thread_id != "main" && b.thread_id != "main";
       group_worker_pairs |= worker_pair;
-      if (pass == 5 ? worker_pair : pass >= 3 && pass != 7 && pass != 12 && !worker_pair) continue;
+      if (pass == 5 ? worker_pair : pass >= 3 && pass != 7 && pass != 12 && pass != 13 && !worker_pair) continue;
       bmc::Result candidate_result(bmc::Status::NotSearched);
       bmc::Diagnostics diagnostics;
       bmc::Diagnostics* trace = diagnostics_enabled ? &diagnostics : nullptr;
@@ -720,7 +736,7 @@ void DataRaceChecker::search_race_candidates(
       gate(!off_overlap && !var_index, "offset_prefilter");
       ar::Function* fa = this->_ctx.bundle->function_or_null(a.thread_id);
       ar::Function* fb = this->_ctx.bundle->function_or_null(b.thread_id);
-      gate(pass != 12 && (fa == nullptr || fb == nullptr), "thread_entry_missing");
+      gate(pass < 12 && (fa == nullptr || fb == nullptr), "thread_entry_missing");
       auto direct_creator = [&](const std::string& x, const std::string& y) {
         auto it = this->_thread_creators.find(y);
         return it != this->_thread_creators.end() && it->second.count(x) != 0;
@@ -729,7 +745,7 @@ void DataRaceChecker::search_race_candidates(
         auto it = this->_thread_ancestors.find(y);
         return it != this->_thread_ancestors.end() && it->second.count(x) != 0;
       };
-      gate(pass != 12 && ((transitive_ancestor(a.thread_id, b.thread_id) &&
+      gate(pass < 12 && ((transitive_ancestor(a.thread_id, b.thread_id) &&
             !direct_creator(a.thread_id, b.thread_id)) ||
                (transitive_ancestor(b.thread_id, a.thread_id) &&
                 !direct_creator(b.thread_id, a.thread_id))),
@@ -780,7 +796,16 @@ void DataRaceChecker::search_race_candidates(
           unsigned later_frontier = 0;
           bmc::LaterAccessState* later_state = nullptr;
           auto confirm = [&] {
-            if (pass == 12) {
+            if (pass == 13) {
+              // The AI once summary deliberately rejects child creation. This
+              // finite execution retains the entire actual callback instead;
+              // use its native control/callee seal, never widen that AI summary.
+              auto sealed = [&](ar::CallBase* call) {
+                return bmc::once_callback(call) != nullptr;
+              };
+              candidate_result.merge(bmc::confirm_race_creator_graph(a.stmt, a.width,
+                  b.stmt, b.width, trace, search_budget, &confirmed_creations, sealed, facts.main_argc_one));
+            } else if (pass == 12) {
               auto sealed = [&](ar::CallBase* call) {
                 auto targets = closed_once_callbacks(this->_ctx, call);
                 auto* actual = bmc::once_callback(call);
@@ -999,10 +1024,11 @@ void DataRaceChecker::search_race_candidates(
     const bool creator_release_later_deferred = creator_release_enabled && pass < 11 &&
         bmc_enabled && group_worker_pairs && !file_confirmed;
     const bool once_deferred = once_enabled && pass < 12 && bmc_enabled && !file_confirmed;
+    const bool creator_graph_deferred = creator_graph_enabled && pass < 13 && bmc_enabled && !file_confirmed;
     if (!bmc_confirmed && (legacy_deferred || occurrence_deferred || hint_deferred ||
                           completion_deferred || semaphore_deferred || later_access_deferred ||
                           provider_deferred || provider_later_deferred ||
-                          creator_release_deferred || creator_release_later_deferred || once_deferred)) {
+                          creator_release_deferred || creator_release_later_deferred || once_deferred || creator_graph_deferred)) {
       deferred_results[kv.first] = group_result;
       if (legacy_deferred) {
         if (pass == 0) deferred_groups.insert(kv.first);
@@ -1016,6 +1042,7 @@ void DataRaceChecker::search_race_candidates(
       if (creator_release_deferred) creator_release_groups.insert(kv.first);
       if (creator_release_later_deferred) creator_release_later_groups.insert(kv.first);
       if (once_deferred) once_groups.insert(kv.first);
+      if (creator_graph_deferred) creator_graph_groups.insert(kv.first);
       if (diagnostics_enabled) {
         if (pass == 0) deferred_candidates.emplace(kv.first, candidate_diagnostics);
         if (pass == 3) occurrence_candidates[kv.first] = candidate_diagnostics;
@@ -1031,6 +1058,7 @@ void DataRaceChecker::search_race_candidates(
     creator_release_groups.erase(kv.first);
     creator_release_later_groups.erase(kv.first);
     once_groups.erase(kv.first);
+    creator_graph_groups.erase(kv.first);
     // Flat targets and the report anchor must refer to the confirmed pair.
     JsonDict info{
         {"memory_location", first.first_conflict_loc.empty()

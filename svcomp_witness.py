@@ -359,9 +359,13 @@ def build_witness(source, info, data_model, ikos="ikos"):
     program = replay["program"]
     instructions = program["instructions"]
     trace_list = replay["traces"]
-    if any("once_role" in step for trace in trace_list for step in trace["steps"]):
+    trace_entries = {trace["id"]: trace["entry"] for trace in trace_list}
+    creator_graph = replay.get("creator_graph") is True or any(
+        trace.get("creator_trace") in trace_entries and
+        trace_entries[trace["creator_trace"]] != "main" for trace in trace_list)
+    if creator_graph or any("once_role" in step for trace in trace_list for step in trace["steps"]):
         require(validate_selected_execution(info, data_model).get("status") == "ACCEPT",
-                "once projection requires complete independent AR replay")
+                "once/creator graph projection requires complete independent AR replay")
         # Callback frames use their caller's existing physical trace/thread id.
         # Only actual pthread_create occurrences below register new threads.
     # Setters and indirect calls require replay even without optional profile

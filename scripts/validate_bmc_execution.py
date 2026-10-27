@@ -108,6 +108,17 @@ class Replay:
             require(creator in self.traces and type(step) is int and step >= 0, 'dynamic creation occurrence')
             require((creator, step) not in bindings, 'two traces share one creation occurrence')
             bindings.add((creator, step))
+        # Metadata may request stronger checks; its deletion cannot hide a
+        # nested physical creator. Reconstruct the graph from actual bindings.
+        self.creator_graph = certificate.get('creator_graph') is True or any(
+            t.get('creator_trace') in self.traces and
+            self.traces[t['creator_trace']]['entry'] != 'main'
+            for t in self.traces.values())
+        self.graph_bindings = set(bindings)
+        self.graph_executed_creates = set()
+        if self.creator_graph:
+            self.check_creator_graph(bindings)
+        self.graph_invoked = {name: {trace['entry']} for name, trace in self.traces.items()}
         self.threads, self.memory, self.objects = {}, {}, {}
         self.created, self.locks, self.accesses = {}, {}, {}
         self.next_instance, self.next_frame = 1, 0
@@ -801,6 +812,12 @@ class Replay:
         if fn.get('intrinsic_assume') or name == '__VERIFIER_assume':
             require(len(args) == 1 and isinstance(args[0], int) and args[0] != 0, 'false assume'); return UNDEFINED
         if name in ('pthread_create', 'ar.pthread.create'):
+            if self.creator_graph:
+                self.graph_create_contract(inst, step)
+                occurrence = (trace_id, index)
+                require(occurrence in self.graph_bindings and occurrence not in self.graph_executed_creates,
+                        'creator graph actual Create occurrence')
+                self.graph_executed_creates.add(occurrence)
             require(len(args) == 4 and args[1] == ('null',0) and args[2][0] == 'function', 'create arguments')
             width = self.program['pointer_bits']//8
             if self.program['pointer_bits'] not in (32, 64): raise Unsupported('thread handle ABI width')
@@ -829,6 +846,14 @@ class Replay:
                 self.encoded_address(step, args[0], width)
             elif 'allocation' in self.objects[obj]:
                 raise Reject('missing encoded heap output address')
+            if getattr(self, 'creator_graph', False):
+                require(args[3] == ('null', 0) and 'encoded_address' in step,
+                        'creator graph NULL argument/output seal')
+                meta = self.objects[obj]
+                if 'owner_thread' in meta:
+                    require(meta['owner_thread'] == thread.instance and
+                            any(f.uid == meta['owner_frame'] for f in thread.frames),
+                            'creator graph output frame lifetime')
             target = args[2][1]; instance = self.next_instance; self.next_instance += 1
             self.store(args[0], instance, t, width)
             self.created[instance] = dict(function=target, argument=args[3], vc=dict(thread.vc),
@@ -1481,6 +1506,108 @@ class Replay:
             self.finite_once_families[sid] = set(choices)
         return self.finite_once_families[statement]
 
+    def graph_call_scope(self, name, inst):
+        # Check the resolved API, not only an operand0 function constant. This
+        # deliberately preserves ordinary direct helper calls and old-style
+        # nondet callee adapters while closing indirect lifecycle bypasses.
+        if (name in ('pthread_join', 'ar.pthread.join', 'pthread_detach', 'pthread_cancel',
+                     'pthread_exit', 'ar.pthread.exit', 'malloc', 'calloc', 'realloc', 'free',
+                     'ar.libc.malloc', 'ar.libc.calloc', 'ar.libc.realloc', 'ar.libc.free') or
+                name.startswith(('pthread_cond_', 'pthread_barrier_', 'pthread_rwlock_',
+                                 'pthread_mutexattr_', 'sem_', '__VERIFIER_atomic_',
+                                 'ar.pthread.cond.', 'ar.pthread.barrier.', 'ar.pthread.rwlock.', 'ar.sem.'))):
+            raise Unsupported('creator graph lifecycle/synchronization scope')
+        if name == 'pthread_mutex_init':
+            operands = inst.get('operands', [])
+            require(len(operands) == 3 and operands[2].get('kind') == 'null',
+                    'creator graph ordinary mutex initialization')
+
+    def graph_create_contract(self, inst, step):
+        operands = inst.get('operands', [])
+        require(operands and operands[0].get('kind') == 'function' and
+                operands[0].get('id') in ('pthread_create', 'ar.pthread.create'),
+                'creator graph direct actual Create')
+        require(len(operands) == 5 and operands[2].get('kind') == 'null' and
+                operands[3].get('kind') == 'function' and operands[4].get('kind') == 'null',
+                'creator graph literal NULL create')
+        require('encoded_address' in step, 'creator graph output address missing')
+        native = inst.get('native_create', {})
+        expected = dict(name='pthread_create', declaration=True, variadic=False,
+            call_convention=0, calling_convention=0, matching_signature=True,
+            operand_bundles=False, arguments=4, parameters=4, result_bits=32, return_bits=32,
+            special_parameter_abi=False, ordinary_abi=True, child_ordinary_abi=True,
+            child_signature_matches=True,
+            child=operands[3]['id'], child_declaration=False, child_variadic=False,
+            child_convention=0, child_parameters=1, child_byte_pointer_argument=True,
+            child_byte_pointer_return=True)
+        require(all(type(native.get(k)) is type(v) and native.get(k) == v for k, v in expected.items()),
+                'creator graph native Create/entry ABI')
+        entry = self.functions.get(operands[3]['id'], {})
+        require(entry.get('declaration') is False and not entry.get('variadic') and
+                len(entry.get('parameters', [])) == 1 and
+                entry['parameters'][0]['type']['kind'] == 'pointer' and
+                entry.get('return_type', {}).get('kind') == 'pointer',
+                'creator graph AR entry signature')
+
+    def check_creator_graph(self, bindings):
+        roots = [name for name, trace in self.traces.items() if trace['entry'] == 'main']
+        require(roots == ['main'] and 'startup' not in self.traces and 'provider' not in self.traces,
+                'creator graph timed main identity')
+        require(3 <= len(self.traces) <= 8, 'creator graph instance bound')
+        actual = set()
+        main_statements = {sid for block in self.functions['main']['blocks'].values()
+                           for sid in block['statements']}
+        clocks = []
+        for name, trace in self.traces.items():
+            require(trace['steps'], 'creator graph empty child')
+            seen = set()
+            ancestor = name
+            while ancestor != 'main':
+                require(ancestor in self.traces and ancestor not in seen, 'creator graph cycle/disconnection')
+                seen.add(ancestor)
+                ancestor = self.traces[ancestor].get('creator_trace')
+            for index, step in enumerate(trace['steps']):
+                inst = self.instructions[step['statement']]
+                clocks.append(int(step['clock']))
+                operands = inst.get('operands', [])
+                if name == 'main' and inst.get('kind') == 'return' and step['statement'] in main_statements:
+                    raise Reject('creator graph main Return')
+                if inst.get('kind') in ('load', 'store') and inst.get('atomic'):
+                    raise Unsupported('creator graph atomic memory')
+                if inst.get('kind') != 'call' or not operands or operands[0].get('kind') != 'function':
+                    continue
+                api = operands[0].get('id', '')
+                self.graph_call_scope(api, inst)
+                if api in ('pthread_create', 'ar.pthread.create'):
+                    self.graph_create_contract(inst, step)
+                    actual.add((name, index))
+        require(actual == bindings, 'creator graph omits or invents a child')
+        require(len(clocks) == len(set(clocks)), 'creator graph clocks must be strict')
+        require(sum(len(t['steps']) for t in self.traces.values()) <= 1024, 'creator graph event bound')
+        for name, trace in self.traces.items():
+            if name == 'main': continue
+            parent = self.traces[trace['creator_trace']]
+            index = trace['creator_step']
+            require(index < len(parent['steps']), 'creator graph parent occurrence')
+            inst = self.instructions[parent['steps'][index]['statement']]
+            require(inst['operands'][3]['id'] == trace['entry'], 'creator graph child entry')
+            require(int(parent['steps'][index]['clock']) < int(trace['steps'][0]['clock']),
+                    'creator graph child before Create')
+        targets = self.certificate['targets']
+        require(len(targets) == 2, 'creator graph target count')
+        for target in targets:
+            require(target['trace'] in ('a', 'b') and type(target['step']) is int and
+                    0 <= target['step'] < len(self.traces[target['trace']]['steps']),
+                    'creator graph target occurrence')
+        earliest = min(int(self.traces[t['trace']]['steps'][t['step']]['clock']) for t in targets)
+        require(all(int(self.traces[name]['steps'][index]['clock']) < earliest for name, index in actual),
+                'creator graph source projection requires earlier Creates')
+
+    def graph_invocation(self, trace_id, function):
+        if getattr(self, 'creator_graph', False):
+            require(function not in self.graph_invoked[trace_id], 'creator graph repeated static frame')
+            self.graph_invoked[trace_id].add(function)
+
     def once_call(self, args, inst, step, trace_id, index, thread, frame):
         require(self.atomic_owner is None and frame.pending is None and frame.once_pending is None,
                 'once invocation pending mode')
@@ -1607,6 +1734,7 @@ class Replay:
             require(pending['role'] == 'active' and not pending['entered'] and
                     state['phase'] == 'claimed' and state['owner'] == (thread.instance, frame.uid),
                     'once callback enter state')
+            self.graph_invocation(trace_id, pending['callback'])
             callback = self.frame(pending['callback'], [])
             pending.update(entered=True, callback_frame=callback.uid)
             state.update(phase='running', owner=(thread.instance, callback.uid))
@@ -1767,13 +1895,23 @@ class Replay:
         elif kind=='call':
             require(isinstance(values[0],tuple) and values[0][0]=='function', 'indirect callee')
             name=values[0][1]; fn=self.functions[name]
+            if name in ('pthread_create', 'ar.pthread.create') and self.traces[trace_id]['entry'] != 'main':
+                require(self.creator_graph, 'nested actual Create missing graph topology')
+            if self.creator_graph:
+                self.graph_call_scope(name, inst)
             if name == 'pthread_once' and fn['declaration']:
                 self.once_call(values[1:], inst, step, trace_id, index, thread, frame)
                 return
-            if self.once_profile and any(f.once_pending is not None for f in thread.frames) and name in ('pthread_create', 'pthread_join'):
-                raise Unsupported('once nested child lifecycle')
+            if self.once_profile and any(f.once_pending is not None for f in thread.frames) and name in ('pthread_create', 'ar.pthread.create', 'pthread_join', 'ar.pthread.join'):
+                pending = [f.once_pending for f in thread.frames if f.once_pending is not None]
+                if not (self.creator_graph and name in ('pthread_create', 'ar.pthread.create') and
+                        len(pending) == 1 and pending[0]['role'] == 'active' and
+                        pending[0]['entered'] and not pending[0]['returned'] and
+                        any(f.uid == pending[0]['callback_frame'] for f in thread.frames)):
+                    raise Unsupported('once nested child lifecycle')
             if 'expanded_callee' in step: require(name == step['expanded_callee'], 'expanded callee differs from actual pointer')
             if not fn['declaration']:
+                self.graph_invocation(trace_id, name)
                 frame.pending=(inst,step); thread.frames.append(self.frame(name,values[1:]));
                 if name.startswith('__VERIFIER_atomic_'):
                     require(self.atomic_owner is None, 'nested named atomic')
@@ -1781,6 +1919,8 @@ class Replay:
                 return
             result=self.api(name,values[1:],inst,step,trace_id,index,thread,frame)
         elif kind=='return':
+            if self.creator_graph and frame.function == 'main':
+                raise Reject('creator graph main Return')
             result=values[0] if values else UNDEFINED
             if len(thread.frames) >= 2:
                 parent = thread.frames[-2]
@@ -1851,6 +1991,12 @@ class Replay:
             require(all(a<b for a,b in zip(times,times[1:])), 'program-order clocks')
             events.extend((int(s['clock']),name,i,s) for i,s in enumerate(trace['steps']))
         for _,name,i,step in sorted(events): self.execute(name,i,step)
+        if self.creator_graph:
+            require(self.graph_executed_creates == self.graph_bindings and
+                    {(created['creator_trace'], created['creator_step'])
+                     for created in self.created.values()} == self.graph_bindings and
+                    len(self.created) == len(self.graph_bindings),
+                    'creator graph executed Creates differ from bindings')
         require(self.atomic_owner is None and not self.pending_markers, 'open synthetic/atomic prefix')
         require(all(f.once_pending is None for t in self.threads.values() for f in t.frames) and
                 all(s['phase'] == 'done' for s in self.once_states.values()), 'open once execution')

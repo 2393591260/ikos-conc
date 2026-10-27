@@ -324,6 +324,10 @@ foreach(suite address values correctness auxiliary)
   add_concurrency_test(${suite}-lp64 "${CMAKE_CURRENT_SOURCE_DIR}/bmc-${suite}/runtest"
                        --ikos "${CONCURRENCY_IKOS}" --bits 64)
 endforeach()
+foreach(bits 32 64)
+  add_concurrency_test(creator-graph-${bits} "${CONCURRENCY_ROOT}/scripts/test_bmc_creator_graph.py"
+                       --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
+endforeach()
 add_concurrency_test(execution "${CONCURRENCY_ROOT}/scripts/test_bmc_execution.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(witness "${CONCURRENCY_ROOT}/scripts/test_svcomp_witness.py"
