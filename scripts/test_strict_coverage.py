@@ -73,10 +73,18 @@ def main():
                     env=dict(os.environ, IKOS_BMC_RECOVER='1'), capture_output=True, text=True, timeout=30)
                 assert proc.returncode == 0, (fixture_name, case, proc.stdout, proc.stderr)
                 metadata = validate_race_result(json.loads(report.read_text()))
-                assert metadata['coverage'] == 'Checked' and metadata['safety_only_count'] > 0, metadata
-                assert any(o['contract'] == contract and o['safety_only'] for o in metadata['obligations']), metadata
+                assert metadata['coverage'] == 'Checked', metadata
+                if fixture_name == 'readonly-heap-reads.c':
+                    # These byte effects are fully covered by current transfer.
+                    # No safety-only permission is needed, so the remaining race
+                    # in CASE7 may enter BMC. Keep the exact accepted boundary.
+                    assert metadata['obligation_count'] == 0 and metadata['safety_only_count'] == 0, metadata
+                    assert metadata['search_performed'] == (case == 7), metadata
+                else:
+                    assert metadata['safety_only_count'] > 0, metadata
+                    assert any(o['contract'] == contract and o['safety_only'] for o in metadata['obligations']), metadata
+                    assert not metadata['search_performed'], metadata
                 assert metadata['verdict'] == ('SAFE' if case == 0 else 'UNKNOWN'), metadata
-                assert not metadata['search_performed'], metadata
                 if case == 7:
                     assert metadata['remaining_pairs'] > 0, metadata
         # Required extern roots have no source statement to anchor a warning.

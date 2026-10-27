@@ -59,6 +59,7 @@ enum class Id {
   EffectTlsSlot,
   EffectTlsDestructor,
   EffectPthreadInitialization,
+  EffectPthreadAttributes,
   EffectSyncArguments,
   EffectRuntimeStdio,
   EffectImmutableArguments,
@@ -129,6 +130,7 @@ inline Contract contract(Id id) {
     case Id::EffectScalarScan: return {"effect-scalar-scan-v1", Role::LibraryEffect, Stage::Transfer, true};
     case Id::EffectTlsSlot: return {"effect-tls-slot-v1", Role::LibraryEffect, Stage::Transfer, true};
     case Id::EffectTlsDestructor: return {"effect-tls-destructor-v1", Role::LibraryEffect, Stage::Transfer, true};
+    case Id::EffectPthreadAttributes: return {"effect-pthread-attributes-v1", Role::LibraryEffect, Stage::Transfer, true};
     case Id::EffectPthreadInitialization: return {"effect-pthread-initialization-v1", Role::LibraryEffect, Stage::Transfer, true};
     case Id::EffectSyncArguments: return {"effect-sync-arguments-v1", Role::LibraryEffect, Stage::Transfer, true};
     case Id::EffectRuntimeStdio: return {"effect-runtime-stdio-v1", Role::LibraryEffect, Stage::Transfer, true};

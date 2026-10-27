@@ -61,6 +61,7 @@
 #include <ikos/analyzer/analysis/execution_engine/symbolic_index.hpp>
 #include <ikos/analyzer/analysis/execution_engine/concurrent_semantics.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
+#include <ikos/analyzer/analysis/execution_engine/pthread_attributes.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_key_effects.hpp>
 #include <ikos/analyzer/analysis/execution_engine/numeric_thread_argument.hpp>
 #include <ikos/analyzer/analysis/execution_engine/numeric_pointer_null.hpp>
@@ -2259,6 +2260,21 @@ public:
     this->_inv.set_to_top();
   }
 
+  // One ordinary byte-effect transfer for both external dispatch paths.
+  bool try_exec_pthread_attribute_effect(ar::CallBase* call) {
+    const auto* effect = closed_pthread_attribute_effect(call, this->_ctx);
+    if (!effect || !closed_pthread_attribute_range(*effect, call, this->data(), this->_ctx))
+      return false;
+    const auto& destination = this->_lit_factory.get_scalar(call->argument(0));
+    // All acceptance premises were checked in the unmodified pre-state.
+    if (!this->prepare_mem_access(destination)) return false;
+    havoc_closed_pthread_attribute_bytes(*effect, destination, this->data(), this->_mem_factory,
+                                        this->_ctx.concurrent_env, this->_data_layout.pointers.bit_width);
+    // No known-zero return, synchronization, completion or child identity effect.
+    this->exec_unknown_call(call, false, false, false, false);
+    return true;
+  }
+
   /// \brief Execute a call to the given extern function
   void exec_extern_call(ar::CallBase* call, ar::Function* fun) override {
     ikos_assert(fun->is_declaration());
@@ -2279,6 +2295,7 @@ public:
       return;
     }
 
+    if (this->try_exec_pthread_attribute_effect(call)) return;
     if (this->try_exec_scalar_scan(call)) return;
 
     // === POSIX lock API routing (rwlock / trylock) =====================
@@ -3130,6 +3147,7 @@ public:
 
   /// \brief Execute a call to an unknown extern function
   void exec_unknown_extern_call(ar::CallBase* call) override {
+    if (this->try_exec_pthread_attribute_effect(call)) return;
     if (this->try_exec_scalar_scan(call)) return;
     if (this->try_exec_ffs(call)) return;
 

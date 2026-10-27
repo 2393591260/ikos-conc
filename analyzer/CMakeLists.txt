@@ -208,6 +208,7 @@ add_executable(ikos-analyzer
   src/analysis/posix_semaphore.cpp
   src/analysis/posix_barrier.cpp
   src/analysis/source_program_facts.cpp
+  src/analysis/pthread_attributes.cpp
   src/analysis/pointer/constraint.cpp
   src/analysis/pointer/function.cpp
   src/analysis/pointer/pointer.cpp

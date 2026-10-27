@@ -31,7 +31,19 @@ public:
     ar::IntegerType* type;
   };
 
+  // Immutable private-attribute effects only. Dynamic range acceptance is never cached.
+  struct PthreadAttributeEffect {
+    ar::LocalVariable* storage;
+    std::uint64_t bytes;
+    std::uint64_t alignment;
+  };
+  struct PthreadAttributeIndex {
+    bool built = false;
+    std::map< ar::CallBase*, PthreadAttributeEffect > effects;
+  };
+
 private:
+  PthreadAttributeIndex _pthread_attributes;
   ar::Bundle* _bundle;
   bool _indexed = false;
   StatementIndex _memory_calls, _memory_calls_allocations;
@@ -45,6 +57,7 @@ private:
 
 public:
   explicit SourceProgramFacts(ar::Bundle*);
+  PthreadAttributeIndex& pthread_attributes() { return _pthread_attributes; }
   // A bounded query refuses at the same statement as its original scan.
   bool index(std::size_t limit = std::numeric_limits< std::size_t >::max());
   const StatementIndex& memory_calls() const { return _memory_calls; }

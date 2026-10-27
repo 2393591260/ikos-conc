@@ -665,3 +665,22 @@ foreach(bits 32 64)
   add_concurrency_test(bmc-heap-helper-occurrences-${bits} "${CONCURRENCY_ROOT}/scripts/test_bmc_heap_helper_occurrences.py"
                        --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
 endforeach()
+
+add_concurrency_test(pthread-attributes "${CONCURRENCY_ROOT}/scripts/test_pthread_attributes.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(pthread-attributes-lp64 "${CONCURRENCY_ROOT}/scripts/test_pthread_attributes.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+add_executable(test-analysis-pthread-attributes pthread_attributes.cpp
+               "${CONCURRENCY_ROOT}/analyzer/src/analysis/pthread_attributes.cpp"
+               "${CONCURRENCY_ROOT}/analyzer/src/analysis/source_program_facts.cpp"
+               "${CONCURRENCY_ROOT}/analyzer/src/analysis/variable.cpp"
+               "${CONCURRENCY_ROOT}/analyzer/src/analysis/memory_location.cpp"
+               "${CONCURRENCY_ROOT}/analyzer/src/analysis/literal.cpp"
+               "${CONCURRENCY_ROOT}/analyzer/src/exception.cpp")
+target_link_libraries(test-analysis-pthread-attributes
+                      ${FRONTEND_LLVM_TO_AR_LIB} ${AR_LIB} ${IKOS_ANALYZER_LLVM_LIBS}
+                      ${Boost_LIBRARIES} Threads::Threads)
+add_dependencies(build-analyzer-tests test-analysis-pthread-attributes)
+add_test(NAME concurrency-pthread-attribute-contract
+         COMMAND $<TARGET_FILE:test-analysis-pthread-attributes>)
+set_tests_properties(concurrency-pthread-attribute-contract PROPERTIES LABELS concurrency)

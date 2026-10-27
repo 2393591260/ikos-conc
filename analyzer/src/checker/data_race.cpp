@@ -60,6 +60,7 @@
 #include <ikos/analyzer/checker/once_initialization.hpp>
 #include <ikos/analyzer/checker/thread_completion.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_initialization.hpp>
+#include <ikos/analyzer/analysis/execution_engine/pthread_attributes.hpp>
 #include <ikos/analyzer/analysis/execution_engine/pthread_key_effects.hpp>
 #include <ikos/analyzer/analysis/execution_engine/stdio_effects.hpp>
 #include <ikos/analyzer/analysis/runtime_stdio_frame.hpp>
@@ -1596,6 +1597,17 @@ void DataRaceChecker::check_extern_call_effects(
   }
   if (!extern_call) {
     return;
+  }
+  if (const auto* effect = closed_pthread_attribute_effect(call, this->_ctx)) {
+    if (closed_pthread_attribute_range(*effect, call, inv.first(), this->_ctx)) {
+      this->consume_library_effect(race_rules::Id::EffectPthreadAttributes, call, call_context,
+          JsonDict{{"safe_reason", "closed private default pthread attribute byte effects"},
+                   {"pthread_attributes_contract", "closed-private-default-pthread-attributes-v1"}});
+      return;
+    }
+    // Monotone, call-scoped debt: a later successful visit cannot erase a mismatch.
+    this->add_coverage_obligation("pthread_attributes", call,
+        "private pthread attribute current range is not established");
   }
   if (this->_ctx.posix_barrier() && this->_ctx.posix_barrier()->effect(call)) {
     this->consume_library_effect(race_rules::Id::EffectBarrier, call, call_context,

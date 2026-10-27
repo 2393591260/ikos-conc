@@ -227,3 +227,51 @@ linked page.
 <a id="bounded-executions"></a>
 
 [bounded executions](concurrency/reference/bounded-execution.md#bounded-executions)
+
+
+### Private default pthread attributes
+
+The `closed-private-default-pthread-attributes-v1` library effect covers a
+complete private `pthread_attr_t` local in the single configured `main`
+activation. The supported GNU Linux layouts are i386 ILP32 (36 bytes, alignment
+4) and x86_64 LP64 (56 bytes, alignment 8). x32, packed objects, arrays, fields,
+globals, heap objects and variable extents do not qualify.
+
+An immutable bounded source/AR certificate requires one acyclic initialization,
+an optional acyclic `pthread_attr_setdetachstate(..., PTHREAD_CREATE_JOINABLE)`,
+and an optional acyclic destruction. Actual successful initialization and setter
+edges must precede their dependent consumers in both representations. Every
+pointer use must be a value-preserving zero-offset alias or the exact attribute
+argument of a genuine direct API call. Repeated `pthread_create` reads are
+permitted; repeated initialization and use after destruction are refused. This
+version refuses explicit lifetime intrinsics involving the object, including a
+native marker with no matching imported statement. It does not interpret a
+missing mapping as a safe elimination. Main reentry, address exposure, opaque
+control, forged addresses and unclassified address-producing intrinsics refuse
+the certificate.
+
+At each transfer and checker visit, the same pure range query requires an already
+initialized, must-nonnull pointer to the exact singleton local, offset zero,
+allocated lifetime, the full known allocation extent and sufficient alignment.
+The query runs before memory-access refinement. The three attribute APIs forget
+all bytes of that private object, including padding, notify the existing write
+invalidation mechanisms, and leave their signed 32-bit result nondeterministic.
+They provide no child completion, happens-before edge, lock, pointer-validity or
+successful-return fact. Failed matching retains ordinary external-effect debt;
+a later successful match cannot erase an earlier coverage obligation.
+
+The certificate does not change Create/Join, synthetic or native handles,
+constructor/completion contracts, BMC, or execution checking. Their existing
+NULL-attribute requirements remain in force. In particular, detached attributes
+are refused. Joining a detached thread is undefined by POSIX and is only a
+certificate-refusal test; a detached thread without a join provides the separate
+legal conflicting-access control. Destroying attributes does not wait for workers.
+
+`IKOS_DISABLE_PTHREAD_ATTRIBUTES=1` is a diagnostic switch shared by transfer and
+checker; it grants no permission elsewhere. The certificate is cached only for
+immutable source/AR facts after option reconciliation. Dynamic ranges are checked
+afresh. Work exhaustion refuses the entire computed index. The permanent
+`pthread-attributes` and `pthread-attributes-lp64` tests cover ordinary source
+controls; `pthread-attribute-contract` covers native/AR tampering, bounded
+refusals, real abstract-state queries and whole-byte effects in both data models.
+These tests must pass on the actual candidate before claiming a recovered task.
