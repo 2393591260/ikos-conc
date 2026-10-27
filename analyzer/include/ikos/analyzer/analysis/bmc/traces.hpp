@@ -252,6 +252,92 @@ inline bool bind_creator_graph(std::vector< ExecutionTrace >& traces) {
   return true;
 }
 
+// A complete first helper-heap slice: one timed physical main and one child,
+// with all allocator/helper frames returned before the sole direct Create.
+// Static publication is still sealed by published_pointer, never guessed RF.
+inline bool main_helper_heap_profile_supported(
+    const std::vector< ExecutionTrace >& traces, std::size_t main_index) {
+  if (traces.size() != 3 || !traces[0].events.empty() ||
+      (main_index != 1 && main_index != 2) || !traces[main_index].root ||
+      traces[main_index].root->name() != "main") return false;
+  const auto& origin = traces[main_index].events;
+  if (!helper_heap_path(origin)) return false;
+  std::size_t creation = origin.size();
+  unsigned allocations = 0;
+  for (std::size_t i = 0; i < origin.size(); ++i) {
+    const auto& event = origin[i];
+    if (event.kind != EvKind::Create) continue;
+    auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+    if (creation != origin.size() || !call || call->code()->function_or_null() != traces[main_index].root ||
+        invocation_call(origin, call->code(), i) != origin.size() || call->num_arguments() != 4 ||
+        !core::isa< ar::NullConstant >(call->argument(1)) ||
+        !core::isa< ar::NullConstant >(call->argument(3))) return false;
+    BmcEvent output;
+    if (!pointer_on_path(call->argument(0), origin, i, traces[main_index].root,
+                         traces[main_index].argument, output, &origin) || output.heap_allocation) return false;
+    creation = i;
+  }
+  if (creation == origin.size()) return false;
+  for (std::size_t id = 1; id < traces.size(); ++id) {
+    const auto& trace = traces[id];
+    if (!trace.root || trace.events.empty() || (id != main_index && trace.root->name() == "main")) return false;
+    for (std::size_t i = 0; i < trace.events.size(); ++i) {
+      const auto& event = trace.events[i];
+      auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
+      auto* api = call ? exact_callee(call) : nullptr;
+      if (event.kind == EvKind::Unsupported || event.kind == EvKind::Join ||
+          event.once_stage != OnceStage::None || event.synthetic_atomic ||
+          event.synthetic_condition || event.synthetic_barrier ||
+          event.mutex == PSEUDO_ATOMIC_LOCK || event.recursive_profile || event.recursive_mutex ||
+          semaphore_event(event.kind) || barrier_event(event.kind) ||
+          (id != main_index && event.kind == EvKind::Create) ||
+          (call && (free_call(call) || thread_exit_call(call) || condition_call(call) ||
+                    constant_output_call(call) || is_verifier_atomic(call))) ||
+          (api && (api->name() == "pthread_detach" || api->name() == "realloc" ||
+                   api->name().find("pthread_rwlock_") == 0 ||
+                   api->name().find("pthread_mutexattr_") == 0 ||
+                   (api->name() == "pthread_mutex_init" && call->num_arguments() == 2 &&
+                    !core::isa< ar::NullConstant >(call->argument(1)))))) return false;
+      if (auto* ret = core::dyn_cast< ar::ReturnValue >(event.stmt))
+        if (ret->code() == traces[main_index].root->body_or_null()) return false;
+      if (auto* cast = core::dyn_cast< ar::UnaryOperation >(event.stmt))
+        if (cast->op() == ar::UnaryOperation::PtrToSI || cast->op() == ar::UnaryOperation::PtrToUI ||
+            cast->op() == ar::UnaryOperation::SIToPtr || cast->op() == ar::UnaryOperation::UIToPtr) return false;
+      // Frame-local arrays are a separate identity model. This slice needs
+      // no helper alloca to represent optimized scalar/pointer temporaries.
+      if (core::isa< ar::Allocate >(event.stmt) &&
+          event.stmt->code()->function_or_null() != trace.root) return false;
+      if (call && heap_allocation_call(call)) {
+        core::ZNumber extent;
+        if (id != main_index || i >= creation || ++allocations > 8 ||
+            !helper_heap_allocator_abi(call) || !main_allocation(call, origin, i, extent)) return false;
+      }
+      if (id == main_index && i > creation && event.called_function != nullptr) return false;
+      auto* store = core::dyn_cast< ar::Store >(event.stmt);
+      if (!store || !store->value()->type()->is_pointer()) continue;
+      BmcEvent destination;
+      if (!pointer_on_path(store->pointer(), trace.events, i, trace.root, trace.argument,
+                           destination, &origin)) return false;
+      if (id != main_index || i >= creation) return false;
+      if (destination.heap_allocation != nullptr) {
+        // Initialize pointer fields only with literal NULL. Mutable/cyclic
+        // object graphs and typed pointer RF are explicitly a later stage.
+        if (!core::isa< ar::NullConstant >(store->value())) return false;
+      } else if (destination.base != 0) {
+        auto* global = global_pointer_slot(store->pointer());
+        std::size_t at = 0;
+        if (!global || published_pointer(global, origin, at) != store || at != i) return false;
+        if (!core::isa< ar::NullConstant >(store->value())) {
+          BmcEvent published;
+          if (!pointer_on_path(store->value(), origin, i, trace.root, trace.argument, published, &origin) ||
+              !published.heap_allocation || published.var_id != 0) return false;
+        }
+      } else if (!destination.local_base) return false;
+    }
+  }
+  return allocations != 0;
+}
+
 // Version one keeps dynamic step indices stable and excludes nested lifecycles.
 inline bool completion_prefix_supported(const std::vector< BmcEvent >& path,
                                         bool child = false) {

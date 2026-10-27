@@ -97,6 +97,7 @@ struct BmcEvent {
   std::size_t heap_allocation_step = 0; // Exact event in canonical initial-main origin.
   unsigned heap_occurrence = 0; // One-based executed ordinal at this same source.
   core::ZNumber heap_extent{0};
+  bool heap_helper_allocation = false; // Actual allocator in a retained physical-main helper frame.
   std::uint64_t base = 0;
   core::ZNumber const_off{0};
   std::uint64_t var_id = 0;
@@ -478,6 +479,31 @@ inline bool calloc_call(ar::CallBase* call) {
 
 inline bool heap_allocation_call(ar::CallBase* call) {
   return malloc_call(call) || calloc_call(call);
+}
+
+// The new helper profile has a stronger allocator seal than the legacy main
+// malloc adapter. Preserve the legacy adapter and require this seal explicitly.
+inline bool helper_heap_allocator_abi(ar::CallBase* call) {
+  if (!call || !heap_allocation_call(call)) return false;
+  auto* api = exact_callee(call);
+  auto* native = call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallInst >(call->frontend< llvm::Value >()) : nullptr;
+  auto* target = native ? native->getCalledFunction() : nullptr;
+  const auto bits = call->bundle()->data_layout().pointers.bit_width;
+  const unsigned arguments = calloc_call(call) ? 2 : 1;
+  if (!api || !native || !target || !call->has_result() ||
+      api->type()->is_var_arg() || api->num_parameters() != arguments ||
+      call->num_arguments() != arguments || native->arg_size() != arguments ||
+      !call->result()->type()->is_pointer() ||
+      call->result()->type() != api->type()->return_type() ||
+      !ordinary_source_call_abi_attributes(native, target)) return false;
+  for (unsigned n = 0; n < arguments; ++n) {
+    auto* type = core::dyn_cast< ar::IntegerType >(call->argument(n)->type());
+    if (!type || type->is_signed() || type->bit_width() != bits ||
+        api->type()->param_type(n) != type ||
+        !source_integer_binding(call->argument(n), native->getArgOperand(n))) return false;
+  }
+  return true;
 }
 
 inline bool free_call(ar::CallBase* call) {
@@ -1294,16 +1320,52 @@ inline bool affine_integer_on_path(ar::Value* value,
   return true;
 }
 
+inline bool helper_heap_path(const std::vector< BmcEvent >& path) {
+  return std::any_of(path.begin(), path.end(), [](const BmcEvent& event) {
+    return event.heap_helper_allocation;
+  });
+}
+
+// Follow actual pending call occurrences, not static callee uniqueness. The
+// allocation may occur twice at one site but each chain ends in physical main.
+inline bool helper_heap_main_chain(ar::CallBase* allocation,
+    const std::vector< BmcEvent >& path, std::size_t index,
+    std::vector< std::size_t >* calls = nullptr) {
+  if (!allocation || index >= path.size() || path[index].stmt != allocation) return false;
+  auto* code = allocation->code();
+  std::vector< std::size_t > chain;
+  std::size_t before = index;
+  for (unsigned depth = 0; depth < 9; ++depth) {
+    auto* function = code->function_or_null();
+    if (!function) return false;
+    const auto caller = invocation_call(path, code, before);
+    if (function->name() == "main") {
+      if (caller != path.size()) return false;
+      if (calls) {std::reverse(chain.begin(), chain.end()); *calls = std::move(chain);}
+      return true;
+    }
+    if (caller >= before || caller >= path.size() || path[caller].called_function != function)
+      return false;
+    auto* call = core::dyn_cast< ar::CallBase >(path[caller].stmt);
+    if (!call || exact_callee(call) != function || unsupported_source_call_abi(call, function)) return false;
+    chain.push_back(caller); code = call->code(); before = caller;
+  }
+  return false;
+}
+
 // Each successful bounded malloc event denotes a fresh generation in initial
 // main before any child starts. Callers must retain its exact path index.
 inline bool main_allocation(ar::CallBase* call, const std::vector< BmcEvent >& path,
                             std::size_t index, core::ZNumber& size) {
   auto* function = exact_callee(call);
   if (function == nullptr || !heap_allocation_call(call) ||
-      !call->code()->is_function_body() || call->code()->function()->name() != "main" ||
+      !call->code()->is_function_body() ||
       !call->has_result() || !call->result()->type()->is_pointer() ||
       index >= path.size() || path[index].stmt != call ||
-      invocation_call(path, call->code(), index) != path.size())
+      (path[index].heap_helper_allocation
+          ? (!helper_heap_allocator_abi(call) || !helper_heap_main_chain(call, path, index))
+          : (call->code()->function()->name() != "main" ||
+             invocation_call(path, call->code(), index) != path.size())))
     return false;
   for (std::size_t i = 0; i < index; ++i)
     if (path[i].kind == EvKind::Create) return false;
@@ -1600,7 +1662,7 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
           auto* call = core::dyn_cast< ar::CallBase >(event.stmt);
           if (call != nullptr && exact_callee(call) == function) ++calls;
         }
-        if (calls != 1) return false;
+        if (calls != 1 && !helper_heap_path(*definitions)) return false;
         value = argument; before = index; continue;
       }
     }
@@ -1616,7 +1678,8 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
            (cast != nullptr && cast->op() == ar::UnaryOperation::Bitcast &&
             cast->operand()->type()->is_pointer()) || core::isa< ar::PointerShift >(definition) ||
            (core::isa< ar::CallBase >(definition) &&
-            heap_allocation_call(core::cast< ar::CallBase >(definition))));
+            (heap_allocation_call(core::cast< ar::CallBase >(definition)) ||
+             (helper_heap_path(*definitions) && (*definitions)[index].called_function != nullptr))));
       exact_external_chain &= forwarding || (unique_def_bmc(variable) == definition &&
           std::count_if(origins->begin(), origins->end(), [&](const auto& event) {
             return event.stmt == definition;
@@ -1680,14 +1743,16 @@ inline bool pointer_on_path(ar::Value* value, const std::vector< BmcEvent >& pat
         event.heap_occurrence = heap_allocation_ordinal(call, *definitions, index);
         return event.heap_occurrence != 0;
       }
-      if (external) return false;
-      auto* callee = callee_on_path(call, path, index);
+      if (external && !(selected_argument_origin && definitions == origins &&
+                        helper_heap_path(*definitions))) return false;
+      const auto& call_path = *definitions;
+      auto* callee = callee_on_path(call, call_path, index);
       if (callee == nullptr || callee->body_or_null() == nullptr) return false;
       ar::ReturnValue* result = nullptr;
       for (std::size_t j = index + 1; j < use; ++j) {
-        auto* ret = core::dyn_cast< ar::ReturnValue >(path[j].stmt);
+        auto* ret = core::dyn_cast< ar::ReturnValue >(call_path[j].stmt);
         if (ret != nullptr && ret->code() == callee->body_or_null() &&
-            invocation_call(path, ret->code(), j) == index) {
+            invocation_call(call_path, ret->code(), j) == index) {
           result = ret; before = j; break;
         }
       }
@@ -2438,6 +2503,7 @@ struct UnrollBudget {
   unsigned target_occurrence = 1;
   bool once_callbacks = false; // Enabled only by physical-caller searches.
   bool creator_graph = false; // Create in an active callback; no Join extension.
+  bool helper_heap_allocations = false; // Enumeration only; full profile checked in encoder.
   bool exact_target = false; // Legacy helper search can retain later invocations.
   unsigned max_target_occurrence = 0; // Observed only for exact-target search.
   ar::Statement* root_target = nullptr;
@@ -2640,6 +2706,9 @@ inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
         current.emplace_back(s, is_assume_call(call) ? EvKind::Assume : EvKind::Local);
         BmcEvent zero(s, EvKind::Local);
         if (private_zero_call(call, zero)) current.back() = zero;
+        if (budget.helper_heap_allocations && call->code()->function_or_null() &&
+            call->code()->function()->name() != "main" && helper_heap_allocator_abi(call))
+          current.back().heap_helper_allocation = true;
         if (call == budget.finite_source && source_nondet(call)) {
           current.back().finite_source = true;
           current.back().finite_value = budget.finite_value;
@@ -2720,7 +2789,7 @@ inline void dfs_paths(ar::BasicBlock* bb, ar::Statement* target,
       if (auto* call = core::dyn_cast< ar::CallBase >(s)) {
         BmcEvent classified;
         if (classify_event(s, classified, &in_stack) || is_assume_call(call) ||
-            supported_leaf_call(call)) continue;
+            supported_leaf_call(call) || current.back().heap_helper_allocation) continue;
         auto* known = callee_on_path(call, current, current.size() - 1);
         auto alternatives = known != nullptr ? std::vector< ar::Function* >{known} : indirect_targets(call);
         if (alternatives.empty()) {
@@ -2833,6 +2902,8 @@ inline UnrollResult unroll_to(
   UnrollBudget budget;
   budget.once_callbacks = once_callbacks;
   budget.creator_graph = creator_graph;
+  budget.helper_heap_allocations = func && func->name() == "main" &&
+      std::getenv("IKOS_BMC_DISABLE_HEAP_HELPER_OCCURRENCES") == nullptr;
   budget.prune_join_prefix = prune_join_prefix;
   budget.deadline = deadline;
   budget.finite_source = finite_source;

@@ -552,3 +552,40 @@ remain inconclusive. This profile adds no SAFE permission.
 `IKOS_BMC_DISABLE_CALLOC=1` disables the new allocation execution support.
 Independent AR replay and source projection are separate from official
 source-witness validation.
+
+### Main helper allocation occurrences
+
+The `main-helper-occurrences-v1` execution profile retains one physical main
+and its sole directly created worker. Up to eight actual malloc/calloc calls
+may occur in nested main helper frames before Create. Each call has its own
+trace/event identity, actual call-chain indices, positive native-width extent,
+and success or NULL outcome in the existing SMT query. Real argument binding,
+helper Returns, initialization stores and NULL guards remain in the execution.
+Returning from a helper ends its stack frame but leaves successful heap objects
+live. Failed allocations create no object or initialized bytes.
+
+Global pointer publication uses the existing closed, single-store pre-Create
+contract. Heap pointer fields are limited to literal NULL initialization; data
+reads use actual initialized sources. Free/realloc, worker allocations, mutable
+pointer graphs, heap thread handles, post-Create main helpers, joins, once,
+recursive mutexes and verifier atomics are outside this profile. Unsupported
+paths and exhausted bounds do not establish safety. Existing profiles retain
+their contracts.
+
+Independent AR replay verifies native allocator operands and ABI, the actual
+call chain, chosen outcome, fresh object generation, initialized bytes and
+source control flow. Helper allocations trigger these checks even when the
+optional top-level profile marker is removed. Source projection requires the
+same independent replay; it is not official source-witness validation.
+
+`IKOS_BMC_DISABLE_HEAP_HELPER_OCCURRENCES=1` disables only this additional
+allocation enumeration. The regression runner
+`scripts/test_bmc_heap_helper_occurrences.py` defaults to both ABIs and supports
+`--fixture`, `--case` and `--artifacts`. `--source-629` adds the unmodified
+original only in its manifest ILP32 model. Both ablation arms retain their
+actual verdicts; every emitted FALSE execution must independently replay.
+
+The `main-helper-occurrences-v1` helper allocation profile excludes native SC
+atomic groups. Both the producer and independent replay enforce this boundary;
+SC group indices continue to be computed after condition-variable and barrier
+event expansion. Combining these profiles requires a separate execution contract.

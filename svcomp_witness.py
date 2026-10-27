@@ -373,6 +373,24 @@ def build_witness(source, info, data_model, ikos="ikos"):
                 "once/creator graph projection requires complete independent AR replay")
         # Callback frames use their caller's existing physical trace/thread id.
         # Only actual pthread_create occurrences below register new threads.
+    heap_steps = [step for trace in trace_list for step in trace['steps']
+                  if 'heap_allocation' in step or
+                  (instructions[step['statement']].get('kind') == 'call' and
+                   instructions[step['statement']].get('operands') and
+                   instructions[step['statement']]['operands'][0].get('kind') == 'function' and
+                   instructions[step['statement']]['operands'][0].get('id') in
+                   ('malloc', 'ar.libc.malloc', 'calloc', 'ar.libc.calloc'))]
+    if replay.get('heap_profile') is not None or heap_steps:
+        functions = program.get('functions')
+        require(isinstance(functions, dict), 'heap projection has no function inventory')
+        instruction_owners = {sid: name for name, function in functions.items()
+                              for block in function.get('blocks', {}).values() for sid in block['statements']}
+        helper_heap = any('heap_allocation' in step or
+                         (functions.get(instructions[step['statement']]['operands'][0]['id'], {}).get('declaration') is True and
+                          instruction_owners.get(step['statement']) != 'main') for step in heap_steps)
+        if replay.get('heap_profile') is not None or helper_heap:
+            require(validate_selected_execution(info, data_model).get('status') == 'ACCEPT',
+                    'heap helper projection requires complete independent AR replay')
     # Setters and indirect calls require replay even without optional profile
     # metadata: a pointer adapter may resolve to a recursive setter at runtime.
     recursive_execution = any(

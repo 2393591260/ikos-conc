@@ -350,6 +350,22 @@ class Replay:
         if self.creator_graph:
             self.check_creator_graph(bindings)
         self.graph_invoked = {name: {trace['entry']} for name, trace in self.traces.items()}
+        require(certificate.get('heap_profile') in (None, 'main-helper-occurrences-v1'), 'unknown heap profile')
+        owners = {sid: name for name, function in self.functions.items()
+                  for block in function.get('blocks', {}).values() for sid in block['statements']}
+        def helper_allocator(step):
+            inst = self.instructions[step['statement']]; operands = inst.get('operands', [])
+            return (inst.get('kind') == 'call' and operands and operands[0].get('kind') == 'function' and
+                    operands[0].get('id') in ('malloc', 'ar.libc.malloc', 'calloc', 'ar.libc.calloc') and
+                    self.functions.get(operands[0]['id'], {}).get('declaration') is True and
+                    owners.get(step['statement']) != 'main')
+        self.heap_helper_profile = certificate.get('heap_profile') == 'main-helper-occurrences-v1' or any(
+            'heap_allocation' in step or helper_allocator(step)
+            for trace in self.traces.values() for step in trace['steps'])
+        self.heap_frame_calls = {}
+        self.heap_helper_executed = set()
+        if self.heap_helper_profile:
+            self.check_heap_helper_shape(owners)
         self.threads, self.memory, self.objects = {}, {}, {}
         self.created, self.locks, self.accesses = {}, {}, {}
         self.next_instance, self.next_frame = 1, 0
@@ -365,6 +381,8 @@ class Replay:
         self.once_states = {}
         self.finite_once_families = {}
         self.native_sc = NativeSCExecution(self)
+        require(not self.heap_helper_profile or not self.native_sc.groups,
+                'heap helper/native SC mixed profile')
         self.once_profile = any("once_role" in s for t in self.traces.values() for s in t["steps"])
         require(certificate.get('mutex_profile') in (None, 'gnu-x86-recursive-v1'), 'unknown mutex profile')
         self.recursive_mutex_profile = certificate.get('mutex_profile') == 'gnu-x86-recursive-v1'
@@ -672,6 +690,13 @@ class Replay:
                     self.objects[pointer[0]].get('owner') == obj['owner'] and
                     self.objects[pointer[0]].get('occurrence') == obj['occurrence'], 'SMT allocation instance mismatch')
             require(self.objects[pointer[0]]['size'] == int(obj['extent']), 'SMT allocation extent mismatch')
+            if self.objects[pointer[0]].get('heap_profile') == 'main-helper-occurrences-v1':
+                require(obj.get('heap_profile') == 'main-helper-occurrences-v1' and
+                        type(obj.get('occurrence')) is int and 'allocation_event' in obj and
+                        type(obj['allocation_event'].get('step')) is int and
+                        type(obj.get('invocation_calls')) is list and
+                        all(type(call) is int for call in obj['invocation_calls']) and obj['invocation_calls'] ==
+                        self.objects[pointer[0]]['invocation_calls'], 'heap helper object provenance')
             # Legacy occurrence-one evidence may omit the extra event binding.
             # Replay still owns identity; later ordinals require the actual step.
             if 'allocation_event' in obj:
@@ -1046,6 +1071,10 @@ class Replay:
         if fn.get('intrinsic_assume') or name == '__VERIFIER_assume':
             require(len(args) == 1 and isinstance(args[0], int) and args[0] != 0, 'false assume'); return UNDEFINED
         if name in ('pthread_create', 'ar.pthread.create'):
+            if getattr(self, 'heap_helper_profile', False):
+                require((trace_id, index) == self.heap_helper_creation and not self.created and
+                        thread.instance == 0 and len(thread.frames) == 1 and frame.function == 'main' and
+                        args[3] == ('null', 0), 'heap helper actual Create')
             if self.creator_graph:
                 self.graph_create_contract(inst, step)
                 occurrence = (trace_id, index)
@@ -1143,6 +1172,48 @@ class Replay:
                 require(len(args) == 1 and isinstance(args[0], int) and
                         0 < args[0] <= 1_048_576, 'malloc extent')
                 extent = args[0]
+            if getattr(self, 'heap_helper_profile', False):
+                require(thread.instance == 0 and thread.frames[0].function == 'main' and not self.created,
+                        'heap helper allocation before physical main Create')
+                require(inst['operands'][0].get('kind') == 'function' and
+                        inst['operands'][0].get('id') == name and
+                        native.get('ordinary_abi') is True and native.get('source_operands_bound') is True and
+                        native.get('argument_values') == inst['operands'][1:] and
+                        all(t.get('signed') is False and int(t.get('size', -1)) == bits // 8 and
+                            int(t.get('extent', -1)) == bits // 8 for t in types) and
+                        int(returned.get('size', -1)) == bits // 8 and
+                        int(returned.get('extent', -1)) == bits // 8,
+                        'heap helper native allocator operands/ABI')
+                require(len(self.heap_helper_executed) < 8 and (trace_id, index) not in self.heap_helper_executed,
+                        'heap helper allocation occurrence bound')
+                chain = []
+                for active in thread.frames[1:]:
+                    require(active.uid in self.heap_frame_calls and
+                            self.heap_frame_calls[active.uid][0] == trace_id, 'heap helper actual invocation chain')
+                    chain.append(self.heap_frame_calls[active.uid][1])
+                record = step.get('heap_allocation', {})
+                require(type(record.get('schema')) is int and record['schema'] == 1 and record.get('profile') == 'main-helper-occurrences-v1' and
+                        record.get('allocator_trace') == trace_id and type(record.get('allocator_step')) is int and
+                        record['allocator_step'] == index and type(record.get('invocation_calls')) is list and
+                        all(type(call) is int for call in record['invocation_calls']) and record['invocation_calls'] == chain and
+                        record.get('outcome') in ('success', 'null') and int(record.get('extent', -1)) == extent,
+                        'heap helper allocation outcome/provenance')
+                self.heap_helper_executed.add((trace_id, index))
+                key = (trace_id, step['statement'])
+                occurrence = self.heap_counts.get(key, 0) + 1
+                self.heap_counts[key] = occurrence
+                if record['outcome'] == 'null':
+                    require('encoded_address' not in step, 'NULL allocation has no object')
+                    return ('null', 0)
+                object_id = 'heap:' + trace_id + ':' + str(index)
+                require(object_id not in self.objects, 'duplicate helper allocation identity')
+                self.objects[object_id] = dict(size=extent, live=True, variable=object_id, thread_local=False,
+                    allocation=step['statement'], owner='main', occurrence=occurrence,
+                    allocation_event=dict(trace=trace_id, step=index), invocation_calls=chain,
+                    heap_profile='main-helper-occurrences-v1',
+                    alignment=bits // 8 if self.verified_pthread_abi() else None)
+                self.memory[object_id] = [0 if zeroed else None] * extent
+                return (object_id, 0)
             if thread.instance != 0 or len(thread.frames) != 1 or frame.function != 'main' or self.created:
                 raise Unsupported('allocation outside pre-spawn main')
             key = (frame.uid, step['statement'])
@@ -1740,6 +1811,41 @@ class Replay:
             self.finite_once_families[sid] = set(choices)
         return self.finite_once_families[statement]
 
+    def check_heap_helper_shape(self, owners):
+        require(not self.creator_graph and self.certificate.get('mutex_profile') is None and set(self.traces) == {'a', 'b'} and
+                sum(t['entry'] == 'main' for t in self.traces.values()) == 1,
+                'heap helper main/worker shape')
+        creates = []
+        for trace_id, trace in self.traces.items():
+            for index, step in enumerate(trace['steps']):
+                require('synthetic_event' not in step and 'once_role' not in step and
+                        'mutex_semantics' not in step, 'heap helper synchronization scope')
+                inst = self.instructions[step['statement']]
+                require(not (inst.get('kind') == 'return' and owners.get(step['statement']) == 'main'),
+                        'heap helper main Return')
+                operands = inst.get('operands', [])
+                if inst.get('kind') == 'call' and operands and operands[0].get('kind') == 'function':
+                    api = operands[0].get('id', '')
+                    self.heap_helper_call_scope(api)
+                    if api in ('pthread_create', 'ar.pthread.create'):
+                        require(trace['entry'] == 'main' and owners.get(step['statement']) == 'main' and
+                                len(operands) == 5 and operands[2].get('kind') == 'null' and
+                                operands[4].get('kind') == 'null', 'heap helper direct Create')
+                        creates.append((trace_id, index))
+        require(len(creates) == 1, 'heap helper single actual child')
+        self.heap_helper_creation = creates[0]
+        children = [t for t in self.traces.values() if t['entry'] != 'main']
+        require(len(children) == 1 and (children[0]['creator_trace'], children[0]['creator_step']) == creates[0],
+                'heap helper child binding')
+
+    def heap_helper_call_scope(self, name):
+        if (name in ('pthread_join', 'ar.pthread.join', 'pthread_detach', 'pthread_cancel',
+                     'pthread_exit', 'ar.pthread.exit', 'free', 'realloc', 'ar.libc.free', 'ar.libc.realloc',
+                     'pthread_once') or name.startswith(('pthread_cond_', 'pthread_barrier_',
+                     'pthread_rwlock_', 'pthread_mutexattr_', 'sem_', '__VERIFIER_atomic_',
+                     'ar.pthread.cond.', 'ar.pthread.barrier.', 'ar.pthread.rwlock.', 'ar.sem.'))):
+            raise Unsupported('heap helper lifecycle/synchronization scope')
+
     def graph_call_scope(self, name, inst):
         # Check the resolved API, not only an operand0 function constant. This
         # deliberately preserves ordinary direct helper calls and old-style
@@ -2169,13 +2275,26 @@ class Replay:
                 if 'read_from' in step:
                     sources = [self.writers.get((pointer[0], pointer[1]+byte), 'initial') for byte in range(width)]
                     require(step['read_from'] == sources, 'SMT read source differs from actual last write')
-            else: self.store(pointer,values[1],t,inst['alignment'])
+            else:
+                if getattr(self, 'heap_helper_profile', False) and t['kind'] == 'pointer':
+                    require(thread.instance == 0 and not self.created,
+                            'heap helper pointer publication after Create')
+                    if pointer[0] in self.objects and 'allocation' in self.objects[pointer[0]]:
+                        require(values[1] == ('null', 0), 'heap helper mutable pointer field')
+                self.store(pointer, values[1], t, inst['alignment'])
             self.accesses[(trace_id,index)]=dict(instance=thread.instance,object=pointer[0],offset=pointer[1],width=width,
                                                 write=kind=='store',vc=dict(thread.vc),atomic=self.atomic_owner==thread.instance,
                                                 **({'native_atomic':True} if (trace_id,index) in self.native_sc.groups else {}))
         elif kind=='call':
             require(isinstance(values[0],tuple) and values[0][0]=='function', 'indirect callee')
             name=values[0][1]; fn=self.functions[name]
+            if getattr(self, 'heap_helper_profile', False):
+                self.heap_helper_call_scope(name)
+                if name == 'pthread_mutex_init':
+                    require(len(values) == 3 and values[2] == ('null', 0),
+                            'heap helper ordinary mutex initialization')
+                if not fn['declaration'] and thread.instance == 0:
+                    require(not self.created, 'heap helper frame after Create')
             if name in ('pthread_create', 'ar.pthread.create') and self.traces[trace_id]['entry'] != 'main':
                 require(self.creator_graph, 'nested actual Create missing graph topology')
             if self.creator_graph:
@@ -2194,13 +2313,19 @@ class Replay:
             if 'expanded_callee' in step: require(name == step['expanded_callee'], 'expanded callee differs from actual pointer')
             if not fn['declaration']:
                 self.graph_invocation(trace_id, name)
-                frame.pending=(inst,step); thread.frames.append(self.frame(name,values[1:]));
+                frame.pending=(inst,step)
+                called_frame = self.frame(name, values[1:])
+                if getattr(self, 'heap_helper_profile', False):
+                    self.heap_frame_calls[called_frame.uid] = (trace_id, index)
+                thread.frames.append(called_frame)
                 if name.startswith('__VERIFIER_atomic_'):
                     require(self.atomic_owner is None, 'nested named atomic')
                     self.marker(trace_id, step['statement'], 'atomic_begin')
                 return
             result=self.api(name,values[1:],inst,step,trace_id,index,thread,frame)
         elif kind=='return':
+            if getattr(self, 'heap_helper_profile', False) and frame.function == 'main':
+                raise Reject('heap helper main Return')
             if self.creator_graph and frame.function == 'main':
                 raise Reject('creator graph main Return')
             result=values[0] if values else UNDEFINED
@@ -2285,6 +2410,10 @@ class Replay:
                     len(self.created) == len(self.graph_bindings),
                     'creator graph executed Creates differ from bindings')
         require(self.native_sc.owner is None, 'open native atomic group')
+        if getattr(self, 'heap_helper_profile', False):
+            require(len(self.created) == 1 and self.heap_helper_executed and
+                    {(v['creator_trace'], v['creator_step']) for v in self.created.values()} ==
+                    {self.heap_helper_creation}, 'heap helper executed child/allocation closure')
         require(self.atomic_owner is None and not self.pending_markers, 'open synthetic/atomic prefix')
         require(all(f.once_pending is None for t in self.threads.values() for f in t.frames) and
                 all(s['phase'] == 'done' for s in self.once_states.values()), 'open once execution')

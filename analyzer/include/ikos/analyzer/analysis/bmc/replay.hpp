@@ -337,18 +337,19 @@ public:
               native.put("return_address_space", type->getAddressSpace());
             if (auto* type = llvm::dyn_cast< llvm::PointerType >(call->getType()))
               native.put("result_address_space", type->getAddressSpace());
-            if (callee->getName() == "calloc") {
-              auto* imported = core::dyn_cast< ar::CallBase >(stmt);
-              bool bound = imported && imported->num_arguments() == 2 && call->arg_size() == 2;
-              JsonList actuals;
-              if (bound) for (unsigned n = 0; n < 2; ++n) {
-                bound &= source_integer_binding(imported->argument(n), call->getArgOperand(n));
-                actuals.add(value(imported->argument(n)));
-              }
-              native.put("source_operands_bound", bound);
-              native.put("argument_values", actuals);
-              out.put("native_calloc", native);
-            } else out.put("native_malloc", native);
+            const unsigned count = callee->getName() == "calloc" ? 2 : 1;
+            auto* imported = core::dyn_cast< ar::CallBase >(stmt);
+            bool bound = imported && imported->num_arguments() == count && call->arg_size() == count;
+            JsonList actuals;
+            if (bound) for (unsigned n = 0; n < count; ++n) {
+              bound &= source_integer_binding(imported->argument(n), call->getArgOperand(n));
+              actuals.add(value(imported->argument(n)));
+            }
+            native.put("source_operands_bound", bound);
+            native.put("argument_values", actuals);
+            native.put("ordinary_abi", ordinary_source_call_abi_attributes(call, callee));
+            if (callee->getName() == "calloc") out.put("native_calloc", native);
+            else out.put("native_malloc", native);
           }
           if (callee && (callee->getName() == "sem_init" ||
                          callee->getName() == "sem_wait" ||

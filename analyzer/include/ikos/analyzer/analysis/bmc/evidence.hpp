@@ -15,7 +15,8 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
     const std::vector< z3::expr >& clock,
     const std::map< const BmcEvent*, z3::expr >& replay_offsets, z3::model& model,
     const FunctionValues* functions = nullptr,
-    const std::map< const BmcEvent*, BmcEvent >* object_pointer_reads = nullptr) {
+    const std::map< const BmcEvent*, BmcEvent >* object_pointer_reads = nullptr,
+    const std::map< const BmcEvent*, z3::expr >* helper_heap_success = nullptr) {
   Counterexample evidence;
   auto& ctx = model.ctx();
   const auto& startup = traces[0].events;
@@ -27,6 +28,8 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
   ReplaySnapshot snapshot(traces[1].root->bundle());
   evidence.replay.put("schema", 1);
   evidence.replay.put("validation_status", "UNVALIDATED");
+  if (helper_heap_success != nullptr)
+    evidence.replay.put("heap_profile", "main-helper-occurrences-v1");
   for (const auto& trace : traces) for (const auto& event : trace.events)
     if (event.recursive_profile || event.recursive_mutex) evidence.replay.put("mutex_profile", "gnu-x86-recursive-v1");
   evidence.replay.put("program", snapshot.program());
@@ -40,13 +43,26 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
   };
   const auto main_index = traces[1].root->name() == "main" ? 1 :
                           traces[2].root->name() == "main" ? 2 : 0;
+  auto heap_calls = [&](ar::CallBase* allocation, std::size_t index) {
+    std::vector< std::size_t > calls;
+    JsonList result;
+    if (helper_heap_success != nullptr &&
+        helper_heap_main_chain(allocation, traces[main_index].events, index, &calls))
+      for (auto call : calls) result.add(call);
+    return result;
+  };
   auto heap_object = [&](const BmcEvent& pointer) {
-    return JsonDict{{"kind", "heap"},
+    JsonDict object{{"kind", "heap"},
                     {"allocation", snapshot.statement_id(pointer.heap_allocation)},
                     {"owner", "main"}, {"occurrence", pointer.heap_occurrence},
                     {"allocation_event", JsonDict{{"trace", traces[main_index].id},
                                                   {"step", pointer.heap_allocation_step}}},
                     {"extent", pointer.heap_extent.str()}};
+    if (helper_heap_success != nullptr) {
+      object.put("heap_profile", "main-helper-occurrences-v1");
+      object.put("invocation_calls", heap_calls(pointer.heap_allocation, pointer.heap_allocation_step));
+    }
+    return object;
   };
   auto read_sources = [&](const BmcEvent& read, std::size_t trace_index, std::size_t index) {
     JsonList bytes;
@@ -143,6 +159,20 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
         if (path[i].once_stage == OnceStage::Return) step.put("synthetic_event", "once_return");
       }
       if (path[i].called_function != nullptr) step.put("expanded_callee", path[i].called_function->name());
+      if (helper_heap_success != nullptr) {
+        auto found = helper_heap_success->find(&path[i]);
+        if (found != helper_heap_success->end()) {
+          auto* allocation = core::cast< ar::CallBase >(path[i].stmt);
+          core::ZNumber extent;
+          main_allocation(allocation, path, i, extent);
+          step.put("heap_allocation", JsonDict{
+              {"schema", 1}, {"profile", "main-helper-occurrences-v1"},
+              {"allocator_trace", id}, {"allocator_step", i},
+              {"invocation_calls", heap_calls(allocation, i)},
+              {"outcome", model.eval(found->second, true).is_true() ? "success" : "null"},
+              {"extent", extent.str()}});
+        }
+      }
       auto* result = core::dyn_cast_or_null< ar::InternalVariable >(path[i].stmt->result_or_null());
       if (result != nullptr) {
         auto cached = values.find({result, i});

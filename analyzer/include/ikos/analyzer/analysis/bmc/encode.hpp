@@ -213,6 +213,20 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       return Result(Status::Unsupported);
   }
   const auto& allocation_origin = traces[main_index].events;
+  const bool helper_heap = std::any_of(traces.begin(), traces.end(), [](const auto& trace) {
+    return helper_heap_path(trace.events);
+  });
+  if (helper_heap && (completion != nullptr || provider_plan != nullptr || graph_plan != nullptr ||
+      !main_helper_heap_profile_supported(traces, main_index))) {
+    record(diagnostics, "heap_helper_profile"); return Result(Status::Unsupported);
+  }
+  if (helper_heap) {
+    auto& child = traces[main_index == 1 ? 2 : 1];
+    if (child.creator_path != main_index ||
+        !bind_creation_step(child.root, allocation_origin, child.creator_step, child.argument))
+      return Result(Status::Unsupported);
+    argumentA = traces[1].argument; argumentB = traces[2].argument;
+  }
   // The calloc main/worker profile consumes the already selected real Create,
   // including loop-index arguments at that occurrence, as provider plans do.
   if (main_index != 0 && provider_plan == nullptr && completion == nullptr &&
@@ -361,6 +375,9 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           constant_integer_on_path(call->argument(1), trace.events, i, kind) && kind == 1)
         recursive_requested = true;
     }
+  if (helper_heap && recursive_requested) {
+    record(diagnostics, "heap_helper_recursive_mutex_scope"); return Result(Status::Unsupported);
+  }
   if (graph_plan != nullptr && recursive_requested) {
     record(diagnostics, "creator_graph_recursive_mutex_scope"); return Result(Status::Unsupported);
   }
@@ -659,6 +676,11 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       record(diagnostics, "native_sc_group"); return Result(Status::Unsupported);
     }
     native_requested |= !native_groups[id].empty();
+  }
+  // The first helper-allocation profile has no mixed native-SC contract.
+  // Keep this check after canonical condition/barrier event expansion.
+  if (helper_heap && native_requested) {
+    record(diagnostics, "heap_helper_native_sc_scope"); return Result(Status::Unsupported);
   }
   // Rebind only legacy creation indices on the canonical origin before
   // address preparation. Fixed completion/provider plans retain exact steps.
@@ -1158,7 +1180,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   };
   for (auto& trace : traces)
     if (trace.root != nullptr && trace.root->name() == "main" &&
-        !private_heap_lifetime(trace.events)) {
+        !helper_heap && !private_heap_lifetime(trace.events)) {
       record(diagnostics, "heap_lifetime"); return Result(Status::Unsupported);
     }
   if (repeated_startup_heap) {
@@ -1243,6 +1265,35 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
 
   z3::context ctx;
   z3::solver s(ctx);
+  // Outcomes are part of the same query, never a separate pointer-path search.
+  // An unsuccessful call has no object; all address consumers require success.
+  std::map< const BmcEvent*, z3::expr > helper_heap_success;
+  if (helper_heap)
+    for (std::size_t i = 0; i < allocation_origin.size(); ++i) {
+      auto* call = core::dyn_cast< ar::CallBase >(allocation_origin[i].stmt);
+      if (call && heap_allocation_call(call))
+        helper_heap_success.emplace(&allocation_origin[i],
+            ctx.bool_const(("heap_success_" + std::to_string(i)).c_str()));
+    }
+  auto helper_heap_outcome = [&](const BmcEvent& address) -> const z3::expr* {
+    if (!helper_heap || !address.heap_allocation ||
+        address.heap_allocation_step >= allocation_origin.size() ||
+        allocation_origin[address.heap_allocation_step].stmt != address.heap_allocation) return nullptr;
+    auto found = helper_heap_success.find(&allocation_origin[address.heap_allocation_step]);
+    return found == helper_heap_success.end() ? nullptr : &found->second;
+  };
+
+  // Library objects and ordinary memory share the same allocation outcome.
+  auto require_helper_heap_object = [&](const BmcEvent& address, std::size_t id,
+                                        std::size_t before) {
+    if (!helper_heap || !address.heap_allocation) return true;
+    const auto* success = helper_heap_outcome(address);
+    if (!success || (id == main_index ? address.heap_allocation_step >= before :
+        traces[id].creator_path != main_index ||
+        address.heap_allocation_step >= traces[id].creator_step)) return false;
+    s.add(*success);
+    return true;
+  };
 
   const std::size_t nA = pathA.size();
   const std::size_t nB = pathB.size();
@@ -2001,7 +2052,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       std::vector< z3::expr > sources;
       struct Write {z3::expr time; z3::expr value; z3::expr matches;};
       std::vector< Write > writes;
-      bool ordered_sources = completion == nullptr && provider_plan == nullptr && graph_plan == nullptr && (access.base != 0 || access.heap_allocation != nullptr || access.shared_main_local) && access.var_id == 0;
+      bool ordered_sources = !helper_heap && completion == nullptr && provider_plan == nullptr && graph_plan == nullptr && (access.base != 0 || access.heap_allocation != nullptr || access.shared_main_local) && access.var_id == 0;
       const auto& other_path = prefix == "value_a_" ? pathB : pathA;
       auto* root = prefix == "value_a_" ? funcA : funcB;
       auto* other_root = prefix == "value_a_" ? funcB : funcA;
@@ -2311,6 +2362,22 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                            const std::string& prefix, std::size_t before) -> z3::expr {
     ar::Value* l = cmp->left();
     ar::Value* r = cmp->right();
+    if (helper_heap && (cmp->predicate() == ar::Comparison::PEQ || cmp->predicate() == ar::Comparison::PNE) &&
+        (core::isa< ar::NullConstant >(l) || core::isa< ar::NullConstant >(r))) {
+      const auto id = trace_index(cache);
+      auto* value = core::isa< ar::NullConstant >(l) ? r : l;
+      BmcEvent pointer;
+      if (pointer_on_path(value, traces[id].events, before, traces[id].root,
+                          traces[id].argument, pointer, &allocation_origin)) {
+        if (const auto* success = helper_heap_outcome(pointer)) {
+          if (pointer.const_off != 0 || pointer.var_id != 0) {
+            unencodable = true; return ctx.bool_val(false);
+          }
+          guard_reusable = false;
+          return cmp->predicate() == ar::Comparison::PNE ? *success : !*success;
+        }
+      }
+    }
     // Numeric null tests use the actual integer definition, never an address token.
     if (cmp->predicate() == ar::Comparison::PEQ || cmp->predicate() == ar::Comparison::PNE) {
       if (core::isa< ar::NullConstant >(l) || core::isa< ar::NullConstant >(r)) {
@@ -2326,7 +2393,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
             core::ZNumber extent;
             if (traces[trace_index(cache)].root != nullptr &&
                 traces[trace_index(cache)].root->name() == "main" &&
-                main_allocation(allocation, path, index, extent)) {
+                !helper_heap && main_allocation(allocation, path, index, extent)) {
               bool live = true;
               for (std::size_t i = index + 1; i < before; ++i)
                 if (auto* call = core::dyn_cast< ar::CallBase >(path[i].stmt))
@@ -2466,7 +2533,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     // A prepopulated cache may hide dependencies encoded for the other path.
     // A fixed startup contradiction can stop this group; worker rejections
     // additionally need the read/write check in the caller.
-    guard_reusable = completion == nullptr && provider_plan == nullptr && graph_plan == nullptr && prefix != "value_init_" && cache.empty();
+    guard_reusable = !helper_heap && completion == nullptr && provider_plan == nullptr && graph_plan == nullptr && prefix != "value_init_" && cache.empty();
     guard_reads.clear();
     for (std::size_t i = 0; i < path.size(); ++i) {
       const auto& e = path[i];
@@ -2629,6 +2696,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         const auto& e = path[i];
         if (e.kind != EvKind::Read && e.kind != EvKind::Write && !e.zero_fill &&
             !((e.kind == EvKind::Lock || e.kind == EvKind::Unlock) && e.mutex != PSEUDO_ATOMIC_LOCK)) continue;
+        if (!require_helper_heap_object(e, trace_index(cache), i)) return false;
         core::ZNumber size;
         if (e.width == 0 || !memory_extent(e, size)) {record(diagnostics, "prefix_address", e.stmt); return false;}
         z3::expr offset(ctx);
@@ -2698,6 +2766,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         BmcEvent base;
         if (!pointer_on_path(shift->pointer(), trace.events, i, trace.root, trace.argument,
                              base, &allocation_origin)) return Result(Status::Unsupported);
+        if (!require_helper_heap_object(base, id, i)) return Result(Status::Unsupported);
         auto* native = shift->has_frontend()
             ? llvm::dyn_cast< llvm::GetElementPtrInst >(shift->frontend< llvm::Value >()) : nullptr;
         if (native == nullptr || !native->isInBounds() || native->getPointerAddressSpace() != 0) return Result(Status::Unsupported);
@@ -2751,6 +2820,12 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     // Every deferred output, including dormant children's handles, must have
     // a concrete valid slot in this same main-only startup execution.
     for (const auto& storage : library_storage) {
+      auto trace = std::find_if(traces.begin(), traces.end(), [&](const auto& t) {
+        return &t.events == storage.path;
+      });
+      if (trace == traces.end() || !require_helper_heap_object(storage.address,
+            static_cast< std::size_t >(trace - traces.begin()), storage.occurrence))
+        return Result(Status::Unsupported);
       if (!storage.deferred_create) continue;
       const auto& event = startup[storage.occurrence];
       core::ZNumber extent;
@@ -2908,7 +2983,8 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       auto model = query.get_model();
       auto export_start = std::chrono::steady_clock::now();
       outcome.evidence = export_counterexample(traces, caches, clock, replay_offsets, model, &functions,
-                                               &object_pointer_reads);
+                                               &object_pointer_reads,
+                                               helper_heap ? &helper_heap_success : nullptr);
       if (graph_plan != nullptr) outcome.evidence.replay.put("creator_graph", true);
       if (metrics != nullptr) metrics->evidence_us += std::chrono::duration_cast< std::chrono::microseconds >(
           std::chrono::steady_clock::now() - export_start).count();
