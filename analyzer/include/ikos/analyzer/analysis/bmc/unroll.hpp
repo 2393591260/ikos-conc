@@ -78,6 +78,13 @@ struct BmcEvent {
   EvKind kind = EvKind::Read;
   std::uint64_t mutex = 0;  // Lock/Unlock 的锁对象语法同一性（arg0 指针）；内存事件为 0
   bool reader = false; // Two rwlock read acquisitions do not exclude each other.
+  // Exact occurrence semantics; replay recomputes these from native lifecycle.
+  bool mutex_result_known = false;
+  unsigned mutex_result = 0;
+  bool recursive_mutex = false;
+  bool recursive_profile = false; // Also retain a recursive attribute later mutated back.
+  unsigned recursive_before = 0;
+  unsigned recursive_after = 0;
   // 符号地址（SMT 同址门）：base = 全局数组指针身份；const_off = 常量字节偏移；
   // var_id/coeff = 单个变量下标项 `coeff * var`（var_id==0 ⟹ 纯常量偏移）。
   // 提取失败时保持 base==0（调用方保守不确认）。
@@ -527,6 +534,58 @@ inline bool synchronization_layout(ar::CallBase* call, unsigned argument,
   if (size.isScalable() || size.getFixedValue() == 0) return false;
   width = size.getFixedValue();
   alignment = layout.getABITypeAlign(object).value();
+  return true;
+}
+
+// The recursive extension has a stricter source/AR call contract than legacy
+// name recognition. Object layout/lifetime is checked separately on the path.
+inline bool recursive_mutex_abi_call(ar::CallBase* call) {
+  auto* function = exact_callee(call);
+  auto* source = call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallInst >(call->frontend< llvm::Value >()) : nullptr;
+  auto* api = source ? llvm::dyn_cast< llvm::Function >(
+      source->getCalledOperand()->stripPointerCasts()) : nullptr;
+  if (!source || !api || !function || !function->is_declaration() ||
+      !api->isDeclaration() || api->isVarArg() || function->type()->is_var_arg() ||
+      source->hasOperandBundles() || source->isInlineAsm() ||
+      source->getCallingConv() != llvm::CallingConv::C ||
+      api->getCallingConv() != llvm::CallingConv::C ||
+      source->getFunctionType() != api->getFunctionType() ||
+      !ordinary_source_call_abi_attributes(source, api) ||
+      !api->getReturnType()->isIntegerTy(32) || !source->getType()->isIntegerTy(32)) return false;
+  const auto name = api->getName();
+  const bool lock = name == "pthread_mutex_lock";
+  const bool unlock = name == "pthread_mutex_unlock";
+  const bool set = name == "pthread_mutexattr_settype";
+  const bool init = name == "pthread_mutex_init";
+  if (!lock && !unlock && !set && !init && name != "pthread_mutexattr_init" &&
+      name != "pthread_mutexattr_destroy") return false;
+  const unsigned count = set || init ? 2 : 1;
+  auto* returned = core::dyn_cast< ar::IntegerType >(function->type()->return_type());
+  if (source->arg_size() != count || api->arg_size() != count ||
+      call->num_arguments() != count || function->num_parameters() != count ||
+      !returned || returned->bit_width() != 32 || !returned->is_signed() ||
+      (call->has_result() && call->result()->type() != returned)) return false;
+  if (function->has_frontend()) {
+    if (function->frontend< llvm::Value >() != api) return false;
+  } else if (lock ? function->intrinsic_id() != ar::Intrinsic::PthreadMutexLock :
+             unlock ? function->intrinsic_id() != ar::Intrinsic::PthreadMutexUnlock : true) return false;
+  if (!lock && !unlock && function->name() != name.str()) return false;
+  for (unsigned i = 0; i < count; ++i) {
+    auto* native = api->getFunctionType()->getParamType(i);
+    if (native != source->getArgOperand(i)->getType() ||
+        function->type()->param_type(i) != call->argument(i)->type()) return false;
+    if (set && i == 1) {
+      auto* integer = core::dyn_cast< ar::IntegerType >(call->argument(i)->type());
+      if (!native->isIntegerTy(32) || !integer || integer->bit_width() != 32 ||
+          !llvm::isa< llvm::ConstantInt >(source->getArgOperand(i)) ||
+          !core::isa< ar::IntegerConstant >(call->argument(i)) ||
+          !integer->is_signed() || !source_integer_binding(call->argument(i), source->getArgOperand(i))) return false;
+    } else {
+      auto* pointer = llvm::dyn_cast< llvm::PointerType >(native);
+      if (!pointer || pointer->getAddressSpace() != 0 || !call->argument(i)->type()->is_pointer()) return false;
+    }
+  }
   return true;
 }
 
@@ -1939,6 +1998,7 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
       if (source_nondet(call)) return true;
       if (ffs_call(call)) return defined(call->argument(0), index, depth + 1);
       if (path[index].once_stage == OnceStage::Return && once_callback(call)) return true;
+      if (path[index].mutex_result_known && recursive_mutex_abi_call(call)) return true;
       if (successful_create_result(path[index])) return true;
       if (successful_condition_result(path[index]) || successful_join_result(path[index])) return true;
       auto* f = callee_on_path(call, path, index);

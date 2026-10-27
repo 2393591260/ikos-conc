@@ -10,6 +10,7 @@
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 
 #include <functional>
+#include <cstdlib>
 #include <chrono>
 #include <map>
 #include <set>
@@ -254,6 +255,72 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   using ObjectId = std::pair< std::uint64_t, core::ZNumber >;
   std::map< ObjectId, unsigned > attributes;
   std::vector< BmcEvent > initialized_mutexes;
+  std::map< ObjectId, unsigned > initialized_mutex_kinds;
+  auto control_identity = [](const BmcEvent& address) {
+    return ObjectId{address.base != 0 ? address.base :
+        reinterpret_cast< std::uint64_t >(address.local_base), address.const_off};
+  };
+  // First recursive subset: a whole declared main-entry attr and whole global
+  // mutex, with exact native/AR storage, not an arbitrary same-sized byte array.
+  auto whole_recursive_object = [&](ar::CallBase* call, unsigned argument,
+      const std::vector< BmcEvent >& path, std::size_t before,
+      ar::Function* root, const BmcEvent& address, bool mutex) {
+    if (!recursive_mutex_abi_call(call) || address.var_id != 0 || address.const_off != 0 ||
+        address.heap_allocation || (mutex ? address.base == 0 : !address.local_base)) return false;
+    auto* site = llvm::cast< llvm::CallBase >(call->frontend< llvm::Value >());
+    auto* module = site->getModule();
+    const auto abi = pthread_object_layout(call->bundle(), module);
+    if (!abi || module->getDataLayout().getIndexSizeInBits(0) != abi.word * 8 ||
+        !module->getModuleInlineAsm().empty()) return false;
+    const auto width = mutex ? abi.mutex : 4u;
+    const auto alignment = mutex ? abi.word : 4u;
+    llvm::Value* native_object = nullptr;
+    ar::Type* imported_type = nullptr;
+    if (mutex) {
+      auto* global = reinterpret_cast< ar::GlobalVariable* >(address.base);
+      if (!global->has_frontend() || global->is_thread_local() || !global->is_definition()) return false;
+      auto* source = llvm::dyn_cast< llvm::GlobalVariable >(global->frontend< llvm::Value >());
+      if (!source || source->isDeclaration() || source->isThreadLocal() || source->isConstant() ||
+          source->getAddressSpace() != 0 || source->getParent() != module || source->isExternallyInitialized() ||
+          global->alignment() < alignment || source->getAlign().valueOrOne().value() < alignment) return false;
+      native_object = source; imported_type = global->type()->pointee();
+    } else {
+      auto* local = address.local_base;
+      if (!root || root->name() != "main" || root->num_parameters() != 0 ||
+          !root->has_frontend() || !root->frontend< llvm::Function >()->use_empty() ||
+          !local->has_frontend() || local->function() != root) return false;
+      auto* source = llvm::dyn_cast< llvm::AllocaInst >(local->frontend< llvm::Value >());
+      if (!source || source->getAddressSpace() != 0 || source->getFunction() != root->frontend< llvm::Function >() ||
+          source->getParent() != &source->getFunction()->getEntryBlock() ||
+          source->getAlign().value() < alignment || local->alignment() < alignment) return false;
+      auto* count = llvm::dyn_cast< llvm::ConstantInt >(source->getArraySize());
+      if (!count || !count->isOne()) return false;
+      ar::Allocate* allocation = nullptr;
+      for (std::size_t i = 0; i < before; ++i) if (path[i].stmt->result_or_null() == local) {
+        if (allocation) return false;
+        allocation = core::dyn_cast< ar::Allocate >(path[i].stmt);
+        if (!allocation) return false;
+      }
+      auto* repetitions = allocation ? core::dyn_cast< ar::IntegerConstant >(allocation->array_size()) : nullptr;
+      if (!allocation || !allocation->has_frontend() ||
+          allocation->frontend< llvm::Value >() != source || !repetitions ||
+          repetitions->value().to_z_number() != 1 || !unique_allocation_definition(allocation)) return false;
+      native_object = source; imported_type = allocation->allocated_type();
+    }
+    auto* native_type = mutex ? llvm::cast< llvm::GlobalVariable >(native_object)->getValueType()
+                             : llvm::cast< llvm::AllocaInst >(native_object)->getAllocatedType();
+    auto* leaf = llvm::dyn_cast< llvm::StructType >(native_type);
+    const auto& layout = call->bundle()->data_layout();
+    return site->getArgOperand(argument)->stripPointerCasts() == native_object &&
+        core::isa< ar::StructType >(imported_type) && layout.is_little_endian() &&
+        leaf && !leaf->isOpaque() && leaf->hasName() &&
+        leaf->getName() == (mutex ? "union.pthread_mutex_t" : "union.pthread_mutexattr_t") &&
+        module->getDataLayout().getTypeAllocSize(leaf).getFixedValue() == width &&
+        module->getDataLayout().getTypeStoreSize(leaf).getFixedValue() == width &&
+        module->getDataLayout().getABITypeAlign(leaf).value() == alignment &&
+        layout.alloc_size_in_bytes(imported_type) == width &&
+        layout.store_size_in_bytes(imported_type) == width && layout.abi_alignment(imported_type) == alignment;
+  };
   std::vector< const std::vector< BmcEvent >* > lifecycle_paths;
   for (const auto& trace : traces) lifecycle_paths.push_back(&trace.events);
   bool has_attributes = false;
@@ -266,7 +333,24 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                             function->name() == "pthread_mutexattr_destroy" ||
                             (function->name() == "pthread_mutex_init" && call->num_arguments() == 2 &&
                              !core::isa< ar::NullConstant >(call->argument(1)));
-  auto attribute_lifecycle = [&](const std::vector< BmcEvent >& path, ar::Function* root, ThreadArgument root_argument) {
+  // Preserve the established normal/ERRORCHECK lifecycle unchanged unless an
+  // executed setter requests the new recursive kind. A path-computed old kind2
+  // must not acquire the new literal-only source contract merely by integration.
+  bool recursive_requested = false;
+  for (const auto& trace : traces)
+    for (std::size_t i = 0; i < trace.events.size(); ++i) {
+      auto* call = core::dyn_cast< ar::CallBase >(trace.events[i].stmt);
+      auto* function = call ? exact_callee(call) : nullptr;
+      core::ZNumber kind;
+      if (function && function->name() == "pthread_mutexattr_settype" &&
+          call->num_arguments() == 2 &&
+          constant_integer_on_path(call->argument(1), trace.events, i, kind) && kind == 1)
+        recursive_requested = true;
+    }
+  if (recursive_requested && std::getenv("IKOS_BMC_DISABLE_RECURSIVE_MUTEX")) {
+    record(diagnostics, "recursive_mutex_disabled"); return Result(Status::Unsupported);
+  }
+  auto attribute_lifecycle = [&](std::vector< BmcEvent >& path, ar::Function* root, ThreadArgument root_argument) {
     if (!has_attributes) return true;
     bool spawned = false;
     std::vector< BmcEvent > used_mutexes;
@@ -274,7 +358,12 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
                       bool mutex, BmcEvent& address, bool symbolic = false) {
       core::ZNumber extent;
       if (!pointer_on_path(call->argument(argument), path, before, root, root_argument, address, &allocation_origin) ||
-          address.base == 0 || (address.var_id != 0 && !symbolic) || !memory_extent(address, extent)) return false;
+          (address.var_id != 0 && !symbolic) || !memory_extent(address, extent)) return false;
+      if (address.base == 0) {
+        if (!recursive_requested || mutex || !whole_recursive_object(call, argument, path, before, root, address, false)) return false;
+        address.width = 4; return true;
+      }
+      if (recursive_requested && !mutex) return false; // New profile: whole main-local attrs only.
       auto* global = reinterpret_cast< ar::GlobalVariable* >(address.base);
       if (!global->has_frontend() || global->is_thread_local()) return false;
       auto* source = global->frontend< llvm::GlobalVariable >();
@@ -358,7 +447,9 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       if (root == nullptr || root->name() != "main" || spawned || !mutex_attribute_call(call)) return false;
       BmcEvent address;
       if (!object(call, 0, i, init_mutex, address)) return false;
-      const ObjectId identity{address.base, address.const_off};
+      path[i].recursive_profile = recursive_requested;
+      const ObjectId identity = control_identity(address);
+      unsigned kind_at_init = 0;
       if (init_mutex) {
         for (const auto& previous : used_mutexes)
           if (previous.base == address.base &&
@@ -369,13 +460,20 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           if (!object(call, 1, i, false, attr)) return false;
           if (attr.base == address.base && attr.const_off < address.const_off + address.width &&
               address.const_off < attr.const_off + attr.width) return false;
-          auto value = attributes.find({attr.base, attr.const_off});
-          if (value == attributes.end() || value->second != 2) return false;
+          auto value = attributes.find(control_identity(attr));
+          if (value == attributes.end() ||
+              (recursive_requested ? value->second > 2 : value->second != 2)) return false;
+          kind_at_init = value->second;
+          if (kind_at_init == 1 &&
+              (!whole_recursive_object(call, 0, path, i, root, address, true) ||
+               !whole_recursive_object(call, 1, path, i, root, attr, false))) return false;
         }
         for (const auto& previous : initialized_mutexes)
           if (previous.base == address.base && previous.const_off < address.const_off + address.width &&
               address.const_off < previous.const_off + previous.width) return false;
         initialized_mutexes.push_back(address);
+        initialized_mutex_kinds.emplace(identity, kind_at_init);
+        if (kind_at_init == 1) path[i].recursive_mutex = true;
       } else if (name == "pthread_mutexattr_init") {
         if (!attributes.emplace(identity, 0).second) return false;
       } else {
@@ -384,14 +482,29 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         if (name == "pthread_mutexattr_destroy") attributes.erase(value);
         else {
           core::ZNumber kind;
-          if (!constant_integer_on_path(call->argument(1), path, i, kind) || kind != 2) return false;
-          value->second = 2;
+          if (!constant_integer_on_path(call->argument(1), path, i, kind)) return false;
+          if (!recursive_requested) {
+            if (kind != 2) return false;
+            value->second = 2;
+            continue;
+          }
+          if (kind < 0 || kind > 3) {
+            if (!recursive_mutex_abi_call(call)) return false;
+            path[i].mutex_result_known = true; path[i].mutex_result = 22;
+            continue; // EINVAL leaves the old valid attribute unchanged.
+          }
+          if (kind == 3 || !recursive_mutex_abi_call(call)) return false;
+          value->second = kind.to< unsigned >();
         }
+      }
+      if (recursive_requested) {
+        if (!recursive_mutex_abi_call(call)) return false;
+        path[i].mutex_result_known = true; path[i].mutex_result = 0;
       }
     }
     return true;
   };
-  for (const auto& trace : traces)
+  for (auto& trace : traces)
     if (!attribute_lifecycle(trace.events, trace.root, trace.argument)) {
       record(diagnostics, "mutex_attribute_lifecycle"); return Result(Status::Unsupported);
     }
@@ -533,6 +646,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   std::map< std::tuple< std::uint64_t, ar::LocalVariable*, core::ZNumber >, std::uint64_t > lock_ids;
   auto prepare = [&](std::vector< BmcEvent >& path, ar::Function* root, ThreadArgument argument) {
     std::set< std::uint64_t > held;
+    std::map< std::uint64_t, unsigned > recursive_depth;
     std::set< std::size_t > consumed_handles;
     std::uint64_t symbolic_lock = 0;
     for (std::size_t i = 0; i < path.size(); ++i) {
@@ -603,6 +717,26 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         if (event.synthetic_condition && event.var_id != 0) return false;
         if (event.var_id == 0 && (event.const_off < 0 || event.const_off + event.width > size)) return false;
         auto id = lock_ids.emplace(std::make_tuple(address.base, address.local_base, address.const_off), lock_ids.size() + 1);
+        auto initialized = initialized_mutex_kinds.find(control_identity(address));
+        if (initialized != initialized_mutex_kinds.end() && initialized->second == 1) {
+          if (event.synthetic_condition || address.var_id != 0 || symbolic_lock != 0 ||
+              !whole_recursive_object(call, 0, path, i, root, address, true)) {
+            record(diagnostics, "recursive_mutex_profile", event.stmt); return false;
+          }
+          event.mutex = id.first->second; event.recursive_mutex = true;
+          auto& depth = recursive_depth[event.mutex];
+          event.recursive_before = depth; event.mutex_result_known = true;
+          if (event.kind == EvKind::Lock) {
+            event.mutex_result = depth == 0xffffffffu ? 11u : 0u; // EAGAIN
+            if (event.mutex_result == 0) ++depth;
+          } else {
+            event.mutex_result = depth == 0 ? 1u : 0u; // EPERM
+            if (event.mutex_result == 0) --depth;
+          }
+          event.recursive_after = depth;
+          if (depth) held.insert(event.mutex); else held.erase(event.mutex);
+          continue;
+        }
         if (event.kind == EvKind::Lock) {
           if (symbolic_lock != 0 || (event.var_id != 0 && !held.empty())) {
             record(diagnostics, "symbolic_mutex_nested", event.stmt); return false;
@@ -630,6 +764,14 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
             record(diagnostics, "condition_storage_alias", event.stmt); return false;
           }
     }
+    // Startup is serialized before the clocked traces and does not participate
+    // in cross-trace Section exclusion. Never invent an unretained release or
+    // reset a still-owned recursive mutex when starting a child path.
+    if (&path == &startup)
+      for (const auto& entry : recursive_depth)
+        if (entry.second != 0) {
+          record(diagnostics, "recursive_startup_release_missing"); return false;
+        }
     return true;
   };
   const auto* completion_joins = completion != nullptr ? &completion->joins :
@@ -811,6 +953,9 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     // An unused initialized local object already had a supported call effect.
     // Acquiring it additionally needs the declared-type and live-owner proof.
     if (api != nullptr && api->name() == "pthread_mutex_init") continue;
+    if (api != nullptr && api->name().find("pthread_mutexattr_") == 0 &&
+        whole_recursive_object(call, 0, trace->events, storage.occurrence,
+                               trace->root, address, false)) continue;
     const auto bits = address.local_base
         ? address.local_base->bundle()->data_layout().pointers.bit_width : 0;
     const unsigned mutex_width = bits == 32 ? 24 : 40;
@@ -1084,6 +1229,21 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       if (i != 0) s.add(clock.back() > clock[clock.size() - 2]);
     }
   }
+  // A recursive certificate describes one live process. Keep all retained
+  // child events before an actual main Return; pthread_exit is distinct.
+  if (recursive_requested)
+    for (std::size_t i = 0; i < traces[main_index].events.size(); ++i) {
+      auto* returned = core::dyn_cast< ar::ReturnValue >(traces[main_index].events[i].stmt);
+      if (!returned || !entry || returned->code() != entry->body_or_null()) continue;
+      if (main_index == 0 || i + 1 != traces[main_index].events.size()) {
+        record(diagnostics, "recursive_process_return"); return Result(Status::Unsupported);
+      }
+      for (std::size_t other = 1; other < traces.size(); ++other) {
+        if (other == main_index) continue;
+        for (std::size_t j = 0; j < traces[other].events.size(); ++j)
+          s.add(clock[traces[other].clock_start + j] < clock[traces[main_index].clock_start + i]);
+      }
+    }
   struct OnceInvocation {
     ar::GlobalVariable* object;
     std::size_t trace, call, callback_return, returned;
@@ -1237,6 +1397,18 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         }
       }
       if (e.kind != EvKind::Lock && e.kind != EvKind::Unlock) continue;
+      if (e.recursive_mutex) {
+        if (!e.mutex_result_known || e.mutex == 0) return false;
+        if (e.mutex_result != 0) continue; // Failed calls neither acquire nor release.
+        if (e.kind == EvKind::Lock && e.recursive_before != 0) {
+          if (!active.count(e.mutex)) return false;
+          continue; // Same-owner relock imports no synchronization.
+        }
+        if (e.kind == EvKind::Unlock && e.recursive_after != 0) {
+          if (!active.count(e.mutex)) return false;
+          continue; // Partial unlock preserves the same outer section.
+        }
+      }
       if (e.mutex == 0) {record(diagnostics, "mutex_identity", e.stmt); return false;}
       if (e.kind == EvKind::Lock) {
         if (active.count(e.mutex)) {record(diagnostics, "mutex_relock", e.stmt); return false;}
@@ -1851,6 +2023,10 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       return true;
     }
     if (auto* call = core::dyn_cast_or_null< ar::CallBase >(def)) {
+      if (path[definition_index].mutex_result_known && recursive_mutex_abi_call(call)) {
+        out = ctx.int_val(path[definition_index].mutex_result);
+        cache.emplace(key, out); return true;
+      }
       if (successful_create_result(path[definition_index]) || successful_condition_result(path[definition_index]) || successful_join_result(path[definition_index])) {
         out = ctx.int_val(0);
         cache.emplace(key, out);
@@ -2301,6 +2477,16 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       } else s.add(actual == ctx.int_val(extent.str().c_str()));
     }
   }
+  // Preserve actual API results even when the source never reads them.
+  for (std::size_t id = 0; id < traces.size(); ++id)
+    for (std::size_t i = 0; i < traces[id].events.size(); ++i) {
+      const auto& event = traces[id].events[i];
+      if (event.mutex_result_known && event.stmt->result_or_null() != nullptr) {
+        z3::expr value(ctx);
+        if (!encode_value(event.stmt->result_or_null(), value, caches[id],
+                          traces[id].value_prefix(), 0, i + 1)) return Result(Status::Unsupported);
+      }
+    }
   for (std::size_t id = 0; id < traces.size(); ++id)
     if (!arithmetic_prefix(traces[id].events, caches[id], traces[id].value_prefix())) return Result(Status::Unsupported);
 

@@ -2,6 +2,7 @@
 #include <ikos/analyzer/checker/locked_creation.hpp>
 #include <ikos/analyzer/analysis/source_call_binding.hpp>
 #include <ikos/analyzer/analysis/source_program_facts.hpp>
+#include <ikos/analyzer/analysis/pthread_initialization_frame.hpp>
 #include <ikos/analyzer/checker/data_race.hpp>
 #include <ikos/analyzer/analysis/call_context.hpp>
 #include <ikos/analyzer/util/log.hpp>
@@ -265,6 +266,23 @@ class LockedCreation::Impl {
     }
     if (initialized != 1) return refuse(__LINE__);
     Mutex mutex{g, {}};
+    const auto& recursive = ctx.pthread_initialization_frame();
+    if (recursive && recursive->recursive_object(globals.at(g))) {
+      for (auto* root : roots) {
+        auto* region = recursive->recursive_region(globals.at(g), functions.at(root));
+        if (!region) continue;
+        if (!region->lock || !region->lock->has_frontend() ||
+            (region->unlock && !region->unlock->has_frontend())) return refuse(__LINE__);
+        mutex.intervals.emplace(root, Interval{
+            llvm::dyn_cast< llvm::CallBase >(region->lock->frontend< llvm::Value >()),
+            region->unlock ? llvm::dyn_cast< llvm::CallBase >(region->unlock->frontend< llvm::Value >()) : nullptr});
+        if (!mutex.intervals.at(root).lock) return refuse(__LINE__);
+      }
+      // The finite frame closes every native/AR use and identifies the actual
+      // first acquisition and final release. Inner relocks/partial unlocks are
+      // retained calls, not new outer interval boundaries.
+      mutexes.push_back(std::move(mutex)); return true;
+    }
     std::vector< llvm::Value* > todo{g}; std::set< llvm::Value* > seen;
     while (!todo.empty()) {
       auto* v = todo.back(); todo.pop_back();
@@ -410,7 +428,9 @@ class LockedCreation::Impl {
           auto* a = binding(c); auto* target = callee(c);
           if (!a || !target || !target->isDeclaration()) return refuse(__LINE__);
           consumed.insert(c);
-          bool known = false;
+          const auto& recursive = ctx.pthread_initialization_frame();
+          bool known = recursive && (recursive->recursive_mutex(a) ||
+              (recursive->effect(a) && recursive->effect(a)->result_known));
           for (auto& m : mutexes) {
             auto it = m.intervals.find(&f);
             if (it != m.intervals.end() && (it->second.lock == c || it->second.unlock == c)) known = true;
@@ -422,6 +442,10 @@ class LockedCreation::Impl {
           auto* count = llvm::dyn_cast< llvm::ConstantInt >(local->getArraySize());
           auto* allocation = dyn_cast_or_null< ar::Allocate >(original(local));
           auto* size = allocation ? dyn_cast< ar::IntegerConstant >(allocation->array_size()) : nullptr;
+          if (ctx.pthread_initialization_frame() && allocation &&
+              ctx.pthread_initialization_frame()->recursive_attribute(allocation->result())) {
+            consumed.insert(local); continue;
+          }
           if (!count || !count->isOne() || !local->getAllocatedType()->isIntegerTy() ||
               !allocation || !size || size->value().to_z_number() != 1 ||
               !allocation->result()->has_frontend() || allocation->result()->frontend< llvm::Value >() != local ||
@@ -617,14 +641,17 @@ public:
     if (!proof) { std::swap(x, y); proof = direction(*x, *y); }
     if (!proof) return {};
     unsigned n = (proof - 1) / 2;
+    const auto& frame = ctx.pthread_initialization_frame();
+    const bool recursive = frame && frame->recursive_object(globals.at(mutexes[n].source));
+    const char* contract = recursive ? "closed-recursive-mutex-creation-v1" : "closed-normal-mutex-creation-v1";
     if (proof % 2 == 0 && !joins.empty() && y->bounded_main.count(n))
       return {{"safe_reason", "a joined child or fully drained descendant stays inside main's mutex interval"},
-              {"locked_creation_contract", "closed-normal-mutex-creation-v1"},
+              {"locked_creation_contract", contract},
               {"mutex", mutexes[n].source->getName().str()},
               {"relation", "other-holder-outside-parent-joined-subtree"},
               {"holder_root", x->root}, {"bounded_root", y->root}};
-    return {{"safe_reason", "actual normal-lock intervals and creation chains order accesses"},
-            {"locked_creation_contract", "closed-normal-mutex-creation-v1"},
+    return {{"safe_reason", "actual outer mutex intervals and creation chains order accesses"},
+            {"locked_creation_contract", contract},
             {"mutex", mutexes[(proof - 1) / 2].source->getName().str()},
             {"relation", proof % 2 ? "parent-held-before-descendant-acquisition-chain" : "other-holder-before-child-created-under-retained-lock"},
             {"before_root", x->root}, {"after_root", y->root}};

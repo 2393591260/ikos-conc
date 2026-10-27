@@ -106,6 +106,57 @@ separate identities when the same allocation site executes more than once.
 
 </details>
 
+### Recursive mutex execution subset
+
+This extension selects its stricter contract only when an executed attribute
+setter requests RECURSIVE. Existing normal and ERRORCHECK-only lifecycle paths
+retain their prior eligibility, including path-constant type2 inputs. The new
+profile preserves its label even if the attribute is later changed before mutex
+initialization; each mutex uses its own initialization-time kind snapshot.
+
+
+The BMC/replay `gnu-x86-recursive-v1` profile uses the restricted GNU x86
+ILP32/LP64 initialization environment described in
+[library effects](library-effects.md#fixed-heap-pthread-initialization-effects). It requires
+an actual whole `pthread_mutexattr_t` allocated once in the initial `main(void)`
+entry block and a whole global `pthread_mutex_t`, with matching native/AR object
+identity, size, extent, alignment and ordinary C declaration/call ABI. Attribute
+initialization, literal type selection and mutex initialization occur before
+all creates and use. Only the default private, stalled, PRIO_NONE flags are
+modeled; attribute copying, raw byte accesses, other setters, nonconstant types,
+recursive condition waits and try/timed operations are outside this subset.
+
+Valid audited initialization calls return zero under this GNU runtime contract.
+Type values 0, 1 (RECURSIVE) and 2 can be selected; an invalid literal outside
+0 through 3 returns EINVAL (22) without changing the attribute, while GNU adaptive
+type 3 remains unsupported. Mutation or destruction of an attribute after mutex
+initialization does not alter the snapshotted mutex kind. These are concrete
+execution results, independently replayed, and do not turn an abstract TOP result
+into a success fact or provide an AI initialization certificate.
+
+Each retained recursive operation records its actual result and this thread's
+before/after depth. The first successful acquisition sets depth 1. Same-owner
+relocking increments a uint32 count without importing a new handoff; count
+exhaustion returns EAGAIN (11) unchanged. A wrong-owner unlock returns EPERM (1)
+unchanged. A partial successful unlock only decrements depth; the final 1-to-0
+unlock releases the outer critical section and publishes its vector clock.
+Cross-trace outer-section exclusion supplies global availability in BMC. The
+independent checker separately verifies owner, count, final-release handoff,
+result/guard values and every recorded depth. Count and ownership never pass to
+a child at create. An open section remains held. A serialized startup prefix
+ending with positive recursive depth is rejected because it does not retain an
+actual final release on the clocked timeline.
+
+The profile preserves lifecycle, relock and partial/final unlock occurrences in
+the AR execution. Source witness projection requires full independent AR replay;
+this is separate from official source witness validation. The depth/attribute
+execution subset grants no abstract lock or SAFE permission. The separate
+[finite source capability](library-effects.md#finite-recursive-mutex-source-capability)
+supplies the closed own-depth facts and LockedCreation outer intervals. Bounded UNSAT, missing candidate pairs or blocked coverage cannot
+establish SAFE. The direct checker controls run with
+`scripts/test_bmc_recursive_mutex.py --bits 32` or `--bits 64`; optional `--ikos`
+runs record source diagnostics and never count missing executions as recovery.
+
 <a id="atomic-targets-and-communication"></a>
 <details>
 <summary>Atomic targets and communication — retain the required execution suffixes and ordering</summary>

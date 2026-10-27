@@ -10,6 +10,7 @@
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/CFG.h>
 #include <algorithm>
+#include <cstdlib>
 #include <map>
 #include <set>
 
@@ -55,7 +56,7 @@ class PthreadInitializationFrame::Impl {
   std::map< ar::CallBase*, PthreadInitializationEffect > effects;
   unsigned budget = 8192;
   PthreadObjectLayout abi;
-  bool spawned = false, valid = false, heap_mutex = false, arrays = false;
+  bool spawned = false, valid = false, heap_mutex = false, arrays = false, recursive_mode = false;
   llvm::Instruction* prefix_stop = nullptr;
   std::map< llvm::Value*, llvm::ConstantInt* > integers;
   std::map< ar::CallBase*, PthreadMutexArrayAccess > array_accesses;
@@ -910,6 +911,8 @@ class PthreadInitializationFrame::Impl {
     for (auto& effect : effects) effect.second.complete_prefix = true;
     valid = true;
   }
+  #include "recursive_mutex_frame.inc"
+
   void run() {
     need(ctx.opts.enable_thread_modular && ctx.opts.use_checks &&
          std::find(ctx.opts.analyses.begin(), ctx.opts.analyses.end(), CheckerName::DataRace) != ctx.opts.analyses.end() &&
@@ -940,6 +943,7 @@ class PthreadInitializationFrame::Impl {
       auto* g = *it;
       if (g->has_frontend()) globals.emplace(g->frontend< llvm::GlobalVariable >(), g);
     }
+    if (recursive_mode) { recursive_run(); return; }
     if (arrays) { array_run(); return; }
     Frame frame; walk(main, frame, true);
     need(heap_mutex && !workers.empty(), "no heap initialization use");
@@ -971,7 +975,8 @@ class PthreadInitializationFrame::Impl {
     valid = true;
   }
 public:
-  explicit Impl(Context& context, bool array_mode = false) : ctx(context), arrays(array_mode) {
+  explicit Impl(Context& context, bool array_mode = false, bool recursive = false)
+      : ctx(context), arrays(array_mode), recursive_mode(recursive) {
     try { run(); } catch (const Refuse&) { effects.clear(); }
   }
   const PthreadInitializationEffect* get(ar::CallBase* call) const {
@@ -982,6 +987,25 @@ public:
     auto i = array_accesses.find(call);
     return valid && i != array_accesses.end() ? &i->second : nullptr;
   }
+  const PthreadRecursiveMutexEffect* recursive_effect(ar::CallBase* call) const {
+    auto it = recursive_effects.find(call);
+    return valid && it != recursive_effects.end() ? &it->second : nullptr;
+  }
+  const PthreadRecursiveMutexRegion* recursive_region(ar::GlobalVariable* global, ar::Function* root) const {
+    auto it = recursive_regions.find({global, root});
+    return valid && it != recursive_regions.end() ? &it->second : nullptr;
+  }
+  bool recursive_object(ar::GlobalVariable* global) const { return valid && recursive_objects.count(global); }
+  bool recursive_attribute(ar::LocalVariable* local) const { return valid && recursive_attributes.count(local); }
+  bool recursive_key(std::uint64_t key) const {
+    if (!valid || !key || (key & 0xffffffffULL)) return false;
+    for (auto* global : recursive_objects) {
+      auto* location = ctx.mem_factory->get_global(global);
+      auto address = core::IndexableTraits< MemoryLocation* >::index(location);
+      if (address && address <= 0xffffffffULL && key == (address << 32)) return true;
+    }
+    return false;
+  }
   bool ok() const { return valid; }
   const std::string& reason() const { return refusal; }
 };
@@ -990,13 +1014,16 @@ bool PthreadInitializationEffect::matches(MemoryLocation* location, const ZNumbe
     if (offset != target.offset) continue;
     if (auto* heap = dyn_cast< DynAllocMemoryLocation >(location)) {
       if (target.allocation && heap->call() == target.allocation && heap->context()->empty()) return true;
-    } else if (auto* global = dyn_cast< GlobalMemoryLocation >(location))
+    } else if (auto* global = dyn_cast< GlobalMemoryLocation >(location)) {
       if (target.global && global->global_var() == target.global) return true;
+    } else if (auto* local = dyn_cast< LocalMemoryLocation >(location))
+      if (target.local && local->local_var() == target.local) return true;
   }
   return false;
 }
 PthreadInitializationFrame::PthreadInitializationFrame(Context& ctx) : _impl(new Impl(ctx)) {
   if (!_impl->ok()) _impl.reset(new Impl(ctx, true));
+  if (!_impl->ok()) _impl.reset(new Impl(ctx, false, true));
 }
 PthreadInitializationFrame::~PthreadInitializationFrame() = default;
 const PthreadInitializationEffect* PthreadInitializationFrame::effect(ar::CallBase* c) const { return _impl->get(c); }
@@ -1016,6 +1043,11 @@ bool PthreadInitializationEffect::matches_range(MemoryLocation* location, const 
   }
   return !first && lower >= lo && upper <= hi;
 }
+const PthreadRecursiveMutexEffect* PthreadInitializationFrame::recursive_mutex(ar::CallBase* c) const { return _impl->recursive_effect(c); }
+const PthreadRecursiveMutexRegion* PthreadInitializationFrame::recursive_region(ar::GlobalVariable* g, ar::Function* f) const { return _impl->recursive_region(g, f); }
+bool PthreadInitializationFrame::recursive_object(ar::GlobalVariable* g) const { return _impl->recursive_object(g); }
+bool PthreadInitializationFrame::recursive_attribute(ar::LocalVariable* l) const { return _impl->recursive_attribute(l); }
+bool PthreadInitializationFrame::recursive_key(std::uint64_t key) const { return _impl->recursive_key(key); }
 const std::string& PthreadInitializationFrame::refusal_reason() const { return _impl->reason(); }
 void configure_pthread_initialization_frame(Context& ctx) {
   if (ctx.pthread_initialization_frame()) return;

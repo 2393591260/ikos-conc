@@ -8,7 +8,7 @@ namespace ikos {
 namespace analyzer {
 
 // Only unique, value-preserving pointer definitions may carry this address.
-inline bool mentions_handle_slot(ar::Value* value, ar::GlobalVariable* slot,
+inline bool mentions_handle_slot(ar::Value* value, ar::Value* slot,
                                  unsigned depth = 0) {
   if (depth >= 64) return true;
   if (value == slot) return true;
@@ -32,7 +32,7 @@ inline bool mentions_handle_slot(ar::Value* value, ar::GlobalVariable* slot,
   return false;
 }
 
-inline bool exact_handle_slot(ar::Value* value, ar::GlobalVariable* slot,
+inline bool exact_handle_slot(ar::Value* value, ar::Value* slot,
                               unsigned depth = 0) {
   if (depth >= 64) return false;
   if (value == slot) return true;

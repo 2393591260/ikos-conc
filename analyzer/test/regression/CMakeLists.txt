@@ -166,6 +166,12 @@ add_concurrency_test(bmc-semaphore "${CONCURRENCY_ROOT}/scripts/test_bmc_semapho
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(bmc-semaphore-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_semaphore.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
+# This direct replay suite never launches an analyzer. Source fixtures require
+# an explicit --ikos diagnostic run and do not establish SAFE/recovery claims.
+add_concurrency_test(bmc-recursive-replay "${CONCURRENCY_ROOT}/scripts/test_bmc_recursive_mutex.py"
+                     --bits 32)
+add_concurrency_test(bmc-recursive-replay-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_recursive_mutex.py"
+                     --bits 64)
 add_concurrency_test(bmc-mutex-lifetime "${CONCURRENCY_ROOT}/scripts/test_bmc_mutex_lifetime.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(bmc-main-stack-mutex "${CONCURRENCY_ROOT}/scripts/test_bmc_main_stack_mutex.py"
@@ -621,3 +627,15 @@ foreach(bits 32 64)
   add_concurrency_test(cmpxchg-values-${bits} "${CONCURRENCY_ROOT}/scripts/test_cmpxchg_values.py"
                        --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
 endforeach()
+
+add_concurrency_test(recursive-mutex-finite "${CONCURRENCY_ROOT}/scripts/test_recursive_mutex_finite.py"
+                     --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(recursive-mutex-finite-lp64 "${CONCURRENCY_ROOT}/scripts/test_recursive_mutex_finite.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
+
+add_concurrency_test(recursive-mutex-bmc "${CONCURRENCY_ROOT}/scripts/test_recursive_mutex_finite.py"
+                     --ikos "${CONCURRENCY_IKOS}" --mode bmc --case 0 --case 1 --case 2 --case 3)
+add_concurrency_test(recursive-mutex-bmc-lp64 "${CONCURRENCY_ROOT}/scripts/test_recursive_mutex_finite.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64 --mode bmc --case 0 --case 1 --case 2 --case 3)
+
+add_concurrency_test(recursive-mutex-replay "${CONCURRENCY_ROOT}/scripts/test_bmc_recursive_mutex.py")

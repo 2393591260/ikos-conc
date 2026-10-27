@@ -579,10 +579,67 @@ void exec_pthread_cond_wait(E& eng, ar::CallBase* call) {
   }
 }
 
+// Exact source count is independently sealed for one whole recursive global
+// in single-block, closed roots. A mismatched sealed fact fails closed.
+// No abstract TOP is interpreted as a successful acquisition.
+template < typename E >
+bool exec_certified_recursive_mutex(E& eng, ar::CallBase* call) {
+  const auto& frame = eng.ctx().pthread_initialization_frame();
+  auto* effect = frame ? frame->recursive_mutex(call) : nullptr;
+  if (!effect) return false;
+  auto refuse = [&]() {
+    // A sealed recursive operation must never borrow ordinary-lock success.
+    // Remove only recursive keys, retain unrelated locks, and block SAFE via
+    // the existing unmodeled-effect coverage contract.
+    for (auto key : eng.lockset().held_mutexes())
+      if (frame->recursive_key(key)) eng.lockset().assign_certified_mutex_depth(key, 0);
+    eng.ctx().concurrent_env.record_unmodeled_effect(
+        call, "recursive finite source/runtime fact mismatch");
+    if (call->has_result()) {
+      const auto& result = eng.lit_factory().get(call->result());
+      if (result.is_scalar() && result.scalar().is_var())
+        eng.data().normal().int_forget(result.scalar().var());
+    }
+    return true;
+  };
+  if (call->num_arguments() != 1) return refuse();
+  if (call->has_result()) {
+    const auto& result = eng.lit_factory().get(call->result());
+    if (!result.is_scalar() || !result.scalar().is_var()) return refuse();
+  }
+  const auto& argument = eng.lit_factory().get(call->argument(0));
+  if (!argument.is_scalar() || !argument.scalar().is_pointer_var()) return refuse();
+  auto* variable = argument.scalar().var();
+  auto pointer = eng.data().normal().pointer_to_pointer(variable);
+  auto* expected = eng.ctx().mem_factory->get_global(effect->global);
+  auto offset = pointer.offset().singleton();
+  if (!pointer.points_to().is_set() || pointer.points_to().size() != 1 ||
+      *pointer.points_to().begin() != expected || !offset || !offset->is_zero()) return refuse();
+  const auto base = core::IndexableTraits< MemoryLocation* >::index(expected);
+  const auto key = offset_lock_key(base, core::ZNumber(0));
+  if (!key || !frame->recursive_key(key)) return refuse();
+  eng.ctx().concurrent_env.record_lock_instance(key, 0);
+  if (effect->lock) eng.lockset().record_possible_mutex_acquisition();
+  eng.lockset().assign_certified_mutex_depth(key, effect->after);
+  // Only an actual 1->0 success is a release. A relock imports no handoff;
+  // a partial unlock and EPERM/EAGAIN publish neither values nor equality.
+  if (!effect->lock && effect->result == 0 && effect->before == 1 && effect->after == 0)
+    eng.ctx().concurrent_env.flush_privatized(key);
+  auto width = core::MachineInt(eng.data_layout().pointers.bit_width == 32 ? 24u : 40u,
+                                eng.data_layout().pointers.bit_width, core::Unsigned);
+  eng.data().normal().mem_forget_reachable(variable, width);
+  if (call->has_result()) {
+    const auto& result = eng.lit_factory().get(call->result());
+    eng.data().normal().int_assign(result.scalar().var(), core::MachineInt(effect->result, 32, core::Signed));
+  }
+  return true;
+}
+
 template < typename E >
 void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
                              bool read_lock = false,
                              bool trylock = false) {
+  if (!read_lock && !trylock && exec_certified_recursive_mutex(eng, call)) return;
   auto old_held = value_mutexes(eng);
   const bool first_acquisition = !eng.lockset().may_ever_acquired_mutex() &&
                                  eng.lockset().held_mutexes().empty();
@@ -912,6 +969,7 @@ void exec_pthread_mutex_lock(E& eng, ar::CallBase* call,
 /// \brief Remove resolved locks and flush their deferred write queues.
 template < typename E >
 void exec_pthread_mutex_unlock(E& eng, ar::CallBase* call, bool also_read = false) {
+  if (!also_read && exec_certified_recursive_mutex(eng, call)) return;
   auto before = value_mutexes(eng);
   auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
   const bool ordinary_mutex = target &&
@@ -1784,6 +1842,15 @@ void on_store_privatize(E& eng,
   if (!points_to.is_top() && !points_to.is_bottom()) {
     auto& env = eng.ctx().concurrent_env;
     auto held_mutexes = eng.lockset().held_mutexes();
+    // The legacy deferred scalar board is another numeric cooperation
+    // consumer. Remove recursive keys here too, retaining unrelated normal
+    // and symbolic behavior rather than only filtering value_mutexes().
+    if (const auto& frame = eng.ctx().pthread_initialization_frame()) {
+      for (auto it = held_mutexes.begin(); it != held_mutexes.end();) {
+        if (frame->recursive_key(*it)) it = held_mutexes.erase(it);
+        else ++it;
+      }
+    }
     const bool has_locks = !held_mutexes.empty();
 
     for (MemoryLocation* loc : points_to) {

@@ -123,6 +123,9 @@ class Replay:
         self.once_states = {}
         self.finite_once_families = {}
         self.once_profile = any("once_role" in s for t in self.traces.values() for s in t["steps"])
+        require(certificate.get('mutex_profile') in (None, 'gnu-x86-recursive-v1'), 'unknown mutex profile')
+        self.recursive_mutex_profile = certificate.get('mutex_profile') == 'gnu-x86-recursive-v1'
+        self.recursive_main_returned = False
         for name, glob in program['globals'].items():
             if glob['declaration'] or glob['type']['kind'] == 'unsupported':
                 continue
@@ -186,6 +189,9 @@ class Replay:
             require(not any(offset < start + width and start < offset + size
                             for start, width in meta.get('mutex_regions', [])),
                     'raw access to opaque stack mutex storage')
+            require(not any(offset < start + width and start < offset + size
+                            for start, width in meta.get('attribute_regions', [])),
+                    'raw access to opaque mutex attribute storage')
         if len(self.memory[obj]) != meta['size'] or meta['thread_local']:
             raise Unsupported('large/thread-local object')
         return obj, offset
@@ -433,6 +439,93 @@ class Replay:
         else: raise Unsupported('encoded object')
         require(pointer[1] == int(address['offset']), 'SMT byte offset mismatch')
         require(width == int(address['width']), 'SMT access width mismatch')
+
+    def recursive_mutex_abi(self, name, inst, args, frame):
+        native = inst.get('native_mutex', {})
+        source = {'ar.pthread.mutex.lock': 'pthread_mutex_lock',
+                  'ar.pthread.mutex.unlock': 'pthread_mutex_unlock'}.get(name, name)
+        count = 2 if source in ('pthread_mutex_init', 'pthread_mutexattr_settype') else 1
+        require(source in ('pthread_mutex_lock', 'pthread_mutex_unlock', 'pthread_mutex_init',
+                           'pthread_mutexattr_init', 'pthread_mutexattr_settype', 'pthread_mutexattr_destroy'),
+                'recursive API identity')
+        bits = self.program['pointer_bits']
+        require(self.verified_pthread_abi() and self.program['little_endian'] is True and
+                native.get('name') == source and native.get('declaration') is True and
+                native.get('variadic') is False and native.get('matching_signature') is True and
+                native.get('calling_convention') == native.get('call_convention') == inst.get('calling_convention') == 0 and
+                native.get('operand_bundles') is False and native.get('ordinary_abi') is True and
+                native.get('arguments') == native.get('parameters') == count and
+                native.get('return_bits') == native.get('result_bits') == 32 and
+                native.get('pointer_bits') == native.get('index_bits') == bits and native.get('little_endian') is True,
+                'recursive source ABI')
+        fn = self.functions[name]; types = fn.get('parameter_types', []); result = fn['return_type']
+        require(fn['declaration'] and not fn['variadic'] and len(types) == count and
+                result.get('kind') == 'integer' and result.get('bits') == 32 and
+                result.get('signed') is True and int(result.get('size', 0)) == 4 and
+                ('result' not in inst or inst['result']['type'] == result) and
+                len(inst['operands']) == count + 1 and
+                all(op['type'] == expected for op, expected in zip(inst['operands'][1:], types)),
+                'recursive imported ABI')
+        require(len(native.get('parameter_integer_bits', [])) == len(native.get('parameter_address_spaces', [])) == count, 'recursive parameter metadata')
+        require(len(native.get('argument_objects', [])) == len(args) == count, 'recursive native argument metadata')
+        for i, typ in enumerate(types):
+            integer = source == 'pthread_mutexattr_settype' and i == 1
+            if integer:
+                require(inst['operands'][i + 1].get('kind') == 'integer' and
+                        type(native.get('settype_value')) is int and
+                        native['settype_value'] == int(inst['operands'][i + 1]['value']) == args[i],
+                        'recursive setter actual source value')
+            else:
+                require(self.value(native['argument_objects'][i], frame) == args[i],
+                        'recursive actual source storage')
+            require(native.get('parameter_integer_bits', [])[i] == (32 if integer else 0) and
+                    native.get('parameter_address_spaces', [])[i] == (99 if integer else 0),
+                    'recursive native parameter')
+            require((typ.get('kind') == 'integer' and typ.get('bits') == 32 and typ.get('signed') is True and int(typ.get('size', 0)) == 4)
+                    if integer else (typ.get('kind') == 'pointer' and typ.get('bits') == bits and int(typ.get('size', 0)) == bits // 8),
+                    'recursive imported parameter')
+
+    def recursive_attribute_object(self, pointer):
+        obj, offset = self.region(pointer, 4, 4, opaque=True); meta = self.objects[obj]
+        require(obj.startswith('stack:') and offset == 0 and meta['size'] == 4 and
+                meta.get('owner_frame') == getattr(self, 'initial_main_frame', None) and
+                meta.get('owner_function') == 'main' and meta.get('owner_thread') == 0 and
+                meta.get('count') == meta.get('native_count') == 1 and meta.get('native_entry_allocation') is True and not meta.get('dynamic_stack') and
+                not self.functions['main']['parameters'], 'recursive attribute main lifetime')
+        typ = meta['type']; native = meta.get('native_layout', {})
+        require(typ.get('kind') == 'struct' and int(typ.get('size', 0)) == int(typ.get('extent', 0)) == 4 and
+                typ.get('abi_alignment') == 4 and meta.get('alignment', 0) >= 4 and
+                meta.get('native_alignment', 0) >= 4 and meta.get('native_address_space') == 0 and
+                meta.get('native_owner') == 'main' and native.get('kind') == 'struct' and
+                native.get('name') == 'union.pthread_mutexattr_t' and int(native.get('extent', 0)) == int(native.get('store_size', 0)) == 4 and
+                native.get('alignment') == 4, 'recursive attribute declared storage')
+        return obj
+
+    def recursive_global_mutex(self, pointer):
+        bits = self.program['pointer_bits']; width, alignment = (24, 4) if bits == 32 else (40, 8)
+        obj, offset = self.region(pointer, width, alignment, opaque=True); meta = self.objects[obj]
+        require(obj.startswith('global:') and offset == 0 and meta['size'] == width and
+                meta.get('alignment', 0) >= alignment and not meta['thread_local'], 'recursive whole global mutex')
+        declared = self.program['globals'][meta['variable']]; native = declared.get('native_mutex_object', {})
+        typ = meta['type']
+        require(declared.get('frontend_type_name') == 'union.pthread_mutex_t' and not declared['declaration'] and
+                typ.get('kind') == 'struct' and int(typ.get('size', 0)) == int(typ.get('extent', 0)) == width and
+                typ.get('abi_alignment') == alignment and
+                native.get('extent') == native.get('store_size') == width and
+                native.get('type_alignment') == alignment and native.get('alignment', 0) >= alignment and
+                native.get('address_space') == 0 and native.get('declaration') is False and
+                native.get('thread_local') is False and native.get('constant') is False and
+                native.get('externally_initialized') is False and native.get('module_inline_asm') is False,
+                'recursive mutex declared storage')
+        return obj
+
+    def mutex_semantics(self, step, result, recursive=False, before=0, after=0):
+        record = step.get('mutex_semantics')
+        require(isinstance(record, dict) and type(record.get('result')) is int and
+                type(record.get('depth_before')) is int and type(record.get('depth_after')) is int and
+                type(record.get('recursive')) is bool and
+                record == dict(result=result, recursive=recursive, depth_before=before, depth_after=after),
+                'mutex occurrence semantics differ from actual lifecycle')
 
     def library_layout(self, inst, argument, size, alignment=None):
         if not self.verified_pthread_abi(): raise Unsupported('unverified pthread ABI')
@@ -906,7 +999,35 @@ class Replay:
             rw = 'rwlock' in name
             width = (32 if self.program['pointer_bits']==32 else 56) if rw else (24 if self.program['pointer_bits']==32 else 40)
             local = isinstance(pointer, tuple) and str(pointer[0]).startswith('stack:')
-            obj, offset = self.region(pointer, width, opaque=local)
+            recursive = not rw and self.locks.get(pointer, {}).get('kind') == 1
+            obj, offset = self.region(pointer, width, opaque=local or recursive)
+            if recursive:
+                require(getattr(self, 'recursive_mutex_profile', False), 'recursive operation without explicit profile')
+                self.recursive_mutex_abi(name, inst, args, frame); self.recursive_global_mutex(pointer)
+                self.encoded_address(step, pointer, width)
+                state = self.locks[pointer]; before = state['depth']
+                require(0 <= before <= 0xffffffff and bool(state['owners']) == (before > 0) and
+                        len(state['owners']) <= 1, 'recursive owner/depth invariant')
+                if action == 'lock':
+                    if thread.instance in state['owners']:
+                        result = 11 if before == 0xffffffff else 0
+                        if result == 0: state['depth'] += 1
+                    else:
+                        require(not state['owners'], 'recursive acquisition blocked by other owner')
+                        self.join_vc(thread.vc, state['released'])
+                        state['owners'][thread.instance] = False; state['depth'] = 1; result = 0
+                else:
+                    result = 0 if thread.instance in state['owners'] else 1
+                    if result == 0:
+                        state['depth'] -= 1
+                        if state['depth'] == 0:
+                            del state['owners'][thread.instance]
+                            self.join_vc(state['released'], thread.vc)
+                # EPERM is about this thread's count, not another owner's count.
+                own_before = before if thread.instance in state['owners'] or result == 0 and action == 'unlock' else 0
+                own_after = state['depth'] if thread.instance in state['owners'] else 0
+                self.mutex_semantics(step, result, True, own_before, own_after)
+                return result
             if obj.startswith('stack:'):
                 if rw: raise Unsupported('stack rwlock')
                 self.stack_mutex(pointer)
@@ -928,7 +1049,17 @@ class Replay:
             return 0
         if name in ('pthread_mutexattr_init', 'pthread_mutexattr_settype', 'pthread_mutexattr_destroy'):
             self.library_layout(inst, 0, 4, 4)
-            self.region(args[0], 4, 4)
+            exact = getattr(self, 'recursive_mutex_profile', False) or 'mutex_semantics' in step
+            self.region(args[0], 4, 4, opaque=exact)
+            if exact: self.recursive_mutex_abi(name, inst, args, frame)
+            if getattr(self, 'recursive_mutex_profile', False):
+                obj = self.recursive_attribute_object(args[0])
+                require(not any(a['object'] == obj and a['offset'] < 4 and
+                                0 < a['offset'] + a['width'] for a in self.accesses.values()),
+                        'raw attribute access before lifecycle')
+                self.objects[obj].setdefault('attribute_regions', [])
+                if (0, 4) not in self.objects[obj]['attribute_regions']:
+                    self.objects[obj]['attribute_regions'].append((0, 4))
             if thread.instance != 0 or self.created: raise Unsupported('mutex attribute lifecycle after spawn')
             if name.endswith('_init'):
                 require(args[0] not in self.attributes, 'reinitialized mutex attribute')
@@ -937,8 +1068,16 @@ class Replay:
                 require(args[0] in self.attributes, 'uninitialized mutex attribute')
                 if name.endswith('_destroy'): del self.attributes[args[0]]
                 else:
-                    if args[1] != 2: raise Unsupported('mutex attribute kind')
-                    self.attributes[args[0]] = 2
+                    if args[1] == 1:
+                        require(getattr(self, 'recursive_mutex_profile', False), 'recursive setter without explicit profile')
+                        self.recursive_attribute_object(args[0])
+                    if args[1] < 0 or args[1] > 3:
+                        require(exact, 'invalid setter without exact source contract')
+                        self.mutex_semantics(step, 22); return 22
+                    if args[1] not in ((0, 1, 2) if exact else (2,)):
+                        raise Unsupported('mutex attribute kind')
+                    self.attributes[args[0]] = args[1]
+            if exact: self.mutex_semantics(step, 0)
             return 0
         if name == 'pthread_mutex_init':
             require(len(args)==2, 'mutex initialization argument count')
@@ -947,7 +1086,13 @@ class Replay:
                 self.library_layout(inst, 1, 4, 4)
                 require(args[1] in self.attributes, 'mutex attribute lifetime')
                 kind = self.attributes[args[1]]
-                if kind != 2: raise Unsupported('nondefault mutex kind')
+                if kind not in ((0, 1, 2) if getattr(self, 'recursive_mutex_profile', False) or 'mutex_semantics' in step else (2,)):
+                    raise Unsupported('nondefault mutex kind')
+            exact = getattr(self, 'recursive_mutex_profile', False) or 'mutex_semantics' in step
+            if exact: self.recursive_mutex_abi(name, inst, args, frame)
+            if kind == 1:
+                require(getattr(self, 'recursive_mutex_profile', False) and args[1] != ('null', 0), 'recursive init without explicit profile')
+                self.recursive_attribute_object(args[1]); self.recursive_global_mutex(args[0])
             width=24 if self.program['pointer_bits']==32 else 40
             self.library_layout(inst, 0, width, self.program['pointer_bits']//8)
             local = isinstance(args[0], tuple) and str(args[0][0]).startswith('stack:')
@@ -964,7 +1109,14 @@ class Replay:
                         'raw stack mutex access before initialization')
                 self.objects[obj].setdefault('mutex_regions', []).append((offset, width))
             self.memory[obj][offset:offset+width]=[0]*width
-            self.locks[args[0]]=dict(owners={},released={},kind=kind,width=width); return 0
+            self.locks[args[0]]=dict(owners={},released={},kind=kind,width=width,depth=0)
+            if kind == 1:
+                require(not any(a['object'] == obj and a['offset'] < offset + width and
+                                offset < a['offset'] + a['width'] for a in self.accesses.values()),
+                        'raw recursive mutex access before initialization')
+                self.objects[obj].setdefault('mutex_regions', []).append((offset, width))
+            if exact: self.mutex_semantics(step, 0, kind == 1)
+            return 0
         if name in ('pthread_cond_init', 'pthread_cond_wait', 'pthread_cond_signal', 'pthread_cond_broadcast'):
             self.library_layout(inst, 0, 48)
             if name == 'pthread_cond_init':
@@ -978,6 +1130,7 @@ class Replay:
                     width = 24 if self.program['pointer_bits']==32 else 40
                     self.library_layout(inst, 1, width)
                     require(len(args)==2 and args[1] in self.locks and thread.instance in self.locks[args[1]]['owners'], 'condition wait ownership')
+                    require(self.locks[args[1]].get('kind') != 1, 'recursive condition wait unsupported')
                     require(condition['mutex'] in (None, args[1]), 'condition wait mutex binding')
                     condition['mutex'] = args[1]
                     # Choose a POSIX spurious wake. No signal HB is manufactured.
@@ -1476,6 +1629,9 @@ class Replay:
         require(trace_id in self.threads, 'thread executes before actual create')
         thread = self.threads[trace_id]
         require(not thread.finished, 'execution after return')
+        if getattr(self, 'recursive_mutex_profile', False):
+            require(not getattr(self, 'recursive_main_returned', False),
+                    'recursive profile execution after main Return')
         if self.barriers:
             require(not any(t.instance == 0 and t.finished for t in self.threads.values()),
                     'barrier execution after process exit')
@@ -1508,6 +1664,7 @@ class Replay:
                 group['departed'].add(thread.instance)
             elif name in ('condition_release', 'condition_reacquire'):
                 state = self.locks[pointer]
+                require(state.get('kind') != 1, 'recursive condition boundary unsupported')
                 width = 24 if self.program['pointer_bits']==32 else 40
                 self.encoded_address(step, pointer, width)
                 if name == 'condition_release':
@@ -1538,7 +1695,7 @@ class Replay:
                                    thread_local=False,alignment=inst.get('alignment'), count=count,
                                    owner_frame=frame.uid, owner_function=frame.function, owner_thread=thread.instance,
                                    **{k: inst[k] for k in ('native_layout', 'native_alignment',
-                                      'native_address_space', 'native_owner') if k in inst})
+                                      'native_address_space', 'native_owner', 'native_count', 'native_entry_allocation') if k in inst})
             self.memory[obj]=[None]*size; result=(obj,0)
         elif kind=='assign': result=values[0]
         elif kind=='unary':
@@ -1650,7 +1807,10 @@ class Replay:
             if frame.function.startswith('__VERIFIER_atomic_'):
                 require(thread.frames and thread.frames[-1].pending is not None, 'atomic invocation boundary')
                 self.marker(trace_id, thread.frames[-1].pending[1]['statement'], 'atomic_end')
-            if not thread.frames: thread.finished=True; return
+            if not thread.frames:
+                if frame.function == 'main' and getattr(self, 'recursive_mutex_profile', False):
+                    self.recursive_main_returned = True
+                thread.finished=True; return
             parent=thread.frames[-1]; call,call_step=parent.pending; parent.pending=None
             if 'result' in call and call['result']['type']['kind']=='integer':
                 result=integer(result,call['result']['type'])

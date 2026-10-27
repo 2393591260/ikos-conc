@@ -27,6 +27,8 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
   ReplaySnapshot snapshot(traces[1].root->bundle());
   evidence.replay.put("schema", 1);
   evidence.replay.put("validation_status", "UNVALIDATED");
+  for (const auto& trace : traces) for (const auto& event : trace.events)
+    if (event.recursive_profile || event.recursive_mutex) evidence.replay.put("mutex_profile", "gnu-x86-recursive-v1");
   evidence.replay.put("program", snapshot.program());
   JsonList exported_traces;
   auto number = [&](const z3::expr& expression) {
@@ -116,6 +118,11 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
       if (path[i].synthetic_condition)
         step.put("synthetic_event", path[i].kind == EvKind::Lock ? "condition_reacquire" : "condition_release");
       if (id != "startup") step.put("clock", Z3_get_numeral_string(ctx, model.eval(clock[start + i], true)));
+      if (path[i].mutex_result_known) {
+        step.put("mutex_semantics", JsonDict{{"result", path[i].mutex_result},
+            {"recursive", path[i].recursive_mutex},
+            {"depth_before", path[i].recursive_before}, {"depth_after", path[i].recursive_after}});
+      }
       if (path[i].join_completion != nullptr) {
         bool retained = false;
         for (const auto& child : traces) {

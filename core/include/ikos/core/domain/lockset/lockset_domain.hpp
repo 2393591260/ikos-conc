@@ -917,6 +917,19 @@ class LocksetDomain final : public AbstractDomain< LocksetDomain > {
     ++_mutex_locks[lock_addr];
   }
 
+  // Assign a MUST lower bound supplied by the sealed finite-source recursive
+  // frame. This is not an exact-count getter and does not reset MAY history.
+  void assign_certified_mutex_depth(std::uint64_t lock_addr, unsigned lower) {
+    if (_is_bottom) return;
+    if (lower == 0) {
+      if (!_mutex_top) _mutex_locks.erase(lock_addr);
+    } else {
+      _mutex_top = false;
+      _may_ever_acquired_mutex = true;
+      _mutex_locks[lock_addr] = lower;
+    }
+  }
+
   /// \brief Release one layer of a mutex (recursive depth decrements; only a
   /// depth reaching 0 drops the lock).
   void remove_mutex(std::uint64_t lock_addr) {

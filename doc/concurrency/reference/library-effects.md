@@ -669,3 +669,47 @@ also apply the same attribute boundary.
 The AR execution checker continues to validate the exported AR execution
 contract. It does not recover native call attributes absent from that export,
 so its acceptance alone is not evidence for a source ABI or source witness.
+
+### Finite recursive mutex source capability
+
+The recursive AI subset uses the existing GNU Linux x86 ILP32 / x86-64 LP64
+private, stalled, PRIO_NONE initialization environment. A separate closed source
+capability requires one actual single-block main and actual single-block pthread
+callbacks, exact native and AR call/storage correspondence, a whole global
+mutex and one whole main-entry attribute allocation, and initialization before
+every create. All defined bodies and all runtime-storage uses are closed.
+Branches, loops, synchronous helpers, aliases with nonzero displacement, raw
+storage access, escape, reinitialization, unknown effects, and try/condition/timed
+operations cannot obtain this capability. This is a finite subset rather than a
+general recursion-count abstract domain.
+
+A successful RECURSIVE snapshot (GNU type 1) supplies an actual own-thread count
+and return value at each call occurrence. Each worker starts with count zero.
+An owner relock has no acquire handoff; a partial unlock has no release handoff.
+Only count 1 to 0 is a final release. Invalid type literals return EINVAL without
+changing the attribute; wrong-owner unlock returns EPERM without changing
+ownership. Adaptive type 3 is excluded. The exact source count supplies a MUST
+lower bound directly; the existing lockset minimum after join/widening is never
+read as an exact recursive count. The source subset admits no such CFG merges.
+
+Race protection and the existing creation-order theorem consume the same actual
+outer interval. Creation-order exclusions identify
+`closed-recursive-mutex-creation-v1`; unrelated normal-mutex proof contracts keep
+their prior admission rules. Recursive keys are removed only from the numerical
+value/equality cooperation view, so they provide no new numeric handoff premise.
+Their ordinary race protection remains, and unrelated normal keys retain their
+cooperation behavior. Any mismatch between a sealed recursive occurrence and
+its abstract pointer state records an unmodeled effect and removes recursive
+protection rather than admitting an ordinary-lock fallback. Initialization calls
+receive exact results only from the complete sealed capability; legacy byte
+frames retain their existing unknown results.
+
+The companion bounded-execution profile and independent checker must be
+integrated and validated separately. This source capability does not establish
+whole-tool correctness, new task recovery counts, or official source-witness
+acceptance. The six original recursive-mutex benchmarks are LP64; ILP32 controls
+are additional tests, not a substitute for their actual ABI.
+
+For mechanism attribution, `IKOS_RACE_DISABLE_RECURSIVE_MUTEX=1` disables the
+finite recursive source frame; `IKOS_BMC_DISABLE_RECURSIVE_MUTEX=1` refuses
+recursive BMC queries. Neither switch bypasses execution validation.

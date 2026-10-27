@@ -1,4 +1,5 @@
 #pragma once
+#include <ikos/analyzer/analysis/source_c_abi.hpp>
 
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <map>
@@ -50,6 +51,7 @@ public:
     if (t->is_void() || t->is_function()) {out.put("kind", "unsupported"); return out;}
     out.put("size", _bundle->data_layout().store_size_in_bytes(t).str());
     out.put("extent", _bundle->data_layout().alloc_size_in_bytes(t).str());
+    out.put("abi_alignment", _bundle->data_layout().abi_alignment(t));
     if (auto* i = core::dyn_cast< ar::IntegerType >(t)) {
       out.put("kind", "integer"); out.put("bits", i->bit_width()); out.put("signed", i->is_signed());
     } else if (core::isa< ar::PointerType >(t)) {
@@ -108,6 +110,7 @@ public:
     const auto extent = layout.getTypeAllocSize(type);
     if (extent.isScalable()) {out.put("kind", "unsupported"); return out;}
     out.put("extent", extent.getFixedValue());
+    out.put("store_size", layout.getTypeStoreSize(type).getFixedValue());
     out.put("alignment", layout.getABITypeAlign(type).value());
     if (auto* record = llvm::dyn_cast< llvm::StructType >(type)) {
       out.put("kind", "struct");
@@ -199,6 +202,8 @@ public:
         out.put("native_alignment", source->getAlign().value());
         out.put("native_address_space", source->getAddressSpace());
         out.put("native_entry_allocation", source->getParent() == &source->getFunction()->getEntryBlock());
+        if (auto* count = llvm::dyn_cast< llvm::ConstantInt >(source->getArraySize()))
+          if (count->getBitWidth() <= 64) out.put("native_count", count->getZExtValue());
       }
       if (source && source->getAllocatedType()->isAggregateType()) {
         unsigned remaining = 512;
@@ -384,6 +389,44 @@ public:
               }
              out.put("native_once", native);
            }
+           if (callee && (callee->getName().startswith("pthread_mutexattr_") ||
+               callee->getName() == "pthread_mutex_init" ||
+               callee->getName() == "pthread_mutex_lock" || callee->getName() == "pthread_mutex_unlock")) {
+             JsonDict native; JsonList parameters, spaces;
+             native.put("name", callee->getName().str());
+             native.put("pointer_bits", call->getModule()->getDataLayout().getPointerSizeInBits(0));
+             native.put("index_bits", call->getModule()->getDataLayout().getIndexSizeInBits(0));
+             native.put("little_endian", call->getModule()->getDataLayout().isLittleEndian());
+             native.put("declaration", callee->isDeclaration());
+             native.put("variadic", callee->isVarArg());
+             native.put("calling_convention", callee->getCallingConv());
+             native.put("call_convention", call->getCallingConv());
+             native.put("matching_signature", call->getFunctionType() == callee->getFunctionType());
+             native.put("operand_bundles", call->hasOperandBundles());
+             native.put("ordinary_abi", ordinary_source_call_abi_attributes(call, callee));
+             native.put("arguments", call->arg_size()); native.put("parameters", callee->arg_size());
+             native.put("return_bits", callee->getReturnType()->isIntegerTy() ? callee->getReturnType()->getIntegerBitWidth() : 0);
+             native.put("result_bits", call->getType()->isIntegerTy() ? call->getType()->getIntegerBitWidth() : 0);
+             for (auto* parameter : callee->getFunctionType()->params()) {
+               parameters.add(parameter->isIntegerTy() ? parameter->getIntegerBitWidth() : 0);
+               auto* pointer = llvm::dyn_cast< llvm::PointerType >(parameter);
+               spaces.add(pointer ? pointer->getAddressSpace() : 99);
+             }
+             native.put("parameter_integer_bits", parameters); native.put("parameter_address_spaces", spaces);
+             JsonList objects;
+             for (const auto& argument : call->args()) {
+               auto* original = argument.get()->stripPointerCasts();
+               auto mapped = _native_values.find(original);
+               if (llvm::isa< llvm::ConstantPointerNull >(original)) objects.add(JsonDict{{"kind", "null"}});
+               else if (mapped != _native_values.end()) objects.add(value(mapped->second));
+               else objects.add(JsonDict{{"kind", "unsupported"}});
+             }
+             native.put("argument_objects", objects);
+             if (callee->getName() == "pthread_mutexattr_settype" && call->arg_size() == 2)
+               if (auto* kind = llvm::dyn_cast< llvm::ConstantInt >(call->getArgOperand(1)))
+                 if (kind->getBitWidth() == 32) native.put("settype_value", kind->getSExtValue());
+             out.put("native_mutex", native);
+           }
            JsonList layouts;
           const auto& layout = call->getModule()->getDataLayout();
           for (const auto& argument : call->args()) {
@@ -450,6 +493,18 @@ public:
         auto* source = global->frontend< llvm::GlobalVariable >();
         if (auto* structure = llvm::dyn_cast< llvm::StructType >(source->getValueType())) {
           if (structure->hasName()) object.put("frontend_type_name", structure->getName().str());
+          if (structure->hasName() && structure->getName() == "union.pthread_mutex_t" && structure->isSized()) {
+            const auto& layout = source->getParent()->getDataLayout();
+            object.put("native_mutex_object", JsonDict{
+                {"extent", layout.getTypeAllocSize(structure).getFixedValue()},
+                {"store_size", layout.getTypeStoreSize(structure).getFixedValue()},
+                {"type_alignment", layout.getABITypeAlign(structure).value()},
+                {"alignment", source->getAlign() ? source->getAlign()->value() : layout.getABITypeAlign(structure).value()},
+                {"address_space", source->getAddressSpace()}, {"declaration", source->isDeclaration()},
+                {"thread_local", source->isThreadLocal()}, {"constant", source->isConstant()},
+                {"externally_initialized", source->isExternallyInitialized()},
+                {"module_inline_asm", !source->getParent()->getModuleInlineAsm().empty()}});
+          }
           if (structure->hasName() && (structure->getName() == "union.sem_t" || structure->getName() == "union.pthread_barrier_t") && structure->isSized()) {
             const auto& layout = source->getParent()->getDataLayout();
             object.put(structure->getName() == "union.sem_t" ? "native_semaphore" : "native_barrier", JsonDict{

@@ -364,6 +364,20 @@ def build_witness(source, info, data_model, ikos="ikos"):
                 "once projection requires complete independent AR replay")
         # Callback frames use their caller's existing physical trace/thread id.
         # Only actual pthread_create occurrences below register new threads.
+    # Setters and indirect calls require replay even without optional profile
+    # metadata: a pointer adapter may resolve to a recursive setter at runtime.
+    recursive_execution = any(
+        step.get("mutex_semantics", {}).get("recursive") is True or
+        (instructions[step["statement"]].get("kind") == "call" and
+         instructions[step["statement"]].get("operands") and
+         (instructions[step["statement"]]["operands"][0].get("kind") != "function" or
+          instructions[step["statement"]]["operands"][0].get("id") == "pthread_mutexattr_settype"))
+        for trace in trace_list for step in trace["steps"])
+    if replay.get("mutex_profile") == "gnu-x86-recursive-v1" or recursive_execution:
+        require(validate_selected_execution(info, data_model).get("status") == "ACCEPT",
+                "recursive mutex projection requires complete independent AR replay")
+        # AR replay retains actual initialization, relock and partial/final unlock
+        # occurrences; only real creates below assign physical thread identities.
     traces = {t["id"]: t for t in trace_list}
     require(
         len(traces) == len(trace_list)

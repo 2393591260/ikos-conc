@@ -2598,8 +2598,14 @@ public:
             this->_ctx.concurrent_env.record_privatized_write(
                 core::ConcurrentGlobalEnv::kNoLockPartitionAddr, address,
                 core::machine_int::Interval::top(64, Signed));
-          // The sealed frame excludes pointer exposure; keep the actual result TOP.
+          // Legacy byte frames retain TOP results. Only the independently
+          // sealed recursive finite frame supplies its actual GNU return code.
           this->exec_unknown_call(call, false, false, false, false);
+          if (effect->result_known && call->has_result()) {
+            const auto& result = this->_lit_factory.get_scalar(call->result());
+            if (result.is_var())
+              this->data().normal().int_assign(result.var(), MachineInt(effect->result, 32, Signed));
+          }
           return;
         }
       }

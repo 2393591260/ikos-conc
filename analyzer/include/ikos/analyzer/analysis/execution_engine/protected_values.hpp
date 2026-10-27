@@ -9,6 +9,7 @@
 #include <ikos/analyzer/analysis/execution_engine/handle_origin.hpp>
 #include <ikos/analyzer/analysis/literal.hpp>
 #include <ikos/analyzer/analysis/source_program_facts.hpp>
+#include <ikos/analyzer/analysis/pthread_initialization_frame.hpp>
 #include <ikos/analyzer/analysis/memory_location.hpp>
 #include <ikos/analyzer/util/log.hpp>
 
@@ -309,7 +310,12 @@ std::unordered_set< std::uint64_t > value_mutexes(E& eng) {
   for (auto it = held.begin(); it != held.end();) {
     std::uint64_t base = 0;
     core::ConcurrentGlobalEnv::SymbolicIndex index;
-    if (eng.ctx().concurrent_env.lock_symbolic_index(*it, base, index))
+    // Recursive keys retain race protection but supply no new numeric/value
+    // handoff premise in this first subset. Treat their writes as unprotected
+    // on the cooperation boards; unrelated normal keys retain their behavior.
+    if ((eng.ctx().pthread_initialization_frame() &&
+         eng.ctx().pthread_initialization_frame()->recursive_key(*it)) ||
+        eng.ctx().concurrent_env.lock_symbolic_index(*it, base, index))
       it = held.erase(it);
     else ++it;
   }
