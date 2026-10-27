@@ -628,24 +628,29 @@ class Replay:
             require('encoded_result' not in step, 'unobserved barrier result encoding')
             if count == 3:
                 require(types[1]['kind'] == 'pointer' and types[1]['bits'] == bits and args[1] == ('null', 0) and
-                        types[2]['kind'] == 'integer' and types[2]['bits'] == 32 and args[2] == 2 and
+                        types[2]['kind'] == 'integer' and types[2]['bits'] == 32 and type(args[2]) is int and args[2] in (1, 2) and
                         thread.instance == 0 and not self.created and pointer[0] not in self.barriers,
                         'barrier initialization')
                 require(all(v == 0 for v in self.memory[pointer[0]]), 'barrier initial storage')
-                self.barriers[pointer[0]] = dict(arrivals={}, departed=set(), released=None, serial=None)
+                self.barriers[pointer[0]] = dict(capacity=args[2], generation=0, rounds={}, seen=set())
                 return 0
             require(pointer[0] in self.barriers, 'uninitialized barrier')
             state = self.barriers[pointer[0]]
-            require(thread.instance not in state['arrivals'] and len(state['arrivals']) < 2,
-                    'one-shot barrier arrival')
-            state['arrivals'][thread.instance] = dict(thread.vc)
-            if len(state['arrivals']) == 2:
-                # Freeze the arrival join: a departing thread's later accesses
-                # cannot order another thread's post-barrier accesses.
-                state['released'] = {}
-                for arrived in state['arrivals'].values(): self.join_vc(state['released'], arrived)
-                state['serial'] = thread.instance
-            self.marker(trace_id, step['statement'], 'barrier_departure', pointer[0])
+            require(thread.instance not in state['seen'], 'one-shot barrier arrival')
+            generation = state['generation']
+            group = state['rounds'].setdefault(generation,
+                dict(arrivals={}, departed=set(), released=None, serial=None))
+            require(len(group['arrivals']) < state['capacity'], 'barrier generation overflow')
+            state['seen'].add(thread.instance)
+            group['arrivals'][thread.instance] = dict(thread.vc)
+            if len(group['arrivals']) == state['capacity']:
+                # Freeze each generation independently. In capacity one the
+                # next caller creates a new round even before this departure.
+                group['released'] = {}
+                for arrived in group['arrivals'].values(): self.join_vc(group['released'], arrived)
+                group['serial'] = thread.instance
+                state['generation'] += 1
+            self.marker(trace_id, step['statement'], 'barrier_departure', (pointer[0], generation))
             # Exactly one serial result exists internally; this profile rejects
             # all observations and therefore exports no numerical wait result.
             return UNDEFINED
@@ -1129,12 +1134,14 @@ class Replay:
                 self.atomic_begin(thread)
             elif name == 'barrier_departure':
                 require('encoded_result' not in step, 'barrier departure has no API result')
-                require(pointer in self.barriers, 'barrier departure identity')
-                state = self.barriers[pointer]
-                require(state['released'] is not None and thread.instance in state['arrivals'] and
-                        thread.instance not in state['departed'], 'barrier departure before all arrivals')
-                self.join_vc(thread.vc, state['released'])
-                state['departed'].add(thread.instance)
+                obj, generation = pointer
+                require(obj in self.barriers and generation in self.barriers[obj]['rounds'],
+                        'barrier departure identity')
+                group = self.barriers[obj]['rounds'][generation]
+                require(group['released'] is not None and thread.instance in group['arrivals'] and
+                        thread.instance not in group['departed'], 'barrier departure before all arrivals')
+                self.join_vc(thread.vc, group['released'])
+                group['departed'].add(thread.instance)
             elif name in ('condition_release', 'condition_reacquire'):
                 state = self.locks[pointer]
                 width = 24 if self.program['pointer_bits']==32 else 40

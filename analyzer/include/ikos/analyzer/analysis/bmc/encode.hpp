@@ -1128,10 +1128,6 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     record(diagnostics, "once_physical_timeline");
   }
 
-  for (const auto& round : barrier_rounds)
-    for (auto arrival : round.arrivals) for (auto released : round.arrivals)
-      s.add(clock[traces[arrival.first].clock_start + arrival.second] <
-            clock[traces[released.first].clock_start + released.second + 1]);
   // SC memory and indivisible stdout calls have a common strict order. Ties
   // must not invent distinct latest writes or omit the stream synchronization.
   z3::expr_vector memory_clocks(ctx);
@@ -2162,6 +2158,26 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     if (!assumptions(traces[id].events, caches[id], traces[id].value_prefix()))
       return Result(unencodable ? Status::Unsupported : Status::BoundedUnsat);
   if (unencodable) return Result(Status::Unsupported);
+  // One actual init argument supplies every wait on this object. A
+  // capacity-one arrival releases its own generation; capacity two joins
+  // the two distinct retained arrivals. No future arrival is synthesized.
+  for (const auto& round : barrier_rounds) {
+    const auto& trace = traces[round.init_trace];
+    auto* init = core::cast< ar::CallBase >(trace.events[round.init_step].stmt);
+    z3::expr capacity(ctx);
+    if (!encode_value(init->argument(2), capacity, caches[round.init_trace],
+                      trace.value_prefix(), 0, round.init_step)) {
+      record(diagnostics, "barrier_capacity_source", init);
+      return Result(Status::Unsupported);
+    }
+    // A finite existential execution profile, never an unbounded SAFE fact.
+    s.add(capacity == 1 || capacity == 2);
+    if (round.arrivals.size() == 1) s.add(capacity == 1);
+    for (auto arrival : round.arrivals) for (auto released : round.arrivals)
+      s.add(z3::implies(capacity == 2,
+          clock[traces[arrival.first].clock_start + arrival.second] <
+          clock[traces[released.first].clock_start + released.second + 1]));
+  }
   // The structural heap extent must be the value passed to this executed
   // malloc. In particular, a finite source choice cannot size the object
   // independently of the same nondet value used by loop guards.

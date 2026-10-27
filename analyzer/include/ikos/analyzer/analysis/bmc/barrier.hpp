@@ -3,11 +3,13 @@
 #include "facts.hpp"
 #include "traces.hpp"
 #include <cstdlib>
+#include <ikos/analyzer/analysis/source_call_binding.hpp>
 
 namespace ikos { namespace analyzer { namespace bmc {
 
 struct BarrierRound {
   ar::GlobalVariable* object;
+  std::size_t init_trace, init_step;
   std::vector< std::pair< std::size_t, std::size_t > > arrivals;
 };
 inline bool prepare_barrier_execution(std::vector< ExecutionTrace >& traces,
@@ -52,12 +54,19 @@ inline bool prepare_barrier_execution(std::vector< ExecutionTrace >& traces,
         for (auto* statement : *block) for (auto op = statement->op_begin(); op != statement->op_end(); ++op)
           if (*op == call->result()) return false;
       if (event.kind == EvKind::BarrierInit) {
-        auto* capacity = core::dyn_cast< ar::IntegerConstant >(call->argument(2));
-        auto* native_capacity = llvm::dyn_cast< llvm::ConstantInt >(source->getArgOperand(2));
+        auto* capacity = core::dyn_cast< ar::IntegerType >(call->argument(2)->type());
+        auto* native_capacity = source->getArgOperand(2);
         if (trace.root->name() != "main" || spawned || !waited.empty() ||
             initialized.count(global) || !core::isa< ar::NullConstant >(call->argument(1)) ||
-            !capacity || capacity->value().to_z_number() != 2 ||
-            !native_capacity || !native_capacity->equalsInt(2)) return false;
+            !capacity || capacity->bit_width() != 32 ||
+            !native_capacity->getType()->isIntegerTy(32) ||
+            !source_integer_binding(call->argument(2), native_capacity)) return false;
+        if (std::getenv("IKOS_BMC_DISABLE_BARRIER_DYNAMIC_CAPACITY")) {
+          auto* fixed = core::dyn_cast< ar::IntegerConstant >(call->argument(2));
+          auto* native = llvm::dyn_cast< llvm::ConstantInt >(native_capacity);
+          if (!fixed || fixed->value().to_z_number() != 2 ||
+              !native || !native->equalsInt(2)) return false;
+        }
         initialized.emplace(global, std::make_pair(id, i));
       } else {
         if (!waited.insert(global).second) return false;
@@ -67,6 +76,10 @@ inline bool prepare_barrier_execution(std::vector< ExecutionTrace >& traces,
   // Expand only after activation binding. Creates precede every main wait, so
   // their dynamic indices remain unchanged by these departure markers.
   std::map< ar::GlobalVariable*, std::size_t > round_ids;
+  for (const auto& item : initialized) {
+    round_ids.emplace(item.first, rounds.size());
+    rounds.push_back({item.first, item.second.first, item.second.second, {}});
+  }
   for (std::size_t id = 1; id < traces.size(); ++id) {
     auto& path = traces[id].events;
     for (std::size_t i = 0; i < path.size(); ++i) {
@@ -75,10 +88,7 @@ inline bool prepare_barrier_execution(std::vector< ExecutionTrace >& traces,
       auto* global = facts->barrier_effect(call);
       if (!initialized.count(global)) return false;
       auto found = round_ids.find(global);
-      if (found == round_ids.end()) {
-        found = round_ids.emplace(global, rounds.size()).first;
-        rounds.push_back({global, {}});
-      }
+      if (found == round_ids.end()) return false;
       rounds[found->second].arrivals.emplace_back(id, i);
       BmcEvent departure(call, EvKind::BarrierDepart);
       departure.synthetic_barrier = true;
@@ -88,7 +98,9 @@ inline bool prepare_barrier_execution(std::vector< ExecutionTrace >& traces,
     }
   }
   for (const auto& round : rounds)
-    if (round.arrivals.size() != 2 || round.arrivals[0].first == round.arrivals[1].first) return false;
+    if (round.arrivals.size() > 2 ||
+        (round.arrivals.size() == 2 &&
+         round.arrivals[0].first == round.arrivals[1].first)) return false;
   return true;
 }
 

@@ -598,3 +598,6 @@ add_concurrency_test(nested-joined-scope-lp64 "${CONCURRENCY_ROOT}/scripts/test_
 
 add_concurrency_test(numeric-index-windows "${CONCURRENCY_ROOT}/scripts/test_numeric_index_windows.py" --bits 32)
 add_concurrency_test(numeric-index-windows-lp64 "${CONCURRENCY_ROOT}/scripts/test_numeric_index_windows.py" --bits 64)
+
+add_concurrency_test(barrier-capacity "${CONCURRENCY_ROOT}/scripts/test_barrier_capacity_controls.py" --bits 32)
+add_concurrency_test(barrier-capacity-lp64 "${CONCURRENCY_ROOT}/scripts/test_barrier_capacity_controls.py" --bits 64)

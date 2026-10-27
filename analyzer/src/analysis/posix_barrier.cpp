@@ -4,6 +4,7 @@
 #include <ikos/analyzer/analysis/source_program_facts.hpp>
 #include <ikos/analyzer/analysis/closed_integer_fold.hpp>
 #include <llvm/IR/CFG.h>
+#include <llvm/IR/ConstantRange.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/Analysis/Loads.h>
 #include <llvm/Analysis/LoopInfo.h>
@@ -358,6 +359,107 @@ class PosixBarrier::Impl {
     }
     return finish(std::move(result));
   }
+  // Context-dependent finite refinement must not enter integer_cache:
+  // the same SSA value can reach another init through weaker guards.
+  Integers guarded_integers(llvm::Value* value, llvm::CallBase* use) {
+    if (!value->getType()->isIntegerTy(32) || use->getFunction() != main)
+      return {};
+    // Restrict this fallback to one dynamic occurrence of all guard/value
+    // definitions. Existing closed-loop integer facts retain their old path.
+    std::set< llvm::BasicBlock* > active, done;
+    std::function< bool(llvm::BasicBlock*) > visit = [&](llvm::BasicBlock* b) {
+      if (!step() || active.count(b)) return false;
+      if (done.count(b)) return true;
+      active.insert(b);
+      for (auto* next : llvm::successors(b)) if (!visit(next)) return false;
+      active.erase(b); done.insert(b); return true;
+    };
+    if (!visit(&main->getEntryBlock())) return {};
+    auto& dt = source_facts.dominators(main);
+    if (!dt.isReachableFromEntry(use->getParent())) return {};
+    std::function< bool(llvm::Value*, llvm::APInt&, unsigned) > offset;
+    offset = [&](llvm::Value* expression, llvm::APInt& out, unsigned depth) {
+      if (!step() || depth == 16 || expression->getType() != value->getType())
+        return false;
+      if (expression == value) { out = llvm::APInt(32, 0); return true; }
+      auto* op = llvm::dyn_cast< llvm::BinaryOperator >(expression);
+      if (!op) return false;
+      auto* c = llvm::dyn_cast< llvm::ConstantInt >(op->getOperand(1));
+      auto* base = op->getOperand(0);
+      if (!c && op->getOpcode() == llvm::Instruction::Add) {
+        c = llvm::dyn_cast< llvm::ConstantInt >(op->getOperand(0));
+        base = op->getOperand(1);
+      }
+      if (!c || (op->getOpcode() != llvm::Instruction::Add &&
+                 op->getOpcode() != llvm::Instruction::Sub) ||
+          !offset(base, out, depth + 1)) return false;
+      if (op->getOpcode() == llvm::Instruction::Add) out += c->getValue();
+      else out -= c->getValue();
+      return true;
+    };
+    using Range = llvm::ConstantRange;
+    std::function< Range(llvm::Value*, bool, unsigned) > condition;
+    condition = [&](llvm::Value* expression, bool truth, unsigned depth) -> Range {
+      if (!step() || depth == 16) return Range(32, true);
+      if (auto* cmp = llvm::dyn_cast< llvm::ICmpInst >(expression)) {
+        auto pred = cmp->getPredicate();
+        auto* operand = cmp->getOperand(0);
+        auto* bound = llvm::dyn_cast< llvm::ConstantInt >(cmp->getOperand(1));
+        if (!bound) {
+          bound = llvm::dyn_cast< llvm::ConstantInt >(cmp->getOperand(0));
+          operand = cmp->getOperand(1);
+          pred = llvm::CmpInst::getSwappedPredicate(pred);
+        }
+        llvm::APInt shift(32, 0);
+        if (!bound || !bound->getType()->isIntegerTy(32) ||
+            !offset(operand, shift, 0)) return Range(32, true);
+        if (!truth) pred = llvm::CmpInst::getInversePredicate(pred);
+        // Modular translation is exact even for a canonicalized unsigned
+        // (value - 1) range check. No inbounds/no-wrap assertion is added.
+        return Range::makeExactICmpRegion(pred, bound->getValue()).subtract(shift);
+      }
+      auto* op = llvm::dyn_cast< llvm::BinaryOperator >(expression);
+      if (!op || !op->getType()->isIntegerTy(1)) return Range(32, true);
+      if (op->getOpcode() == llvm::Instruction::Xor) {
+        auto* c = llvm::dyn_cast< llvm::ConstantInt >(op->getOperand(1));
+        return c && c->isOne() ? condition(op->getOperand(0), !truth, depth + 1)
+                              : Range(32, true);
+      }
+      if (op->getOpcode() != llvm::Instruction::And &&
+          op->getOpcode() != llvm::Instruction::Or) return Range(32, true);
+      auto a = condition(op->getOperand(0), truth, depth + 1);
+      auto b = condition(op->getOperand(1), truth, depth + 1);
+      return (op->getOpcode() == llvm::Instruction::And) == truth
+                 ? a.intersectWith(b) : a.unionWith(b);
+    };
+    Range possible(32, true);
+    for (auto& block : *main) {
+      if (!step()) return {};
+      auto* branch = llvm::dyn_cast< llvm::BranchInst >(block.getTerminator());
+      if (!branch || !branch->isConditional()) continue;
+      if (branch->getSuccessor(0) == branch->getSuccessor(1)) continue;
+      // A successor block may also be reached through the opposite arm.
+      // Only actual branch-edge dominance establishes the branch predicate.
+      bool yes = dt.dominates(llvm::BasicBlockEdge(&block, branch->getSuccessor(0)),
+                              use->getParent());
+      bool no = dt.dominates(llvm::BasicBlockEdge(&block, branch->getSuccessor(1)),
+                             use->getParent());
+      if (yes == no) continue;
+      possible = possible.intersectWith(condition(branch->getCondition(), yes, 0));
+    }
+    if (possible.isEmptySet() || possible.isFullSet()) return {};
+    auto lo = possible.getUnsignedMin().getZExtValue();
+    auto hi = possible.getUnsignedMax().getZExtValue();
+    if (!lo || hi >= 2147483647 || hi - lo >= 32) return {};
+    Integers result;
+    for (auto n = lo; n <= hi; ++n) {
+      if (!step()) return {};
+      if (possible.contains(llvm::APInt(32, n)))
+        result.insert(llvm::cast< llvm::ConstantInt >(
+            llvm::ConstantInt::get(value->getType(), n)));
+    }
+    return result;
+  }
   bool object(llvm::GlobalVariable* g) {
     auto* type = llvm::dyn_cast< llvm::StructType >(g->getValueType());
     const unsigned width = bits == 32 ? 20 : 32, align = bits / 8;
@@ -397,6 +499,7 @@ class PosixBarrier::Impl {
           if (!source->getType()->isIntegerTy(32) ||
               !source_integer_binding(a->argument(2), source)) return false;
           auto values = integers(source);
+          if (values.empty()) values = guarded_integers(source, c);
           if (values.empty()) return false;
           for (auto* n : values) {
             if (!n->getType()->isIntegerTy(32) || n->getZExtValue() == 0 ||

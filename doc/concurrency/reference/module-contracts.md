@@ -305,6 +305,25 @@ propagation. The [dual-ABI controls](../../../scripts/test_nested_join_scope.py)
 exercise deep payload access, multiple joins, sibling races and premature main
 accesses with BMC disabled.
 
+PosixBarrier can refine a finite positive i32 initialization count from actual
+branch edges that dominate its one-shot initialization. The fallback is limited
+to an acyclic main CFG and does not cache guarded facts as context-free SSA
+facts. Modular affine comparisons and Boolean combinations overapproximate all
+counts reaching the init; a reconverging successor block is insufficient.
+
+The finite execution profile supports actual capacities one and two. It uses
+the same executed init operand and nondeterministic choice as the path guards.
+Capacity one releases each caller in a separate generation; capacity two needs
+two distinct real arrivals before either departure. The independent checker
+freezes one release clock per generation, including when the next arrival
+precedes an earlier departure. It never appends a future wait to complete a
+candidate. Repeated waits, observed API returns and unsupported capacities retain
+their existing execution boundary. Bounded UNSAT remains UNKNOWN.
+`IKOS_BMC_DISABLE_BARRIER_DYNAMIC_CAPACITY=1` restores the literal-two execution
+profile for comparison. The [dual-ABI controls](../../../scripts/test_barrier_capacity_controls.py)
+include post-init value correlation, overlapping capacity-one generations,
+capacity-two controls, source binding and explicit projection status.
+
 Unsupported certificate ABIs refuse the certificate and preserve the ordinary
 analysis/coverage obligations. They are not silently treated as verified SAFE,
 nor counted as positive LP64 support. Each migrated mechanism has module-owned
