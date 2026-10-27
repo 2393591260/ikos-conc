@@ -67,9 +67,9 @@ bool unused_frozen_seed(CallInst* call, Function* target) {
           (target->getName() == "__ikos_nondet_int64" && call->getType()->isIntegerTy(64)));
 }
 
-bool malloc_helper(Function& f) {
+bool allocation_helper(Function& f) {
   if (f.isDeclaration() || f.isInterposable() || f.isVarArg() ||
-      f.hasAddressTaken() || f.size() > 8 || f.arg_size() != 1 ||
+      f.hasAddressTaken() || f.size() > 8 || (f.arg_size() != 1 && f.arg_size() != 2) ||
       f.getCallingConv() != CallingConv::C || f.hasGC() || f.hasPersonalityFn() ||
       f.hasFnAttribute(Attribute::OptimizeNone) ||
       f.hasFnAttribute(Attribute::Naked) ||
@@ -83,9 +83,10 @@ bool malloc_helper(Function& f) {
     return false;
   const auto bits = f.getParent()->getDataLayout().getPointerSizeInBits();
   auto* returned = dyn_cast< PointerType >(f.getReturnType());
-  if ((bits != 32 && bits != 64) || !returned || returned->getAddressSpace() ||
-      !f.getArg(0)->getType()->isIntegerTy(bits))
+  if ((bits != 32 && bits != 64) || !returned || returned->getAddressSpace())
     return false;
+  for (auto& argument : f.args())
+    if (!argument.getType()->isIntegerTy(bits)) return false;
   SmallVector< std::pair< const BasicBlock*, const BasicBlock* >, 4 > backedges;
   FindFunctionBackedges(f, backedges);
   if (!backedges.empty() || !isInlineViable(f).isSuccess())
@@ -107,11 +108,15 @@ bool malloc_helper(Function& f) {
           return false;
         if (unused_frozen_seed(call, target))
           continue;
-        if (target->getName() == "malloc") {
+        if (target->getName() == "malloc" || target->getName() == "calloc") {
           auto* type = dyn_cast< PointerType >(call->getType());
+          const unsigned arguments = target->getName() == "calloc" ? 2 : 1;
           if (allocation || !type || type->getAddressSpace() ||
-              call->arg_size() != 1 || !call->getArgOperand(0)->getType()->isIntegerTy(bits))
-            return false;
+              call->arg_size() != arguments || target->arg_size() != arguments ||
+              f.arg_size() != arguments) return false;
+          for (unsigned n = 0; n < arguments; ++n)
+            if (!call->getArgOperand(n)->getType()->isIntegerTy(bits) ||
+                !target->getFunctionType()->getParamType(n)->isIntegerTy(bits)) return false;
           allocation = call;
         } else if (!(target->getName() == "abort" && call->arg_empty() &&
                      call->getType()->isVoidTy() && call->doesNotReturn() &&
@@ -160,7 +165,7 @@ struct InlineMallocHelpersPass final : public ModulePass {
   bool runOnModule(Module& m) override {
     std::vector< CallInst* > calls;
     for (Function& f : m) {
-      if (!malloc_helper(f)) continue;
+      if (!allocation_helper(f)) continue;
       for (auto* use : f.users()) {
         auto* call = dyn_cast< CallInst >(use);
         if (call && call->getCalledFunction() == &f && !call->hasOperandBundles() &&
