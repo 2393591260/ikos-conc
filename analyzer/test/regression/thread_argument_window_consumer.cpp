@@ -111,6 +111,19 @@ static void test_consumer(unsigned bits) {
   bool complete = true;
   auto excludes = [&]() { return state.disjoint(a, b, shared, complete); };
   require(excludes(), "Certified separated instance windows must exclude");
+  const std::string main = "main";
+  ThreadArgumentWindowAccessView parent{&family, &object, main, zero, zero, 4};
+  require(state.indexed_precreate(parent, a, shared, true),
+          "Certified pre-create parent access is ordered for its own instance");
+  require(!state.disjoint(parent, a, shared, true),
+          "Ordinary worker disjointness must still reject main");
+  require(!state.indexed_precreate(parent, a, shared, false),
+          "Pre-create consumption requires completed analysis");
+  auto crossing_parent = parent; crossing_parent.width = 17;
+  require(!state.indexed_precreate(crossing_parent, a, shared, true),
+          "Cross-iteration overlap defeats pre-create proof");
+  require(!state.indexed_precreate(a, parent, shared, true),
+          "Main and worker roles cannot be exchanged in the theorem");
   complete = false;
   require(!excludes(), "An incomplete analysis cannot authorize window proof");
   complete = true;

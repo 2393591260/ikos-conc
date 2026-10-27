@@ -189,6 +189,19 @@ checks non-overlap in both orientations. Unknown origins, extra activations,
 mutable bases, reentry, overlapping windows or an incomplete/dirty analysis
 retain the candidate. GNU/Linux ILP32 and LP64 use their own native widths.
 
+The default affine family can also certify one exact main initialization store
+before its matching create in each iteration. The actual LLVM/AR store and create
+must use the same stable base and index, including structurally identical integer
+cast chains. The existing range checks prove that those casts preserve every
+observed induction value. Equal-iteration main/worker accesses are ordered by the
+actual create; unequal iterations require complete byte separation in both
+directions. Only that exact main store can consume
+`creation-family-indexed-precreate-v1`. Another main access using the same pointer
+cannot borrow the ordering. Stores after create, extra stores, different slots,
+reentry and overlapping widths retain the pair. The
+`IKOS_RACE_DISABLE_INDEXED_PRECREATE=1` diagnostic switch disables only this final
+consumer, preserving the ordinary worker-window rule.
+
 Both paths grant only pair exclusion, not pointer validity, effect coverage,
 thread completion or BMC execution permission. The implemented dirty controls exercise withdrawal and
 fresh native queries; they do not establish a generic BMC-to-AI refinement loop

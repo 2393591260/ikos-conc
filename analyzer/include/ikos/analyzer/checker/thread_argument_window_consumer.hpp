@@ -51,7 +51,7 @@ struct ThreadArgumentWindowConsumerState {
   bool create_seen;
   bool step_seen;
 
-  bool disjoint(const ThreadArgumentWindowAccessView& a,
+  bool eligible(const ThreadArgumentWindowAccessView& a,
                 const ThreadArgumentWindowAccessView& b,
                 const core::ConcurrentGlobalEnv& shared,
                 bool analysis_complete) const {
@@ -60,11 +60,34 @@ struct ThreadArgumentWindowConsumerState {
         !shared.unmodeled_thread_creations().empty() ||
         a.width == 0 || b.width == 0 ||
         a.family != family || b.family != family ||
-        a.thread != family_name || b.thread != family_name ||
         a.object != object || b.object != object ||
         a.lower > a.upper || b.lower > b.upper) return false;
+    return true;
+  }
+
+  bool separated_cells(const ThreadArgumentWindowAccessView& a,
+                       const ThreadArgumentWindowAccessView& b) const {
     return a.upper + a.width <= stride + b.lower &&
            b.upper + b.width <= stride + a.lower;
+  }
+
+  bool disjoint(const ThreadArgumentWindowAccessView& a,
+                const ThreadArgumentWindowAccessView& b,
+                const core::ConcurrentGlobalEnv& shared,
+                bool analysis_complete) const {
+    return a.thread == family_name && b.thread == family_name &&
+        eligible(a, b, shared, analysis_complete) && separated_cells(a, b);
+  }
+
+  // Caller certifies the exact parent access before its own iteration's create.
+  // Equal iterations are ordered by create; distinct cells cannot overlap.
+  bool indexed_precreate(const ThreadArgumentWindowAccessView& parent,
+                         const ThreadArgumentWindowAccessView& child,
+                         const core::ConcurrentGlobalEnv& shared,
+                         bool analysis_complete) const {
+    return parent.thread == "main" && child.thread == family_name &&
+        eligible(parent, child, shared, analysis_complete) &&
+        separated_cells(parent, child);
   }
 };
 

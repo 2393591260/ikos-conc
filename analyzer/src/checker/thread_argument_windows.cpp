@@ -157,6 +157,7 @@ public:
   Context& ctx;
   ar::Function* worker = nullptr;
   ar::CallBase* create = nullptr;
+  ar::Store* precreate_store = nullptr;
   ar::Value* base = nullptr;
   ar::InternalVariable* counter = nullptr;
   ar::BinaryOperation* step = nullptr;
@@ -326,6 +327,9 @@ public:
             cast->op() != ar::UnaryOperation::ZExt &&
             (!source_mode || (cast->op() != ar::UnaryOperation::UTrunc &&
                              cast->op() != ar::UnaryOperation::STrunc))) return;
+      } else if (auto* store = dyn_cast< ar::Store >(stmt)) {
+        if (!source_mode || after_create || precreate_store) return;
+        precreate_store = store;
       } else if (!isa< ar::Comparison >(stmt) && !isa< ar::PointerShift >(stmt)) return;
     }
     for (auto* stmt : *header)
@@ -455,8 +459,75 @@ public:
         gep->getPointerOperand()->stripPointerCasts());
     if (!source_base || !dominance.dominates(source_base, gep) ||
         !dominance.dominates(gep, source)) return false;
+    if (precreate_store) {
+      auto same_index = [](llvm::Value* a, llvm::Value* b) {
+        for (unsigned depth = 0; depth < 32; ++depth) {
+          if (a == b) return true;
+          auto* x = llvm::dyn_cast< llvm::CastInst >(a);
+          auto* y = llvm::dyn_cast< llvm::CastInst >(b);
+          if (!x || !y || x->getFunction() != y->getFunction() ||
+              !x->getType()->isIntegerTy() || !x->getOperand(0)->getType()->isIntegerTy() ||
+              x->getType() != y->getType() ||
+              x->getOperand(0)->getType() != y->getOperand(0)->getType() ||
+              x->getOpcode() != y->getOpcode() ||
+              (x->getOpcode() != llvm::Instruction::SExt &&
+               x->getOpcode() != llvm::Instruction::ZExt &&
+               x->getOpcode() != llvm::Instruction::Trunc &&
+               x->getOpcode() != llvm::Instruction::BitCast)) return false;
+          a = x->getOperand(0); b = y->getOperand(0);
+        }
+        return false;
+      };
+      auto* store = precreate_store->has_frontend()
+          ? llvm::dyn_cast< llvm::StoreInst >(precreate_store->frontend< llvm::Value >()) : nullptr;
+      auto* address = store ? llvm::dyn_cast< llvm::GetElementPtrInst >(
+          store->getPointerOperand()->stripPointerCasts()) : nullptr;
+      if (!store || store->getFunction() != source_main || store->isAtomic() ||
+          store->getParent() != source_body || !store->comesBefore(source) ||
+          !address || address->getFunction() != source_main ||
+          address->getAddressSpace() != 0 || address->getNumIndices() != 1 ||
+          !dominance.dominates(source_base, address) ||
+          !dominance.dominates(address, store) ||
+          address->getPointerOperand()->stripPointerCasts() !=
+              gep->getPointerOperand()->stripPointerCasts() ||
+          !same_index(address->getOperand(1), gep->getOperand(1)) ||
+          address->getSourceElementType() != gep->getSourceElementType() ||
+          !pointer_binding(precreate_store->pointer(), store->getPointerOperand()) ||
+          !same_creation_pointer(precreate_store->pointer(), candidate->argument(3))) return false;
+    }
     source_index = gep->getOperand(1); source_counter = phi;
     return true;
+  }
+
+  // Exact imported address identity; similar intervals cannot establish it.
+  bool same_creation_pointer(ar::Value* a, ar::Value* b) const {
+    a = uncast(a); b = uncast(b);
+    if (a == b) return a != nullptr;
+    auto* av = dyn_cast_or_null< ar::InternalVariable >(a);
+    auto* bv = dyn_cast_or_null< ar::InternalVariable >(b);
+    auto* x = av ? dyn_cast_or_null< ar::PointerShift >(unique_def(av)) : nullptr;
+    auto* y = bv ? dyn_cast_or_null< ar::PointerShift >(unique_def(bv)) : nullptr;
+    if (!x || !y || x->num_terms() != 1 || y->num_terms() != 1 ||
+        uncast(x->pointer()) != uncast(y->pointer()) ||
+        x->term(0).first != y->term(0).first) return false;
+    a = x->term(0).second; b = y->term(0).second;
+    // Separate GEPs may duplicate the same cast of the induction variable.
+    for (unsigned depth = 0; depth < 32; ++depth) {
+      if (a == b) return true;
+      auto* av = dyn_cast< ar::InternalVariable >(a);
+      auto* bv = dyn_cast< ar::InternalVariable >(b);
+      auto* ac = av ? dyn_cast_or_null< ar::UnaryOperation >(unique_def(av)) : nullptr;
+      auto* bc = bv ? dyn_cast_or_null< ar::UnaryOperation >(unique_def(bv)) : nullptr;
+      if (!ac || !bc || !a->type()->is_integer() || !ac->operand()->type()->is_integer() ||
+          a->type() != b->type() || ac->operand()->type() != bc->operand()->type() ||
+          ac->op() != bc->op() ||
+          (ac->op() != ar::UnaryOperation::SExt && ac->op() != ar::UnaryOperation::ZExt &&
+           ac->op() != ar::UnaryOperation::UTrunc && ac->op() != ar::UnaryOperation::STrunc &&
+           ac->op() != ar::UnaryOperation::Bitcast))
+        return false;
+      a = ac->operand(); b = bc->operand();
+    }
+    return false;
   }
 
   bool adapters_preserve(const Z& upper) const {
@@ -517,7 +588,8 @@ public:
     auto* ar_store = dyn_cast< ar::Store >(access.stmt);
     if ((!load && !store) || bool(load) != bool(ar_load) || bool(store) != bool(ar_store) ||
         (access.kind == AccessKind::Write) != bool(store) ||
-        source->getFunction() != worker->frontend< llvm::Value >()) return false;
+        (source->getFunction() != worker->frontend< llvm::Value >() &&
+         access.stmt != precreate_store)) return false;
     auto* type = load ? load->getType() : store->getValueOperand()->getType();
     auto* ar_type = ar_load ? ar_load->result()->type() : ar_store->value()->type();
     const auto bytes = source->getModule()->getDataLayout().getTypeStoreSize(type);
@@ -525,6 +597,13 @@ public:
         ctx.bundle->data_layout().store_size_in_bytes(ar_type) != Z(access.width)) return false;
     auto* pointer = load ? load->getPointerOperand() : store->getPointerOperand();
     auto* ar_pointer = ar_load ? ar_load->operand() : ar_store->pointer();
+    if (access.stmt == precreate_store) {
+      // Same-iteration initialization precedes the actual create; other
+      // iterations use the separately checked nonoverlapping byte cells.
+      return access.thread_id == "main" && store &&
+          same_creation_pointer(ar_pointer, create->argument(3)) &&
+          access.argument_window->lower == Z(0) && span({Z(0)}, access.width);
+    }
     std::vector< Z > ar_path, source_path;
     if (!pointer_binding(ar_pointer, pointer) || !ar_residual(ar_pointer, worker, ar_path) ||
         !source_residual(pointer, llvm::cast< llvm::Function >(worker->frontend< llvm::Value >()),
@@ -589,12 +668,16 @@ public:
 
   boost::optional< ThreadArgumentWindow > window(ar::Value* pointer,
       const value::AbstractDomain& inv, const std::string& root) {
-    if (!worker || root != worker->name()) return boost::none;
+    if (!worker) return boost::none;
+    const bool initializer = source_mode && precreate_store && root == "main" &&
+        same_creation_pointer(pointer, precreate_store->pointer());
+    if (!initializer && root != worker->name()) return boost::none;
     ++window_queries;
     const auto& literal = ctx.lit_factory->get_scalar(pointer);
     if (!literal.is_pointer_var() || inv.first().normal().uninit_is_uninitialized(literal.var()))
       return boost::none;
     if (source_mode) {
+      if (initializer) return ThreadArgumentWindow{worker, Z(0), Z(0)};
       std::vector< Z > path;
       if (!ar_residual(pointer, worker, path)) return boost::none;
       return ThreadArgumentWindow{worker, path.back(), path.back()};
@@ -624,6 +707,13 @@ public:
         x.family, *a.pts.begin(), a.thread_id, x.lower, x.upper, a.width};
     const ThreadArgumentWindowAccessView right{
         y.family, *b.pts.begin(), b.thread_id, y.lower, y.upper, b.width};
+    if (source_mode && (a.stmt == precreate_store || b.stmt == precreate_store)) {
+      if (std::getenv("IKOS_RACE_DISABLE_INDEXED_PRECREATE")) return false;
+      const auto& parent = a.stmt == precreate_store ? left : right;
+      const auto& child = a.stmt == precreate_store ? right : left;
+      return state.indexed_precreate(parent, child, ctx.concurrent_env,
+                                     ctx.race_analysis_complete);
+    }
     return state.disjoint(left, right, ctx.concurrent_env, ctx.race_analysis_complete);
   }
 };
@@ -676,7 +766,9 @@ bool ThreadArgumentWindows::disjoint(const AccessRecord& a, const AccessRecord& 
 JsonDict ThreadArgumentWindows::proof(const AccessRecord& a, const AccessRecord& b) const {
   JsonDict proof;
   proof.put("thread_argument_contract", _impl->source_mode
-      ? "creation-family-source-affine-window-v1" : "creation-family-native-window-v1");
+      ? ((a.stmt == _impl->precreate_store || b.stmt == _impl->precreate_store)
+          ? "creation-family-indexed-precreate-v1" : "creation-family-source-affine-window-v1")
+      : "creation-family-native-window-v1");
   proof.put("family", _impl->worker->name());
   proof.put("spacing_bytes", _impl->stride.str());
   proof.put("a_lower", a.argument_window->lower.str());

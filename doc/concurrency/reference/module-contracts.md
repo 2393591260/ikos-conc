@@ -266,7 +266,7 @@ change with pointer width.
 | RuntimeStdioFrame | Checked GNU32/64 | Native handle and runtime stream widths are checked separately from fixed-width scanf integer results and counts. |
 | PosixSemaphore effects, binary ownership and finite BMC prefixes | GNU ILP32 and LP64 | Native sem_t is 16/32 bytes with 4/8 alignment; all byte effects and independent execution checks follow the same verified layout. int results and permit counts remain i32. |
 | Pthread-key effects and race-only memory-free destructors | GNU ILP32 and LP64 | Key selectors and create output remain i32; values/callback arguments are native pointers. Return values stay TOP; no TLS equality, privacy or completion is inferred. |
-| ThreadArgumentWindows | Checked GNU32/64, explicit VarPack Polka plus guards | Native argument/stride/window arithmetic and stable observation checks; default interval is unchanged. |
+| ThreadArgumentWindows | Checked GNU32/64, source-certified default affine family or explicit VarPack Polka plus guards | Native byte windows, sticky observations and closed creation family; exact precreate-store ordering is a separate consumer. Default domain remains Interval. |
 
 Unsupported certificate ABIs refuse the certificate and preserve the ordinary
 analysis/coverage obligations. They are not silently treated as verified SAFE,
