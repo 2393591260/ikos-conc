@@ -74,7 +74,7 @@ inline ar::CallBase* source_call_binding(llvm::CallBase* c,
                           (f->getName() == "__VERIFIER_nondet_int" ||
                            f->getName() == "__VERIFIER_nondet_uint");
   if (c->arg_size() != f->arg_size() ||
-      (!old_nondet &&
+      (!old_nondet && !(c->getType()->isVoidTy() && native_handle_range_call(a)) &&
        (f->isVarArg() || c->getFunctionType() != f->getFunctionType())))
     return nullptr;
   for (unsigned n = 0; n < c->arg_size(); ++n) {

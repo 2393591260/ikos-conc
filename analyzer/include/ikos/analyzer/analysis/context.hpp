@@ -81,10 +81,12 @@ class SourceProgramFacts;
 class ThreadArgumentWindows;
 
 // Native storage has no numerical encoding of a thread-instance identity.
+enum class NativeHandleShape { Array, Scalar };
 struct NativeHandleArray {
   ar::LocalVariable* storage;
   ar::IntegerType* type;
   core::ZNumber size;
+  NativeHandleShape shape = NativeHandleShape::Array;
 };
 
 /// \brief Global analysis context

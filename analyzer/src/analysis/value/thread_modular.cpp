@@ -159,7 +159,8 @@ void ThreadModularAnalysis::run() {
           queries.emplace(call, object);
           continue;
         }
-        if (!_ctx.native_handle_accesses.count(call) && !heap_pointer_call_covered(call, &_ctx)) closed = false;
+        if (!_ctx.native_handle_accesses.count(call) && !heap_pointer_call_covered(call, &_ctx) &&
+            !(_ctx.native_handles_only && native_handle_range_call(call))) closed = false;
         auto* target = dyn_cast< ar::FunctionPointerConstant >(call->called());
         constructor |= target &&
             target->function()->intrinsic_id() == ar::Intrinsic::LibcMalloc;
@@ -828,7 +829,19 @@ void ThreadModularAnalysis::run() {
 
   _ctx.concurrent_env.flush_all_privatized_locks();
   _ctx.concurrent_env.flush_unlocked_partition();
-  if (_ctx.concurrent_env.is_dirty() &&
+  // Inventory chooses native TOP before any run. It cannot coexist with a
+  // late synthetic producer hidden by touches_synthetic_handle's native gate.
+  const bool native_inventory_valid =
+      !_ctx.native_handles_only || !_ctx.concurrent_env.has_synthetic_handle_slots();
+  if (!native_inventory_valid) {
+    if (!_ctx.native_handle_accesses.empty())
+      _ctx.concurrent_env.record_unmodeled_effect(
+          _ctx.native_handle_accesses.begin()->first,
+          "native pthread handle inventory invalidated by synthetic producer");
+    else
+      _ctx.race_entry_obligations.push_back("native pthread handle inventory is empty");
+  }
+  if ((_ctx.concurrent_env.is_dirty() || !native_inventory_valid) &&
       std::find(_ctx.opts.analyses.begin(), _ctx.opts.analyses.end(),
                 CheckerName::DataRace) != _ctx.opts.analyses.end() &&
       _ctx.opts.use_checks) {
@@ -852,7 +865,7 @@ void ThreadModularAnalysis::run() {
   // Publish only after all replay has finished. Late shared effects invalidate
   // the snapshot; preflight coverage and each consumer's other premises remain
   // separate from these all-access range facts.
-  const bool stable_ranges = !_ctx.concurrent_env.is_dirty();
+  const bool stable_ranges = !_ctx.concurrent_env.is_dirty() && native_inventory_valid;
   _ctx.mutex_effect_ranges.finish(stable_ranges);
   _ctx.subarray_ranges.finish(stable_ranges);
   _ctx.native_handle_ranges.finish(stable_ranges);

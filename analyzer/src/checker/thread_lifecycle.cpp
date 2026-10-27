@@ -58,7 +58,11 @@ bool scalar(llvm::Type* t) {
 }
 } // namespace
 
+#include "scalar_thread_completion.inc"
+
 class ThreadLifecycle::Impl {
+  ScalarThreadCompletion scalar_completion;
+  bool scalar_last = false;
   Context& ctx;
   SourceProgramFacts& source_facts;
   llvm::Function* main = nullptr;
@@ -892,9 +896,11 @@ class ThreadLifecycle::Impl {
 
 public:
   explicit Impl(Context& c)
-      : ctx(c), source_facts(source_program_facts(c)),
+      : scalar_completion(c), ctx(c), source_facts(source_program_facts(c)),
         originals(source_facts.memory_calls_allocations().statements) {}
   bool excludes(const AccessRecord& a, const AccessRecord& b) {
+    scalar_last = scalar_completion.excludes(a, b);
+    if (scalar_last) return true;
     if (!attempted) {
       attempted = true;
       try {
@@ -931,6 +937,7 @@ public:
            (ib != absent.end() && ib->second.count(root(a)));
   }
   JsonDict info(const AccessRecord& a, const AccessRecord& b) const {
+    if (scalar_last) return scalar_completion.info(a, b);
     auto label = [](llvm::CallBase* call) {
       unsigned position = 0;
       for (auto& block : *call->getFunction())

@@ -527,6 +527,32 @@ initialization/destruction require quiescent descendants. This proof supplies
 no mutex-success or mutual-exclusion fact. Unknown effects, callbacks, aliasing,
 incomplete normal exits or additional creators keep the candidate.
 
+A separate `independent-scalar-thread-completion-v1` certificate supports private
+main-local scalar handles selected by the opaque storage inventory. Each slot
+has one acyclic actual Create, one exact full-width Load and one sole current
+Join. Native and imported CFGs independently require Create before Load before
+Join. For each actual creation family, a main endpoint must be before its
+Create or after its Join in both CFGs. Two worker endpoints require every
+distinct pair of their creation families to be ordered by a Join before the
+other Create. The check covers all families when an access record merges
+several instances of the same entry; it never uses just the first instance.
+Several children may be outstanding. Their payload loops, heap accesses and
+synchronous helpers do not need bounded termination: a successful existing child
+has completed whenever its ordinary GNU join returns. A failed create contributes
+no child access and retains the explicit no-child/output-only envelope above.
+Opaque numeric values, API outputs, joined digests and ordinary uniqueness facts
+remain unchanged.
+
+This mode has a separate closed source/AR call graph and covers all inventoried
+thread instances. It rejects nested creators, repeated creation of a slot or repeated joins,
+detach/cancel, callbacks, unknown effects, main-held locks or atomic regions, and
+non-NULL join outputs. Completion applies to a mapped implicit library memory
+access as well as a mapped Load or Store. It does not order parallel children
+merely because both were created by main, remove heap MAY aliases, or prove
+pointer validity. Missing scope, source correspondence or work budget emits no
+certificate. Run `python3 scripts/test_scalar_thread_completion.py` for the
+separate controls; `--bits=64` selects the explicit LP64 run.
+
 Run `python3 scripts/test_thread_lifecycle.py` for ILP32 serial-loop, transitive,
 failure, stale-handle, helper-context and wide-payload controls.
 Implementation: `checker/thread_lifecycle.hpp` and `src/checker/thread_lifecycle.cpp`.

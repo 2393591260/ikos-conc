@@ -98,7 +98,7 @@ linked page.
 
 <a id="native-thread-handle-arrays"></a>
 
-[native thread handle arrays](concurrency/reference/library-effects.md#native-thread-handle-arrays)
+[native thread handle storage](concurrency/reference/library-effects.md#native-thread-handle-arrays)
 
 <a id="pthread-keys-and-destructor-effects"></a>
 

@@ -1579,7 +1579,9 @@ class BucketListOwnership::Impl {
       auto* source = llvm::dyn_cast< llvm::AllocaInst >(original.first);
       if (!allocation || !source || source->getFunction() != main) continue;
       for (const auto& access : ctx.native_handle_accesses)
-        if (access.second.storage == allocation->result()) native_arrays.emplace(source, allocation->result());
+        if (access.second.shape == NativeHandleShape::Array &&
+            access.second.storage == allocation->result())
+          native_arrays.emplace(source, allocation->result());
     }
     // Verify imported global initialization agrees with the exact LLVM object.
     unsigned found = 0;

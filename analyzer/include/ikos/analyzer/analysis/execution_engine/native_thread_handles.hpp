@@ -1,8 +1,12 @@
 // Copyright and license: see numerical.hpp.
 #pragma once
 
+#include <cstdlib>
+
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/IntrinsicInst.h>
+#include <llvm/IR/Dominators.h>
+#include <ikos/analyzer/util/log.hpp>
 #include <ikos/analyzer/analysis/source_c_abi.hpp>
 #include <ikos/analyzer/analysis/context.hpp>
 #include <ikos/analyzer/analysis/execution_engine/global_array_subobject.hpp>
@@ -42,6 +46,38 @@ inline bool native_repeated_create(ar::CallBase* call) {
     pending.insert(pending.end(), block->successor_begin(), block->successor_end());
   }
   return false;
+}
+
+// Scalar one-create is a positive acyclicity proof on both representations.
+// A bounded search that did not finish cannot certify it.
+inline bool native_handle_scalar_acyclic(llvm::CallBase* source,
+                                         ar::CallBase* imported) {
+  auto* source_start = source->getParent();
+  std::vector< llvm::BasicBlock* > native_pending;
+  auto* terminal = source_start->getTerminator();
+  for (unsigned i = 0; i < terminal->getNumSuccessors(); ++i)
+    native_pending.push_back(terminal->getSuccessor(i));
+  std::set< llvm::BasicBlock* > native_seen;
+  while (!native_pending.empty()) {
+    auto* block = native_pending.back(); native_pending.pop_back();
+    if (block == source_start) return false;
+    if (!native_seen.insert(block).second) continue;
+    if (native_seen.size() > 1024) return false;
+    auto* end = block->getTerminator();
+    for (unsigned i = 0; i < end->getNumSuccessors(); ++i)
+      native_pending.push_back(end->getSuccessor(i));
+  }
+  auto* start = imported->parent();
+  std::vector< ar::BasicBlock* > pending(start->successor_begin(), start->successor_end());
+  std::set< ar::BasicBlock* > seen;
+  while (!pending.empty()) {
+    auto* block = pending.back(); pending.pop_back();
+    if (block == start) return false;
+    if (!seen.insert(block).second) continue;
+    if (seen.size() > 1024) return false;
+    pending.insert(pending.end(), block->successor_begin(), block->successor_end());
+  }
+  return true;
 }
 
 inline llvm::Function* native_handle_api(llvm::CallBase* call, bool create) {
@@ -304,6 +340,175 @@ inline bool native_handle_element(llvm::Value* value, llvm::AllocaInst* storage)
       zero && zero->isZero() && pure_local_array_index(gep->getOperand(2));
 }
 
+
+// A scalar seed is frontend bookkeeping, never an observed handle identity.
+// The native and imported sides must name the same exact store/call/allocation.
+inline bool native_handle_scalar_seed(
+    llvm::StoreInst* store, llvm::AllocaInst* storage,
+    const NativeHandleArray& object,
+    const std::map< llvm::Value*, ar::Statement* >& originals) {
+  auto lookup = [&](llvm::Value* v) -> ar::Statement* {
+    auto i = originals.find(v); return i == originals.end() ? nullptr : i->second;
+  };
+  auto* seed = llvm::dyn_cast< llvm::CallInst >(store->getValueOperand());
+  auto* api = seed ? seed->getCalledFunction() : nullptr;
+  auto* imported = dyn_cast_or_null< ar::Store >(lookup(store));
+  auto* call = seed ? dyn_cast_or_null< ar::CallBase >(lookup(seed)) : nullptr;
+  auto* target = call ? native_handle_callee(call) : nullptr;
+  const auto bits = object.type->bit_width();
+  return store->getPointerOperand() == storage && store->getAlign().value() >= bits / 8 &&
+      !store->isAtomic() &&
+      !store->isVolatile() && store->getMetadata("ikos.freeze_uninit") &&
+      store->getParent() == storage->getParent() && seed &&
+      store->getPrevNode() == seed && seed->hasOneUse() &&
+      seed->getMetadata("ikos.freeze_uninit") && api && api->isDeclaration() &&
+      !api->isVarArg() && api->arg_empty() && seed->arg_empty() &&
+      !seed->hasOperandBundles() && !seed->isInlineAsm() &&
+      seed->getCallingConv() == llvm::CallingConv::C &&
+      api->getCallingConv() == llvm::CallingConv::C &&
+      ordinary_source_call_abi_attributes(seed, api) &&
+      seed->getFunctionType() == api->getFunctionType() &&
+      api->getReturnType()->isIntegerTy(bits) &&
+      api->getName() == (bits == 32 ? "__ikos_nondet_int" : "__ikos_nondet_int64") &&
+      imported && imported->pointer() == object.storage &&
+      !imported->is_atomic() && !imported->is_volatile() &&
+      imported->alignment() >= bits / 8 && call && isa< ar::Call >(call) &&
+      call->has_result() && imported->value() == call->result() &&
+      call->result()->type()->is_integer() &&
+      cast< ar::IntegerType >(call->result()->type())->bit_width() == bits &&
+      call->num_arguments() == 0 &&
+      target && target->is_declaration() &&
+      (!target->has_frontend() || target->frontend< llvm::Value >() == api) &&
+      target->intrinsic_id() == ar::Intrinsic::IkosNonDet &&
+      target->num_parameters() == 0 && !target->type()->is_var_arg() &&
+      target->type()->return_type() == call->result()->type() &&
+      imported->code() == object.storage->function()->body() &&
+      call->parent() == imported->parent();
+}
+
+// A native use audit is not an imported use audit. In particular, an extra AR
+// copy or output use must not be hidden by a correctly closed LLVM alloca.
+inline bool native_handle_imported_uses_closed(
+    Context& ctx, const NativeHandleArray& object,
+    const std::map< ar::Statement*, NativeHandleArray >& accesses,
+    const std::set< ar::CallBase* >& joins,
+    const std::set< ar::Store* >& seeds,
+    const std::set< llvm::Value* >& native_addresses) {
+  std::set< ar::Value* > addresses{object.storage};
+  unsigned budget = 32768;
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (auto f = ctx.bundle->function_begin(); f != ctx.bundle->function_end(); ++f) {
+      if (!(*f)->is_definition()) continue;
+      for (auto* block : *(*f)->body()) for (auto* s : *block) {
+        if (!budget--) return false;
+        auto* result = s->result_or_null();
+        bool derived = false;
+        if (auto* a = dyn_cast< ar::Assignment >(s)) derived = addresses.count(a->operand());
+        else if (auto* u = dyn_cast< ar::UnaryOperation >(s))
+          derived = u->op() == ar::UnaryOperation::Bitcast && addresses.count(u->operand());
+        else if (auto* shift = dyn_cast< ar::PointerShift >(s)) derived = addresses.count(shift->pointer());
+        if (!derived || !result || addresses.count(result)) continue;
+        // The first scalar subset needs no imported pointer aliases. Arrays
+        // retain their source GEP/cast grammar, with actual source identity.
+        if (object.shape != NativeHandleShape::Array || !result->type()->is_pointer() ||
+            !s->has_frontend() || !native_addresses.count(s->frontend< llvm::Value >()) ||
+            local_output_base(result) != object.storage) return false;
+        addresses.insert(result); changed = true;
+      }
+    }
+  }
+  std::set< ar::Value* > loaded, seed_values, unused_api_results;
+  for (const auto& access : accesses) {
+    auto* producer = dyn_cast< ar::CallBase >(access.first);
+    if (producer && producer->has_result()) unused_api_results.insert(producer->result());
+  }
+  for (auto* join : joins)
+    if (join->has_result()) unused_api_results.insert(join->result());
+  for (const auto& a : accesses) if (a.second.storage == object.storage)
+    if (auto* load = dyn_cast< ar::Load >(a.first)) loaded.insert(load->result());
+  for (auto* seed : seeds) seed_values.insert(seed->value());
+  auto code = [&](ar::Code* body) {
+    if (!body) return true;
+    for (auto* block : *body) for (auto* s : *block) {
+      if (!budget--) return false;
+      // A second allocation of the same AR local is a different lifetime.
+      if (s->result_or_null() == object.storage) {
+        auto* a = dyn_cast< ar::Allocate >(s);
+        if (!a || !a->has_frontend() ||
+            a->frontend< llvm::Value >() != object.storage->frontend< llvm::Value >()) return false;
+      }
+      for (auto op = s->op_begin(); op != s->op_end(); ++op) {
+        if (!budget-- || unused_api_results.count(*op)) return false;
+        if (addresses.count(*op)) {
+          auto i = accesses.find(s);
+          bool allowed = false;
+          if (i != accesses.end() && i->second.storage == object.storage) {
+            if (auto* call = dyn_cast< ar::CallBase >(s))
+              allowed = call->num_arguments() == 4 && call->argument(0) == *op;
+            if (auto* load = dyn_cast< ar::Load >(s)) allowed = load->operand() == *op;
+          }
+          if (auto* seed = dyn_cast< ar::Store >(s))
+            allowed |= seeds.count(seed) && seed->pointer() == *op;
+          if (s->result_or_null() && addresses.count(s->result_or_null())) allowed = true;
+          if (!allowed) return false;
+        }
+        if (loaded.count(*op)) {
+          auto* join = dyn_cast< ar::CallBase >(s);
+          if (!join || !joins.count(join) || join->argument(0) != *op) return false;
+        }
+        if (seed_values.count(*op)) {
+          auto* store = dyn_cast< ar::Store >(s);
+          if (!store || !seeds.count(store) || store->value() != *op) return false;
+        }
+      }
+    }
+    return true;
+  };
+  for (auto f = ctx.bundle->function_begin(); f != ctx.bundle->function_end(); ++f)
+    if (!code((*f)->body_or_null())) return false;
+  for (auto g = ctx.bundle->global_begin(); g != ctx.bundle->global_end(); ++g)
+    if (!code((*g)->initializer_or_null())) return false;
+  return true;
+}
+
+// Exact source/AR marker and nondet call shapes for closed-effect consumers.
+// This grants neither atomicity nor numerical or synchronization facts.
+inline bool native_handle_range_call(ar::CallBase* call) {
+  auto* site = call->has_frontend()
+      ? llvm::dyn_cast< llvm::CallInst >(call->frontend< llvm::Value >()) : nullptr;
+  auto* source = site ? llvm::dyn_cast< llvm::Function >(
+      site->getCalledOperand()->stripPointerCasts()) : nullptr;
+  auto* imported = native_handle_callee(call);
+  if (!site || !source || !source->isDeclaration() || !imported ||
+      !imported->is_declaration() || !isa< ar::Call >(call) ||
+      site->hasOperandBundles() || site->isInlineAsm() ||
+      !source->arg_empty() || !site->arg_empty() || call->num_arguments() != 0 ||
+      imported->num_parameters() != 0 ||
+      site->getCallingConv() != llvm::CallingConv::C ||
+      source->getCallingConv() != llvm::CallingConv::C ||
+      !ordinary_source_call_abi_attributes(site, source)) return false;
+  const auto name = source->getName();
+  const bool marker = name == "__VERIFIER_atomic_begin" || name == "__VERIFIER_atomic_end";
+  if (!marker && name != "__VERIFIER_nondet_bool") return false;
+  // C no-prototype markers may arrive through a void(...)* -> void()* cast.
+  if (site->getFunctionType() != source->getFunctionType() &&
+      !(marker && source->isVarArg() &&
+        site->getFunctionType()->getNumParams() == 0 && site->getType()->isVoidTy()))
+    return false;
+  if (!marker && (source->isVarArg() || imported->type()->is_var_arg())) return false;
+  if (imported->has_frontend()) {
+    if (imported->frontend< llvm::Value >() != source) return false;
+  } else if (marker || imported->intrinsic_id() != ar::Intrinsic::IkosNonDet) return false;
+  if (marker) return source->getReturnType()->isVoidTy() &&
+      site->getType()->isVoidTy() && imported->type()->return_type()->is_void() && !call->has_result();
+  auto* result = dyn_cast< ar::IntegerType >(imported->type()->return_type());
+  return source->getReturnType()->isIntegerTy(1) && site->getType()->isIntegerTy(1) &&
+      result && result->bit_width() == 1 &&
+      (!call->has_result() || call->result()->type() == result);
+}
+
 // This inventory selects a value abstraction, not an effect/termination proof.
 // Every producer must use native TOP even if the later range preflight fails.
 inline void configure_native_thread_handles(Context& ctx) {
@@ -318,7 +523,7 @@ inline void configure_native_thread_handles(Context& ctx) {
   auto* main = ctx.opts.entry_points.front();
   if (!main->has_frontend()) return;
   auto* source_main = main->frontend< llvm::Function >();
-  if (!source_main->use_empty()) return;
+  if (!source_main->use_empty() || !source_main->getParent()->getModuleInlineAsm().empty()) return;
   if (!mutex_effect_pointer_representations_closed(*source_main->getParent())) return;
   const auto abi = pthread_object_layout(bundle, source_main->getParent());
   if (!abi) return;
@@ -334,30 +539,40 @@ inline void configure_native_thread_handles(Context& ctx) {
     if (!(*fit)->is_definition()) continue;
     for (auto* block : *(*fit)->body()) for (auto* statement : *block) {
       if (budget-- == 0) return;
-      if (statement->has_frontend() && (isa< ar::CallBase >(statement) || isa< ar::Load >(statement))) {
+      if (statement->has_frontend() && (isa< ar::CallBase >(statement) || isa< ar::Load >(statement) ||
+          isa< ar::Store >(statement) || isa< ar::Allocate >(statement))) {
         auto* original = statement->frontend< llvm::Value >();
         if (!originals.emplace(original, statement).second) return;
       }
       if (auto* allocation = dyn_cast< ar::Allocate >(statement)) {
         auto* count = dyn_cast< ar::IntegerConstant >(allocation->array_size());
         auto* array = dyn_cast< ar::ArrayType >(allocation->allocated_type());
-        auto* element = array ? dyn_cast< ar::IntegerType >(array->element_type()) : nullptr;
+        auto* element = array ? dyn_cast< ar::IntegerType >(array->element_type())
+                              : dyn_cast< ar::IntegerType >(allocation->allocated_type());
         auto* source = allocation->has_frontend()
             ? llvm::dyn_cast< llvm::AllocaInst >(allocation->frontend< llvm::Value >()) : nullptr;
         auto* original = source ? llvm::dyn_cast< llvm::ArrayType >(source->getAllocatedType()) : nullptr;
         auto* repetitions = source ? llvm::dyn_cast< llvm::ConstantInt >(source->getArraySize()) : nullptr;
         if (allocation->code() != main->body() || allocation->parent() != main->body()->entry_block() ||
             !count || count->value().to_z_number() != 1 || !element || element->bit_width() != bits ||
-            array->num_elements() <= 0 || !source || source->getAddressSpace() != 0 ||
-            source->getParent() != &source_main->getEntryBlock() || !repetitions || !repetitions->isOne() ||
-            !original || !original->getElementType()->isIntegerTy(bits) ||
-            array->num_elements() != core::ZNumber(original->getNumElements())) continue;
-        const auto bytes = bundle->data_layout().alloc_size_in_bytes(array);
+            !source || source->getAddressSpace() != 0 || !allocation->result()->has_frontend() ||
+            allocation->result()->frontend< llvm::Value >() != source ||
+            source->getParent() != &source_main->getEntryBlock() || !repetitions || !repetitions->isOne()) continue;
+        if (array ? (!original || array->num_elements() <= 0 ||
+            !original->getElementType()->isIntegerTy(bits) ||
+            array->num_elements() != core::ZNumber(original->getNumElements()))
+            : !source->getAllocatedType()->isIntegerTy(bits)) continue;
+        const auto bytes = bundle->data_layout().alloc_size_in_bytes(allocation->allocated_type());
         const auto& layout = source_main->getParent()->getDataLayout();
-        if (bytes != abi.word * array->num_elements() || bytes >= (core::ZNumber(1) << bits) ||
-            bytes != core::ZNumber(layout.getTypeAllocSize(original).getFixedValue()) ||
-            source->getAlign().value() < abi.word) continue;
-        arrays.emplace(source, NativeHandleArray{allocation->result(), element, bytes});
+        if (!array && std::getenv("IKOS_RACE_DISABLE_NATIVE_SCALAR_HANDLES")) continue;
+        const auto elements = array ? array->num_elements() : core::ZNumber(1);
+        if (bytes != abi.word * elements || bytes >= (core::ZNumber(1) << bits) ||
+            bytes != bundle->data_layout().store_size_in_bytes(allocation->allocated_type()) ||
+            bytes != core::ZNumber(layout.getTypeAllocSize(source->getAllocatedType()).getFixedValue()) ||
+            bytes != core::ZNumber(layout.getTypeStoreSize(source->getAllocatedType()).getFixedValue()) ||
+            source->getAlign().value() < abi.word || allocation->result()->alignment() < abi.word) continue;
+        arrays.emplace(source, NativeHandleArray{allocation->result(), element, bytes,
+            array ? NativeHandleShape::Array : NativeHandleShape::Scalar});
       }
       auto* call = dyn_cast< ar::CallBase >(statement);
       if (!call) continue;
@@ -367,6 +582,11 @@ inline void configure_native_thread_handles(Context& ctx) {
       if (!called || !callee) return;
       const bool pthread_api = callee->getName() == "pthread_create" || callee->getName() == "pthread_join";
       if (pthread_api) {
+        const auto expected = callee->getName() == "pthread_create"
+            ? ar::Intrinsic::PthreadCreate : ar::Intrinsic::PthreadJoin;
+        if (!isa< ar::Call >(call) ||
+            (called->has_frontend() ? called->frontend< llvm::Value >() != callee
+                                    : called->intrinsic_id() != expected)) return;
         auto* result = dyn_cast< ar::IntegerType >(called->type()->return_type());
         if (!result || result->bit_width() != 32 || called->type()->is_var_arg() ||
             called->num_parameters() != call->num_arguments()) return;
@@ -375,7 +595,8 @@ inline void configure_native_thread_handles(Context& ctx) {
       }
       if (callee->getName() == "pthread_create" || called->intrinsic_id() == ar::Intrinsic::PthreadCreate) {
         if (!native_handle_api(original, true) || !called->is_declaration() ||
-            called->name() != "pthread_create" || !native_repeated_create(call) ||
+            (called->name() != "pthread_create" &&
+             called->intrinsic_id() != ar::Intrinsic::PthreadCreate) ||
             call->code() != main->body() || call->num_arguments() != 4 ||
             !isa< ar::NullConstant >(call->argument(1)) || !isa< ar::NullConstant >(call->argument(3)) ||
             !isa< ar::FunctionPointerConstant >(call->argument(2))) return;
@@ -420,23 +641,32 @@ inline void configure_native_thread_handles(Context& ctx) {
     std::vector< llvm::Value* > pending{storage};
     std::set< llvm::Value* > seen;
     bool used = false, closed = true;
-    std::set< llvm::CallBase* > array_joins;
+    std::set< llvm::CallBase* > array_joins, object_creates;
+    std::set< ar::Store* > seeds;
+    llvm::DominatorTree dominance(*source_main);
     while (!pending.empty() && closed) {
       auto* value = pending.back(); pending.pop_back();
       if (!seen.insert(value).second) continue;
       if (seen.size() > 2048) return;
       for (auto* user : value->users()) {
         if (auto* gep = llvm::dyn_cast< llvm::GEPOperator >(user)) {
-          if (gep->getPointerOperand() != value) { closed = false; break; }
+          if (object.shape != NativeHandleShape::Array || gep->getPointerOperand() != value) { closed = false; break; }
           pending.push_back(user);
-        } else if (llvm::isa< llvm::BitCastOperator >(user)) pending.push_back(user);
+        } else if (llvm::isa< llvm::BitCastOperator >(user)) {
+          if (object.shape != NativeHandleShape::Array) { closed = false; break; }
+          pending.push_back(user);
+        }
         else if (llvm::isa< llvm::DbgInfoIntrinsic >(user)) continue;
         else if (auto* call = llvm::dyn_cast< llvm::CallBase >(user)) {
           if (!creates.count(call) || call->getArgOperand(0) != value || !native_handle_element(value, storage)) {
             closed = false; break;
           }
           auto* imported = dyn_cast_or_null< ar::CallBase >(originals[call]);
-          if (!imported || local_output_base(imported->argument(0)) != object.storage) { closed = false; break; }
+          if (!imported || local_output_base(imported->argument(0)) != object.storage ||
+              (object.shape == NativeHandleShape::Scalar
+                   ? (imported->argument(0) != object.storage || !native_handle_scalar_acyclic(call, imported))
+                   : !native_repeated_create(imported))) { closed = false; break; }
+          object_creates.insert(call);
           accesses.emplace(imported, object); accounted_creates.insert(call); used = true;
         } else if (auto* load = llvm::dyn_cast< llvm::LoadInst >(user)) {
           if (load->getPointerOperand() != value || !load->getType()->isIntegerTy(bits) ||
@@ -447,17 +677,35 @@ inline void configure_native_thread_handles(Context& ctx) {
           auto* leaf = pointer ? dyn_cast< ar::IntegerType >(pointer->pointee()) : nullptr;
           if (!imported || !type || type->bit_width() != bits || !leaf || leaf->bit_width() != bits ||
               imported->is_volatile() || imported->is_atomic() ||
-              local_output_base(imported->operand()) != object.storage) { closed = false; break; }
+              local_output_base(imported->operand()) != object.storage ||
+              (object.shape == NativeHandleShape::Scalar && imported->operand() != object.storage) ||
+              imported->alignment() < abi.word || load->getAlign().value() < abi.word) { closed = false; break; }
           for (auto* use : load->users()) {
             auto* join = llvm::dyn_cast< llvm::CallBase >(use);
             if (!join || !source_joins.count(join) || join->getArgOperand(0) != load) { closed = false; break; }
+            auto* imported_join = dyn_cast_or_null< ar::CallBase >(originals[join]);
+            if (!imported_join || !joins.count(imported_join) ||
+                imported_join->argument(0) != imported->result()) { closed = false; break; }
             array_joins.insert(join);
           }
           accesses.emplace(imported, object);
+        } else if (auto* store = llvm::dyn_cast< llvm::StoreInst >(user)) {
+          if (object.shape != NativeHandleShape::Scalar ||
+              !native_handle_scalar_seed(store, storage, object, originals)) { closed = false; break; }
+          seeds.insert(cast< ar::Store >(originals[store]));
         } else { closed = false; break; }
       }
     }
+    if (used && object.shape == NativeHandleShape::Scalar) {
+      if (object_creates.size() != 1 || seeds.size() > 1) closed = false;
+      else for (auto* seed : seeds) {
+        auto* source_seed = llvm::cast< llvm::StoreInst >(seed->frontend< llvm::Value >());
+        if (!dominance.dominates(storage, source_seed) ||
+            !dominance.dominates(source_seed, *object_creates.begin())) closed = false;
+      }
+    }
     if (!closed && used) return;
+    if (used && !native_handle_imported_uses_closed(ctx, object, accesses, joins, seeds, seen)) return;
     // An unrelated ordinary integer array is not part of the selected plan.
     if (!used) {
       for (auto it = accesses.begin(); it != accesses.end();)
@@ -469,6 +717,11 @@ inline void configure_native_thread_handles(Context& ctx) {
   ctx.native_handle_accesses = std::move(accesses);
   ctx.native_handle_joins = std::move(joins);
   ctx.native_handles_only = true;
+  for (const auto& access : ctx.native_handle_accesses)
+    if (access.second.shape == NativeHandleShape::Scalar) {
+      log::debug("Native pthread handles: closed scalar storage inventory");
+      break;
+    }
 }
 
 template < typename E >
@@ -483,7 +736,10 @@ bool native_handle_range(E& eng, ar::Statement* statement, ar::Value* operand) {
   return eng.data().normal().nullity_is_non_null(ptr.var()) &&
       address.points_to().is_set() && address.points_to().size() == 1 &&
       *address.points_to().begin() == ctx.mem_factory->get_local(found->second.storage) &&
-      !offset.is_bottom() && !offset.is_top() && offset.lb().to_z_number() >= 0 &&
+      !offset.is_bottom() && !offset.is_top() &&
+      (found->second.shape != NativeHandleShape::Scalar ||
+       (offset.singleton() && offset.lb().to_z_number() == 0)) &&
+      offset.lb().to_z_number() >= 0 &&
       offset.ub().to_z_number() +
            ctx.bundle->data_layout().store_size_in_bytes(found->second.type) <= found->second.size;
 }

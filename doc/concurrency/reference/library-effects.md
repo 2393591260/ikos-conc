@@ -128,21 +128,40 @@ coverage; accepting the allocation continuation alone cannot complete that proof
 
 <a id="native-thread-handle-arrays"></a>
 <details>
-<summary>Native thread-handle arrays — model private handle storage without inferring completion</summary>
+<summary>Native thread-handle storage — opaque values without inferred completion</summary>
 
 For closed GNU/Linux x86 ILP32 and x86-64 LP64 programs, the abstract interpreter
-supports repeated creates into private, fixed-size main-stack arrays of native
-`pthread_t` values (32 and 64 bits respectively). It checks the original LLVM and imported AR declarations,
-every producer and array use, and independently proves the full output/load
-ranges before exporting create-effect certificates into a fresh analysis.
-Handle outputs and reads are unknown initialized native values, rather than
-creation-site numbers. Joins through these values add no completion or
-happens-before facts: neither joining one array element nor overwriting and
-joining a handle proves that all instances of a worker have ended.
-Escapes, representation inspection, uncovered calls and unproved ranges retain
-the conservative coverage boundary. This subset requires NULL attributes,
-worker arguments and join-result outputs, and unused API return values.
-It does not establish list ownership, initialization or first-publication safety.
+supports private fixed-size main-stack arrays with repeated creates, and whole
+native-width main-stack scalar slots with one acyclic create per slot. Scalars
+and arrays share one complete producer inventory. The original LLVM and imported
+AR must agree on every allocation, create, full-width load, and direct join use.
+Scalar pointer aliases, value copies, representation inspection, escaping storage,
+partial/unknown writes, used API return values, and unmatched producers retain the
+conservative boundary. Frontend initialization seeds require the exact marked
+call/store pair and cannot be observed as handles.
+
+Outputs and selected loads use unknown initialized native values from the first
+analysis, including independent preflight. Range failure cannot switch them back
+to creation-site integers. Joins through these values add no completion or
+happens-before facts, including repeated, wrong-slot, or missing joins. Neither a
+handle slot nor an output-effect certificate proves successful creation or that
+a worker has ended. NULL attributes, worker arguments and join-result outputs,
+and unused API return values are required by this subset.
+
+A separate fresh preflight establishes all output/load byte ranges before
+exporting create-effect certificates. Exact verifier begin/end markers and the
+boolean nondeterministic source may close its no-application-byte-effect premise;
+this grants no new atomicity or numerical fact to safety consumers. Actual-run
+range observations are MUST facts and are published only after stable replay
+and shared-summary flushing. A late synthetic producer blocks coverage instead
+of coexisting with the opaque mode.
+
+This storage model does not establish heap ownership, pointer validity,
+initialization, publication safety, or a race verdict. Ordinary effect coverage,
+source proof contracts and actual race-pair collection still apply. A zero pair
+count printed before coverage completes is not a safety result. Bounded execution
+and its independent checker continue to require actual dynamic create/load/join
+origins and real completion; they do not trust this abstract inventory.
 
 </details>
 

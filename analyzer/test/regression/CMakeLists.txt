@@ -238,6 +238,9 @@ add_concurrency_test(protected-protocol "${CONCURRENCY_ROOT}/scripts/test_protec
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(protected-protocol-lp64 "${CONCURRENCY_ROOT}/scripts/test_protected_protocol.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
+add_concurrency_test(scalar-thread-completion "${CONCURRENCY_ROOT}/scripts/test_scalar_thread_completion.py"
+  --ikos "${CONCURRENCY_IKOS}")
+
 add_concurrency_test(thread-lifecycle "${CONCURRENCY_ROOT}/scripts/test_thread_lifecycle.py"
                      --ikos "${CONCURRENCY_IKOS}")
 add_concurrency_test(thread-lifecycle-lp64 "${CONCURRENCY_ROOT}/scripts/test_thread_lifecycle.py"
@@ -266,6 +269,10 @@ add_concurrency_test(nested-array-ownership-lp64 "${CONCURRENCY_ROOT}/scripts/te
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(native-thread-handles "${CONCURRENCY_ROOT}/scripts/test_native_thread_handles.py"
                      --ikos "${CONCURRENCY_IKOS}")
+add_concurrency_test(native-scalar-thread-handles "${CONCURRENCY_ROOT}/scripts/test_native_scalar_thread_handles.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 32)
+add_concurrency_test(native-scalar-thread-handles-lp64 "${CONCURRENCY_ROOT}/scripts/test_native_scalar_thread_handles.py"
+                     --ikos "${CONCURRENCY_IKOS}" --bits 64)
 add_concurrency_test(native-thread-handles-lp64 "${CONCURRENCY_ROOT}/scripts/test_native_thread_handles.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
 foreach(bits 32 64)
