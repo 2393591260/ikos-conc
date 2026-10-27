@@ -20,6 +20,7 @@ from analyzer.python.ikos.race_result import validate_race_result
 def heap_handle_contract():
     replay = Replay.__new__(Replay)
     replay.semaphores = {}
+    replay.barriers = {}
     replay.atomic_owner = None
     replay.program = dict(pointer_bits=32, target_triple='i386-pc-linux-gnu', little_endian=True)
     size_type = dict(kind='integer', bits=32, signed=False)

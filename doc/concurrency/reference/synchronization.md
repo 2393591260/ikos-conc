@@ -4,6 +4,23 @@
 
 ### Synchronization and lifecycle
 
+<a id="native-cmpxchg-values"></a>
+### Native compare-and-exchange values
+
+LLVM `cmpxchg` imports as separate success and failure value paths. Success
+requires the observed old value to equal the expected value, writes the desired
+value and returns a true flag. Failure preserves memory and returns a false
+flag; weak failure also permits equal values. Both outcomes return the same old
+value used by their comparison. Volatility and the legal read/write components
+of success ordering, and the actual failure-load ordering, are retained.
+
+The split AR accesses conservatively model values and control flow. They grant
+no native atomic indivisibility or new cross-thread synchronization proof.
+Existing exact BMC and protocol consumers continue to require their own native
+operation support. `scripts/test_cmpxchg_values.py` checks failure, success,
+spurious weak failure and impossible outcomes on both ABIs, including pointer
+and 64-bit cells.
+
 <a id="self-publication-one-write-repeated-reads"></a>
 <details>
 <summary>Self-publication: one write, repeated reads</summary>

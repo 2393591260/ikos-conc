@@ -571,21 +571,55 @@ void FunctionImporter::translate_atomic_rmw(BasicBlockTranslation* bb_translatio
   this->mark_variable_mapping(rmw, old_var);
 }
 
-/// \brief Translate an LLVM cmpxchg instruction. Value model is an
-/// over-approximation (always store the new value) — sound for race
-/// detection, which only needs the atomic load/store and the success flag.
+/// \brief Lower cmpxchg to conservative value/control-flow effects.
+/// Success writes desired and returns {old, true}; failure preserves memory
+/// and returns {old, false}. Weak failure also permits old == expected.
+/// The separate AR accesses do not model native indivisibility or grant
+/// synchronization to surrounding instructions. Exact execution consumers
+/// must continue to reject them until they model the original LLVM operation.
 void FunctionImporter::translate_cmpxchg(BasicBlockTranslation* bb_translation,
                                          llvm::AtomicCmpXchgInst* cx) {
-  ar::AtomicOrdering ord = translate_atomic_ordering(cx->getSuccessOrdering());
-  uint64_t align = cx->getAlign().value();
+  const auto success_order = cx->getSuccessOrdering();
+  const auto failure_order = cx->getFailureOrdering();
+  ar::AtomicOrdering success_load_order;
+  ar::AtomicOrdering success_store_order;
+  switch (success_order) {
+    case llvm::AtomicOrdering::Monotonic:
+      success_load_order = success_store_order = ar::AtomicOrdering::Monotonic;
+      break;
+    case llvm::AtomicOrdering::Acquire:
+      success_load_order = ar::AtomicOrdering::Acquire;
+      success_store_order = ar::AtomicOrdering::Monotonic;
+      break;
+    case llvm::AtomicOrdering::Release:
+      success_load_order = ar::AtomicOrdering::Monotonic;
+      success_store_order = ar::AtomicOrdering::Release;
+      break;
+    case llvm::AtomicOrdering::AcquireRelease:
+      success_load_order = ar::AtomicOrdering::Acquire;
+      success_store_order = ar::AtomicOrdering::Release;
+      break;
+    case llvm::AtomicOrdering::SequentiallyConsistent:
+      success_load_order = success_store_order = ar::AtomicOrdering::SeqCst;
+      break;
+    default:
+      throw ImportError("unsupported cmpxchg success ordering");
+  }
+  check_import(failure_order == llvm::AtomicOrdering::Monotonic ||
+                   failure_order == llvm::AtomicOrdering::Acquire ||
+                   failure_order == llvm::AtomicOrdering::SequentiallyConsistent,
+               "unsupported cmpxchg failure ordering");
+  const auto failure_load_order = translate_atomic_ordering(failure_order);
+  const auto align = cx->getAlign().value();
 
   ar::Type* struct_type = this->infer_type(cx); // {value, i1}
-  auto* llvm_struct =
-      llvm::dyn_cast< llvm::StructType >(cx->getType());
+  auto* llvm_struct = llvm::dyn_cast< llvm::StructType >(cx->getType());
   ikos_assert_msg(llvm_struct, "cmpxchg result is not a struct");
 
   ar::Type* val_type = this->_ctx.type_imp->translate_type(
       cx->getPointerOperand()->getType()->getPointerElementType(), ar::Signed);
+  check_import(val_type->is_integer() || val_type->is_pointer(),
+               "unsupported cmpxchg value type");
   ar::PointerType* ptr_type = ar::PointerType::get(this->_context, val_type);
   ar::Value* pointer =
       this->translate_value(bb_translation, cx->getPointerOperand(), ptr_type);
@@ -593,26 +627,50 @@ void FunctionImporter::translate_cmpxchg(BasicBlockTranslation* bb_translation,
       this->translate_value(bb_translation, cx->getCompareOperand(), val_type);
   ar::Value* newv =
       this->translate_value(bb_translation, cx->getNewValOperand(), val_type);
-
-  // %old = load atomic ptr
   ar::InternalVariable* old_var =
       ar::InternalVariable::create(this->_body, val_type);
-  auto load = ar::Load::create(old_var, pointer, align, /*volatile=*/false, ord);
-  load->set_frontend< llvm::Value >(cx);
-  bb_translation->add_statement(std::move(load));
+  auto* bool_type = ar::IntegerType::get(this->_context, 1, ar::Signed);
+  ar::InternalVariable* ok_var =
+      ar::InternalVariable::create(this->_body, bool_type);
+  const auto equality = val_type->is_pointer() ? ar::Comparison::PEQ
+                                              : ar::Comparison::SIEQ;
 
-  // %ok = (old == cmp)
-  ar::InternalVariable* ok_var = ar::InternalVariable::create(
-      this->_body, ar::IntegerType::get(this->_context, 1, ar::Signed));
-  auto cmp_stmt = ar::Comparison::create(ar::Comparison::SIEQ, old_var, cmp);
-  cmp_stmt->set_frontend< llvm::Value >(cx);
-  bb_translation->add_comparison(ok_var, std::move(cmp_stmt));
-
-  // store atomic ptr, newv (over-approx: always attempt the store)
-  auto store =
-      ar::Store::create(pointer, newv, align, /*volatile=*/false, ord);
-  store->set_frontend< llvm::Value >(cx);
-  bb_translation->add_statement(std::move(store));
+  // Choose the outcome before its load so a failure carries only its actual
+  // failure ordering. Each branch uses one observed old value for both the
+  // comparison and aggregate result. No branch reloads the location.
+  std::vector< BasicBlockOutput > incoming;
+  incoming.swap(bb_translation->outputs);
+  for (const auto& output : incoming) {
+    ikos_assert(output.succ == nullptr);
+    bb_translation->internals.push_back(output.block);
+    auto add_outcome = [&](bool success) {
+      auto* block = bb_translation->add_output_basic_block(output.block);
+      auto load = ar::Load::create(old_var, pointer, align, cx->isVolatile(),
+                                   success ? success_load_order
+                                           : failure_load_order);
+      load->set_frontend< llvm::Value >(cx);
+      block->push_back(std::move(load));
+      if (success || !cx->isWeak()) {
+        auto guard = ar::Comparison::create(equality, old_var, cmp);
+        guard->set_frontend< llvm::Value >(cx);
+        if (!success) guard = guard->inverse();
+        block->push_back(std::move(guard));
+      }
+      auto flag = ar::Assignment::create(
+          ok_var, ar::IntegerConstant::get(this->_context, bool_type,
+                                           success ? 1 : 0));
+      flag->set_frontend< llvm::Value >(cx);
+      block->push_back(std::move(flag));
+      if (success) {
+        auto store = ar::Store::create(pointer, newv, align, cx->isVolatile(),
+                                       success_store_order);
+        store->set_frontend< llvm::Value >(cx);
+        block->push_back(std::move(store));
+      }
+    };
+    add_outcome(true);
+    add_outcome(false);
+  }
 
   // Reconstruct the {old, ok} result via InsertElement so that the
   // subsequent extractvalue instructions resolve to old / ok.

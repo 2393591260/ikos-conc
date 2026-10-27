@@ -605,3 +605,8 @@ add_concurrency_test(numeric-index-windows-lp64 "${CONCURRENCY_ROOT}/scripts/tes
 
 add_concurrency_test(barrier-capacity "${CONCURRENCY_ROOT}/scripts/test_barrier_capacity_controls.py" --bits 32)
 add_concurrency_test(barrier-capacity-lp64 "${CONCURRENCY_ROOT}/scripts/test_barrier_capacity_controls.py" --bits 64)
+
+foreach(bits 32 64)
+  add_concurrency_test(cmpxchg-values-${bits} "${CONCURRENCY_ROOT}/scripts/test_cmpxchg_values.py"
+                       --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
+endforeach()
