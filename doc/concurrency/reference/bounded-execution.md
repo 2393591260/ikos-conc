@@ -12,6 +12,48 @@ return UNKNOWN even when an older execution model could confirm a trace.
 These contracts describe the source checkout; an archived release retains its
 own recorded source and execution-checker versions.
 
+### Native sequentially consistent integer operations
+
+The finite encoder supports actual LLVM system-scope, address-space-zero SC
+integer loads, stores, exchange, add, sub, and, or, xor, and compare-exchange at
+8, 16, 32 and 64 bits. Both compare-exchange orders must be SC. Source identity,
+operands, natural alignment, volatility and the complete imported AR operation
+are checked. All microsteps of one native operation share one logical event;
+other threads cannot interleave inside that event. Strong CAS failure requires
+unequal old and expected values and does not write. Weak CAS also permits a
+spurious read-only failure. Returned old values and success flags retain their
+actual machine bit patterns, including signed/unsigned one-bit conversions.
+
+Every native read, including an unused read, needs a defined, live, exact
+whole-cell last modification and explicit read-from evidence. An SC read acquires
+only the actual native modification it observes; an SC write publishes its
+thread clock. SC total order alone does not add cross-object happens-before.
+Ordinary AR aliases must have the same full width or be disjoint; plain accesses
+to a native cell are limited to actual direct-main initialization before thread
+publication. Existing library-output, lifetime and coverage gates still apply;
+this is not a general theorem for arbitrary external-library memory effects.
+
+The independent AR checker recomputes complete native groups, arithmetic,
+read-from and vector clocks. A retained source `main` return ends the process;
+child events must precede it. A helper return or `pthread_exit` is distinct.
+Native source projection requires independent AR ACCEPT before allowing tied
+microstep clocks. This local check is separate from official source-witness
+validation and does not establish whole-tool correctness.
+
+Only exact unused x86 empty compiler memory barriers are admitted as having no
+runtime effect. They do not create a synchronization edge. Weaker or mixed
+memory orders, fences, unsupported assembly, pointer/float native operations,
+partial aliases and incomplete native groups remain unsupported. Existing
+creator-graph and verifier-atomic unordered-query profiles keep their separate
+native-operation refusal gates. Bounded UNSAT never grants SAFE, and support
+for an instruction does not promise completion of every surrounding program.
+
+`IKOS_BMC_DISABLE_NATIVE_SC=1` disables this finite native-operation support.
+The integration controls in
+[test_bmc_native_sc.py](../../../scripts/test_bmc_native_sc.py) exercise both
+ABIs and all four integer widths, publication controls, malformed evidence and
+disabled-support fallbacks. The default abstract numeric domain is unchanged.
+
 ### Search sequence and shared budget
 
 The scheduler in [data_race_search.cpp](../../../analyzer/src/checker/data_race_search.cpp)

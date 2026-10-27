@@ -44,6 +44,8 @@
  ******************************************************************************/
 
 #pragma once
+#include <ikos/analyzer/analysis/native_sc_source.hpp>
+
 
 #include <memory>
 #include <vector>
@@ -364,7 +366,8 @@ private:
     } else if (auto cst = dyn_cast< ar::FunctionPointerConstant >(called)) {
       callees = {_ctx.mem_factory->get_function(cst->function())};
     } else if (isa< ar::InlineAssemblyConstant >(called)) {
-      // Call to assembly
+      // Only a checked empty compiler barrier has no runtime memory effect.
+      if (native_sc_empty_compiler_barrier(call)) return;
       this->_engine.exec_unknown_extern_call(call);
       return;
     } else if (isa< ar::GlobalVariable >(called)) {

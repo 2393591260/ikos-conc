@@ -3,6 +3,7 @@
 // Unsupported prefix semantics leave the candidate unconfirmed.
 
 #pragma once
+#include <ikos/analyzer/analysis/native_sc_source.hpp>
 
 #include <ikos/analyzer/analysis/execution_engine/once_control_family.hpp>
 #include <algorithm>
@@ -1896,12 +1897,17 @@ inline bool symbolic_startup_create_output(const std::vector< BmcEvent >& path,
 
 // Definedness is required even for values not used in guards/addresses.
 // This does not encode load values or establish read-from relations.
+#include "native_sc_groups.hpp"
+
 inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
                                   Diagnostics* diagnostics = nullptr,
                                   ar::Function* root = nullptr,
                                   ThreadArgument root_argument = nullptr,
                                   const std::vector< BmcEvent >* origins = nullptr,
                                   bool defer_startup_create_offsets = false) {
+  std::vector< NativeSCGroup > native_groups;
+  std::vector< std::size_t > native_heads;
+  if (!native_sc_groups(path, native_groups, native_heads)) {record(diagnostics, "native_sc_group"); return false;}
   std::set< std::pair< ar::Value*, std::size_t > > proved;
   std::function< bool(ar::Value*, std::size_t, unsigned) > defined;
   auto prove_defined = [&](ar::Value* value, std::size_t before, unsigned depth) {
@@ -1992,6 +1998,10 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
       }
       return false;
     }
+    if (auto* x = core::dyn_cast_or_null< ar::ExtractElement >(def)) {
+      std::size_t at = 0; auto* value = native_sc_extract(x, path, index, at);
+      return value && defined(value, at, depth + 1);
+    }
     if (auto* call = core::dyn_cast< ar::CallBase >(def)) {
       core::ZNumber size;
       if (main_allocation(call, path, index, size)) return true;
@@ -2030,6 +2040,29 @@ inline bool prefix_values_defined(const std::vector< BmcEvent >& path,
     auto* stmt = path[i].stmt;
     // These two marked operations are abstract bookkeeping, not source uses.
     if (abstract_initializer(stmt)) continue;
+    if (native_sc_empty_compiler_barrier(stmt)) continue;
+    if (native_heads[i] == i) {
+      auto d = native_sc_source_descriptor(stmt);
+      for (auto* raw : {d.argument, d.expected}) {
+        if (!raw || llvm::isa< llvm::ConstantInt >(raw)) continue;
+        auto* value = native_sc_bound_operand(raw, path, i);
+        if (!value || !defined(value, i, 0)) return false;
+      }
+    }
+    if (core::isa< ar::InsertElement >(stmt) && native_sc_source_descriptor(stmt)) {
+      // Complete CAS grouping above proves the two initialized fields; its
+      // initial aggregate undef is bookkeeping, never an executed source use.
+      if (!defined(core::cast< ar::InsertElement >(stmt)->element(), i, 0)) return false;
+      continue;
+    }
+    if (auto* x = core::dyn_cast< ar::ExtractElement >(stmt)) {
+      auto* raw = llvm::dyn_cast_or_null< llvm::ExtractValueInst >(native_sc_source(x));
+      if (raw && llvm::isa< llvm::AtomicCmpXchgInst >(raw->getAggregateOperand())) {
+        std::size_t at = 0; auto* value = native_sc_extract(x, path, i, at);
+        if (!value || !defined(value, at, 0)) return false;
+        continue; // Only the selected initialized field is an executed use.
+      }
+    }
     if (path[i].kind == EvKind::Create) {
       auto* call = core::cast< ar::CallBase >(stmt);
       BmcEvent output;
@@ -2070,17 +2103,30 @@ inline bool classify_event(
     const std::vector< ar::BasicBlock* >* in_stack = nullptr) {
   if (auto* load = core::dyn_cast< ar::Load >(stmt)) {
     ev = BmcEvent{stmt, EvKind::Read};
-    if (load->is_atomic()) {ev.kind = EvKind::Unsupported; ev.blocker = "unmodeled_sync"; return true;}
+    if (load->is_atomic() && (!native_sc_source_descriptor(stmt) || std::getenv("IKOS_BMC_DISABLE_NATIVE_SC"))) {ev.kind = EvKind::Unsupported; ev.blocker = "unmodeled_sync"; return true;}
     symbolic_byte_offset(load->operand(), ev);
     ev.width = stmt->parent()->bundle()->data_layout().store_size_in_bytes(load->result()->type()).to< std::uint64_t >();
     return true;
   }
   if (auto* store = core::dyn_cast< ar::Store >(stmt)) {
     ev = BmcEvent{stmt, EvKind::Write};
-    if (store->is_atomic()) {ev.kind = EvKind::Unsupported; ev.blocker = "unmodeled_sync"; return true;}
+    if (store->is_atomic() && (!native_sc_source_descriptor(stmt) || std::getenv("IKOS_BMC_DISABLE_NATIVE_SC"))) {ev.kind = EvKind::Unsupported; ev.blocker = "unmodeled_sync"; return true;}
     symbolic_byte_offset(store->pointer(), ev);
     ev.width = stmt->parent()->bundle()->data_layout().store_size_in_bytes(store->value()->type()).to< std::uint64_t >();
     return true;
+  }
+  // CAS aggregate bookkeeping is admitted only with an actual native source;
+  // the complete path group and extract binding are checked before encoding.
+  if (core::isa< ar::InsertElement >(stmt) &&
+      native_sc_source_descriptor(stmt) &&
+      llvm::isa< llvm::AtomicCmpXchgInst >(native_sc_source(stmt))) {
+    ev = BmcEvent{stmt, EvKind::Local}; return true;
+  }
+  if (core::isa< ar::ExtractElement >(stmt)) {
+    auto* raw = llvm::dyn_cast_or_null< llvm::ExtractValueInst >(native_sc_source(stmt));
+    if (raw && llvm::isa< llvm::AtomicCmpXchgInst >(raw->getAggregateOperand())) {
+      ev = BmcEvent{stmt, EvKind::Local}; return true;
+    }
   }
   if (core::isa< ar::Comparison >(stmt)) {
     // 路径条件（assume 约束）：比较在 AR 里就是 refine 语句，路径上每条
@@ -2089,6 +2135,7 @@ inline bool classify_event(
     return true;
   }
   if (auto* call = core::dyn_cast< ar::CallBase >(stmt)) {
+    if (native_sc_empty_compiler_barrier(stmt)) {ev = BmcEvent{stmt, EvKind::Local}; return true;}
     auto* declared = exact_callee(call);
     if (unsupported_source_call_abi(call, declared)) {
       ev = BmcEvent{stmt, EvKind::Unsupported};

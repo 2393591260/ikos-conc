@@ -359,6 +359,11 @@ def build_witness(source, info, data_model, ikos="ikos"):
     program = replay["program"]
     instructions = program["instructions"]
     trace_list = replay["traces"]
+    native_profile = any(instructions[step['statement']].get('native_sc')
+                         for trace in trace_list for step in trace['steps'])
+    if native_profile:
+        require(validate_selected_execution(info, data_model).get("status") == "ACCEPT",
+                "native SC projection requires complete independent AR replay")
     trace_entries = {trace["id"]: trace["entry"] for trace in trace_list}
     creator_graph = replay.get("creator_graph") is True or any(
         trace.get("creator_trace") in trace_entries and
@@ -429,7 +434,8 @@ def build_witness(source, info, data_model, ikos="ikos"):
                 )
                 clock = int(step["clock"])
                 require(
-                    previous is None or previous < clock, "ambiguous occurrence order"
+                    previous is None or previous < clock or (native_profile and previous == clock),
+                    "ambiguous occurrence order"
                 )
                 previous = clock
                 order = (1, clock)

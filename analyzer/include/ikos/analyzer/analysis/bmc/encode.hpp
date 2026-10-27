@@ -650,6 +650,16 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     record(diagnostics, "barrier_execution_profile");
     return Result(Status::Unsupported);
   }
+  // Group positions must use the canonical events after condition/barrier expansion.
+  std::vector< std::vector< NativeSCGroup > > native_groups(traces.size());
+  std::vector< std::vector< std::size_t > > native_heads(traces.size());
+  bool native_requested = false;
+  for (std::size_t id = 0; id < traces.size(); ++id) {
+    if (!native_sc_groups(traces[id].events, native_groups[id], native_heads[id])) {
+      record(diagnostics, "native_sc_group"); return Result(Status::Unsupported);
+    }
+    native_requested |= !native_groups[id].empty();
+  }
   // Rebind only legacy creation indices on the canonical origin before
   // address preparation. Fixed completion/provider plans retain exact steps.
   if (completion == nullptr && provider_plan == nullptr && graph_plan == nullptr)
@@ -1244,17 +1254,22 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     auto& trace = traces[id]; trace.clock_start = clock.size();
     for (std::size_t i = 0; i < trace.events.size(); ++i) {
       clock.push_back(ctx.int_const((trace.id + std::to_string(i)).c_str()));
-      if (i != 0) s.add(clock.back() > clock[clock.size() - 2]);
+      if (i != 0) {
+        if (native_heads[id][i] != i) s.add(clock.back() == clock[trace.clock_start + native_heads[id][i]]);
+        else s.add(clock.back() > clock[clock.size() - 2]);
+      }
     }
   }
-  // A recursive certificate describes one live process. Keep all retained
-  // child events before an actual main Return; pthread_exit is distinct.
-  if (recursive_requested)
+  // These profiles describe one live process. A source main Return ends it;
+  // pthread_exit is distinct. Do not change the unrelated legacy profiles.
+  if (recursive_requested || native_requested)
     for (std::size_t i = 0; i < traces[main_index].events.size(); ++i) {
       auto* returned = core::dyn_cast< ar::ReturnValue >(traces[main_index].events[i].stmt);
       if (!returned || !entry || returned->code() != entry->body_or_null()) continue;
       if (main_index == 0 || i + 1 != traces[main_index].events.size()) {
-        record(diagnostics, "recursive_process_return"); return Result(Status::Unsupported);
+        record(diagnostics, native_requested ? "native_sc_process_return" :
+                                               "recursive_process_return");
+        return Result(Status::Unsupported);
       }
       for (std::size_t other = 1; other < traces.size(); ++other) {
         if (other == main_index) continue;
@@ -1262,6 +1277,15 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           s.add(clock[traces[other].clock_start + j] < clock[traces[main_index].clock_start + i]);
       }
     }
+  // Imported group microsteps share one logical SC event. Other physical
+  // traces cannot even place a local instruction inside that event.
+  for (std::size_t id = 1; id < traces.size(); ++id)
+    for (const auto& group : native_groups[id])
+      for (std::size_t other = 1; other < traces.size(); ++other) {
+        if (other == id) continue;
+        for (std::size_t j = 0; j < traces[other].events.size(); ++j)
+          s.add(clock[traces[other].clock_start + j] != clock[traces[id].clock_start + group.begin]);
+      }
   struct OnceInvocation {
     ar::GlobalVariable* object;
     std::size_t trace, call, callback_return, returned;
@@ -1325,7 +1349,9 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     for (const auto& trace : traces) for (const auto& event : trace.events)
       if (event.mutex == PSEUDO_ATOMIC_LOCK) return Result(Status::Unsupported);
     z3::expr_vector strict_clocks(ctx);
-    for (const auto& value : clock) strict_clocks.push_back(value);
+    for (std::size_t id = 1; id < traces.size(); ++id)
+      for (std::size_t i = 0; i < traces[id].events.size(); ++i)
+        if (native_heads[id][i] == i) strict_clocks.push_back(clock[traces[id].clock_start + i]);
     if (strict_clocks.size() > 1) s.add(z3::distinct(strict_clocks));
     std::map< ar::GlobalVariable*, const OnceInvocation* > active;
     for (const auto& invocation : once_invocations) {
@@ -1370,7 +1396,7 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
   for (std::size_t id = 1; id < traces.size(); ++id) {
     const auto& trace = traces[id];
     for (std::size_t i = 0; i < trace.events.size(); ++i)
-      if (trace.events[i].kind == EvKind::Read || trace.events[i].kind == EvKind::Write || stream_output(trace.events[i]))
+      if (native_heads[id][i] == i && (trace.events[i].kind == EvKind::Read || trace.events[i].kind == EvKind::Write || stream_output(trace.events[i])))
         memory_clocks.push_back(clock[trace.clock_start + i]);
   }
   if (memory_clocks.size() > 1) s.add(z3::distinct(memory_clocks));
@@ -1582,6 +1608,14 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
     ValueKey key{iv, definition_index};
     auto cached = cache.find(key);
     if (cached != cache.end()) {out = cached->second; return true;}
+    if (auto* x = core::dyn_cast_or_null< ar::ExtractElement >(def)) {
+      std::size_t at = 0; auto* value = native_sc_extract(x, path, definition_index, at);
+      auto* type = core::dyn_cast< ar::IntegerType >(x->result()->type());
+      if (!value || !type || !encode_value(value, out, cache, prefix, depth + 1, at)) return false;
+      // The imported signed i1 flag is -1; extractvalue may expose unsigned i1.
+      out = z3::bv2int(z3::int2bv(type->bit_width(), out), type->is_signed());
+      cache.emplace(key, out); return true;
+    }
     if (auto* as = core::dyn_cast_or_null< ar::Assignment >(def)) {
       if (as->operand()->type() != iv->type() ||
           !encode_value(as->operand(), out, cache, prefix, depth + 1, definition_index)) {
@@ -1665,6 +1699,18 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       return true;
     }
     if (auto* binary = core::dyn_cast_or_null< ar::BinaryOperation >(def)) {
+      auto native = native_sc_source_descriptor(def);
+      if (native && llvm::isa< llvm::AtomicRMWInst >(native.instruction)) {
+        z3::expr a(ctx), b(ctx);
+        auto* t = core::dyn_cast< ar::IntegerType >(binary->result()->type());
+        if (!t || !encode_value(binary->left(), a, cache, prefix, depth + 1, definition_index) ||
+            !encode_value(binary->right(), b, cache, prefix, depth + 1, definition_index)) return false;
+        auto left = z3::int2bv(native.bits, a), right = z3::int2bv(native.bits, b);
+        const std::string op(native.operation);
+        auto result = op == "add" ? left + right : op == "sub" ? left - right :
+            op == "and" ? left & right : op == "or" ? left | right : left ^ right;
+        out = z3::bv2int(result, t->is_signed()); cache.emplace(key, out); return true;
+      }
       auto* type = core::dyn_cast< ar::IntegerType >(iv->type());
       if (type == nullptr || binary->left()->type() != iv->type() || binary->right()->type() != iv->type()) return false;
       z3::expr left(ctx), right(ctx);
@@ -2226,6 +2272,22 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
           return false;
         }
       }
+      auto native = native_sc_source_descriptor(path[i].stmt);
+      if (native && (i == 0 || native_sc_source(path[i-1].stmt) != native.instruction)) {
+        // Failure-only CAS paths still evaluate both native input operands.
+        for (auto* raw : {native.argument, native.expected}) {
+          if (!raw || llvm::isa< llvm::ConstantInt >(raw)) continue;
+          auto* operand = native_sc_bound_operand(raw, path, i);
+          z3::expr value(ctx);
+          if (!operand || !encode_value(operand, value, cache, prefix, 0, i)) return false;
+        }
+      }
+      if (path[i].kind == EvKind::Read && native_sc_source_descriptor(path[i].stmt)) {
+        // Even an unused native read needs a defined exact last modification.
+        z3::expr value(ctx);
+        if (!encode_value(core::cast< ar::Load >(path[i].stmt)->result(), value, cache, prefix, 0, i + 1))
+          return false;
+      }
       if (auto* op = core::dyn_cast< ar::BinaryOperation >(path[i].stmt)) {
         if (facts != nullptr && facts->no_wrap != nullptr) {
           auto proof = facts->no_wrap->find(op);
@@ -2572,6 +2634,15 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
         z3::expr offset(ctx);
         if (!encode_offset(e, offset, cache, prefix, i)) return false;
         s.add(offset >= 0 && offset + ctx.int_val(std::to_string(e.width).c_str()) <= ctx.int_val(size.str().c_str()));
+        auto native = native_sc_source_descriptor(e.stmt);
+        if (native) {
+          s.add(z3::mod(offset, ctx.int_val(native.alignment)) == 0);
+          auto* g = e.base ? reinterpret_cast< ar::GlobalVariable* >(e.base) : nullptr;
+          if ((g && g->alignment() < native.alignment) ||
+              (e.local_base && e.local_base->alignment() < native.alignment) ||
+              (e.heap_allocation && native.alignment > e.stmt->bundle()->data_layout().pointers.bit_width / 8))
+            return false;
+        }
         if (!e.zero_fill && (e.heap_allocation != nullptr || e.shared_main_local)) {
           core::ZNumber alignment(4);
           if (e.kind == EvKind::Read || e.kind == EvKind::Write) {
@@ -2584,6 +2655,39 @@ inline Result check_race(const std::vector< BmcEvent >& inputA,
       }
       return true;
     };
+    // Native cells are whole-width objects. No post-publication plain alias,
+    // partial native alias or integer-width reinterpretation enters this subset.
+    struct NativeAccess {std::size_t trace, step; const BmcEvent* event; bool atomic, initialization;};
+    std::vector< NativeAccess > cell_accesses;
+    for (std::size_t id = 0; id < traces.size(); ++id) {
+      bool published = false;
+      for (std::size_t i = 0; i < traces[id].events.size(); ++i) {
+        const auto& e = traces[id].events[i];
+        published |= e.kind == EvKind::Create;
+        if (e.kind != EvKind::Read && e.kind != EvKind::Write && !e.zero_fill) continue;
+        cell_accesses.push_back({id, i, &e, bool(native_sc_source_descriptor(e.stmt)),
+            traces[id].root->name() == "main" && e.stmt->code()->function_or_null() == traces[id].root &&
+            !published && (e.kind == EvKind::Write || e.zero_fill)});
+      }
+    }
+    for (std::size_t i = 0; i < cell_accesses.size(); ++i)
+      for (std::size_t j = 0; j < i; ++j) {
+        const auto& a = cell_accesses[i]; const auto& b = cell_accesses[j];
+        if (!a.atomic && !b.atomic) continue;
+        const auto& x = *a.event; const auto& y = *b.event;
+        const bool same = x.base ? x.base == y.base : x.heap_allocation ? same_heap_object(x, y) :
+            x.local_base && x.local_base == y.local_base &&
+            (a.trace == b.trace || (x.shared_main_local && y.shared_main_local));
+        if (!same) continue;
+        z3::expr ax(ctx), by(ctx);
+        if (!encode_offset(x, ax, caches[a.trace], traces[a.trace].value_prefix(), a.step) ||
+            !encode_offset(y, by, caches[b.trace], traces[b.trace].value_prefix(), b.step))
+          return Result(Status::Unsupported);
+        auto disjoint = ax + ctx.int_val(x.width) <= by || by + ctx.int_val(y.width) <= ax;
+        const bool compatible = (a.atomic && b.atomic) ||
+            (!a.atomic && a.initialization) || (!b.atomic && b.initialization);
+        s.add(compatible && x.width == y.width ? ax == by || disjoint : disjoint);
+      }
     // Check intermediate offsets even when a later GEP returns in bounds.
     // Unproved poison is unsupported, including unused executed definitions.
     for (std::size_t id = 0; id < traces.size(); ++id) {

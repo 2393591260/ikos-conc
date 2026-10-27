@@ -314,6 +314,10 @@ add_concurrency_test(atomic-unordered "${CONCURRENCY_ROOT}/scripts/test_bmc_atom
 add_concurrency_test(atomic-unordered-lp64 "${CONCURRENCY_ROOT}/scripts/test_bmc_atomic_unordered.py"
                      --ikos "${CONCURRENCY_IKOS}" --bits 64)
 foreach(bits 32 64)
+  add_concurrency_test(native-sc-${bits} "${CONCURRENCY_ROOT}/scripts/test_bmc_native_sc.py"
+                       --ikos "${CONCURRENCY_IKOS}" --bits ${bits})
+endforeach()
+foreach(bits 32 64)
   add_concurrency_test(p0-${bits}
     "${CONCURRENCY_ROOT}/docs/review-repros/bmc-2026-10-08/run.py"
     --ikos "${CONCURRENCY_IKOS}" --bits ${bits})

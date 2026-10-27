@@ -9,6 +9,7 @@ import subprocess
 import signal
 import sys
 import tempfile
+from types import SimpleNamespace
 from validate_bmc_execution import Frame, Replay, Reject, Thread, Unsupported, check
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -16,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def direct_contract(bits):
     width, word = (24, 4) if bits == 32 else (40, 8)
     replay = Replay.__new__(Replay)
+    replay.native_sc = SimpleNamespace(groups={})
     replay.program = dict(pointer_bits=bits, little_endian=True, target_triple='i386-pc-linux-gnu' if bits == 32 else 'x86_64-pc-linux-gnu')
     replay.recursive_mutex_profile = True
     replay.atomic_owner = None

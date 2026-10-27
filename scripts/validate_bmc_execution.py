@@ -77,6 +77,237 @@ class Thread:
     finished: bool = False
 
 
+class NativeSCExecution:
+    """Exact native integer SC groups over Replay's actual frames/memory/VCs."""
+    OPS = {'load', 'store', 'xchg', 'add', 'sub', 'and', 'or', 'xor', 'cas'}
+
+    def __init__(self, replay):
+        self.r = replay
+        self.groups, self.roles = {}, {}
+        self.cells, self.history = {}, []
+        self.owner = None
+        self.published = False
+        self.main_returned = False
+        self.native_values = {}
+        for inst in replay.instructions.values():
+            value = inst.get('result')
+            if value and 'native_id' in value:
+                self.native_values.setdefault(value['native_id'], []).append(value)
+        for fn in replay.functions.values():
+            for value in fn.get('parameters', []):
+                if 'native_id' in value:
+                    self.native_values.setdefault(value['native_id'], []).append(value)
+        for name, trace in replay.traces.items():
+            steps = trace['steps']; at = 0
+            while at < len(steps):
+                inst = replay.instructions[steps[at]['statement']]
+                d = inst.get('native_sc')
+                if not d:
+                    at += 1; continue
+                require(d.get('operation') in self.OPS and d.get('bits') in (8,16,32,64) and
+                        d.get('order') == 'seq_cst' and d.get('failure_order') == 'seq_cst' and
+                        d.get('scope') == 'system' and type(d.get('weak')) is bool and
+                        type(d.get('volatile')) is bool and type(d.get('alignment')) is int and
+                        d['alignment'] >= d['bits']//8 and d['alignment'] & (d['alignment']-1) == 0,
+                        'native SC descriptor')
+                op = d['operation']
+                require(d.get('native_order') == 7 and d.get('native_scope') == 1 and
+                        d.get('address_space') == 0 and d.get('native_opcode') ==
+                        ('cmpxchg' if op == 'cas' else op if op in ('load','store') else 'atomicrmw'),
+                        'raw native SC source facts')
+                require(op == 'cas' or d['weak'] is False, 'weak flag on non-CAS')
+                require(('argument' in d) == (op != 'load') and ('expected' in d) == (op == 'cas'),
+                        'native operation operand inventory')
+                if op == 'cas':
+                    require(d.get('native_failure_order') == 7, 'raw native CAS failure order')
+                elif op not in ('load','store'):
+                    require(d.get('native_rmw') == dict(xchg=0,add=1,sub=2,**{'and':3,'or':5,'xor':6})[op],
+                            'raw native RMW operation')
+                for key in ('argument','expected'):
+                    if key not in d: continue
+                    raw=d[key]
+                    require(isinstance(raw,dict) and
+                            ((raw.get('kind') == 'integer' and raw.get('bits') == d['bits'] and
+                              0 <= int(raw['value']) < (1 << d['bits'])) or
+                             (raw.get('kind') == 'native' and isinstance(raw.get('id'),str) and raw.get('bits') == d['bits'])),
+                            'native raw scalar input shape')
+                begin = at
+                def member(role, kind):
+                    nonlocal at
+                    require(at < len(steps), 'partial native atomic group')
+                    step = steps[at]; ins = replay.instructions[step['statement']]
+                    require(ins.get('native_sc') == d and ins['kind'] == kind and
+                            'synthetic_event' not in step, 'native member/source identity')
+                    self.roles[(name,at)] = role
+                    at += 1
+                    return ins
+                def mem(ins, read):
+                    t = ins['result']['type'] if read else ins['operands'][1]['type']
+                    require(ins['atomic'] is True and ins['ordering'] == 6 and
+                            ins['volatile'] == d['volatile'] and ins['alignment'] == d['alignment'] and
+                            t['kind'] == 'integer' and t['bits'] == d['bits'] and
+                            int(t['size']) == d['bits']//8 and
+                            self.matches(ins['operands'][0],d['pointer']), 'native memory binding')
+                op = d['operation']
+                if op == 'store':
+                    w=member('write','store'); mem(w,False)
+                    require(self.matches(w['operands'][1],d['argument']), 'native store operand')
+                else:
+                    l=member('read','load'); mem(l,True)
+                    if op not in ('load','cas'):
+                        if op == 'xchg':
+                            value = None
+                        else:
+                            b=member('op','binary')
+                            require(b['operands'][0] == l['result'] and
+                                    self.matches(b['operands'][1],d['argument']) and
+                                    BIN.get(b['operator']) == op and b.get('no_wrap') is False and
+                                    b.get('exact') is False and b['result']['type'] == l['result']['type'],
+                                    'native RMW operation binding')
+                            value=b['result']
+                        w=member('write','store'); mem(w,False)
+                        require(w['operands'][0] == l['operands'][0] and
+                                (w['operands'][1] == value if value else self.matches(w['operands'][1],d['argument'])),
+                                'native RMW write binding')
+                    elif op == 'cas':
+                        guard = None
+                        if at < len(steps) and replay.instructions[steps[at]['statement']]['kind'] == 'compare':
+                            guard=member('guard','compare')
+                        flag=member('flag','assign'); bit=flag['operands'][0]
+                        require(bit['kind'] == 'integer' and bit['type']['bits'] == 1 and
+                                flag['result']['type']['bits'] == 1, 'native CAS flag binding')
+                        success=int(bit['value']) % 2 != 0
+                        if success or not d['weak']:
+                            require(guard is not None and guard['operands'][0] == l['result'] and
+                                    self.matches(guard['operands'][1],d['expected']) and
+                                    CMP.get(guard['predicate']) == ('eq' if success else 'ne'),
+                                    'native CAS compare binding')
+                        else:
+                            require(guard is None, 'weak failure member shape')
+                        if success:
+                            w=member('write','store'); mem(w,False)
+                            require(w['operands'][0] == l['operands'][0] and
+                                    self.matches(w['operands'][1],d['argument']), 'native CAS desired binding')
+                        a=member('insert_old','insert'); b=member('insert_flag','insert')
+                        require(a['operands'][0]['kind'] == 'undef' and
+                                int(a['operands'][1]['value']) == 0 and a['operands'][2] == l['result'] and
+                                b['operands'][0] == a['result'] and
+                                int(b['operands'][1]['value']) == d['success_offset'] and
+                                b['operands'][2] == flag['result'], 'native CAS aggregate reconstruction')
+                        d = dict(d, success=success)
+                for i in range(begin,at):
+                    self.groups[(name,i)] = (begin,at,d)
+        # This is a native-only execution obligation. A completed source main
+        # ends the process; pthread_exit is a distinct call. Check the retained
+        # clock schedule independently, including equality with a child event.
+        if self.groups:
+            main_blocks = set(replay.functions['main']['blocks'])
+            for name, trace in replay.traces.items():
+                if trace['entry'] != 'main':
+                    continue
+                for i, step in enumerate(trace['steps']):
+                    ins = replay.instructions[step['statement']]
+                    if ins['kind'] != 'return' or ins['block'] not in main_blocks:
+                        continue
+                    require(name != 'startup' and i + 1 == len(trace['steps']),
+                            'native SC main Return in serialized startup or before trace end')
+                    returned = int(step['clock'])
+                    for other, child in replay.traces.items():
+                        if other in ('startup', name):
+                            continue
+                        require(all(int(event['clock']) < returned for event in child['steps']),
+                                'native SC child event at/after main Return')
+        # A tied logical event belongs to one complete group only. No other
+        # physical thread or unrelated source instruction may share its clock.
+        clocks = {}
+        for name,trace in replay.traces.items():
+            if name == 'startup': continue
+            prev = None
+            for i,step in enumerate(trace['steps']):
+                t=int(step['clock']); group=self.groups.get((name,i))
+                token=(name,group[0]) if group else (name,i)
+                if prev is not None:
+                    pt,pg=prev
+                    require(t == pt if group and pg == token else t > pt, 'logical native program order')
+                prev=t,token
+                clocks.setdefault(t,[]).append((token,group is not None))
+        for same in clocks.values():
+            if any(native for _,native in same):
+                require(len({token for token,_ in same}) == 1, 'interleaved native logical event')
+
+    @staticmethod
+    def matches(value, raw):
+        if raw.get('kind') == 'integer':
+            return (value.get('kind') == 'integer' and value['type'].get('bits') == raw['bits'] and
+                    int(value['value']) % (1 << raw['bits']) == int(raw['value']))
+        return (raw.get('kind') == 'native' and value.get('native_id') == raw.get('id') and
+                ((raw.get('bits') == 0 and value.get('type',{}).get('kind') == 'pointer') or
+                 (value.get('type',{}).get('kind') == 'integer' and
+                  value['type'].get('bits') == raw.get('bits'))))
+
+    def raw_value(self, raw, frame):
+        if raw['kind'] == 'integer': return int(raw['value'])
+        candidates=[]
+        for value in self.native_values.get(raw.get('id'),[]):
+            v=self.r.value(value,frame)
+            if v is not UNDEFINED and self.matches(value,raw):
+                require(type(v) is int, 'native scalar input is not a defined integer')
+                candidates.append(v)
+        require(candidates and all(v == candidates[0] for v in candidates), 'native dynamic raw operand binding')
+        return candidates[0]
+
+    def begin(self, name, index, thread, frame):
+        group=self.groups.get((name,index))
+        token=(thread.instance,frame.uid,name,group[0]) if group else None
+        require(self.owner is None or self.owner == token, 'interleaved native group/frame')
+        if group:
+            if index == group[0]:
+                require(self.owner is None, 'duplicate native group start')
+                self.owner=token
+                for key in ('argument','expected'):
+                    if key in group[2]: self.raw_value(group[2][key],frame)
+            return index == group[0]
+        return True
+
+    def end(self, name, index):
+        group=self.groups.get((name,index))
+        if group and index+1 == group[1]: self.owner=None
+
+    def access(self, obj, off, size, native, initialization):
+        if not self.groups: return
+        for old_obj,old_off,old_size,old_native,old_init in self.history:
+            if old_obj != obj or old_off+old_size <= off or off+size <= old_off or not (native or old_native): continue
+            require(off==old_off and size==old_size, 'partial/different-width native atomic alias')
+            if not (native and old_native):
+                require(initialization or old_init, 'mixed published plain/native atomic cell')
+        self.history.append((obj,off,size,native,initialization))
+
+    def memory(self, name, index, inst, step, pointer, t, thread, frame, write):
+        if not self.groups: return
+        group=self.groups.get((name,index)); size=int(t['size']); obj,off=self.r.region(pointer,size,inst['alignment'])
+        native=group is not None
+        initialization=not native and write and thread.instance == 0 and frame.function == 'main' and not self.published
+        self.access(obj,off,size,native,initialization)
+        if not native: return
+        d=group[2]; key=(obj,off,size)
+        require(self.r.objects[obj].get('alignment',0) >= d['alignment'], 'native object alignment')
+        if not write:
+            sources=[self.r.writers.get((obj,off+b),'initial') for b in range(size)]
+            require('read_from' in step and step['read_from'] == sources and all(s==sources[0] for s in sources),
+                    'native exact whole-cell latest modification rf')
+            release=self.cells.get(key)
+            if release:
+                require(sources[0] == release['source'], 'native modification identity')
+                self.r.join_vc(thread.vc,release['vc'])
+            if d['operation'] == 'cas':
+                old=self.r.load(pointer,t,inst['alignment']) % (1 << d['bits'])
+                expected=self.raw_value(d['expected'],frame) % (1 << d['bits'])
+                require((old==expected) if d['success'] else (d['weak'] or old!=expected), 'native CAS outcome')
+        else:
+            # Called before store; its writer identity will be exactly this step.
+            self.cells[key]=dict(source=dict(trace=name,step=index),vc=dict(thread.vc))
+
+
 class Replay:
     def __init__(self, program, certificate):
         require(certificate['schema'] == 1, 'certificate schema')
@@ -133,6 +364,7 @@ class Replay:
         self.stdout_vc = {}
         self.once_states = {}
         self.finite_once_families = {}
+        self.native_sc = NativeSCExecution(self)
         self.once_profile = any("once_role" in s for t in self.traces.values() for s in t["steps"])
         require(certificate.get('mutex_profile') in (None, 'gnu-x86-recursive-v1'), 'unknown mutex profile')
         self.recursive_mutex_profile = certificate.get('mutex_profile') == 'gnu-x86-recursive-v1'
@@ -635,6 +867,8 @@ class Replay:
                     meta.get('native_alignment') == meta.get('alignment'),
                     'private zero array layout')
             self.encoded_address(step, pointer, length)
+            self.native_sc.access(obj,offset,length,False,
+                thread.instance == 0 and frame.function == 'main' and not self.native_sc.published)
             self.memory[obj][:] = [0] * length
             for i in range(length):
                 self.writers[(obj, i)] = self.current_occurrence
@@ -1757,6 +1991,8 @@ class Replay:
         require(trace_id in self.threads, 'thread executes before actual create')
         thread = self.threads[trace_id]
         require(not thread.finished, 'execution after return')
+        if self.native_sc.groups:
+            require(not self.native_sc.main_returned, 'native SC execution after main Return')
         if getattr(self, 'recursive_mutex_profile', False):
             require(not getattr(self, 'recursive_main_returned', False),
                     'recursive profile execution after main Return')
@@ -1767,7 +2003,9 @@ class Replay:
             require(not any(t.finished and self.traces[n]['entry'] == 'main'
                             for n, t in self.threads.items()), 'once profile execution after main Return')
         require(self.atomic_owner in (None,thread.instance), 'interleaved verifier atomic block')
-        thread.vc[thread.instance] = thread.vc.get(thread.instance,0)+1
+        frame = thread.frames[-1]
+        if self.native_sc.begin(trace_id,index,thread,frame):
+            thread.vc[thread.instance] = thread.vc.get(thread.instance,0)+1
         self.current_occurrence = dict(trace=trace_id, step=index)
         if 'synthetic_event' in step:
             pending = self.pending_markers.get(trace_id, [])
@@ -1808,7 +2046,22 @@ class Replay:
         require(trace_id not in self.pending_markers, 'missing synthetic boundary')
         frame = thread.frames[-1]; inst=self.instructions[step['statement']]
         self.advance(frame,step['statement'])
-        kind=inst['kind']; operands=inst['operands']; values=[self.value(v,frame) for v in operands]
+        kind=inst['kind']; operands=inst['operands']
+        if inst.get('native_compiler_barrier'):
+            b=inst['native_compiler_barrier']
+            require(kind == 'call' and 'result' not in inst and 'encoded_result' not in step and
+                    'expanded_callee' not in step and len(operands) == 1 and
+                    b.get('asm') == '' and b.get('constraints') in
+                    ('~{memory}','~{memory},~{dirflag},~{fpsr},~{flags}') and
+                    b.get('dialect') == 0 and b.get('side_effects') is True and
+                    b.get('align_stack') is False and b.get('can_throw') is False and b.get('arguments') == 0 and
+                    b.get('void') is True and b.get('unused') is True and
+                    b.get('operand_bundles') == 0 and b.get('opcode') == 'call' and
+                    isinstance(b.get('triple'),str) and b['triple'].startswith
+                    (('x86_64','i386','i486','i586','i686')),
+                    'raw empty native compiler barrier facts')
+            return
+        values=[self.value(v,frame) for v in operands]
         if inst.get('abstract_initializer'):
             require('encoded_result' not in step, 'abstract initializer promoted to model value')
             self.assign(frame,inst,step,UNDEFINED); return
@@ -1852,7 +2105,32 @@ class Replay:
                 elif op==3 and value & (1<<(src['bits']-1)): value=(value%(1<<src['bits']))-(1<<src['bits'])
                 result=integer(value,dst)
             else: raise Unsupported('cast')
-        elif kind=='binary': result=self.arithmetic(inst,values)
+        elif kind=='binary':
+            d=inst.get('native_sc')
+            if d:
+                require(self.native_sc.roles.get((trace_id,index)) == 'op', 'unbound native arithmetic')
+                a,b=values; op=d['operation']
+                result={'add':lambda:a+b,'sub':lambda:a-b,'and':lambda:a&b,
+                        'or':lambda:a|b,'xor':lambda:a^b}[op]()
+                result=integer(result,inst['result']['type'])
+            else: result=self.arithmetic(inst,values)
+        elif kind=='insert':
+            require(self.native_sc.roles.get((trace_id,index)) in ('insert_old','insert_flag'), 'unbound aggregate insert')
+            aggregate,offset,element=values
+            result={} if aggregate is UNDEFINED else dict(aggregate)
+            result[int(offset)]=(element,operands[2]['type'],inst['native_sc']['id'])
+        elif kind=='extract':
+            native=inst.get('native_sc_extract'); aggregate,offset=values
+            require(native and isinstance(aggregate,dict) and int(offset)==native['offset'] and
+                    int(offset) in aggregate, 'native CAS extract source/offset')
+            value,t,source=aggregate[int(offset)]
+            descriptors=[g[2] for g in self.native_sc.groups.values() if g[2]['id']==source]
+            require(descriptors and source==native['source'] and native.get('index') in (0,1) and
+                    int(offset)==(0 if native['index']==0 else descriptors[0]['success_offset']) and
+                    t['kind']==inst['result']['type']['kind']=='integer' and
+                    t['bits']==inst['result']['type']['bits']==
+                    (descriptors[0]['bits'] if native['index']==0 else 1), 'native CAS extract field')
+            result=integer(value,inst['result']['type'])
         elif kind=='compare':
             a,b=values; predicate=inst['predicate']; op=CMP.get(predicate)
             if predicate in (35,36):
@@ -1881,9 +2159,11 @@ class Replay:
         elif kind=='pointer_shift':
             result=self.pointer_shift(inst, values)
         elif kind in ('load','store'):
-            if inst['atomic']: raise Unsupported('atomic memory operation')
+            if inst['atomic'] and (trace_id,index) not in self.native_sc.groups:
+                raise Unsupported('atomic memory operation')
             pointer=values[0]; t=inst['result']['type'] if kind=='load' else operands[1]['type']; width=int(t['size'])
             self.encoded_address(step,pointer,width)
+            self.native_sc.memory(trace_id,index,inst,step,pointer,t,thread,frame,kind=='store')
             if kind=='load':
                 result=self.load(pointer,t,inst['alignment'])
                 if 'read_from' in step:
@@ -1891,7 +2171,8 @@ class Replay:
                     require(step['read_from'] == sources, 'SMT read source differs from actual last write')
             else: self.store(pointer,values[1],t,inst['alignment'])
             self.accesses[(trace_id,index)]=dict(instance=thread.instance,object=pointer[0],offset=pointer[1],width=width,
-                                                write=kind=='store',vc=dict(thread.vc),atomic=self.atomic_owner==thread.instance)
+                                                write=kind=='store',vc=dict(thread.vc),atomic=self.atomic_owner==thread.instance,
+                                                **({'native_atomic':True} if (trace_id,index) in self.native_sc.groups else {}))
         elif kind=='call':
             require(isinstance(values[0],tuple) and values[0][0]=='function', 'indirect callee')
             name=values[0][1]; fn=self.functions[name]
@@ -1899,6 +2180,7 @@ class Replay:
                 require(self.creator_graph, 'nested actual Create missing graph topology')
             if self.creator_graph:
                 self.graph_call_scope(name, inst)
+            if name in ('pthread_create','ar.pthread.create'): self.native_sc.published=True
             if name == 'pthread_once' and fn['declaration']:
                 self.once_call(values[1:], inst, step, trace_id, index, thread, frame)
                 return
@@ -1948,6 +2230,8 @@ class Replay:
                 require(thread.frames and thread.frames[-1].pending is not None, 'atomic invocation boundary')
                 self.marker(trace_id, thread.frames[-1].pending[1]['statement'], 'atomic_end')
             if not thread.frames:
+                if frame.function == 'main' and self.native_sc.groups:
+                    self.native_sc.main_returned = True
                 if frame.function == 'main' and getattr(self, 'recursive_mutex_profile', False):
                     self.recursive_main_returned = True
                 thread.finished=True; return
@@ -1957,6 +2241,7 @@ class Replay:
             self.assign(parent,call,call_step,result); return
         else: raise Unsupported('instruction '+kind)
         self.assign(frame,inst,step,result)
+        self.native_sc.end(trace_id,index)
 
     def run(self):
         for trace in self.traces.values():
@@ -1988,7 +2273,9 @@ class Replay:
             if name=='startup': continue
             require(trace['steps'], 'empty selected prefix')
             times=[int(s['clock']) for s in trace['steps']]
-            require(all(a<b for a,b in zip(times,times[1:])), 'program-order clocks')
+            require(all(a<b or (a==b and self.native_sc.groups.get((name,i)) and
+                    self.native_sc.groups.get((name,i+1)) == self.native_sc.groups[(name,i)])
+                    for i,(a,b) in enumerate(zip(times,times[1:]))), 'program-order clocks')
             events.extend((int(s['clock']),name,i,s) for i,s in enumerate(trace['steps']))
         for _,name,i,step in sorted(events): self.execute(name,i,step)
         if self.creator_graph:
@@ -1997,6 +2284,7 @@ class Replay:
                      for created in self.created.values()} == self.graph_bindings and
                     len(self.created) == len(self.graph_bindings),
                     'creator graph executed Creates differ from bindings')
+        require(self.native_sc.owner is None, 'open native atomic group')
         require(self.atomic_owner is None and not self.pending_markers, 'open synthetic/atomic prefix')
         require(all(f.once_pending is None for t in self.threads.values() for f in t.frames) and
                 all(s['phase'] == 'done' for s in self.once_states.values()), 'open once execution')
@@ -2005,6 +2293,7 @@ class Replay:
         for target in targets:
             key=(target['trace'],target['step'])
             require(key in self.accesses, 'target is not an actual memory occurrence')
+            require(not self.accesses[key].get('native_atomic'), 'native atomic is not an ordinary race target')
             require(target['trace'] in ('a', 'b'), 'target trace identity')
             selected.append(self.accesses[key])
         a,b=selected

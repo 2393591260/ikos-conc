@@ -1,5 +1,7 @@
 #pragma once
 #include <ikos/analyzer/analysis/source_c_abi.hpp>
+#include <llvm/ADT/SmallString.h>
+#include <ikos/analyzer/analysis/native_sc_source.hpp>
 
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <map>
@@ -19,6 +21,49 @@ class ReplaySnapshot {
   std::map< ar::BasicBlock*, std::string > _blocks;
   std::map< llvm::BasicBlock*, std::string > _native_blocks;
   std::map< llvm::Value*, ar::Value* > _native_values;
+  std::map< llvm::Value*, std::string > _native_ids;
+  std::string native_id(llvm::Value* v) {
+    return _native_ids.emplace(v, "nv" + std::to_string(_native_ids.size())).first->second;
+  }
+  JsonDict native_operand(llvm::Value* v) {
+    if (auto* c = llvm::dyn_cast< llvm::ConstantInt >(v)) {
+      llvm::SmallString< 64 > bits; c->getValue().toString(bits, 10, false);
+      return {{"kind", "integer"}, {"bits", c->getBitWidth()}, {"value", bits.str().str()}};
+    }
+    return {{"kind", "native"}, {"id", native_id(v)},
+            {"bits", v->getType()->isIntegerTy() ? v->getType()->getIntegerBitWidth() : 0}};
+  }
+  JsonDict native_atomic(ar::Statement* stmt) {
+    auto d = native_sc_source_descriptor(stmt);
+    if (!d) return {{"operation", "unsupported"}};
+    JsonDict out{{"id", native_id(d.instruction)}, {"operation", d.operation},
+        {"bits", d.bits}, {"alignment", d.alignment}, {"scope", "system"},
+        {"order", "seq_cst"}, {"failure_order", "seq_cst"},
+        {"weak", d.weak}, {"volatile", d.volatile_access}, {"pointer", native_operand(d.pointer)}};
+    out.put("native_opcode", d.instruction->getOpcodeName());
+    out.put("address_space", llvm::cast< llvm::PointerType >(d.pointer->getType())->getAddressSpace());
+    if (auto* x = llvm::dyn_cast< llvm::LoadInst >(d.instruction)) {
+      out.put("native_order", static_cast< unsigned >(x->getOrdering()));
+      out.put("native_scope", static_cast< unsigned >(x->getSyncScopeID()));
+    } else if (auto* x = llvm::dyn_cast< llvm::StoreInst >(d.instruction)) {
+      out.put("native_order", static_cast< unsigned >(x->getOrdering()));
+      out.put("native_scope", static_cast< unsigned >(x->getSyncScopeID()));
+    } else if (auto* x = llvm::dyn_cast< llvm::AtomicRMWInst >(d.instruction)) {
+      out.put("native_order", static_cast< unsigned >(x->getOrdering()));
+      out.put("native_scope", static_cast< unsigned >(x->getSyncScopeID()));
+      out.put("native_rmw", static_cast< unsigned >(x->getOperation()));
+    } else if (auto* x = llvm::dyn_cast< llvm::AtomicCmpXchgInst >(d.instruction)) {
+      out.put("native_order", static_cast< unsigned >(x->getSuccessOrdering()));
+      out.put("native_failure_order", static_cast< unsigned >(x->getFailureOrdering()));
+      out.put("native_scope", static_cast< unsigned >(x->getSyncScopeID()));
+    }
+    if (d.argument) out.put("argument", native_operand(d.argument));
+    if (d.expected) out.put("expected", native_operand(d.expected));
+    if (auto* cx = llvm::dyn_cast< llvm::AtomicCmpXchgInst >(d.instruction))
+      out.put("success_offset", cx->getModule()->getDataLayout().getStructLayout(
+          llvm::cast< llvm::StructType >(cx->getType()))->getElementOffset(1));
+    return out;
+  }
 
   std::string variable_id(ar::Value* value) {
     return _variables.emplace(value, "v" + std::to_string(_variables.size())).first->second;
@@ -73,6 +118,8 @@ public:
 
   JsonDict value(ar::Value* v, unsigned depth = 0) {
     JsonDict out; out.put("type", type(v->type()));
+    if (auto* variable = core::dyn_cast< ar::Variable >(v))
+      if (variable->has_frontend()) out.put("native_id", native_id(variable->frontend< llvm::Value >()));
     if (depth >= 32) {out.put("kind", "unsupported"); return out;}
     if (auto* c = core::dyn_cast< ar::IntegerConstant >(v)) {
       out.put("kind", "integer"); out.put("value", c->value().to_z_number().str());
@@ -134,6 +181,26 @@ public:
   JsonDict statement(ar::Statement* stmt) {
     JsonDict out;
     out.put("abstract_initializer", abstract_initializer(stmt));
+    if (native_sc_source_descriptor(stmt)) out.put("native_sc", native_atomic(stmt));
+    if (native_sc_empty_compiler_barrier(stmt)) {
+      auto* call = llvm::cast< llvm::CallInst >(native_sc_source(stmt));
+      auto* code = llvm::cast< llvm::InlineAsm >(call->getCalledOperand());
+      out.put("native_compiler_barrier", JsonDict{{"asm", code->getAsmString()},
+          {"constraints", code->getConstraintString()}, {"dialect", static_cast< unsigned >(code->getDialect())},
+          {"side_effects", code->hasSideEffects()}, {"align_stack", code->isAlignStack()},
+          {"can_throw", code->canThrow()},
+          {"arguments", call->arg_size()}, {"void", call->getType()->isVoidTy()},
+          {"unused", call->use_empty()}, {"operand_bundles", call->getNumOperandBundles()},
+          {"opcode", call->getOpcodeName()}, {"triple", call->getModule()->getTargetTriple()}});
+    }
+    if (auto* x = core::dyn_cast< ar::ExtractElement >(stmt)) {
+      auto* raw = llvm::dyn_cast_or_null< llvm::ExtractValueInst >(native_sc_source(stmt));
+      auto* cx = raw ? llvm::dyn_cast< llvm::AtomicCmpXchgInst >(raw->getAggregateOperand()) : nullptr;
+      if (cx && raw->getNumIndices() == 1 && *raw->idx_begin() <= 1)
+        out.put("native_sc_extract", JsonDict{{"source", native_id(cx)},
+            {"index", *raw->idx_begin()}, {"offset", cx->getModule()->getDataLayout().getStructLayout(
+                llvm::cast< llvm::StructType >(cx->getType()))->getElementOffset(*raw->idx_begin())}});
+    }
     // Structured opcodes/operands carry semantics. Text dumps recurse without
     // a bound through legal recursive C types, including unused declarations.
     out.put("block", _blocks.at(stmt->parent()));
@@ -216,10 +283,14 @@ public:
     } else if (auto* load = core::dyn_cast< ar::Load >(stmt)) {
       out.put("kind", "load"); out.put("alignment", load->alignment());
       out.put("atomic", load->is_atomic()); out.put("volatile", load->is_volatile());
+      out.put("ordering", static_cast< unsigned >(load->ordering()));
     } else if (auto* store = core::dyn_cast< ar::Store >(stmt)) {
       out.put("kind", "store"); out.put("alignment", store->alignment());
       out.put("atomic", store->is_atomic()); out.put("volatile", store->is_volatile());
-    } else if (core::isa< ar::ReturnValue >(stmt)) out.put("kind", "return");
+      out.put("ordering", static_cast< unsigned >(store->ordering()));
+    } else if (core::isa< ar::InsertElement >(stmt)) out.put("kind", "insert");
+    else if (core::isa< ar::ExtractElement >(stmt)) out.put("kind", "extract");
+    else if (core::isa< ar::ReturnValue >(stmt)) out.put("kind", "return");
     else if (core::isa< ar::CallBase >(stmt)) {
       out.put("kind", "call"); out.put("abstract_initializer", abstract_initializer(stmt));
       if (stmt->has_frontend()) {

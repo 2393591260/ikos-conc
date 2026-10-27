@@ -163,7 +163,8 @@ Counterexample export_counterexample(const std::vector< ExecutionTrace >& traces
               {"offset", pointer.const_off.str()}, {"width", 0}});
         }
       }
-      if (e.kind == EvKind::Read && (e.base != 0 || e.heap_allocation != nullptr || e.shared_main_local) && e.width <= 256 &&
+      if (e.kind == EvKind::Read && (e.base != 0 || e.heap_allocation != nullptr || e.shared_main_local ||
+          (e.local_base != nullptr && native_sc_source_descriptor(e.stmt))) && e.width <= 256 &&
           (e.var_id == 0 || replay_offsets.count(&e) != 0))
         step.put("read_from", read_sources(e, trace_index, i));
       if (e.base != 0 || e.local_base != nullptr || e.heap_allocation != nullptr) {

@@ -538,14 +538,14 @@ void FunctionImporter::translate_atomic_rmw(BasicBlockTranslation* bb_translatio
   // %old = load atomic ptr
   ar::InternalVariable* old_var =
       ar::InternalVariable::create(this->_body, val_type);
-  auto load = ar::Load::create(old_var, pointer, align, /*volatile=*/false, ord);
+  auto load = ar::Load::create(old_var, pointer, align, rmw->isVolatile(), ord);
   load->set_frontend< llvm::Value >(rmw);
   bb_translation->add_statement(std::move(load));
 
   if (rmw->getOperation() == llvm::AtomicRMWInst::BinOp::Xchg) {
     // exchange: store the value; the result (old) is already in old_var.
     auto store =
-        ar::Store::create(pointer, val, align, /*volatile=*/false, ord);
+        ar::Store::create(pointer, val, align, rmw->isVolatile(), ord);
     store->set_frontend< llvm::Value >(rmw);
     bb_translation->add_statement(std::move(store));
     this->mark_variable_mapping(rmw, old_var);
@@ -565,7 +565,7 @@ void FunctionImporter::translate_atomic_rmw(BasicBlockTranslation* bb_translatio
 
   // store atomic ptr, %new
   auto store =
-      ar::Store::create(pointer, new_var, align, /*volatile=*/false, ord);
+      ar::Store::create(pointer, new_var, align, rmw->isVolatile(), ord);
   store->set_frontend< llvm::Value >(rmw);
   bb_translation->add_statement(std::move(store));
   this->mark_variable_mapping(rmw, old_var);
