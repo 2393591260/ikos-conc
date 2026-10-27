@@ -25,7 +25,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='numeric-argument-') as folder:
         work = Path(folder)
         for wide in (False, True):
-            for case in (0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17, 18, 20):
+            for case in (0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17, 18, 20, 21):
                 source, report = work / 'renamed.c', work / 'report.json'
                 source.write_text(f'#define CASE {case}\n' + ('#define WIDE\n' if wide else '') + fixture)
                 proc = subprocess.run(command + ['--analyses=race', '--concurrency=auto',
@@ -39,7 +39,7 @@ def main():
                 metadata = validate_race_result(data)
                 # ILP32 truncates CASE15 before packing; LP64 preserves an invalid index.
                 expected = ('SAFE' if case == 1 else
-                            'FALSE' if case in (0, 16) or (case == 15 and args.bits == 32)
+                            'FALSE' if case in (0, 16) or (case == 21 and args.bits == 32) or (case == 15 and args.bits == 32)
                             else 'UNKNOWN')
                 assert metadata['verdict'] == expected, (case, wide, metadata, proc.stdout)
                 executions = validate_report(data)
@@ -47,6 +47,9 @@ def main():
                     assert not any(row['info'].get('counterexample')
                                    for row in data['reports']), data
                     assert not executions, executions
+                elif case in (18, 21) and args.bits == 64:
+                    assert metadata['verdict'] == 'UNKNOWN' and metadata['coverage'] == 'Checked', metadata
+                    assert not metadata['obligations'] and not executions, metadata
                 elif expected == 'UNKNOWN':
                     assert metadata['coverage'] == 'Blocked' and any(
                         o['reason'] == 'integer-derived pointer aliasing is not modeled'
@@ -57,7 +60,7 @@ def main():
                     if expected == 'FALSE':
                         assert executions and all(e['status'] == 'ACCEPT' for e in executions), executions
                 print(f'CASE={case}/wide={wide}: {expected}', flush=True)
-    print(f'32 {args.bits}-bit numeric argument controls passed')
+    print(f'34 {args.bits}-bit numeric argument controls passed')
 
 
 if __name__ == '__main__':

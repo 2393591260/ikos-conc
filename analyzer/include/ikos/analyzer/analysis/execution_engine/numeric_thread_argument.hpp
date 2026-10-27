@@ -13,7 +13,7 @@ namespace ikos {
 namespace analyzer {
 
 // Native integer bits need no address-alias model when their entire pointer
-// lifetime is a pthread argument followed only by native ptrtoint (or discard).
+// lifetime is a pthread argument followed only by ptrtoint no wider than the token (or discard).
 // Check both representations: frontend uses alone do not certify transformed AR.
 inline bool numeric_thread_argument(ar::UnaryOperation* cast, Context& ctx) {
   const auto width = ctx.bundle->data_layout().pointers.bit_width;
@@ -49,7 +49,7 @@ inline bool numeric_thread_argument(ar::UnaryOperation* cast, Context& ctx) {
             return false;
           pending.push_back(copy);
         } else if (auto* to_integer = llvm::dyn_cast< llvm::PtrToIntInst >(user)) {
-          if (creator || !to_integer->getType()->isIntegerTy(width)) return false;
+          if (creator || to_integer->getType()->getIntegerBitWidth() > width) return false;
         } else if (auto* call = llvm::dyn_cast< llvm::CallInst >(user)) {
           if (!creator || call->arg_size() != 4 || call->getArgOperand(3) != value ||
               call->hasOperandBundles() || call->isInlineAsm()) return false;
@@ -114,7 +114,7 @@ inline bool numeric_thread_argument(ar::UnaryOperation* cast, Context& ctx) {
             pending.push_back(conversion->result());
           } else {
             auto* result = dyn_cast< ar::IntegerType >(conversion->result()->type());
-            if (creator || !result || result->bit_width() != width ||
+            if (creator || !result || result->bit_width() > width ||
                 (conversion->op() != ar::UnaryOperation::PtrToUI &&
                  conversion->op() != ar::UnaryOperation::PtrToSI)) return false;
           }

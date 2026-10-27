@@ -268,6 +268,28 @@ change with pointer width.
 | Pthread-key effects and race-only memory-free destructors | GNU ILP32 and LP64 | Key selectors and create output remain i32; values/callback arguments are native pointers. Return values stay TOP; no TLS equality, privacy or completion is inferred. |
 | ThreadArgumentWindows | Checked GNU32/64, source-certified default affine family or explicit VarPack Polka plus guards | Native byte windows, sticky observations and closed creation family; exact precreate-store ordering is a separate consumer. Default domain remains Interval. |
 
+ThreadArgumentWindows can also use integer pthread payloads as creation-family
+coordinates in default Interval analysis. A unique main publication stores a
+full native pointer in an immutable, nonescaping global slot before the whole
+zero/+1 creation family. Worker accesses must load that same slot and use the
+actual token as a nonnegative index. Source and AR bindings, every cast, the
+accumulated creator range, final signed index, object identity and complete byte
+span must agree. Narrow pointer-to-integer conversion is accepted only when the
+entire family range fits every conversion; truncation collisions retain the
+pair. This does not treat the token as an address or prove allocation validity.
+Missing, uncertain or conflicting observations withdraw the proof permanently.
+
+The separate numeric-token effect check certifies a closed pointer lifetime;
+it does not certify integer value preservation or confirm a race. The BMC and
+independent execution interpreter still reject non-native pointer/integer
+conversions. Thus a covered LP64 narrow-token program may remain UNKNOWN even
+when a related source-certified disjoint-cell program is SAFE.
+`IKOS_RACE_DISABLE_NUMERIC_ARGUMENT_PRODUCER=1` and
+`IKOS_RACE_DISABLE_NUMERIC_ARGUMENT_CONSUMER=1` independently withdraw the
+numeric window rule. The [dual-ABI controls](../../../scripts/test_numeric_index_windows.py)
+check cast boundaries, slot mutation/escape, wrong bases, overlapping cells and
+actual remaining pairs with each arm disabled.
+
 LockedCreation also supports a closed finite spawn tree whose descendants are
 joined by their actual creators. Every entry has one create occurrence in an
 acyclic activation tree and a distinct native handle slot with one closed join

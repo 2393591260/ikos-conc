@@ -158,6 +158,11 @@ public:
   ar::Function* worker = nullptr;
   ar::CallBase* create = nullptr;
   ar::Store* precreate_store = nullptr;
+  bool numeric_mode = false, numeric_publication_seen = false;
+  ar::UnaryOperation* numeric_argument = nullptr;
+  ar::Store* numeric_publication = nullptr;
+  ar::GlobalVariable* numeric_global = nullptr;
+  llvm::GlobalVariable* numeric_source_global = nullptr;
   ar::Value* base = nullptr;
   ar::InternalVariable* counter = nullptr;
   ar::BinaryOperation* step = nullptr;
@@ -261,9 +266,22 @@ public:
     }
     auto* pointer = dyn_cast_or_null< ar::InternalVariable >(uncast(candidate->argument(3)));
     auto* shift = pointer ? dyn_cast_or_null< ar::PointerShift >(unique_def(pointer)) : nullptr;
-    if (!shift || shift->num_terms() != 1 || shift->parent() != candidate->parent()) return;
-    auto term = shift->term(0);
-    ar::Value* index_value = term.second;
+    if (shift) {
+      if (shift->num_terms() != 1 || shift->parent() != candidate->parent()) return;
+    } else {
+      numeric_argument = pointer
+          ? dyn_cast_or_null< ar::UnaryOperation >(unique_def(pointer)) : nullptr;
+      auto* integer = numeric_argument
+          ? dyn_cast< ar::IntegerType >(numeric_argument->operand()->type()) : nullptr;
+      if (!source_mode || std::getenv("IKOS_RACE_DISABLE_NUMERIC_ARGUMENT_PRODUCER") ||
+          !numeric_argument || !integer || integer->bit_width() != pointer_bits ||
+          numeric_argument->parent() != candidate->parent() ||
+          (numeric_argument->op() != ar::UnaryOperation::SIToPtr &&
+           numeric_argument->op() != ar::UnaryOperation::UIToPtr)) return;
+      numeric_mode = true;
+    }
+    const Z family_stride = shift ? shift->term(0).first.to_z_number() : Z(1);
+    ar::Value* index_value = shift ? shift->term(0).second : numeric_argument->operand();
     // Discover the induction variable through native width adapters only.
     for (unsigned depth = 0; depth < 32; ++depth) {
       auto* variable = dyn_cast< ar::InternalVariable >(index_value);
@@ -280,7 +298,7 @@ public:
     }
     auto* index = dyn_cast< ar::InternalVariable >(index_value);
     auto* integer = index ? dyn_cast< ar::IntegerType >(index->type()) : nullptr;
-    if (!integer || integer->bit_width() > 64 || term.first.to_z_number() <= 0) return;
+    if (!integer || integer->bit_width() > 64 || family_stride <= 0) return;
     auto* body = candidate->parent();
     if (body->num_predecessors() != 1 || body->num_successors() != 1) return;
     auto* header = *body->predecessor_begin();
@@ -321,6 +339,7 @@ public:
       if (stmt == candidate) { after_create = true; continue; }
       if (stmt == advance) { if (!after_create) return; after_step = true; continue; }
       if (stmt == update) { if (!after_step) return; continue; }
+      if (stmt == numeric_argument) continue;
       if (auto* cast = dyn_cast< ar::UnaryOperation >(stmt)) {
         if (cast->op() != ar::UnaryOperation::Bitcast &&
             cast->op() != ar::UnaryOperation::SExt &&
@@ -328,21 +347,23 @@ public:
             (!source_mode || (cast->op() != ar::UnaryOperation::UTrunc &&
                              cast->op() != ar::UnaryOperation::STrunc))) return;
       } else if (auto* store = dyn_cast< ar::Store >(stmt)) {
-        if (!source_mode || after_create || precreate_store) return;
+        if (!source_mode || numeric_mode || after_create || precreate_store) return;
         precreate_store = store;
       } else if (!isa< ar::Comparison >(stmt) && !isa< ar::PointerShift >(stmt)) return;
     }
     for (auto* stmt : *header)
       if (!isa< ar::UnaryOperation >(stmt)) return;
     // A base defined inside the family cannot be a stable coordinate.
-    auto* base_var = dyn_cast_or_null< ar::InternalVariable >(uncast(shift->pointer()));
-    auto* base_def = base_var ? unique_def(base_var) : nullptr;
-    if (!base_def || base_def->parent() == body || base_def->parent() == header ||
-        !isa< ar::CallBase >(base_def)) return;
+    if (!numeric_mode) {
+      auto* base_var = dyn_cast_or_null< ar::InternalVariable >(uncast(shift->pointer()));
+      auto* base_def = base_var ? unique_def(base_var) : nullptr;
+      if (!base_def || base_def->parent() == body || base_def->parent() == header ||
+          !isa< ar::CallBase >(base_def)) return;
+      base = shift->pointer(); stride = family_stride;
+    }
     if (source_mode && !prepare_source(main, source_main, child, source_worker,
-                                       candidate, source, shift, index, advance)) return;
+                                       candidate, source, shift, index, advance, pre)) return;
     create = candidate; worker = child; counter = index; step = advance;
-    base = shift->pointer(); stride = term.first.to_z_number();
     if (source_mode) return; // No anchor allocation or numeric-state mutation.
     auto* type = ar::IntegerType::get(ctx.bundle->context(), pointer_bits, core::Unsigned);
     anchor = ctx.var_factory->get_named_shadow(type, "thread.argument.anchor." + worker->name());
@@ -354,7 +375,7 @@ public:
                       ar::Function* child, llvm::Function* source_worker,
                       ar::CallBase* candidate, llvm::CallInst* source,
                       ar::PointerShift* shift, ar::InternalVariable* index,
-                      ar::BinaryOperation* advance) {
+                      ar::BinaryOperation* advance, ar::BasicBlock* ar_pre) {
     const auto& layout = source->getModule()->getDataLayout();
     const auto abi = pthread_object_layout(pointer_bits, source->getModule());
     auto* api = source->getCalledFunction();
@@ -400,18 +421,28 @@ public:
         }
     auto* gep = llvm::dyn_cast< llvm::GetElementPtrInst >(
         source->getArgOperand(3)->stripPointerCasts());
+    auto* numeric_source = numeric_mode ? llvm::dyn_cast< llvm::IntToPtrInst >(
+        source->getArgOperand(3)->stripPointerCasts()) : nullptr;
     auto* phi = index->has_frontend()
         ? llvm::dyn_cast< llvm::PHINode >(index->frontend< llvm::Value >()) : nullptr;
     auto* source_step = advance->has_frontend()
         ? llvm::dyn_cast< llvm::BinaryOperator >(advance->frontend< llvm::Value >()) : nullptr;
-    if (!gep || gep->getFunction() != source_main || gep->getAddressSpace() != 0 ||
-        gep->getNumIndices() != 1 || !gep->getSourceElementType()->isSized() ||
-        !pointer_binding(candidate->argument(3), source->getArgOperand(3)) ||
-        !pointer_binding(shift->pointer(), gep->getPointerOperand()) ||
-        !source_integer_binding(shift->term(0).second, gep->getOperand(1)) ||
+    if (!pointer_binding(candidate->argument(3), source->getArgOperand(3)) ||
         !phi || phi->getFunction() != source_main || phi->getNumIncomingValues() != 2 ||
         !source_step || source_step->getOpcode() != llvm::Instruction::Add ||
         source_step->getOperand(0) != phi) return false;
+    if (numeric_mode) {
+      if (!numeric_source || numeric_source->getFunction() != source_main ||
+          !numeric_source->getOperand(0)->getType()->isIntegerTy(pointer_bits) ||
+          numeric_source->getType()->getPointerAddressSpace() != 0 ||
+          !numeric_argument->has_frontend() ||
+          numeric_argument->frontend< llvm::Value >() != numeric_source ||
+          !source_integer_binding(numeric_argument->operand(), numeric_source->getOperand(0)))
+        return false;
+    } else if (!gep || gep->getFunction() != source_main || gep->getAddressSpace() != 0 ||
+               gep->getNumIndices() != 1 || !gep->getSourceElementType()->isSized() ||
+               !pointer_binding(shift->pointer(), gep->getPointerOperand()) ||
+               !source_integer_binding(shift->term(0).second, gep->getOperand(1))) return false;
     // LLVM retains a separate increment latch that AR may merge into body.
     // Certify that exact one-way chain; dominance alone would permit a bypass
     // or another visit to create before the selected +1 step.
@@ -451,9 +482,13 @@ public:
                phi->getIncomingBlock(i) == source_step->getParent()) backedge = true;
       else return false;
     }
+    if (!one || !one->isOne() || !initial || !backedge) return false;
+    if (numeric_mode) {
+      source_index = numeric_source->getOperand(0); source_counter = phi;
+      return prepare_numeric_base(main, source_main, child, source_worker, source, ar_pre);
+    }
     auto size = layout.getTypeAllocSize(gep->getSourceElementType());
-    if (!one || !one->isOne() || !initial || !backedge || size.isScalable() ||
-        Z(size.getFixedValue()) != shift->term(0).first.to_z_number()) return false;
+    if (size.isScalable() || Z(size.getFixedValue()) != shift->term(0).first.to_z_number()) return false;
     llvm::DominatorTree dominance(*source_main);
     auto* source_base = llvm::dyn_cast< llvm::Instruction >(
         gep->getPointerOperand()->stripPointerCasts());
@@ -530,6 +565,256 @@ public:
     return false;
   }
 
+
+  // Native integer tokens are coordinates, never pointer capabilities.
+  bool numeric_ar_index(ar::Value* value, ar::Function* child, bool range) const {
+    for (unsigned depth = 0; depth < 32; ++depth) {
+      auto* type = dyn_cast< ar::IntegerType >(value->type());
+      auto* variable = dyn_cast< ar::InternalVariable >(value);
+      auto* operation = variable
+          ? dyn_cast_or_null< ar::UnaryOperation >(unique_def(variable)) : nullptr;
+      if (!type || !variable || variable->code() != child->body() || !operation ||
+          type->bit_width() > 64 ||
+          (range && !fits_nonnegative(index_upper, type->bit_width(), type->sign())))
+        return false;
+      if (operation->op() == ar::UnaryOperation::PtrToSI ||
+          operation->op() == ar::UnaryOperation::PtrToUI)
+        return type->bit_width() <= pointer_bits &&
+            uncast(operation->operand()) == child->param(0);
+      auto* input = dyn_cast< ar::IntegerType >(operation->operand()->type());
+      if (!input || input->bit_width() > 64 ||
+          (range && !fits_nonnegative(index_upper, input->bit_width(), input->sign())))
+        return false;
+      switch (operation->op()) {
+        case ar::UnaryOperation::SExt:
+          if (range && !fits_nonnegative(index_upper, input->bit_width(), core::Signed))
+            return false;
+          break;
+        case ar::UnaryOperation::ZExt:
+        case ar::UnaryOperation::UTrunc:
+        case ar::UnaryOperation::STrunc: break;
+        case ar::UnaryOperation::Bitcast:
+          if (input->bit_width() != type->bit_width()) return false;
+          break;
+        default: return false;
+      }
+      value = operation->operand();
+    }
+    return false;
+  }
+
+  bool numeric_source_index(llvm::Value* value, llvm::Function* child, bool range) const {
+    if (!value->getType()->isIntegerTy() ||
+        (range && !fits_nonnegative(index_upper,
+                                   value->getType()->getIntegerBitWidth(), core::Signed)))
+      return false; // GEP indices use signed native interpretation.
+    for (unsigned depth = 0; depth < 32; ++depth) {
+      auto* operation = llvm::dyn_cast< llvm::CastInst >(value);
+      if (!operation || operation->getFunction() != child ||
+          !value->getType()->isIntegerTy() ||
+          value->getType()->getIntegerBitWidth() > 64 ||
+          (range && !fits_nonnegative(index_upper,
+                                     value->getType()->getIntegerBitWidth(), core::Unsigned)))
+        return false;
+      if (operation->getOpcode() == llvm::Instruction::PtrToInt) {
+        if (value->getType()->getIntegerBitWidth() > pointer_bits) return false;
+        auto* token = operation->getOperand(0);
+        for (unsigned copies = 0; copies < 32; ++copies) {
+          if (!token->getType()->isPointerTy() ||
+              token->getType()->getPointerAddressSpace() != 0) return false;
+          if (token == child->getArg(0)) return true;
+          auto* copy = llvm::dyn_cast< llvm::BitCastInst >(token);
+          if (!copy || copy->getFunction() != child) return false;
+          token = copy->getOperand(0);
+        }
+        return false;
+      }
+      auto* input = operation->getOperand(0)->getType();
+      if (!input->isIntegerTy() || input->getIntegerBitWidth() > 64 ||
+          (range && !fits_nonnegative(index_upper, input->getIntegerBitWidth(), core::Unsigned)))
+        return false;
+      switch (operation->getOpcode()) {
+        case llvm::Instruction::SExt:
+          if (range && !fits_nonnegative(index_upper, input->getIntegerBitWidth(), core::Signed))
+            return false;
+          break;
+        case llvm::Instruction::ZExt:
+        case llvm::Instruction::Trunc: break;
+        case llvm::Instruction::BitCast:
+          if (input != value->getType()) return false;
+          break;
+        default: return false;
+      }
+      value = operation->getOperand(0);
+    }
+    return false;
+  }
+
+  ar::PointerShift* numeric_shift(ar::Value* pointer, ar::Function* child) const {
+    auto* variable = dyn_cast_or_null< ar::InternalVariable >(uncast(pointer));
+    auto* shift = variable
+        ? dyn_cast_or_null< ar::PointerShift >(unique_def(variable)) : nullptr;
+    if (!shift || shift->code() != child->body() || shift->num_terms() != 1 ||
+        shift->term(0).first.to_z_number() <= 0 ||
+        !numeric_ar_index(shift->term(0).second, child, false)) return nullptr;
+    return shift;
+  }
+
+  bool numeric_address(ar::Value* pointer, llvm::Value* source_pointer,
+                       ar::Function* child, bool range,
+                       ar::GlobalVariable*& global, llvm::GlobalVariable*& source_global,
+                       Z& spacing) const {
+    auto* shift = numeric_shift(pointer, child);
+    auto* source_child = child->has_frontend()
+        ? llvm::dyn_cast< llvm::Function >(child->frontend< llvm::Value >()) : nullptr;
+    auto* gep = source_pointer
+        ? llvm::dyn_cast< llvm::GetElementPtrInst >(source_pointer->stripPointerCasts()) : nullptr;
+    auto* base_variable = shift
+        ? dyn_cast_or_null< ar::InternalVariable >(uncast(shift->pointer())) : nullptr;
+    auto* load = base_variable
+        ? dyn_cast_or_null< ar::Load >(unique_def(base_variable)) : nullptr;
+    auto* source_load = gep
+        ? llvm::dyn_cast< llvm::LoadInst >(gep->getPointerOperand()->stripPointerCasts()) : nullptr;
+    global = load ? dyn_cast< ar::GlobalVariable >(load->operand()) : nullptr;
+    source_global = source_load
+        ? llvm::dyn_cast< llvm::GlobalVariable >(source_load->getPointerOperand()) : nullptr;
+    if (!source_child || !gep || gep->getFunction() != source_child ||
+        gep->getAddressSpace() != 0 || gep->getNumIndices() != 1 ||
+        !gep->getSourceElementType()->isSized() || !load || load->code() != child->body() ||
+        load->is_atomic() || load->is_volatile() || !source_load || !source_load->isSimple() ||
+        source_load->getFunction() != source_child || !global || !source_global ||
+        !global->has_frontend() || global->frontend< llvm::Value >() != source_global ||
+        !load->has_frontend() || load->frontend< llvm::Value >() != source_load ||
+        !load->result()->type()->is_pointer() || !source_load->getType()->isPointerTy() ||
+        source_load->getType()->getPointerAddressSpace() != 0 ||
+        !pointer_binding(pointer, source_pointer) ||
+        !pointer_binding(shift->pointer(), gep->getPointerOperand()) ||
+        !source_integer_binding(shift->term(0).second, gep->getOperand(1)) ||
+        !numeric_ar_index(shift->term(0).second, child, range) ||
+        !numeric_source_index(gep->getOperand(1), source_child, range)) return false;
+    const auto size = gep->getModule()->getDataLayout().getTypeAllocSize(gep->getSourceElementType());
+    if (size.isScalable() || Z(size.getFixedValue()) != shift->term(0).first.to_z_number())
+      return false;
+    spacing = shift->term(0).first.to_z_number();
+    return true;
+  }
+
+  bool prepare_numeric_base(ar::Function* main, llvm::Function* source_main,
+                            ar::Function* child, llvm::Function* source_child,
+                            llvm::CallInst* source_create, ar::BasicBlock* pre) {
+    // Discover a candidate data address from actual worker memory operations.
+    for (auto* block : *child->body()) for (auto* statement : *block) {
+      auto* load = dyn_cast< ar::Load >(statement);
+      auto* store = dyn_cast< ar::Store >(statement);
+      auto* source = statement->has_frontend()
+          ? llvm::dyn_cast< llvm::Instruction >(statement->frontend< llvm::Value >()) : nullptr;
+      auto* source_load = llvm::dyn_cast_or_null< llvm::LoadInst >(source);
+      auto* source_store = llvm::dyn_cast_or_null< llvm::StoreInst >(source);
+      if ((!load && !store) || bool(load) != bool(source_load) || bool(store) != bool(source_store))
+        continue;
+      ar::GlobalVariable* global = nullptr;
+      llvm::GlobalVariable* source_global = nullptr;
+      Z spacing(0);
+      if (!numeric_address(load ? load->operand() : store->pointer(),
+                           source_load ? source_load->getPointerOperand() : source_store->getPointerOperand(),
+                           child, false, global, source_global, spacing)) continue;
+      if (numeric_global && (numeric_global != global || numeric_source_global != source_global ||
+                             stride != spacing)) return false;
+      numeric_global = global; numeric_source_global = source_global; stride = spacing;
+    }
+    if (!numeric_global || !numeric_source_global ||
+        !numeric_global->is_definition() || numeric_global->is_thread_local() ||
+        numeric_source_global->isConstant() || numeric_source_global->isThreadLocal() ||
+        numeric_source_global->isExternallyInitialized() || numeric_source_global->getAddressSpace() != 0 ||
+        !numeric_source_global->hasInitializer() ||
+        !llvm::isa< llvm::ConstantPointerNull >(numeric_source_global->getInitializer()) ||
+        !numeric_source_global->getValueType()->isPointerTy() ||
+        numeric_source_global->getValueType()->getPointerAddressSpace() != 0) return false;
+    // The pointer slot has one native full-width store, before the entire family.
+    // Loaded heap addresses may escape; the slot address itself must not.
+    llvm::StoreInst* publication = nullptr;
+    unsigned budget = 32768;
+    for (auto* user : numeric_source_global->users()) {
+      if (!budget--) return false;
+      if (llvm::isa< llvm::DbgInfoIntrinsic >(user)) continue;
+      if (auto* load = llvm::dyn_cast< llvm::LoadInst >(user)) {
+        if (!load->isSimple() || load->getPointerOperand() != numeric_source_global ||
+            load->getType() != numeric_source_global->getValueType()) return false;
+      } else if (auto* store = llvm::dyn_cast< llvm::StoreInst >(user)) {
+        if (publication || !store->isSimple() || store->getFunction() != source_main ||
+            store->getPointerOperand() != numeric_source_global ||
+            store->getValueOperand()->getType() != numeric_source_global->getValueType())
+          return false;
+        publication = store;
+      } else return false;
+    }
+    if (!publication) return false;
+    llvm::BasicBlock* source_pre = nullptr;
+    for (unsigned n = 0; n < source_counter->getNumIncomingValues(); ++n)
+      if (auto* zero = llvm::dyn_cast< llvm::ConstantInt >(source_counter->getIncomingValue(n)))
+        if (zero->isZero()) source_pre = source_counter->getIncomingBlock(n);
+    llvm::DominatorTree dominance(*source_main);
+    if (!source_pre || publication->getParent() != source_pre ||
+        !dominance.dominates(publication, source_counter) ||
+        !dominance.dominates(publication, source_create)) return false;
+    for (auto* block : *main->body()) for (auto* statement : *block) {
+      if (!budget--) return false;
+      if (!statement->has_frontend() ||
+          statement->frontend< llvm::Value >() != publication) continue;
+      auto* store = dyn_cast< ar::Store >(statement);
+      if (!store || numeric_publication || store->parent() != pre ||
+          store->pointer() != numeric_global || !store->value()->type()->is_pointer() ||
+          store->is_atomic() || store->is_volatile() ||
+          store->value()->type() != numeric_global->type()->pointee() ||
+          !pointer_binding(store->value(), publication->getValueOperand())) return false;
+      numeric_publication = store;
+    }
+    if (!numeric_publication) return false;
+    base = numeric_publication->value();
+    auto* base_variable = dyn_cast_or_null< ar::InternalVariable >(uncast(base));
+    auto* base_definition = base_variable ? unique_def(base_variable) : nullptr;
+    if (!base_definition || !isa< ar::CallBase >(base_definition) ||
+        base_definition->code() != main->body()) return false;
+    // Close imported slot uses separately, including optimizer-introduced uses.
+    for (auto fi = ctx.bundle->function_begin(); fi != ctx.bundle->function_end(); ++fi) {
+      if (!(*fi)->is_definition()) continue;
+      for (auto* block : *(*fi)->body()) for (auto* statement : *block) {
+        if (!budget--) return false;
+        bool used = false;
+        for (auto op = statement->op_begin(); op != statement->op_end(); ++op)
+          used |= *op == numeric_global;
+        if (!used) continue;
+        if (statement == numeric_publication) continue;
+        auto* load = dyn_cast< ar::Load >(statement);
+        if (!load || load->operand() != numeric_global || !load->result()->type()->is_pointer() ||
+            load->is_atomic() || load->is_volatile() ||
+            load->result()->type() != numeric_global->type()->pointee() ||
+            !load->has_frontend()) return false;
+        auto* source = llvm::dyn_cast< llvm::LoadInst >(load->frontend< llvm::Value >());
+        if (!source || source->getPointerOperand() != numeric_source_global) return false;
+      }
+    }
+    // Other imported global initializers must not manufacture a slot alias.
+    for (auto gi = ctx.bundle->global_begin(); gi != ctx.bundle->global_end(); ++gi) {
+      if (!(*gi)->is_definition() || *gi == numeric_global) continue;
+      for (auto* block : *(*gi)->initializer()) for (auto* statement : *block) {
+        if (!budget--) return false;
+        for (auto op = statement->op_begin(); op != statement->op_end(); ++op)
+          if (*op == numeric_global) return false;
+      }
+    }
+    unsigned initialized = 0;
+    for (auto* block : *numeric_global->initializer()) for (auto* statement : *block) {
+      if (!budget--) return false;
+      auto* store = dyn_cast< ar::Store >(statement);
+      if (!store || store->pointer() != numeric_global ||
+          !isa< ar::NullConstant >(store->value()) ||
+          store->value()->type() != numeric_global->type()->pointee()) return false;
+      ++initialized;
+    }
+    return initialized == 1;
+  }
+
   bool adapters_preserve(const Z& upper) const {
     for (auto* conversion : index_adapters) {
       auto* input = dyn_cast< ar::IntegerType >(conversion->operand()->type());
@@ -597,6 +882,16 @@ public:
         ctx.bundle->data_layout().store_size_in_bytes(ar_type) != Z(access.width)) return false;
     auto* pointer = load ? load->getPointerOperand() : store->getPointerOperand();
     auto* ar_pointer = ar_load ? ar_load->operand() : ar_store->pointer();
+    if (numeric_mode) {
+      ar::GlobalVariable* global = nullptr;
+      llvm::GlobalVariable* source_global = nullptr;
+      Z spacing(0);
+      return access.thread_id == worker->name() && numeric_publication_seen &&
+          access.argument_window->lower == Z(0) &&
+          numeric_address(ar_pointer, pointer, worker, true, global, source_global, spacing) &&
+          global == numeric_global && source_global == numeric_source_global &&
+          spacing == stride && span({Z(0)}, access.width);
+    }
     if (access.stmt == precreate_store) {
       // Same-iteration initialization precedes the actual create; other
       // iterations use the separately checked nonoverlapping byte cells.
@@ -619,7 +914,22 @@ public:
   }
 
   void observe(ar::Statement* stmt, const value::AbstractDomain& inv, CallContext* cc) {
-    if (!worker || (stmt != create && stmt != step)) return;
+    if (!worker || (stmt != create && stmt != step && stmt != numeric_publication)) return;
+    if (stmt == numeric_publication) {
+      if (cc && cc->has_parent()) { valid = false; return; }
+      const auto& literal = ctx.lit_factory->get_scalar(numeric_publication->value());
+      const auto& state = inv.first().normal();
+      if (!literal.is_pointer_var() || state.uninit_is_uninitialized(literal.var())) {
+        valid = false; return;
+      }
+      auto points = state.pointer_to_points_to(literal.var());
+      if (!points.is_set() || points.size() != 1 ||
+          !isa< DynAllocMemoryLocation >(*points.begin()) ||
+          !singleton(state.pointer_offset_to_interval(literal.var()), Z(0)) ||
+          (object && object != *points.begin())) { valid = false; return; }
+      object = *points.begin(); numeric_publication_seen = true;
+      return;
+    }
     // The certified creation belongs to the sole main activation, not a helper.
     if (cc && cc->has_parent()) { valid = false; return; }
     const auto& index = ctx.lit_factory->get_scalar(counter);
@@ -635,6 +945,13 @@ public:
     ++creator_queries;
     auto max = (Z(1) << pointer_bits) - 1;
     if (range.is_bottom() || stride * range.ub().to_z_number() > max) { valid = false; return; }
+    if (numeric_mode) {
+      const Z lower = range.lb().to_z_number(), upper = range.ub().to_z_number();
+      if (!index_seen) { index_lower = lower; index_upper = upper; }
+      else { index_lower = std::min(index_lower, lower); index_upper = std::max(index_upper, upper); }
+      index_seen = true;
+      return; // Numeric token is not the heap base.
+    }
     const auto& pointer = ctx.lit_factory->get_scalar(create->argument(3));
     const auto& base_ptr = ctx.lit_factory->get_scalar(base);
     const auto& state = inv.first().normal();
@@ -678,6 +995,16 @@ public:
       return boost::none;
     if (source_mode) {
       if (initializer) return ThreadArgumentWindow{worker, Z(0), Z(0)};
+      if (numeric_mode) {
+        auto* shift = numeric_shift(pointer, worker);
+        auto* base_variable = shift
+            ? dyn_cast_or_null< ar::InternalVariable >(uncast(shift->pointer())) : nullptr;
+        auto* load = base_variable
+            ? dyn_cast_or_null< ar::Load >(unique_def(base_variable)) : nullptr;
+        if (!load || load->operand() != numeric_global ||
+            shift->term(0).first.to_z_number() != stride) return boost::none;
+        return ThreadArgumentWindow{worker, Z(0), Z(0)};
+      }
       std::vector< Z > path;
       if (!ar_residual(pointer, worker, path)) return boost::none;
       return ThreadArgumentWindow{worker, path.back(), path.back()};
@@ -694,6 +1021,8 @@ public:
 
   bool disjoint(const AccessRecord& a, const AccessRecord& b) const {
     if (!worker || std::getenv("IKOS_RACE_DISABLE_THREAD_ARGUMENT_CONSUMER") ||
+        (numeric_mode && (!numeric_publication_seen ||
+                         std::getenv("IKOS_RACE_DISABLE_NUMERIC_ARGUMENT_CONSUMER"))) ||
         !a.argument_window || !b.argument_window ||
         !a.pts.is_set() || !b.pts.is_set() ||
         a.pts.size() != 1 || b.pts.size() != 1) return false;
@@ -766,7 +1095,8 @@ bool ThreadArgumentWindows::disjoint(const AccessRecord& a, const AccessRecord& 
 JsonDict ThreadArgumentWindows::proof(const AccessRecord& a, const AccessRecord& b) const {
   JsonDict proof;
   proof.put("thread_argument_contract", _impl->source_mode
-      ? ((a.stmt == _impl->precreate_store || b.stmt == _impl->precreate_store)
+      ? (_impl->numeric_mode ? "creation-family-numeric-index-window-v1" :
+          (a.stmt == _impl->precreate_store || b.stmt == _impl->precreate_store)
           ? "creation-family-indexed-precreate-v1" : "creation-family-source-affine-window-v1")
       : "creation-family-native-window-v1");
   proof.put("family", _impl->worker->name());
@@ -782,6 +1112,8 @@ JsonDict ThreadArgumentWindows::proof(const AccessRecord& a, const AccessRecord&
 JsonDict ThreadArgumentWindows::statistics() const {
   return JsonDict{{"candidate_family", _impl->worker != nullptr},
                   {"source_affine_mode", _impl->source_mode},
+                  {"numeric_index_mode", _impl->numeric_mode},
+                  {"numeric_publication_seen", _impl->numeric_publication_seen},
                   {"native_creator_queries", _impl->creator_queries},
                   {"native_window_queries", _impl->window_queries},
                   {"pair_queries", _impl->pair_queries}};

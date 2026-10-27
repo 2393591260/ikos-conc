@@ -22,6 +22,9 @@ void *entry(void *arg) {
 #elif CASE == 14
   intptr_t bits = (intptr_t)arg;
   *(int *)bits = 1;
+#elif CASE == 21
+  int index=(int)arg;
+  data[index/4]=1;
 #elif CASE == 18
 #if UINTPTR_MAX == UINT64_MAX
   int32_t bits = (int32_t)arg;
