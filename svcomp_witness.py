@@ -607,7 +607,7 @@ def build_witness(source, info, data_model, ikos="ikos"):
                 "creation_time": datetime.now(timezone.utc).strftime(
                     "%Y-%m-%dT%H:%M:%SZ"
                 ),
-                "producer": {"name": "ikos-conc", "version": "1.0"},
+                "producer": {"name": "ikos-conc", "version": "1.1"},
                 "task": {
                     "input_files": [file_name],
                     "input_file_hashes": {
