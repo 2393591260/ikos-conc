@@ -33,13 +33,14 @@ def main():
     ap.add_argument("--dartagnan", type=Path,
                     default=Path("/home/ruan/dartagnan-svcomp2026/dartagnan"))
     ap.add_argument("--svbench", type=Path,
-                    default=Path("/home/ruan/sv-benchmarks-2026"))
+                    default=Path.home() / "sv-benchmarks-current")
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--timeout", type=int, default=90)
     ap.add_argument("--java-heap", choices=["1g", "2g", "4g"], default="2g",
                     help="heap cap for both launcher and engine JVMs")
     ap.add_argument("--resume", action="store_true")
     args = ap.parse_args()
+    args.svbench = args.svbench.resolve()
     if args.jobs < 1 or args.timeout < 1:
         ap.error("jobs and timeout must be positive")
     tasks = [row for row in json.loads(args.baseline.read_text())

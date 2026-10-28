@@ -115,3 +115,19 @@ in the number of accesses and deliberately fails on write errors. First-hit coun
 are order-dependent, and a faster UNKNOWN after disconnecting a required fact is
 a capability change, not an equivalent verification speedup. Run
 `scripts/test_race_cooperation.py --ikos <install>/bin/ikos` for focused contracts.
+
+### Local benchmark snapshots
+
+The local race runner defaults to `~/sv-benchmarks-current`. Point it to a
+verified snapshot of the upstream SV-Benchmarks repository's `main` branch.
+Before each new acceptance stage, check the upstream revision and refresh the
+pointer if needed; freeze the resolved checkout and task manifest for the whole
+run. Select active `no-data-race` tasks from `c/Concurrency.set` and verify that
+the runner's directory list still covers that set. Record the commit, task and
+input hashes, data models and property identity. A task count alone does not
+identify a benchmark set.
+
+Pass a checkout explicitly when reproducing historical results. Updating the
+current pointer does not change the identity of saved results or authorize
+reusing old scores for changed inputs. Benchmark updates do not change analysis
+budgets.

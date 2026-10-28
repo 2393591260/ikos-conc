@@ -5,9 +5,9 @@ Walks the sv-benchmarks `c/` concurrency directories, picks every task whose
 `.yml` carries an ACTIVE `no-data-race.prp` property, runs IKOS on its
 `input_files`, and reports a confusion matrix (SAFE = no race, RACE = race).
 
-Defaults to the SV-COMP 2026 frozen set (/home/ruan/sv-benchmarks-2026,
-git worktree at tag `svcomp26-freeze`). The rolling sv-benchmarks `main`
-(/home/ruan/sv-benchmarks) is kept for later optimization sweeps.
+Defaults to ~/sv-benchmarks-current, a local pointer to the latest verified
+SV-Benchmarks snapshot. Resolve it once per run; refresh it between stages,
+never during a sweep. Pass an explicit checkout for historical reproduction.
 
 Unlike yaml_ab_test.py (curated clean-sv-benchmarks subset), this reads the
 official `format_version: '2.0'` task definitions and runs on the `.i`
@@ -34,6 +34,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
+
+DEFAULT_SVBENCH = Path.home() / "sv-benchmarks-current"
 
 VERDICT_SAFE = "Safe"
 VERDICT_RACE = "Race Found"
@@ -348,8 +350,8 @@ def collect_report(report_path, verdict, evidence_dir, key):
 def main(argv) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("svbench", type=Path, nargs="?",
-                    default=Path("/home/ruan/sv-benchmarks-2026"),
-                    help="sv-benchmarks checkout root (default: 2026 freeze)")
+                    default=DEFAULT_SVBENCH,
+                    help="sv-benchmarks checkout root (default: ~/sv-benchmarks-current)")
     ap.add_argument("--ikos", type=Path,
                     default=Path(__file__).resolve().parent / "install/bin/ikos")
     ap.add_argument("--timeout", type=int, default=30)
@@ -383,6 +385,10 @@ def main(argv) -> int:
         value = getattr(args, name)
         if value is not None and not minimum <= value <= 4294967295:
             ap.error(f"--{name.replace('_', '-')} must be in [{minimum}, 4294967295]")
+
+    args.svbench = args.svbench.resolve()
+    if not (args.svbench / "c").is_dir():
+        ap.error(f"missing benchmark snapshot: {args.svbench}; prepare ~/sv-benchmarks-current or pass a checkout")
 
     tasks = []
     for d in CONCURRENCY_DIRS:

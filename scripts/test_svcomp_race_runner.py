@@ -104,6 +104,23 @@ class RunnerTests(unittest.TestCase):
         return code, json.loads((destination / "summary.json").read_text()), json.loads(
             (destination / "results.json").read_text())
 
+    def test_default_snapshot_is_pinned_before_analysis(self):
+        source = self.task("current", expected="true", output="The program is SAFE",
+                           report=protocol_report("SAFE", pairs=0))
+        alias = self.root / "current"
+        alias.symlink_to(self.bench, target_is_directory=True)
+        destination = self.root / "evidence"
+        with mock.patch.object(suite, "DEFAULT_SVBENCH", alias), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            code = suite.main(["--ikos", str(self.fake), "--jobs", "1",
+                               "--evidence-dir", str(destination)])
+        self.assertEqual(code, 0)
+        rows = json.loads((destination / "results.json").read_text())
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["input"], str(source.resolve()))
+        self.assertEqual(rows[0]["verdict"], "Safe")
+
     def test_current_concurrency_families_are_collected(self):
         expected_tasks = {"c/pthread/original.yml"}
         self.task("original", expected="true", output="The program is SAFE",

@@ -20,7 +20,7 @@ import svcomp_race_test as suite
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--svbench", type=Path,
-                        default=Path("/home/ruan/sv-benchmarks-2026"))
+                        default=suite.DEFAULT_SVBENCH)
     parser.add_argument("--ikos", type=Path, default=ROOT / "install/bin/ikos")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--input", type=Path, action="append",
@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--jobs", type=int, default=8)
     parser.add_argument("--timeout", type=int, default=30)
     args = parser.parse_args()
+    args.svbench = args.svbench.resolve()
     args.output.mkdir(parents=True, exist_ok=False)
     wanted = {p.resolve() for p in args.input or []}
     tasks = []

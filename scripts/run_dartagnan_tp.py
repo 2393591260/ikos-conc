@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 DARTAGNAN_HOME = Path("/home/ruan/dartagnan-svcomp2026/dartagnan")
-PRP = Path("/home/ruan/sv-benchmarks-2026/c/properties/no-data-race.prp")
+PRP = (Path.home() / "sv-benchmarks-current/c/properties/no-data-race.prp").resolve()
 
 RE_RESULT = re.compile(r"^RESULT (.+) expected=(.+) got=(.+?)(?:  <-- MISMATCH)?$")
 RE_DART = re.compile(r"^Result:\s*(\w+)", re.M)

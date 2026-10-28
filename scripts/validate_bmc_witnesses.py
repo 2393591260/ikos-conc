@@ -282,8 +282,9 @@ def main():
     parser.add_argument("--timeout", type=int, default=60)
     parser.add_argument("--cpachecker", type=Path, default=Path("/home/ruan/CPAchecker-4.2.2-unix/CPAchecker-4.2.2-unix"))
     parser.add_argument("--dartagnan", type=Path, default=Path("/home/ruan/dartagnan-svcomp2026/dartagnan"))
-    parser.add_argument("--property", type=Path, default=Path("/home/ruan/sv-benchmarks-2026/c/properties/no-data-race.prp"))
+    parser.add_argument("--property", type=Path, default=Path.home() / "sv-benchmarks-current/c/properties/no-data-race.prp")
     args = parser.parse_args()
+    args.property = args.property.resolve()
     adapter_hash = digest(__file__)
     if args.jobs < 1 or args.timeout < 1:
         parser.error("jobs and timeout must be positive")
